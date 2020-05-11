@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "midi.h"
+#include "MacOS/apple_compat.h"
 
 void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
 

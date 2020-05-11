@@ -191,6 +191,8 @@
 #include <time.h>
 #include <sys/mman.h>
 
+#include "MacOS/apple_compat.h"
+
 #ifdef GPIO
 #include "gpio.h"
 #endif

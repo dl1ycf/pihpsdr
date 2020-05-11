@@ -60,6 +60,9 @@
 
 #define NEW_PARSER
 
+#include <time.h>
+#include "MacOS/apple_compat.h"
+
 // IP stuff below
 #include <sys/socket.h>
 #include <arpa/inet.h> //inet_addr

@@ -10,6 +10,9 @@
 #include <arpa/inet.h>
 #include <math.h>
 
+#include <time.h>
+#include "MacOS/apple_compat.h"
+
 #define EXTERN extern
 #include "hpsdrsim.h"
 

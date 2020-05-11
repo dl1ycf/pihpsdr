@@ -39,6 +39,8 @@
 
 #include <gtk/gtk.h>
 
+#include "MacOS/apple_compat.h"
+
 #include "discovered.h"
 #include "new_protocol.h"
 

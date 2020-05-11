@@ -65,6 +65,9 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
+#include <time.h>
+#include "MacOS/apple_compat.h"
+
 #define NEED_DUMMY_AUDIO 1
 
 #ifdef PORTAUDIO
