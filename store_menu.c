@@ -62,7 +62,7 @@ static gboolean delete_event(GtkWidget *widget, GdkEvent *event, gpointer user_d
   return FALSE;
 }
 
-static gboolean store_select_cb (GtkWidget *widget, gpointer data) {
+gboolean store_select_cb (GtkWidget *widget, gpointer data) {
    int index = GPOINTER_TO_INT(data);
    fprintf(stderr,"STORE BUTTON PUSHED=%d\n",index);
    char workstr[40];
@@ -78,15 +78,17 @@ static gboolean store_select_cb (GtkWidget *widget, gpointer data) {
     fprintf(stderr,"store_select_cb: mode=%d\n",mem[index].mode);
     fprintf(stderr,"store_select_cb: filter=%d\n",mem[index].filter);
 
-    sprintf(workstr,"M%d=%8.6f MHz", index,((double) mem[index].frequency)/1000000.0);
-    gtk_button_set_label(GTK_BUTTON(store_button[index]),workstr);
+    if (dialog != NULL) {
+        sprintf(workstr,"M%d=%8.6f MHz", index,((double) mem[index].frequency)/1000000.0);
+        gtk_button_set_label(GTK_BUTTON(store_button[index]),workstr);
+    }
 
    // Save in the file now..
    memSaveState();
   return FALSE;
 }
 
-static gboolean recall_select_cb (GtkWidget *widget, gpointer data) {
+gboolean recall_select_cb (GtkWidget *widget, gpointer data) {
     int index = GPOINTER_TO_INT(data);
     long long new_freq;
     

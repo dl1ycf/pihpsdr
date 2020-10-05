@@ -22,9 +22,20 @@
 #include "ext.h"
 #include "agc.h"
 #include "midi.h"
+#include "store_menu.h"
 #ifdef LOCALCW
 #include "iambic.h"
 #endif
+
+static int store_cb(void *data) {
+    store_select_cb(NULL, data);
+    return 0;
+}
+
+static int recall_cb(void *data) {
+    recall_select_cb(NULL, data);
+    return 0;
+}
 
 void DoTheMidi(enum MIDIaction action, enum MIDItype type, int val) {
 
@@ -880,7 +891,46 @@ g_print("MIDI_ZOOM: MIDI_TYPE_KNOB: val=%d\n",val);
 		break;
 	    }
             break;
-
+        /////////////////////////////////////////////////////////// "STOREM0"
+        case MIDI_ACTION_MEM_STORE_M0:
+            g_idle_add(store_cb, GINT_TO_POINTER(0));
+            break;
+        /////////////////////////////////////////////////////////// "STOREM1"
+        case MIDI_ACTION_MEM_STORE_M1:
+            g_idle_add(store_cb, GINT_TO_POINTER(1));
+            break;
+        /////////////////////////////////////////////////////////// "STOREM2"
+        case MIDI_ACTION_MEM_STORE_M2:
+            g_idle_add(store_cb, GINT_TO_POINTER(2));
+            break;
+        /////////////////////////////////////////////////////////// "STOREM3"
+        case MIDI_ACTION_MEM_STORE_M3:
+            g_idle_add(store_cb, GINT_TO_POINTER(3));
+            break;
+        /////////////////////////////////////////////////////////// "STOREM4"
+        case MIDI_ACTION_MEM_STORE_M4:
+            g_idle_add(store_cb, GINT_TO_POINTER(4));
+            break;
+        /////////////////////////////////////////////////////////// "RECALLM0"
+        case MIDI_ACTION_MEM_RECALL_M0:
+            g_idle_add(recall_cb, GINT_TO_POINTER(0));
+            break;
+        /////////////////////////////////////////////////////////// "RECALLM1"
+        case MIDI_ACTION_MEM_RECALL_M1:
+            g_idle_add(recall_cb, GINT_TO_POINTER(1));
+            break;
+        /////////////////////////////////////////////////////////// "RECALLM2"
+        case MIDI_ACTION_MEM_RECALL_M2:
+            g_idle_add(recall_cb, GINT_TO_POINTER(2));
+            break;
+        /////////////////////////////////////////////////////////// "RECALLM3"
+        case MIDI_ACTION_MEM_RECALL_M3:
+            g_idle_add(recall_cb, GINT_TO_POINTER(3));
+            break;
+        /////////////////////////////////////////////////////////// "RECALLM4"
+        case MIDI_ACTION_MEM_RECALL_M4:
+            g_idle_add(recall_cb, GINT_TO_POINTER(4));
+            break;
 	case MIDI_ACTION_NONE:
 	    // No error message, this is the "official" action for un-used controller buttons.
 	    break;;

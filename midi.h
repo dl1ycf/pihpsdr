@@ -111,6 +111,16 @@ enum MIDIaction {
   MIDI_ACTION_ZOOM,		// ZOOM:		change zoom factor
   MIDI_ACTION_ZOOM_UP,		// ZOOMUP:		change zoom factor
   MIDI_ACTION_ZOOM_DOWN,	// ZOOMDOWN:		change zoom factor
+  MIDI_ACTION_MEM_STORE_M0,     // STOREM0:             store current VFO frequency on memory slot 0
+  MIDI_ACTION_MEM_STORE_M1,     // STOREM1:             store current VFO frequency on memory slot 1
+  MIDI_ACTION_MEM_STORE_M2,     // STOREM2:             store current VFO frequency on memory slot 2
+  MIDI_ACTION_MEM_STORE_M3,     // STOREM3:             store current VFO frequency on memory slot 3
+  MIDI_ACTION_MEM_STORE_M4,     // STOREM4:             store current VFO frequency on memory slot 4
+  MIDI_ACTION_MEM_RECALL_M0,    // RECALLM0:            load memory slot 0 in the current VFO
+  MIDI_ACTION_MEM_RECALL_M1,    // RECALLM1:            load memory slot 1 in the current VFO
+  MIDI_ACTION_MEM_RECALL_M2,    // RECALLM2:            load memory slot 2 in the current VFO
+  MIDI_ACTION_MEM_RECALL_M3,    // RECALLM3:            load memory slot 3 in the current VFO
+  MIDI_ACTION_MEM_RECALL_M4,    // RECALLM4:            load memory slot 4 in the current VFO
 };
 
 //

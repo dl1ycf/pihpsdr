@@ -18,3 +18,5 @@
 */
 #define NUM_OF_MEMORYS 5
 extern void store_menu(GtkWidget *parent);
+extern gboolean store_select_cb (GtkWidget *widget, gpointer data);
+extern gboolean recall_select_cb (GtkWidget *widget, gpointer data);
