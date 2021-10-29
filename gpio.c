@@ -79,7 +79,7 @@ int ENABLE_CW_BUTTONS=1;
 int CW_ACTIVE_LOW=1;
 #endif
 
-#ifdef PTT
+#ifdef PTTLINE
 int ENABLE_PTT_GPIO=1;
 int PTT_GPIO=27;
 int PTT_ACTIVE_LOW=1;
@@ -525,10 +525,10 @@ static void process_edge(int offset,int value) {
   if(found) return;
 #endif
 
-#ifdef PTT
+#ifdef PTTLINE
   if(ENABLE_PTT_GPIO) {
     if(PTT_GPIO==offset) {
-      //g_print("%s: ENABLE_PTT INPUT LINE=%d\n", __FUNCTION__, PTT_KEY);
+      //g_print("%s: ENABLE_PTT INPUT LINE=%d\n", __FUNCTION__, PTT);
       g_print("%s: found GPIO Line %d, PTT Button\n",__FUNCTION__,offset);
       t=millis();
       found=TRUE;  
@@ -1007,8 +1007,8 @@ int gpio_init() {
     goto err;
   }
 
-#ifdef PTT
-  g_print("%s: ENABLE_PTT INPUT LINE=%d\n",__FUNCTION__, PTT_KEY);
+#ifdef LINE
+  g_print("%s: ENABLE_PTT INPUT LINE=%d\n",__FUNCTION__, PTT);
   if(ENABLE_PTT_GPIO) {
     if(ret=setup_line(chip,PTT_GPIO,PTT_ACTIVE_LOW==1)<0) {
         goto err;
