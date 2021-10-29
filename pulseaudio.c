@@ -160,7 +160,7 @@ int audio_open_output(RECEIVER *rx) {
                     stream_id,          // Description of our stream.
                     &sample_spec,       // Our sample format.
                     NULL,               // Use default channel map
-                    &attr,              // use our "prebuf" value
+                    NULL,               //&attr,              // use our "prebuf" value
                     &err                // error code if returns NULL
                     );
 
