@@ -81,7 +81,7 @@ int CW_ACTIVE_LOW=1;
 
 #ifdef PTT
 int ENABLE_PTT_GPIO=1;
-int PTT_GPIO=12;
+int PTT_GPIO=27;
 int PTT_ACTIVE_LOW=1;
 #endif
 
