@@ -46,6 +46,9 @@ LOCALCW_INCLUDE=LOCALCW
 # uncomment the line below for various debug facilities
 #DEBUG_OPTION=-D DEBUG
 
+# uncomment the line below to enable classic PTT on gpio line, could be Mic PPTT button or foot switch
+#PTT_INCLUDE=PTT
+
 # very early code not included yet
 #SERVER_INCLUDE=SERVER
 
@@ -123,6 +126,10 @@ LOCALCW_OPTIONS=-D LOCALCW
 LOCALCW_SOURCES= iambic.c
 LOCALCW_HEADERS= iambic.h
 LOCALCW_OBJS   = iambic.o
+endif
+
+ifeq ($(PTT_INCLUDE),PTT)
+PTT_OPTIONS=-D PTT
 endif
 
 ifeq ($(UNAME_S), Darwin)
@@ -219,6 +226,7 @@ endif
 OPTIONS=$(SMALL_SCREEN_OPTIONS) $(MIDI_OPTIONS) $(PURESIGNAL_OPTIONS) $(REMOTE_OPTIONS) $(USBOZY_OPTIONS) \
 	$(GPIO_OPTIONS) $(SOAPYSDR_OPTIONS) $(LOCALCW_OPTIONS) \
 	$(STEMLAB_OPTIONS) \
+	$(PTT_OPTIONS) \
 	$(SERVER_OPTIONS) \
 	$(AUDIO_OPTIONS) \
 	-D GIT_DATE='"$(GIT_DATE)"' -D GIT_VERSION='"$(GIT_VERSION)"' $(DEBUG_OPTION)
