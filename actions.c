@@ -138,7 +138,7 @@ ACTION_TABLE ActionTable[] = {
   {PANADAPTER_STEP,	"PAN STEP",		NULL,		MIDI_KNOB | MIDI_WHEEL | CONTROLLER_ENCODER},
   {PREAMP,		"PREAMP\nON/OFF",	"PRE",		MIDI_KEY | CONTROLLER_SWITCH},
   {PS,			"PS ON/OFF",		"PS",		MIDI_KEY | CONTROLLER_SWITCH},
-  {PTT,			"PTT",			"PTT",		MIDI_KEY | CONTROLLER_SWITCH},
+  {PTT_KEY,			"PTT",			"PTT",		MIDI_KEY | CONTROLLER_SWITCH},
   {RF_GAIN,		"RF GAIN",		NULL,		MIDI_KNOB | MIDI_WHEEL | CONTROLLER_ENCODER},
   {RF_GAIN_RX1,		"RF GAIN\nRX1",		NULL,		MIDI_KNOB | MIDI_WHEEL | CONTROLLER_ENCODER},
   {RF_GAIN_RX2,		"RF GAIN\nRX2",		NULL,		MIDI_KNOB | MIDI_WHEEL | CONTROLLER_ENCODER},
@@ -921,10 +921,11 @@ int process_action(void *data) {
       }
 #endif
       break;
-    case PTT:
-      if(a->mode==PRESSED || a->mode==RELEASED) {
-	mox_update(a->mode==PRESSED);
-      }
+    case PTT_KEY:
+      if(a->mode==PRESSED)
+        mox_update(a->mode==PRESSED);
+      else if(a->mode==RELEASED)
+        mox_update(a->mode==RELEASED);
       break;
     case RF_GAIN:
       value=adc[active_receiver->id].gain;

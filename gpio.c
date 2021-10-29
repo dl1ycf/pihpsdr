@@ -71,12 +71,19 @@
 // by Controller1 and Controller2_V1
 // (and keep #2,3 reserved for I2C extensions)
 //
-int CWL_BUTTON=9;
-int CWR_BUTTON=11;
-int SIDETONE_GPIO=10;
+int CWL_BUTTON=22;
+int CWR_BUTTON=23;
+int SIDETONE_GPIO=24;
 int ENABLE_GPIO_SIDETONE=0;
 int ENABLE_CW_BUTTONS=1;
 int CW_ACTIVE_LOW=1;
+#endif
+
+
+#ifdef PTT
+int ENABLE_PTT_GPIO=1;
+int PTT_GPIO=12;
+int PTT_ACTIVE_LOW=1;
 #endif
 
 enum {
@@ -138,7 +145,7 @@ int I2C_INTERRUPT=15;
 int monitor_lines[MAX_LINES];
 int lines=0;
 
-long settle_time=50;  // ms
+long settle_time=200;  // ms
 
 // VFO Encoder is always last
 
@@ -518,6 +525,29 @@ static void process_edge(int offset,int value) {
   }
   if(found) return;
 #endif
+
+#ifdef PTT
+  if(ENABLE_PTT_GPIO) {
+    if(PTT_GPIO==offset) {
+      //g_print("%s: ENABLE_PTT INPUT LINE=%d\n", __FUNCTION__, PTT_KEY);
+      g_print("%s: found GPIO Line %d, PTT Button\n",__FUNCTION__,offset);
+      t=millis();
+      found=TRUE;  
+      // Map PTT_KET gpio state to MOX button
+      if(t<switches.switch_debounce) {
+          return;
+      }
+      switches[MOX].switch_debounce=t+settle_time;
+      PROCESS_ACTION *a=g_new(PROCESS_ACTION,1);
+      a->action=MOX;
+      a->mode=value?PRESSED:RELEASED;
+      g_idle_add(process_action,a);
+      found=TRUE;
+    }
+  }
+  if(found) return;
+#endif
+
   // check encoders
   for(i=0;i<MAX_ENCODERS;i++) {
     if(encoders[i].bottom_encoder_enabled && encoders[i].bottom_encoder_address_a==offset) {
@@ -542,6 +572,13 @@ static void process_edge(int offset,int value) {
       break;
     } else if(encoders[i].switch_enabled && encoders[i].switch_address==offset) {
       //g_print("%s: found %d encoder %d switch\n",__FUNCTION__,offset,i);
+      t=millis();
+      found=TRUE;
+      // Debounce encoder switches
+      if(t<encoders[i].switch_debounce) {
+          return;
+      }
+      encoders[i].switch_debounce=t+settle_time;
       PROCESS_ACTION *a=g_new(PROCESS_ACTION,1);
       a->action=encoders[i].switch_function;
       a->mode=value?PRESSED:RELEASED;
@@ -970,6 +1007,15 @@ int gpio_init() {
     ret=-1;
     goto err;
   }
+
+#ifdef PTT
+  g_print("%s: ENABLE_PTT INPUT LINE=%d\n",__FUNCTION__, PTT_KEY);
+  if(ENABLE_PTT_GPIO) {
+    if(ret=setup_line(chip,PTT_GPIO,PTT_ACTIVE_LOW==1))<0) {
+        goto err;
+    }
+  } 
+#endif
 
   // setup encoders
   g_print("%s: setup encoders\n",__FUNCTION__);
