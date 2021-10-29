@@ -79,7 +79,6 @@ int ENABLE_CW_BUTTONS=1;
 int CW_ACTIVE_LOW=1;
 #endif
 
-
 #ifdef PTT
 int ENABLE_PTT_GPIO=1;
 int PTT_GPIO=12;
@@ -534,7 +533,7 @@ static void process_edge(int offset,int value) {
       t=millis();
       found=TRUE;  
       // Map PTT_KET gpio state to MOX button
-      if(t<switches.switch_debounce) {
+      if(t<switches[MOX].switch_debounce) {
           return;
       }
       switches[MOX].switch_debounce=t+settle_time;
@@ -1011,7 +1010,7 @@ int gpio_init() {
 #ifdef PTT
   g_print("%s: ENABLE_PTT INPUT LINE=%d\n",__FUNCTION__, PTT_KEY);
   if(ENABLE_PTT_GPIO) {
-    if(ret=setup_line(chip,PTT_GPIO,PTT_ACTIVE_LOW==1))<0) {
+    if(ret=setup_line(chip,PTT_GPIO,PTT_ACTIVE_LOW==1)<0) {
         goto err;
     }
   } 
