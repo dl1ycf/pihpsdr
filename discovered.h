@@ -92,6 +92,7 @@ struct _DISCOVERED {
     int protocol;
     int device;
     int use_tcp;    // use TCP rather than UDP to connect to radio
+    uint8_t use_routing;  // use routing to connect to radio (no local IP)
     char name[64];
     int software_version;
     int status;

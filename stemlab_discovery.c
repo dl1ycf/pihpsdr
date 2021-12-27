@@ -522,10 +522,10 @@ void stemlab_discovery() {
   struct sockaddr_in netmask;
 
    fprintf(stderr,"Stripped-down STEMLAB/HAMLAB discovery...\n");
-   fprintf(stderr,"STEMLAB: using inet addr %s\n", ipaddr_tcp);
+   fprintf(stderr,"STEMLAB: using inet addr %s\n", ipaddr_radio);
    ip_address.sin_family = AF_INET;
-   if (inet_aton(ipaddr_tcp, &ip_address.sin_addr) == 0) {
-	fprintf(stderr,"StemlabDiscovery: TCP %s is invalid!\n", ipaddr_tcp);
+   if (inet_aton(ipaddr_radio, &ip_address.sin_addr) == 0) {
+	fprintf(stderr,"StemlabDiscovery: TCP %s is invalid!\n", ipaddr_radio);
 	return;
    }
 
@@ -543,7 +543,7 @@ void stemlab_discovery() {
     return;
   }
   app_list=0;
-  sprintf(txt,"http://%s",ipaddr_tcp);
+  sprintf(txt,"http://%s",ipaddr_radio);
   curl_easy_setopt(curl_handle, CURLOPT_URL, txt);
   curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, (long) 5);
   curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, get_list_cb);
@@ -551,7 +551,7 @@ void stemlab_discovery() {
   curl_error = curl_easy_perform(curl_handle);
   curl_easy_cleanup(curl_handle);
   if (curl_error ==  CURLE_OPERATION_TIMEDOUT) {
-    sprintf(txt,"No response from web server at %s", ipaddr_tcp);
+    sprintf(txt,"No response from web server at %s", ipaddr_radio);
     status_text(txt);
     fprintf(stderr,"%s\n",txt);
   }
@@ -569,7 +569,7 @@ void stemlab_discovery() {
       fprintf(stderr, "stemlab_start: Failed to create cURL handle\n");
       return;
     }
-    sprintf(txt,"http://%s/bazaar?apps=", ipaddr_tcp);
+    sprintf(txt,"http://%s/bazaar?apps=", ipaddr_radio);
     curl_easy_setopt(curl_handle, CURLOPT_URL, txt);
     curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, (long) 20);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, app_list_cb);

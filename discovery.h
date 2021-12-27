@@ -17,5 +17,5 @@
 *
 */
 
-extern void discovery(void);
-extern char *ipaddr_tcp;
+extern void discovery();
+extern char *ipaddr_radio;

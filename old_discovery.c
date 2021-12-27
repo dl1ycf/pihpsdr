@@ -63,7 +63,24 @@ static void discover(struct ifaddrs* iface) {
     unsigned char buffer[1032];
     int i, len;
 
-    if (iface == NULL) {
+    if (iface == (void *) -1) {
+        fprintf(stderr,"discover: looking for HPSDR device with IP %s\n", ipaddr_radio);
+
+        // send a broadcast to locate hpsdr boards on the network
+        discovery_socket=socket(PF_INET,SOCK_DGRAM,IPPROTO_UDP);
+        if(discovery_socket<0) {
+            perror("discover: create socket failed for discovery_socket:");
+            exit(-1);
+        }
+
+        // setup to address
+        to_addr.sin_family=AF_INET;
+        to_addr.sin_port=htons(DISCOVERY_PORT);
+        if (inet_aton(ipaddr_radio, &to_addr.sin_addr) == 0) {
+          fprintf(stderr, "discover: Radio UDP addr %s is invalid!\n", ipaddr_radio);
+          return;
+        }
+    } else if (iface == NULL) {
 	//
 	// This indicates that we want to connect to an SDR which
 	// cannot be reached by (UDP) broadcast packets, but that
@@ -71,11 +88,11 @@ static void discover(struct ifaddrs* iface) {
 	// Therefore we try to send a METIS detection packet via TCP 
 	// to a "fixed" ip address.
 	//
-        fprintf(stderr,"Trying to detect at TCP addr %s\n", ipaddr_tcp);
+        fprintf(stderr,"Trying to detect at TCP addr %s\n", ipaddr_radio);
 	memset(&to_addr, 0, sizeof(to_addr));
 	to_addr.sin_family = AF_INET;
-	if (inet_aton(ipaddr_tcp, &to_addr.sin_addr) == 0) {
-	    fprintf(stderr,"discover: TCP addr %s is invalid!\n",ipaddr_tcp);
+	if (inet_aton(ipaddr_radio, &to_addr.sin_addr) == 0) {
+	    fprintf(stderr,"discover: TCP addr %s is invalid!\n",ipaddr_radio);
 	    return;
 	}
 	to_addr.sin_port=htons(DISCOVERY_PORT);
@@ -216,8 +233,14 @@ static void discover(struct ifaddrs* iface) {
 
     close(discovery_socket);
 
-    if (iface == NULL) {
-      fprintf(stderr,"discover: exiting TCP discover for %s\n",ipaddr_tcp);
+    if (iface == (void *)-1) {
+      fprintf(stderr,"discover: exiting Radio UDP discover for %s\n",ipaddr_radio);
+      memcpy((void *)&discovered[rc].info.network.address, (void *)&to_addr,
+             sizeof(to_addr));
+      discovered[rc].info.network.address_length = sizeof(to_addr);
+      discovered[rc].use_routing = 1;
+    } else if (iface == NULL) {
+      fprintf(stderr,"discover: exiting TCP discover for %s\n",ipaddr_radio);
       if (devices == rc+1) {
 	//
 	// We have exactly found one TCP device
@@ -235,7 +258,6 @@ static void discover(struct ifaddrs* iface) {
     } else {
       fprintf(stderr,"discover: exiting discover for %s\n",iface->ifa_name);
     }
-
 }
 
 //static void *discover_receive_thread(void* arg) {
@@ -349,7 +371,8 @@ g_print("old_discovery: name=%s min=%f max=%f\n",discovered[devices].name, disco
                     memcpy((void*)&discovered[devices].info.network.interface_netmask,(void*)&interface_netmask,sizeof(interface_netmask));
                     discovered[devices].info.network.interface_length=sizeof(interface_addr);
                     strcpy(discovered[devices].info.network.interface_name,interface_name);
-		    discovered[devices].use_tcp=0;
+                    discovered[devices].use_tcp=0;
+                    discovered[devices].use_routing=0;
                     discovered[devices].supported_receivers=2;
 		    fprintf(stderr,"old_discovery: found device=%d software_version=%d status=%d address=%s (%02X:%02X:%02X:%02X:%02X:%02X) on %s min=%f max=%f\n",
                             discovered[devices].device,
@@ -378,6 +401,7 @@ g_print("old_discovery: name=%s min=%f max=%f\n",discovered[devices].name, disco
 
 void old_discovery() {
     struct ifaddrs *addrs,*ifa;
+    int i;
 
 fprintf(stderr,"old_discovery\n");
     getifaddrs(&addrs);
@@ -395,12 +419,23 @@ fprintf(stderr,"old_discovery\n");
     }
     freeifaddrs(addrs);
 
-    // Do one additional "discover" for a fixed TCP address
-    discover(NULL);
+    // Do one additional "discover" for fixed address
+    if (strlen(ipaddr_radio)) {
+        // call the TCP version
+        discover(NULL);
+
+        // check if the IP address is already discovered
+        for (i = 0; i < devices; i++) {
+          if (strcmp(inet_ntoa(discovered[i].info.network.address.sin_addr),
+                     ipaddr_radio) == 0)
+            break;
+        }
+        if (i == devices)
+          discover((void *)-1);
+    }
 
     fprintf(stderr, "discovery found %d devices\n",devices);
 
-    int i;
     for(i=0;i<devices;i++) {
                     fprintf(stderr,"discovery: found device=%d software_version=%d status=%d address=%s (%02X:%02X:%02X:%02X:%02X:%02X) on %s\n",
                             discovered[i].device,

@@ -61,10 +61,10 @@ static DISCOVERED *d;
 static GtkWidget *apps_combobox[MAX_DEVICES];
 #endif
 
-GtkWidget *tcpaddr;
 #define IPADDR_LEN 20
-static char ipaddr_tcp_buf[IPADDR_LEN] = "10.10.10.10";
-char *ipaddr_tcp = &ipaddr_tcp_buf[0];
+GtkWidget *radioaddr;
+static char ipaddr_radio_buf[IPADDR_LEN] = "";
+char *ipaddr_radio = &ipaddr_radio_buf[0];
 
 #ifdef CLIENT_SERVER
 GtkWidget *host_addr_entry;
@@ -148,26 +148,33 @@ static gboolean exit_cb (GtkWidget *widget, GdkEventButton *event, gpointer data
   return TRUE;
 }
 
-static gboolean tcp_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-    strncpy(ipaddr_tcp, gtk_entry_get_text(GTK_ENTRY(tcpaddr)), IPADDR_LEN);
-    ipaddr_tcp[IPADDR_LEN-1]=0;
-    // remove possible trailing newline chars in ipaddr_tcp
-	    int len=strnlen(ipaddr_tcp,IPADDR_LEN);
-	    while (--len >= 0) {
-	      if (ipaddr_tcp[len] != '\n') break;
-	      ipaddr_tcp[len]=0;
-	    }
-	    //fprintf(stderr,"New TCP addr = %s.\n", ipaddr_tcp);
-	    // save this value to config file
-	    FILE *fp = fopen("ip.addr", "w");
-	    if (fp) {
-		fprintf(fp,"%s\n",ipaddr_tcp);
-		fclose(fp);
-	    }
-	    gtk_widget_destroy(discovery_dialog);
-	    g_idle_add(ext_discovery,NULL);
-	    return TRUE;
-	}
+static gboolean is_valid_IPv4_address(char *ipAddress)
+{
+    struct sockaddr_in sa;
+    int result = inet_pton(AF_INET, ipAddress, &(sa.sin_addr));
+    return result != 0;
+}
+
+static gboolean radio_addr_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
+  strncpy(ipaddr_radio, gtk_entry_get_text(GTK_ENTRY(radioaddr)), IPADDR_LEN);
+
+  // at the moment we check only IPv4 notation and avoid IPv6 and hostname strings
+  if (strlen(ipaddr_radio) && !is_valid_IPv4_address(ipaddr_radio)) {
+    gtk_entry_set_text(GTK_ENTRY(radioaddr), "wrong IPv4");
+    fprintf(stderr,"discover: Radio address %s is invalid!\n", ipaddr_radio);
+    return FALSE;
+  }
+
+  char value[80];
+  clearProperties();
+  snprintf(value, IPADDR_LEN, "%s", ipaddr_radio);
+  setProperty("ipaddr_radio",value);
+  saveProperties("protocols.props");
+
+  gtk_widget_destroy(discovery_dialog);
+  g_idle_add(ext_discovery,NULL);
+  return TRUE;
+}
 
 #ifdef CLIENT_SERVER
 static gboolean connect_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
@@ -199,25 +206,17 @@ g_print("connect_cb: %s:%d\n",host_addr,host_port);
 
 void discovery() {
 //fprintf(stderr,"discovery\n");
+  char *value;
 
   protocols_restore_state();
 
   selected_device=0;
   devices=0;
 
-  // Try to locate IP addr
-  FILE *fp=fopen("ip.addr","r");
-  if (fp) {
-    char *c=fgets(ipaddr_tcp, IPADDR_LEN,fp);
-    fclose(fp);
-    ipaddr_tcp[IPADDR_LEN-1]=0;
-    // remove possible trailing newline char in ipaddr_tcp
-    int len=strnlen(ipaddr_tcp,IPADDR_LEN);
-    while (--len >= 0) {
-      if (ipaddr_tcp[len] != '\n') break;
-      ipaddr_tcp[len]=0;
-    }
-  }
+  loadProperties("protocols.props");
+  value=getProperty("ipaddr_radio");
+  if(value!=NULL) strncpy(ipaddr_radio,value, IPADDR_LEN);
+
 #ifdef USBOZY
 //
 // first: look on USB for an Ozy
@@ -390,7 +389,8 @@ fprintf(stderr,"%p Protocol=%d name=%s\n",d,d->protocol,d->name);
           // leads to a radio address outside the netmask and can be ignored. So if either the radio
           // or the interface address starts with 169.254., suppress "Subnet!" complaint.
           //
-          if (strncmp(inet_ntoa(d->info.network.address.sin_addr),"169.254.",8) &&
+          // NOTE: probably at this point we can disable this or check if we are connecting remotelly
+          if (!d->use_routing && strncmp(inet_ntoa(d->info.network.address.sin_addr),"169.254.",8) &&
               strncmp(inet_ntoa(d->info.network.interface_address.sin_addr),"169.254.",8)) {
             if((d->info.network.interface_address.sin_addr.s_addr&d->info.network.interface_netmask.sin_addr.s_addr) != (d->info.network.address.sin_addr.s_addr&d->info.network.interface_netmask.sin_addr.s_addr)) {
               gtk_button_set_label(GTK_BUTTON(start_button),"Subnet!");
@@ -450,7 +450,6 @@ fprintf(stderr,"%p Protocol=%d name=%s\n",d,d->protocol,d->name);
 #ifdef CLIENT_SERVER
 
     loadProperties("remote.props");
-    char *value;
     value=getProperty("host");
     if(value!=NULL) strcpy(host_addr_buffer,value);
     value=getProperty("port");
@@ -511,14 +510,15 @@ fprintf(stderr,"%p Protocol=%d name=%s\n",d,d->protocol,d->name);
     gtk_grid_attach(GTK_GRID(grid),gpio_b,0,row,1,1);
 #endif
 
-    GtkWidget *tcp_b=gtk_button_new_with_label("Use new TCP Addr:");
-    g_signal_connect (tcp_b, "button-press-event", G_CALLBACK(tcp_cb), NULL);
-    gtk_grid_attach(GTK_GRID(grid),tcp_b,1,row,1,1);
+    GtkWidget *radio_addr_b=gtk_button_new_with_label("Use Radio addr:");
+    g_signal_connect (radio_addr_b, "button-press-event", G_CALLBACK(radio_addr_cb), NULL);
+    gtk_grid_attach(GTK_GRID(grid),radio_addr_b,1,row,1,1);
 
-    tcpaddr=gtk_entry_new();
-    gtk_entry_set_max_length(GTK_ENTRY(tcpaddr), 20);
-    gtk_grid_attach(GTK_GRID(grid),tcpaddr,2,row,1,1);
-    gtk_entry_set_text(GTK_ENTRY(tcpaddr), ipaddr_tcp);
+    radioaddr=gtk_entry_new();
+    gtk_entry_set_max_length(GTK_ENTRY(radioaddr), 20);
+    gtk_grid_attach(GTK_GRID(grid),radioaddr,2,row,1,1);
+    gtk_entry_set_max_length(GTK_ENTRY(radioaddr), IPADDR_LEN);
+    gtk_entry_set_text(GTK_ENTRY(radioaddr), ipaddr_radio);
 
     GtkWidget *exit_b=gtk_button_new_with_label("Exit");
     g_signal_connect (exit_b, "button-press-event", G_CALLBACK(exit_cb), NULL);
@@ -526,7 +526,7 @@ fprintf(stderr,"%p Protocol=%d name=%s\n",d,d->protocol,d->name);
 
     gtk_container_add (GTK_CONTAINER (content), grid);
     gtk_widget_show_all(discovery_dialog);
-fprintf(stderr,"showing device dialog\n");
+    fprintf(stderr,"showing device dialog\n");
 
     // autostart if one device and autostart enabled
     g_print("%s: devices=%d autostart=%d\n",__FUNCTION__,devices,autostart);
