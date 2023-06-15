@@ -41,7 +41,7 @@ MIDI_INCLUDE=MIDI
 # to be installed that contains calls to the "rnnoise" and "libspecbleach"
 # libraries. The new features are called "NR3" (rnnoise) and "NR4" (libspecbleach),
 # and the noise menu allows to speficy the NR4 parameters.
-#EXTENDED_NOISE_REDUCTION_OPTIONS= -DEXTNR
+#EXTENDED_NOISE_REDUCTION_OPTIONS=EXTNR
 
 # very early code not included yet
 #SERVER_INCLUDE=SERVER
@@ -203,6 +203,11 @@ AUDIO_SOURCES=portaudio.c
 AUDIO_OBJS=portaudio.o
 endif
 
+ifeq ($(EXTENDED_NOISE_REDUCTION_OPTIONS), EXTNR)
+EXTNOISE_OPTIONS=-DEXTNR `$(PKG_CONFIG) --cflags libspecbleach` `$(PKG_CONFIG) --cflags rnnoise`
+EXTNOISE_LIBS=`$(PKG_CONFIG) --libs libspecbleach` `$(PKG_CONFIG) --libs rnnoise`
+endif
+
 ##############################################################################
 #
 # End of "libraries for optional features" section
@@ -234,7 +239,7 @@ OPTIONS=$(SMALL_SCREEN_OPTIONS) $(MIDI_OPTIONS) $(USBOZY_OPTIONS) \
 	$(ANDROMEDA_OPTIONS) \
 	$(STEMLAB_OPTIONS) \
 	$(SERVER_OPTIONS) \
-	$(AUDIO_OPTIONS) $(EXTENDED_NOISE_REDUCTION_OPTIONS)\
+	$(AUDIO_OPTIONS) $(EXTNOISE_OPTIONS) \
 	-D GIT_DATE='"$(GIT_DATE)"' -D GIT_VERSION='"$(GIT_VERSION)"' $(DEBUG_OPTION)
 
 INCLUDES=$(GTKINCLUDES)
@@ -247,7 +252,7 @@ COMPILE=$(CC) $(CFLAGS) $(OPTIONS) $(INCLUDES)
 # All the libraries we need to link with, including WDSP, libpthread, and libm
 #
 LIBS=	$(LDFLAGS) $(AUDIO_LIBS) $(USBOZY_LIBS) $(GTKLIBS) $(GPIO_LIBS) $(SOAPYSDRLIBS) $(STEMLAB_LIBS) \
-	$(MIDI_LIBS) -lwdsp -lpthread -lm $(SYSLIBS)
+	$(MIDI_LIBS) -lwdsp -lpthread -lm $(SYSLIBS) $(EXTNOISE_LIBS)
 
 #
 # The main target, the pihpsdr program
@@ -629,7 +634,7 @@ debian:
 app:	$(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS)  $(SOAPYSDR_OBJS) \
 		$(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS)
 	$(LINK) -headerpad_max_install_names -o $(PROGRAM) $(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS)  \
-		$(SOAPYSDR_OBJS) $(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) \
+		$(SOAPYSDR_OBJS) $(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(EXTNOISE_LIBS) \
 		$(LIBS) $(LDFLAGS)
 	@rm -rf pihpsdr.app
 	@mkdir -p pihpsdr.app/Contents/MacOS
