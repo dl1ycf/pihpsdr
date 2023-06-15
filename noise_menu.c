@@ -110,7 +110,7 @@ void set_noise() {
   //
   // g) NR3
   //
-  SetRXARNNRRun(active_receiver->id, (rx->nr==3));
+  SetRXARNNRRun(active_receiver->id, (active_receiver->nr==3));
 
   //
   // NR4
@@ -120,7 +120,7 @@ void set_noise() {
   SetRXASBNRwhiteningFactor(active_receiver->id,     active_receiver->nr4_whitening_factor);
   SetRXASBNRnoiseRescale(active_receiver->id,        active_receiver->nr4_noise_rescale);
   SetRXASBNRpostFilterThreshold(active_receiver->id, active_receiver->nr4_post_filter_threshold);
-  SetRXASBNRRun(active_receiver->id, (rx->nr == 4));
+  SetRXASBNRRun(active_receiver->id, (active_receiver->nr == 4));
 #endif
 
   g_idle_add(ext_vfo_update,NULL);
