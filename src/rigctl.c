@@ -4647,7 +4647,7 @@ int parse_cmd(void *data) {
           sprintf(reply, "PS0;");
           stop_program();
           // shutdown OS if running embedded 
-          if (xdma_dir == 1) 
+          if (xdma_dir() == 1) 
             system("sudo /sbin/shutdown -P now");
         } else sprintf(reply, "PS1;");   
       }
