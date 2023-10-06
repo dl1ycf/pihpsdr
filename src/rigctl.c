@@ -31,6 +31,9 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <unistd.h>
 #include "receiver.h"
 #include "toolbar.h"
 #include "band_menu.h"
@@ -163,6 +166,27 @@ void close_rigctl_ports() {
     close(server_socket);
     server_socket = -1;
   }
+}
+
+//
+// Check Running on CM4/Saturn board
+//
+/* test /dev/xdma dir exists (1 success, -1 does not exist, -2 not dir) */
+int
+xdma_dir ()
+{
+  DIR *dirptr;
+  if (access ( "/dev/xdma", F_OK ) != -1 ) {
+    // file exists
+    if ((dirptr = opendir (d)) != NULL) {
+      closedir (dirptr); /* d exists and is a directory */
+    } else {
+      return -2; /* d exists but is not a directory */
+    }
+  } else {
+    return -1;     /* d does not exist */
+  }
+  return 1;
 }
 
 //
@@ -4622,7 +4646,9 @@ int parse_cmd(void *data) {
         if ( pwrc == 0 ) {
           sprintf(reply, "PS0;");
           stop_program();
-          system("sudo /sbin/shutdown -P now");
+          // shutdown OS if running embedded 
+          if (xdma_dir == 1) 
+            system("sudo /sbin/shutdown -P now");
         } else sprintf(reply, "PS1;");   
       }
 
