@@ -178,7 +178,7 @@ xdma_dir ()
   DIR *dirptr;
   if (access ( "/dev/xdma", F_OK ) != -1 ) {
     // file exists
-    if ((dirptr = opendir (d)) != NULL) {
+    if ((dirptr = opendir ("/dev/xdma")) != NULL) {
       closedir (dirptr); /* d exists and is a directory */
     } else {
       return -2; /* d exists but is not a directory */
