@@ -3783,7 +3783,7 @@ int parse_cmd(void *data) {
         send_resp(client->fd, reply) ;
       } else if (command[6] == ';' && command[2] == '0') {
         int gain = atoi(&command[3]);
-        receiver[0]->volume = (double)gain / 255.0;
+        receiver[0]->volume = 20 * log((double) gain / 255.0);
         update_af_gain();
       }
 
@@ -4618,7 +4618,12 @@ int parse_cmd(void *data) {
         sprintf(reply, "PS1;");
         send_resp(client->fd, reply);
       } else if (command[3] == ';') {
-        // ignore set
+        int pwrc = atoi(&command[2]);
+        if ( pwrc == 0 ) {
+          sprintf(reply, "PS0;");
+          stop_program();
+          system("sudo /sbin/shutdown -P now");
+        } else sprintf(reply, "PS1;");   
       }
 
       break;
