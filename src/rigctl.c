@@ -3807,7 +3807,7 @@ int parse_cmd(void *data) {
         send_resp(client->fd, reply) ;
       } else if (command[6] == ';' && command[2] == '0') {
         int gain = atoi(&command[3]);
-        receiver[0]->volume = 20 * log((double) gain / 255.0);
+        receiver[0]->volume = 20 * log10((double) gain / 255.0);
         update_af_gain();
       }
 
