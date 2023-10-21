@@ -3801,7 +3801,7 @@ int parse_cmd(void *data) {
         if (gain < 3 ) {
           receiver[0]->volume = -40.0;
         } else {
-          receiver[0]->volume = 20.0 * log((double) gain / 255.0);
+          receiver[0]->volume = 20.0 * log10((double) gain / 255.0);
         }
         set_af_gain(0, receiver[0]->volume);
       }
