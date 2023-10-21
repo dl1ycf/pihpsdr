@@ -37,6 +37,15 @@ AUDIO=
 # get the OS Name
 UNAME_S := $(shell uname -s)
 
+ifeq ($(UNAME_S), Darwin)
+	MACAPPDIR=$HOME/Applications
+else
+	PREFIX?=/usr
+	EXECDIR=$(PREFIX)/local/bin
+	ICONSDIR=$(PREFIX)/share/icons/pihpsdr
+	APPSDIR=$(PREFIX)/share/applications
+endif
+
 # Get git commit version and date
 GIT_DATE := $(firstword $(shell git --no-pager show --date=short --format="%ai" --name-only))
 GIT_VERSION := $(shell git describe --abbrev=0 --tags --always --dirty)
@@ -598,6 +607,58 @@ release: $(PROGRAM)
 	cd release; tar cvf pihpsdr.tar pihpsdr
 	cd release; tar cvf pihpsdr-$(GIT_VERSION).tar pihpsdr
 
+.PHONY: install-deps
+install-libs:
+ifeq ($(UNAME_S), Darwin)
+	zsh ./MacOs/brew.init
+else
+	bash ./LINUX/libinstall.sh
+endif
+
+.PHONY: install-dirs
+install-dirs:
+ifeq ($(UNAME_S), Linux)
+	mkdir -p $(EXECDIR) $(ICONSDIR) $(APPSDIR) 
+endif
+
+.PHONY: install
+install: $(PROGRAM) install-dirs
+ifeq ($(UNAME_S), Linux)
+	install $(PROGRAM) $(EXECDIR)
+	install LINUX/hpsdr.png $(ICONSDIR)
+	install LINUX/hpsdr_icon.png $(ICONSDIR)
+	install LINUX/pihpsdr.desktop $(APPSDIR)
+endif
+
+.PHONY: gpio
+gpio:
+#currently for raspbian only (working to fix on armbian setups)
+ifeq ($(UNAME_S), Linux)
+	if test -f "/boot/config.txt"; then
+		if grep -q "gpio=4-13,16-27=ip,pu" /boot/config.txt; then
+			echo "/boot/config.txt already contains gpio setup."
+		else
+			echo "/boot/config.txt does not contain gpio setup - adding it."
+			echo "Please reboot system for this to take effect."
+			cat <<EGPIO | sudo tee -a /boot/config.txt > /dev/null
+			[all]
+			# setup GPIO for pihpsdr controllers
+			gpio=4-13,16-27=ip,pu
+			EGPIO
+		endif
+	endif
+endif
+
+.PHONY: uninstall
+uninstall: $(PROGRAM) 
+ifeq ($(UNAME_S), Darwin)
+	rm $(MACAPPDIR)/pihpsdr.app
+else
+	rm $(EXECDIR)/pihpsdr
+	rm $(APPSDIR)/pihpsdr.desktop
+	rm -rf $(ICONSDIR)
+endif
+
 #############################################################################
 #
 # hpsdrsim is a cool program that emulates an SDR board with UDP and TCP
@@ -616,7 +677,6 @@ src/newhpsdrsim.o:	src/newhpsdrsim.c src/hpsdrsim.h
 hpsdrsim:       src/hpsdrsim.o src/newhpsdrsim.o
 	$(LINK) -o hpsdrsim src/hpsdrsim.o src/newhpsdrsim.o -lm
 
-
 #############################################################################
 #
 # bootloader is a small command-line program that allows to
@@ -630,24 +690,21 @@ hpsdrsim:       src/hpsdrsim.o src/newhpsdrsim.o
 bootloader:	src/bootloader.c
 	$(CC) -o bootloader src/bootloader.c -lpcap
 
-debian:
-	mkdir -p pkg/pihpsdr/usr/local/bin
-	mkdir -p pkg/pihpsdr/usr/local/lib
-	mkdir -p pkg/pihpsdr/usr/share/pihpsdr
-	mkdir -p pkg/pihpsdr/usr/share/applications
-	cp $(PROGRAM) pkg/pihpsdr/usr/local/bin
-	cp /usr/local/lib/libwdsp.so pkg/pihpsdr/usr/local/lib
-	cp release/pihpsdr/hpsdr.png pkg/pihpsdr/usr/share/pihpsdr
-	cp release/pihpsdr/hpsdr_icon.png pkg/pihpsdr/usr/share/pihpsdr
-	cp release/pihpsdr/pihpsdr.desktop pkg/pihpsdr/usr/share/applications
-	cd pkg; dpkg-deb --build pihpsdr
 
+#############################################################################
+#
+# Build Debian Pkgs 
+#
+#############################################################################
+debian:
+	bash ./make_deb.sh
+	
 #############################################################################
 #
 # This is for MacOS "app" creation ONLY
 #
-#       The piHPSDR working directory is
-#	$HOME -> Application Support -> piHPSDR
+#       The piHPSDR working directory is 
+#		$HOME -> Applications -> piHPSDR
 #
 #       That is the directory where the WDSP wisdom file (created upon first
 #       start of piHPSDR) but also the radio settings and the midi.props file
@@ -674,4 +731,6 @@ app:	$(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS)  $(SOAPYSDR_OBJS) \
 	@cp MacOS/Info.plist pihpsdr.app/Contents
 	@cp MacOS/hpsdr.icns pihpsdr.app/Contents/Resources/hpsdr.icns
 	@cp MacOS/hpsdr.png pihpsdr.app/Contents/Resources
+	@tar -cf pihpsdr.tar pihpsdr.app
+	@gzip -9 pihpsdr.tar
 #############################################################################
