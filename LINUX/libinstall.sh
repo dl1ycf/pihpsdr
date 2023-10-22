@@ -136,4 +136,13 @@ make -j 4
 make install
 ldconfig
 
+################################################################
+#
+# f) cleanup tmp dir builds
+#
+################################################################
+
+cd $WORKDIR
+rm -rf wdsp SoapyPlutoSDR
+
 echo " Libs Install Done "
