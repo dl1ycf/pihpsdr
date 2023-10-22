@@ -18,7 +18,7 @@
 SCRIPT_FILE=`realpath $0`
 THIS_DIR=`dirname $SCRIPT_FILE`
 TARGET=`dirname $THIS_DIR`
-WORKDIR='/usr/src'
+WORKDIR='/tmp'
 
 ################################################################
 #
