@@ -41,9 +41,11 @@ ifeq ($(UNAME_S), Darwin)
 	MACAPPDIR=$HOME/Applications
 else
 	PREFIX?=/usr
+	APPSDIR=$(PREFIX)/share/applications
+	APPICONDIR=$(PREFIX)/share/pihpsdr
 	EXECDIR=$(PREFIX)/local/bin
 	ICONSDIR=$(PREFIX)/share/icons/pihpsdr
-	APPSDIR=$(PREFIX)/share/applications
+
 endif
 
 # Get git commit version and date
@@ -625,7 +627,7 @@ endif
 install: $(PROGRAM) install-dirs
 ifeq ($(UNAME_S), Linux)
 	install $(PROGRAM) $(EXECDIR)
-	install LINUX/hpsdr.png $(ICONSDIR)
+	install LINUX/hpsdr.png $(APPICONSDIR)
 	install LINUX/hpsdr_icon.png $(ICONSDIR)
 	install LINUX/pihpsdr.desktop $(APPSDIR)
 endif
