@@ -211,13 +211,10 @@ void screen_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), label, col, row, 1, 1);
   col++;
   vfo_b = gtk_combo_box_text_new();
-  const VFO_BAR_LAYOUT *vfl = vfo_layout_list;
-
-  for (;;) {
-    if (vfl->width < 0) { break; }
-
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(vfo_b), NULL, vfl->description);
-    vfl++;
+  const VFO_BAR_LAYOUT *vfl_p;
+  for ( int i = 0; i < nr_layouts; i++) {
+    vfl_p = &vfo_layout_list[i];
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(vfo_b), NULL, vfl_p->description);
   }
 
   gtk_combo_box_set_active(GTK_COMBO_BOX(vfo_b), my_vfo_layout);

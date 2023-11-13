@@ -20,5 +20,6 @@
 #define _STARTUP_H_
 
 void startup(const char* path);
+extern char workdir[PATH_MAX];
 
 #endif

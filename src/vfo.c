@@ -1013,7 +1013,7 @@ static gboolean vfo_configure_event_cb (GtkWidget         *widget,
   /* Initialize the surface to black */
   cairo_t *cr;
   cr = cairo_create (vfo_surface);
-  cairo_set_source_rgba(cr, COLOUR_VFO_BACKGND);
+  cairo_set_source_rgba(cr, cl[VBG][0],cl[VBG][1],cl[VBG][2],cl[VBG][3]);
   cairo_paint (cr);
   cairo_destroy(cr);
   g_idle_add(ext_vfo_update, NULL);
@@ -1050,9 +1050,9 @@ void vfo_update() {
   char temp_text[32];
   cairo_t *cr;
   cr = cairo_create (vfo_surface);
-  cairo_set_source_rgba(cr, COLOUR_VFO_BACKGND);
+  cairo_set_source_rgba(cr, cl[VBG][0],cl[VBG][1],cl[VBG][2],cl[VBG][3]);
   cairo_paint (cr);
-  cairo_select_font_face(cr, DISPLAY_FONT, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  cairo_select_font_face(cr, FNT, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
 
   // -----------------------------------------------------------
   //
@@ -1089,7 +1089,7 @@ void vfo_update() {
 
     // default range is 50 pix wide in a 100 pix window
     cairo_set_line_width(cr, 3.0);
-    cairo_set_source_rgba(cr, COLOUR_OK);
+    cairo_set_source_rgba(cr, cl[COK][0],cl[COK][1],cl[COK][2],cl[COK][3]);
     cairo_move_to(cr, vfl->filter_x + 20, vfl->filter_y);
     cairo_line_to(cr, vfl->filter_x + 25, vfl->filter_y - 5);
     cairo_line_to(cr, vfl->filter_x + 75, vfl->filter_y - 5);
@@ -1100,7 +1100,7 @@ void vfo_update() {
     // convert actual filter size to the "default" scale
     x1 = vfl->filter_x + 25 + s * (double)(low - def_low);
     x2 = vfl->filter_x + 25 + s * (double)(high - def_low);
-    cairo_set_source_rgba(cr, COLOUR_ALARM);
+    cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
     cairo_move_to(cr, x1 - 5, vfl->filter_y - 15);
     cairo_line_to(cr, x1, vfl->filter_y - 10);
     cairo_line_to(cr, x2, vfl->filter_y - 10);
@@ -1176,7 +1176,7 @@ void vfo_update() {
     }
 
     cairo_set_font_size(cr, vfl->size1);
-    cairo_set_source_rgba(cr, COLOUR_ATTN);
+    cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
     cairo_move_to(cr, vfl->mode_x, vfl->mode_y);
     cairo_show_text(cr, temp_text);
   }
@@ -1236,13 +1236,13 @@ void vfo_update() {
     cairo_move_to(cr, abs(vfl->vfo_a_x), vfl->vfo_a_y);
 
     if (txvfo == 0 && (isTransmitting() || oob)) {
-      cairo_set_source_rgba(cr, COLOUR_ALARM);
+      cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
     } else if (vfo[0].entered_frequency[0]) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
     } else if (id != 0) {
-      cairo_set_source_rgba(cr, COLOUR_OK_WEAK);
+      cairo_set_source_rgba(cr, cl[OKW][0],cl[OKW][1],cl[OKW][2],cl[OKW][3]);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_OK);
+      cairo_set_source_rgba(cr, cl[COK][0],cl[COK][1],cl[COK][2],cl[COK][3]);
     }
 
     f_m = af / 1000000LL;
@@ -1264,7 +1264,7 @@ void vfo_update() {
       // with the background colour
       //
       cairo_save(cr);
-      cairo_set_source_rgba(cr, COLOUR_VFO_BACKGND);
+      cairo_set_source_rgba(cr, cl[VBG][0],cl[VBG][1],cl[VBG][2],cl[VBG][3]);
 
       if (f_m < 10) {
         cairo_show_text(cr, "0000");
@@ -1295,13 +1295,13 @@ void vfo_update() {
     cairo_move_to(cr, abs(vfl->vfo_b_x), abs(vfl->vfo_b_y));
 
     if (txvfo == 1 && (isTransmitting() || oob)) {
-      cairo_set_source_rgba(cr, COLOUR_ALARM);
+      cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
     } else if (vfo[1].entered_frequency[0]) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
     } else if (id != 1) {
-      cairo_set_source_rgba(cr, COLOUR_OK_WEAK);
+      cairo_set_source_rgba(cr, cl[OKW][0],cl[OKW][1],cl[OKW][2],cl[OKW][3]);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_OK);
+      cairo_set_source_rgba(cr, cl[COK][0],cl[COK][1],cl[COK][2],cl[COK][3]);
     }
 
     f_m = bf / 1000000LL;
@@ -1323,7 +1323,7 @@ void vfo_update() {
       // with the background colour
       //
       cairo_save(cr);
-      cairo_set_source_rgba(cr, COLOUR_VFO_BACKGND);
+      cairo_set_source_rgba(cr, cl[VBG][0],cl[VBG][1],cl[VBG][2],cl[VBG][3]);
 
       if (f_m < 10) {
         cairo_show_text(cr, "0000");
@@ -1358,9 +1358,9 @@ void vfo_update() {
     cairo_move_to(cr, vfl->zoom_x, vfl->zoom_y);
 
     if (active_receiver->zoom > 1) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
     }
 
     snprintf(temp_text, 32, "Zoom %d", active_receiver->zoom);
@@ -1376,9 +1376,9 @@ void vfo_update() {
     cairo_move_to(cr, vfl->ps_x, vfl->ps_y);
 
     if (transmitter->puresignal) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
     }
 
     cairo_show_text(cr, "PS");
@@ -1391,9 +1391,9 @@ void vfo_update() {
   // -----------------------------------------------------------
   if (vfl->rit_x != 0) {
     if (vfo[id].rit_enabled == 0) {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
     }
 
     snprintf(temp_text, 32, "RIT %lldHz", vfo[id].rit);
@@ -1408,9 +1408,9 @@ void vfo_update() {
   // -----------------------------------------------------------
   if (can_transmit && vfl->xit_x != 0) {
     if (vfo[txvfo].xit_enabled == 0) {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
     }
 
     snprintf(temp_text, 32, "XIT %lldHz", vfo[txvfo].xit);
@@ -1428,17 +1428,17 @@ void vfo_update() {
 
     switch (active_receiver->nb) {
     case 1:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
       cairo_show_text(cr, "NB");
       break;
 
     case 2:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
       cairo_show_text(cr, "NB2");
       break;
 
     default:
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
       cairo_show_text(cr, "NB");
       break;
     }
@@ -1454,29 +1454,29 @@ void vfo_update() {
 
     switch (active_receiver->nr) {
     case 1:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
       cairo_show_text(cr, "NR");
       break;
 
     case 2:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
       cairo_show_text(cr, "NR2");
       break;
 #ifdef EXTNR
 
     case 3:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
       cairo_show_text(cr, "NR3");
       break;
 
     case 4:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
       cairo_show_text(cr, "NR4");
       break;
 #endif
 
     default:
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
       cairo_show_text(cr, "NR");
       break;
     }
@@ -1491,9 +1491,9 @@ void vfo_update() {
     cairo_move_to(cr, vfl->anf_x, vfl->anf_y);
 
     if (active_receiver->anf) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
     }
 
     cairo_show_text(cr, "ANF");
@@ -1508,9 +1508,9 @@ void vfo_update() {
     cairo_move_to(cr, vfl->snb_x, vfl->snb_y);
 
     if (active_receiver->snb) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
     }
 
     cairo_show_text(cr, "SNB");
@@ -1526,27 +1526,27 @@ void vfo_update() {
 
     switch (active_receiver->agc) {
     case AGC_OFF:
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
       cairo_show_text(cr, "AGC off");
       break;
 
     case AGC_LONG:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
       cairo_show_text(cr, "AGC long");
       break;
 
     case AGC_SLOW:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
       cairo_show_text(cr, "AGC slow");
       break;
 
     case AGC_MEDIUM:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
       cairo_show_text(cr, "AGC med");
       break;
 
     case AGC_FAST:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
       cairo_show_text(cr, "AGC fast");
       break;
     }
@@ -1562,10 +1562,10 @@ void vfo_update() {
 
     if (transmitter->compressor) {
       snprintf(temp_text, 32, "CMPR %d", (int) transmitter->compressor_level);
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
       cairo_show_text(cr, temp_text);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
       cairo_show_text(cr, "CMPR");
     }
   }
@@ -1579,13 +1579,13 @@ void vfo_update() {
     cairo_move_to(cr, vfl->eq_x, vfl->eq_y);
 
     if (isTransmitting() && enable_tx_equalizer) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
       cairo_show_text(cr, "TxEQ");
     } else if (!isTransmitting() && enable_rx_equalizer) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
       cairo_show_text(cr, "RxEQ");
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
       cairo_show_text(cr, "EQ");
     }
   }
@@ -1599,9 +1599,9 @@ void vfo_update() {
     cairo_move_to(cr, vfl->div_x, vfl->div_y);
 
     if (diversity_enabled) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
     }
 
     cairo_show_text(cr, "DIV");
@@ -1623,7 +1623,7 @@ void vfo_update() {
 
     snprintf(temp_text, 32, "Step %s", step_labels[s]);
     cairo_move_to(cr, vfl->step_x, vfl->step_y);
-    cairo_set_source_rgba(cr, COLOUR_ATTN);
+    cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
     cairo_show_text(cr, temp_text);
   }
 
@@ -1636,9 +1636,9 @@ void vfo_update() {
     cairo_move_to(cr, vfl->ctun_x, vfl->ctun_y);
 
     if (vfo[id].ctun) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
     }
 
     cairo_show_text(cr, "CTUN");
@@ -1653,9 +1653,9 @@ void vfo_update() {
     cairo_move_to(cr, vfl->cat_x, vfl->cat_y);
 
     if (cat_control > 0) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
     }
 
     cairo_show_text(cr, "CAT");
@@ -1670,9 +1670,9 @@ void vfo_update() {
     cairo_move_to(cr, vfl->vox_x, vfl->vox_y);
 
     if (vox_enabled) {
-      cairo_set_source_rgba(cr, COLOUR_ALARM);
+      cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
     }
 
     cairo_show_text(cr, "VOX");
@@ -1687,9 +1687,9 @@ void vfo_update() {
     cairo_move_to(cr, vfl->lock_x, vfl->lock_y);
 
     if (locked) {
-      cairo_set_source_rgba(cr, COLOUR_ALARM);
+      cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
     }
 
     cairo_show_text(cr, "Locked");
@@ -1704,9 +1704,9 @@ void vfo_update() {
     cairo_move_to(cr, vfl->split_x, vfl->split_y);
 
     if (split) {
-      cairo_set_source_rgba(cr, COLOUR_ALARM);
+      cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
     }
 
     cairo_show_text(cr, "Split");
@@ -1721,9 +1721,9 @@ void vfo_update() {
     cairo_move_to(cr, vfl->sat_x, vfl->sat_y);
 
     if (sat_mode != SAT_NONE) {
-      cairo_set_source_rgba(cr, COLOUR_ALARM);
+      cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
     }
 
     if (sat_mode == SAT_NONE || sat_mode == SAT_MODE) {
@@ -1740,9 +1740,9 @@ void vfo_update() {
   // -----------------------------------------------------------
   if (can_transmit && vfl->dup_x != 0) {
     if (duplex) {
-      cairo_set_source_rgba(cr, COLOUR_ALARM);
+      cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
     }
 
     snprintf(temp_text, 32, "DUP");

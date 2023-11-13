@@ -987,8 +987,7 @@ static void full_tx_buffer(TRANSMITTER *tx) {
     //
 
     clear_vox();
-
-    //
+    
     // Note that WDSP is not needed, but we still call it (and discard the
     // results) since this  may help in correct slew-up and slew-down
     // of the TX engine. The mic input buffer is zeroed out in CW mode.

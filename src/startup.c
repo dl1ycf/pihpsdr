@@ -63,10 +63,11 @@
 #include "message.h"
 #include "mystring.h"
 
+char workdir[PATH_MAX];
+  
 void startup(const char *path) {
   struct stat statbuf;
   char filename[PATH_MAX];
-  char workdir[PATH_MAX];
   int writeable;
   int found;
   int rc;

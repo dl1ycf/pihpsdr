@@ -758,7 +758,7 @@ int process_action(void *data) {
     if (a->mode == PRESSED) {
       function++;
 
-      if (function >= MAX_FUNCTIONS) {
+      if (function >= MAX_FUNCTION) {
         function = 0;
       }
 
@@ -777,7 +777,7 @@ int process_action(void *data) {
       function--;
 
       if (function < 0) {
-        function = MAX_FUNCTIONS - 1;
+        function = MAX_FUNCTION - 1;
       }
 
       toolbar_switches = switches_controller1[function];

@@ -76,7 +76,7 @@ void toolbar_menu(GtkWidget *parent) {
   gint lfunction = 0;
   const int max_switches = 8;
 
-  for (lfunction = 0; lfunction < MAX_FUNCTIONS; lfunction++) {
+  for (lfunction = 0; lfunction < MAX_FUNCTION; lfunction++) {
     SWITCH *sw = switches_controller1[lfunction];
 
     for (int i = 0; i < max_switches; i++) {

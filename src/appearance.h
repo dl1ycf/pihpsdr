@@ -33,103 +33,74 @@
  *            and then decide to re-use an existing one.
  */
 
-//
-// Fonts and sizes for VFO, meter, panadapter etc.
-//
-#define DISPLAY_FONT "FreeSans"                     // Default: FreeSans
-#define DISPLAY_FONT_SIZE1 10                       // Default: 10, used for small ticks in meter
-#define DISPLAY_FONT_SIZE2 12                       // Default: 12, used for SWR, FWD in Tx meter, and panadapter labels
-#define DISPLAY_FONT_SIZE3 16                       // Default: 16, used for warning/info in panadapters
-#define DISPLAY_FONT_SIZE4 20                       // Default: 22, only used for server IP addr in client mode
+/*
+ * This file contains lots of #defines that control the appearance
+ * of piHPSDR, e.g.
+ * - window sizes
+ * - font sizes
+ * colours.
+ *
+ * The purpose of this file is that the appearance can be
+ * changed easily at compile time.
+ *
+ * DO NOT CHANGE the "Default" values in the comments, since
+ * these define the original look-and-feel of piHPSDR.
+ *
+ * IMPORTANT: think twice before adding new colours or font  sizes,
+ *            and then decide to re-use an existing one.
 
-//
-// Colours. They are given as a 4-tuple (RGB and opacity).
-// The default value for the opacity (1.0) is used  in most cases.
-// "weak" versions of some colours (e.g. for the non-active receiver) are also available
-//
-// It is intended that these three colours are used in most of the cases.
-//
 
-//
-// There are three "traffic light" colors ALARM, ATTN, OK (default: red, yellow, green)
-// that are used in various places. All three colours should be clearly readable
-// when written on a (usually dark) background.
-//
-#define COLOUR_ALARM         1.00, 0.00, 0.00, 1.00 // Default: 1.00, 0.00, 0.00, 1.00
-#define COLOUR_ALARM_WEAK    0.50, 0.00, 0.00, 1.00 // Default: 0.50, 0.00, 0.00, 1.00
-#define COLOUR_ATTN          1.00, 1.00, 0.00, 1.00 // Default: 1.00, 1.00, 0.00, 1.00
-#define COLOUR_ATTN_WEAK     0.50, 0.50, 0.00, 1.00 // Default: 0.50, 0.50, 0.00, 1.00
-#define COLOUR_OK            0.00, 1.00, 0.00, 1.00 // Default: 0.00, 1.00, 0.00, 1.00
-#define COLOUR_OK_WEAK       0.00, 0.50, 0.00, 1.00 // Default: 0.00, 0.50, 0.00, 1.00
+ * Following defines give the indices of the first dimension
+ * of an array with GTK layout parameters.
+ * In appearance.c the order in which filled from a json file
+ * with values needs to match the order here
+ */
 
-//
-// Colours for drawing horizontal (dBm) and vertical (Frequency)
-// lines in the panadapters, and indicating filter passbands and
-// 60m band segments.
-//
-// The PAN_FILTER must be somewhat transparent, such that it does not hide a PAN_LINE.
-//
+#define SZ1 0  // FONT_SIZE1
+#define SZ2 1  // FONT_SIZE2
+#define SZ3 2  // FONT_SIZE3
+#define SZ4 3  // FONT_SIZE4
 
-#define COLOUR_PAN_FILTER    0.30, 0.30, 0.30, 0.66 // Default: 0.25, 0.25, 0.25, 0.75
-#define COLOUR_PAN_LINE      0.00, 1.00, 1.00, 1.00 // Default: 0.00, 1.00, 1.00, 1.00
-#define COLOUR_PAN_LINE_WEAK 0.00, 0.50, 0.50, 1.00 // Default: 0.00, 0.50, 0.50, 1.00
-#define COLOUR_PAN_60M       0.60, 0.30, 0.30, 1.00 // Default: 0.60, 0.30, 0.30, 1.00
+#define ALW 0  // ALARM_WEAK
+#define ALM 1  // ALARM
+#define ATW 2  // ATTN_WEAK
+#define ATT 3  // ATTN
+#define OKW 4  // OK_WEAK
+#define COK 5  // OK
+#define PFI 6  // PAN_FILTER
+#define PLW 7  // PAN_LINE_WEAK
+#define PLI 8  // PAN_LINE
+#define P60 9  // PAN_60M
+#define MBG 10 // MENU_BACKGND
+#define PBG 11 // PAN_BACKGND
+#define VBG 12 // VFO_BACKGND
+#define SHD 13 // SHADE
+#define MTR 14 // METER
+#define G1W 15 // GRAD1_WEAK
+#define G2W 16 // GRAD2_WEAK
+#define G3W 17 // GRAD3_WEAK
+#define G4W 18 // GRAD4_WEAK
+#define GR1 19 // GRAD1
+#define GR2 20 // GRAD2
+#define GR3 21 // GRAD3
+#define GR4 22 // GRAD4
+#define PF1 23 // PAN_FILL1
+#define PF2 24 // PAN_FILL2
+#define PF3 25 // PAN_FILL3
 
-//
-// Main background colours, allowing different colors for the panadapters and
-// the VFO/meter bar.
-// Writing with SHADE on a BACKGND should be visible,
-// but need not be "alerting"
-// METER is a special colour for data/ticks in the "meter" surface
-//
-// MENU_BACKGND *was* used for all menus, the top window, the zoom/pan and slider area.
-// howewer, meanwhile this is de-activated since the background color must be compatible
-// with the GTK theme the user chose.
-//
+#define LTN 0  // PAN_LINE_THIN
+#define LTH 1  // PAN_LINE_THICK
+#define LXT 2  // PAN_LINE_EXTRA
 
-#define COLOUR_MENU_BACKGND  1.00, 1.00, 0.95, 1.00 // Default: 1.00, 1.00, 1.00, 1.00
-#define COLOUR_PAN_BACKGND   0.15, 0.15, 0.15, 1.00 // Default: 0.00, 0.00, 0.00, 1.00
-#define COLOUR_VFO_BACKGND   0.15, 0.15, 0.15, 1.00 // Default: 0.00, 0.00, 0.00, 1.00
-#define COLOUR_SHADE         0.70, 0.70, 0.70, 1.00 // Default: 0.70, 0.70, 0.70, 1.00
-#define COLOUR_METER         1.00, 1.00, 1.00, 1.00 // Default: 1.00, 1.00, 1.00, 1.00
+#define MAX_LAYOUTS 10
 
-//
-// Settings for a coloured (gradient) spectrum, only availabe for RX.
-// The first and last colour are also used for the digital S-meter bar graph
-//
-
-#define COLOUR_GRAD1         0.00, 1.00, 0.00, 1.00 // Default: 0.00, 1.00, 0.00, 1.0
-#define COLOUR_GRAD2         1.00, 0.66, 0.00, 1.00 // Default: 1.00, 0.66, 0.00, 1.00
-#define COLOUR_GRAD3         1.00, 1.00, 0.00, 1.00 // Default: 1.00, 1.00, 0.00, 1.00
-#define COLOUR_GRAD4         1.00, 0.00, 0.00, 1.00 // Default: 1.00, 0.00, 0.00, 1.00
-#define COLOUR_GRAD1_WEAK    0.00, 0.50, 0.00, 1.00 // Default: 0.00, 0.50, 0.00, 1.00
-#define COLOUR_GRAD2_WEAK    0.50, 0.33, 0.00, 1.00 // Default: 0.50, 0.33, 0.00, 1.00
-#define COLOUR_GRAD3_WEAK    0.50, 0.50, 0.00, 1.00 // Default: 0.50, 0.50, 0.00, 1.00
-#define COLOUR_GRAD4_WEAK    0.50, 0.00, 0.00, 1.00 // Default: 0.50, 0.00, 0.00, 1.00
-
-//
-// Settings for a "black and white" spectrum (not the TX spectrum is always B&W).
-//
-// FILL1 is used for a filled spectrum of a non-active receiver
-// FILL2 is used for a filled spectrum of an active receiver,
-//           and for a line spectrum of a non-active receiver
-// FILL3 is used for a line spectrum of an active receiver
-//
-
-#define COLOUR_PAN_FILL1     1.00, 1.00, 1.00, 0.25 // Default: 1.00, 1.00, 1.00, 0.25
-#define COLOUR_PAN_FILL2     1.00, 1.00, 1.00, 0.50 // Default: 1.00, 1.00, 1.00, 0.50
-#define COLOUR_PAN_FILL3     1.00, 1.00, 1.00, 0.75 // Default: 1.00, 1.00, 1.00, 0.75
-
-//
-// thin and thick line widths in the panadapers
-// "thick" and "extra" also used in the analog meter
-//
-#define PAN_LINE_THIN  0.5
-#define PAN_LINE_THICK 1.0
-#define PAN_LINE_EXTRA 2.0  // used for really important things such as band edges
+extern char   FNT[32];      // display font
+extern double FSZ[4];       // font sizes
+extern double cl[26][4];    // colours
+extern double PLT[3];       // pan line widths
 
 struct _VFO_BAR_LAYOUT {
-  const char *description; // Text appearing in the screen menu combobox
+  char description[64];    // Text appearing in the screen menu combobox
   int width;               // overall width required
   int height;              // overall height required
   int size1;               // Font size for the "LED markers"
@@ -164,5 +135,9 @@ struct _VFO_BAR_LAYOUT {
 };
 
 typedef struct _VFO_BAR_LAYOUT VFO_BAR_LAYOUT;
-extern const VFO_BAR_LAYOUT vfo_layout_list[];
+extern VFO_BAR_LAYOUT vfo_layout_list[MAX_LAYOUTS];
+
+extern int nr_layouts;
 extern int vfo_layout;
+extern int parse_vfo_layouts( char* filename);
+extern int parse_cairo_layout( char* filename);

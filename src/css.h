@@ -17,5 +17,5 @@
 */
 
 extern char *css;
-extern void load_css(void);
+extern void load_css(char * path);
 

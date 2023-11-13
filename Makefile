@@ -59,6 +59,10 @@ PKG_CONFIG = pkg-config
 # Settings for optional features, to be requested by un-commenting lines above
 #
 ##############################################################################
+# link cjson library
+ifeq ($(UNAME_S), Linux)
+JSON_LIBS= -lcjson
+endif
 
 ##############################################################################
 #
@@ -340,7 +344,7 @@ COMPILE=$(CC) $(CFLAGS) $(OPTIONS) $(INCLUDES)
 ##############################################################################
 
 LIBS=	$(LDFLAGS) $(AUDIO_LIBS) $(USBOZY_LIBS) $(GTKLIBS) $(GPIO_LIBS) $(SOAPYSDRLIBS) $(STEMLAB_LIBS) \
-	$(MIDI_LIBS) -lwdsp -lm $(SYSLIBS)
+	$(MIDI_LIBS) $(JSON_LIBS) -lwdsp -lm $(SYSLIBS)
 
 ##############################################################################
 #

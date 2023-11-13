@@ -283,6 +283,8 @@ static int init(void *data) {
 
 static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   char text[256];
+  char _path[64];
+  int fail = 0;
   t_print("Build: %s (Commit: %s, Date: %s)\n", build_version, build_commit, build_date);
   t_print("GTK+ version %u.%u.%u\n", gtk_major_version, gtk_minor_version, gtk_micro_version);
   uname(&unameData);
@@ -291,7 +293,24 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   t_print("release: %s\n", unameData.release);
   t_print("version: %s\n", unameData.version);
   t_print("machine: %s\n", unameData.machine);
-  load_css();
+
+  snprintf(_path, 64, "%s/%s", workdir, "default.css" );
+  load_css(_path);
+
+  snprintf(_path, 64, "%s/%s", workdir, "vfo_layout.json" );
+  fail = parse_vfo_layouts(_path);
+  if (fail) {
+    t_print("%s; Error: parsing vfo_layouts failed\n");
+    _exit(0);
+  }
+  
+  snprintf(_path, 64, "%s/%s", workdir, "cairo_layout.json" );
+  fail = parse_cairo_layout(_path);
+  if (fail) {
+    t_print("%s; Error: parsing cairo_layout failed\n");
+    _exit(0);
+  }
+  
   GdkDisplay *display = gdk_display_get_default();
 
   if (display == NULL) {

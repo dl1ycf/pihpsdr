@@ -1,0 +1,123 @@
+/* pihpsdr.css
+Normally one wants to inherit everything from the GTK theme.
+In some cases, however, this does not work too well. But the
+principle here is to change as little as possible.
+
+Here is a list of CSS definitions we make here:
+
+boldlabel           This is used to write texts in menus and the slider area,
+                    therefore it contains 3px border
+
+big_tet             This is a large bold text. Used for the "pi label" on the
+                    discovery screen, and the "Start" button there
+
+med_txt             This is a large text. Used for the status bar, etc.
+
+small_txt           This is a small text, used where space is scarce.
+
+close_button        Style for the "Close" button in the menus, so it can be
+                    easily recognized
+
+small_button        15px text with minimal paddding. Used in menus where one wants
+                    to make the buttons narrow.
+
+small_toggle_button Used for the buttons in action dialogs, and the filter etc.
+                    menus where the current choice needs proper high-lighting
+
+popup_scale         Used to define the slider that "pops up" when e.g. AF volume
+                    is changed via GPIO/MIDI but no sliders are on display
+
+checkbutton         Very difficult to see on RaspPi with a light GTK theme. So we
+                    draw a grey border which should be OK for both the light and
+                    dark theme.
+
+radiobutton         see checkbutton.
+
+Note on font sizes:
+
+A RaspPi has different default settings whether you have a small screen, a medium
+screen or a large screen (RaspBerry Menu ==> Preferences ==> Appearances Settings).
+
+For a fixed size such as the height of the Sliders or Zoompan area, we therefore
+MUST specify the font size. If not, it may happen that the sliders cannot be
+displayed on a large screen
+*/
+
+* { font-family: 'FreeSans', sans-serif; }
+combobox { font-size: 15px; }
+button   { font-size: 15px; }
+checkbutton label { font-size: 15px; }
+spinbutton { font-size: 15px; }
+radiobutton label  { font-size: 15px; }
+scale { font-size: 15px; }
+entry { font-size: 15px; }
+notebook { font-size: 15px; }
+#boldlabel {
+  padding: 3px;
+  font-family: 'Inconsolata', sans-serif;
+  font-weight: bold;
+  font-size: 15px;
+}
+#big_txt {
+  font-family: 'Inconsolata', sans-serif;
+  font-size: 22px;
+  font-weight: bold;
+}
+#med_txt {
+  font-family: 'Inconsolata', sans-serif;
+  font-size: 18px;
+}
+#small_txt {
+  font-family: 'Inconsolata', sans-serif;
+  font-weight: bold;
+  font-size: 12px;
+}
+#close_button {
+  padding: 5px;
+  font-family: 'Inconsolata', sans-serif;
+  font-size: 15px;
+  font-weight: bold;
+  border: 1px solid rgb(50%, 50%, 50%);
+}
+#small_button {
+  padding: 1px;
+  font-family: 'Inconsolata', sans-serif;
+  font-size: 15px;
+}
+#small_button_with_border {
+  padding: 3px;
+  font-family: 'Inconsolata', sans-serif;
+  font-size: 15px;
+  border: 1px solid rgb(50%, 50%, 50%);
+}
+#small_toggle_button {
+  padding: 1px;
+  font-family: 'Inconsolata', sans-serif;
+  font-size: 15px;
+  background-image: none;
+}
+#small_toggle_button:checked {
+  padding: 1px;
+  font-family: 'Inconsolata', sans-serif;
+  font-size: 15px;
+  background-image: none;
+  background-color: rgb(100%, 20%, 20%);    /* background if selected */
+  color: rgb(100%,100%,100%);               /* text if selected */
+}
+#popup_scale slider {
+  background: rgb(  0%,  0%, 100%);         /* Slider handle */
+}
+#popup_scale trough {
+  background: rgb( 50%,50%, 100%);         /* Slider bar */
+}
+#popup_scale value {
+  color: rgb(100%, 10%, 10%);              /* digits */
+  font-size: 15px;
+}
+checkbutton check {
+  border: 1px solid rgb(50%, 50%, 50%);
+}
+radiobutton radio {
+  border: 1px solid rgb(50%, 50%, 50%);
+}
+headerbar { min-height: 0px; padding: 0px; margin: 0px; font-size: 15px; font-family: 'Inconsolata', sans-serif; }

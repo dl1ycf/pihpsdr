@@ -38,10 +38,7 @@ static GtkWidget *dialog = NULL;
 static GtkWidget *level;
 
 static GtkWidget *led;
-static GdkRGBA led_color = {COLOUR_OK};
-static GdkRGBA led_red  = {COLOUR_ALARM};
-static GdkRGBA led_green = {COLOUR_OK};
-
+static GdkRGBA *p_led_color;
 static GThread *level_thread_id;
 static int run_level = 0;
 static double peak = 0.0;
@@ -54,6 +51,10 @@ static int vox_timeout_cb(gpointer data) {
 }
 
 static int level_update(void *data) {
+  GdkRGBA led_color = {cl[COK][0],cl[COK][1],cl[COK][2],cl[COK][3]};
+  GdkRGBA led_red  = {cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]};
+  GdkRGBA led_green = {cl[COK][0],cl[COK][1],cl[COK][2],cl[COK][3]};
+  p_led_color = &led_color;
   if (run_level) {
     gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(level), peak);
 
@@ -150,7 +151,7 @@ void vox_menu(GtkWidget *parent) {
   gtk_widget_set_name(close_b, "close_button");
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 1, 1);
-  led = create_led(10, 10, &led_color);
+  led = create_led(10, 10, p_led_color);
   gtk_grid_attach(GTK_GRID(grid), led, 2, 0, 1, 1);
   GtkWidget *enable_b = gtk_check_button_new_with_label("VOX Enable");
   gtk_widget_set_name(enable_b, "boldlabel");
