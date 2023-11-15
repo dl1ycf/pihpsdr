@@ -358,6 +358,13 @@ static void choose_vfo_layout() {
   } else {
     rc = 0;
   }
+  
+  if (rc) {
+    t_print("%s; Error: no vfo layout found that fits screen dimensions\n", __FUNCTION__);
+  }
+
+  t_print("%s; layout nr %d chosen out of %d options.\n",__FUNCTION__, vfo_layout + 1, nr_layouts);
+  t_print("%s; vfo min. width: %d, descr.: %s\n",__FUNCTION__, vfl_p->width, vfl_p->description);
 }
 
 static guint full_screen_timeout = 0;
