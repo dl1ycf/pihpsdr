@@ -25,7 +25,6 @@ void load_css( char * path) {
   GdkDisplay *display;
   GdkScreen *screen;
   GError *error = NULL;
-  char _fn_css[32];
   provider = gtk_css_provider_new ();
   display = gdk_display_get_default ();
   screen = gdk_display_get_default_screen (display);
@@ -35,9 +34,9 @@ void load_css( char * path) {
     GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   if (!gtk_css_provider_load_from_path (provider, path, &error)) {
     g_clear_error (&error);
-    t_print("%s; Error loading %s\n", path, __FUNCTION__);
+    t_print("%s; Error loading %s\n", __FUNCTION__, path); 
   } else {
-  t_print("%s; Success loading %s\n", path, __FUNCTION__);   
+    t_print("%s; Success loading %s\n", __FUNCTION__, path); 
   } 
   g_object_unref (provider);
 }

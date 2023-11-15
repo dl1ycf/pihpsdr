@@ -328,30 +328,36 @@ static void choose_vfo_layout() {
   // b) secure that the VFO layout width fits
   //
   const VFO_BAR_LAYOUT *vfl_p;
-
+  int rc =1;
+  
   // make sure vfo_layout points to a valid entry in vfo_layout_list
-  if (( vfo_layout < 0 ) || ( vfo_layout >= nr_layouts )) vfo_layout = 0; 
+  if (( vfo_layout < 0 ) || ( vfo_layout >= nr_layouts )) vfo_layout = 0;
 
-  t_print("%s; layout nr %d chosen out of %d options.\n",__FUNCTION__, vfo_layout, nr_layouts);
+  vfl_p = &vfo_layout_list[vfo_layout];
+   
   VFO_WIDTH = full_screen ? screen_width : display_width;
-  VFO_WIDTH -= (MENU_WIDTH + METER_WIDTH);
+  VFO_WIDTH -= (MENU_WIDTH + METER_WIDTH); // w.o. MENU, make meter wider; VFO fixed
 
   //
   // If chosen layout does not fit:
   // Choose the first largest layout that fits
   //
-  vfl_p = &vfo_layout_list[vfo_layout];
+
   if (vfl_p->width > VFO_WIDTH) {
-    while ( vfo_layout >= 0 ) {
-      vfo_layout--; // layouts are in order large to small width
+    // start at current layout that does not fit
+    vfo_layout++;
+    while ( vfo_layout < nr_layouts ) {
       vfl_p = &vfo_layout_list[vfo_layout];
       if (vfl_p->width <= VFO_WIDTH) {
-        t_print("%s: pihpsdr changed vfo_layout (width=%d)\n", __FUNCTION__, vfl_p->width);
+        rc = 0;
+        t_print("%s: vfo layout without a fit; changed by pihpsdr to nr. %d\n", __FUNCTION__, vfo_layout + 1);
         break;
       }
+      vfo_layout++;
     }
+  } else {
+    rc = 0;
   }
-  t_print("%s; vfo min. width: %d, descr.: %s\n",__FUNCTION__, vfl_p->width, vfl_p->description);
 }
 
 static guint full_screen_timeout = 0;
