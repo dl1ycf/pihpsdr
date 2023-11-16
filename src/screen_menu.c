@@ -97,8 +97,8 @@ static gboolean close_cb () {
 
 static void vfo_cb(GtkWidget *widget, gpointer data) {
   my_vfo_layout = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
-  VFO_HEIGHT = vfo_layout_list[my_vfo_layout].height;
-  int needed = vfo_layout_list[my_vfo_layout].width + METER_WIDTH + MENU_WIDTH;
+  VFO_HEIGHT = vfo_layout_list[my_vfo_layout].itm[min_h];
+  int needed = vfo_layout_list[my_vfo_layout].itm[min_w] + METER_WIDTH + MENU_WIDTH;
 
   if (needed % 32 != 0) { needed = 32 * (needed / 32 + 1); }
 
@@ -211,12 +211,9 @@ void screen_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), label, col, row, 1, 1);
   col++;
   vfo_b = gtk_combo_box_text_new();
-  const VFO_BAR_LAYOUT *vfl_p;
   for ( int i = 0; i < nr_layouts; i++) {
-    vfl_p = &vfo_layout_list[i];
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(vfo_b), NULL, vfl_p->description);
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(vfo_b), NULL, vfo_layout_list[i].description);
   }
-
   gtk_combo_box_set_active(GTK_COMBO_BOX(vfo_b), my_vfo_layout);
   // This combo-box spans three columns so the text may be really long
   my_combo_attach(GTK_GRID(grid), vfo_b, col, row, 3, 1);

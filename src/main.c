@@ -304,13 +304,6 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
     _exit(0);
   }
   
-  snprintf(_path, 64, "%s/%s", workdir, "cairo_layout.json" );
-  fail = parse_cairo_layout(_path);
-  if (fail) {
-    t_print("%s; Error: parsing cairo_layout failed\n");
-    _exit(0);
-  }
-  
   GdkDisplay *display = gdk_display_get_default();
 
   if (display == NULL) {

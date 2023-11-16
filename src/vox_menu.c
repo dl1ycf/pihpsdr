@@ -51,9 +51,10 @@ static int vox_timeout_cb(gpointer data) {
 }
 
 static int level_update(void *data) {
-  GdkRGBA led_color = {cl[COK][0],cl[COK][1],cl[COK][2],cl[COK][3]};
-  GdkRGBA led_red  = {cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]};
-  GdkRGBA led_green = {cl[COK][0],cl[COK][1],cl[COK][2],cl[COK][3]};
+  const VFO_BAR_LAYOUT *vfl_p = &vfo_layout_list[vfo_layout];
+  GdkRGBA led_color = {vfl_p->CLR[cCOK][0], vfl_p->CLR[cCOK][1], vfl_p->CLR[cCOK][2], vfl_p->CLR[cCOK][3]};
+  GdkRGBA led_red  = {vfl_p->CLR[cALM][0], vfl_p->CLR[cALM][1], vfl_p->CLR[cALM][2], vfl_p->CLR[cALM][3]};
+  GdkRGBA led_green = {vfl_p->CLR[cCOK][0], vfl_p->CLR[cCOK][1], vfl_p->CLR[cCOK][2], vfl_p->CLR[cCOK][3]};
   p_led_color = &led_color;
   if (run_level) {
     gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(level), peak);

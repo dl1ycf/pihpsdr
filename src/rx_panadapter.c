@@ -57,7 +57,8 @@ panadapter_configure_event_cb (GtkWidget         *widget,
   RECEIVER *rx = (RECEIVER *)data;
   int mywidth = gtk_widget_get_allocated_width (widget);
   int myheight = gtk_widget_get_allocated_height (widget);
-
+  const VFO_BAR_LAYOUT *vfl_p = &vfo_layout_list[vfo_layout];
+  
   if (rx->panadapter_surface) {
     cairo_surface_destroy (rx->panadapter_surface);
   }
@@ -66,7 +67,7 @@ panadapter_configure_event_cb (GtkWidget         *widget,
                            CAIRO_CONTENT_COLOR,
                            mywidth, myheight);
   cairo_t *cr = cairo_create(rx->panadapter_surface);
-  cairo_set_source_rgba(cr, cl[PBG][0],cl[PBG][1],cl[PBG][2],cl[PBG][3]);
+  cairo_set_source_rgba(cr, vfl_p->CLR[cPBG][0], vfl_p->CLR[cPBG][1], vfl_p->CLR[cPBG][2], vfl_p->CLR[cPBG][3]);
   cairo_paint(cr);
   cairo_destroy(cr);
   return TRUE;
@@ -110,6 +111,7 @@ void rx_panadapter_update(RECEIVER *rx) {
   int i;
   int x1, x2;
   float *samples;
+  const VFO_BAR_LAYOUT *vfl_p = &vfo_layout_list[vfo_layout];
   cairo_text_extents_t extents;
   long long f;
   long long divisor;
@@ -120,7 +122,7 @@ void rx_panadapter_update(RECEIVER *rx) {
   samples = rx->pixel_samples;
   cairo_t *cr;
   cr = cairo_create (rx->panadapter_surface);
-  cairo_set_source_rgba(cr, cl[PBG][0],cl[PBG][1],cl[PBG][2],cl[PBG][3]);
+  cairo_set_source_rgba(cr, vfl_p->CLR[cPBG][0], vfl_p->CLR[cPBG][1], vfl_p->CLR[cPBG][2], vfl_p->CLR[cPBG][3]);
   cairo_rectangle(cr, 0, 0, mywidth, myheight);
   cairo_fill(cr);
   double HzPerPixel = rx->hz_per_pixel;  // need this many times
@@ -128,6 +130,7 @@ void rx_panadapter_update(RECEIVER *rx) {
   long long frequency = vfo[rx->id].frequency;
   int vfoband = vfo[rx->id].band;
   long long offset = vfo[rx->id].ctun ? vfo[rx->id].offset : 0;
+
   //
   // soffset contains all corrections for attenuation and preamps
   // Perhaps some adjustment is necessary for those old radios which have
@@ -179,14 +182,14 @@ void rx_panadapter_update(RECEIVER *rx) {
       long long hi_freq = band_channels_60m[i].frequency + (band_channels_60m[i].width / (long long)2);
       x1 = (low_freq - min_display) / (long long)HzPerPixel;
       x2 = (hi_freq - min_display) / (long long)HzPerPixel;
-      cairo_set_source_rgba(cr, cl[P60][0],cl[P60][1],cl[P60][2],cl[P60][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cP60][0], vfl_p->CLR[cP60][1], vfl_p->CLR[cP60][2], vfl_p->CLR[cP60][3]);
       cairo_rectangle(cr, x1, 0.0, x2 - x1, myheight);
       cairo_fill(cr);
     }
   }
 
   // filter
-  cairo_set_source_rgba (cr, cl[PFI][0],cl[PFI][1],cl[PFI][2],cl[PFI][3]);
+  cairo_set_source_rgba (cr, vfl_p->CLR[cPFI][0], vfl_p->CLR[cPFI][1], vfl_p->CLR[cPFI][2], vfl_p->CLR[cPFI][3]);
   filter_left = ((double)rx->pixels * 0.5) - (double)rx->pan + (((double)rx->filter_low + offset) / HzPerPixel);
   filter_right = ((double)rx->pixels * 0.5) - (double)rx->pan + (((double)rx->filter_high + offset) / HzPerPixel);
   cairo_rectangle(cr, filter_left, 0.0, filter_right - filter_left, myheight);
@@ -194,15 +197,15 @@ void rx_panadapter_update(RECEIVER *rx) {
 
   // plot the levels
   if (active) {
-    cairo_set_source_rgba(cr, cl[PLI][0],cl[PLI][1],cl[PLI][2],cl[PLI][3]);
+    cairo_set_source_rgba(cr, vfl_p->CLR[cPLI][0], vfl_p->CLR[cPLI][1], vfl_p->CLR[cPLI][2], vfl_p->CLR[cPLI][3]);
   } else {
-    cairo_set_source_rgba(cr, cl[PLW][0],cl[PLW][1],cl[PLW][2],cl[PLW][3]);
+    cairo_set_source_rgba(cr, vfl_p->CLR[cPLW][0], vfl_p->CLR[cPLW][1], vfl_p->CLR[cPLW][2], vfl_p->CLR[cPLW][3]);
   }
 
   double dbm_per_line = (double)myheight / ((double)rx->panadapter_high - (double)rx->panadapter_low);
-  cairo_set_line_width(cr, PLT[LTN]);
-  cairo_select_font_face(cr, FNT, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-  cairo_set_font_size(cr, FSZ[SZ2]);
+  cairo_set_line_width(cr, vfl_p->PLT[tLTN]);
+  cairo_select_font_face(cr, vfl_p->FNT, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  cairo_set_font_size(cr, vfl_p->FSZ[fSZ2]);
   char v[32];
 
   for (i = rx->panadapter_high; i >= rx->panadapter_low; i--) {
@@ -218,7 +221,7 @@ void rx_panadapter_update(RECEIVER *rx) {
     }
   }
 
-  cairo_set_line_width(cr, PLT[LTN]);
+  cairo_set_line_width(cr, vfl_p->PLT[tLTN]);
   cairo_stroke(cr);
   //
   // plot frequency markers
@@ -245,14 +248,14 @@ void rx_panadapter_update(RECEIVER *rx) {
   //
   int marker_distance = (rx->pixels * divisor) / rx->sample_rate;
   f = ((min_display / divisor) * divisor) + divisor;
-  cairo_select_font_face(cr, FNT,
+  cairo_select_font_face(cr, vfl_p->FNT,
                          CAIRO_FONT_SLANT_NORMAL,
                          CAIRO_FONT_WEIGHT_BOLD);
   //
   // If space is available, increase font size of freq. labels a bit
   //
   int marker_extra = (marker_distance > 100) ? 2 : 0;
-  cairo_set_font_size(cr, FSZ[SZ2] + marker_extra);
+  cairo_set_font_size(cr, vfl_p->FSZ[fSZ2] + marker_extra);
 
   while (f < max_display) {
     double x = (double)(f - min_display) / HzPerPixel;
@@ -285,20 +288,20 @@ void rx_panadapter_update(RECEIVER *rx) {
     f += divisor;
   }
 
-  cairo_set_line_width(cr, PLT[LTN]);
+  cairo_set_line_width(cr, vfl_p->PLT[tLTN]);
   cairo_stroke(cr);
 
   if (vfoband != band60) {
     // band edges
     if (band->frequencyMin != 0LL) {
-      cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
-      cairo_set_line_width(cr, PLT[LTH]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cALM][0], vfl_p->CLR[cALM][1], vfl_p->CLR[cALM][2], vfl_p->CLR[cALM][3]);
+      cairo_set_line_width(cr, vfl_p->PLT[tLTH]);
 
       if ((min_display < band->frequencyMin) && (max_display > band->frequencyMin)) {
         i = (band->frequencyMin - min_display) / (long long)HzPerPixel;
         cairo_move_to(cr, i, 0);
         cairo_line_to(cr, i, myheight);
-        cairo_set_line_width(cr, PLT[LXT]);
+        cairo_set_line_width(cr, vfl_p->PLT[tLXT]);
         cairo_stroke(cr);
       }
 
@@ -306,7 +309,7 @@ void rx_panadapter_update(RECEIVER *rx) {
         i = (band->frequencyMax - min_display) / (long long)HzPerPixel;
         cairo_move_to(cr, i, 0);
         cairo_line_to(cr, i, myheight);
-        cairo_set_line_width(cr, PLT[LTH]);
+        cairo_set_line_width(cr, vfl_p->PLT[tLTH]);
         cairo_stroke(cr);
       }
     }
@@ -316,11 +319,11 @@ void rx_panadapter_update(RECEIVER *rx) {
 
   if (clients != NULL) {
     char text[64];
-    cairo_select_font_face(cr, FNT,
+    cairo_select_font_face(cr, vfl_p->FNT,
                            CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
-    cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
-    cairo_set_font_size(cr, FSZ[SZ4]);
+    cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
+    cairo_set_font_size(cr, vfl_p->FSZ[fSZ4]);
     inet_ntop(AF_INET, &(((struct sockaddr_in *)&clients->address)->sin_addr), text, 64);
     cairo_text_extents(cr, text, &extents);
     cairo_move_to(cr, ((double)mywidth / 2.0) - (extents.width / 2.0), (double)myheight / 2.0);
@@ -331,7 +334,7 @@ void rx_panadapter_update(RECEIVER *rx) {
 
   // agc
   if (rx->agc != AGC_OFF) {
-    cairo_set_line_width(cr, PLT[LTH]);
+    cairo_set_line_width(cr, vfl_p->PLT[tLTH]);
     double knee_y = rx->agc_thresh + soffset;
     knee_y = floor((rx->panadapter_high - knee_y)
                    * (double) myheight
@@ -343,9 +346,9 @@ void rx_panadapter_update(RECEIVER *rx) {
 
     if (rx->agc != AGC_MEDIUM && rx->agc != AGC_FAST) {
       if (active) {
-        cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+        cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
       } else {
-        cairo_set_source_rgba(cr, cl[ATW][0],cl[ATW][1],cl[ATW][2],cl[ATW][3]);
+        cairo_set_source_rgba(cr, vfl_p->CLR[cATW][0], vfl_p->CLR[cATW][1], vfl_p->CLR[cATW][2], vfl_p->CLR[cATW][3]);
       }
 
       cairo_move_to(cr, 40.0, hang_y - 8.0);
@@ -353,16 +356,16 @@ void rx_panadapter_update(RECEIVER *rx) {
       cairo_fill(cr);
       cairo_move_to(cr, 40.0, hang_y);
       cairo_line_to(cr, (double)mywidth - 40.0, hang_y);
-      cairo_set_line_width(cr, PLT[LTH]);
+      cairo_set_line_width(cr, vfl_p->PLT[tLTH]);
       cairo_stroke(cr);
       cairo_move_to(cr, 48.0, hang_y);
       cairo_show_text(cr, "-H");
     }
 
     if (active) {
-      cairo_set_source_rgba(cr, cl[COK][0],cl[COK][1],cl[COK][2],cl[COK][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cCOK][0], vfl_p->CLR[cCOK][1], vfl_p->CLR[cCOK][2], vfl_p->CLR[cCOK][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[OKW][0],cl[OKW][1],cl[OKW][2],cl[OKW][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cOKW][0], vfl_p->CLR[cOKW][1], vfl_p->CLR[cOKW][2], vfl_p->CLR[cOKW][3]);
     }
 
     cairo_move_to(cr, 40.0, knee_y - 8.0);
@@ -370,7 +373,7 @@ void rx_panadapter_update(RECEIVER *rx) {
     cairo_fill(cr);
     cairo_move_to(cr, 40.0, knee_y);
     cairo_line_to(cr, (double)mywidth - 40.0, knee_y);
-    cairo_set_line_width(cr, PLT[LTH]);
+    cairo_set_line_width(cr, vfl_p->PLT[tLTH]);
     cairo_stroke(cr);
     cairo_move_to(cr, 48.0, knee_y);
     cairo_show_text(cr, "-G");
@@ -378,14 +381,14 @@ void rx_panadapter_update(RECEIVER *rx) {
 
   // cursor
   if (active) {
-    cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
+    cairo_set_source_rgba(cr, vfl_p->CLR[cALM][0], vfl_p->CLR[cALM][1], vfl_p->CLR[cALM][2], vfl_p->CLR[cALM][3]);
   } else {
-    cairo_set_source_rgba(cr, cl[ALW][0],cl[ALW][1],cl[ALW][2],cl[ALW][3]);
+    cairo_set_source_rgba(cr, vfl_p->CLR[cALW][0], vfl_p->CLR[cALW][1], vfl_p->CLR[cALW][2], vfl_p->CLR[cALW][3]);
   }
 
   cairo_move_to(cr, vfofreq + (offset / HzPerPixel), 0.0);
   cairo_line_to(cr, vfofreq + (offset / HzPerPixel), myheight);
-  cairo_set_line_width(cr, PLT[LTN]);
+  cairo_set_line_width(cr, vfl_p->PLT[tLTN]);
   cairo_stroke(cr);
   // signal
   double s1;
@@ -433,15 +436,15 @@ void rx_panadapter_update(RECEIVER *rx) {
     S9 = 1.0 - (S9 / (double)myheight);
 
     if (active) {
-      cairo_pattern_add_color_stop_rgba(gradient, 0.0,         cl[GR1][0],cl[GR1][1],cl[GR1][2],cl[GR1][3]);
-      cairo_pattern_add_color_stop_rgba(gradient, S9 / 3.0,      cl[GR2][0],cl[GR2][1],cl[GR2][2],cl[GR2][3]);
-      cairo_pattern_add_color_stop_rgba(gradient, (S9 / 3.0) * 2.0, cl[GR3][0],cl[GR3][1],cl[GR3][2],cl[GR3][3]);
-      cairo_pattern_add_color_stop_rgba(gradient, S9,          cl[GR4][0],cl[GR4][1],cl[GR4][2],cl[GR4][3]);
+      cairo_pattern_add_color_stop_rgba(gradient, 0.0,         vfl_p->CLR[cGR1][0], vfl_p->CLR[cGR1][1], vfl_p->CLR[cGR1][2], vfl_p->CLR[cGR1][3]);
+      cairo_pattern_add_color_stop_rgba(gradient, S9 / 3.0,      vfl_p->CLR[cGR2][0], vfl_p->CLR[cGR2][1], vfl_p->CLR[cGR2][2], vfl_p->CLR[cGR2][3]);
+      cairo_pattern_add_color_stop_rgba(gradient, (S9 / 3.0) * 2.0, vfl_p->CLR[cGR3][0], vfl_p->CLR[cGR3][1], vfl_p->CLR[cGR3][2], vfl_p->CLR[cGR3][3]);
+      cairo_pattern_add_color_stop_rgba(gradient, S9,          vfl_p->CLR[cGR4][0], vfl_p->CLR[cGR4][1], vfl_p->CLR[cGR4][2], vfl_p->CLR[cGR4][3]);
     } else {
-      cairo_pattern_add_color_stop_rgba(gradient, 0.0,         cl[G1W][0],cl[G1W][1],cl[G1W][2],cl[G1W][3]);
-      cairo_pattern_add_color_stop_rgba(gradient, S9 / 3.0,      cl[G2W][0],cl[G2W][1],cl[G2W][2],cl[G2W][3]);
-      cairo_pattern_add_color_stop_rgba(gradient, (S9 / 3.0) * 2.0, cl[G3W][0],cl[G3W][1],cl[G3W][2],cl[G3W][3]);
-      cairo_pattern_add_color_stop_rgba(gradient, S9,          cl[G4W][0],cl[G4W][1],cl[G4W][2],cl[G4W][3]);
+      cairo_pattern_add_color_stop_rgba(gradient, 0.0,         vfl_p->CLR[cG1W][0], vfl_p->CLR[cG1W][1], vfl_p->CLR[cG1W][2], vfl_p->CLR[cG1W][3]);
+      cairo_pattern_add_color_stop_rgba(gradient, S9 / 3.0,      vfl_p->CLR[cG2W][0], vfl_p->CLR[cG2W][1], vfl_p->CLR[cG2W][2], vfl_p->CLR[cG2W][3]);
+      cairo_pattern_add_color_stop_rgba(gradient, (S9 / 3.0) * 2.0, vfl_p->CLR[cG3W][0], vfl_p->CLR[cG3W][1], vfl_p->CLR[cG3W][2], vfl_p->CLR[cG3W][3]);
+      cairo_pattern_add_color_stop_rgba(gradient, S9,          vfl_p->CLR[cG4W][0], vfl_p->CLR[cG4W][1], vfl_p->CLR[cG4W][2], vfl_p->CLR[cG4W][3]);
     }
 
     cairo_set_source(cr, gradient);
@@ -451,24 +454,24 @@ void rx_panadapter_update(RECEIVER *rx) {
     //
     if (active) {
       if (!rx->display_filled) {
-        cairo_set_source_rgba(cr, cl[PF3][0],cl[PF3][1],cl[PF3][2],cl[PF3][3]);
+        cairo_set_source_rgba(cr, vfl_p->CLR[cPF3][0], vfl_p->CLR[cPF3][1], vfl_p->CLR[cPF3][2], vfl_p->CLR[cPF3][3]);
       } else {
-        cairo_set_source_rgba(cr, cl[PF2][0],cl[PF2][1],cl[PF2][2],cl[PF2][3]);
+        cairo_set_source_rgba(cr, vfl_p->CLR[cPF2][0], vfl_p->CLR[cPF2][1], vfl_p->CLR[cPF2][2], vfl_p->CLR[cPF2][3]);
       }
     } else {
-      cairo_set_source_rgba(cr, cl[PF1][0],cl[PF1][1],cl[PF1][2],cl[PF1][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cPF1][0], vfl_p->CLR[cPF1][1], vfl_p->CLR[cPF1][2], vfl_p->CLR[cPF1][3]);
     }
   }
 
   if (rx->display_filled) {
     cairo_close_path (cr);
     cairo_fill_preserve (cr);
-    cairo_set_line_width(cr, PLT[LTN]);
+    cairo_set_line_width(cr, vfl_p->PLT[tLTN]);
   } else {
     //
     // if not filling, use thicker line
     //
-    cairo_set_line_width(cr, PLT[LTH]);
+    cairo_set_line_width(cr, vfl_p->PLT[tLTH]);
   }
 
   cairo_stroke(cr);
@@ -481,8 +484,8 @@ void rx_panadapter_update(RECEIVER *rx) {
   #ifdef GPIO
     if(rx->id==0 && controller==CONTROLLER1) {
 
-      cairo_set_source_rgba(cr,cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
-      cairo_set_font_size(cr,FSZ[SZ3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
+      cairo_set_font_size(cr, vfl_p->FSZ[fSZ3]);
       if(ENABLE_E2_ENCODER) {
         cairo_move_to(cr, mywidth-200,70);
         snprintf(text,"%s (%s)",encoder_string[e2_encoder_action],sw_string[e2_sw_action]);
@@ -522,7 +525,7 @@ void rx_panadapter_update(RECEIVER *rx) {
       cairo_line_to(cr, 0, myheight);
     }
 
-    cairo_set_source_rgba(cr, cl[PLI][0],cl[PLI][1],cl[PLI][2],cl[PLI][3]);
+    cairo_set_source_rgba(cr, vfl_p->CLR[cPLI][0], vfl_p->CLR[cPLI][1], vfl_p->CLR[cPLI][2], vfl_p->CLR[cPLI][3]);
     cairo_set_line_width(cr, 1);
     cairo_stroke(cr);
   }
@@ -569,7 +572,8 @@ void display_panadapter_messages(cairo_t *cr, int fps) {
   static unsigned int adc_error_count = 0;
 
   char text[64];
-
+  const VFO_BAR_LAYOUT *vfl_p = &vfo_layout_list[vfo_layout];
+  
   if (display_warnings) {
     //
     // Sequence errors
@@ -579,8 +583,8 @@ void display_panadapter_messages(cairo_t *cr, int fps) {
     //
     // Are shown on display for 2 seconds
     //
-    cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
-    cairo_set_font_size(cr, FSZ[SZ2]);
+    cairo_set_source_rgba(cr, vfl_p->CLR[cALM][0], vfl_p->CLR[cALM][1], vfl_p->CLR[cALM][2], vfl_p->CLR[cALM][3]);
+    cairo_set_font_size(cr, vfl_p->FSZ[fSZ2]);
     if (sequence_errors != 0) {
       cairo_move_to(cr, 100.0, 50.0);
       cairo_show_text(cr, "Sequence Error");
@@ -647,8 +651,8 @@ void display_panadapter_messages(cairo_t *cr, int fps) {
     static double max1=0.0;
     static double max2=0.0;
       
-    cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
-    cairo_set_font_size(cr, FSZ[SZ3]);
+    cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
+    cairo_set_font_size(cr, vfl_p->FSZ[fSZ3]);
     
     //
     // Supply voltage or PA temperature

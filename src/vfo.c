@@ -1011,9 +1011,10 @@ static gboolean vfo_configure_event_cb (GtkWidget         *widget,
                 gtk_widget_get_allocated_width (widget),
                 gtk_widget_get_allocated_height (widget));
   /* Initialize the surface to black */
+  const VFO_BAR_LAYOUT *vfl_p = &vfo_layout_list[vfo_layout];
   cairo_t *cr;
   cr = cairo_create (vfo_surface);
-  cairo_set_source_rgba(cr, cl[VBG][0],cl[VBG][1],cl[VBG][2],cl[VBG][3]);
+  cairo_set_source_rgba(cr, vfl_p->CLR[cVBG][0], vfl_p->CLR[cVBG][1], vfl_p->CLR[cVBG][2], vfl_p->CLR[cVBG][3]);
   cairo_paint (cr);
   cairo_destroy(cr);
   g_idle_add(ext_vfo_update, NULL);
@@ -1041,7 +1042,7 @@ void vfo_update() {
   int m = vfo[id].mode;
   int f = vfo[id].filter;
   int txvfo = get_tx_vfo();
-  const VFO_BAR_LAYOUT *vfl = &vfo_layout_list[vfo_layout];
+  const VFO_BAR_LAYOUT *vfl_p = &vfo_layout_list[vfo_layout];
   //
   // Filter used in active receiver
   //
@@ -1050,9 +1051,9 @@ void vfo_update() {
   char temp_text[32];
   cairo_t *cr;
   cr = cairo_create (vfo_surface);
-  cairo_set_source_rgba(cr, cl[VBG][0],cl[VBG][1],cl[VBG][2],cl[VBG][3]);
+  cairo_set_source_rgba(cr, vfl_p->CLR[cVBG][0], vfl_p->CLR[cVBG][1], vfl_p->CLR[cVBG][2], vfl_p->CLR[cVBG][3]);
   cairo_paint (cr);
-  cairo_select_font_face(cr, FNT, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  cairo_select_font_face(cr, vfl_p->FNT, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
 
   // -----------------------------------------------------------
   //
@@ -1060,7 +1061,7 @@ void vfo_update() {
   // Draw a picture showing the actual and default fileter edges
   //
   // -----------------------------------------------------------
-  if ((f == filterVar1 || f == filterVar2) && m != modeFMN && vfl->filter_x != 0) {
+  if ((f == filterVar1 || f == filterVar2) && m != modeFMN && vfl_p->itm[filter_x] != 0) {
     double range;
     double s, x1, x2;
     int def_low, def_high;
@@ -1089,22 +1090,22 @@ void vfo_update() {
 
     // default range is 50 pix wide in a 100 pix window
     cairo_set_line_width(cr, 3.0);
-    cairo_set_source_rgba(cr, cl[COK][0],cl[COK][1],cl[COK][2],cl[COK][3]);
-    cairo_move_to(cr, vfl->filter_x + 20, vfl->filter_y);
-    cairo_line_to(cr, vfl->filter_x + 25, vfl->filter_y - 5);
-    cairo_line_to(cr, vfl->filter_x + 75, vfl->filter_y - 5);
-    cairo_line_to(cr, vfl->filter_x + 80, vfl->filter_y);
+    cairo_set_source_rgba(cr, vfl_p->CLR[cCOK][0], vfl_p->CLR[cCOK][1], vfl_p->CLR[cCOK][2], vfl_p->CLR[cCOK][3]);
+    cairo_move_to(cr, vfl_p->itm[filter_x] + 20, vfl_p->itm[filter_y]);
+    cairo_line_to(cr, vfl_p->itm[filter_x] + 25, vfl_p->itm[filter_y] - 5);
+    cairo_line_to(cr, vfl_p->itm[filter_x] + 75, vfl_p->itm[filter_y] - 5);
+    cairo_line_to(cr, vfl_p->itm[filter_x] + 80, vfl_p->itm[filter_y]);
     cairo_stroke(cr);
     range = (double) (def_high - def_low);
     s = 50.0 / range;
     // convert actual filter size to the "default" scale
-    x1 = vfl->filter_x + 25 + s * (double)(low - def_low);
-    x2 = vfl->filter_x + 25 + s * (double)(high - def_low);
-    cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
-    cairo_move_to(cr, x1 - 5, vfl->filter_y - 15);
-    cairo_line_to(cr, x1, vfl->filter_y - 10);
-    cairo_line_to(cr, x2, vfl->filter_y - 10);
-    cairo_line_to(cr, x2 + 5, vfl->filter_y - 15);
+    x1 = vfl_p->itm[filter_x] + 25 + s * (double)(low - def_low);
+    x2 = vfl_p->itm[filter_x] + 25 + s * (double)(high - def_low);
+    cairo_set_source_rgba(cr, vfl_p->CLR[cALM][0], vfl_p->CLR[cALM][1], vfl_p->CLR[cALM][2], vfl_p->CLR[cALM][3]);
+    cairo_move_to(cr, x1 - 5, vfl_p->itm[filter_y] - 15);
+    cairo_line_to(cr, x1, vfl_p->itm[filter_y] - 10);
+    cairo_line_to(cr, x2, vfl_p->itm[filter_y] - 10);
+    cairo_line_to(cr, x2 + 5, vfl_p->itm[filter_y] - 15);
     cairo_stroke(cr);
   }
 
@@ -1114,7 +1115,7 @@ void vfo_update() {
   // For CW; add CW speed and side tone frequency
   //
   // -----------------------------------------------------------
-  if (vfl->mode_x != 0) {
+  if (vfl_p->itm[mode_x] != 0) {
     switch (vfo[id].mode) {
     case modeFMN: {
       int dev;
@@ -1175,9 +1176,9 @@ void vfo_update() {
       break;
     }
 
-    cairo_set_font_size(cr, vfl->size1);
-    cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
-    cairo_move_to(cr, vfl->mode_x, vfl->mode_y);
+    cairo_set_font_size(cr, vfl_p->itm[size1]);
+    cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
+    cairo_move_to(cr, vfl_p->itm[mode_x], vfl_p->itm[mode_y]);
     cairo_show_text(cr, temp_text);
   }
 
@@ -1232,25 +1233,25 @@ void vfo_update() {
   // Draw VFO A Dial.
   //
   // -----------------------------------------------------------
-  if (vfl->vfo_a_x != 0) {
-    cairo_move_to(cr, abs(vfl->vfo_a_x), vfl->vfo_a_y);
+  if (vfl_p->itm[vfo_a_x] != 0) {
+    cairo_move_to(cr, abs(vfl_p->itm[vfo_a_x]), vfl_p->itm[vfo_a_y]);
 
     if (txvfo == 0 && (isTransmitting() || oob)) {
-      cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cALM][0], vfl_p->CLR[cALM][1], vfl_p->CLR[cALM][2], vfl_p->CLR[cALM][3]);
     } else if (vfo[0].entered_frequency[0]) {
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
     } else if (id != 0) {
-      cairo_set_source_rgba(cr, cl[OKW][0],cl[OKW][1],cl[OKW][2],cl[OKW][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cOKW][0], vfl_p->CLR[cOKW][1], vfl_p->CLR[cOKW][2], vfl_p->CLR[cOKW][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[COK][0],cl[COK][1],cl[COK][2],cl[COK][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cCOK][0], vfl_p->CLR[cCOK][1], vfl_p->CLR[cCOK][2], vfl_p->CLR[cCOK][3]);
     }
 
     f_m = af / 1000000LL;
     f_k = (af - 1000000LL * f_m) / 1000;
     f_h = (af - 1000000LL * f_m - 1000 * f_k);
-    cairo_set_font_size(cr, vfl->size2);
+    cairo_set_font_size(cr, vfl_p->itm[size2]);
     cairo_show_text(cr, "A:");
-    cairo_set_font_size(cr, vfl->size3);
+    cairo_set_font_size(cr, vfl_p->itm[size3]);
 
     if (txvfo == 0 && oob) {
       cairo_show_text(cr, "Out of band");
@@ -1264,7 +1265,7 @@ void vfo_update() {
       // with the background colour
       //
       cairo_save(cr);
-      cairo_set_source_rgba(cr, cl[VBG][0],cl[VBG][1],cl[VBG][2],cl[VBG][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cVBG][0], vfl_p->CLR[cVBG][1], vfl_p->CLR[cVBG][2], vfl_p->CLR[cVBG][3]);
 
       if (f_m < 10) {
         cairo_show_text(cr, "0000");
@@ -1279,7 +1280,7 @@ void vfo_update() {
       cairo_restore(cr);
       snprintf(temp_text, 32, "%0d.%03d", f_m, f_k);
       cairo_show_text(cr, temp_text);
-      cairo_set_font_size(cr, vfl->size2);
+      cairo_set_font_size(cr, vfl_p->itm[size2]);
       snprintf(temp_text, 32, "%03d", f_h);
       cairo_show_text(cr, temp_text);
     }
@@ -1291,25 +1292,25 @@ void vfo_update() {
   //
   // -----------------------------------------------------------
 
-  if (vfl->vfo_b_x != 0) {
-    cairo_move_to(cr, abs(vfl->vfo_b_x), abs(vfl->vfo_b_y));
+  if (vfl_p->itm[vfo_b_x] != 0) {
+    cairo_move_to(cr, abs(vfl_p->itm[vfo_b_x]), abs(vfl_p->itm[vfo_b_y]));
 
     if (txvfo == 1 && (isTransmitting() || oob)) {
-      cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cALM][0], vfl_p->CLR[cALM][1], vfl_p->CLR[cALM][2], vfl_p->CLR[cALM][3]);
     } else if (vfo[1].entered_frequency[0]) {
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
     } else if (id != 1) {
-      cairo_set_source_rgba(cr, cl[OKW][0],cl[OKW][1],cl[OKW][2],cl[OKW][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cOKW][0], vfl_p->CLR[cOKW][1], vfl_p->CLR[cOKW][2], vfl_p->CLR[cOKW][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[COK][0],cl[COK][1],cl[COK][2],cl[COK][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cCOK][0], vfl_p->CLR[cCOK][1], vfl_p->CLR[cCOK][2], vfl_p->CLR[cCOK][3]);
     }
 
     f_m = bf / 1000000LL;
     f_k = (bf - 1000000LL * f_m) / 1000;
     f_h = (bf - 1000000LL * f_m - 1000 * f_k);
-    cairo_set_font_size(cr, vfl->size2);
+    cairo_set_font_size(cr, vfl_p->itm[size2]);
     cairo_show_text(cr, "B:");
-    cairo_set_font_size(cr, vfl->size3);
+    cairo_set_font_size(cr, vfl_p->itm[size3]);
 
     if (txvfo == 0 && oob) {
       cairo_show_text(cr, "Out of band");
@@ -1323,7 +1324,7 @@ void vfo_update() {
       // with the background colour
       //
       cairo_save(cr);
-      cairo_set_source_rgba(cr, cl[VBG][0],cl[VBG][1],cl[VBG][2],cl[VBG][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cVBG][0], vfl_p->CLR[cVBG][1], vfl_p->CLR[cVBG][2], vfl_p->CLR[cVBG][3]);
 
       if (f_m < 10) {
         cairo_show_text(cr, "0000");
@@ -1338,7 +1339,7 @@ void vfo_update() {
       cairo_restore(cr);
       snprintf(temp_text, 32, "%0d.%03d", f_m, f_k);
       cairo_show_text(cr, temp_text);
-      cairo_set_font_size(cr, vfl->size2);
+      cairo_set_font_size(cr, vfl_p->itm[size2]);
       snprintf(temp_text, 32, "%03d", f_h);
       cairo_show_text(cr, temp_text);
     }
@@ -1347,20 +1348,20 @@ void vfo_update() {
   //
   // Everything that follows uses font size 1
   //
-  cairo_set_font_size(cr, vfl->size1);
+  cairo_set_font_size(cr, vfl_p->itm[size1]);
 
   // -----------------------------------------------------------
   //
   // Draw string indicating Zoom status
   //
   // -----------------------------------------------------------
-  if (vfl->zoom_x != 0) {
-    cairo_move_to(cr, vfl->zoom_x, vfl->zoom_y);
+  if (vfl_p->itm[zoom_x] != 0) {
+    cairo_move_to(cr, vfl_p->itm[zoom_x], vfl_p->itm[zoom_y]);
 
     if (active_receiver->zoom > 1) {
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
     }
 
     snprintf(temp_text, 32, "Zoom %d", active_receiver->zoom);
@@ -1372,13 +1373,13 @@ void vfo_update() {
   // Draw string indicating PS status
   //
   // -----------------------------------------------------------
-  if ((protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) && can_transmit && vfl->ps_x != 0) {
-    cairo_move_to(cr, vfl->ps_x, vfl->ps_y);
+  if ((protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) && can_transmit && vfl_p->itm[ps_x] != 0) {
+    cairo_move_to(cr, vfl_p->itm[ps_x], vfl_p->itm[ps_y]);
 
     if (transmitter->puresignal) {
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
     }
 
     cairo_show_text(cr, "PS");
@@ -1389,15 +1390,15 @@ void vfo_update() {
   // Draw string indicating RIT offset
   //
   // -----------------------------------------------------------
-  if (vfl->rit_x != 0) {
+  if (vfl_p->itm[rit_x] != 0) {
     if (vfo[id].rit_enabled == 0) {
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
     }
 
     snprintf(temp_text, 32, "RIT %lldHz", vfo[id].rit);
-    cairo_move_to(cr, vfl->rit_x, vfl->rit_y);
+    cairo_move_to(cr, vfl_p->itm[rit_x], vfl_p->itm[rit_y]);
     cairo_show_text(cr, temp_text);
   }
 
@@ -1406,15 +1407,15 @@ void vfo_update() {
   // Draw string indicating XIT offset
   //
   // -----------------------------------------------------------
-  if (can_transmit && vfl->xit_x != 0) {
+  if (can_transmit && vfl_p->itm[xit_x] != 0) {
     if (vfo[txvfo].xit_enabled == 0) {
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
     }
 
     snprintf(temp_text, 32, "XIT %lldHz", vfo[txvfo].xit);
-    cairo_move_to(cr, vfl->xit_x, vfl->xit_y);
+    cairo_move_to(cr, vfl_p->itm[xit_x], vfl_p->itm[xit_y]);
     cairo_show_text(cr, temp_text);
   }
 
@@ -1423,22 +1424,22 @@ void vfo_update() {
   // Draw string indicating NB status
   //
   // -----------------------------------------------------------
-  if (vfl->nb_x != 0) {
-    cairo_move_to(cr, vfl->nb_x, vfl->nb_y);
+  if (vfl_p->itm[nb_x] != 0) {
+    cairo_move_to(cr, vfl_p->itm[nb_x], vfl_p->itm[nb_y]);
 
     switch (active_receiver->nb) {
     case 1:
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
       cairo_show_text(cr, "NB");
       break;
 
     case 2:
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
       cairo_show_text(cr, "NB2");
       break;
 
     default:
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
       cairo_show_text(cr, "NB");
       break;
     }
@@ -1449,34 +1450,34 @@ void vfo_update() {
   // Draw string indicating NR status
   //
   // -----------------------------------------------------------
-  if (vfl->nr_x != 0) {
-    cairo_move_to(cr, vfl->nr_x, vfl->nr_y);
+  if (vfl_p->itm[nr_x] != 0) {
+    cairo_move_to(cr, vfl_p->itm[nr_x], vfl_p->itm[nr_y]);
 
     switch (active_receiver->nr) {
     case 1:
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
       cairo_show_text(cr, "NR");
       break;
 
     case 2:
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
       cairo_show_text(cr, "NR2");
       break;
 #ifdef EXTNR
 
     case 3:
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
       cairo_show_text(cr, "NR3");
       break;
 
     case 4:
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
       cairo_show_text(cr, "NR4");
       break;
 #endif
 
     default:
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
       cairo_show_text(cr, "NR");
       break;
     }
@@ -1487,13 +1488,13 @@ void vfo_update() {
   // Draw string indicating ANF status
   //
   // -----------------------------------------------------------
-  if (vfl->anf_x != 0) {
-    cairo_move_to(cr, vfl->anf_x, vfl->anf_y);
+  if (vfl_p->itm[anf_x] != 0) {
+    cairo_move_to(cr, vfl_p->itm[anf_x], vfl_p->itm[anf_y]);
 
     if (active_receiver->anf) {
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
     }
 
     cairo_show_text(cr, "ANF");
@@ -1504,13 +1505,13 @@ void vfo_update() {
   // Draw string indicating SNB status
   //
   // -----------------------------------------------------------
-  if (vfl->snb_x != 0) {
-    cairo_move_to(cr, vfl->snb_x, vfl->snb_y);
+  if (vfl_p->itm[snb_x] != 0) {
+    cairo_move_to(cr, vfl_p->itm[snb_x], vfl_p->itm[snb_y]);
 
     if (active_receiver->snb) {
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
     }
 
     cairo_show_text(cr, "SNB");
@@ -1521,32 +1522,32 @@ void vfo_update() {
   // Draw string indicating AGC status
   //
   // -----------------------------------------------------------
-  if (vfl->agc_x != 0) {
-    cairo_move_to(cr, vfl->agc_x, vfl->agc_y);
+  if (vfl_p->itm[agc_x] != 0) {
+    cairo_move_to(cr, vfl_p->itm[agc_x], vfl_p->itm[agc_y]);
 
     switch (active_receiver->agc) {
     case AGC_OFF:
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
       cairo_show_text(cr, "AGC off");
       break;
 
     case AGC_LONG:
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
       cairo_show_text(cr, "AGC long");
       break;
 
     case AGC_SLOW:
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
       cairo_show_text(cr, "AGC slow");
       break;
 
     case AGC_MEDIUM:
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
       cairo_show_text(cr, "AGC med");
       break;
 
     case AGC_FAST:
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
       cairo_show_text(cr, "AGC fast");
       break;
     }
@@ -1557,15 +1558,15 @@ void vfo_update() {
   // Draw string indicating compressor status
   //
   // -----------------------------------------------------------
-  if (can_transmit && vfl->cmpr_x != 0) {
-    cairo_move_to(cr, vfl->cmpr_x, vfl->cmpr_y);
+  if (can_transmit && vfl_p->itm[cmpr_x] != 0) {
+    cairo_move_to(cr, vfl_p->itm[cmpr_x], vfl_p->itm[cmpr_y]);
 
     if (transmitter->compressor) {
       snprintf(temp_text, 32, "CMPR %d", (int) transmitter->compressor_level);
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
       cairo_show_text(cr, temp_text);
     } else {
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
       cairo_show_text(cr, "CMPR");
     }
   }
@@ -1575,17 +1576,17 @@ void vfo_update() {
   // Draw string indicating equalizer status
   //
   // -----------------------------------------------------------
-  if (vfl->eq_x != 0) {
-    cairo_move_to(cr, vfl->eq_x, vfl->eq_y);
+  if (vfl_p->itm[eq_x] != 0) {
+    cairo_move_to(cr, vfl_p->itm[eq_x], vfl_p->itm[eq_y]);
 
     if (isTransmitting() && enable_tx_equalizer) {
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
       cairo_show_text(cr, "TxEQ");
     } else if (!isTransmitting() && enable_rx_equalizer) {
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
       cairo_show_text(cr, "RxEQ");
     } else {
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
       cairo_show_text(cr, "EQ");
     }
   }
@@ -1595,13 +1596,13 @@ void vfo_update() {
   // Draw string indicating DIVERSITY status
   //
   // -----------------------------------------------------------
-  if (vfl->div_x != 0) {
-    cairo_move_to(cr, vfl->div_x, vfl->div_y);
+  if (vfl_p->itm[div_x] != 0) {
+    cairo_move_to(cr, vfl_p->itm[div_x], vfl_p->itm[div_y]);
 
     if (diversity_enabled) {
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
     }
 
     cairo_show_text(cr, "DIV");
@@ -1612,7 +1613,7 @@ void vfo_update() {
   // Draw string indicating VFO step size
   //
   // -----------------------------------------------------------
-  if (vfl->step_x != 0) {
+  if (vfl_p->itm[step_x] != 0) {
     int s;
 
     for (s = 0; s < STEPS; s++) {
@@ -1622,8 +1623,8 @@ void vfo_update() {
     if (s >= STEPS) { s = 0; }
 
     snprintf(temp_text, 32, "Step %s", step_labels[s]);
-    cairo_move_to(cr, vfl->step_x, vfl->step_y);
-    cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+    cairo_move_to(cr, vfl_p->itm[step_x], vfl_p->itm[step_y]);
+    cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
     cairo_show_text(cr, temp_text);
   }
 
@@ -1632,13 +1633,13 @@ void vfo_update() {
   // Draw string indicating CTUN status
   //
   // -----------------------------------------------------------
-  if (vfl->ctun_x != 0) {
-    cairo_move_to(cr, vfl->ctun_x, vfl->ctun_y);
+  if (vfl_p->itm[ctun_x] != 0) {
+    cairo_move_to(cr, vfl_p->itm[ctun_x], vfl_p->itm[ctun_y]);
 
     if (vfo[id].ctun) {
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
     }
 
     cairo_show_text(cr, "CTUN");
@@ -1649,13 +1650,13 @@ void vfo_update() {
   // Draw string indicating CAT status
   //
   // -----------------------------------------------------------
-  if (vfl->cat_x != 0) {
-    cairo_move_to(cr, vfl->cat_x, vfl->cat_y);
+  if (vfl_p->itm[cat_x] != 0) {
+    cairo_move_to(cr, vfl_p->itm[cat_x], vfl_p->itm[cat_y]);
 
     if (cat_control > 0) {
-      cairo_set_source_rgba(cr, cl[ATT][0],cl[ATT][1],cl[ATT][2],cl[ATT][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cATT][0], vfl_p->CLR[cATT][1], vfl_p->CLR[cATT][2], vfl_p->CLR[cATT][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
     }
 
     cairo_show_text(cr, "CAT");
@@ -1666,13 +1667,13 @@ void vfo_update() {
   // Draw string indicating VOX status
   //
   // -----------------------------------------------------------
-  if (can_transmit && vfl->vox_x != 0) {
-    cairo_move_to(cr, vfl->vox_x, vfl->vox_y);
+  if (can_transmit && vfl_p->itm[vox_x] != 0) {
+    cairo_move_to(cr, vfl_p->itm[vox_x], vfl_p->itm[vox_y]);
 
     if (vox_enabled) {
-      cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cALM][0], vfl_p->CLR[cALM][1], vfl_p->CLR[cALM][2], vfl_p->CLR[cALM][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
     }
 
     cairo_show_text(cr, "VOX");
@@ -1683,13 +1684,13 @@ void vfo_update() {
   // Draw string indicating LOCK status
   //
   // -----------------------------------------------------------
-  if (vfl->lock_x != 0) {
-    cairo_move_to(cr, vfl->lock_x, vfl->lock_y);
+  if (vfl_p->itm[lock_x] != 0) {
+    cairo_move_to(cr, vfl_p->itm[lock_x], vfl_p->itm[lock_y]);
 
     if (locked) {
-      cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cALM][0], vfl_p->CLR[cALM][1], vfl_p->CLR[cALM][2], vfl_p->CLR[cALM][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
     }
 
     cairo_show_text(cr, "Locked");
@@ -1700,13 +1701,13 @@ void vfo_update() {
   // Draw string indicating SPLIT status
   //
   // -----------------------------------------------------------
-  if (vfl->split_x != 0) {
-    cairo_move_to(cr, vfl->split_x, vfl->split_y);
+  if (vfl_p->itm[split_x] != 0) {
+    cairo_move_to(cr, vfl_p->itm[split_x], vfl_p->itm[split_y]);
 
     if (split) {
-      cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cALM][0], vfl_p->CLR[cALM][1], vfl_p->CLR[cALM][2], vfl_p->CLR[cALM][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
     }
 
     cairo_show_text(cr, "Split");
@@ -1717,13 +1718,13 @@ void vfo_update() {
   // Draw string indicating SAT status
   //
   // -----------------------------------------------------------
-  if (vfl->sat_x != 0) {
-    cairo_move_to(cr, vfl->sat_x, vfl->sat_y);
+  if (vfl_p->itm[sat_x] != 0) {
+    cairo_move_to(cr, vfl_p->itm[sat_x], vfl_p->itm[sat_y]);
 
     if (sat_mode != SAT_NONE) {
-      cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cALM][0], vfl_p->CLR[cALM][1], vfl_p->CLR[cALM][2], vfl_p->CLR[cALM][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
     }
 
     if (sat_mode == SAT_NONE || sat_mode == SAT_MODE) {
@@ -1738,15 +1739,15 @@ void vfo_update() {
   // Draw string indicating SAT status
   //
   // -----------------------------------------------------------
-  if (can_transmit && vfl->dup_x != 0) {
+  if (can_transmit && vfl_p->itm[dup_x] != 0) {
     if (duplex) {
-      cairo_set_source_rgba(cr, cl[ALM][0],cl[ALM][1],cl[ALM][2],cl[ALM][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cALM][0], vfl_p->CLR[cALM][1], vfl_p->CLR[cALM][2], vfl_p->CLR[cALM][3]);
     } else {
-      cairo_set_source_rgba(cr, cl[SHD][0],cl[SHD][1],cl[SHD][2],cl[SHD][3]);
+      cairo_set_source_rgba(cr, vfl_p->CLR[cSHD][0], vfl_p->CLR[cSHD][1], vfl_p->CLR[cSHD][2], vfl_p->CLR[cSHD][3]);
     }
 
     snprintf(temp_text, 32, "DUP");
-    cairo_move_to(cr, vfl->dup_x, vfl->dup_y);
+    cairo_move_to(cr, vfl_p->itm[dup_x], vfl_p->itm[dup_y]);
     cairo_show_text(cr, temp_text);
   }
 
@@ -1764,7 +1765,7 @@ vfo_press_event_cb (GtkWidget *widget,
   case GDK_BUTTON_PRIMARY:
     v = VFO_A;
 
-    if (event->x >= abs(vfo_layout_list[vfo_layout].vfo_b_x)) { v = VFO_B; }
+    if (event->x >= abs(vfo_layout_list[vfo_layout].itm[vfo_b_x])) { v = VFO_B; }
 
     g_idle_add(ext_start_vfo, GINT_TO_POINTER(v));
     break;

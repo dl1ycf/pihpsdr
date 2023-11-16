@@ -348,7 +348,7 @@ void send_receiver_data(const REMOTE_CLIENT *client, int rx) {
   receiver_data.zoom = htons(receiver[rx]->zoom);
   receiver_data.pan = htons(receiver[rx]->pan);
   receiver_data.width = htons(receiver[rx]->width);
-  receiver_data.height = htons(receiver[rx]->height);
+  receiver_data.height = htons(receiver[rx]->itm[Height]);
   receiver_data.x = htons(receiver[rx]->x);
   receiver_data.y = htons(receiver[rx]->y);
   receiver_data.volume = htond(receiver[rx]->volume);
@@ -2157,7 +2157,7 @@ static void *client_thread(void* arg) {
       receiver[rx]->zoom = ntohs(receiver_data.zoom);
       receiver[rx]->pan = ntohs(receiver_data.pan);
       receiver[rx]->width = ntohs(receiver_data.width);
-      receiver[rx]->height = ntohs(receiver_data.height);
+      receiver[rx]->itm[Height] = ntohs(receiver_data.height);
       receiver[rx]->x = ntohs(receiver_data.x);
       receiver[rx]->y = ntohs(receiver_data.y);
       receiver[rx]->volume = ntohd(receiver_data.volume);
