@@ -39,7 +39,7 @@ static GtkWidget *scale[5];
 static GtkWidget *freqlabel[5];
 static GtkWidget *enable_b;
 
-static int eqid;  // 0: RX0, 1: RX1, 2: TX
+static int eqid;  // 0: RX1, 1: RX2, 2: TX
 
 static int enable_sem = 0;
 
@@ -153,7 +153,7 @@ static void scale_changed_cb (GtkWidget *widget, gpointer data) {
 //
 // If RX1 is selected while only one RX is running, or if TX
 // is selected but there is no transmitter, silently force
-// the combo box back to RX0
+// the combo box back to RX1
 // Make 'Enable' show the status of the chosen combo box option 
 //
 static void eqid_changed_cb(GtkWidget *widget, gpointer data) {
@@ -227,8 +227,8 @@ void equalizer_menu(GtkWidget *parent) {
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 1, 1);
   GtkWidget *eqid_combo_box = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(eqid_combo_box), NULL, "RX0 Equalizer Settings");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(eqid_combo_box), NULL, "RX1 Equalizer Settings");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(eqid_combo_box), NULL, "RX2 Equalizer Settings");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(eqid_combo_box), NULL, "TX  Equalizer Settings");
   gtk_combo_box_set_active(GTK_COMBO_BOX(eqid_combo_box), 0);
   my_combo_attach(GTK_GRID(grid), eqid_combo_box, 1, 1, 3, 1);
