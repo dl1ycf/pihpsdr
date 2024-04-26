@@ -151,7 +151,7 @@ static void scale_changed_cb (GtkWidget *widget, gpointer data) {
 }
 
 //
-// If RX1 is selected while only one RX is running, or if TX
+// If RX2 is selected while only one RX is running, or if TX
 // is selected but there is no transmitter, silently force
 // the combo box back to RX1
 // Make 'Enable' show the status of the chosen combo box option 
