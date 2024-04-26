@@ -37,8 +37,11 @@ static GtkWidget *dialog = NULL;
 
 static GtkWidget *scale[5];
 static GtkWidget *freqlabel[5];
+static GtkWidget *enable_b;
 
-static int eqid;  // 0: RX1, 1: RX2, 2: TX
+static int eqid;  // 0: RX0, 1: RX1, 2: TX
+
+static int enable_sem = 0;
 
 static void cleanup() {
   if (dialog != NULL) {
@@ -84,31 +87,36 @@ static void enable_cb (GtkWidget *widget, gpointer data) {
   int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   int m;
 
-  switch (eqid) {
-  case 0:
-  case 1:
-    if (eqid < receivers) {
-      receiver[eqid]->eq_enable = val;
-    }
-    if (eqid == 0) {
-      m = vfo[eqid].mode;
-      mode_settings[m].en_rxeq = val;
+  if (! enable_sem) { 
+    switch (eqid) {
+    case 0:
+    case 1:
+      if (eqid < receivers) {
+        receiver[eqid]->eq_enable = val;
+      }
+      if (eqid == 0) {
+        m = vfo[eqid].mode;
+        mode_settings[m].en_rxeq = val;
+      }
+
+      break;
+
+    case 2:
+      if (can_transmit) {
+        transmitter->eq_enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+        m = vfo[get_tx_vfo()].mode;
+        mode_settings[m].en_txeq = transmitter->eq_enable;
+      }
+
+      break;
     }
 
-    break;
-
-  case 2:
-    if (can_transmit) {
-      transmitter->eq_enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-      m = vfo[get_tx_vfo()].mode;
-      mode_settings[m].en_txeq = transmitter->eq_enable;
-    }
-
-    break;
+    update_eq();
+    g_idle_add(ext_vfo_update, NULL);
+  
+  } else {
+    enable_sem = 0;
   }
-
-  update_eq();
-  g_idle_add(ext_vfo_update, NULL);
 }
 
 static void scale_changed_cb (GtkWidget *widget, gpointer data) {
@@ -143,9 +151,10 @@ static void scale_changed_cb (GtkWidget *widget, gpointer data) {
 }
 
 //
-// If RX2 is selected while only one RX is running, or if TX
+// If RX1 is selected while only one RX is running, or if TX
 // is selected but there is no transmitter, silently force
-// the combo box back to RX1
+// the combo box back to RX0
+// Make 'Enable' show the status of the chosen combo box option 
 //
 static void eqid_changed_cb(GtkWidget *widget, gpointer data) {
   char text[16];
@@ -163,6 +172,10 @@ static void eqid_changed_cb(GtkWidget *widget, gpointer data) {
         snprintf(text, 16, "%4d Hz  ", (int)(receiver[eqid]->eq_freq[i] + 0.5));
         gtk_label_set_text(GTK_LABEL(freqlabel[i]), text);
       }
+      
+      enable_sem = 1; // signal that this is not caused by toggling the enable button
+      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_b), receiver[eqid]->eq_enable);
+
     } else {
       gtk_combo_box_set_active(GTK_COMBO_BOX(widget), 0);
     }
@@ -179,6 +192,10 @@ static void eqid_changed_cb(GtkWidget *widget, gpointer data) {
         snprintf(text, 16, "%4d Hz  ", (int)(transmitter->eq_freq[i] + 0.5));
         gtk_label_set_text(GTK_LABEL(freqlabel[i]), text);
       }
+      
+      enable_sem = 1; // signal that this is not caused by toggling the enable button
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (enable_b), transmitter->eq_enable);
+      
     } else {
       gtk_combo_box_set_active(GTK_COMBO_BOX(widget), 0);
     }
@@ -210,13 +227,13 @@ void equalizer_menu(GtkWidget *parent) {
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 1, 1);
   GtkWidget *eqid_combo_box = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(eqid_combo_box), NULL, "RX0 Equalizer Settings");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(eqid_combo_box), NULL, "RX1 Equalizer Settings");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(eqid_combo_box), NULL, "RX2 Equalizer Settings");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(eqid_combo_box), NULL, "TX  Equalizer Settings");
   gtk_combo_box_set_active(GTK_COMBO_BOX(eqid_combo_box), 0);
   my_combo_attach(GTK_GRID(grid), eqid_combo_box, 1, 1, 3, 1);
   g_signal_connect(eqid_combo_box, "changed", G_CALLBACK(eqid_changed_cb), NULL);
-  GtkWidget *enable_b = gtk_check_button_new_with_label("Enable");
+  enable_b = gtk_check_button_new_with_label("Enable");
   gtk_widget_set_name(enable_b, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (enable_b), receiver[0]->eq_enable);
   g_signal_connect(enable_b, "toggled", G_CALLBACK(enable_cb), GINT_TO_POINTER(0));
@@ -257,4 +274,3 @@ void equalizer_menu(GtkWidget *parent) {
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
 }
-
