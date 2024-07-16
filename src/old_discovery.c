@@ -390,7 +390,7 @@ static gpointer discover_receive_thread(gpointer data) {
             }
 
             discovered[devices].frequency_min = 0.0;
-            discovered[devices].frequency_max = 30720000.0;
+            discovered[devices].frequency_max = 38400000.0;
             break;
 
           case DEVICE_ORION2:
