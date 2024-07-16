@@ -352,7 +352,7 @@ void create_txa (int channel)
         300.0,                                      // low cutoff frequency
         3000.0,                                     // high cutoff frequency
         1,                                          // ctcss run control
-        0.10,                                       // ctcss level
+        0.20,                                       // ctcss level
         100.0,                                      // ctcss frequency
         1,                                          // run bandpass filter
         max(2048, ch[channel].dsp_size),            // number coefficients for bandpass filter
