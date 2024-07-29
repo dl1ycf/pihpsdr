@@ -445,6 +445,35 @@ scope is shown in the main window, and 6 kHz in duplex mode
 when the TX spectrum is shown in a small separate window.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The slider area}
+Looking at Fig. \ref{fig:SingleReceiver}, one sees more sliders below the \rett{Zoom} and \rett{Pan}
+sliders. Although they are largely self-explanatory, I take the occasion to describe them shortly.
+
+The \rett{AF} slider controls the audio volume of the active receiver, from -40 to 0 dB. If moved to the
+far left (at -40 dB) the audio is muted completely.
+
+The \rett{AGC} slider controls the AGC of the currently active receiver, it goes from 0 to 120 dB.
+
+The \rett{ATT} slider controls a programmable attenuator in the RF front end of the active receiver. For
+HPSDR hardware, it goes from 0 to 31 dB. The HermesLite-II has a slider named \rett{RF} at this place,
+since this radio has a programmable pre-amplifier/attenuator that goes from -12 to +48 dB. For the STEMlab
+(Red Pitaya based) radios, you find a combo-box here where you can select the fixed attenuators/preamps.
+
+The \rett{Mic} slider adds an amplification from -12 to +50 dB to the audio signal fed to the transmitter.
+This amplification is purely done numerically (no effect on any hardware) and applies to the audio signal
+no matter where it comes from, let it be real microphones or virtual audio cable.
+
+The \rett{TX Drv} slider controls the RF output power. It goes from 0 to 100 and is meant in percent. That is,
+a 5-Watt radio such as the HermesLite-II should transmit 5 Watts if this slider is at position 100. See the
+\bltt{PA} menu for adjusting the RF output levels.
+
+The \rett{Squlch} slider adjusts the squelch level. If moved up from zero, the check-box will automatically
+be activated. If moved down to zero, the check box will be deactivated. If you found a suitable squelch
+level and want to disable squelch temporarily, you can un-check the check box and active squelch later
+on by checking it.
+
+Note that the slider area can be hidden (removed) via the \bltt{Display} menu (see there). 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{Hide} button}
 \begin{figure}[ht]
 \center
@@ -825,7 +854,7 @@ is described in the \bltt{Meter} menu.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{MainMenu.png}
+\includegraphics[width=10cm]{MainMenu.png}
 \caption{The Main men, opened by the \rett{Menu} button.}
 \label{fig:MainMenu}
 \end{figure}
@@ -893,7 +922,7 @@ between RX and TX, open a menu, and so forth.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{ExitMenu.png}
+\includegraphics[width=6cm]{ExitMenu.png}
 \caption{The \bltt{Exit} menu.}
 \end{figure}
 
@@ -920,7 +949,7 @@ program but no re-boot or shutdown takes place, due to missing administrator pri
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{AboutMenu.png}
+\includegraphics[width=10cm]{AboutMenu.png}
 \caption{The \bltt{About} menu.}
 \end{figure}
 
@@ -953,7 +982,7 @@ the colons by dashes and appending ,,.props''.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{RadioMenu.png}
+\includegraphics[width=10cm]{RadioMenu.png}
 \caption{The \bltt{Radio} menu.}
 \label{fig:RadioMenu}
 \end{figure}
@@ -1148,7 +1177,7 @@ if the signal shown is too strong. For normal HPSDR radios, the default value is
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{RadioMenuMetis.png}
+\includegraphics[width=10cm]{RadioMenuMetis.png}
 \caption{The \bltt{Radio} menu for a legacy HPSDR board.}
 \label{fig:RadioMenuMetis}
 \end{figure}
@@ -1207,7 +1236,7 @@ via the main menu and the \bltt{Screen} button and is shown in Fig. \ref{fig:Scr
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{ScreenMenu.png}
+\includegraphics[width=10cm]{ScreenMenu.png}
 \caption{The \bltt{Screen} menu.}
 \label{fig:ScreenMenu}
 \end{figure}
@@ -1325,7 +1354,7 @@ in Fig. \ref{fig:DisplayMenu}.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{DisplayMenu.png}
+\includegraphics[width=10cm]{DisplayMenu.png}
 \caption{The \bltt{Display} menu.}
 \label{fig:DisplayMenu}
 \end{figure}
@@ -1392,7 +1421,7 @@ on the RX panels. With the pan-adapter enabled, you can have the waterfall alone
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{MeterMenu.png}
+\includegraphics[width=6cm]{MeterMenu.png}
 \caption{The \bltt{Meter} menu.}
 \label{fig:Meter}
 \end{figure}
@@ -1562,8 +1591,10 @@ of the main menu. These are all VFO-related menus.
 
 \section{The \texttt{VFO}  menu}
 \label{sec:vfomenu}
+
 \begin{figure}[ht]
-\includegraphics[width=12cm]{VFOmenu.png}
+\center
+\includegraphics[width=6cm]{VFOmenu.png}
 \caption{The \bltt{VFO} menu.}
 \label{fig:VFOmenu}
 \end{figure}
@@ -1636,7 +1667,7 @@ is highlighted.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{BandMenu.png}
+\includegraphics[width=8cm]{BandMenu.png}
 \caption{The \bltt{Band} menu.}
 \label{fig:BandMenu}
 \end{figure}
@@ -1668,7 +1699,7 @@ will end up in the General band. If you have defined transverter bands (see the
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{BandstackMenu.png}
+\includegraphics[width=10cm]{BandstackMenu.png}
 \caption{The \bltt{BndStack} (Band stack) menu.}
 \label{fig:BandstackMenu}
 \end{figure}
@@ -1692,7 +1723,7 @@ receiver is controlled by VFO-A.
 \section{The \texttt{Mode} menu}
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{ModeMenu.png}
+\includegraphics[width=8cm]{ModeMenu.png}
 \caption{The \bltt{Mode} menu.}
 \label{fig:ModeMenu}
 \end{figure}
@@ -1752,7 +1783,7 @@ in the memory slots.
 
  \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{MemMenu.png}
+\includegraphics[width=10cm]{MemMenu.png}
 \caption{The \bltt{Memory} menu.}
 \label{fig:MemMenu}
 \end{figure}
@@ -1791,7 +1822,7 @@ overridden, since there data streams from ADC0 and ADC1 are combined (mixed).
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{RXMenu.png}
+\includegraphics[width=10cm]{RXMenu.png}
 \caption{The \bltt{RX} menu.}
 \label{fig:RXMenu}
 \end{figure}
@@ -1858,7 +1889,7 @@ because one then hears the hounds and the fox on different ears.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{FilterMenuUSB.png}
+\includegraphics[width=10cm]{FilterMenuUSB.png}
 \caption{The \bltt{Filter} menu (single side band modes).}
 \label{fig:FilterMenuUSB}
 \end{figure}
@@ -1880,7 +1911,7 @@ a 1.0k filter for DIGU/DIGL passes audio frequencies between 1000 and 2000 Hz.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{FilterMenuCW.png}
+\includegraphics[width=10cm]{FilterMenuCW.png}
 \caption{The \bltt{Filter} menu for CWL/CWU.}
 \label{fig:FilterMenuCW}
 \end{figure}
@@ -1925,7 +1956,7 @@ and 5000 Hz.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{NoiseMenu1.png}
+\includegraphics[width=10cm]{NoiseMenu1.png}
 \caption{The \bltt{Noise} menu (with NR settings).}
 \label{fig:NoiseMenu1}
 \end{figure}
@@ -1972,7 +2003,7 @@ artefacts, so there is an option to reduce such artefacts which should normally 
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{NoiseMenu2.png}
+\includegraphics[width=10cm]{NoiseMenu2.png}
 \caption{The \bltt{Noise} menu (with NB settings).}
 \label{fig:NoiseMenu2}
 \end{figure}
@@ -2010,7 +2041,7 @@ but also the hang threshold line in orange.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{AGCMenu.png}
+\includegraphics[width=6cm]{AGCMenu.png}
 \caption{The \bltt{AGC} menu.}
 \label{fig:AGCMenu}
 \end{figure}
@@ -2027,7 +2058,7 @@ QRM and only very little DX signal.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{DiversityMenu.png}
+\includegraphics[width=8cm]{DiversityMenu.png}
 \caption{The \bltt{Diversity} menu.}
 \label{fig:DiversityMenu}
 \end{figure}
@@ -2064,7 +2095,9 @@ into the TX pan-adapter (while transmitting). The menu is shown in Fig. \ref{fig
 attached to the host computer, or from a virtual audio cable. The sound device can be
 selected from the pop-down menu to the right.
  This check box, and the pop-down menu, is absent if
-there are no output sound devices available.
+there are no output sound devices available. Note that with PulseAudio/PipeWire, the
+names of audio sources can be quite long, therefore much horizontal space has been
+given to the pop-down menu.
 
 \textbf{Note:} If the radio has the possibility
 to connect a microphone, and if PTT comes from the radio, the radio microphone samples
@@ -2075,33 +2108,8 @@ produces no audio, and while pressing PTT at the microphone, you can work SSB no
 So you can go from digital mode to SSB without the need to change the microphone setup
 in the TX menu.
 
-\rett{Compression (dB):} With this box the TX compressor can be enabled/disabled.
-The compression level (0-20 dB) can be chosen in the spin button to the right.
-
-\textbf{Note:} The compressor on/off flag, as well as the compression level, is
-,,stored with the mode''. So it is possible to have the compressor enabled for SSB
-(LSB/USB)
-and disabled for digi modes (DIGL/DIGU), and when switching modes, the compressor
-settings for the new mode are automatically restored.
-
-\rett{FM PreEmp/ALC}. When transmitting FM, the audio input signals are ,,emphasised''.
-This means that from 300 to 3000 Hz (the usual range of audio frequencies in amateur
-radio FM), there is a 6 dB per octave (20 dB per decade) that leads to a 20 dB damping
-of an input signal at 300 Hz (8 dB damping at 1200 Hz, and no damping ad 3000 Hz).
-This of course distorts the audio, but the reverse process is built into FM demodulators
-to correct for this. Because there is a lot of damping of the audio signal, piHPDSR
-applies a 15 dB boost to the TX audio input samples when the mode is FMN.
-
-This boost is nearly ineffective if the FM pre-emphasis takes place \textit{after}
-the TX ALC stage, since the ALC will cancel most of the extra boost and the FM
-modulation sounds ,,thin''. If the \rett{FM PreEmp/ALC} box is checked, FM
-pre-emphasis takes place \textit{before} the TX ALC, such that the ALC ,,sees''
-the TX audio input after applying both the boost and the damping of the pre-emphasis. This gives the
-transmitted signal a little more ,,punch''. It is generally recommended to have this box checked
-if doing FM.
-
-\rett{Radio Mic:} This text, and the pop-down menu to its right, only occurs if a microphone can
-be connected to the radio. The pop-down menu lets you choose between \rett{Mic In} which means
+\rett{Radio Mic} The pop-down menu to the right of this text
+ lets you choose between \rett{Mic In} which means
 that a microphone can be connected to the microphone input jack, \rett{Mic Boost}, which
 additionally switches on a hardware 20 dB mic amp, and \rett{Line In} which means that the
 "Line In" jack of the radio is used for the audio samples transferred from the radio to the
@@ -2110,33 +2118,45 @@ microphone jack but no line-in input. The optional 20 dB preamp may be necessary
 a dynamic microphone whose input level (few mV) is considerably lower that that of a
 condenser (electret) microphone, or a dynamic microphone with built-in preamp.
 
-\rett{TX Filter low:} With this spin button you can set the low cut of the TX filter. The
+\rett{LineIn Lvl (dB)} Here you can adjust the line-in level of the radio, if it
+has one and if \rett{LineIn} is selected with the \rett{Radio Mic} check box.
+
+\textbf{Note:} The controls in the second line (\rett{Radio Mic} and \rett{LineIn Lvl}) only
+apply to (and are only
+shown for) HPSDR (Protocol-1 and Protocol-2) radios.
+
+\rett{TX Filter low} With this spin button you can set the low cut of the TX filter. The
 frequency refers to the audio domain.
 
-\rett{TX Filter high:} With this spin button you can set the high cut of the TX filter. The
+\rett{TX Filter high} With this spin button you can set the high cut of the TX filter. The
 frequency refers to the audio domain.
 
-\rett{Use RX Filter} If this check box is enabled, the TX filter low/high cuts are ignored,
-and the filter edges of the current RX filter are used instead.
+\rett{TX uses RX Filter} If this check box is enabled, the TX filter low/high cuts are ignored,
+and the filter edges of the current RX filter are used instead. The \rett{TX Filter Low}
+and \rett{TX Filter High} check boxes will be inactive in this case.
 
-\rett{Panadapter Low:} This spin button sets the lower edge (in dBm) of the TX pan-adapter.
+\rett{Compression} With this box the TX compressor can be enabled/disabled.
+The compression level (0-20 dB) can be chosen in the spin button to the right.
 
-\rett{Panadapter High:} This spin button sets the upper edge (in dBm) of the TX pan-adapter.
-
-\rett{Panadapter Step:} This spin button determines how many horizontal lines are drawn on the
-TX pan-adapter. If set to 10, for example, there will be a horizontal line for every multiple
-of 10 dBm.
-
-\rett{AM carrier level:} This sets the AM carrier level for the AM modulator. If set to zero, there is no
-carrier and the
-signal is a DSB signal. A reasonable value is 0.5 which leads to 100\% modulation. Values larger than
-0.5 have less than 100\% modulation. This means too much power goes into the carrier.
+\textbf{Note:} The compressor on/off flag, as well as the compression level, is
+,,stored with the mode''. So it is possible to have the compressor enabled for SSB
+(LSB/USB)
+and disabled for digi modes (DIGL/DIGU), and when switching modes, the compressor
+settings for the new mode are automatically restored.
 
 \rett{Tune use Drive} If this box is checked, TUNE-ing will be done with the power that corresponds to the
 current position of the drive slider, and the tune drive level is ignored.
 
 \rett{Tune Drive Level} The value that can be adjusted with this spin box is the virtual position of the
 drive slider while TUNE-ing. This value is ignored if the \rett{Tune use Drive} box is checked.
+
+\rett{Panadapter High:} This spin button sets the upper edge (in dBm) of the TX pan-adapter.
+
+\rett{Panadapter Low:} This spin button sets the lower edge (in dBm) of the TX pan-adapter.
+
+\rett{Panadapter Step:} This spin button determines how many horizontal lines are drawn on the
+TX pan-adapter. If set to 10, for example, there will be a horizontal line for every multiple
+of 10 dBm.
 
 \rett{SWR protection} If this box is checked, a very simple SWR protection is enabled. If the SWR exceeds
 the threshold value (see next point), the drive slider is set to zero. The SWR protection is disabled
@@ -2156,11 +2176,26 @@ on the other side. The frequency itself can be chosen with the following menu po
 CTCSS is disabled.
 The frequency list includes 38 standard TIA/EIA-603-D CTCSS frequencies between 67.0 and 250.3 Hz.
 
-\rett{Max Drive for digi} This spin button restricts the range of the drive slider from 0 to the
-chosen value
-for the DIGU and DIGL modes. If the value is 100, this has no effect. The primary use of this menu point is
-PA protection,
-since many digital modes (unlike SSB voice) are constantly transmitting at full power.
+\rett{FM PreEmp/ALC}. When transmitting FM, the audio input signals are ,,emphasised''.
+This means that from 300 to 3000 Hz (the usual range of audio frequencies in amateur
+radio FM), there is a 6 dB per octave (20 dB per decade) that leads to a 20 dB damping
+of an input signal at 300 Hz (8 dB damping at 1200 Hz, and no damping ad 3000 Hz).
+This of course distorts the audio, but the reverse process is built into FM demodulators
+to correct for this. Because there is a lot of damping of the audio signal, piHPDSR
+applies a 15 dB boost to the TX audio input samples when the mode is FMN.
+
+This boost is nearly ineffective if the FM pre-emphasis takes place \textit{after}
+the TX ALC stage, since the ALC will cancel most of the extra boost and the FM
+modulation sounds ,,thin''. If the \rett{FM PreEmp/ALC} box is checked, FM
+pre-emphasis takes place \textit{before} the TX ALC, such that the ALC ,,sees''
+the TX audio input after applying both the boost and the damping of the pre-emphasis. This gives the
+transmitted signal a little more ,,punch''. It is generally recommended to have this box checked
+if doing FM.
+
+\rett{AM carrier level:} This sets the AM carrier level for the AM modulator. If set to zero, there is no
+carrier and the
+signal is a DSB signal. A reasonable value is 0.5 which leads to 100\% modulation. Values larger than
+0.5 have less than 100\% modulation. This means too much power goes into the carrier.
 
 \rett{Frames Per Second:} This spin button determines how many frames per second are drawn for the TX
 pan-adapter. The default value, 10, is a good choice.
@@ -2168,6 +2203,16 @@ pan-adapter. The default value, 10, is a good choice.
 \rett{Fill Panadapter} This is used to enable/disable the ,,Filling'' option
 for the TX  spectrum scope (see chapter \ref{sec:FillingGradient}). No ,,gradient''
 option is available for the TX scope.
+
+
+\rett{Max Drive for digi} This spin button restricts the range of the drive slider from 0 to the
+chosen value
+for the DIGU and DIGL modes. If the value is 100, this has no effect. The primary use of this menu point is
+PA protection,
+since many digital modes (unlike SSB voice) are constantly transmitting at full power.
+
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{PA} Menu}
@@ -2179,7 +2224,7 @@ The menu presents itself as shown in Fig. \ref{fig:PAMenuCalibrate}.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{PAMenuCalibrate.png}
+\includegraphics[width=8cm]{PAmenuCalibrate.png}
 \caption{The PA menu, PA calibration screen}
 \label{fig:PAMenuCalibrate}
 \end{figure}
@@ -2212,7 +2257,7 @@ box \rett{Tune use Drive}. Then, hit the rightmost toolbar button
 until one of these buttons reads \bltt{TUNE}. This way, when
 TUNE-ing, you send a carrier with the power according to the drive
 slider. For each band, go to the middle of the band, open the PA
-menu, put the drive (\rett{TX Drv}) slider at 50 and hit the TUNE button. If the
+menu, put the drive (\rett{TX Drv} slider) at 50 and hit the TUNE button. If the
 output (measured with the Watt meter) is higher than half
  of your nominal PA power, increase the
 PA calibration value of that band, otherwise decrease it. Choose
@@ -2236,7 +2281,7 @@ and looks like in Fig. \ref{fig:PAMenuWatt}.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{PAMenuWatt.png}
+\includegraphics[width=8cm]{PAmenuWatt.png}
 \caption{The PA menu, Watt meter calibration}
 \label{fig:PAMenuWatt}
 \end{figure}
@@ -2300,7 +2345,7 @@ is shown in Fig. \ref{fig:VOXMenu}.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{VOXMenu.png}
+\includegraphics[width=8cm]{VOXMenu.png}
 \caption{The VOX menu}
 \label{fig:VOXMenu}
 \end{figure}
@@ -2328,7 +2373,7 @@ VOX is very nice for rag-chew phone QSOs, I won't recommend it for contest opera
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{PSMenu.png}
+\includegraphics[width=10cm]{PSMenu.png}
 \caption{The PureSignal (PS) menu}
 \label{fig:PSMenu}
 \end{figure}
@@ -2520,7 +2565,7 @@ is shown in Fig. \ref{fig:CWMenu}.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{CWMenu.png}
+\includegraphics[width=8cm]{CWMenu.png}
 \caption{The CW menu}
 \label{fig:CWMenu}
 \end{figure}
@@ -2628,7 +2673,7 @@ for doing real QSOs.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{DSPMenu.png}
+\includegraphics[width=8cm]{DSPMenu.png}
 \caption{The DSP menu.}
 \label{fig:DSPMenu}
 \end{figure}
@@ -2764,7 +2809,7 @@ is much simpler because there are much fewer choices possible.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{ANTmenu.png}
+\includegraphics[width=10cm]{ANTmenu.png}
 \caption{The ANT (antenna) menu.}
 \label{fig:ANTmenu}
 \end{figure}
@@ -2909,7 +2954,7 @@ layer is currently active.
 \begin{figure}[ht!]
 \center
 \includegraphics[width=12cm]{ToolbarMenu2.png}
-\caption{Toolbar menu. Changing second button in \texttt{F1} layer.}
+\caption{Toolbar menu. Changing third button in \texttt{F1} layer.}
 \label{fig:ToolbarMenu2}
 \end{figure}
 
@@ -3001,19 +3046,47 @@ adapted to piHPSDR. The \bltt{RigCtl} menu is shown in Fig. \ref{fig:RigCtlMenu}
 \label{fig:RigCtlMenu}
 \end{figure}
 
-\rett{TCP Port}. This sets the TCP port number for CAT connection to TCP. The default value (19090)
-is rather standard,
-using another one is only necessary if you are running more than one SDR program on the host computer at the
-same time.
+\rett{TCP}. This sets the TCP port number for CAT connection to TCP. The default value (19090)
+is rather standard, using another one is only necessary if you are running more than one
+SDR program on the host computer at the same time.
 This port number must match the port number used in the (digi-mode or logbook) program that wants to connect.
-This value
-has no meaning for serial (or named pipe) connections.
 
-\rett{RigCtl Enable}. This checkbox enables or disables the piHPSDR CAT subsystem. Disabling it
-automatically also disables
-all serial ports.
+\rett{Serial}. piHPSDR support up two two CAT connections over serial lines or named pipes.
+In the text field, enter the device name of the serial port or the named pipe to use.
+Which names to use
+is highly operating system dependent. On a RaspPi, the built-in serial ports is usually referred to
+by the device file \texttt{/dev/ttyS0}. USB-to-serial
+adapters (which are nowadays the standard way to add serial ports to a computer) have names such as
+\texttt{/dev/ttyACM0} or \texttt{/dev/USB0} (on RaspPi) or \texttt{/dev/tty.usbserial-....} (on MacOS).
+ piHPSDR does not try to ,,detect'' serial
+ports, you must know the proper name (e.g. by looking at the contents of the \texttt{/dev} directory).
+Named pipes can be created everywhere in the file system hierarchy using the command
+,,\texttt{mkdir -p <some\_arbitrary\_name>}''. Names pipes can be used for the communication between piHPSDR
+and another program running on the same computer, and are only meaningful if that other programm does not
+support CAT-over-TCP.
 
-\rett{Debug}. If enabled, the piHPSDR CAT subsystem sends lots of debug messages to the standard output. If
+To the right of the serial port text field, there is a pop-down menu for choosing the baud rate. Only 4800,
+9600, 19200, and 38400 baud are offered, but this should cover most cases. 
+
+\rett{Enable}. This checkbox enables or disables the piHPSDR CAT subsystem for that particular case.
+Enabling and disabling can be done separately for the TCP subsystem and each of the serial
+connections.
+
+\rett{Andromeda}. This checkbox enables the connection for use with ANDROMEDA consoles. Serial lines are
+forced to 9600 baud if enabled for ANDROMEDA. Furthermore, status changes of piHPSDR (e.g. RIT on/off) are
+automatically reported via ZZZI CAT commands (see Appendix \ref{sec:catcommands}). These messages are
+used by the ANDROMEDA console to switch LED indicators such that they reflect the current state 
+of piHPSDR.
+
+\rett{AutoRprt}. If a CAT connection (either via TCP or via a serial line) is opened and this box is checked,
+the connection is put in ,,auto reporting'' mode. This mode can generally be enabled and disabled with the
+ZZAI or AI CAT commands (see Appendix \ref{sec:catcommands}), but with this checkbox, the connection can be put
+in auto reporting mode without the CAT client sending AI commands. In auto reporting mode, frequency changes
+are transmitted via FA and FB CAT messages. The main use for auto reporting mode is, if a power amplifier
+is connected via a serial line that needs frequency info via CAT. If you do not have hardware that depends
+on such unsolicited (without requesting them via ZZAI or AI commands) messages, this box should never be checked.
+
+\rett{Enable RigCtl Debug Logging}. If enabled, the piHPSDR CAT subsystem sends lots of debug messages to the standard output. If
 piHPSDR is run
 from within a terminal window, these messages appear in the terminal window. If it is run from double-
 clicking a desktop icon,
@@ -3022,47 +3095,6 @@ the preferences
 are stored. This checkbox is only of interest for software developers to analyse programming or connection
 errors, and should
 not be checked for normal use.
-
-\rett{Start clients AutoReporting}. CAT clients can enable and disable an \textit{auto reporting} mode
-for their connection. In this mode, VFO-A and VFO-B frequency are periodically reported to the client,
-if they have changed since the last report. External hardware such as tuners or amplifiers sometimes
-use this feature. Unfortunately, there is such hardware which
-depends on such unsolicited frequency reporting messages \textit{without} explicitly requesting
-auto reporting. This checkbox, if checked, circumvents problems with such hardware by putting
-all new CAT connections into auto reporting mode. Clients that do not like auto reporting can then
-switch auto reporting off, and this then only applies to that client. For example the piHPSDR backend
-of the \texttt{hamlib} rig control library disables auto reporting (,,\texttt{AI0;}'' command) when it connects to piHPSDR
-and will thus not be affected by this checkbox.
-
-\rett{Serial Port}. In this text field, enter the device name of the serial port or the named pipe to use.
-Which names to use
-is highly operating system dependent. On a RaspPi, built-in serial ports have names such as \texttt{/dev/
-ttyACM0}. USB-to-serial
-adapters (which are nowadays the standard way to add serial ports to a computer) have names such as
-\texttt{/dev/ttyUSB0} (on RaspPi) or \texttt{/dev/tty.usbserial-....} (on MacOS). piHPSDR does not try
-to ,,detect'' serial
-ports, you must know the proper name (e.g. by looking at the contents of the \texttt{/dev} directory).
-Named pipes can be created everywhere in the file system hierarchy using the command
-,,\texttt{mkdir -p <some\_arbitrary\_name>}''.
-
-To the right of the serial port text field, there is a pop-down menu for choosing the baud rate. Only 4800,
-9600, 19200, and 38400 baud are offered, but this should cover most cases. Then, further to the right, is
-the \rett{Enable} button which enables a CAT connection on that serial line. Finally, there is the
-\rett{Andromeda} check box which should be checked
-if that serial port is an ANDROMEDA controller.
-
-If you enable \rett{Andromeda}, the baud rate is automatically set to 9600 baud, and you cannot
-change this until you disable \rett{Andromeda}. If you change the baud rate for a serial
-port that is already in use (enabled), the serial connection is closed and re-opened
-(disabled and enabled).  This also applies
-if you enable \rett{Andromeda} for a running serial connection with a baud rate different
-from 9600 baud.
-
-The only effect of enabling \rett{Andromeda}, besides fixing the baud rate to 9600 baud,
-is that the ANDROMEDA software version is requested (and put into the piHPSDR log file)
-once, and that status information is sent over the serial line such that the LEDs of
-the ANDROMEDA controller always reflect the current status of piHPSDR.
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{MIDI} Menu}
@@ -3263,7 +3295,7 @@ to change the VFO frequency.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{EncoderMenuG2.png}
+\includegraphics[width=8cm]{EncoderMenuG2.png}
 \caption{The Encoder menu for the G2 front panel controller}
 \label{fig:EncoderMenuG2}
 \end{figure}
@@ -3301,7 +3333,7 @@ on the enclosure (see Fig. \ref{fig:g2_frontpanel}).
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{Apache_Controller2.png}
+\includegraphics[width=10cm]{Apache_Controller2.png}
 \caption{A picture of the Controller2 (image by courtesy of Apache Labs).}
 \label{fig:Apache_Controller2}
 \end{figure}
@@ -3316,14 +3348,14 @@ for groups with three buttons each, and it should be clear which group belongs t
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{EncoderMenuV2.png}
+\includegraphics[width=10cm]{EncoderMenuV2.png}
 \caption{The Encoder menu for Controller2}
 \label{fig:EncoderMenuV2}
 \end{figure}
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{Apache_Controller1.png}
+\includegraphics[width=10cm]{Apache_Controller1.png}
 \caption{A picture of the Controller1 (image by courtesy of Apache Labs).}
 \label{fig:Apache_Controller1}
 \end{figure}
@@ -3340,11 +3372,12 @@ function printed on the enclosure.
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{EncoderMenuV1.png}
+\includegraphics[width=6cm]{EncoderMenuV1.png}
 \caption{The Encoder menu for Controller1}
 \label{fig:EncoderMenuV1}
 \end{figure}
 
+\clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{Switches} Menu}
 
@@ -3370,7 +3403,7 @@ shown in Fig. \ref{fig:SwitchMenuG2} which match the functions printed on the en
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{SwitchMenuG2.png}
+\includegraphics[width=10cm]{SwitchMenuG2.png}
 \caption{The Switches menu for the G2 front panel controller.}
 \label{fig:SwitchMenuG2}
 \end{figure}
@@ -3392,7 +3425,7 @@ shown in Fig. \ref{fig:SwitchMenuV2} which match the functions printed on the en
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{SwitchMenuV2.png}
+\includegraphics[width=10cm]{SwitchMenuV2.png}
 \caption{The Switches menu for Controller2.}
 \label{fig:SwitchMenuV2}
 \end{figure}
