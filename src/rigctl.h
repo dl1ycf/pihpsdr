@@ -28,6 +28,7 @@ struct _SERIALPORT {
   int  baud;        // baud rate
   int  enable;      // is it enabled?
   int  andromeda;   // flag for handling ANDROMEDA console
+  int  autoreporting;
 };
 
 typedef struct _SERIALPORT SERIALPORT;
@@ -36,13 +37,15 @@ typedef struct _SERIALPORT SERIALPORT;
 extern SERIALPORT SerialPorts[2];
 extern gboolean rigctl_debug;
 
-void launch_rigctl (void);
-int launch_serial (int id);
-void launch_andromeda (int id);
-void disable_serial (int id);
-void disable_andromeda (int id);
+void launch_tcp_rigctl (void);
+int launch_serial_rigctl (int id);
+void launch_serial_andromeda (int id);
+void disable_serial_rigctl (int id);
+void disable_serial_andromeda (int id);
+void launch_tcp_andromeda();
+void disable_tcp_andromeda();
 
-void  shutdown_rigctl(void);
+void  shutdown_tcp_rigctl(void);
 int   rigctlGetMode(void);
 int   lookup_band(int);
 char * rigctlGetFilter(void);
@@ -51,8 +54,9 @@ extern int cat_control;
 int set_alc(gpointer);
 extern int rigctl_busy;
 
-extern unsigned int rigctl_port;
-extern int rigctl_enable;
-extern int rigctl_start_with_autoreporting;
+extern unsigned int rigctl_tcp_port;
+extern int rigctl_tcp_enable;
+extern int rigctl_tcp_andromeda;
+extern int rigctl_tcp_autoreporting;
 
 #endif // RIGCTL_H

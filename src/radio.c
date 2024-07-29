@@ -1045,6 +1045,7 @@ void start_radio() {
     SerialPorts[id].enable = 0;
     SerialPorts[id].andromeda = 0;
     SerialPorts[id].baud = 0;
+    SerialPorts[id].autoreporting = 0;
     snprintf(SerialPorts[id].port, sizeof(SerialPorts[id].port), "/dev/ttyACM%d", id);
   }
 
@@ -1500,19 +1501,14 @@ void start_radio() {
 
   // save every 30 seconds
   // save_timer_id=gdk_threads_add_timeout(30000, save_cb, NULL);
-  if (rigctl_enable) {
-    launch_rigctl();
 
-    for (int id = 0; id < MAX_SERIAL; id++) {
-      if (SerialPorts[id].enable) {
-        launch_serial(id);
-      }
-    }
-  } else {
-    // since we do not spawn the serial thread,
-    // disable serial
-    for (int id = 0; id < MAX_SERIAL; id++) {
-      SerialPorts[id].enable = 0;
+  if (rigctl_tcp_enable) {
+    launch_tcp_rigctl();
+  }
+
+  for (int id = 0; id < MAX_SERIAL; id++) {
+    if (SerialPorts[id].enable) {
+      launch_serial_rigctl(id);
     }
   }
 
@@ -2560,9 +2556,9 @@ void radioRestoreState() {
   GetPropI0("mute_rx_while_transmitting",                    mute_rx_while_transmitting);
   GetPropI0("radio.display_warnings",                        display_warnings);
   GetPropI0("radio.display_pacurr",                          display_pacurr);
-  GetPropI0("rigctl_enable",                                 rigctl_enable);
-  GetPropI0("rigctl_start_with_autoreporting",               rigctl_start_with_autoreporting);
-  GetPropI0("rigctl_port_base",                              rigctl_port);
+  GetPropI0("rigctl_tcp_enable",                             rigctl_tcp_enable);
+  GetPropI0("rigctl_tcp_autoreporting",                      rigctl_tcp_autoreporting);
+  GetPropI0("rigctl_port_base",                              rigctl_tcp_port);
   GetPropI0("mute_spkr_amp",                                 mute_spkr_amp);
   GetPropI0("adc0_filter_bypass",                            adc0_filter_bypass);
   GetPropI0("adc1_filter_bypass",                            adc1_filter_bypass);
@@ -2580,6 +2576,7 @@ void radioRestoreState() {
     GetPropI1("rigctl_serial_andromeda[%d]", id,             SerialPorts[id].andromeda);
     GetPropI1("rigctl_serial_baud_rate[%i]", id,             SerialPorts[id].baud);
     GetPropS1("rigctl_serial_port[%d]", id,                  SerialPorts[id].port);
+    GetPropI1("rigctl_serial_autoreporting[%d]", id,         SerialPorts[id].autoreporting);
 
     if (SerialPorts[id].andromeda) {
       SerialPorts[id].baud = B9600;
@@ -2766,9 +2763,9 @@ void radioSaveState() {
   SetPropI0("mute_rx_while_transmitting",                    mute_rx_while_transmitting);
   SetPropI0("radio.display_warnings",                        display_warnings);
   SetPropI0("radio.display_pacurr",                          display_pacurr);
-  SetPropI0("rigctl_enable",                                 rigctl_enable);
-  SetPropI0("rigctl_start_with_autoreporting",               rigctl_start_with_autoreporting);
-  SetPropI0("rigctl_port_base",                              rigctl_port);
+  SetPropI0("rigctl_tcp_enable",                             rigctl_tcp_enable);
+  SetPropI0("rigctl_tcp_autoreporting",                      rigctl_tcp_autoreporting);
+  SetPropI0("rigctl_port_base",                              rigctl_tcp_port);
   SetPropI0("mute_spkr_amp",                                 mute_spkr_amp);
   SetPropI0("adc0_filter_bypass",                            adc0_filter_bypass);
   SetPropI0("adc1_filter_bypass",                            adc1_filter_bypass);
@@ -2786,6 +2783,7 @@ void radioSaveState() {
     SetPropI1("rigctl_serial_andromeda[%d]", id,             SerialPorts[id].andromeda);
     SetPropI1("rigctl_serial_baud_rate[%i]", id,             SerialPorts[id].baud);
     SetPropS1("rigctl_serial_port[%d]", id,                  SerialPorts[id].port);
+    SetPropI1("rigctl_serial_autoreporting[%d]", id,         SerialPorts[id].autoreporting);
   }
 
   for (int i = 0; i < n_adc; i++) {

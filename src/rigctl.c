@@ -70,9 +70,10 @@
 #include <arpa/inet.h> //inet_addr
 #include <netinet/tcp.h>
 
-unsigned int rigctl_port = 19090;
-int rigctl_enable = 0;
-int rigctl_start_with_autoreporting = 0;
+unsigned int rigctl_tcp_port = 19090;
+int rigctl_tcp_enable = 0;
+int rigctl_tcp_andromeda = 0;
+int rigctl_tcp_autoreporting = 0;
 
 // max number of bytes we can get at once
 #define MAXDATASIZE 2000
@@ -81,15 +82,15 @@ gboolean rigctl_debug = FALSE;
 
 int parse_cmd (void *data);
 
-int cat_control;
+int cat_control = 0;
 
-GMutex mutex_numcat;   // only needed to make in/de-crements of "cat_control"  atomic
-GMutex mutex_serial;   // this is probably not necessary at all
+static GMutex mutex_numcat;   // only needed to make in/de-crements of "cat_control"  atomic
 
 #define MAX_TCP_CLIENTS 3
 static GThread *rigctl_server_thread_id = NULL;
 static GThread *rigctl_cw_thread_id = NULL;
-static int server_running;
+static guint    auto_reporter_id = 0;
+static int tcp_running = 0;
 
 static int server_socket = -1;
 static struct sockaddr_in server_address;
@@ -105,6 +106,7 @@ typedef struct _client {
   GThread *thread_id;
   guint andromeda_timer;       // for periodic andromeda_tasks (serial only)
   int auto_reporting;          // auto-reporting (AI, ZZAI) on/off
+  int andromeda_type;          // 1: Andromeda, 5: G2Mk2
 } CLIENT;
 
 typedef struct _command {
@@ -129,12 +131,12 @@ static guint auto_timer = 0;
 #define RXCHECK_ERR(id, what) if (id >= 0 && id < receivers) { what; } else { implemented = FALSE; }
 #define RXCHECK(id, what)     if (id >= 0 && id < receivers) { what; }
 
-void shutdown_rigctl() {
+void shutdown_tcp_rigctl() {
   struct linger linger = { 0 };
   linger.l_onoff = 1;
   linger.l_linger = 0;
   t_print("%s: server_socket=%d\n", __FUNCTION__, server_socket);
-  server_running = 0;
+  tcp_running = 0;
 
   if (auto_timer > 0) {
     g_source_remove(auto_timer);
@@ -173,8 +175,6 @@ void shutdown_rigctl() {
     close(server_socket);
     server_socket = -1;
   }
-
-  g_mutex_clear(&mutex_numcat);
 }
 
 //
@@ -183,7 +183,7 @@ void shutdown_rigctl() {
 
 #define CW_BUF_SIZE 80
 static char cw_buf[CW_BUF_SIZE];
-static int  cw_buf_in, cw_buf_out;
+static int  cw_buf_in = 0, cw_buf_out = 0;
 
 static int dotsamples;
 static int dashsamples;
@@ -552,7 +552,7 @@ static gpointer rigctl_cw_thread(gpointer data) {
   int  buffered_speed = 0;
   int  bracket_command = 0;
 
-  while (server_running) {
+  for (;;) {
     // wait for CW data (periodically look every 100 msec)
     if (cw_buf_in == cw_buf_out) {
       cw_key_hit = 0;
@@ -712,9 +712,9 @@ static gpointer rigctl_cw_thread(gpointer data) {
         buffered_speed = 0;
       }
     }
-
-    // end of while (server_running)
   }
+
+  // NOTREACHED (now this thread is started once-and-for-all)
 
   // We arrive here if the rigctl server shuts down.
   // This very rarely happens. But we should shut down the
@@ -772,7 +772,7 @@ void send_resp (int fd, char * msg) {
 
 gboolean auto_reporter(gpointer data) {
   //
-  // This function is repeatedly called as long as rigctl
+  // This function is repeatedly called as long as pihpsdr
   // is running. It reports VFOA and VFOB frequency changes
   // to *all* clients that are running and have
   // autoreporting enabled.
@@ -785,7 +785,10 @@ gboolean auto_reporter(gpointer data) {
   long long fa;
   long long fb;
 
-  if (!server_running) { return FALSE; }
+  //
+  // Quick return if no CAT connection exists
+  //
+  if (cat_control <= 0) { return TRUE; }
 
   fa = vfo[VFO_A].ctun ? vfo[VFO_A].ctun_frequency : vfo[VFO_A].frequency;
   fb = vfo[VFO_B].ctun ? vfo[VFO_B].ctun_frequency : vfo[VFO_B].frequency;
@@ -885,7 +888,7 @@ static gpointer rigctl_server(gpointer data) {
 
   if (!rigctl_cw_thread_id) { rigctl_cw_thread_id = g_thread_new("RIGCTL cw", rigctl_cw_thread, NULL); }
 
-  while (server_running) {
+  while (tcp_running) {
     int spare;
     //
     // find a spare slot
@@ -937,7 +940,8 @@ static gpointer rigctl_server(gpointer data) {
     // Spawn off a thread for handling this new connection
     //
     tcp_client[spare].running = 1;
-    tcp_client[spare].auto_reporting = SET(rigctl_start_with_autoreporting);
+    tcp_client[spare].andromeda_type = 0;
+    tcp_client[spare].auto_reporting = SET(rigctl_tcp_autoreporting);
     tcp_client[spare].thread_id = g_thread_new("rigctl client", rigctl_client, (gpointer)&tcp_client[spare]);
   }
 
@@ -3166,326 +3170,524 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //NOTE      x encodes the button and the press/release status
       //ENDDEF
       if (command[7] == ';') {
-        static int numpad_active = 0;
-        static int longpress = 0;
         int v = (command[6] - 0x30);
         int p = (command[4] - 0x30) * 10;
         p += command[5] - 0x30;
 
-        if (!numpad_active) switch (p) {
-          case 21: // Function Switches
-          case 22:
-          case 23:
-          case 24:
-          case 25:
-          case 26:
-          case 27:
-          case 28:
-            schedule_action(toolbar_switches[p - 21].switch_function, (v == 0) ? PRESSED : RELEASED, 0);
-            snprintf(reply, 256, "ZZZI11%d;", locked);
-            send_resp(client->fd, reply);
-            break;
+        if (client->andromeda_type == 1) {
+          // original ANDROMEDA console
+          static int numpad_active = 0;
+          static int longpress = 0;
 
-          case 46: // SDR On
-            if (v == 0) {
-              if (longpress) {
-                longpress = 0;
-              } else {
-                static int startstop = 1;
-                startstop ^= 1;
-                startstop ? protocol_run() : protocol_stop();
-              }
-            } else if (v == 2) {
-              new_menu();
-              longpress = 1;
-            }
-
-            break;
-          }
-
-        if (numpad_active && v == 0) switch (p) {
-          case 30: // Band Buttons
-            schedule_action(NUMPAD_1, PRESSED, 0);
-            break;
-
-          case 31:
-            schedule_action(NUMPAD_2, PRESSED, 0);
-            break;
-
-          case 32:
-            schedule_action(NUMPAD_3, PRESSED, 0);
-            break;
-
-          case 33:
-            schedule_action(NUMPAD_4, PRESSED, 0);
-            break;
-
-          case 34:
-            schedule_action(NUMPAD_5, PRESSED, 0);
-            break;
-
-          case 35:
-            schedule_action(NUMPAD_6, PRESSED, 0);
-            break;
-
-          case 36:
-            schedule_action(NUMPAD_7, PRESSED, 0);
-            break;
-
-          case 37:
-            schedule_action(NUMPAD_8, PRESSED, 0);
-            break;
-
-          case 38:
-            schedule_action(NUMPAD_9, PRESSED, 0);
-            break;
-
-          case 39:
-            schedule_action(NUMPAD_DEC, PRESSED, 0);
-            break;
-
-          case 40:
-            schedule_action(NUMPAD_0, PRESSED, 0);
-            break;
-
-          case 41: {
-            schedule_action(NUMPAD_ENTER, PRESSED, 0);
-            numpad_active = 0;
-            locked = 0;
-          }
-          break;
-
-          case 45: {
-            schedule_action(NUMPAD_MHZ, PRESSED, 0);
-            numpad_active = 0;
-            locked = 0;
-          }
-          } else if (!locked) switch (p) {
-            static int shift = 0;
-
-          case 1: // Rx1 AF Mute
-            if (v == 0) { receiver[0]->mute_radio ^= 1; }
-
-            break;
-
-          case 3: // Rx2 AF Mute
-            if (v == 0) { receiver[1]->mute_radio ^= 1; }
-
-            break;
-
-          case 5: // Filter Cut Defaults
-            schedule_action(FILTER_CUT_DEFAULT, (v == 0) ? PRESSED : RELEASED, 0);
-            break;
-
-          case 7: // Diversity Enable
-            if (RECEIVERS == 2 && n_adc > 1) {
-              schedule_action(DIV, (v == 0) ? PRESSED : RELEASED, 0);
-
-              if (v == 0) {
-                snprintf(reply, 256, "ZZZI05%d;", diversity_enabled ^ 1);
-                send_resp(client->fd, reply);
-              }
-            }
-
-            break;
-
-          case 9: // RIT/XIT Clear
-            schedule_action(RIT_CLEAR, (v == 0) ? PRESSED : RELEASED, 0);
-            schedule_action(XIT_CLEAR, (v == 0) ? PRESSED : RELEASED, 0);
-            snprintf(reply, 256, "ZZZI080;");
-            send_resp(client->fd, reply);
-            snprintf(reply, 256, "ZZZI090;");
-            send_resp(client->fd, reply);
-            break;
-
-          case 29: // Shift
-            if (v == 0) {
-              shift ^= 1;
-              snprintf(reply, 256, "ZZZI06%d;", shift);
-              send_resp(client->fd, reply);
-            }
-
-            break;
-
-          case 30: // Band Buttons
-          case 31:
-          case 32:
-          case 33:
-          case 34:
-          case 35:
-          case 36:
-          case 37:
-          case 38:
-          case 39:
-          case 40:
-          case 41:
-            if (shift && v == 0) {
-              int band = band20;
-
-              if (p == 30) { band = band160; }
-              else if (p == 31) { band = band80; }
-              else if (p == 32) { band = band60; }
-              else if (p == 33) { band = band40; }
-              else if (p == 34) { band = band30; }
-              else if (p == 35) { band = band20; }
-              else if (p == 36) { band = band17; }
-              else if (p == 37) { band = band15; }
-              else if (p == 38) { band = band12; }
-              else if (p == 39) { band = band10; }
-              else if (p == 40) { band = band6; }
-              else if (p == 41) { band = bandGen; }
-
-              vfo_band_changed(active_receiver->id ? VFO_B : VFO_A, band);
-              shift = 0;
-              snprintf(reply, 256, "ZZZI060;");
-              send_resp(client->fd, reply);
-            } else if (v == 1) {
-              if (p == 30) { start_tx(); }                                  // MODE DATA
-              else if (p == 31) { schedule_action(MODE_PLUS, PRESSED, 0); } // MODE+
-              else if (p == 32) { schedule_action(FILTER_PLUS, PRESSED, 0); } // FILTER+
-              else if (p == 33) { radio_change_receivers(receivers == 1 ? 2 : 1); } // RX2
-              else if (p == 34) { schedule_action(MODE_MINUS, PRESSED, 0); } // MODE-
-              else if (p == 35) { schedule_action(FILTER_MINUS, PRESSED, 0); } // FILTER-
-              else if (p == 36) { schedule_action(A_TO_B, PRESSED, 0); }    // A>B
-              else if (p == 37) { schedule_action(B_TO_A, PRESSED, 0); }    // B>A
-              else if (p == 38) { schedule_action(SPLIT, PRESSED, 0); }     // SPLIT
-              else if (p == 39) { schedule_action(NB, PRESSED, 0); }        // U1 (use NB)
-              else if (p == 40) { schedule_action(NR, PRESSED, 0); }        // U2 (use NR)
-            } else if (p == 41) {
-              if (v == 0 || v == 2) {
-                numpad_active = 1;
-                locked = 1;
-                g_idle_add(ext_vfo_update, NULL);
-                schedule_action(NUMPAD_CL, PRESSED, 0);               // U3 start Freq entry
-              }
-            }
-
-            break;
-
-          case 42: // RIT/XIT
-            if (v == 0) {
-              if (!vfo[active_receiver->id].rit_enabled && !vfo[get_tx_vfo()].xit_enabled) {
-                // neither RIT nor XIT: ==> activate RIT
-                vfo_rit_onoff(active_receiver->id, 1);
-                snprintf(reply, 256, "ZZZI081;");
-                send_resp(client->fd, reply);
-              } else if (vfo[active_receiver->id].rit_enabled && !vfo[get_tx_vfo()].xit_enabled) {
-                // RIT but no XIT: ==> de-activate RIT and activate XIT
-                vfo_rit_onoff(active_receiver->id, 0);
-                vfo_xit_onoff(1);
-                snprintf(reply, 256, "ZZZI080;");
-                send_resp(client->fd, reply);
-                snprintf(reply, 256, "ZZZI091;");
-                send_resp(client->fd, reply);
-              } else {
-                // else deactivate both.
-                vfo_rit_onoff(active_receiver->id, 0);
-                vfo_xit_onoff(0);
-                snprintf(reply, 256, "ZZZI080;");
-                send_resp(client->fd, reply);
-                snprintf(reply, 256, "ZZZI090;");
-                send_resp(client->fd, reply);
-              }
-
-              g_idle_add(ext_vfo_update, NULL);
-            }
-
-            break;
-
-          case 43: // switch receivers
-            if (receivers == 2) {
-              if (v == 0) {
-                if (active_receiver->id == 0) {
-                  schedule_action(RX2, PRESSED, 0);
-                  snprintf(reply, 256, "ZZZI07%d;", vfo[VFO_B].ctun);
-                  send_resp(client->fd, reply);
-                  snprintf(reply, 256, "ZZZI08%d;", vfo[VFO_B].rit_enabled);
-                  send_resp(client->fd, reply);
-                  snprintf(reply, 256, "ZZZI100;");
-                } else {
-                  schedule_action(RX1, PRESSED, 0);
-                  snprintf(reply, 256, "ZZZI07%d;", vfo[VFO_A].ctun);
-                  send_resp(client->fd, reply);
-                  snprintf(reply, 256, "ZZZI08%d;", vfo[VFO_A].rit_enabled);
-                  send_resp(client->fd, reply);
-                  snprintf(reply, 256, "ZZZI101;");
-                }
-
-                send_resp(client->fd, reply);
-                g_idle_add(ext_vfo_update, NULL);
-              }
-            }
-
-            break;
-
-          case 45: // ctune
-            if (v == 1) {
-              schedule_action(CTUN, PRESSED, 0);
-              snprintf(reply, 256, "ZZZI07%d;", vfo[active_receiver->id].ctun ^ 1);
-              send_resp(client->fd, reply);
-              g_idle_add(ext_vfo_update, NULL);
-            }
-
-            break;
-
-          case 47: // MOX
-            if (v == 0) {
-              snprintf(reply, 256, "ZZZI01%d;", mox);
-              send_resp(client->fd, reply);
-            } else {
-              mox_update(mox ^ 1);
-            }
-
-            break;
-
-          case 48: // TUNE
-            if (v == 0) {
-              snprintf(reply, 256, "ZZZI03%d;", tune);
-              send_resp(client->fd, reply);
-            } else {
-              tune_update(tune ^ 1);
-            }
-
-            break;
-
-          case 50: // TWO TONE
-            schedule_action(TWO_TONE, (v == 0) ? PRESSED : RELEASED, 0);
-            break;
-
-          case 49: // PS ON
-            if (v == 0) {
-              if (longpress) {
-                longpress = 0;
-              } else {
-                if (can_transmit) {
-                  tx_set_ps(transmitter, transmitter->puresignal ^ 1);
-                  snprintf(reply, 256, "ZZZI04%d;", transmitter->puresignal);
-                  send_resp(client->fd, reply);
-                }
-              }
-            } else if (v == 2) {
-              start_ps();
-              longpress = 1;
-            }
-
-            break;
-          }
-
-        if (p == 44) { // VFO lock
-          if (v == 0) {
-            if (numpad_active) {
-              schedule_action(NUMPAD_KHZ, PRESSED, 0);
-              numpad_active = 0;
-              locked = 0;
-            } else {
-              locked ^= 1;
-              g_idle_add(ext_vfo_update, NULL);
+          if (!numpad_active) switch (p) {
+            case 21: // Function Switches
+            case 22:
+            case 23:
+            case 24:
+            case 25:
+            case 26:
+            case 27:
+            case 28:
+              schedule_action(toolbar_switches[p - 21].switch_function, (v == 0) ? PRESSED : RELEASED, 0);
               snprintf(reply, 256, "ZZZI11%d;", locked);
               send_resp(client->fd, reply);
+              break;
+
+            case 46: // SDR On
+              if (v == 0) {
+                if (longpress) {
+                  longpress = 0;
+                } else {
+                  static int startstop = 1;
+                  startstop ^= 1;
+                  startstop ? protocol_run() : protocol_stop();
+                }
+              } else if (v == 2) {
+                new_menu();
+                longpress = 1;
+              }
+
+              break;
+            }
+
+          if (numpad_active && v == 0) switch (p) {
+            case 30: // Band Buttons
+              schedule_action(NUMPAD_1, PRESSED, 0);
+              break;
+
+            case 31:
+              schedule_action(NUMPAD_2, PRESSED, 0);
+              break;
+
+            case 32:
+              schedule_action(NUMPAD_3, PRESSED, 0);
+              break;
+
+            case 33:
+              schedule_action(NUMPAD_4, PRESSED, 0);
+              break;
+
+            case 34:
+              schedule_action(NUMPAD_5, PRESSED, 0);
+              break;
+
+            case 35:
+              schedule_action(NUMPAD_6, PRESSED, 0);
+              break;
+
+            case 36:
+              schedule_action(NUMPAD_7, PRESSED, 0);
+              break;
+
+            case 37:
+              schedule_action(NUMPAD_8, PRESSED, 0);
+              break;
+
+            case 38:
+              schedule_action(NUMPAD_9, PRESSED, 0);
+              break;
+
+            case 39:
+              schedule_action(NUMPAD_DEC, PRESSED, 0);
+              break;
+
+            case 40:
+              schedule_action(NUMPAD_0, PRESSED, 0);
+              break;
+
+            case 41: {
+              schedule_action(NUMPAD_ENTER, PRESSED, 0);
+              numpad_active = 0;
+              locked = 0;
+            }
+            break;
+
+            case 45: {
+              schedule_action(NUMPAD_MHZ, PRESSED, 0);
+              numpad_active = 0;
+              locked = 0;
+            }
+            } else if (!locked) switch (p) {
+              static int shift = 0;
+
+            case 1: // Rx1 AF Mute
+              if (v == 0) { receiver[0]->mute_radio ^= 1; }
+
+              break;
+
+            case 3: // Rx2 AF Mute
+              if (v == 0) { receiver[1]->mute_radio ^= 1; }
+
+              break;
+
+            case 5: // Filter Cut Defaults
+              schedule_action(FILTER_CUT_DEFAULT, (v == 0) ? PRESSED : RELEASED, 0);
+              break;
+
+            case 7: // Diversity Enable
+              if (RECEIVERS == 2 && n_adc > 1) {
+                schedule_action(DIV, (v == 0) ? PRESSED : RELEASED, 0);
+
+                if (v == 0) {
+                  snprintf(reply, 256, "ZZZI05%d;", diversity_enabled ^ 1);
+                  send_resp(client->fd, reply);
+                }
+              }
+
+              break;
+
+            case 9: // RIT/XIT Clear
+              schedule_action(RIT_CLEAR, (v == 0) ? PRESSED : RELEASED, 0);
+              schedule_action(XIT_CLEAR, (v == 0) ? PRESSED : RELEASED, 0);
+              snprintf(reply, 256, "ZZZI080;");
+              send_resp(client->fd, reply);
+              snprintf(reply, 256, "ZZZI090;");
+              send_resp(client->fd, reply);
+              break;
+
+            case 29: // Shift
+              if (v == 0) {
+                shift ^= 1;
+                snprintf(reply, 256, "ZZZI06%d;", shift);
+                send_resp(client->fd, reply);
+              }
+
+              break;
+
+            case 30: // Band Buttons
+            case 31:
+            case 32:
+            case 33:
+            case 34:
+            case 35:
+            case 36:
+            case 37:
+            case 38:
+            case 39:
+            case 40:
+            case 41:
+              if (shift && v == 0) {
+                int band = band20;
+
+                if (p == 30) { band = band160; }
+                else if (p == 31) { band = band80; }
+                else if (p == 32) { band = band60; }
+                else if (p == 33) { band = band40; }
+                else if (p == 34) { band = band30; }
+                else if (p == 35) { band = band20; }
+                else if (p == 36) { band = band17; }
+                else if (p == 37) { band = band15; }
+                else if (p == 38) { band = band12; }
+                else if (p == 39) { band = band10; }
+                else if (p == 40) { band = band6; }
+                else if (p == 41) { band = bandGen; }
+
+                vfo_band_changed(active_receiver->id ? VFO_B : VFO_A, band);
+                shift = 0;
+                snprintf(reply, 256, "ZZZI060;");
+                send_resp(client->fd, reply);
+              } else if (v == 1) {
+                if (p == 30) { start_tx(); }                                  // MODE DATA
+                else if (p == 31) { schedule_action(MODE_PLUS, PRESSED, 0); } // MODE+
+                else if (p == 32) { schedule_action(FILTER_PLUS, PRESSED, 0); } // FILTER+
+                else if (p == 33) { radio_change_receivers(receivers == 1 ? 2 : 1); } // RX2
+                else if (p == 34) { schedule_action(MODE_MINUS, PRESSED, 0); } // MODE-
+                else if (p == 35) { schedule_action(FILTER_MINUS, PRESSED, 0); } // FILTER-
+                else if (p == 36) { schedule_action(A_TO_B, PRESSED, 0); }    // A>B
+                else if (p == 37) { schedule_action(B_TO_A, PRESSED, 0); }    // B>A
+                else if (p == 38) { schedule_action(SPLIT, PRESSED, 0); }     // SPLIT
+                else if (p == 39) { schedule_action(NB, PRESSED, 0); }        // U1 (use NB)
+                else if (p == 40) { schedule_action(NR, PRESSED, 0); }        // U2 (use NR)
+              } else if (p == 41) {
+                if (v == 0 || v == 2) {
+                  numpad_active = 1;
+                  locked = 1;
+                  g_idle_add(ext_vfo_update, NULL);
+                  schedule_action(NUMPAD_CL, PRESSED, 0);               // U3 start Freq entry
+                }
+              }
+
+              break;
+
+            case 42: // RIT/XIT
+              if (v == 0) {
+                if (!vfo[active_receiver->id].rit_enabled && !vfo[get_tx_vfo()].xit_enabled) {
+                  // neither RIT nor XIT: ==> activate RIT
+                  vfo_rit_onoff(active_receiver->id, 1);
+                  snprintf(reply, 256, "ZZZI081;");
+                  send_resp(client->fd, reply);
+                } else if (vfo[active_receiver->id].rit_enabled && !vfo[get_tx_vfo()].xit_enabled) {
+                  // RIT but no XIT: ==> de-activate RIT and activate XIT
+                  vfo_rit_onoff(active_receiver->id, 0);
+                  vfo_xit_onoff(1);
+                  snprintf(reply, 256, "ZZZI080;");
+                  send_resp(client->fd, reply);
+                  snprintf(reply, 256, "ZZZI091;");
+                  send_resp(client->fd, reply);
+                } else {
+                  // else deactivate both.
+                  vfo_rit_onoff(active_receiver->id, 0);
+                  vfo_xit_onoff(0);
+                  snprintf(reply, 256, "ZZZI080;");
+                  send_resp(client->fd, reply);
+                  snprintf(reply, 256, "ZZZI090;");
+                  send_resp(client->fd, reply);
+                }
+
+                g_idle_add(ext_vfo_update, NULL);
+              }
+
+              break;
+
+            case 43: // switch receivers
+              if (receivers == 2) {
+                if (v == 0) {
+                  if (active_receiver->id == 0) {
+                    schedule_action(RX2, PRESSED, 0);
+                    snprintf(reply, 256, "ZZZI07%d;", vfo[VFO_B].ctun);
+                    send_resp(client->fd, reply);
+                    snprintf(reply, 256, "ZZZI08%d;", vfo[VFO_B].rit_enabled);
+                    send_resp(client->fd, reply);
+                    snprintf(reply, 256, "ZZZI100;");
+                  } else {
+                    schedule_action(RX1, PRESSED, 0);
+                    snprintf(reply, 256, "ZZZI07%d;", vfo[VFO_A].ctun);
+                    send_resp(client->fd, reply);
+                    snprintf(reply, 256, "ZZZI08%d;", vfo[VFO_A].rit_enabled);
+                    send_resp(client->fd, reply);
+                    snprintf(reply, 256, "ZZZI101;");
+                  }
+
+                  send_resp(client->fd, reply);
+                  g_idle_add(ext_vfo_update, NULL);
+                }
+              }
+
+              break;
+
+            case 45: // ctune
+              if (v == 1) {
+                schedule_action(CTUN, PRESSED, 0);
+                snprintf(reply, 256, "ZZZI07%d;", vfo[active_receiver->id].ctun ^ 1);
+                send_resp(client->fd, reply);
+                g_idle_add(ext_vfo_update, NULL);
+              }
+
+              break;
+
+            case 47: // MOX
+              if (v == 0) {
+                snprintf(reply, 256, "ZZZI01%d;", mox);
+                send_resp(client->fd, reply);
+              } else {
+                mox_update(mox ^ 1);
+              }
+
+              break;
+
+            case 48: // TUNE
+              if (v == 0) {
+                snprintf(reply, 256, "ZZZI03%d;", tune);
+                send_resp(client->fd, reply);
+              } else {
+                tune_update(tune ^ 1);
+              }
+
+              break;
+
+            case 50: // TWO TONE
+              schedule_action(TWO_TONE, (v == 0) ? PRESSED : RELEASED, 0);
+              break;
+
+            case 49: // PS ON
+              if (v == 0) {
+                if (longpress) {
+                  longpress = 0;
+                } else {
+                  if (can_transmit) {
+                    tx_set_ps(transmitter, transmitter->puresignal ^ 1);
+                    snprintf(reply, 256, "ZZZI04%d;", transmitter->puresignal);
+                    send_resp(client->fd, reply);
+                  }
+                }
+              } else if (v == 2) {
+                start_ps();
+                longpress = 1;
+              }
+
+              break;
+            }
+
+          if (p == 44) { // VFO lock
+            if (v == 0) {
+              if (numpad_active) {
+                schedule_action(NUMPAD_KHZ, PRESSED, 0);
+                numpad_active = 0;
+                locked = 0;
+              } else {
+                locked ^= 1;
+                g_idle_add(ext_vfo_update, NULL);
+                snprintf(reply, 256, "ZZZI11%d;", locked);
+                send_resp(client->fd, reply);
+              }
             }
           }
-        }
-      }
+        } // end of the "type=1" section
+
+        if (client->andromeda_type == 5) {
+          // G2 Mk2 console, shift key is handled in console
+          int do_short = 0;
+          int do_long = 0;
+          static int last_v = 0;
+          static int myvfo = VFO_A;
+          static int myrit = 0;
+
+          if (v == 2) { do_long = 1; }
+
+          if (v == 0 && last_v == 1) { do_short = 1; }
+
+          last_v = v;
+
+          if (!do_short && !do_long) {
+            break;
+          }
+
+          switch (p) {
+          case 1:  // RX2 Mute
+            if (receivers > 1) { receiver[1]->mute_radio = !receiver[1]->mute_radio; }
+
+            break;
+
+          case 2:  // RX1 Mute
+            receiver[0]->mute_radio = !receiver[0]->mute_radio;
+            break;
+
+          case 3: // Change multifunction assignment
+            schedule_action(MULTI_BUTTON, PRESSED, 0);
+            break;
+
+          case 4:  // ATU, not yet used
+            break;
+
+          case 5:  // Toggle two-tone
+            schedule_action(TWO_TONE, PRESSED, 0);
+            break;
+
+          case 6:  // Toggle tune
+            schedule_action(TUNE, PRESSED, 0);
+            break;
+
+          case 7:  // Toggle MOX
+            schedule_action(MOX, PRESSED, 0);
+            break;
+
+          case 8: // toggle CTUN
+            schedule_action(CTUN, PRESSED, 0);
+            break;
+
+          case 9: // toggle LOCK
+            schedule_action(LOCK, PRESSED, 0);
+            break;
+
+          case 10: // select VFO for the other actions
+            if (myvfo == VFO_A) {
+              myvfo = VFO_B;
+            } else {
+              myvfo = VFO_A;
+            }
+
+            break;
+
+          case 11: // toggle between off/RIT/XIT
+            switch (myrit) {
+            case 0:
+              vfo_rit_onoff(myvfo, 1);
+              vfo_xit_onoff(0);
+              myrit = 1;
+              break;
+
+            case 1:
+              vfo_rit_onoff(myvfo, 0);
+              vfo_xit_onoff(1);
+              myrit = 2;
+              break;
+
+            case 2:
+              vfo_rit_onoff(myvfo, 0);
+              vfo_xit_onoff(0);
+              myrit = 0;
+              break;
+            }
+
+            break;
+
+          case 12: // clear RIT and XIT
+            schedule_action(RIT_CLEAR, PRESSED, 0);
+            schedule_action(XIT_CLEAR, PRESSED, 0);
+            break;
+
+          case 13:  // Reset variable filter
+            schedule_action(FILTER_CUT_DEFAULT, PRESSED, 0);
+            break;
+
+          case 14:  // Select next mode
+            if (do_short) {
+              schedule_action(MODE_PLUS, PRESSED, 0);
+            }
+            if (do_long) {
+              schedule_action(MENU_MODE, PRESSED, 0);
+            }
+            break;
+
+          case 15:  // Select next filter
+            if (do_short) {
+              schedule_action(FILTER_PLUS, PRESSED, 0);
+            }
+            if (do_long) {
+              schedule_action(MENU_FILTER, PRESSED, 0);
+            }
+            break;
+
+          case 16:  // Select next band
+            if (do_short) {
+              schedule_action(BAND_PLUS, PRESSED, 0);
+            }
+            if (do_long) {
+              schedule_action(MENU_BAND, PRESSED, 0);
+            }
+            break;
+
+          case 17:  // Select previous mode
+            schedule_action(MODE_MINUS, PRESSED, 0);
+            break;
+
+          case 18:  // Select previous filter
+            schedule_action(FILTER_MINUS, PRESSED, 0);
+            break;
+
+          case 19:  // Select previous band
+            schedule_action(BAND_MINUS, PRESSED, 0);
+            break;
+
+          case 20:  // A to B
+            schedule_action(A_TO_B, PRESSED, 0);
+            break;
+
+          case 21:  // B to A
+            schedule_action(B_TO_A, PRESSED, 0);
+            break;
+
+          case 22:  // Toggle Split
+            schedule_action(SPLIT, PRESSED, 0);
+            break;
+
+          case 23:  // F1, to be defined
+            break;
+
+          case 24:  // F2, to be defined
+            break;
+
+          case 25:  // F3, to be defined
+            break;
+
+          case 26:  // unused
+            break;
+
+          case 27:  // 160m
+            schedule_action(BAND_160, PRESSED, 0);
+            break;
+
+          case 28:  // 80m
+            schedule_action(BAND_80, PRESSED, 0);
+            break;
+
+          case 29:  // 60m
+            schedule_action(BAND_60, PRESSED, 0);
+            break;
+
+          case 30:  // 40m
+            schedule_action(BAND_40, PRESSED, 0);
+            break;
+
+          case 31:  // 30m
+            schedule_action(BAND_30, PRESSED, 0);
+            break;
+
+          case 32:  // 20m
+            schedule_action(BAND_20, PRESSED, 0);
+            break;
+
+          case 33:  // 17m
+            schedule_action(BAND_17, PRESSED, 0);
+            break;
+
+          case 34:  // 15m
+            schedule_action(BAND_15, PRESSED, 0);
+            break;
+
+          }  // end of big button switch statement
+        }    // end of G2Mk2 ZZZP code
+      }  // end of check on correct response format
 
       break;
 
@@ -3495,11 +3697,16 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //DESCR     Log ANDROMEDA version
       //SET       ZZZSxxyzabc;
       //NOTE      ANDROMEDA extension.
-      //NOTE      The ANDROMEDA hardware (yz) and software (abc) version
+      //NOTE      The ANDROMEDA type (xx), hardware (yz) and software (abc) version
       //NOTE      is logged in piHPSDR's log file.
       //ENDDEF
       if (command[11] == ';') {
-        t_print("RIGCTL:INFO: Andromeda FP Version: h/w:%c%c s/w:%c%c%c\n",
+        //
+        // Besides logging, store the ANDROMEDA type in the client data structure
+        //
+        client->andromeda_type = 10 * (command[4] - '0') + (command[5] - '0');
+        t_print("RIGCTL:INFO: Andromeda Client: Type:%c%c h/w:%c%c s/w:%c%c%c\n",
+                command[4], command[5],
                 command[6], command[7], command[8], command[9], command[10]);
       }
 
@@ -5648,10 +5855,8 @@ static gpointer serial_server(gpointer data) {
           COMMAND *info = g_new(COMMAND, 1);
           info->client = client;
           info->command = command;
-          g_mutex_lock(&mutex_serial);                    // mutex probably not necessary
           client->busy = 10;
           g_idle_add(parse_cmd, info);
-          g_mutex_unlock(&mutex_serial);                  // mutex probably not necessary
           command = g_new(char, MAXDATASIZE);
           command_index = 0;
         }
@@ -5692,6 +5897,18 @@ gboolean andromeda_handler(gpointer data) {
 
   if (!client->running) { return FALSE; }
 
+  //
+  // Do not proceed until Andromeda version is known
+  //
+  if (client->andromeda_type < 1) {
+    snprintf(reply, 256, "ZZZS;");
+    send_resp(client->fd, reply);
+    return TRUE;
+  }
+
+  //
+  // TODO: handle ANDROMEDA vs. G2Mk2
+  //
   if (andromeda_last_vfoa != active_receiver->id) {
     snprintf(reply, 256, "ZZZI10%d;", active_receiver->id ^ 1);
     send_resp(client->fd, reply);
@@ -5773,11 +5990,10 @@ gboolean andromeda_init(gpointer data) {
   return FALSE;
 }
 
-int launch_serial (int id) {
+int launch_serial_rigctl (int id) {
   int fd;
   int baud;
   t_print("%s: Open Serial Port %s\n", __FUNCTION__, SerialPorts[id].port);
-  g_mutex_init(&mutex_serial);
   //
   // Use O_NONBLOCK to prevent "hanging" upon open(), set blocking mode
   // later.
@@ -5812,17 +6028,37 @@ int launch_serial (int id) {
   }
 
   serial_client[id].running = 1;
+  serial_client[id].andromeda_type = 0;
   serial_client[id].andromeda_timer = 0;
-  serial_client[id].auto_reporting = SET(rigctl_start_with_autoreporting);
+  serial_client[id].auto_reporting = SerialPorts[id].autoreporting;
   serial_client[id].thread_id = g_thread_new( "Serial server", serial_server, (gpointer)&serial_client[id]);
+
+  if (auto_reporter_id == 0) {
+    auto_reporter_id = g_timeout_add(250, auto_reporter, NULL);
+  }
+
   //
   // If this is a serial line to an ANDROMEDA controller, initialize it and start a periodic GTK task
   //
-  launch_andromeda(id);
+  launch_serial_andromeda(id);
   return 1;
 }
 
-void launch_andromeda (int id) {
+void launch_tcp_andromeda() {
+  //
+  // Launch Andromeda periodic job for *each* of the rigctl clients that are already running
+  //
+  for (int i = 0; i < MAX_TCP_CLIENTS; i++) {
+    if (rigctl_tcp_andromeda && tcp_client[i].running) {
+      t_print("%s: Enable ANDROMEDA on TCP\n", __FUNCTION__);
+      usleep(700000L);
+      g_idle_add(andromeda_init, &tcp_client[i]);           // executed once
+      tcp_client[i].andromeda_timer = g_timeout_add(500, andromeda_handler, &tcp_client[i]); // executed periodically
+    }
+  }
+}
+
+void launch_serial_andromeda (int id) {
   //
   // This is a no-op if the serial client is NOT running
   //
@@ -5835,9 +6071,9 @@ void launch_andromeda (int id) {
 }
 
 // Serial Port close
-void disable_serial (int id) {
+void disable_serial_rigctl (int id) {
   t_print("%s: Close Serial Port %s\n", __FUNCTION__, SerialPorts[id].port);
-  disable_andromeda(id);
+  disable_serial_andromeda(id);
   serial_client[id].running = FALSE;
 
   if (serial_client[id].fifo) {
@@ -5862,11 +6098,19 @@ void disable_serial (int id) {
     close(serial_client[id].fd);
     serial_client[id].fd = -1;
   }
-
-  g_mutex_clear(&mutex_serial);
 }
 
-void disable_andromeda (int id) {
+void disable_tcp_andromeda() {
+  for (int id = 0; id < MAX_TCP_CLIENTS; id++) {
+    if (tcp_client[id].andromeda_timer != 0) {
+      t_print("%s: disable ANDROMEDA on TCP\n", __FUNCTION__);
+      g_source_remove(tcp_client[id].andromeda_timer);
+      tcp_client[id].andromeda_timer = 0;
+    }
+  }
+}
+
+void disable_serial_andromeda (int id) {
   if (serial_client[id].andromeda_timer != 0) {
     t_print("%s: disable ANDROMEDA on port %s\n", __FUNCTION__, SerialPorts[id].port);
     g_source_remove(serial_client[id].andromeda_timer);
@@ -5878,14 +6122,23 @@ void disable_andromeda (int id) {
 // 2-25-17 - K5JAE - create each thread with the pointer to the port number
 //                   (Port numbers now const ints instead of defines..)
 //
-void launch_rigctl () {
+void launch_tcp_rigctl () {
   t_print( "---- LAUNCHING RIGCTL ----\n");
-  cat_control = 0;
-  g_mutex_init(&mutex_numcat);
-  server_running = 1;
+  tcp_running = 1;
+
   //
-  // Start auto reporter
+  // Start CW thread and auto reporter, if not yet done
   //
-  g_timeout_add(250, auto_reporter, NULL);
-  rigctl_server_thread_id = g_thread_new( "rigctl server", rigctl_server, GINT_TO_POINTER(rigctl_port));
+  if (!rigctl_cw_thread_id) {
+    rigctl_cw_thread_id = g_thread_new("RIGCTL cw", rigctl_cw_thread, NULL);
+  }
+
+  if (auto_reporter_id == 0) {
+    auto_reporter_id = g_timeout_add(250, auto_reporter, NULL);
+  }
+
+  //
+  // Start TCP thread
+  //
+  rigctl_server_thread_id = g_thread_new( "rigctl server", rigctl_server, GINT_TO_POINTER(rigctl_tcp_port));
 }
