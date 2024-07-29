@@ -239,32 +239,9 @@ void tx_menu(GtkWidget *parent) {
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, col, row, 1, 1);
 
-  row++;
-  col = 0;
-  GtkWidget *lbl = gtk_label_new("Radio Mic");
-  gtk_widget_set_name(lbl, "boldlabel");
-  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), lbl, col++, row, 1, 1);
-  //
-  // Mic Boost, Mic In, and Line In can the handled mutually exclusive
-  //
-  GtkWidget *mic_in_b = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(mic_in_b), NULL, "Mic In");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(mic_in_b), NULL, "Mic Boost");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(mic_in_b), NULL, "Line In");
-  int pos = 0;
-
-  if (mic_linein) {
-    pos = 2;
-  } else if (mic_boost) {
-    pos = 1;
-  }
-
-  gtk_combo_box_set_active(GTK_COMBO_BOX(mic_in_b), pos);
-  my_combo_attach(GTK_GRID(grid), mic_in_b, col++, row, 1, 1);
-  g_signal_connect(mic_in_b, "changed", G_CALLBACK(mic_in_cb), NULL);
-
   if (n_input_devices > 0) {
+    row++;
+    col = 0;
     GtkWidget *local_microphone_b = gtk_check_button_new_with_label("Local Microphone");
     gtk_widget_set_halign(local_microphone_b, GTK_ALIGN_END);
     gtk_widget_set_name(local_microphone_b, "boldlabel");
@@ -292,57 +269,77 @@ void tx_menu(GtkWidget *parent) {
       STRLCPY(transmitter->microphone_name, input_devices[0].name, sizeof(transmitter->microphone_name));
     }
 
-    my_combo_attach(GTK_GRID(grid), input, col, row, 2, 1);
+    my_combo_attach(GTK_GRID(grid), input, col, row, 4, 1);
     g_signal_connect(input, "changed", G_CALLBACK(local_input_changed_cb), NULL);
+  }
+
+  if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
+    row++;
+    col = 0;
+    GtkWidget *lbl = gtk_label_new("Radio Mic");
+    gtk_widget_set_name(lbl, "boldlabel");
+    gtk_widget_set_halign(lbl, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), lbl, col++, row, 1, 1);
+    //
+    // Mic Boost, Mic In, and Line In can the handled mutually exclusive
+    //
+    GtkWidget *mic_in_b = gtk_combo_box_text_new();
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(mic_in_b), NULL, "Mic In");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(mic_in_b), NULL, "Mic Boost");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(mic_in_b), NULL, "Line In");
+    int pos = 0;
+
+    if (mic_linein) {
+      pos = 2;
+    } else if (mic_boost) {
+      pos = 1;
+    }
+
+    gtk_combo_box_set_active(GTK_COMBO_BOX(mic_in_b), pos);
+    my_combo_attach(GTK_GRID(grid), mic_in_b, col++, row, 1, 1);
+    g_signal_connect(mic_in_b, "changed", G_CALLBACK(mic_in_cb), NULL);
+    col++;
+    label = gtk_label_new("LineIn Lvl (dB)");
+    gtk_widget_set_name(label, "boldlabel");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, col, row, 1, 1);
+    col++;
+    GtkWidget *linein_spin = gtk_spin_button_new_with_range(-34.0, 12.5, 1.5);
+    gtk_spin_button_set_digits(GTK_SPIN_BUTTON(linein_spin), 1);
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(linein_spin), linein_gain);
+    gtk_grid_attach(GTK_GRID(grid), linein_spin, col, row, 1, 1);
+    g_signal_connect(G_OBJECT(linein_spin), "value_changed", G_CALLBACK(linein_value_changed), NULL);
   }
 
   row++;
   col = 0;
-  label = gtk_label_new("LineIn Lvl (dB)");
+  label = gtk_label_new("TX Filter Low");
   gtk_widget_set_name(label, "boldlabel");
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), label, col, row, 1, 1);
   col++;
-  GtkWidget *linein_spin = gtk_spin_button_new_with_range(-34.0, 12.5, 1.5);
-  gtk_spin_button_set_digits(GTK_SPIN_BUTTON(linein_spin), 1);
-  gtk_spin_button_set_value(GTK_SPIN_BUTTON(linein_spin), linein_gain);
-  gtk_grid_attach(GTK_GRID(grid), linein_spin, col, row, 1, 1);
-  g_signal_connect(G_OBJECT(linein_spin), "value_changed", G_CALLBACK(linein_value_changed), NULL);
+  tx_spin_low = gtk_spin_button_new_with_range(0.0, 8000.0, 1.0);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_spin_low), (double)tx_filter_low);
+  gtk_grid_attach(GTK_GRID(grid), tx_spin_low, col, row, 1, 1);
+  g_signal_connect(tx_spin_low, "value-changed", G_CALLBACK(tx_spin_low_cb), NULL);
   col++;
   GtkWidget *use_rx_filter_b = gtk_check_button_new_with_label("TX uses RX Filter");
   gtk_widget_set_name(use_rx_filter_b, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (use_rx_filter_b), transmitter->use_rx_filter);
   gtk_grid_attach(GTK_GRID(grid), use_rx_filter_b, col, row, 2, 1);
   g_signal_connect(use_rx_filter_b, "toggled", G_CALLBACK(use_rx_filter_cb), NULL);
-
-  row++; 
-  col = 0;
-  label = gtk_label_new("TX Filter Low");
-  gtk_widget_set_name(label, "boldlabel");
-  gtk_widget_set_halign(label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), label, col, row, 1, 1);
-  col++; 
-  tx_spin_low = gtk_spin_button_new_with_range(0.0, 8000.0, 1.0);
-  gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_spin_low), (double)tx_filter_low);
-  gtk_grid_attach(GTK_GRID(grid), tx_spin_low, col, row, 1, 1);
-  g_signal_connect(tx_spin_low, "value-changed", G_CALLBACK(tx_spin_low_cb), NULL);
   col++;
   GtkWidget *comp_enable = gtk_check_button_new_with_label("Compression");
   gtk_widget_set_name(comp_enable, "boldlabel");
+  gtk_widget_set_halign(comp_enable, GTK_ALIGN_END);
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (comp_enable), transmitter->compressor);
   gtk_grid_attach(GTK_GRID(grid), comp_enable, col, row, 1, 1);
   g_signal_connect(comp_enable, "toggled", G_CALLBACK(comp_enable_cb), NULL);
-  col++;
-  label = gtk_label_new("Cmpr Level (dB)");
-  gtk_widget_set_name(label, "boldlabel");
-  gtk_widget_set_halign(label, GTK_ALIGN_END); 
-  gtk_grid_attach(GTK_GRID(grid), label, col, row, 1, 1); 
   col++;
   GtkWidget *comp = gtk_spin_button_new_with_range(0.0, 20.0, 1.0);
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(comp), (double)transmitter->compressor_level);
   gtk_grid_attach(GTK_GRID(grid), comp, col++, row, 1, 1);
   g_signal_connect(comp, "value-changed", G_CALLBACK(comp_cb), NULL);
-
   row++;
   col = 0;
   label = gtk_label_new("TX Filter High");
@@ -376,7 +373,6 @@ void tx_menu(GtkWidget *parent) {
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(tune_drive), (double)transmitter->tune_drive);
   gtk_grid_attach(GTK_GRID(grid), tune_drive, col, row, 1, 1);
   g_signal_connect(tune_drive, "value-changed", G_CALLBACK(tune_drive_cb), NULL);
-
   row++;
   col = 0;
   label = gtk_label_new("Panadapter High");
@@ -388,7 +384,6 @@ void tx_menu(GtkWidget *parent) {
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(panadapter_high_r), (double)transmitter->panadapter_high);
   gtk_grid_attach(GTK_GRID(grid), panadapter_high_r, col, row, 1, 1);
   g_signal_connect(panadapter_high_r, "value_changed", G_CALLBACK(panadapter_high_value_changed_cb), NULL);
-
   col++;
   GtkWidget *swr_protection_b = gtk_check_button_new_with_label("SWR Protection");
   gtk_widget_set_name(swr_protection_b, "boldlabel");
@@ -405,7 +400,6 @@ void tx_menu(GtkWidget *parent) {
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(swr_alarm), (double)transmitter->swr_alarm);
   gtk_grid_attach(GTK_GRID(grid), swr_alarm, col, row, 1, 1);
   g_signal_connect(swr_alarm, "value-changed", G_CALLBACK(swr_alarm_cb), NULL);
-
   row++;
   col = 0;
   label = gtk_label_new("Panadapter Low");
@@ -439,7 +433,6 @@ void tx_menu(GtkWidget *parent) {
   gtk_combo_box_set_active(GTK_COMBO_BOX(ctcss_frequency_b), transmitter->ctcss);
   my_combo_attach(GTK_GRID(grid), ctcss_frequency_b, col, row, 1, 1);
   g_signal_connect(ctcss_frequency_b, "changed", G_CALLBACK(ctcss_frequency_cb), NULL);
-
   row++;
   col = 0;
   label = gtk_label_new("Panadapter Step");
@@ -467,9 +460,8 @@ void tx_menu(GtkWidget *parent) {
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(am_carrier_level), (double)transmitter->am_carrier_level);
   gtk_grid_attach(GTK_GRID(grid), am_carrier_level, col, row, 1, 1);
   g_signal_connect(am_carrier_level, "value_changed", G_CALLBACK(am_carrier_level_value_changed_cb), NULL);
-
   row++;
-  col=0;
+  col = 0;
   label = gtk_label_new("Frames Per Second");
   gtk_widget_set_name(label, "boldlabel");
   gtk_widget_set_halign(label, GTK_ALIGN_END);
@@ -495,9 +487,7 @@ void tx_menu(GtkWidget *parent) {
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(digi_drive_b), drive_digi_max);
   gtk_grid_attach(GTK_GRID(grid), digi_drive_b, col, row, 1, 1);
   g_signal_connect(digi_drive_b, "value-changed", G_CALLBACK(digi_drive_cb), NULL);
-
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
-
 }
