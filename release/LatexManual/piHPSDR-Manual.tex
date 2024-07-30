@@ -2137,6 +2137,9 @@ and \rett{TX Filter High} check boxes will be inactive in this case.
 
 \rett{Compression} With this box the TX compressor can be enabled/disabled.
 The compression level (0-20 dB) can be chosen in the spin button to the right.
+Setting TX compression on/off automatically engages/disengages the CESSB overshoot
+correction. This we can do since we do not allow low-latency filters in the TX
+(see \bltt{DSP} menu).
 
 \textbf{Note:} The compressor on/off flag, as well as the compression level, is
 ,,stored with the mode''. So it is possible to have the compressor enabled for SSB
@@ -2673,7 +2676,7 @@ for doing real QSOs.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=8cm]{DSPMenu.png}
+\includegraphics[width=10cm]{DSPMenu.png}
 \caption{The DSP menu.}
 \label{fig:DSPMenu}
 \end{figure}
@@ -2687,7 +2690,7 @@ is done here.  Most users will
 very rarely need to invoke this menu, which is shown
 in Fig. \ref{fig:DSPMenu}.
 
-\rett{Filter Type}. Digital filters can be designed such that a signal within the
+\rett{Filter Type} (RX only). Digital filters can be designed such that a signal within the
 passband leaves the filter in a shape as similar as possible
 to what went into the filter. This requires that the phase
 difference between input and output signal is a linear
@@ -2702,7 +2705,9 @@ But note that there is a lot of latency in the HPSDR data
 processing which you cannot avoid, so ,,low'' latency
 is not really low. Therefore, the default option
 is \rett{Linear Phase}, and there should be little reason
-to change this.
+to change this. Note that piHPSDR does not allow low latency
+filters for TX, since in this case the TX compressor
+could not be used with the CESSB overshoot correction.
 
 \rett{Filter Size}. This is the number of ,,taps'' of the digital
 filter. Increasing this size will inevitably increase the latency,
