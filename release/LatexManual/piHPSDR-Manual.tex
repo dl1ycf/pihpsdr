@@ -188,7 +188,7 @@ by clicking that button. But let us first explain the
 purpose of the other buttons! Easiest to explain is the \rett{Exit} button, this will simply terminate
 the program. Most likely, you may want to go into the \rett{Protocols} menu sooner or later.
 By default, piHPSDR tries to discover the presence of a radio using all protocols known to piHPSDR. However,
-if you know that your radio, for example, uses P2 (Protocol 2), then trying to discover a P1 (Protocol 1)
+if you know that your radio, for example, uses Protocol-2, then trying to discover a Protocol-1
 radio is just a waste of time. So if you know which types of radio you want to connect to, you can enable
 (only) these in the \rett{Protocols} menu. The available protocols are
 
@@ -893,7 +893,7 @@ so these commands are found in the top and bottom line of the Main Menu. We firs
 mention the \rett{Restart} button in the middle of the top line. This restarts the
 radio protocol. While not needed under normal circumstances, it my happen (especially
 with beta releases of radio FPGA firmware) that the data exchange between piHPSDR and
-the radio gets out-of-sync. I observed such problems with early versions of the P2
+the radio gets out-of-sync. I observed such problems with early versions of the Protocol-2
 firmware for Orion2 boards and that is the reason the \rett{Restart} button is
 there, since this made a quick recovery possible without loosing the QSO.
 At the bottom right, there is the \rett{Iconify} button which ,,minimises'' the
@@ -1139,13 +1139,16 @@ which will we applied to all frequencies.
 
 \rett{RX Gain Calibration} Here you can calibrate your RF front end. To this end, you
 need a highly accurate signal source of, say, -73 dBm. Connect this source to your
-radio and tune on the signal. If the signal appears at, say, -70 dBm, decrease the
-calibration value. At -3 dBm, your S-meter should then state the correct signal
-strength. The value is the  amplification/attenuation of  a virtual device you
-would need in your RF front end. Therefore, you need a negative value (attenuation)
-if the signal shown is too strong. For normal HPSDR radios, the default value is
+radio and tune on the signal. If the signal reported by the meter
+appears too strong (say, at -65 dBm),
+ \textit{decrease} the
+calibration value with the spin button until the meter shows the correct level.
+ The RX gain calibration value can be viewed as the  amplification/attenuation of
+   a virtual device you
+would need in your RF front end. Therefore, you need a negative calibration value (attenuation)
+if the signal in the meter is too strong. For most HPSDR radios, the default value is
  zero. For the HermesLite-II and other radios using the AD9866 chip, the default
- value is 14.
+ value is 14, but this may depend on the RF front end.
 
  There are some further check boxes in the \bltt{Radio} menu that you cannot see
  in Fig. \ref{fig:RadioMenu}, since they only appear for specific radio hardware.
@@ -1180,15 +1183,15 @@ if the signal shown is too strong. For normal HPSDR radios, the default value is
 \begin{figure}[ht]
 \center
 \includegraphics[width=10cm]{RadioMenuMetis.png}
-\caption{The \bltt{Radio} menu for a legacy HPSDR board.}
+\caption{The \bltt{Radio} menu for a legacy METIS board.}
 \label{fig:RadioMenuMetis}
 \end{figure}
 
 The first difference you notice is that at the left edge of the menu, in the middle,
 there is a new \rett{Sample Rate:} pop-down menu. This has nothing to do with the
-ATLAS bus, this occurs if the radio is connected via P1, as it is often the case for
-legacy radios. In P1, all receivers share the sample rate, therefore it is set in the
-\bltt{Radio} menu. The same applies for SoapySDR radios. In P2 on the other hand, each
+ATLAS bus, this occurs if the radio is connected via Protocol-1, as it is often the case for
+legacy radios. In Protocol-1, all receivers share the sample rate, therefore it is set in the
+\bltt{Radio} menu. The same applies for SoapySDR radios. In Protocol-2 on the other hand, each
 of the two receivers can have its own sample rate, therefore the sample rate is specified
 in the \bltt{RX} menu. The ATLAS bus settings are at the right edge of the menu (see Fig.
 \ref{fig:RadioMenuMetis}. The ATLAS bus has separate receiver and transmitter plug-in boards.
@@ -1214,9 +1217,9 @@ The \texttt{Pennylane} is a later version of the Penelope transmitter board, the
 difference is that it can control the output signal level. In the Penelope case,
 piHPSDR will scale the IQ samples to provide TX drive control.
 
-\rett{Janus Only} This box is for ATLAS systems that only have an OZY and a Janus board,
+\rett{Janus Only} This box is for ATLAS systems that only have a Janus ADC/DAC card,
 and will only appear for OZY (USB-connected) boards. While this hardware is not a radio,
-external hardware such as the SDR-1000 can be connected to the Janus interface. If this
+external hardware such as the SDR-1000 can be connected to the Janus card. If this
 option is checked, piHPSDR assumes that the radio is controlled outside piHPSDR, and
 will thus only process the data stream but not try to send any commands to the radio.
 
@@ -1255,7 +1258,7 @@ you leave the full screen mode.
 \begin{figure}[ht!]
 \center
 \includegraphics[width=12cm]{VFObarChoice.png}
-\caption{Four choices for the VFO bar built into piHPSDR.}
+\caption{Five choices for the VFO bar built into piHPSDR.}
 \label{fig:VFObarChoice}
 \end{figure}
 
@@ -1268,8 +1271,10 @@ bar. In Fig. \ref{fig:VFObarChoice} the pre-defined layouts are shown.
 
 
 
-These layouts require a screen size of 1010, 895, 795, and 635 pixels (from top to
-bottom).
+These layouts require a screen size of 1152, 1024, 896, 800, and 640 pixels (from top to
+bottom). Screens slightly wider (about 50 pixel) than these minimal values then allow for a larger meter
+area with increased readability, this enlarged meter is automatically used if the display
+width permits.
 The VFO bar has been described in detail in chapter
 \ref{sec:VFObar}. If you choose a VFO bar layout that is wider than the current
 window width allows, the window width is automatically adjusted (increased). On the
@@ -1278,7 +1283,7 @@ the screen dimensions.
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=9cm]{640x400.png}
+\includegraphics[width=10cm]{640x400.png}
 \caption{piHPSDR running in a 640 x 400 window.}
 \label{fig:640x400}
 \end{figure}
@@ -1509,7 +1514,7 @@ meter and the pan-adapter, so
 entering a positive number here will \textit{reduce} the dBm reading in the meter area.
 This setting affects the meter reading, and the RX pan-adapter and waterfall.
 
-\rett{Disable PA} This checkbox is only present for HPSDR (P1 and P2) radios and
+\rett{Disable PA} This checkbox is only present for HPSDR (Protocol-1 and Protocol-2) radios and
 indicates that the PA of the radio should be disabled
 when using the transverter band. This implies that the radio has some sort of
 low-power output that is used to drive the transverter.
@@ -1807,8 +1812,8 @@ if piHPSDR is running two receivers, you can open the \bltt{RX} menu for both re
 right-clicked. Note secondary clicks are usually not possible with a touch screen.
 The menu is shown in Fig. \ref{fig:RXMenu}.
 
-\rett{Sample Rate} This box is only shown for radios running P2, since only there the
-receivers can have an individual sample rate. For radios running P1 or radios accessed
+\rett{Sample Rate} This box is only shown for radios running Protocol-2, since only there the
+receivers can have an individual sample rate. For radios running Protocol-1 or radios accessed
 through the SoapySDR library, the sample rate is a global quantity that is modified
 through the \bltt{Radio} menu (see above).
 
@@ -1842,7 +1847,7 @@ for some legacy HPSDR boards which had a switch-able RX preamp.
 it is not the active receiver.
 
 \rett{Mute Audio to Radio}. If checked, the audio in the HPSDR data stream from this receiver is muted.
-This has only an effect for P1 and P2 (not for SoapySDR), and only affects headphones/speakers
+This has only an effect for Protocol-1 and Protocol-2 (not for SoapySDR), and only affects headphones/speakers
 connected to the radio. Local audio is not affected. The main use of this checkbox is
 to mute a radio-connected headphone while doing digi mode via local RX output.
 
@@ -2503,8 +2508,8 @@ will automatically be set to maximum attenuation while transmitting with the PA 
 
 \rett{SetPk}. This field shows the currently assumed value of the peak value of the TX DAC
 feedback signal. piHPSDR chooses is automatically, depending on the radio hardware.
-The standard value for P1 and P2 radios are 0.407 and 0.290. Notable exceptions are
-the HermesLite-II running P1 (SetPK=0.240) and the ANAN-G2 running P2 (SetPK=0.612).
+The standard value for Protocol-1 and Protocol-2 radios are 0.407 and 0.290. Notable exceptions are
+the HermesLite-II running Protocol-1 (SetPK=0.240) and the ANAN-G2 running Protocol-2 (SetPK=0.612).
 The SetPK value is determined by the FPGA firmware of the radio can can experimentally
 be determined by comparing the outgoing TX and the incoming TX feedback signal.
  It should match the value reported
@@ -2534,7 +2539,7 @@ two peaks on the TX pan-adapter during the two-tone experiment.
 \end{figure}
 
 To demonstrate what happens, I show an example performed with a Hermes\-Lite-II
-radio running P1. Checking both \rett{Enable PS} and
+radio running Protocol-1. Checking both \rett{Enable PS} and
 \rett{Auto Attenuation}, and hitting the \rett{Two Tone} button, it needs only few
 seconds to stabilise and then Fig. \ref{fig:PSnomon} results, where the TX
 spectrum scope and the PS menu window have been arranged such that they do
@@ -2715,7 +2720,7 @@ could not be used with the CESSB overshoot correction.
 filter. Increasing this size will inevitably increase the latency,
 but makes the filter edges steeper. The allowed values are
 powers of 2, and the minimum value equals the buffer size, which
-is hard-coded in piHPSDR to be 1024 (except for the transmitter in P2,
+is hard-coded in piHPSDR to be 1024 (except for the transmitter in Protocol-2,
 where it is reduced to 512). The default value of 2048 should be
 fine in almost all cases, if you increase it, you can notice that
 the filter edges become little more ,,brick wall'' like.
