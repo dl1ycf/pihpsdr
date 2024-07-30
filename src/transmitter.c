@@ -135,8 +135,14 @@ void transmitter_set_compressor_level(TRANSMITTER *tx, double level) {
 }
 
 void transmitter_set_compressor(TRANSMITTER *tx, int state) {
+  //
+  // The CESSB overshoot filter (on/off) automatically follows
+  // the Compressor on/off setting. This we can do because we
+  // do not allow low-latency filters in the TX
+  //
   tx->compressor = state;
-  SetTXACompressorRun(tx->id, tx->compressor);
+  SetTXACompressorRun(tx->id, state);
+  SetTXAosctrlRun(tx->id, state);
 }
 
 static void init_audio_ramp(double *ramp, int width) {
@@ -246,7 +252,6 @@ void reconfigure_transmitter(TRANSMITTER *tx, int width, int height) {
 
 void transmitterSaveState(const TRANSMITTER *tx) {
   t_print("%s: TX=%d\n", __FUNCTION__, tx->id);
-  SetPropI1("transmitter.%d.low_latency",       tx->id,               tx->low_latency);
   SetPropI1("transmitter.%d.fft_size",          tx->id,               tx->fft_size);
   SetPropI1("transmitter.%d.fps",               tx->id,               tx->fps);
   SetPropI1("transmitter.%d.filter_low",        tx->id,               tx->filter_low);
@@ -300,7 +305,6 @@ void transmitterSaveState(const TRANSMITTER *tx) {
 
 static void transmitterRestoreState(TRANSMITTER *tx) {
   t_print("%s: id=%d\n", __FUNCTION__, tx->id);
-  GetPropI1("transmitter.%d.low_latency",       tx->id,               tx->low_latency);
   GetPropI1("transmitter.%d.fft_size",          tx->id,               tx->fft_size);
   GetPropI1("transmitter.%d.fps",               tx->id,               tx->fps);
   GetPropI1("transmitter.%d.filter_low",        tx->id,               tx->filter_low);
@@ -762,7 +766,6 @@ TRANSMITTER *create_transmitter(int id, int width, int height) {
   tx->fps = 10;
   tx->display_filled = 0;
   tx->dsp_size = 2048;
-  tx->low_latency = 0;
   tx->fft_size = 2048;
   g_mutex_init(&tx->display_mutex);
   tx->update_timer_id = 0;
@@ -926,7 +929,7 @@ TRANSMITTER *create_transmitter(int id, int width, int height) {
               0.010, 0.025, 0.0, 0.010,  // DelayUp, SlewUp, DelayDown, SlewDown
               1);                        // Wait for data in fexchange0
   TXASetNC(tx->id, tx->fft_size);
-  TXASetMP(tx->id, tx->low_latency);
+  TXASetMP(tx->id, 0);  // Use "linear phase" for TX *always*
   SetTXABandpassWindow(tx->id, 1);
   SetTXABandpassRun(tx->id, 1);
   SetTXAFMEmphPosition(tx->id, pre_emphasize);

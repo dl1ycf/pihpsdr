@@ -35,7 +35,6 @@ typedef struct _transmitter {
   int buffer_size;
   int dsp_size;
   int fft_size;
-  int low_latency;
   int pixels;
   int samples;
   int output_samples;
