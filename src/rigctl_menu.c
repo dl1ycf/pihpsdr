@@ -90,12 +90,6 @@ static void serial_port_cb(GtkWidget *widget, gpointer data) {
 
 static void tcp_andromeda_cb(GtkWidget *widget, gpointer data) {
   rigctl_tcp_andromeda = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-
-  if (rigctl_tcp_andromeda) {
-    launch_tcp_andromeda();
-  } else {
-    disable_tcp_andromeda();
-  }
 }
 
 static void andromeda_cb(GtkWidget *widget, gpointer data) {
@@ -103,14 +97,8 @@ static void andromeda_cb(GtkWidget *widget, gpointer data) {
   SerialPorts[id].andromeda = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
 
   if (SerialPorts[id].andromeda) {
-    if (SerialPorts[id].enable) {
-      launch_serial_andromeda(id);
-    }
-
     gtk_combo_box_set_active(GTK_COMBO_BOX(serial_baud[id]), 1);
     SerialPorts[id].baud = B9600;
-  } else {
-    disable_serial_andromeda(id);
   }
 }
 

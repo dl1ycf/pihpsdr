@@ -96,6 +96,7 @@ ACTION_TABLE ActionTable[] = {
   {BAND_902,            "Band 902",             "902",          MIDI_KEY   | CONTROLLER_SWITCH},
   {BAND_AIR,            "Band AIR",             "AIR",          MIDI_KEY   | CONTROLLER_SWITCH},
   {BAND_GEN,            "Band GEN",             "GEN",          MIDI_KEY   | CONTROLLER_SWITCH},
+  {BAND_LF,             "Band LF",              "LF",           MIDI_KEY   | CONTROLLER_SWITCH},
   {BAND_MINUS,          "Band -",               "BND-",         MIDI_KEY   | CONTROLLER_SWITCH},
   {BAND_PLUS,           "Band +",               "BND+",         MIDI_KEY   | CONTROLLER_SWITCH},
   {BAND_WWV,            "Band WWV",             "WWV",          MIDI_KEY   | CONTROLLER_SWITCH},
@@ -151,6 +152,8 @@ ACTION_TABLE ActionTable[] = {
   {MULTI_SELECT,        "Multi Action\nSelect", "MULTISEL",     MIDI_WHEEL | CONTROLLER_ENCODER},
   {MULTI_BUTTON,        "Multi Toggle",         "MULTIBTN",     MIDI_KEY   | CONTROLLER_SWITCH},
   {MUTE,                "Mute",                 "MUTE",         MIDI_KEY   | CONTROLLER_SWITCH},
+  {MUTE_RX1,            "Mute RX1",             "MUTE1",        MIDI_KEY   | CONTROLLER_SWITCH},
+  {MUTE_RX2,            "Mute RX2",             "MUTE2",        MIDI_KEY   | CONTROLLER_SWITCH},
   {NB,                  "NB",                   "NB",           MIDI_KEY   | CONTROLLER_SWITCH},
   {NR,                  "NR",                   "NR",           MIDI_KEY   | CONTROLLER_SWITCH},
   {MENU_NOISE,          "Noise\nMenu",          "NOISE",        MIDI_KEY   | CONTROLLER_SWITCH},
@@ -634,6 +637,13 @@ int process_action(void *data) {
 
     break;
 
+  case BAND_LF:
+    if (a->mode == PRESSED) {
+      vfo_band_changed(active_receiver->id, band136);
+    }
+
+    break;
+
   case BAND_MINUS:
     if (a->mode == PRESSED) {
       band_minus(active_receiver->id);
@@ -801,7 +811,7 @@ int process_action(void *data) {
     break;
 
   case DIV:
-    if (a->mode == PRESSED) {
+    if (a->mode == PRESSED && n_adc > 1) {
       TOGGLE(diversity_enabled);
       schedule_high_priority();
       schedule_receive_specific();
@@ -1128,6 +1138,20 @@ int process_action(void *data) {
   case MUTE:
     if (a->mode == PRESSED) {
       active_receiver->mute_radio = !active_receiver->mute_radio;
+    }
+
+    break;
+
+  case MUTE_RX1:
+    if (a->mode == PRESSED) {
+      receiver[0]->mute_radio = !receiver[0]->mute_radio;
+    }
+
+    break;
+
+  case MUTE_RX2:
+    if (a->mode == PRESSED && receivers > 1) {
+      receiver[1]->mute_radio = !receiver[1]->mute_radio;
     }
 
     break;

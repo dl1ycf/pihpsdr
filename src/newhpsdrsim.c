@@ -122,6 +122,7 @@ static int dash = -1;
 static long rxfreq[NUMRECEIVERS];
 static long txfreq = -1;
 static int txdrive = -1;
+static int cat_tcp_port = -1;
 static int w1400 = -1; // Xvtr and Audio enable
 static int ocout = -1;
 static int db9 = -1;
@@ -935,6 +936,14 @@ void *highprio_thread(void *data) {
       hp_mod = 1;
       txdrv_dbl = (double) txdrive * 0.003921568627;
       t_print("HP: TX drive= %d (%f)\n", txdrive, txdrv_dbl);
+    }
+
+    rc = buffer[1398] * 256 + buffer[1399];
+
+    if (rc != cat_tcp_port) {
+      cat_tcp_port = rc;
+      hp_mod = 1;
+      t_print("HP: CAT TCP port=%d\n", rc);
     }
 
     rc = buffer[1400];

@@ -3076,7 +3076,9 @@ connections.
 forced to 9600 baud if enabled for ANDROMEDA. Furthermore, status changes of piHPSDR (e.g. RIT on/off) are
 automatically reported via ZZZI CAT commands (see Appendix \ref{sec:catcommands}). These messages are
 used by the ANDROMEDA console to switch LED indicators such that they reflect the current state 
-of piHPSDR.
+of piHPSDR. Note that this flag is only inspected when the connection is opened. Serial CAT connections
+are established when successfully opened upon program start or via this menu.
+TCP CAT connections are established when the \textit{client} successfully connects.
 
 \rett{AutoRprt}. If a CAT connection (either via TCP or via a serial line) is opened and this box is checked,
 the connection is put in ,,auto reporting'' mode. This mode can generally be enabled and disabled with the
