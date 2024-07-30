@@ -3173,22 +3173,16 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //CATDEF    ZZZD
       //DESCR     Move down frequency of active receiver
       //SET       ZZZDxx;
-      //NOTE      ANDROMEDA extension. x = number of steps.
-      //NOTE      The "VFO encoder divisor" is applied to the steps
+      //NOTE      ANDROMEDA extension. xx = number of VFO steps.
       //ENDDEF
       if (command[6] == ';') {
-        static int steps = 0;
-        steps += atoi(&command[4]);
-
-        if (steps >= vfo_encoder_divisor) {
-          vfo_id_step((active_receiver->id == 0) ? VFO_A : VFO_B, -steps / vfo_encoder_divisor);
-          steps = 0;
-        }
+        int steps = 10*(command[4]-'0') + (command[5]-'0');
+        vfo_id_step(active_receiver->id, steps);
       }
 
       break;
 
-    case 'E': //ZZZE ANDROMEDA commmand
+    case 'E': //ZZZE ANDROMEDA command
 
       //CATDEF    ZZZE
       //DESCR     Handle ANDROMEDA encoders
@@ -3942,7 +3936,10 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //SET       ZZZSxxyzabc;
       //NOTE      ANDROMEDA extension.
       //NOTE      The ANDROMEDA type (xx), hardware (yz) and software (abc) version
-      //NOTE      is logged in piHPSDR's log file.
+      //NOTE      is logged in piHPSDR's log file. Furthermore, the type sent by
+      //NOTE      a client (currently, 1 or 5) does affect the processing of ZZZE and ZZZP
+      //NOTE      commands from that client.
+      //NOTE
       //ENDDEF
       if (command[11] == ';') {
         //
@@ -3961,17 +3958,11 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //CATDEF    ZZZU
       //DESCR     Move up frequency of active receiver
       //SET       ZZZUxx;
-      //NOTE      ANDROMEDA extension. x = number of steps.
-      //NOTE      The "VFO encoder divisor" is applied to the steps
+      //NOTE      ANDROMEDA extension. xx = number of steps.
       //ENDDEF
       if (command[6] == ';') {
-        static int steps = 0;
-        steps += atoi(&command[4]);
-
-        if (steps >= vfo_encoder_divisor) {
-          vfo_id_step((active_receiver->id == 0) ? VFO_A : VFO_B, steps / vfo_encoder_divisor);
-          steps = 0;
-        }
+        int steps = 10*(command[4]-'0') + (command[5]-'0');
+        vfo_id_step(active_receiver->id, steps);
       }
 
       break;

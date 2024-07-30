@@ -101,9 +101,11 @@ static void rx_gain_calibration_value_changed_cb(GtkWidget *widget, gpointer dat
   rx_gain_calibration = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
 }
 
+#ifdef GPIO
 static void vfo_divisor_value_changed_cb(GtkWidget *widget, gpointer data) {
   vfo_encoder_divisor = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
 }
+#endif
 
 static void ptt_ring_cb(GtkWidget *widget, gpointer data) {
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
@@ -587,6 +589,8 @@ void radio_menu(GtkWidget *parent) {
   if (row > max_row) { max_row = row; }
 
   row = max_row;
+
+#ifdef GPIO
   label = gtk_label_new("VFO Encoder Divisor:");
   gtk_widget_set_name(label, "boldlabel");
   gtk_widget_set_halign(label, GTK_ALIGN_END);
@@ -596,6 +600,7 @@ void radio_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), vfo_divisor, 2, row, 1, 1);
   g_signal_connect(vfo_divisor, "value_changed", G_CALLBACK(vfo_divisor_value_changed_cb), NULL);
   row++;
+#endif
 
   // cppcheck-suppress knownConditionTrueFalse
   if (row > max_row) { max_row = row; }

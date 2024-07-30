@@ -1019,7 +1019,8 @@ enable the PTT function of the jack, and select whether a bias (DC offset) is ap
 (this is necessary for condenser (electret) microphones and detrimental if a dynamic microphone is connected without
 a blocking capacitor).
 
-\rett{Mic Input:} This is only shown for Saturn boards. These radios have two jacks for connecting a
+\rett{Mic Input:} This is only shown for Anan G2 radios (Saturn boards).
+ These radios have two jacks for connecting a
 microphone, either a 3.5mm TRS jack in the front panel, or an XLR connection in the back panel. The pop-down
 menu lets you choose between these two options.
 
@@ -1050,12 +1051,13 @@ It is possible to change the OC settings in the \bltt{OC} menu, and these settin
 preferences. Upon next program start, however, these preferences will again be overwritten as long
 as the \texttt{N2ADR} filter board is chosen.
 
-\rett{VFO Encoder Divisor:} This option is normally only used for GPIO controllers. Often, the
+\rett{VFO Encoder Divisor:} This option is visible only if using a GPIO controller.
+It may happen that the
 encoders of the main VFO dial generate too many ticks per revolution, such that it is difficult
 to fine tune on a signal. If the VFO Encoder Divisor, as shown in the example, has a value of
-15, only every 15$^\textrm{th}$ tick will we processed. The Divisor is also effective if you
-control piHPSDR with an ANDROMEDA console. So, if the frequency moves too fast if you turn
-the VFO knob, you have to increase the Divisor, and if it moves too slowly, decrease it.
+15, only every 15$^\textrm{th}$ tick will we processed. In my view, one should rather decrease
+the VFO step size than using a divisor value larger than one, but the option is left
+for backwards compatibility.
 
 \rett{Split} Use this checkbox to enable/disable Split mode. In Split mode, the frequency of
 the non-active receiver (when using two receivers) or the frequency of VFO-B (when using one
