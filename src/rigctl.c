@@ -6200,8 +6200,6 @@ void disable_serial_rigctl (int id) {
     serial_client[id].thread_id = NULL;
   }
 
-  serial_client[id].running = 0;
-
   if (serial_client[id].fd >= 0) {
     close(serial_client[id].fd);
     serial_client[id].fd = -1;

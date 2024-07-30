@@ -103,16 +103,7 @@ static void andromeda_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void serial_enable_cb(GtkWidget *widget, gpointer data) {
-  //
-  // If rigctl is not running, serial cannot be enabled
-  //
   int id = GPOINTER_TO_INT(data);
-
-  if (!rigctl_tcp_enable) {
-    SerialPorts[id].enable = 0;
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), 0);
-    return;
-  }
 
   if ((SerialPorts[id].enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)))) {
     if (launch_serial_rigctl(id) == 0) {
