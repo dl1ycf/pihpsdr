@@ -326,7 +326,7 @@ void tx_menu(GtkWidget *parent) {
   GtkWidget *use_rx_filter_b = gtk_check_button_new_with_label("TX uses RX Filter");
   gtk_widget_set_name(use_rx_filter_b, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (use_rx_filter_b), transmitter->use_rx_filter);
-  gtk_grid_attach(GTK_GRID(grid), use_rx_filter_b, col, row, 2, 1);
+  gtk_grid_attach(GTK_GRID(grid), use_rx_filter_b, col, row, 1, 1);
   g_signal_connect(use_rx_filter_b, "toggled", G_CALLBACK(use_rx_filter_cb), NULL);
   col++;
   GtkWidget *comp_enable = gtk_check_button_new_with_label("Compression");
