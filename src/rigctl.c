@@ -3210,7 +3210,7 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //ENDDEF
       if (command[6] == ';') {
         int steps = 10*(command[4]-'0') + (command[5]-'0');
-        vfo_id_step(active_receiver->id, steps);
+        vfo_id_step(active_receiver->id, -steps);
       }
 
       break;
