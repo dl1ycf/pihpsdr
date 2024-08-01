@@ -369,7 +369,7 @@ void set_agc_gain(int rx, double value) {
   receiver[rx]->agc_gain = value;
   set_agc(receiver[rx], receiver[rx]->agc);
 
-  if (display_sliders) {
+  if (display_sliders && active_receiver->id == rx) {
     gtk_range_set_value (GTK_RANGE(agc_scale), receiver[rx]->agc_gain);
   } else {
     char title[64];
@@ -469,7 +469,7 @@ void set_rf_gain(int rx, double value) {
 
 #endif
 
-  if (display_sliders) {
+  if (display_sliders && active_receiver->id == rx) {
     gtk_range_set_value (GTK_RANGE(rf_gain_scale), adc[rxadc].gain);
   } else {
     char title[64];
