@@ -4470,9 +4470,9 @@ $\phantom{\Big|}${\large Response} & {IFp$_1$p$_1$p$_1$p$_1$p$_1$p$_1$p$_1$p$_1$
 p$_7$p$_7$p$_8$p$_9$p$_{10}$p$_{11}$p$_{12}$p$_{13}$p$_{14}$p$_{14}$p$_{15}$;} \\\hline
 $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{p$_1$ : VFO-A Frequency (11 digit)} \\
  & \multicolumn{1}{|p{11cm}|}{p$_2$ : VFO-A step size} \\
- & \multicolumn{1}{|p{11cm}|}{p$_3$ : VFO-A RIT step size} \\
- & \multicolumn{1}{|p{11cm}|}{p$_4$ : VFO-A RIT enabled (0/1)} \\
- & \multicolumn{1}{|p{11cm}|}{p$_5$ : VFO-A XIT enabled (0/1)} \\
+ & \multicolumn{1}{|p{11cm}|}{p$_3$ : VFO-A rit step size} \\
+ & \multicolumn{1}{|p{11cm}|}{p$_4$ : VFO-A rit enabled (0/1)} \\
+ & \multicolumn{1}{|p{11cm}|}{p$_5$ : VFO-A xit enabled (0/1)} \\
  & \multicolumn{1}{|p{11cm}|}{p$_6$ : always 0} \\
  & \multicolumn{1}{|p{11cm}|}{p$_7$ : always 0} \\
  & \multicolumn{1}{|p{11cm}|}{p$_8$ : RX (p$_8$=0) or TX (p$_8$=1)} \\
@@ -4506,7 +4506,7 @@ $\phantom{\Big|}$\textbf{\large KY} & Send Morse/query Morse buffer \\\cline{1-2
 $\phantom{\Big|}${\large Set} & {KYp$_1$p$_2$p$_2$p$_2$...p$_2$p$_2$p$_2$;} \\\hline
 $\phantom{\Big|}${\large Read} & {KY;} \\\hline
 $\phantom{\Big|}${\large Response} & {KYp$_1$;} \\\hline
-$\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{When setting (sending), p$_1$ must be p$_4$ space.} \\
+$\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{When setting (sending), p$_1$ must be a space.} \\
  & \multicolumn{1}{|p{11cm}|}{When reading, p$_1$=1 indicates buffer space is available, p$_1$=0  buffer full} \\
  & \multicolumn{1}{|p{11cm}|}{p$_2$: string of up to 24 characters NOT containing ';'} \\
  & \multicolumn{1}{|p{11cm}|}{trailing blanks are ignored in p$_2$, but if it is completely blank it causes an inter-word space.} \\
@@ -4521,7 +4521,7 @@ $\phantom{\Big|}$\textbf{\large LK} & Set/Read Lock status \\\cline{1-2}
 $\phantom{\Big|}${\large Set} & {LKp$_1$p$_1$;} \\\hline
 $\phantom{\Big|}${\large Read} & {LK;} \\\hline
 $\phantom{\Big|}${\large Response} & {LKp$_1$p$_1$;} \\\hline
-$\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{When setting, any nonzero xx sets lock status} \\
+$\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{When setting, any nonzero p$_1$ sets lock status} \\
  & \multicolumn{1}{|p{11cm}|}{When reading, p$_1$ = 00 (not locked) or p$_1$ = 11 (locked)} \\
 \bottomrule
 \end{tabular}
@@ -4598,7 +4598,7 @@ $\phantom{\Big|}${\large Read} & {PA;} \\\hline
 $\phantom{\Big|}${\large Response} & {PAp$_1$;} \\\hline
 $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{Applies to RX1} \\
  & \multicolumn{1}{|p{11cm}|}{p$_1$=0: RX1 preamp off, p$_1$=1: on} \\
- & \multicolumn{1}{|p{11cm}|}{newer HPSDR radios do not have p$_4$ switchable preamp} \\
+ & \multicolumn{1}{|p{11cm}|}{newer HPSDR radios do not have a switchable preamp} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -4649,7 +4649,7 @@ $\phantom{\Big|}$\textbf{\large RA} & Set/Read RX1 attenuator or RX1 gain \\\cli
 $\phantom{\Big|}${\large Set} & {RAp$_1$p$_1$;} \\\hline
 $\phantom{\Big|}${\large Read} & {RA;} \\\hline
 $\phantom{\Big|}${\large Response} & {RAp$_1$p$_1$p$_2$p$_2$;} \\\hline
-$\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{p$_1$ = 0 ... 99 is mapped to the radio's range} \\
+$\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{p$_1$ = 0 ... 99 is mapped to the range available} \\
  & \multicolumn{1}{|p{11cm}|}{HPSDR radios: attenuator range 0...31 dB} \\
  & \multicolumn{1}{|p{11cm}|}{HermesLite-II etc.: gain range -12...48 dB} \\
  & \multicolumn{1}{|p{11cm}|}{p$_2$ is always zero.} \\
@@ -4713,16 +4713,16 @@ $\phantom{\Big|}${\large Set} & {RX;} \\\hline
 \begin{tabular}{|p{2cm}|p{11cm}|}
 \toprule
 $\phantom{\Big|}$\textbf{\large SA} & Set/Read SAT mode \\\cline{1-2}
-$\phantom{\Big|}${\large Set} & {SAp$_1$p$_2$p$_3$p$_4$p$_5$p$_6$p$_7$ssssssss;} \\\hline
+$\phantom{\Big|}${\large Set} & {SAp$_1$p$_2$p$_3$p$_4$p$_5$p$_6$p$_7$p$_8$p$_8$p$_8$p$_8$p$_8$p$_8$p$_8$p$_8$;} \\\hline
 $\phantom{\Big|}${\large Read} & {SA;} \\\hline
-$\phantom{\Big|}${\large Response} & {SAp$_1$p$_2$p$_3$sp$_5$p$_6$p$_7$p$_8$p$_8$p$_8$p$_8$p$_8$p$_8$p$_8$p$_8$;} \\\hline
+$\phantom{\Big|}${\large Response} & {SAp$_1$p$_2$p$_3$p$_4$p$_5$p$_6$p$_7$p$_8$p$_8$p$_8$p$_8$p$_8$p$_8$p$_8$p$_8$;} \\\hline
 $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{p$_1$=0: neither SAT nor RSAT, p$_1$=1: SAT or RSAT} \\
- & \multicolumn{1}{|p{11cm}|}{p$_2$,p$_3$,s always zero} \\
+ & \multicolumn{1}{|p{11cm}|}{p$_2$,p$_3$,p$_4$ always zero} \\
  & \multicolumn{1}{|p{11cm}|}{p$_6$ = 1 indicates SAT mode (TRACE)} \\
  & \multicolumn{1}{|p{11cm}|}{p$_7$ = 1 indicates RSAT mode (TRACE REV)} \\
  & \multicolumn{1}{|p{11cm}|}{p$_8$ = eight-character label, here "SAT     "} \\
  & \multicolumn{1}{|p{11cm}|}{when setting, p$_6$ == p$_7$ == 1 is illegal} \\
- & \multicolumn{1}{|p{11cm}|}{when setting, s is ignored} \\
+ & \multicolumn{1}{|p{11cm}|}{when setting, p$_4$ is ignored} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -4864,6 +4864,9 @@ $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{p$_1$=0: XIT disabl
 \end{tabular}
 \end{center}
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section[Extended CAT commands]{Extended CAT commands supported by piHPSDR}
 
 \begin{center}
@@ -4874,7 +4877,6 @@ $\phantom{\Big|}${\large Set} & {\#S;} \\\hline
 \bottomrule
 \end{tabular}
 \end{center}
-
 
 \begin{center}
 \begin{tabular}{|p{2cm}|p{11cm}|}
@@ -5279,7 +5281,7 @@ $\phantom{\Big|}$\textbf{\large ZZMG} & Set/Read Mic gain (Mic gain slider) \\\c
 $\phantom{\Big|}${\large Set} & {ZZMGp$_1$p$_1$p$_1$;} \\\hline
 $\phantom{\Big|}${\large Read} & {ZZMG;} \\\hline
 $\phantom{\Big|}${\large Response} & {ZZMGp$_1$p$_1$p$_1$;} \\\hline
-$\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{xxx 0-70 mapped to -12 ... +50 dB} \\
+$\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{p$_1$ 0-70 mapped to -12 ... +50 dB} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -5339,6 +5341,18 @@ $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{p$_1$=1: MOX on, p$
 \begin{center}
 \begin{tabular}{|p{2cm}|p{11cm}|}
 \toprule
+$\phantom{\Big|}$\textbf{\large ZZUT} & Get/Set TwoTone status \\\cline{1-2}
+$\phantom{\Big|}${\large Set} & {ZZUTp$_1$;} \\\hline
+$\phantom{\Big|}${\large Read} & {ZZUT;} \\\hline
+$\phantom{\Big|}${\large Response} & {ZZTXp$_1$;} \\\hline
+$\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{p$_1$=1: TwoTone on, p$_1$=0: TwoTone off.} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tabular}{|p{2cm}|p{11cm}|}
+\toprule
 $\phantom{\Big|}$\textbf{\large ZZVS} & Swap VFO A and B \\\cline{1-2}
 $\phantom{\Big|}${\large Set} & {ZZVS;} \\\hline
 $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{The contents (frequencies, CTUN mode, filters, etc.) of VFO A and B are exchanged.} \\
@@ -5349,10 +5363,34 @@ $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{The contents (frequ
 \begin{center}
 \begin{tabular}{|p{2cm}|p{11cm}|}
 \toprule
+$\phantom{\Big|}$\textbf{\large ZZXV} & Get extended status information \\\cline{1-2}
+$\phantom{\Big|}${\large Set} & {ZZVS;} \\\hline
+$\phantom{\Big|}${\large Response} & {ZZVSp$_1$p$_1$p$_1$p$_1$;} \\\hline
+$\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{Status is reported bit-wise in the status word p$_1$=0-1023.} \\
+ & \multicolumn{1}{|p{11cm}|}{Bit 0: RIT; Bit 1: Lock, Bit2: Lock, Bit3: Split,} \\
+ & \multicolumn{1}{|p{11cm}|}{Bit 4: VFO-A CTUN, Bit 5: VFO-B CTUN, Bit 6: MOX,} \\
+ & \multicolumn{1}{|p{11cm}|}{Bit 7: TUNE, Bit 8: XIT, Bit 9: always cleared.} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tabular}{|p{2cm}|p{11cm}|}
+\toprule
+$\phantom{\Big|}$\textbf{\large ZZYR} & Get/Set active receiver \\\cline{1-2}
+$\phantom{\Big|}${\large Set} & {ZZYRp$_1$;} \\\hline
+$\phantom{\Big|}${\large Response} & {ZZYRp$_1$;} \\\hline
+$\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{The active receiver is either RX1 (p$_1$=0) or RX2 (p$_1$=1).} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tabular}{|p{2cm}|p{11cm}|}
+\toprule
 $\phantom{\Big|}$\textbf{\large ZZZD} & Move down frequency of active receiver \\\cline{1-2}
 $\phantom{\Big|}${\large Set} & {ZZZDp$_1$p$_1$;} \\\hline
-$\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{ANDROMEDA extension. p$_1$ = number of steps.} \\
- & \multicolumn{1}{|p{11cm}|}{The "VFO encoder divisor" is applied to the steps} \\
+$\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{ANDROMEDA extension. p$_1$ = number of VFO steps.} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -5361,9 +5399,13 @@ $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{ANDROMEDA extension
 \begin{tabular}{|p{2cm}|p{11cm}|}
 \toprule
 $\phantom{\Big|}$\textbf{\large ZZZE} & Handle ANDROMEDA encoders \\\cline{1-2}
-$\phantom{\Big|}${\large Set} & {ZZZEp$_1$p$_1$p$_1$;} \\\hline
+$\phantom{\Big|}${\large Set} & {ZZZEp$_1$p$_1$p$_2$;} \\\hline
 $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{ANDROMEDA extension.} \\
  & \multicolumn{1}{|p{11cm}|}{p$_1$ encodes the encoder and the direction.} \\
+ & \multicolumn{1}{|p{11cm}|}{p$_1$= 1-20 maps to encoder 1-20, clockwise} \\
+ & \multicolumn{1}{|p{11cm}|}{p$_1$=51-70 maps to encoder 1-20, counter clockwise} \\
+ & \multicolumn{1}{|p{11cm}|}{p$_2$=0-9 is the number of ticks} \\
+ & \multicolumn{1}{|p{11cm}|}{} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -5374,8 +5416,7 @@ $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{ANDROMEDA extension
 $\phantom{\Big|}$\textbf{\large ZZZI} & ANDROMEDA reports \\\cline{1-2}
 $\phantom{\Big|}${\large Response} & {ZZZIp$_1$p$_1$p$_2$;} \\\hline
 $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{Automatic generated response for ANDROMEDA controller.} \\
- & \multicolumn{1}{|p{11cm}|}{xx encodes the type of information and p$_2$ the value.} \\
- & \multicolumn{1}{|p{11cm}|}{For example ZZZI081; means "RIT is enabled".} \\
+ & \multicolumn{1}{|p{11cm}|}{The LED with number p$_1$ shall be switched on (p$_2$=1) or off (p$_2$=0).} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -5384,9 +5425,10 @@ $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{Automatic generated
 \begin{tabular}{|p{2cm}|p{11cm}|}
 \toprule
 $\phantom{\Big|}$\textbf{\large ZZZP} & Handle ANDROMEDA push-buttons \\\cline{1-2}
-$\phantom{\Big|}${\large Set} & {ZZZPp$_1$p$_1$p$_1$;} \\\hline
-$\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{ANDROMEDA extension. p$_1$ = number of steps.} \\
- & \multicolumn{1}{|p{11cm}|}{p$_1$ encodes the button and the press/release status} \\
+$\phantom{\Big|}${\large Set} & {ZZZPp$_1$p$_1$p$_2$;} \\\hline
+$\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{ANDROMEDA extension.} \\
+ & \multicolumn{1}{|p{11cm}|}{p$_1$ encodes the button and p$_2$ means released (p$_2$=0),} \\
+ & \multicolumn{1}{|p{11cm}|}{pressed(p$_2$=1) or pressed for a longer time (p$_2$=2).} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -5395,13 +5437,18 @@ $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{ANDROMEDA extension
 \begin{tabular}{|p{2cm}|p{11cm}|}
 \toprule
 $\phantom{\Big|}$\textbf{\large ZZZS} & Log ANDROMEDA version \\\cline{1-2}
-$\phantom{\Big|}${\large Set} & {ZZZSp$_1$p$_1$p$_2$p$_3$p$_4$p$_5$p$_6$;} \\\hline
+$\phantom{\Big|}${\large Set} & {ZZZSp$_1$p$_1$p$_2$p$_2$p$_3$p$_3$p$_3$;} \\\hline
 $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{ANDROMEDA extension.} \\
- & \multicolumn{1}{|p{11cm}|}{The ANDROMEDA hardware (yz) and software (abc) version} \\
- & \multicolumn{1}{|p{11cm}|}{is logged in piHPSDR's log file.} \\
+ & \multicolumn{1}{|p{11cm}|}{The ANDROMEDA type (p$_1$), hardware (p$_2$) and} \\
+ & \multicolumn{1}{|p{11cm}|}{software (p$_3$) version is printed in the log file.} \\
+ & \multicolumn{1}{|p{11cm}|}{The type (p$_1$) sent by a client (currently, 1 or 5)} \\
+ & \multicolumn{1}{|p{11cm}|}{does affect the processing of ZZZE and ZZZP} \\
+ & \multicolumn{1}{|p{11cm}|}{commands from that client.} \\
+ & \multicolumn{1}{|p{11cm}|}{} \\
 \bottomrule
 \end{tabular}
 \end{center}
+
 
 \begin{center}
 \begin{tabular}{|p{2cm}|p{11cm}|}
@@ -5409,12 +5456,9 @@ $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{ANDROMEDA extension
 $\phantom{\Big|}$\textbf{\large ZZZU} & Move up frequency of active receiver \\\cline{1-2}
 $\phantom{\Big|}${\large Set} & {ZZZUp$_1$p$_1$;} \\\hline
 $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{ANDROMEDA extension. p$_1$ = number of steps.} \\
- & \multicolumn{1}{|p{11cm}|}{The "VFO encoder divisor" is applied to the steps} \\
 \bottomrule
 \end{tabular}
 \end{center}
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter[Connect a Morse Key]{Attaching Morse Keys or Paddles}

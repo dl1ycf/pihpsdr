@@ -86,9 +86,10 @@ int cat_control = 0;
 static GMutex mutex_numcat;   // only needed to make in/de-crements of "cat_control"  atomic
 
 #define MAX_TCP_CLIENTS 3
+#define MAX_ANDROMEDA_LEDS 16
+
 static GThread *rigctl_server_thread_id = NULL;
 static GThread *rigctl_cw_thread_id = NULL;
-static guint    auto_reporter_id = 0;
 static int tcp_running = 0;
 
 static int server_socket = -1;
@@ -96,16 +97,19 @@ static struct sockaddr_in server_address;
 
 typedef struct _client {
   int fd;
-  int fifo;                    // only needed for serial clients to indicate this is a FIFO and not a true serial line
-  int busy;                    // only needed for serial clients over FIFOs
-  int done;                    // only needed for serial clients over FIFOs
-  int running;                 // set this to zero to terminate client
-  socklen_t address_length;
-  struct sockaddr_in address;
-  GThread *thread_id;
-  guint andromeda_timer;       // for periodic andromeda_tasks (serial only)
-  int auto_reporting;          // auto-reporting (AI, ZZAI) on/off
-  int andromeda_type;          // 1: Andromeda, 5: G2Mk2
+  int fifo;                         // serial only: this is a FIFO and not a true serial line
+  int busy;                         // serial only (for FIFO handling)
+  int done;                         // serial only (for FIFO handling)
+  int running;                      // set this to zero to terminate client
+  socklen_t address_length;         // TCP only: initialized by accept(), never used
+  struct sockaddr_in address;       // TCP only: initialized by accept(), never used
+  GThread *thread_id;               // ID of thread that serves the client
+  guint andromeda_timer;            // for reporting ANDROMEDA LED states
+  guint auto_timer;                 // for auto-reporting FA/FB
+  int auto_reporting;               // auto-reporting (AI, ZZAI) on/off
+  int andromeda_type;               // 1: Andromeda, 5: G2Mk2
+  int last_fa, last_fb;             // last VFO-A/B frequency reported
+  int last_led[MAX_ANDROMEDA_LEDS]; // last status of ANDROMEDA LEDs
 } CLIENT;
 
 typedef struct _command {
@@ -128,8 +132,6 @@ static gpointer rigctl_client (gpointer data);
 #define RXCHECK_ERR(id, what) if (id >= 0 && id < receivers) { what; } else { implemented = FALSE; }
 #define RXCHECK(id, what)     if (id >= 0 && id < receivers) { what; }
 
-static void disable_andromeda (CLIENT *client);  // forward needed in shutdown_tcp_rigctl;
-
 void shutdown_tcp_rigctl() {
   struct linger linger = { 0 };
   linger.l_onoff = 1;
@@ -137,8 +139,18 @@ void shutdown_tcp_rigctl() {
   t_print("%s: server_socket=%d\n", __FUNCTION__, server_socket);
   tcp_running = 0;
 
+  //
+  // Gracefully terminate all active TCP connections
+  //
   for (int id = 0; id < MAX_TCP_CLIENTS; id++) {
-    disable_andromeda(&tcp_client[id]);
+    if (tcp_client[id].andromeda_timer != 0) {
+      g_source_remove(tcp_client[id].andromeda_timer);
+      tcp_client[id].andromeda_timer = 0;
+    }
+    if (tcp_client[id].auto_timer != 0) {
+      g_source_remove(tcp_client[id].auto_timer);
+      tcp_client[id].auto_timer = 0;
+    }
     tcp_client[id].running = 0;
 
     if (tcp_client[id].fd != -1) {
@@ -159,6 +171,9 @@ void shutdown_tcp_rigctl() {
     }
   }
 
+  //
+  // Close server socket. Possibly join with rigctl_server_thread_id
+  //
   if (server_socket >= 0) {
     t_print("%s: setting SO_LINGER to 0 for server_socket: %d\n", __FUNCTION__, server_socket);
 
@@ -443,9 +458,7 @@ static void rigctl_send_cw_char(char cw_char) {
 
   //
   //     DL1YCF:
-  //     There were some signs I considered wrong, other
-  //     signs missing. Therefore I put the signs here
-  //     from ITU Recommendation M.1677-1 (2009)
+  //     added some signs from ITU Recommendation M.1677-1 (2009)
   //     in the order given there.
   //
   case '.':
@@ -538,8 +551,8 @@ static void rigctl_send_cw_char(char cw_char) {
 }
 
 //
-// This thread constantly looks whether CW data
-// is available in the ring buffer, and produces CW in this case.
+// rigctl_cw_thread is started once and runs forever,
+// checking for data in the CW ring buffer and sending it.
 //
 static gpointer rigctl_cw_thread(gpointer data) {
   int i;
@@ -765,113 +778,59 @@ static void send_resp (int fd, char * msg) {
   }
 }
 
-static gboolean auto_reporter(gpointer data) {
+static gboolean autoreport_handler(gpointer data) {
+  CLIENT *client = (CLIENT *) data;
   //
-  // This function is repeatedly called as long as pihpsdr
-  // is running. It reports VFOA and VFOB frequency changes
-  // to *all* clients that are running and have
-  // autoreporting enabled.
+  // This function is repeatedly called as long as the CAT
+  // connection is active. It reports VFOA and VFOB frequency changes
+  // to the client, provided it has auto-reporting enabled and is running.
   //
   // Note this runs in the GTK event queue so it cannot interfere
-  // with another CAT command
-  //
-  static long long last_fa = -1;
-  static long long last_fb = -1;
-  long long fa;
-  long long fb;
-
-  //
-  // Quick return if no CAT connection exists
-  //
-  if (cat_control <= 0) { return TRUE; }
-
-  fa = vfo[VFO_A].ctun ? vfo[VFO_A].ctun_frequency : vfo[VFO_A].frequency;
-  fb = vfo[VFO_B].ctun ? vfo[VFO_B].ctun_frequency : vfo[VFO_B].frequency;
-
-  //
-  // Loop through *all* clients and report changed frequencies, if
-  // - that client is running
-  // - autoreporting is enabled for that client
-  // - that client is not a FIFO
-  //
+  // with another CAT command.
   // Auto-reporting to a FIFO is suppressed because all data sent there will
-  // then be read again.
+  // be echoed back and then be read again.
   //
-  if (fa != last_fa || fb != last_fb) {
-    char reply[256];
 
-    for (int id = 0; id < MAX_SERIAL; id++) {
-      if (!serial_client[id].running || !serial_client[id].auto_reporting || serial_client[id].fifo) { continue; }
-
-      if (fa != last_fa) {
-        snprintf(reply, 256, "FA%011lld;", fa);
-        send_resp(serial_client[id].fd, reply);
-      }
-
-      if (fb != last_fb) {
-        snprintf(reply, 256, "FB%011lld;", fb);
-        send_resp(serial_client[id].fd, reply);
-      }
-    }
-
-    for (int id = 0; id < MAX_TCP_CLIENTS; id++) {
-      if (!tcp_client[id].running || !tcp_client[id].auto_reporting) { continue; }
-
-      if (fa != last_fa) {
-        snprintf(reply, 256, "FA%011lld;", fa);
-        send_resp(tcp_client[id].fd, reply);
-      }
-
-      if (fb != last_fb) {
-        snprintf(reply, 256, "FB%011lld;", fb);
-        send_resp(tcp_client[id].fd, reply);
-      }
-    }
-
-    last_fa = fa;
-    last_fb = fb;
+  if (client->fifo || !client->running) {
+    //
+    // return and remove timer
+    //
+    return FALSE;
   }
 
+  if (client->auto_reporting) {
+
+    long long fa = vfo[VFO_A].ctun ? vfo[VFO_A].ctun_frequency : vfo[VFO_A].frequency;
+    long long fb = vfo[VFO_B].ctun ? vfo[VFO_B].ctun_frequency : vfo[VFO_B].frequency;
+    char reply[256];
+
+    if (fa != client->last_fa) {
+      snprintf(reply, 256, "FA%011lld;", fa);
+      send_resp(client->fd, reply);
+      client->last_fa = fa;
+    }
+
+    if (fb != client->last_fb) {
+      snprintf(reply, 256, "FB%011lld;", fb);
+      send_resp(client->fd, reply);
+      client->last_fb = fb;
+    }
+  }
   return TRUE;
 }
 
-static int andromeda_last_mox;
-static int andromeda_last_tune;
-static int andromeda_last_ps;
-static int andromeda_last_ctun;
-static int andromeda_last_lock;
-static int andromeda_last_div;
-static int andromeda_last_rit;
-static int andromeda_last_xit;
-static int andromeda_last_vfoa;
-
-static  gboolean andromeda_init(gpointer data) {
+static gboolean andromeda_handler(gpointer data) {
   //
-  // This function is put into the GTK idle queue
-  // when an "andromeda" serial line is opened
-  //
-  const CLIENT *client = (CLIENT *)data;
-
-  if (!client->running) { return FALSE; }
-
-  // This triggers new results to be reported;
-  andromeda_last_mox = andromeda_last_tune = andromeda_last_ps = andromeda_last_ctun
-  = andromeda_last_lock = andromeda_last_div = andromeda_last_rit
-  = andromeda_last_xit = andromeda_last_vfoa = -999;
-  // This triggers a reply (from Andromeda) to report its FP version
-  send_resp(client->fd, "ZZZS;");
-  return FALSE;
-}
-
-gboolean andromeda_handler(gpointer data) {
-  //
-  // This function is repeatedly called until it returns FALSE
+  // This function is repeatedly called as long as the client runs
   //
   //
-  const CLIENT *client = (CLIENT *)data;
+  CLIENT *client = (CLIENT *)data;
   char reply[256];
+  int new;
 
-  if (!client->running) { return FALSE; }
+  if (!client->running) {
+    return FALSE;
+  }
 
   //
   // Do not proceed until Andromeda version is known
@@ -882,90 +841,93 @@ gboolean andromeda_handler(gpointer data) {
     return TRUE;
   }
 
-  //
-  // TODO: handle ANDROMEDA vs. G2Mk2
-  //
-  if (andromeda_last_vfoa != active_receiver->id) {
-    snprintf(reply, 256, "ZZZI10%d;", active_receiver->id ^ 1);
-    send_resp(client->fd, reply);
-    andromeda_last_vfoa = active_receiver->id;
-  }
-
-  if (andromeda_last_div != diversity_enabled) {
-    snprintf(reply, 256, "ZZZI05%d;", diversity_enabled);
-    send_resp(client->fd, reply);
-    andromeda_last_div = diversity_enabled;
-  }
-
-  if (andromeda_last_mox != mox) {
-    snprintf(reply, 256, "ZZZI01%d;", mox);
-    send_resp(client->fd, reply);
-    andromeda_last_mox = mox;
-  }
-
-  if (andromeda_last_tune != tune) {
-    snprintf(reply, 256, "ZZZI03%d;", tune);
-    send_resp(client->fd, reply);
-    andromeda_last_tune = tune;
-  }
-
-  if (can_transmit) {
-    if (andromeda_last_ps != transmitter->puresignal) {
-      snprintf(reply, 256, "ZZZI04%d;", transmitter->puresignal);
+  for (int led = 0; led < MAX_ANDROMEDA_LEDS; led++) {
+    new = client->last_led[led];
+    if (client->andromeda_type == 1) {
+      //
+      // Original ANDROMEDA console
+      //
+      switch (led) {
+      case 1:
+        new = mox;
+        break;
+      case 3:
+        new = tune;
+        break;
+      case 4:
+        if (can_transmit) {
+          new = transmitter->puresignal;
+        } else {
+          new = 0;
+        }
+        break;
+      case 5:
+        new = diversity_enabled;
+        break;
+      case 7:
+        new = vfo[active_receiver->id].ctun;
+        break;
+      case 8:
+        new = vfo[active_receiver->id].rit_enabled;
+        break;
+      case 9:
+        new = vfo[get_tx_vfo()].xit_enabled;
+        break;
+      case 10:
+        new = (active_receiver->id  == 0);
+        break;
+      case 11:
+        new = locked;
+        break;
+      }
+    }
+    if (client->andromeda_type == 5) {
+      //
+      // G2Mk2 console
+      //
+      switch (led) {
+      case 1:
+        new = mox;
+        break;
+      case 2:
+        new = tune;
+        break;
+      case 3:
+        if (can_transmit) {
+          new = transmitter->puresignal;
+        } else {
+          new = 0;
+        }
+        break;
+      case 4:
+        new = auto_tune_flag;
+        break;
+      case 6:
+        new = vfo[active_receiver->id].rit_enabled;
+        break;
+      case 7:
+        new = vfo[get_tx_vfo()].xit_enabled;
+        break;
+      case 8:
+        new = (active_receiver->id  == 0);
+        break;
+      case 9:
+        new = locked;
+        break;
+      }
+    }
+    //
+    // if LED status changed, send it via ZZZI command
+    //
+    if (client->last_led[led] != new) {
+      snprintf(reply, 256, "ZZZI%02d%d;", led,new);
       send_resp(client->fd, reply);
-      andromeda_last_ps = transmitter->puresignal;
+      client->last_led[led] = new;
     }
   }
 
-  if (andromeda_last_ctun != vfo[active_receiver->id].ctun) {
-    snprintf(reply, 256, "ZZZI07%d;", vfo[active_receiver->id].ctun);
-    send_resp(client->fd, reply);
-    andromeda_last_ctun = vfo[active_receiver->id].ctun;
-  }
-
-  if (andromeda_last_rit != vfo[active_receiver->id].rit_enabled) {
-    snprintf(reply, 256, "ZZZI08%d;", vfo[active_receiver->id].rit_enabled);
-    send_resp(client->fd, reply);
-    andromeda_last_rit = vfo[active_receiver->id].rit_enabled;
-  }
-
-  if (can_transmit) {
-    int new_xit = vfo[get_tx_vfo()].xit_enabled;
-
-    if (andromeda_last_xit != new_xit) {
-      snprintf(reply, 256, "ZZZI09%d;", new_xit);
-      send_resp(client->fd, reply);
-      andromeda_last_xit = new_xit;
-    }
-  }
-
-  if (andromeda_last_lock != locked) {
-    snprintf(reply, 256, "ZZZI11%d;", locked);
-    send_resp(client->fd, reply);
-    andromeda_last_lock = locked;
-  }
 
   return TRUE;
-}
-
-static void launch_andromeda (CLIENT *client) {
-  //
-  // This is a no-op if the serial client is NOT running
-  //
-  if (client->running) {
-    t_print("%s: Enable ANDROMEDA for client\n", __FUNCTION__);
-    usleep(700000L); // Need to wait for andromedas serial to settle, Andromeda FP Version: h/w:01 s/w:006
-    g_idle_add(andromeda_init, client);           // executed once
-    client->andromeda_timer = g_timeout_add(500, andromeda_handler, client); // executed periodically
-  }
-}
-
-static void disable_andromeda (CLIENT *client) {
-  if (client->andromeda_timer != 0) {
-    t_print("%s: disable ANDROMEDA timer for client\n", __FUNCTION__);
-    g_source_remove(client->andromeda_timer);
-    client->andromeda_timer = 0;
-  }
 }
 
 static gpointer rigctl_server(gpointer data) {
@@ -1034,6 +996,7 @@ static gpointer rigctl_server(gpointer data) {
 
     //
     // A slot is available, try to get connection via accept()
+    // (this initializes fd, address, address_length)
     //
     t_print("%s: slot= %d waiting for connection\n", __FUNCTION__, spare);
     tcp_client[spare].fd = accept(server_socket, (struct sockaddr*)&tcp_client[spare].address,
@@ -1061,18 +1024,38 @@ static gpointer rigctl_server(gpointer data) {
     }
 
     //
-    // Spawn off a thread for handling this new connection
+    // Initialize client data structure
     //
-    tcp_client[spare].running = 1;
-    tcp_client[spare].andromeda_type = 0;
-    tcp_client[spare].auto_reporting = SET(rigctl_tcp_autoreporting);
-    tcp_client[spare].thread_id = g_thread_new("rigctl client", rigctl_client, (gpointer)&tcp_client[spare]);
+    tcp_client[spare].fifo            = 0;
+    tcp_client[spare].busy            = 0;
+    tcp_client[spare].done            = 0;
+    tcp_client[spare].running         = 1;
+    tcp_client[spare].andromeda_timer = 1;
+    tcp_client[spare].auto_reporting  = SET(rigctl_tcp_autoreporting);
+    tcp_client[spare].andromeda_type  = 0;
+    tcp_client[spare].last_fa         = 0;
+    tcp_client[spare].last_fb         = 0;
+
+    for (int i = 0; i < MAX_ANDROMEDA_LEDS; i++) {
+      tcp_client[spare].last_led[i] = -1;
+    }
+
+    //
+    // Spawn off thread that "does" the connection
+    //
+    tcp_client[spare].thread_id       = g_thread_new("rigctl client", rigctl_client, (gpointer)&tcp_client[spare]);
+
+    //
+    // Launch auto-reporter task
+    //
+    tcp_client[spare].auto_timer = g_timeout_add(750, autoreport_handler, &tcp_client[spare]);
 
     //
     // If ANDROMEDA is enabled for TCP, lauch periodic ANDROMEDA task
     //
     if (rigctl_tcp_andromeda) {
-      launch_andromeda(&tcp_client[spare]);
+      // Note this will send a ZZZS; command upon first invocation
+      tcp_client[spare].andromeda_timer = g_timeout_add(500, andromeda_handler, &tcp_client[spare]);
     }
   }
 
@@ -1142,7 +1125,14 @@ static gpointer rigctl_client (gpointer data) {
       t_perror("setsockopt(...,SO_LINGER,...) failed for client");
     }
 
-    disable_andromeda(client);
+    if (client->andromeda_timer != 0) {
+      g_source_remove(client->andromeda_timer);
+      client->andromeda_timer = 0;
+    }
+    if (client->auto_timer != 0) {
+      g_source_remove(client->auto_timer);
+      client->auto_timer = 0;
+    }
     client->running = 0;
     close(client->fd);
     client->fd = -1;
@@ -2318,7 +2308,7 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //SET       ZZMGxxx;
       //READ      ZZMG;
       //RESP      ZZMGxxx;
-      //NOTE      xxx 0-70 mapped to -12 ... +50 dB
+      //NOTE      x 0-70 mapped to -12 ... +50 dB
       //ENDDEF
       if (command[4] == ';') {
         snprintf(reply, 256, "ZZMG%03d;", (int)((mic_gain + 12.0) * 1.129));
@@ -2932,7 +2922,28 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
     break;
 
   case 'U': //ZZUx
-    implemented = FALSE;
+    switch (command[3]) {
+    case 'U': //ZZUT
+      //CATDEF    ZZUT
+      //DESCR     Get/Set TwoTone status
+      //SET       ZZUTx;
+      //READ      ZZUT;
+      //RESP      ZZTXx;
+      //NOTE      x=1: TwoTone on, x=0: TwoTone off.
+      //ENDDEF
+      if (can_transmit) {
+        if (command[4] == ';') {
+          snprintf(reply, 256, "ZZUT%d;", transmitter->twotone);
+          send_resp(client->fd, reply) ;
+        } else if (command[5] == ';') {
+          tx_set_twotone(transmitter,atoi(&command[4]));
+        }
+      }
+    default:
+      implemented = FALSE;
+      break;
+    }
+
     break;
 
   case 'V': //ZZVx
@@ -3093,7 +3104,16 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 
     case 'V': //ZZXV
 
-      //DO NOT DOCUMENT, THIS WILL BE REMOVED
+      //CATDEF    ZZXV
+      //DESCR     Get extended status information
+      //SET       ZZVS;
+      //RESP      ZZVSxxxx;
+      //NOTE      Status is reported bit-wise in the status word x=0-1023.
+      //NOTE      Bit 0: RIT; Bit 1: Lock, Bit2: Lock, Bit3: Split,
+      //NOTE      Bit 4: VFO-A CTUN, Bit 5: VFO-B CTUN, Bit 6: MOX,
+      //NOTE      Bit 7: TUNE, Bit 8: XIT, Bit 9: always cleared.
+      //ENDDEF
+
       if (command[4] == ';') {
         int status = 0;
 
@@ -3127,6 +3147,10 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           status = status | 0x80;
         }
 
+        if (vfo[get_tx_vfo()].xit_enabled) {
+          status = status | 0x100;
+        }
+ 
         snprintf(reply, 256, "ZZXV%03d;", status);
         send_resp(client->fd, reply);
       }
@@ -3144,8 +3168,17 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
     switch (command[3]) {
     case 'R': //ZZYR
 
-      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-      if (command[5] == ';') {
+      //CATDEF    ZZYR
+      //DESCR     Get/Set active receiver
+      //SET       ZZYRx;
+      //GET       ZZYR;
+      //RESP      ZZYRx;
+      //NOTE      The active receiver is either RX1 (x=0) or RX2 (x=1).
+      //ENDDEF
+      if (command[4] == ';') {
+        snprintf(reply, 256, "ZZYR%01d;", active_receiver->id);
+        send_resp(client->fd, reply);
+      } else if (command[5] == ';') {
         int v = atoi(&command[4]);
 
         if (v >= 0 && v < receivers) {
@@ -3173,7 +3206,7 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //CATDEF    ZZZD
       //DESCR     Move down frequency of active receiver
       //SET       ZZZDxx;
-      //NOTE      ANDROMEDA extension. xx = number of VFO steps.
+      //NOTE      ANDROMEDA extension. x = number of VFO steps.
       //ENDDEF
       if (command[6] == ';') {
         int steps = 10*(command[4]-'0') + (command[5]-'0');
@@ -3188,9 +3221,9 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //DESCR     Handle ANDROMEDA encoders
       //SET       ZZZExxy;
       //NOTE      ANDROMEDA extension.
-      //NOTE      xx encodes the encoder and the direction.
-      //NOTE      xx= 1-20 maps to encoder 1-20, clockwise
-      //NOTE      xx=51-70 maps to encoder 1-20, counter clockwise
+      //NOTE      x encodes the encoder and the direction.
+      //NOTE      x= 1-20 maps to encoder 1-20, clockwise
+      //NOTE      x=51-70 maps to encoder 1-20, counter clockwise
       //NOTE      y=0-9 is the number of ticks
       //NOTE
       //ENDDEF
@@ -3363,8 +3396,8 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //DESCR     ANDROMEDA reports
       //RESP      ZZZIxxy;
       //NOTE      Automatic generated response for ANDROMEDA controller.
-      //NOTE      xx encodes the type of information and y the value.
-      //NOTE      For example ZZZI081; means "RIT is enabled".
+      //NOTE      The LED with number x shall be switched on (y=1)
+      //NOTE      or off (y=0).
       //ENDDEF
       implemented = FALSE;  // this command should never ARRIVE
       break;
@@ -3373,9 +3406,10 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 
       //CATDEF    ZZZP
       //DESCR     Handle ANDROMEDA push-buttons
-      //SET       ZZZPxxx;
-      //NOTE      ANDROMEDA extension. x = number of steps.
-      //NOTE      x encodes the button and the press/release status
+      //SET       ZZZPxxy;
+      //NOTE      ANDROMEDA extension.
+      //NOTE      x encodes the button and y means released (y=0),
+      //NOTE      pressed(y=1) or pressed for a longer time (y=2).
       //ENDDEF
       if (command[7] == ';') {
         int v = (command[6] - 0x30);
@@ -3707,7 +3741,6 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           int do_short = 0;
           int do_long = 0;
           static int last_v = 0;
-          static int myvfo = VFO_A;
           static int myrit = 0;
 
           if (v == 2) { do_long = 1; }
@@ -3756,31 +3789,26 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
             schedule_action(LOCK, PRESSED, 0);
             break;
 
-          case 10: // select VFO for the other actions
-            if (myvfo == VFO_A) {
-              myvfo = VFO_B;
-            } else {
-              myvfo = VFO_A;
-            }
-
+          case 10: // switch active receiver
+            schedule_action(SWAP_RX, PRESSED, 0);
             break;
 
           case 11: // toggle between off/RIT/XIT
             switch (myrit) {
             case 0:
-              vfo_rit_onoff(myvfo, 1);
+              vfo_rit_onoff(active_receiver->id, 1);
               vfo_xit_onoff(0);
               myrit = 1;
               break;
 
             case 1:
-              vfo_rit_onoff(myvfo, 0);
+              vfo_rit_onoff(active_receiver->id, 0);
               vfo_xit_onoff(1);
               myrit = 2;
               break;
 
             case 2:
-              vfo_rit_onoff(myvfo, 0);
+              vfo_rit_onoff(active_receiver->id, 0);
               vfo_xit_onoff(0);
               myrit = 0;
               break;
@@ -3933,11 +3961,12 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 
       //CATDEF    ZZZS
       //DESCR     Log ANDROMEDA version
-      //SET       ZZZSxxyzabc;
+      //SET       ZZZSxxyyzzz;
       //NOTE      ANDROMEDA extension.
-      //NOTE      The ANDROMEDA type (xx), hardware (yz) and software (abc) version
-      //NOTE      is logged in piHPSDR's log file. Furthermore, the type sent by
-      //NOTE      a client (currently, 1 or 5) does affect the processing of ZZZE and ZZZP
+      //NOTE      The ANDROMEDA type (x), hardware (y) and
+      //NOTE      software (z) version is printed in the log file.
+      //NOTE      The type (x) sent by a client (currently, 1 or 5)
+      //NOTE      does affect the processing of ZZZE and ZZZP
       //NOTE      commands from that client.
       //NOTE
       //ENDDEF
@@ -3958,7 +3987,7 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //CATDEF    ZZZU
       //DESCR     Move up frequency of active receiver
       //SET       ZZZUxx;
-      //NOTE      ANDROMEDA extension. xx = number of steps.
+      //NOTE      ANDROMEDA extension. x = number of steps.
       //ENDDEF
       if (command[6] == ';') {
         int steps = 10*(command[4]-'0') + (command[5]-'0');
@@ -4528,11 +4557,11 @@ int parse_cmd(void *data) {
       //CATDEF    IF
       //DESCR     Get VFO-A Frequency/Mode etc.
       //READ      IF;
-      //RESP      IFxxxxxxxxxxxyyyyzzzzzzabc|ddefghikllm;
+      //RESP      IFxxxxxxxxxxxyyyyzzzzzzsbc|ddefghikllm;
       //NOTE      x : VFO-A Frequency (11 digit)
       //NOTE      y : VFO-A step size
       //NOTE      z : VFO-A rit step size
-      //NOTE      a : VFO-A rit enabled (0/1)
+      //NOTE      s : VFO-A rit enabled (0/1)
       //NOTE      b : VFO-A xit enabled (0/1)
       //NOTE      c : always 0
       //NOTE      d : always 0
@@ -4694,7 +4723,7 @@ int parse_cmd(void *data) {
       //SET       LKxx;
       //READ      LK;
       //RESP      LKxx;
-      //NOTE      When setting, any nonzero xx sets lock status
+      //NOTE      When setting, any nonzero x sets lock status
       //NOTE      When reading, x = 00 (not locked) or x = 11 (locked)
       //ENDDEF
       if (command[2] == ';') {
@@ -5109,7 +5138,7 @@ int parse_cmd(void *data) {
       //SET       RAxx;
       //READ      RA;
       //RESP      RAxxyy;
-      //NOTE      x = 0 ... 99 is mapped to the radio's range
+      //NOTE      x = 0 ... 99 is mapped to the range available
       //NOTE      HPSDR radios: attenuator range 0...31 dB
       //NOTE      HermesLite-II etc.: gain range -12...48 dB
       //NOTE      y is always zero.
@@ -5268,7 +5297,7 @@ int parse_cmd(void *data) {
 
       //CATDEF    SA
       //DESCR     Set/Read SAT mode
-      //SET       SAxyzabcdssssssss;
+      //SET       SAxyzsbcdeeeeeeee;
       //READ      SA;
       //RESP      SAxyzsbcdeeeeeeee;
       //NOTE      x=0: neither SAT nor RSAT, x=1: SAT or RSAT
@@ -6129,14 +6158,17 @@ int launch_serial_rigctl (int id) {
 
   t_print("%s: serial port fd=%d\n", __FUNCTION__, fd);
   serial_client[id].fd = fd;
-  serial_client[id].busy = 0;
-  serial_client[id].fifo = 0;
   // hard-wired parity = NONE
-  // if ANDROMEDA, hard-wired baud = 9600
   baud = SerialPorts[id].baud;
 
-  if (SerialPorts[id].andromeda) { baud = B9600; }
+  //
+  // ANDROMEDA uses a hard-wired baud rate 9600
+  //
+  if (SerialPorts[id].andromeda) {
+    baud = B9600;
+  }
 
+  serial_client[id].fifo = 0;
   if (set_interface_attribs (fd, baud, 0) == 0) {
     set_blocking (fd, 1);                   // set blocking
   } else {
@@ -6149,21 +6181,43 @@ int launch_serial_rigctl (int id) {
     serial_client[id].fifo = 1;
   }
 
+  //
+  // Initialize the rest of the CLIENT data structure
+  //
+  serial_client[id].busy = 0;
+  serial_client[id].done = 0;
   serial_client[id].running = 1;
-  serial_client[id].andromeda_type = 0;
   serial_client[id].andromeda_timer = 0;
   serial_client[id].auto_reporting = SerialPorts[id].autoreporting;
+  serial_client[id].andromeda_type = 0;
+  serial_client[id].last_fa = 0;
+  serial_client[id].last_fb = 0;
+
+  for (int i = 0; i < MAX_ANDROMEDA_LEDS; i++) {
+    serial_client[id].last_led[i] = -1;
+  }
+
+  //
+  // Spawn off server thread
+  //
   serial_client[id].thread_id = g_thread_new( "Serial server", serial_server, (gpointer)&serial_client[id]);
 
-  if (auto_reporter_id == 0) {
-    auto_reporter_id = g_timeout_add(250, auto_reporter, NULL);
-  }
+  //
+  // Launch auto-reporter task
+  //
+  serial_client[id].auto_timer = g_timeout_add(750, autoreport_handler, &serial_client[id]);
 
   //
   // If this is a serial line to an ANDROMEDA controller, initialize it and start a periodic GTK task
   //
   if (SerialPorts[id].andromeda) {
-    launch_andromeda(&serial_client[id]);
+    //
+    // For Arduino UNO and the like, opening the serial line executes a hardware
+    // reset and then the device stays in bootloader mode for half a second or so.
+    //
+    usleep(700000L);
+    // Note this will send a ZZZS; command upon first invocation
+    serial_client[id].andromeda_timer = g_timeout_add(500, andromeda_handler, &serial_client[id]);
   }
 
   return 1;
@@ -6172,7 +6226,15 @@ int launch_serial_rigctl (int id) {
 // Serial Port close
 void disable_serial_rigctl (int id) {
   t_print("%s: Close Serial Port %s\n", __FUNCTION__, SerialPorts[id].port);
-  disable_andromeda(&serial_client[id]);
+
+  if (serial_client[id].andromeda_timer != 0) {
+      g_source_remove(serial_client[id].andromeda_timer);
+      serial_client[id].andromeda_timer = 0;
+  }
+  if (serial_client[id].auto_timer != 0) {
+      g_source_remove(serial_client[id].auto_timer);
+      serial_client[id].auto_timer = 0;
+  }
   serial_client[id].running = FALSE;
 
   if (serial_client[id].fifo) {
@@ -6206,10 +6268,6 @@ void launch_tcp_rigctl () {
   //
   if (!rigctl_cw_thread_id) {
     rigctl_cw_thread_id = g_thread_new("RIGCTL cw", rigctl_cw_thread, NULL);
-  }
-
-  if (auto_reporter_id == 0) {
-    auto_reporter_id = g_timeout_add(250, auto_reporter, NULL);
   }
 
   //
