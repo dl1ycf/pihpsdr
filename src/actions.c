@@ -78,6 +78,7 @@ ACTION_TABLE ActionTable[] = {
   {BAND_10,             "Band 10",              "10",           MIDI_KEY   | CONTROLLER_SWITCH},
   {BAND_12,             "Band 12",              "12",           MIDI_KEY   | CONTROLLER_SWITCH},
   {BAND_1240,           "Band 1240",            "1240",         MIDI_KEY   | CONTROLLER_SWITCH},
+  {BAND_136,            "Band 136",             "136",          MIDI_KEY   | CONTROLLER_SWITCH},
   {BAND_144,            "Band 144",             "144",          MIDI_KEY   | CONTROLLER_SWITCH},
   {BAND_15,             "Band 15",              "15",           MIDI_KEY   | CONTROLLER_SWITCH},
   {BAND_160,            "Band 160",             "160",          MIDI_KEY   | CONTROLLER_SWITCH},
@@ -96,7 +97,6 @@ ACTION_TABLE ActionTable[] = {
   {BAND_902,            "Band 902",             "902",          MIDI_KEY   | CONTROLLER_SWITCH},
   {BAND_AIR,            "Band AIR",             "AIR",          MIDI_KEY   | CONTROLLER_SWITCH},
   {BAND_GEN,            "Band GEN",             "GEN",          MIDI_KEY   | CONTROLLER_SWITCH},
-  {BAND_LF,             "Band LF",              "LF",           MIDI_KEY   | CONTROLLER_SWITCH},
   {BAND_MINUS,          "Band -",               "BND-",         MIDI_KEY   | CONTROLLER_SWITCH},
   {BAND_PLUS,           "Band +",               "BND+",         MIDI_KEY   | CONTROLLER_SWITCH},
   {BAND_WWV,            "Band WWV",             "WWV",          MIDI_KEY   | CONTROLLER_SWITCH},
@@ -637,7 +637,7 @@ int process_action(void *data) {
 
     break;
 
-  case BAND_LF:
+  case BAND_136:
     if (a->mode == PRESSED) {
       vfo_band_changed(active_receiver->id, band136);
     }

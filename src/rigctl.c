@@ -3939,7 +3939,7 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
             break;
 
           case 38:  // LF
-            schedule_action(BAND_LF, PRESSED, 0);
+            schedule_action(BAND_136, PRESSED, 0);
             break;
 
           case 39:  // Reserved
