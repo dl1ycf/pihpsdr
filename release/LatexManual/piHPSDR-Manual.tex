@@ -3512,11 +3512,21 @@ associated with that VFO, such as mode, filter, CTUN, and RIT settings.}
 
 \action{A>B}{A>B}{B}{Copy VFO A to VFO B.}
 
-\action{AF Gain}{AFGAIN}{PE}{Change the AF gain (headphone volume) of the active receiver.}
+\action{AF Gain}{AFGAIN}{PE}{Change the AF gain (headphone volume, $-40\ldots 0$ dB) of the active receiver.}
 
-\action{AF Gain RX1}{AFGAIN1}{PE}{Change the AF gain (headphone volume) of the RX1 receiver.}
+\action{AF Gain RX1}{AFGAIN1}{PE}{Change the AF gain (headphone volume, $-40\ldots 0$ dB) of the RX1 receiver.}
 
-\action{AF Gain RX2}{AFGAIN2}{PE}{Change the AF gain (headphone volume) of the RX2 receiver.}
+\action{AF Gain RX2}{AFGAIN2}{PE}{Change the AF gain (headphone volume, $-40\ldots 0$ dB) of the RX2 receiver. This operation is
+a no-op if only one receiver is running.}
+
+\action{AGC}{AGCT}{B}{Cycle through the AGC modes (slow, medium, fast, $\ldots$) of the current receiver.}
+
+\action{AGC Gain}{AGCGain}{PE}{Change AGC gain ($-20\ldots 120$ dB) of the active receiver.}
+
+\action{AGC Gain RX1}{AGCGain1}{PE}{Change AGC gain ($-20\ldots 120$ dB) of RX1.}
+
+\action{AGC Gain RX2}{AGCGain1}{PE}{Change AGC gain ($-20\ldots 120$ dB) of RX2. This is a no-op if
+only one receiver is running.}
 
 \action{AGC Menu}{AGC}{B}{Opens the \texttt{AGC} menu.}
 
@@ -3538,6 +3548,12 @@ of the radio.}
 \action{Band 1240}{1240}{B}
 {Change band of the active receiver to the 1240 MHz (23 cm) band. If already on that band, move to
 the next band stack entry. This action is a no-op if the frequency of the band falls outside the frequency
+range of the radio.}
+
+\action{Band 136}{136}{B}
+{Change band of the active receiver to the 136 kHz
+band. If already on that band, move to the next band stack entry.
+This action is a no-op if the frequency of the band falls outside the frequency
 range of the radio.}
 
 \action{Band 144}{144}{B}
@@ -3673,7 +3689,8 @@ This also implies that during playback, the mic gain is temporarily set to unity
 }
 
 \action{Cmpr On/Off}{COMP}{B}
-{Toggle the state (on/off) of the compressor used in the TX audio input.}
+{Toggle the state (on/off) of the compressor used in the TX audio input. Note that the CESSB overshoot
+correction is automatically engaged when using compression.}
 
 \action{Cmpr Level}{COMPVAL}{PE}
 {Change the value of the compressor (0-20 dB) used in the TX audio input. The compressor is automatically
@@ -3814,7 +3831,7 @@ filter is one of the two variable filters
  Var2 is currently used in VFO-A, and changes the  filter width, that is,
  it affects  the low and high cut in an opposite way.}
 
- action{IF Width RX2}{IFWIDTH2}{E}{This command is effective only if one of the variable filters Var1 or
+\action{IF Width RX2}{IFWIDTH2}{E}{This command is effective only if one of the variable filters Var1 or
  Var2 is currently used in VFO-B, and changes the  filter width, that is,
  it affects  the low and high cut in an opposite way.}
 
@@ -3868,6 +3885,13 @@ This function is used if one uses one encoder and one push-button to activate th
 encoder feature.}
 
 \action{Mute}{MUTE}{B}{Toggles the ,,mute'' state of the active receiver. If a receiver is muted, it
+produces zero-amplitude audio output.}
+
+\action{Mute RX1}{MUTE1}{B}{Toggles the ,,mute'' state of  RX1. If a receiver is muted, it
+produces zero-amplitude audio output.}
+
+\action{Mute RX2}{MUTE2}{B}{Toggles the ,,mute'' state of  RX2. This operation is a no-op
+if only one receiver is running. If a receiver is muted, it
 produces zero-amplitude audio output.}
 
 \action{NB}{NB}{B}{Cycles through the noise blanker states (NB off/NB1/NB2).}
@@ -4074,6 +4098,14 @@ RF frequencies are 700 and 1900 Hz \textit{above} the dial frequency. }
 
 \action{VFO B}{VFOB}{E}{This is  the VFO frequency control of VFO-B.}
 
+\action{VFO Step -}{STEP-}{E}{Cycle downwards through the VFO step sizes of the VFO
+controlling the active receiver. If the step size was already the smallest one,
+jump to the largest.}
+
+\action{VFO Step +}{STEP+}{E}{Cycle upwards through the VFO step sizes of the VFO
+controlling the active receiver. If the step size was already the largest one,
+jump to the smallest.}
+
 \action{VOX On/Off}{VOX}{B}{Toggle (on/off) VOX status. If VOX is enabled, you can automatically key the
 transmitter
 by talking into the microphone, without the need to press a PTT button. See the \texttt{VOX} menu.}
@@ -4132,7 +4164,7 @@ the XIT+ button is released.}
 \action{Zoom -}{ZOOM-}{B}{Decrease the ZOOM value of the active receiver by one. If the ZOOM value was
 already 1, this is a no-op.}
 
-\action{Zoom -}{ZOOM-}{B}{Increase the ZOOM value of the active receiver by one. If the ZOOM value was
+\action{Zoom +}{ZOOM+}{B}{Increase the ZOOM value of the active receiver by one. If the ZOOM value was
 already 8, this is a no-op.}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
