@@ -1054,6 +1054,16 @@ void start_radio() {
 
   if (device == NEW_DEVICE_SATURN && (strcmp(radio->info.network.interface_name, "XDMA") == 0)) {
     have_saturn_xdma = 1;
+    //
+    // On a Saturn, enable /dev/ttyS0 as an Andromeda port by default.
+    // This will be overridden by the props file, if this setting has
+    // been changed meanwhile in the RIGCTL menu
+    //
+    SerialPorts[0].enable = 1;
+    SerialPorts[0].andromeda = 1;
+    SerialPorts[0].baud = B9600;
+    SerialPorts[0].autoreporting = 0;
+    snprintf(SerialPorts[0].port, sizeof(SerialPorts[0].port), "/dev/ttyS0");
   }
 
   if (device == DEVICE_METIS || device == DEVICE_OZY || device == NEW_DEVICE_ATLAS) {
