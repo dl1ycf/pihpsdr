@@ -472,7 +472,7 @@ be activated. If moved down to zero, the check box will be deactivated. If you f
 level and want to disable squelch temporarily, you can un-check the check box and active squelch later
 on by checking it.
 
-Note that the slider area can be hidden (removed) via the \bltt{Display} menu (see there). 
+Note that the slider area can be hidden (removed) via the \bltt{Display} menu (see there).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{Hide} button}
 \begin{figure}[ht]
@@ -3078,7 +3078,7 @@ and another program running on the same computer, and are only meaningful if tha
 support CAT-over-TCP.
 
 To the right of the serial port text field, there is a pop-down menu for choosing the baud rate. Only 4800,
-9600, 19200, and 38400 baud are offered, but this should cover most cases. 
+9600, 19200, and 38400 baud are offered, but this should cover most cases.
 
 \rett{Enable}. This checkbox enables or disables the piHPSDR CAT subsystem for that particular case.
 Enabling and disabling can be done separately for the TCP subsystem and each of the serial
@@ -3087,7 +3087,7 @@ connections.
 \rett{Andromeda}. This checkbox enables the connection for use with ANDROMEDA consoles. Serial lines are
 forced to 9600 baud if enabled for ANDROMEDA. Furthermore, status changes of piHPSDR (e.g. RIT on/off) are
 automatically reported via ZZZI CAT commands (see Appendix \ref{sec:catcommands}). These messages are
-used by the ANDROMEDA console to switch LED indicators such that they reflect the current state 
+used by the ANDROMEDA console to switch LED indicators such that they reflect the current state
 of piHPSDR. Note that this flag is only inspected when the connection is opened. Serial CAT connections
 are established when successfully opened upon program start or via this menu.
 TCP CAT connections are established when the \textit{client} successfully connects.
@@ -5552,13 +5552,13 @@ or Controller1, then there are spare GPIO input lines which you can use for conn
 key. The pre-defined GPIO lines are, if there is "No Controller":
 
 \begin{itemize}
-\item{GPIO line 7 for \bltt{CW Left}}
-\item{GPIO line 21 for \bltt{CW Right}}
-\item{GPIO line 14 for \bltt{PTT (keyer)}}
-\item{GPIO line 10 for \bltt{CW Key (keyer)}}
+\item{GPIO line 5 for \bltt{CW Left}}
+\item{GPIO line 6 for \bltt{CW Right}}
+\item{GPIO line 16 for \bltt{PTT (keyer)}}
+\item{GPIO line 12 for \bltt{CW Key (keyer)}}
 \end{itemize}
 
-In the case of \texttt{Controller1} the GPIO lines are
+In the case of \texttt{Controller1} the GPIO lines that can be used for CW are
 
 \begin{itemize}
 \item{GPIO line 9 for \bltt{CW Left}}
@@ -5566,6 +5566,10 @@ In the case of \texttt{Controller1} the GPIO lines are
 \item{GPIO line 14 for \bltt{PTT (keyer)}}
 \item{GPIO line 10 for \bltt{CW Key (keyer)}}
 \end{itemize}
+
+For \texttt{Controller2}, there are not enough ,,spare'' GPIO lines to fully
+support CW over GPIO. Appendix \ref{sec:gpio} lists in detail which GPIO line
+is used by which controller option.
 
 All lines are active-low lines with a pull-up, so the active state is reached
 by connecting the input line to ground. See Appendix \ref{sec:actionlist} for
@@ -6481,7 +6485,7 @@ simply by typing in the command ,,make'' in the piHPSDR directory (see Appendix 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter[RaspPi: Activating I2C]{RaspPi: Activating the I2C interface}
+\chapter[RaspPi: Activating I2C]{RaspPi: Activating the I2C or serial interface}
 \label{sec:i2c}
 
 \begin{figure}[ht]
@@ -6495,11 +6499,16 @@ If you want to use the Controller2 or the G2 front panel controller, the Raspber
 must be enabled. This is done by opening \texttt{Menu}$\to$\texttt{Preferences}$\to$
 \texttt{Raspberry Pi Configuration} and moving to the \texttt{Interfaces} tab
 (shown in Fig. \ref{fig:piEnableI2C}. In the I2C line, move the button to the right
-(marked by the red arrows). According to my analysis, the serial port should also be disabled
-if you use the Controller2 or the G2 front panel, since one of the serial lines (GPIO15) is
-used by the controller (see Fig. \ref{fig:GPIO}). Restart the computer after making the changes..
-The other buttons (SSH, VNC, etc) need not be changed and can be set according to your needs.
+(marked by the red arrows).
 
+If you need the piHPSDR built-in serial port, activate the \rett{Serial Port} button and deactivate
+the \rett{Serial Console} button. Note that the built-in serial port uses GPIO lines 14 and 15, so
+you should only activate it when you a) need it and b) have checked \rett{No Controller} in the
+initial GPIO menu (or have not compiled the program with GPIO support), since GPIO lines 14 and 15 are
+used for \texttt{Controller1}, \texttt{Controller2}, and {G2 Front Panel} (see Appendix \ref{sec:gpio}).
+
+Restart the computer after making the changes..
+The other buttons (SSH, VNC, etc) need not be changed and can be set according to your needs.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
