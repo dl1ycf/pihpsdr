@@ -751,13 +751,10 @@ static void init_analyzer(const RECEIVER *rx) {
   const double span_min_freq = 0.0;
   const double span_max_freq = 0.0;
   const int clip = 0;
-  int window_type;
-  int afft_size;
+  const int window_type = 5;
+  const int afft_size = 16384;
+  const int pixels = rx->pixels;
   int overlap;
-  int pixels;
-  pixels = rx->pixels;
-  afft_size = 16384;
-  window_type = 4;
 
   int max_w = afft_size + (int) min(keep_time * (double) rx->sample_rate,
                                     keep_time * (double) afft_size * (double) rx->fps);

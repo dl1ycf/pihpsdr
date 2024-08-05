@@ -668,7 +668,6 @@ static void init_analyzer(TRANSMITTER *tx) {
   const int n_pixout = 1;
   const int spur_elimination_ffts = 1;
   const int data_type = 1;
-  const int window_type = 5;
   const double kaiser_pi = 14.0;
   const double fscLin = 0;
   const double fscHin = 0;
@@ -677,10 +676,10 @@ static void init_analyzer(TRANSMITTER *tx) {
   const double span_min_freq = 0.0;
   const double span_max_freq = 0.0;
   const int clip = 0;
-  int afft_size = 16384;
+  const int window_type = 5;
+  const int afft_size = 16384;
+  const int pixels = tx->pixels;
   int overlap;
-  int pixels;
-  pixels = tx->pixels;
 
   int max_w = afft_size + (int) min(keep_time * (double) tx->iq_output_rate,
                                     keep_time * (double) afft_size * (double) tx->fps);
