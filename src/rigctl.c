@@ -3150,7 +3150,7 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         if (vfo[get_tx_vfo()].xit_enabled) {
           status = status | 0x100;
         }
- 
+
         snprintf(reply, 256, "ZZXV%03d;", status);
         send_resp(client->fd, reply);
       }
@@ -3738,148 +3738,165 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 
         if (client->andromeda_type == 5) {
           // G2 Mk2 console, shift key is handled in console
-          int do_short = 0;
-          int do_long = 0;
+          int PRESS     = 0;  // indicates a v=0 --> v=1 transision
+          int LONGPRESS = 0;  // indicates a v=1 --> v=2 transision
+          int RELEASE   = 0;  // indicates a v=1 --> v=0 transision
+
           static int last_v = 0;
-          static int myrit = 0;
+          static int myrit = 0;     // cycler between OFF/RIT/XIT states
 
-          if (v == 2) { do_long = 1; }
+          if (last_v == 0 && v == 1) PRESS     = 1;
+          if (last_v == 1 && v == 0) RELEASE   = 1;
+          if (last_v == 1 && v == 2) LONGPRESS = 1;
 
-          if (v == 0 && last_v == 1) { do_short = 1; }
-
+          //
+          // For buttons which only have one action defined, schedule action upon PRESS
+          //
+          // For buttons which have both a "short press" and "long press" action defined:
+          // schedule "short press" action upon RELEASE, and "long press" action upon LONGPRESS
+          //
+          // Note the Arduino software is such that it generates a (v=1,v=0) sequence upon a short
+          // press and a (v=1,v=2,v=0) sequence upon a long press, and that no events for other
+          // buttons or encoders are emitted during that sequence. Note a v=2 --> v=0 transition
+          // will be ignored (except setting last_v to zero).
+          //
+          // What about LEDs? We rely on the ANDROMEDA reporter task to update the LEDs. This is
+          // because our "actions" here go to the GTK queue, and are executed at some unknown time
+          // in the future. We shall switch LEDs when piHPSDR changes state at the earliest!
+          //
           last_v = v;
-
-          if (!do_short && !do_long) {
-            break;
-          }
 
           switch (p) {
           case 1:  // RX2 Mute
-            schedule_action(MUTE_RX2, PRESSED, 0);
+            if (PRESS) { schedule_action(MUTE_RX2, PRESSED, 0); }
             break;
 
           case 2:  // RX1 Mute
-            schedule_action(MUTE_RX1, PRESSED, 0);
+            if (PRESS) { schedule_action(MUTE_RX1, PRESSED, 0); }
             break;
 
           case 3: // Change multifunction assignment
-            schedule_action(MULTI_BUTTON, PRESSED, 0);
+            if (PRESS) { schedule_action(MULTI_BUTTON, PRESSED, 0); }
             break;
 
           case 4:  // ATU, not yet used
             break;
 
           case 5:  // Toggle two-tone
-            schedule_action(TWO_TONE, PRESSED, 0);
+            if (PRESS) { schedule_action(TWO_TONE, PRESSED, 0); }
             break;
 
           case 6:  // Toggle tune
-            schedule_action(TUNE, PRESSED, 0);
+            if (PRESS) { schedule_action(TUNE, PRESSED, 0); }
             break;
 
           case 7:  // Toggle MOX
-            schedule_action(MOX, PRESSED, 0);
+            if (PRESS) { schedule_action(MOX, PRESSED, 0); }
             break;
 
           case 8: // toggle CTUN
-            schedule_action(CTUN, PRESSED, 0);
+            if (PRESS) { schedule_action(CTUN, PRESSED, 0); }
             break;
 
           case 9: // toggle LOCK
-            schedule_action(LOCK, PRESSED, 0);
+            if (PRESS) { schedule_action(LOCK, PRESSED, 0); }
             break;
 
           case 10: // switch active receiver
-            schedule_action(SWAP_RX, PRESSED, 0);
+            if (PRESS) { schedule_action(SWAP_RX, PRESSED, 0); }
             break;
 
           case 11: // toggle between off/RIT/XIT
-            switch (myrit) {
-            case 0:
-              vfo_rit_onoff(active_receiver->id, 1);
-              vfo_xit_onoff(0);
-              myrit = 1;
-              break;
+            if (PRESS) {
+              switch (myrit) {
+              case 0:
+                vfo_rit_onoff(active_receiver->id, 1);
+                vfo_xit_onoff(0);
+                myrit = 1;
+                break;
 
-            case 1:
-              vfo_rit_onoff(active_receiver->id, 0);
-              vfo_xit_onoff(1);
-              myrit = 2;
-              break;
+              case 1:
+                vfo_rit_onoff(active_receiver->id, 0);
+                vfo_xit_onoff(1);
+                myrit = 2;
+                break;
 
-            case 2:
-              vfo_rit_onoff(active_receiver->id, 0);
-              vfo_xit_onoff(0);
-              myrit = 0;
-              break;
+              case 2:
+                vfo_rit_onoff(active_receiver->id, 0);
+                vfo_xit_onoff(0);
+                myrit = 0;
+                break;
+              }
             }
 
             break;
 
           case 12: // clear RIT and XIT
-            schedule_action(RIT_CLEAR, PRESSED, 0);
-            schedule_action(XIT_CLEAR, PRESSED, 0);
+            if (PRESS) {
+              schedule_action(RIT_CLEAR, PRESSED, 0);
+              schedule_action(XIT_CLEAR, PRESSED, 0);
+            }
             break;
 
           case 13:  // Reset variable filter
-            schedule_action(FILTER_CUT_DEFAULT, PRESSED, 0);
+            if (PRESS) { schedule_action(FILTER_CUT_DEFAULT, PRESSED, 0); }
             break;
 
           case 14:  // Select next mode
-            if (do_short) {
+            if (RELEASE) {
               schedule_action(MODE_PLUS, PRESSED, 0);
             }
 
-            if (do_long) {
+            if (LONGPRESS) {
               schedule_action(MENU_MODE, PRESSED, 0);
             }
 
             break;
 
           case 15:  // Select next filter
-            if (do_short) {
+            if (RELEASE) {
               schedule_action(FILTER_PLUS, PRESSED, 0);
             }
 
-            if (do_long) {
+            if (LONGPRESS) {
               schedule_action(MENU_FILTER, PRESSED, 0);
             }
 
             break;
 
           case 16:  // Select next band
-            if (do_short) {
+            if (RELEASE) {
               schedule_action(BAND_PLUS, PRESSED, 0);
             }
 
-            if (do_long) {
+            if (LONGPRESS) {
               schedule_action(MENU_BAND, PRESSED, 0);
             }
 
             break;
 
           case 17:  // Select previous mode
-            schedule_action(MODE_MINUS, PRESSED, 0);
+            if (PRESS) { schedule_action(MODE_MINUS, PRESSED, 0); }
             break;
 
           case 18:  // Select previous filter
-            schedule_action(FILTER_MINUS, PRESSED, 0);
+            if (PRESS) { schedule_action(FILTER_MINUS, PRESSED, 0); }
             break;
 
           case 19:  // Select previous band
-            schedule_action(BAND_MINUS, PRESSED, 0);
+            if (PRESS) { schedule_action(BAND_MINUS, PRESSED, 0); }
             break;
 
           case 20:  // A to B
-            schedule_action(A_TO_B, PRESSED, 0);
+            if (PRESS) { schedule_action(A_TO_B, PRESSED, 0); }
             break;
 
           case 21:  // B to A
-            schedule_action(B_TO_A, PRESSED, 0);
+            if (PRESS) { schedule_action(B_TO_A, PRESSED, 0); }
             break;
 
           case 22:  // Toggle Split
-            schedule_action(SPLIT, PRESSED, 0);
+            if (PRESS) { schedule_action(SPLIT, PRESSED, 0); }
             break;
 
           case 23:  // F1, to be defined
@@ -3895,51 +3912,51 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
             break;
 
           case 27:  // 160m
-            schedule_action(BAND_160, PRESSED, 0);
+            if (PRESS) { schedule_action(BAND_160, PRESSED, 0); }
             break;
 
           case 28:  // 80m
-            schedule_action(BAND_80, PRESSED, 0);
+            if (PRESS) { schedule_action(BAND_80, PRESSED, 0); }
             break;
 
           case 29:  // 60m
-            schedule_action(BAND_60, PRESSED, 0);
+            if (PRESS) { schedule_action(BAND_60, PRESSED, 0); }
             break;
 
           case 30:  // 40m
-            schedule_action(BAND_40, PRESSED, 0);
+            if (PRESS) { schedule_action(BAND_40, PRESSED, 0); }
             break;
 
           case 31:  // 30m
-            schedule_action(BAND_30, PRESSED, 0);
+            if (PRESS) { schedule_action(BAND_30, PRESSED, 0); }
             break;
 
           case 32:  // 20m
-            schedule_action(BAND_20, PRESSED, 0);
+            if (PRESS) { schedule_action(BAND_20, PRESSED, 0); }
             break;
 
           case 33:  // 17m
-            schedule_action(BAND_17, PRESSED, 0);
+            if (PRESS) { schedule_action(BAND_17, PRESSED, 0); }
             break;
 
           case 34:  // 15m
-            schedule_action(BAND_15, PRESSED, 0);
+            if (PRESS) { schedule_action(BAND_15, PRESSED, 0); }
             break;
 
           case 35:  // 12m
-            schedule_action(BAND_12, PRESSED, 0);
+            if (PRESS) { schedule_action(BAND_12, PRESSED, 0); }
             break;
 
           case 36:  // 10m
-            schedule_action(BAND_10, PRESSED, 0);
+            if (PRESS) { schedule_action(BAND_10, PRESSED, 0); }
             break;
 
           case 37:  // 6m
-            schedule_action(BAND_6, PRESSED, 0);
+            if (PRESS) { schedule_action(BAND_6, PRESSED, 0); }
             break;
 
           case 38:  // LF
-            schedule_action(BAND_136, PRESSED, 0);
+            if (PRESS) { schedule_action(BAND_136, PRESSED, 0); }
             break;
 
           case 39:  // Reserved
@@ -3949,7 +3966,7 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
             break;
 
           case 41:  // Toggle Diversity
-            schedule_action(DIV, PRESSED, 0);
+            if (PRESS) { schedule_action(DIV, PRESSED, 0); }
             break;
           }  // end of big button switch statement
         }    // end of G2Mk2 ZZZP code
