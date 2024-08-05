@@ -756,20 +756,8 @@ static void init_analyzer(const RECEIVER *rx) {
   int overlap;
   int pixels;
   pixels = rx->pixels;
-  afft_size = 8192;
+  afft_size = 16384;
   window_type = 4;
-
-  //
-  // This makes the display of the feedback signal
-  // during TX much less "nervous"
-  //
-  if (rx->id == PS_RX_FEEDBACK) {
-    window_type = 5;
-
-    if (rx->sample_rate > 100000) { afft_size = 16384; }
-
-    if (rx->sample_rate > 200000) { afft_size = 32768; }
-  }
 
   int max_w = afft_size + (int) min(keep_time * (double) rx->sample_rate,
                                     keep_time * (double) afft_size * (double) rx->fps);
