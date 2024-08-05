@@ -46,11 +46,8 @@
  * we have to re-sample and do this in a very stupid way (linear interpolation).
  * NOTE: anan10E flag: use RX2 for TX DAC in the HERMES case.
  *
- * The "noise" is a random number of amplitude 0.00003 (last bit on a 16-bit ADC),
- * that is about -90 dBm spread onto a spectrum whose width is the sample rate. Therefore
- * the "measured" noise floor in a filter 5 kHz wide is -102 dBm for a sample rate of 48 kHz
- * but -111 dBm for a sample rate of 384000 kHz. This is a nice demonstration how the
- * spectral density of "ADC noise" goes down when increasing the sample rate.
+ * The "noise" is a random number of amplitude 0.00001
+ * that is about -100 dBm spread onto a spectrum whose width is the sample rate.
  *
  * The SDR application has to make the proper ADC settings, except for STEMlab
  * (RedPitaya based SDRs), where there is a fixed association
@@ -435,8 +432,8 @@ int main(int argc, char *argv[]) {
   j = RAND_MAX / 2;
 
   for (i = 0; i < LENNOISE; i++) {
-    noiseItab[i] = ((double) rand_r(&seed) / j - 1.0) * 0.00003;
-    noiseQtab[i] = ((double) rand_r(&seed) / j - 1.0) * 0.00003;
+    noiseItab[i] = ((double) rand_r(&seed) / j - 1.0) * 0.00001;
+    noiseQtab[i] = ((double) rand_r(&seed) / j - 1.0) * 0.00001;
   }
 
   //
