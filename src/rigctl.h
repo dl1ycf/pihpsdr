@@ -40,8 +40,6 @@ extern gboolean rigctl_debug;
 void launch_tcp_rigctl (void);
 int launch_serial_rigctl (int id);
 void disable_serial_rigctl (int id);
-void disable_serial_andromeda (int id);
-void disable_tcp_andromeda();
 
 void  shutdown_tcp_rigctl(void);
 int   rigctlGetMode(void);
