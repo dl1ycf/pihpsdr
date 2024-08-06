@@ -121,19 +121,21 @@ $BREW install libusb
 # "search" facility of your internet browser
 #
 $BREW install cmake
-#
-# This may be necessary if an older version exists
-#
-$BREW uninstall soapysdr
 $BREW install python-setuptools
-$BREW install pothosware/pothos/soapyplutosdr
-$BREW install pothosware/pothos/limesuite
-$BREW install pothosware/pothos/soapyrtlsdr
-$BREW install pothosware/pothos/soapyairspy
-$BREW install pothosware/pothos/soapyairspyhf
-$BREW install pothosware/pothos/soapyhackrf
-$BREW install pothosware/pothos/soapyredpitaya
-$BREW install pothosware/pothos/soapyrtlsdr
+#
+# If an older version of SoapySDR exist, a forced
+# re-install may be necessary (note parts of this
+# is always compiled from the sources).
+#
+$BREW reinstall soapysdr
+$BREW reinstall pothosware/pothos/soapyplutosdr
+$BREW reinstall pothosware/pothos/limesuite
+$BREW reinstall pothosware/pothos/soapyrtlsdr
+$BREW reinstall pothosware/pothos/soapyairspy
+$BREW reinstall pothosware/pothos/soapyairspyhf
+$BREW reinstall pothosware/pothos/soapyhackrf
+$BREW reinstall pothosware/pothos/soapyredpitaya
+$BREW reinstall pothosware/pothos/soapyrtlsdr
 
 ################################################################
 #
