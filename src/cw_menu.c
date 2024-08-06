@@ -112,7 +112,7 @@ static void cw_keyer_sidetone_level_value_changed_cb(GtkWidget *widget, gpointer
 static void cw_keyer_sidetone_frequency_value_changed_cb(GtkWidget *widget, gpointer data) {
   cw_keyer_sidetone_frequency = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
   cw_changed();
-  receiver_filter_changed(active_receiver);
+  rx_filter_changed(active_receiver);
   // changing the side tone frequency affects BFO frequency offsets
   schedule_high_priority();
 }

@@ -19,7 +19,7 @@
 #ifdef CLIENT_SERVER
   #include "client_server.h"
   extern int ext_remote_command(void *data);
-  extern int ext_receiver_remote_update_display(void *data);
+  extern int ext_rx_remote_update_display(void *data);
   extern int ext_set_title(void *data);
   extern int ext_remote_set_zoom(void *data);
   extern int ext_remote_set_pan(void *data);

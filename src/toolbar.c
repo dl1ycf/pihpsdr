@@ -98,7 +98,7 @@ void mox_update(int state) {
 
   if (state && !TransmitAllowed()) {
     state = 0;
-    transmitter_set_out_of_band(transmitter);
+    tx_set_out_of_band(transmitter);
   }
 
   setMox(state);
@@ -112,7 +112,7 @@ void tune_update(int state) {
 
   if (state && !TransmitAllowed()) {
     state = 0;
-    transmitter_set_out_of_band(transmitter);
+    tx_set_out_of_band(transmitter);
   }
 
   setTune(state);

@@ -88,7 +88,7 @@ double ctcss_frequencies[CTCSS_FREQUENCIES] = {
 static int p1radio = 0, p2radio = 0; // sine tone to the radio
 static int p1local = 0, p2local = 0; // sine tone to local audio
 
-static void init_analyzer(TRANSMITTER *tx);
+static void tx_init_analyzer(TRANSMITTER *tx);
 
 static gboolean close_cb() {
   // there is nothing to clean up
@@ -106,7 +106,60 @@ static int clear_out_of_band_warning(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
-void transmitter_set_out_of_band(TRANSMITTER *tx) {
+///////////////////////////////////////////////////////////////////////////
+// Sine tone generator based on phase words that are
+// passed as an argument. The phase (value 0-256) is encoded in
+// two integers (in the range 0-255) as
+//      
+// phase = p1 + p2/256
+//      
+// and the sine value is obtained from the table by linear
+// interpolateion
+//      
+// sine := sintab[p1] + p2*(sintab(p1+1)-sintab(p2))/256.0
+//      
+// and the phase word is updated, depending on the frequency f, as
+//        
+// p1 := p1 + (256*f)/48000
+// p2 := p2 + (256*f)%48000
+//      
+///////////////////////////////////////////////////////////////////////////
+// The idea of this sine generator is
+// - it does not depend on an external sin function
+// - it does not do much floating point
+// - many sine generators can run in parallel, with their "own"
+//   phase words and frequencies
+// - the phase is always continuous, even if there are frequency jumps
+///////////////////////////////////////////////////////////////////////////
+          
+static float sine_generator(int *phase1, int *phase2, int freq) {
+  register float val, s, d;
+  register int p1 = *phase1;
+  register int p2 = *phase2;
+  register int32_t f256 = freq * 256; // so we know 256*freq won't overflow
+  s = sintab[p1];
+  d = sintab[p1 + 1] - s;
+  val = s + p2 * d * 0.00390625; // 1/256
+  p1 += f256 / 48000;
+  p2 += ((f256 % 48000) * 256) / 48000;
+        
+  // correct overflows in fractional and integer phase to keep
+  // p1,p2 within bounds
+  if (p2 > 255) {
+    p2 -= 256;
+    p1++;
+  } 
+    
+  if (p1 > 255) {
+    p1 -= 256;
+  }       
+    
+  *phase1 = p1;
+  *phase2 = p2;
+  return val;
+}   
+
+void tx_set_out_of_band(TRANSMITTER *tx) {
   //
   // Print "Out of band" warning message in the VFO bar
   // and clear it after 1 second.
@@ -117,24 +170,24 @@ void transmitter_set_out_of_band(TRANSMITTER *tx) {
                              clear_out_of_band_warning, tx, NULL);
 }
 
-void transmitter_set_am_carrier_level(const TRANSMITTER *tx) {
+void tx_set_am_carrier_level(const TRANSMITTER *tx) {
   SetTXAAMCarrierLevel(tx->id, tx->am_carrier_level);
 }
 
-void transmitter_set_ctcss(TRANSMITTER *tx, int state, int i) {
-  //t_print("transmitter_set_ctcss: state=%d i=%d frequency=%0.1f\n",state,i,ctcss_frequencies[i]);
+void tx_set_ctcss(TRANSMITTER *tx, int state, int i) {
+  //t_print("tx_set_ctcss: state=%d i=%d frequency=%0.1f\n",state,i,ctcss_frequencies[i]);
   tx->ctcss_enabled = state;
   tx->ctcss = i;
   SetTXACTCSSFreq(tx->id, ctcss_frequencies[tx->ctcss]);
   SetTXACTCSSRun(tx->id, tx->ctcss_enabled);
 }
 
-void transmitter_set_compressor_level(TRANSMITTER *tx, double level) {
+void tx_set_compressor_level(TRANSMITTER *tx, double level) {
   tx->compressor_level = level;
   SetTXACompressorGain(tx->id, tx->compressor_level);
 }
 
-void transmitter_set_compressor(TRANSMITTER *tx, int state) {
+void tx_set_compressor(TRANSMITTER *tx, int state) {
   //
   // The CESSB overshoot filter (on/off) automatically follows
   // the Compressor on/off setting. This we can do because we
@@ -224,7 +277,7 @@ static void init_ve3nea_ramp(double *ramp, int width) {
 }
 #endif
 
-void reconfigure_transmitter(TRANSMITTER *tx, int width, int height) {
+void tx_reconfigure(TRANSMITTER *tx, int width, int height) {
   if (width != tx->width || height != tx->height) {
     g_mutex_lock(&tx->display_mutex);
     t_print("reconfigure_transmitter: width=%d height=%d\n", width, height);
@@ -243,14 +296,14 @@ void reconfigure_transmitter(TRANSMITTER *tx, int width, int height) {
     tx->pixels = display_width * tx->ratio * 2;
     g_free(tx->pixel_samples);
     tx->pixel_samples = g_new(float, tx->pixels);
-    init_analyzer(tx);
+    tx_init_analyzer(tx);
     g_mutex_unlock(&tx->display_mutex);
   }
 
   gtk_widget_set_size_request(tx->panadapter, width, height);
 }
 
-void transmitterSaveState(const TRANSMITTER *tx) {
+void tx_save_state(const TRANSMITTER *tx) {
   t_print("%s: TX=%d\n", __FUNCTION__, tx->id);
   SetPropI1("transmitter.%d.fft_size",          tx->id,               tx->fft_size);
   SetPropI1("transmitter.%d.fps",               tx->id,               tx->fps);
@@ -303,7 +356,7 @@ void transmitterSaveState(const TRANSMITTER *tx) {
   }
 }
 
-static void transmitterRestoreState(TRANSMITTER *tx) {
+static void tx_restore_state(TRANSMITTER *tx) {
   t_print("%s: id=%d\n", __FUNCTION__, tx->id);
   GetPropI1("transmitter.%d.fft_size",          tx->id,               tx->fft_size);
   GetPropI1("transmitter.%d.fps",               tx->id,               tx->fps);
@@ -374,11 +427,11 @@ static double compute_power(double p) {
   return interval * ((1.0 - frac) * (double)i + frac * (double)(i + 1));
 }
 
-static gboolean update_display(gpointer data) {
+static gboolean tx_update_display(gpointer data) {
   TRANSMITTER *tx = (TRANSMITTER *)data;
   int rc;
 
-  //t_print("update_display: tx id=%d\n",tx->id);
+  //t_print("tx_update_display: tx id=%d\n",tx->id);
   if (tx->displaying) {
     // if "MON" button is active (tx->feedback is TRUE),
     // then obtain spectrum pixels from PS_RX_FEEDBACK,
@@ -662,7 +715,7 @@ static gboolean update_display(gpointer data) {
   return FALSE; // no more timer events
 }
 
-static void init_analyzer(TRANSMITTER *tx) {
+static void tx_init_analyzer(TRANSMITTER *tx) {
   int flp[] = {0};
   const double keep_time = 0.1;
   const int n_pixout = 1;
@@ -715,7 +768,7 @@ static void init_analyzer(TRANSMITTER *tx) {
   SetDisplayAvBackmult   (tx->id,  0, 0.4000);
 }
 
-void create_dialog(TRANSMITTER *tx) {
+void tx_create_dialog(TRANSMITTER *tx) {
   //t_print("create_dialog\n");
   tx->dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(tx->dialog), GTK_WINDOW(top_window));
@@ -733,8 +786,8 @@ void create_dialog(TRANSMITTER *tx) {
   g_signal_connect(tx->dialog, "key_press_event", G_CALLBACK(keypress_cb), NULL);
 }
 
-static void create_visual(TRANSMITTER *tx) {
-  t_print("transmitter: create_visual: id=%d width=%d height=%d\n", tx->id, tx->width, tx->height);
+static void tx_create_visual(TRANSMITTER *tx) {
+  t_print("transmitter: tx_create_visual: id=%d width=%d height=%d\n", tx->id, tx->width, tx->height);
   tx->dialog = NULL;
   tx->panel = gtk_fixed_new();
   gtk_widget_set_size_request (tx->panel, tx->width, tx->height);
@@ -748,11 +801,11 @@ static void create_visual(TRANSMITTER *tx) {
   g_object_ref((gpointer)tx->panel);
 
   if (duplex) {
-    create_dialog(tx);
+    tx_create_dialog(tx);
   }
 }
 
-TRANSMITTER *create_transmitter(int id, int width, int height) {
+TRANSMITTER *tx_create_transmitter(int id, int width, int height) {
   int rc;
   TRANSMITTER *tx = g_new(TRANSMITTER, 1);
   tx->id = id;
@@ -889,7 +942,7 @@ TRANSMITTER *create_transmitter(int id, int width, int height) {
   tx->eq_gain[8]  = 0.0;
   tx->eq_gain[9]  = 0.0;
   tx->eq_gain[10] = 0.0;
-  transmitterRestoreState(tx);
+  tx_restore_state(tx);
   //
   // allocate buffers
   //
@@ -929,7 +982,7 @@ TRANSMITTER *create_transmitter(int id, int width, int height) {
   SetTXAFMEmphPosition(tx->id, pre_emphasize);
   SetTXACFIRRun(tx->id, SET(protocol == NEW_PROTOCOL)); // turned on if new protocol
   tx_set_equalizer(tx);
-  transmitter_set_ctcss(tx, tx->ctcss_enabled, tx->ctcss);
+  tx_set_ctcss(tx, tx->ctcss_enabled, tx->ctcss);
   SetTXAAMSQRun(tx->id, 0);
   SetTXAosctrlRun(tx->id, 0);
   SetTXAALCAttack(tx->id, 1);
@@ -960,10 +1013,10 @@ TRANSMITTER *create_transmitter(int id, int width, int height) {
   if (rc != 0) {
     t_print("XCreateAnalyzer id=%d failed: %d\n", tx->id, rc);
   } else {
-    init_analyzer(tx);
+    tx_init_analyzer(tx);
   }
 
-  create_visual(tx);
+  tx_create_visual(tx);
   return tx;
 }
 
@@ -1092,7 +1145,7 @@ void tx_set_pre_emphasize(const TRANSMITTER *tx, int state) {
   SetTXAFMEmphPosition(tx->id, state);
 }
 
-static void full_tx_buffer(TRANSMITTER *tx) {
+static void tx_full_buffer(TRANSMITTER *tx) {
   long isample;
   long qsample;
   double gain;
@@ -1184,7 +1237,7 @@ static void full_tx_buffer(TRANSMITTER *tx) {
     fexchange0(tx->id, tx->mic_input_buffer, tx->iq_output_buffer, &error);
 
     if (error != 0) {
-      t_print("full_tx_buffer: id=%d fexchange0: error=%d\n", tx->id, error);
+      t_print("tx_full_buffer: id=%d fexchange0: error=%d\n", tx->id, error);
     }
   }
 
@@ -1231,7 +1284,7 @@ static void full_tx_buffer(TRANSMITTER *tx) {
       //
       // "Side tone to radio" treatment:
       // old protocol: done HERE
-      // new protocol: already done in add_mic_sample
+      // new protocol: already done in tx_add_mic_sample
       // soapy       : no audio to radio
       //
       switch (protocol) {
@@ -1340,7 +1393,7 @@ static void full_tx_buffer(TRANSMITTER *tx) {
   }
 }
 
-void add_mic_sample(TRANSMITTER *tx, float mic_sample) {
+void tx_add_mic_sample(TRANSMITTER *tx, float mic_sample) {
   int txmode = get_tx_mode();
   double mic_sample_double;
   int i, j;
@@ -1539,12 +1592,12 @@ void add_mic_sample(TRANSMITTER *tx, float mic_sample) {
   tx->samples++;
 
   if (tx->samples == tx->buffer_size) {
-    full_tx_buffer(tx);
+    tx_full_buffer(tx);
     tx->samples = 0;
   }
 }
 
-void add_ps_iq_samples(const TRANSMITTER *tx, double i_sample_tx, double q_sample_tx, double i_sample_rx,
+void tx_add_ps_iq_samples(const TRANSMITTER *tx, double i_sample_tx, double q_sample_tx, double i_sample_rx,
                        double q_sample_rx) {
   RECEIVER *tx_feedback = receiver[PS_TX_FEEDBACK];
   RECEIVER *rx_feedback = receiver[PS_RX_FEEDBACK];
@@ -1613,14 +1666,25 @@ void tx_set_displaying(TRANSMITTER *tx, int state) {
       g_source_remove(tx->update_timer_id);
     }
 
-    tx->update_timer_id = gdk_threads_add_timeout_full(G_PRIORITY_HIGH_IDLE, 1000 / tx->fps, update_display, (gpointer)tx,
-                          NULL);
+    tx->update_timer_id = gdk_threads_add_timeout_full(G_PRIORITY_HIGH_IDLE, 1000 / tx->fps, tx_update_display,
+                          (gpointer)tx, NULL);
   } else {
     if (tx->update_timer_id > 0) {
       g_source_remove(tx->update_timer_id);
       tx->update_timer_id = 0;
     }
   }
+}
+
+//
+// When changing the TX display frame rate, the TX display update timer
+// has to be restarted, as well as the initializer
+//
+void tx_set_framerate(TRANSMITTER *tx, int fps) {
+  tx->fps = fps;
+
+  tx_init_analyzer(tx);
+  tx_set_displaying(tx, tx->displaying);
 }
 
 void tx_set_ps(TRANSMITTER *tx, int state) {
@@ -1751,59 +1815,6 @@ void tx_set_twotone(TRANSMITTER *tx, int state) {
 
 void tx_set_ps_sample_rate(const TRANSMITTER *tx, int rate) {
   SetPSFeedbackRate (tx->id, rate);
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Sine tone generator based on phase words that are
-// passed as an argument. The phase (value 0-256) is encoded in
-// two integers (in the range 0-255) as
-//
-// phase = p1 + p2/256
-//
-// and the sine value is obtained from the table by linear
-// interpolateion
-//
-// sine := sintab[p1] + p2*(sintab(p1+1)-sintab(p2))/256.0
-//
-// and the phase word is updated, depending on the frequency f, as
-//
-// p1 := p1 + (256*f)/48000
-// p2 := p2 + (256*f)%48000
-//
-///////////////////////////////////////////////////////////////////////////
-// The idea of this sine generator is
-// - it does not depend on an external sin function
-// - it does not do much floating point
-// - many sine generators can run in parallel, with their "own"
-//   phase words and frequencies
-// - the phase is always continuous, even if there are frequency jumps
-///////////////////////////////////////////////////////////////////////////
-
-float sine_generator(int *phase1, int *phase2, int freq) {
-  register float val, s, d;
-  register int p1 = *phase1;
-  register int p2 = *phase2;
-  register int32_t f256 = freq * 256; // so we know 256*freq won't overflow
-  s = sintab[p1];
-  d = sintab[p1 + 1] - s;
-  val = s + p2 * d * 0.00390625; // 1/256
-  p1 += f256 / 48000;
-  p2 += ((f256 % 48000) * 256) / 48000;
-
-  // correct overflows in fractional and integer phase to keep
-  // p1,p2 within bounds
-  if (p2 > 255) {
-    p2 -= 256;
-    p1++;
-  }
-
-  if (p1 > 255) {
-    p1 -= 256;
-  }
-
-  *phase1 = p1;
-  *phase2 = p2;
-  return val;
 }
 
 void tx_set_ramps(TRANSMITTER *tx) {

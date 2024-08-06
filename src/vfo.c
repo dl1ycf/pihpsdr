@@ -379,7 +379,7 @@ void vfo_xvtr_changed() {
       vfo[0].frequency = vfo[0].lo + (radio->frequency_min + radio->frequency_max) / 2;
       vfo[0].ctun = 0;
       vfo_adjust_band(0, vfo[0].frequency);
-      receiver_set_frequency(receiver[0], vfo[0].frequency);
+      rx_set_frequency(receiver[0], vfo[0].frequency);
     }
   }
 
@@ -394,7 +394,7 @@ void vfo_xvtr_changed() {
       vfo_adjust_band(1, vfo[1].frequency);
 
       if (receivers == 2) {
-        receiver_set_frequency(receiver[1], vfo[1].frequency);
+        rx_set_frequency(receiver[1], vfo[1].frequency);
       }
     }
   }
@@ -437,14 +437,14 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
       transmitter->eq_freq[i]       = mode_settings[m].tx_eq_freq[i];
     }
 
-    transmitter_set_compressor_level(transmitter, mode_settings[m].compressor_level);
-    transmitter_set_compressor      (transmitter, mode_settings[m].compressor      );
+    tx_set_compressor_level(transmitter, mode_settings[m].compressor_level);
+    tx_set_compressor      (transmitter, mode_settings[m].compressor      );
   }
 
   //
   // make changes effective and put them on the VFO display
   //
-  set_agc(rx, rx->agc);
+  rx_set_agc(rx, rx->agc);
   update_noise();
   update_eq();
   g_idle_add(ext_vfo_update, NULL);
@@ -523,12 +523,12 @@ void vfo_band_changed(int id, int b) {
   }
 
   if (can_transmit) {
-    transmitter_set_ctcss(transmitter, entry->ctcss_enabled, entry->ctcss);
+    tx_set_ctcss(transmitter, entry->ctcss_enabled, entry->ctcss);
   }
 
   //
   // In the case of CTUN, the offset is re-calculated
-  // during vfos_changed ==> receiver_vfo_changed ==> receiver_frequency_changed
+  // during vfos_changed ==> rx_vfo_changed ==> rx_frequency_changed
   //
   if (id < receivers && oldmode != vfo[id].mode) {
     vfo_apply_mode_settings(receiver[id]);
@@ -564,7 +564,7 @@ void vfo_bandstack_changed(int b) {
   }
 
   if (can_transmit) {
-    transmitter_set_ctcss(transmitter, entry->ctcss_enabled, entry->ctcss);
+    tx_set_ctcss(transmitter, entry->ctcss_enabled, entry->ctcss);
   }
 
   if (id < receivers && oldmode != vfo[id].mode) {
@@ -592,8 +592,8 @@ void vfo_id_mode_changed(int id, int m) {
 
   if (id < receivers) {
     vfo_apply_mode_settings(receiver[id]);
-    receiver_mode_changed(receiver[id]);
-    receiver_filter_changed(receiver[id]);
+    rx_mode_changed(receiver[id]);
+    rx_filter_changed(receiver[id]);
   }
 
   if (can_transmit) {
@@ -618,7 +618,7 @@ void vfo_id_deviation_changed(int id, int dev) {
   vfo[id].deviation = dev;
 
   if (id < receivers) {
-    receiver_filter_changed(receiver[id]);
+    rx_filter_changed(receiver[id]);
   }
 
   g_idle_add(ext_vfo_update, NULL);
@@ -653,11 +653,11 @@ void vfo_id_filter_changed(int id, int f) {
   //
   if (f == filterVar1 || f == filterVar2 ) {
     for (int i = 0; i < receivers; i++) {
-      receiver_filter_changed(receiver[i]);
+      rx_filter_changed(receiver[i]);
     }
   } else {
     if (id < receivers) {
-      receiver_filter_changed(receiver[id]);
+      rx_filter_changed(receiver[id]);
     }
   }
 
@@ -669,10 +669,10 @@ void vfos_changed() {
   // Use this when there are large changes in the VFOs.
   // Apply the new data
   //
-  receiver_vfo_changed(receiver[0]);
+  rx_vfo_changed(receiver[0]);
 
   if (receivers == 2) {
-    receiver_vfo_changed(receiver[1]);
+    rx_vfo_changed(receiver[1]);
   }
 
   tx_vfo_changed();
@@ -854,7 +854,7 @@ void vfo_id_step(int id, int steps) {
       }
 
       if (sid < receivers) {
-        receiver_frequency_changed(receiver[sid]);
+        rx_frequency_changed(receiver[sid]);
       }
 
       break;
@@ -871,13 +871,13 @@ void vfo_id_step(int id, int steps) {
       }
 
       if (sid < receivers) {
-        receiver_frequency_changed(receiver[sid]);
+        rx_frequency_changed(receiver[sid]);
       }
 
       break;
     }
 
-    receiver_frequency_changed(receiver[id]);
+    rx_frequency_changed(receiver[id]);
     g_idle_add(ext_vfo_update, NULL);
   }
 }
@@ -973,7 +973,7 @@ void vfo_id_move(int id, long long hz, int round) {
       }
 
       if (sid < receivers) {
-        receiver_frequency_changed(receiver[sid]);
+        rx_frequency_changed(receiver[sid]);
       }
 
       break;
@@ -990,13 +990,13 @@ void vfo_id_move(int id, long long hz, int round) {
       }
 
       if (sid < receivers) {
-        receiver_frequency_changed(receiver[sid]);
+        rx_frequency_changed(receiver[sid]);
       }
 
       break;
     }
 
-    receiver_frequency_changed(receiver[id]);
+    rx_frequency_changed(receiver[id]);
     g_idle_add(ext_vfo_update, NULL);
   }
 }
@@ -1085,7 +1085,7 @@ void vfo_id_move_to(int id, long long hz) {
       }
 
       if (sid < receivers) {
-        receiver_frequency_changed(receiver[sid]);
+        rx_frequency_changed(receiver[sid]);
       }
 
       break;
@@ -1102,13 +1102,13 @@ void vfo_id_move_to(int id, long long hz) {
       }
 
       if (sid < receivers) {
-        receiver_frequency_changed(receiver[sid]);
+        rx_frequency_changed(receiver[sid]);
       }
 
       break;
     }
 
-    receiver_vfo_changed(receiver[id]);
+    rx_vfo_changed(receiver[id]);
     g_idle_add(ext_vfo_update, NULL);
   }
 }
@@ -1995,7 +1995,7 @@ void vfo_rit_toggle(int id) {
   TOGGLE(vfo[id].rit_enabled);
 
   if (id < receivers) {
-    receiver_frequency_changed(receiver[id]);
+    rx_frequency_changed(receiver[id]);
   }
 
   g_idle_add(ext_vfo_update, NULL);
@@ -2007,7 +2007,7 @@ void vfo_rit_value(int id, long long value) {
   vfo[id].rit_enabled = value ? 1 : 0;
 
   if (id < receivers) {
-    receiver_frequency_changed(receiver[id]);
+    rx_frequency_changed(receiver[id]);
   }
 
   g_idle_add(ext_vfo_update, NULL);
@@ -2018,7 +2018,7 @@ void vfo_rit_onoff(int id, int enable) {
   vfo[id].rit_enabled = SET(enable);
 
   if (id < receivers) {
-    receiver_frequency_changed(receiver[id]);
+    rx_frequency_changed(receiver[id]);
   }
 
   g_idle_add(ext_vfo_update, NULL);
@@ -2063,7 +2063,7 @@ void vfo_rit_incr(int id, int incr) {
   vfo[id].rit_enabled = (value != 0);
 
   if (id < receivers) {
-    receiver_frequency_changed(receiver[id]);
+    rx_frequency_changed(receiver[id]);
   }
 
   g_idle_add(ext_vfo_update, NULL);
@@ -2095,7 +2095,7 @@ void vfo_set_frequency(int v, long long f) {
   //
   vfo_adjust_band(v, f);
 
-  if (v == VFO_A) { receiver_set_frequency(receiver[0], f); }
+  if (v == VFO_A) { rx_set_frequency(receiver[0], f); }
 
   if (v == VFO_B) {
     //
@@ -2105,7 +2105,7 @@ void vfo_set_frequency(int v, long long f) {
     // If VFO_B controls a (running) receiver, do the "full job".
     //
     if (receivers == 2) {
-      receiver_set_frequency(receiver[1], f);
+      rx_set_frequency(receiver[1], f);
     } else {
       vfo[v].frequency = f;
 
@@ -2128,7 +2128,7 @@ void vfo_ctun_update(int id, int state) {
 
   //
   // Note: if this VFO does not control a (running) receiver,
-  //       receiver_set_frequency is *not* called therefore
+  //       rx_set_frequency is *not* called therefore
   //       we should update ctun_frequency and offset
   //
   if (vfo[id].ctun == state) { return; }  // no-op if no change
@@ -2142,7 +2142,7 @@ void vfo_ctun_update(int id, int state) {
     vfo_adjust_band(id, vfo[id].ctun_frequency);
 
     if (id < receivers) {
-      receiver_set_frequency(receiver[id], vfo[id].ctun_frequency);
+      rx_set_frequency(receiver[id], vfo[id].ctun_frequency);
     }
   } else {
     // CTUN turned ON->OFF: keep frequency
@@ -2151,7 +2151,7 @@ void vfo_ctun_update(int id, int state) {
     vfo_adjust_band(id, vfo[id].frequency);
 
     if (id < receivers) {
-      receiver_set_frequency(receiver[id], vfo[id].ctun_frequency);
+      rx_set_frequency(receiver[id], vfo[id].ctun_frequency);
     }
   }
 }

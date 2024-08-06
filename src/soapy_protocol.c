@@ -76,7 +76,7 @@ void soapy_protocol_change_sample_rate(RECEIVER *rx) {
   //
   // rx->mutex already locked, so we can call this  only
   // if the radio is stopped -- we cannot change the resampler
-  // while the receive thread is stuck in add_iq_samples()
+  // while the receive thread is stuck in rx_add_iq_samples()
   //
 #if 0
   //
@@ -369,9 +369,9 @@ static void *receive_thread(void *arg) {
         qsample = rx->resample_buffer[(i * 2) + 1];
 
         if (iqswap) {
-          add_iq_samples(rx, qsample, isample);
+          rx_add_iq_samples(rx, qsample, isample);
         } else {
-          add_iq_samples(rx, isample, qsample);
+          rx_add_iq_samples(rx, isample, qsample);
         }
 
         if (can_transmit) {
@@ -384,7 +384,7 @@ static void *receive_thread(void *arg) {
               fsample = 0.0F;
             }
 
-            add_mic_sample(transmitter, fsample);
+            tx_add_mic_sample(transmitter, fsample);
             mic_samples = 0;
           }
         }
@@ -395,9 +395,9 @@ static void *receive_thread(void *arg) {
         qsample = rx->buffer[(i * 2) + 1];
 
         if (iqswap) {
-          add_iq_samples(rx, qsample, isample);
+          rx_add_iq_samples(rx, qsample, isample);
         } else {
-          add_iq_samples(rx, isample, qsample);
+          rx_add_iq_samples(rx, isample, qsample);
         }
 
         if (can_transmit) {
@@ -410,7 +410,7 @@ static void *receive_thread(void *arg) {
               fsample = 0.0F;
             }
 
-            add_mic_sample(transmitter, fsample);
+            tx_add_mic_sample(transmitter, fsample);
             mic_samples = 0;
           }
         }

@@ -75,25 +75,25 @@ static gboolean
 waterfall_button_press_event_cb (GtkWidget      *widget,
                                  GdkEventButton *event,
                                  gpointer        data) {
-  return receiver_button_press_event(widget, event, data);
+  return rx_button_press_event(widget, event, data);
 }
 
 static gboolean
 waterfall_button_release_event_cb (GtkWidget      *widget,
                                    GdkEventButton *event,
                                    gpointer        data) {
-  return receiver_button_release_event(widget, event, data);
+  return rx_button_release_event(widget, event, data);
 }
 
 static gboolean waterfall_motion_notify_event_cb (GtkWidget      *widget,
     GdkEventMotion *event,
     gpointer        data) {
-  return receiver_motion_notify_event(widget, event, data);
+  return rx_motion_notify_event(widget, event, data);
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean waterfall_scroll_event_cb (GtkWidget *widget, GdkEventScroll *event, gpointer data) {
-  return receiver_scroll_event(widget, event, data);
+  return rx_scroll_event(widget, event, data);
 }
 
 void waterfall_update(RECEIVER *rx) {

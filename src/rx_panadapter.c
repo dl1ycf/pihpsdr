@@ -90,20 +90,20 @@ panadapter_draw_cb (GtkWidget *widget,
 }
 
 static gboolean panadapter_button_press_event_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  return receiver_button_press_event(widget, event, data);
+  return rx_button_press_event(widget, event, data);
 }
 
 static gboolean panadapter_button_release_event_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  return receiver_button_release_event(widget, event, data);
+  return rx_button_release_event(widget, event, data);
 }
 
 static gboolean panadapter_motion_notify_event_cb(GtkWidget *widget, GdkEventMotion *event, gpointer data) {
-  return receiver_motion_notify_event(widget, event, data);
+  return rx_motion_notify_event(widget, event, data);
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean panadapter_scroll_event_cb(GtkWidget *widget, GdkEventScroll *event, gpointer data) {
-  return receiver_scroll_event(widget, event, data);
+  return rx_scroll_event(widget, event, data);
 }
 
 void rx_panadapter_update(RECEIVER *rx) {

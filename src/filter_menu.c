@@ -73,7 +73,7 @@ static void cleanup() {
 
 static void cw_peak_cb(GtkWidget *widget, gpointer data) {
   vfo[active_receiver->id].cwAudioPeakFilter = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-  receiver_filter_changed(active_receiver);
+  rx_filter_changed(active_receiver);
   g_idle_add(ext_vfo_update, NULL);
 }
 
@@ -167,7 +167,7 @@ static gboolean deviation_select_cb (GtkWidget *widget, gpointer data) {
     int id = active_receiver->id;
     current = choice;
     vfo[id].deviation = choice->info;
-    set_filter(active_receiver);
+    rx_set_filter(active_receiver);
 
     if (can_transmit) {
       tx_set_filter(transmitter);
@@ -227,7 +227,7 @@ static void var_spin_low_cb (GtkWidget *widget, gpointer data) {
   //
   for (int i = 0; i < receivers; i++) {
     if (vfo[i].filter == f) {
-      receiver_filter_changed(receiver[i]);
+      rx_filter_changed(receiver[i]);
     }
   }
 
@@ -291,7 +291,7 @@ static void var_spin_high_cb (GtkWidget *widget, gpointer data) {
   //
   for (int i = 0; i < receivers; i++) {
     if (vfo[i].filter == f) {
-      receiver_filter_changed(receiver[i]);
+      rx_filter_changed(receiver[i]);
     }
   }
 

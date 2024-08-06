@@ -98,7 +98,7 @@ void recall_memory_slot(int index) {
   vfo[id].lo             = band->frequencyLO + band->errorLO;
 
   if (can_transmit) {
-    transmitter_set_ctcss(transmitter, mem[index].ctcss_enabled, mem[index].ctcss);
+    tx_set_ctcss(transmitter, mem[index].ctcss_enabled, mem[index].ctcss);
   }
 
   //

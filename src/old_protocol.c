@@ -1493,7 +1493,7 @@ static void process_ozy_byte(int b) {
 
       // this is pure paranoia, it allows for st_txfdbk < st_rxfdbk
       if (nreceiver + 1 == st_num_hpsdr_receivers) {
-        add_ps_iq_samples(transmitter, left_sample_double_tx, right_sample_double_tx, left_sample_double_rx,
+        tx_add_ps_iq_samples(transmitter, left_sample_double_tx, right_sample_double_tx, left_sample_double_rx,
                           right_sample_double_rx);
       }
     }
@@ -1509,10 +1509,10 @@ static void process_ozy_byte(int b) {
       } else if (nreceiver == 1) {
         left_sample_double_aux = left_sample_double;
         right_sample_double_aux = right_sample_double;
-        add_div_iq_samples(receiver[0], left_sample_double_main, right_sample_double_main, left_sample_double_aux,
+        rx_add_div_iq_samples(receiver[0], left_sample_double_main, right_sample_double_main, left_sample_double_aux,
                            right_sample_double_aux);
 
-        if (receivers > 1) { add_iq_samples(receiver[1], left_sample_double_aux, right_sample_double_aux); }
+        if (receivers > 1) { rx_add_iq_samples(receiver[1], left_sample_double_aux, right_sample_double_aux); }
       }
     }
 
@@ -1521,9 +1521,9 @@ static void process_ozy_byte(int b) {
       // RX without DIVERSITY. Feed samples to RX1 and RX2
       //
       if (nreceiver == 0) {
-        add_iq_samples(receiver[0], left_sample_double, right_sample_double);
+        rx_add_iq_samples(receiver[0], left_sample_double, right_sample_double);
       } else if (nreceiver == 1 && receivers > 1) {
-        add_iq_samples(receiver[1], left_sample_double, right_sample_double);
+        rx_add_iq_samples(receiver[1], left_sample_double, right_sample_double);
       }
     }
 
@@ -1564,7 +1564,7 @@ static void process_ozy_byte(int b) {
         fsample = transmitter->local_microphone ? audio_get_next_mic_sample() : (float) mic_sample * 0.00003051;
       }
 
-      add_mic_sample(transmitter, fsample);
+      tx_add_mic_sample(transmitter, fsample);
       mic_samples = 0;
     }
 

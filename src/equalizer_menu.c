@@ -73,7 +73,7 @@ void update_eq() {
     }
 
     for (int id = 0; id < receivers; id++) {
-      receiver_set_equalizer(receiver[id]);
+      rx_set_equalizer(receiver[id]);
     }
 
 #ifdef CLIENT_SERVER

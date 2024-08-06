@@ -341,13 +341,13 @@ void radio_stop() {
   }
 
   t_print("radio_stop: RX1: stop display update\n");
-  set_displaying(receiver[0], 0);
+  rx_set_displaying(receiver[0], 0);
   t_print("radio_stop: RX1: CloseChannel: %d\n", receiver[0]->id);
   CloseChannel(receiver[0]->id);
 
   if (RECEIVERS == 2) {
     t_print("radio_stop: RX2: stop display update\n");
-    set_displaying(receiver[1], 0);
+    rx_set_displaying(receiver[1], 0);
     t_print("radio_stop: RX2: CloseChannel: %d\n", receiver[1]->id);
     CloseChannel(receiver[1]->id);
   }
@@ -594,8 +594,8 @@ void reconfigure_radio() {
     for (i = 0; i < receivers; i++) {
       RECEIVER *rx = receiver[i];
       rx->width = my_width / receivers;
-      receiver_update_zoom(rx);
-      reconfigure_receiver(rx, rx_height);
+      rx_update_zoom(rx);
+      rx_reconfigure(rx, rx_height);
 
       if (!isTransmitting() || duplex) {
         gtk_fixed_move(GTK_FIXED(fixed), rx->panel, x, y);
@@ -611,8 +611,8 @@ void reconfigure_radio() {
     for (i = 0; i < receivers; i++) {
       RECEIVER *rx = receiver[i];
       rx->width = my_width;
-      receiver_update_zoom(rx);
-      reconfigure_receiver(rx, rx_height / receivers);
+      rx_update_zoom(rx);
+      rx_reconfigure(rx, rx_height / receivers);
 
       if (!isTransmitting() || duplex) {
         gtk_fixed_move(GTK_FIXED(fixed), rx->panel, 0, y);
@@ -676,7 +676,7 @@ void reconfigure_radio() {
   }
 
   if (can_transmit && !duplex) {
-    reconfigure_transmitter(transmitter, my_width, rx_height);
+    tx_reconfigure(transmitter, my_width, rx_height);
   }
 }
 
@@ -793,10 +793,10 @@ static void create_visual() {
 #ifdef CLIENT_SERVER
 
     if (radio_is_remote) {
-      receiver_create_remote(receiver[i]);
+      rx_create_remote(receiver[i]);
     } else {
 #endif
-      receiver[i] = create_receiver(CHANNEL_RX0 + i, my_width, my_width, rx_height / RECEIVERS);
+      receiver[i] = rx_create_receiver(CHANNEL_RX0 + i, my_width, my_width, rx_height / RECEIVERS);
       setSquelch(receiver[i]);
 #ifdef CLIENT_SERVER
     }
@@ -809,8 +809,8 @@ static void create_visual() {
 
     if (!radio_is_remote) {
 #endif
-      set_displaying(receiver[i], 1);
-      set_offset(receiver[i], vfo[i].offset);
+      rx_set_displaying(receiver[i], 1);
+      rx_set_offset(receiver[i], vfo[i].offset);
 #ifdef CLIENT_SERVER
     }
 
@@ -854,9 +854,9 @@ static void create_visual() {
 
     if (radio_has_transmitter) {
       if (duplex) {
-        transmitter = create_transmitter(CHANNEL_TX, my_width / 4, my_height / 2);
+        transmitter = tx_create_transmitter(CHANNEL_TX, my_width / 4, my_height / 2);
       } else {
-        transmitter = create_transmitter(CHANNEL_TX, my_width, rx_height);
+        transmitter = tx_create_transmitter(CHANNEL_TX, my_width, rx_height);
       }
 
       can_transmit = 1;
@@ -867,9 +867,9 @@ static void create_visual() {
       if (protocol == NEW_PROTOCOL || protocol == ORIGINAL_PROTOCOL) {
         double pk;
         tx_set_ps_sample_rate(transmitter, protocol == NEW_PROTOCOL ? 192000 : active_receiver->sample_rate);
-        receiver[PS_TX_FEEDBACK] = create_pure_signal_receiver(PS_TX_FEEDBACK,
+        receiver[PS_TX_FEEDBACK] = rx_create_pure_signal_receiver(PS_TX_FEEDBACK,
                                    protocol == ORIGINAL_PROTOCOL ? active_receiver->sample_rate : 192000, my_width, transmitter->fps);
-        receiver[PS_RX_FEEDBACK] = create_pure_signal_receiver(PS_RX_FEEDBACK,
+        receiver[PS_RX_FEEDBACK] = rx_create_pure_signal_receiver(PS_RX_FEEDBACK,
                                    protocol == ORIGINAL_PROTOCOL ? active_receiver->sample_rate : 192000, my_width, transmitter->fps);
 
         //
@@ -1551,7 +1551,7 @@ void start_radio() {
     soapy_protocol_set_gain(rx);
 
     if (vfo[0].ctun) {
-      receiver_set_frequency(rx, vfo[0].ctun_frequency);
+      rx_set_frequency(rx, vfo[0].ctun_frequency);
     }
 
     soapy_protocol_start_receiver(rx);
@@ -1621,28 +1621,28 @@ void radio_change_receivers(int r) {
 
   switch (r) {
   case 1:
-    set_displaying(receiver[1], 0);
+    rx_set_displaying(receiver[1], 0);
     gtk_container_remove(GTK_CONTAINER(fixed), receiver[1]->panel);
     receivers = 1;
     break;
 
   case 2:
     gtk_fixed_put(GTK_FIXED(fixed), receiver[1]->panel, 0, 0);
-    set_displaying(receiver[1], 1);
+    rx_set_displaying(receiver[1], 1);
     receivers = 2;
 
     //
     // Make sure RX2 shares the sample rate  with RX1 when running P1.
     //
     if (protocol == ORIGINAL_PROTOCOL && receiver[1]->sample_rate != receiver[0]->sample_rate) {
-      receiver_change_sample_rate(receiver[1], receiver[0]->sample_rate);
+      rx_change_sample_rate(receiver[1], receiver[0]->sample_rate);
     }
 
     break;
   }
 
   reconfigure_screen();
-  receiver_set_active(receiver[0]);
+  rx_set_active(receiver[0]);
 #ifdef CLIENT_SERVER
 
   if (!radio_is_remote) {
@@ -1672,10 +1672,10 @@ void radio_change_sample_rate(int rate) {
       protocol_stop();
 
       for (i = 0; i < receivers; i++) {
-        receiver_change_sample_rate(receiver[i], rate);
+        rx_change_sample_rate(receiver[i], rate);
       }
 
-      receiver_change_sample_rate(receiver[PS_RX_FEEDBACK], rate);
+      rx_change_sample_rate(receiver[PS_RX_FEEDBACK], rate);
       old_protocol_set_mic_sample_rate(rate);
       protocol_run();
 
@@ -1690,7 +1690,7 @@ void radio_change_sample_rate(int rate) {
   case SOAPYSDR_PROTOCOL:
     if (receiver[0]->sample_rate != rate) {
       protocol_stop();
-      receiver_change_sample_rate(receiver[0], rate);
+      rx_change_sample_rate(receiver[0], rate);
       protocol_run();
     }
 
@@ -1726,7 +1726,7 @@ static void rxtx(int state) {
         // Therefore, wait for *all* receivers to complete
         // their slew-down before going TX.
         SetChannelState(receiver[i]->id, 0, 1);
-        set_displaying(receiver[i], 0);
+        rx_set_displaying(receiver[i], 0);
         g_object_ref((gpointer)receiver[i]->panel);
 
         if (receiver[i]->panadapter != NULL) {
@@ -1856,7 +1856,7 @@ static void rxtx(int state) {
       for (i = 0; i < receivers; i++) {
         gtk_fixed_put(GTK_FIXED(fixed), receiver[i]->panel, receiver[i]->x, receiver[i]->y);
         SetChannelState(receiver[i]->id, 1, 0);
-        set_displaying(receiver[i], 1);
+        rx_set_displaying(receiver[i], 1);
         //
         // There might be some left-over samples in the RX buffer that were filled in
         // *before* going TX, delete them
@@ -2009,7 +2009,7 @@ void setTune(int state) {
           // Therefore, wait for *all* receivers to complete
           // their slew-down before going TX.
           SetChannelState(receiver[i]->id, 0, 1);
-          set_displaying(receiver[i], 0);
+          rx_set_displaying(receiver[i], 0);
           schedule_high_priority();
         }
       }
@@ -2660,17 +2660,17 @@ void radioSaveState() {
   // are restored in create_receiver/create_transmitter
   //
   for (int i = 0; i < RECEIVERS; i++) {
-    receiverSaveState(receiver[i]);
+    rx_save_state(receiver[i]);
   }
 
   if (can_transmit) {
     // The only variables of interest in this receiver are
     // the alex_antenna an the adc
     if (receiver[PS_RX_FEEDBACK]) {
-      receiverSaveState(receiver[PS_RX_FEEDBACK]);
+      rx_save_state(receiver[PS_RX_FEEDBACK]);
     }
 
-    transmitterSaveState(transmitter);
+    tx_save_state(transmitter);
   }
 
   //
@@ -2836,16 +2836,6 @@ void radioSaveState() {
   g_mutex_unlock(&property_mutex);
 }
 
-void calculate_display_average(const RECEIVER *rx) {
-  double display_avb;
-  int display_average;
-  double t = 0.001 * rx->display_average_time;
-  display_avb = exp(-1.0 / ((double)rx->fps * t));
-  display_average = max(2, (int)fmin(60, (double)rx->fps * t));
-  SetDisplayAvBackmult(rx->id, 0, display_avb);
-  SetDisplayNumAverage(rx->id, 0, display_average);
-}
-
 #ifdef CLIENT_SERVER
 // cppcheck-suppress constParameterPointer
 int remote_start(void *data) {
@@ -2887,7 +2877,7 @@ int remote_start(void *data) {
   }
 
   for (int i = 0; i < receivers; i++) {
-    receiverRestoreState(receiver[i]);  // this ONLY restores local display settings
+    rx_restore_state(receiver[i]);  // this ONLY restores local display settings
 
     if (receiver[i]->local_audio) {
       if (audio_open_output(receiver[i])) {

@@ -309,8 +309,6 @@ extern int isTransmitting(void);
 extern void radioRestoreState(void);
 extern void radioSaveState(void);
 
-extern void calculate_display_average(const RECEIVER *rx);
-
 extern void radio_set_satmode(int mode);
 
 extern void disable_rigctl(void);

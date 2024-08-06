@@ -427,7 +427,7 @@ int process_action(void *data) {
         active_receiver->agc = 0;
       }
 
-      set_agc(active_receiver, active_receiver->agc);
+      rx_set_agc(active_receiver, active_receiver->agc);
       g_idle_add(ext_vfo_update, NULL);
     }
 
@@ -759,7 +759,7 @@ int process_action(void *data) {
 
   case COMP_ENABLE:
     if (can_transmit && a->mode == PRESSED) {
-      transmitter_set_compressor(transmitter, NOT(transmitter->compressor));
+      tx_set_compressor(transmitter, NOT(transmitter->compressor));
       mode_settings[get_tx_mode()].compressor = transmitter->compressor;
       g_idle_add(ext_vfo_update, NULL);
     }
@@ -769,8 +769,8 @@ int process_action(void *data) {
   case COMPRESSION:
     if (can_transmit) {
       value = KnobOrWheel(a, transmitter->compressor_level, 0.0, 20.0, 1.0);
-      transmitter_set_compressor_level(transmitter, value);
-      transmitter_set_compressor(transmitter, value > 0.5);
+      tx_set_compressor_level(transmitter, value);
+      tx_set_compressor(transmitter, value > 0.5);
       mode_settings[get_tx_mode()].compressor = transmitter->compressor;
       mode_settings[get_tx_mode()].compressor_level = transmitter->compressor_level;
       g_idle_add(ext_vfo_update, NULL);
@@ -789,7 +789,7 @@ int process_action(void *data) {
   case CW_AUDIOPEAKFILTER:
     if (a->mode == PRESSED) {
       TOGGLE(vfo[active_receiver->id].cwAudioPeakFilter);
-      receiver_filter_changed(active_receiver);
+      rx_filter_changed(active_receiver);
       g_idle_add(ext_vfo_update, NULL);
     }
 
@@ -798,7 +798,7 @@ int process_action(void *data) {
   case CW_FREQUENCY:
     value = KnobOrWheel(a, (double)cw_keyer_sidetone_frequency, 300.0, 1000.0, 10.0);
     cw_keyer_sidetone_frequency = (int)value;
-    receiver_filter_changed(active_receiver);
+    rx_filter_changed(active_receiver);
     // we may omit the P2 high-prio packet since this is sent out at regular intervals
     g_idle_add(ext_vfo_update, NULL);
     break;
@@ -1478,14 +1478,14 @@ int process_action(void *data) {
 
   case RX1:
     if (a->mode == PRESSED && receivers == 2) {
-      receiver_set_active(receiver[0]);
+      rx_set_active(receiver[0]);
     }
 
     break;
 
   case RX2:
     if (a->mode == PRESSED && receivers == 2) {
-      receiver_set_active(receiver[1]);
+      rx_set_active(receiver[1]);
     }
 
     break;
@@ -1560,7 +1560,7 @@ int process_action(void *data) {
   case SWAP_RX:
     if (a->mode == PRESSED) {
       if (receivers == 2) {
-        receiver_set_active(receiver[active_receiver->id == 1 ? 0 : 1]);
+        rx_set_active(receiver[active_receiver->id == 1 ? 0 : 1]);
       }
     }
 

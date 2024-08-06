@@ -128,7 +128,7 @@ gboolean keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data) {
       } else if (TransmitAllowed()) {
         setMox(1);
       } else {
-        transmitter_set_out_of_band(transmitter);
+        tx_set_out_of_band(transmitter);
       }
     }
 

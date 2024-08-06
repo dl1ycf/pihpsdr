@@ -2295,7 +2295,7 @@ static void process_iq_data(const unsigned char *buffer, RECEIVER *rx) {
     // The "obscure" constant 1.1920928955078125E-7 is 1/(2^23)
     leftsampledouble = (double)leftsample * 1.1920928955078125E-7;
     rightsampledouble = (double)rightsample * 1.1920928955078125E-7;
-    add_iq_samples(rx, leftsampledouble, rightsampledouble);
+    rx_add_iq_samples(rx, leftsampledouble, rightsampledouble);
   }
 }
 
@@ -2347,13 +2347,13 @@ static void process_div_iq_data(const unsigned char*buffer) {
     rightsample1 |= (int)((unsigned char)buffer[b++] & 0xFF);
     leftsampledouble1 = (double)leftsample1 * 1.1920928955078125E-7;
     rightsampledouble1 = (double)rightsample1 * 1.1920928955078125E-7;
-    add_div_iq_samples(receiver[0], leftsampledouble0, rightsampledouble0, leftsampledouble1, rightsampledouble1);
+    rx_add_div_iq_samples(receiver[0], leftsampledouble0, rightsampledouble0, leftsampledouble1, rightsampledouble1);
 
     //
     // if both receivers share the sample rate, we can feed data to RX2
     //
     if (receivers > 1 && (receiver[0]->sample_rate == receiver[1]->sample_rate)) {
-      add_iq_samples(receiver[1], leftsampledouble1, rightsampledouble1);
+      rx_add_iq_samples(receiver[1], leftsampledouble1, rightsampledouble1);
     }
   }
 }
@@ -2403,7 +2403,7 @@ static void process_ps_iq_data(const unsigned char *buffer) {
     rightsample1 |= (int)((unsigned char)buffer[b++] & 0xFF);
     leftsampledouble1 = (double)leftsample1 * 1.1920928955078125E-7;
     rightsampledouble1 = (double)rightsample1 * 1.1920928955078125E-7;
-    add_ps_iq_samples(transmitter, leftsampledouble1, rightsampledouble1, leftsampledouble0, rightsampledouble0);
+    tx_add_ps_iq_samples(transmitter, leftsampledouble1, rightsampledouble1, leftsampledouble0, rightsampledouble0);
     //t_print("%06x,%06x %06x,%06x\n",leftsample0,rightsample0,leftsample1,rightsample1);
 #if defined(DUMP_TX_DATA)
 
@@ -2600,7 +2600,7 @@ static void process_mic_data(const unsigned char *buffer) {
       fsample = transmitter->local_microphone ? audio_get_next_mic_sample() : (float) sample * 0.00003051;
     }
 
-    add_mic_sample(transmitter, fsample);
+    tx_add_mic_sample(transmitter, fsample);
   }
 }
 

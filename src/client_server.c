@@ -315,55 +315,55 @@ void send_adc_data(const REMOTE_CLIENT *client, int i) {
   }
 }
 
-void send_receiver_data(const REMOTE_CLIENT *client, int rx) {
-  RECEIVER_DATA receiver_data;
-  receiver_data.header.sync = REMOTE_SYNC;
-  receiver_data.header.data_type = htons(INFO_RECEIVER);
-  receiver_data.header.version = htonl(CLIENT_SERVER_VERSION);
-  receiver_data.rx = rx;
-  receiver_data.adc = htons(receiver[rx]->adc);
+void send_rx_data(const REMOTE_CLIENT *client, int rx) {
+  RECEIVER_DATA rx_data;
+  rx_data.header.sync = REMOTE_SYNC;
+  rx_data.header.data_type = htons(INFO_RECEIVER);
+  rx_data.header.version = htonl(CLIENT_SERVER_VERSION);
+  rx_data.rx = rx;
+  rx_data.adc = htons(receiver[rx]->adc);
   long long rate = (long long)receiver[rx]->sample_rate;
-  receiver_data.sample_rate = htonll(rate);
-  receiver_data.displaying = receiver[rx]->displaying;
-  receiver_data.display_panadapter = receiver[rx]->display_panadapter;
-  receiver_data.display_waterfall = receiver[rx]->display_waterfall;
-  receiver_data.fps = htons(receiver[rx]->fps);
-  receiver_data.agc = receiver[rx]->agc;
-  receiver_data.agc_hang = htond(receiver[rx]->agc_hang);
-  receiver_data.agc_thresh = htond(receiver[rx]->agc_thresh);
-  receiver_data.agc_hang_thresh = htond(receiver[rx]->agc_hang_threshold);
-  receiver_data.nb = receiver[rx]->nb;
-  receiver_data.nr = receiver[rx]->nr;
-  receiver_data.anf = receiver[rx]->anf;
-  receiver_data.snb = receiver[rx]->snb;
-  receiver_data.filter_low = htons(receiver[rx]->filter_low);
-  receiver_data.filter_high = htons(receiver[rx]->filter_high);
-  receiver_data.panadapter_low = htons(receiver[rx]->panadapter_low);
-  receiver_data.panadapter_high = htons(receiver[rx]->panadapter_high);
-  receiver_data.panadapter_step = htons(receiver[rx]->panadapter_step);
-  receiver_data.waterfall_low = htons(receiver[rx]->waterfall_low);
-  receiver_data.waterfall_high = htons(receiver[rx]->waterfall_high);
-  receiver_data.waterfall_automatic = receiver[rx]->waterfall_automatic;
-  receiver_data.pixels = htons(receiver[rx]->pixels);
-  receiver_data.zoom = htons(receiver[rx]->zoom);
-  receiver_data.pan = htons(receiver[rx]->pan);
-  receiver_data.width = htons(receiver[rx]->width);
-  receiver_data.height = htons(receiver[rx]->height);
-  receiver_data.x = htons(receiver[rx]->x);
-  receiver_data.y = htons(receiver[rx]->y);
-  receiver_data.volume = htond(receiver[rx]->volume);
-  receiver_data.agc_gain = htond(receiver[rx]->agc_gain);
-  receiver_data.display_gradient = receiver[rx]->display_gradient;
-  receiver_data.display_filled = receiver[rx]->display_filled;
-  receiver_data.display_detector_mode = receiver[rx]->display_detector_mode;
-  receiver_data.display_average_mode = receiver[rx]->display_average_mode;
-  receiver_data.display_average_time = htons((int)receiver[rx]->display_average_time);
-  int bytes_sent = send_bytes(client->socket, (char *)&receiver_data, sizeof(receiver_data));
+  rx_data.sample_rate = htonll(rate);
+  rx_data.displaying = receiver[rx]->displaying;
+  rx_data.display_panadapter = receiver[rx]->display_panadapter;
+  rx_data.display_waterfall = receiver[rx]->display_waterfall;
+  rx_data.fps = htons(receiver[rx]->fps);
+  rx_data.agc = receiver[rx]->agc;
+  rx_data.agc_hang = htond(receiver[rx]->agc_hang);
+  rx_data.agc_thresh = htond(receiver[rx]->agc_thresh);
+  rx_data.agc_hang_thresh = htond(receiver[rx]->agc_hang_threshold);
+  rx_data.nb = receiver[rx]->nb;
+  rx_data.nr = receiver[rx]->nr;
+  rx_data.anf = receiver[rx]->anf;
+  rx_data.snb = receiver[rx]->snb;
+  rx_data.filter_low = htons(receiver[rx]->filter_low);
+  rx_data.filter_high = htons(receiver[rx]->filter_high);
+  rx_data.panadapter_low = htons(receiver[rx]->panadapter_low);
+  rx_data.panadapter_high = htons(receiver[rx]->panadapter_high);
+  rx_data.panadapter_step = htons(receiver[rx]->panadapter_step);
+  rx_data.waterfall_low = htons(receiver[rx]->waterfall_low);
+  rx_data.waterfall_high = htons(receiver[rx]->waterfall_high);
+  rx_data.waterfall_automatic = receiver[rx]->waterfall_automatic;
+  rx_data.pixels = htons(receiver[rx]->pixels);
+  rx_data.zoom = htons(receiver[rx]->zoom);
+  rx_data.pan = htons(receiver[rx]->pan);
+  rx_data.width = htons(receiver[rx]->width);
+  rx_data.height = htons(receiver[rx]->height);
+  rx_data.x = htons(receiver[rx]->x);
+  rx_data.y = htons(receiver[rx]->y);
+  rx_data.volume = htond(receiver[rx]->volume);
+  rx_data.agc_gain = htond(receiver[rx]->agc_gain);
+  rx_data.display_gradient = receiver[rx]->display_gradient;
+  rx_data.display_filled = receiver[rx]->display_filled;
+  rx_data.display_detector_mode = receiver[rx]->display_detector_mode;
+  rx_data.display_average_mode = receiver[rx]->display_average_mode;
+  rx_data.display_average_time = htons((int)receiver[rx]->display_average_time);
+  int bytes_sent = send_bytes(client->socket, (char *)&rx_data, sizeof(rx_data));
 
   if (bytes_sent < 0) {
-    t_perror("send_receiver_data");
+    t_perror("send_rx_data");
   } else {
-    //t_print("send_receiver_data: bytes sent %d\n",bytes_sent);
+    //t_print("send_rx_data: bytes sent %d\n",bytes_sent);
   }
 }
 
@@ -403,7 +403,7 @@ static void *server_client_thread(void *arg) {
   send_adc_data(client, 1);
 
   for (int i = 0; i < RECEIVERS; i++) {
-    send_receiver_data(client, i);
+    send_rx_data(client, i);
   }
 
   send_vfo_data(client, VFO_A);
@@ -2153,8 +2153,8 @@ static void *client_thread(void* arg) {
     break;
 
     case INFO_RECEIVER: {
-      RECEIVER_DATA receiver_data;
-      bytes_read = recv_bytes(client_socket, (char *)&receiver_data.rx, sizeof(receiver_data) - sizeof(header));
+      RECEIVER_DATA rx_data;
+      bytes_read = recv_bytes(client_socket, (char *)&rx_data.rx, sizeof(rx_data) - sizeof(header));
 
       if (bytes_read <= 0) {
         t_print("client_thread: short read for RECEIVER_DATA\n");
@@ -2165,49 +2165,49 @@ static void *client_thread(void* arg) {
 
       t_print("INFO_RECEIVER: %d\n", bytes_read);
       // cppcheck-suppress uninitStructMember
-      int rx = receiver_data.rx;
+      int rx = rx_data.rx;
       receiver[rx] = g_new(RECEIVER, 1);
       receiver[rx]->id = rx;
-      receiver[rx]->adc = ntohs(receiver_data.adc);;
-      long long rate = ntohll(receiver_data.sample_rate);
+      receiver[rx]->adc = ntohs(rx_data.adc);;
+      long long rate = ntohll(rx_data.sample_rate);
       receiver[rx]->sample_rate = (int)rate;
       // cppcheck-suppress uninitvar
-      receiver[rx]->displaying = receiver_data.displaying;
-      receiver[rx]->display_panadapter = receiver_data.display_panadapter;
-      receiver[rx]->display_waterfall = receiver_data.display_waterfall;
-      receiver[rx]->fps = ntohs(receiver_data.fps);
-      receiver[rx]->agc = receiver_data.agc;
-      receiver[rx]->agc_hang = ntohd(receiver_data.agc_hang);
-      receiver[rx]->agc_thresh = ntohd(receiver_data.agc_thresh);
-      receiver[rx]->agc_hang_threshold = ntohd(receiver_data.agc_hang_thresh);
-      receiver[rx]->nb = receiver_data.nb;
-      receiver[rx]->nr = receiver_data.nr;
-      receiver[rx]->anf = receiver_data.anf;
-      receiver[rx]->snb = receiver_data.snb;
-      short s = ntohs(receiver_data.filter_low);
+      receiver[rx]->displaying = rx_data.displaying;
+      receiver[rx]->display_panadapter = rx_data.display_panadapter;
+      receiver[rx]->display_waterfall = rx_data.display_waterfall;
+      receiver[rx]->fps = ntohs(rx_data.fps);
+      receiver[rx]->agc = rx_data.agc;
+      receiver[rx]->agc_hang = ntohd(rx_data.agc_hang);
+      receiver[rx]->agc_thresh = ntohd(rx_data.agc_thresh);
+      receiver[rx]->agc_hang_threshold = ntohd(rx_data.agc_hang_thresh);
+      receiver[rx]->nb = rx_data.nb;
+      receiver[rx]->nr = rx_data.nr;
+      receiver[rx]->anf = rx_data.anf;
+      receiver[rx]->snb = rx_data.snb;
+      short s = ntohs(rx_data.filter_low);
       receiver[rx]->filter_low = (int)s;
-      s = ntohs(receiver_data.filter_high);
+      s = ntohs(rx_data.filter_high);
       receiver[rx]->filter_high = (int)s;
-      s = ntohs(receiver_data.panadapter_low);
+      s = ntohs(rx_data.panadapter_low);
       receiver[rx]->panadapter_low = (int)s;
-      s = ntohs(receiver_data.panadapter_high);
+      s = ntohs(rx_data.panadapter_high);
       receiver[rx]->panadapter_high = (int)s;
-      s = ntohs(receiver_data.panadapter_step);
+      s = ntohs(rx_data.panadapter_step);
       receiver[rx]->panadapter_step = s;
-      s = ntohs(receiver_data.waterfall_low);
+      s = ntohs(rx_data.waterfall_low);
       receiver[rx]->waterfall_low = (int)s;
-      s = ntohs(receiver_data.waterfall_high);
+      s = ntohs(rx_data.waterfall_high);
       receiver[rx]->waterfall_high = s;
-      receiver[rx]->waterfall_automatic = receiver_data.waterfall_automatic;
-      receiver[rx]->pixels = ntohs(receiver_data.pixels);
-      receiver[rx]->zoom = ntohs(receiver_data.zoom);
-      receiver[rx]->pan = ntohs(receiver_data.pan);
-      receiver[rx]->width = ntohs(receiver_data.width);
-      receiver[rx]->height = ntohs(receiver_data.height);
-      receiver[rx]->x = ntohs(receiver_data.x);
-      receiver[rx]->y = ntohs(receiver_data.y);
-      receiver[rx]->volume = ntohd(receiver_data.volume);
-      receiver[rx]->agc_gain = ntohd(receiver_data.agc_gain);
+      receiver[rx]->waterfall_automatic = rx_data.waterfall_automatic;
+      receiver[rx]->pixels = ntohs(rx_data.pixels);
+      receiver[rx]->zoom = ntohs(rx_data.zoom);
+      receiver[rx]->pan = ntohs(rx_data.pan);
+      receiver[rx]->width = ntohs(rx_data.width);
+      receiver[rx]->height = ntohs(rx_data.height);
+      receiver[rx]->x = ntohs(rx_data.x);
+      receiver[rx]->y = ntohs(rx_data.y);
+      receiver[rx]->volume = ntohd(rx_data.volume);
+      receiver[rx]->agc_gain = ntohd(rx_data.agc_gain);
       //
       receiver[rx]->pixel_samples = NULL;
       g_mutex_init(&receiver[rx]->display_mutex);
@@ -2220,11 +2220,11 @@ static void *client_thread(void* arg) {
       receiver[rx]->audio_channel = STEREO;
       receiver[rx]->audio_device = -1;
       receiver[rx]->mute_radio = 0;
-      receiver[rx]->display_gradient = receiver_data.display_gradient;
-      receiver[rx]->display_filled = receiver_data.display_filled;
-      receiver[rx]->display_detector_mode = receiver_data.display_detector_mode;
-      receiver[rx]->display_average_mode = receiver_data.display_average_mode;
-      receiver[rx]->display_average_time = (double) ntohs(receiver_data.display_average_time);
+      receiver[rx]->display_gradient = rx_data.display_gradient;
+      receiver[rx]->display_filled = rx_data.display_filled;
+      receiver[rx]->display_detector_mode = rx_data.display_detector_mode;
+      receiver[rx]->display_average_mode = rx_data.display_average_mode;
+      receiver[rx]->display_average_time = (double) ntohs(rx_data.display_average_time);
       t_print("rx=%d width=%d sample_rate=%d hz_per_pixel=%f pan=%d zoom=%d\n", rx, receiver[rx]->width,
               receiver[rx]->sample_rate, receiver[rx]->hz_per_pixel, receiver[rx]->pan, receiver[rx]->zoom);
     }
@@ -2317,7 +2317,7 @@ static void *client_thread(void* arg) {
         g_idle_add(ext_vfo_update, NULL);
       }
 
-      g_idle_add(ext_receiver_remote_update_display, receiver[r]);
+      g_idle_add(ext_rx_remote_update_display, receiver[r]);
     }
     break;
 
@@ -2366,7 +2366,7 @@ static void *client_thread(void* arg) {
         g_idle_add(ext_remote_set_zoom, GINT_TO_POINTER(zoom));
       } else {
         receiver[rx]->zoom = (int)(zoom + 0.5);
-        receiver_update_zoom(receiver[rx]);
+        rx_update_zoom(receiver[rx]);
       }
     }
     break;
@@ -2664,7 +2664,7 @@ static void *client_thread(void* arg) {
 
       // cppcheck-suppress uninitStructMember
       int rx = rx_select_cmd.id;
-      receiver_set_active(receiver[rx]);
+      rx_set_active(receiver[rx]);
     }
 
     g_idle_add(ext_vfo_update, NULL);
@@ -2941,7 +2941,7 @@ static int remote_command(void *data) {
     CHECK_RX(r);
     RECEIVER *rx = receiver[r];
     rx->agc = ntohs(agc_command->agc);
-    set_agc(rx, rx->agc);
+    rx_set_agc(rx, rx->agc);
     send_agc(client->socket, rx->id, rx->agc);
     g_idle_add(ext_vfo_update, NULL);
   }
@@ -2956,7 +2956,7 @@ static int remote_command(void *data) {
     rx->agc_thresh = ntohd(agc_gain_command->thresh);
     rx->agc_hang_threshold = ntohd(agc_gain_command->hang_thresh);
     set_agc_gain(r, ntohd(agc_gain_command->gain));
-    set_agc(rx, rx->agc);
+    rx_set_agc(rx, rx->agc);
     send_agc_gain(client->socket, rx->id, rx->agc_gain, rx->agc_hang, rx->agc_thresh, rx->agc_hang_threshold);
   }
   break;
@@ -3088,7 +3088,7 @@ static int remote_command(void *data) {
     }
 
     vfo[v].ctun_frequency = vfo[v].frequency;
-    set_offset(active_receiver, vfo[v].offset);
+    rx_set_offset(active_receiver, vfo[v].offset);
     g_idle_add(ext_vfo_update, NULL);
     send_ctun(client->socket, v, vfo[v].ctun);
     send_vfo_data(client, v);
@@ -3099,9 +3099,7 @@ static int remote_command(void *data) {
     const FPS_COMMAND *fps_command = (FPS_COMMAND *)data;
     int rx = fps_command->id;
     CHECK_RX(rx);
-    receiver[rx]->fps = fps_command->fps;
-    calculate_display_average(receiver[rx]);
-    set_displaying(receiver[rx], 1);
+    rx_set_framerate(receiver[rx],fps_command->fps);
     send_fps(client->socket, rx, receiver[rx]->fps);
   }
   break;
@@ -3110,7 +3108,7 @@ static int remote_command(void *data) {
     const RX_SELECT_COMMAND *rx_select_command = (RX_SELECT_COMMAND *)data;
     int rx = rx_select_command->id;
     CHECK_RX(rx);
-    receiver_set_active(receiver[rx]);
+    rx_set_active(receiver[rx]);
     send_rx_select(client->socket, rx);
   }
   break;
@@ -3191,7 +3189,7 @@ static int remote_command(void *data) {
       radio_change_sample_rate((int)rate);
       send_sample_rate(client->socket, -1, radio_sample_rate);
     } else {
-      receiver_change_sample_rate(receiver[rx], (int)rate);
+      rx_change_sample_rate(receiver[rx], (int)rate);
       send_sample_rate(client->socket, rx, receiver[rx]->sample_rate);
     }
   }

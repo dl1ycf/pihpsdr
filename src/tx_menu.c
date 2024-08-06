@@ -58,8 +58,8 @@ static void linein_value_changed(GtkWidget *widget, gpointer data) {
 }
 
 static void frames_per_second_value_changed_cb(GtkWidget *widget, gpointer data) {
-  transmitter->fps = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
-  tx_set_displaying(transmitter, transmitter->displaying);
+  int fps = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
+  tx_set_framerate(transmitter, fps);
 }
 
 static void filled_cb(GtkWidget *widget, gpointer data) {
@@ -67,13 +67,13 @@ static void filled_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void comp_enable_cb(GtkWidget *widget, gpointer data) {
-  transmitter_set_compressor(transmitter, gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget)));
+  tx_set_compressor(transmitter, gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget)));
   mode_settings[get_tx_mode()].compressor = transmitter->compressor;
   g_idle_add(ext_vfo_update, NULL);
 }
 
 static void comp_cb(GtkWidget *widget, gpointer data) {
-  transmitter_set_compressor_level(transmitter, gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget)));
+  tx_set_compressor_level(transmitter, gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget)));
   mode_settings[get_tx_mode()].compressor_level = transmitter->compressor_level;
   g_idle_add(ext_vfo_update, NULL);
 }
@@ -125,18 +125,18 @@ static void panadapter_step_value_changed_cb(GtkWidget *widget, gpointer data) {
 
 static void am_carrier_level_value_changed_cb(GtkWidget *widget, gpointer data) {
   transmitter->am_carrier_level = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  transmitter_set_am_carrier_level(transmitter);
+  tx_set_am_carrier_level(transmitter);
 }
 
 static void ctcss_cb (GtkWidget *widget, gpointer data) {
   int state = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
-  transmitter_set_ctcss(transmitter, state, transmitter->ctcss);
+  tx_set_ctcss(transmitter, state, transmitter->ctcss);
   g_idle_add(ext_vfo_update, NULL);
 }
 
 static void ctcss_frequency_cb(GtkWidget *widget, gpointer data) {
   int i = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-  transmitter_set_ctcss(transmitter, transmitter->ctcss_enabled, i);
+  tx_set_ctcss(transmitter, transmitter->ctcss_enabled, i);
   g_idle_add(ext_vfo_update, NULL);
 }
 

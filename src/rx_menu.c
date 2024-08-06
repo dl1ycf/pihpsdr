@@ -87,12 +87,12 @@ static void sample_rate_cb(GtkToggleButton *widget, gpointer data) {
   //
   if (sscanf(p, "%d", &samplerate) != 1) { return; }
 
-  receiver_change_sample_rate(active_receiver, samplerate);
+  rx_change_sample_rate(active_receiver, samplerate);
 }
 
 static void adc_cb(GtkToggleButton *widget, gpointer data) {
   int val = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-  receiver_change_adc(active_receiver, val);
+  rx_change_adc(active_receiver, val);
 }
 
 static void local_audio_cb(GtkWidget *widget, gpointer data) {

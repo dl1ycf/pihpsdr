@@ -136,9 +136,9 @@ int ext_set_duplex(void *data) {
 }
 
 #ifdef CLIENT_SERVER
-int ext_receiver_remote_update_display(void *data) {
+int ext_rx_remote_update_display(void *data) {
   RECEIVER *rx = (RECEIVER *)data;
-  receiver_remote_update_display(rx);
+  rx_remote_update_display(rx);
   return G_SOURCE_REMOVE;
 }
 

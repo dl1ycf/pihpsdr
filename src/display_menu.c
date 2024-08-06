@@ -101,12 +101,12 @@ static void average_cb(GtkToggleButton *widget, gpointer data) {
   SetDisplayAverageMode(active_receiver->id, 0, AVERAGE_MODE_NONE);
   usleep(50000);
   SetDisplayAverageMode(active_receiver->id, 0, active_receiver->display_average_mode);
-  calculate_display_average(active_receiver);
+  rx_calculate_display_average(active_receiver);
 }
 
 static void time_value_changed_cb(GtkWidget *widget, gpointer data) {
   active_receiver->display_average_time = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  calculate_display_average(active_receiver);
+  rx_calculate_display_average(active_receiver);
 }
 
 static void filled_cb(GtkWidget *widget, gpointer data) {
@@ -118,9 +118,8 @@ static void gradient_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void frames_per_second_value_changed_cb(GtkWidget *widget, gpointer data) {
-  active_receiver->fps = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
-  calculate_display_average(active_receiver);
-  set_displaying(active_receiver, active_receiver->displaying);
+  int fps = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
+  rx_set_framerate(active_receiver, fps);
 }
 
 static void panadapter_high_value_changed_cb(GtkWidget *widget, gpointer data) {

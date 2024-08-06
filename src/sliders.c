@@ -355,7 +355,7 @@ static void agcgain_value_changed_cb(GtkWidget *widget, gpointer data) {
                   active_receiver->agc_thresh, active_receiver->agc_hang_threshold);
   } else {
 #endif
-    set_agc(active_receiver, active_receiver->agc);
+    rx_set_agc(active_receiver, active_receiver->agc);
 #ifdef CLIENT_SERVER
   }
 
@@ -367,7 +367,7 @@ void set_agc_gain(int rx, double value) {
   if (rx >= receivers) { return; }
 
   receiver[rx]->agc_gain = value;
-  set_agc(receiver[rx], receiver[rx]->agc);
+  rx_set_agc(receiver[rx], receiver[rx]->agc);
 
   if (display_sliders && active_receiver->id == rx) {
     gtk_range_set_value (GTK_RANGE(agc_scale), receiver[rx]->agc_gain);

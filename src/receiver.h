@@ -261,43 +261,45 @@ typedef struct _receiver {
 
 } RECEIVER;
 
-extern RECEIVER *create_pure_signal_receiver(int id, int sample_rate, int pixels, int fps);
-extern RECEIVER *create_receiver(int id, int pixels, int width, int height);
-extern void receiver_change_sample_rate(RECEIVER *rx, int sample_rate);
-extern void receiver_change_adc(RECEIVER *rx, int adc);
-extern void receiver_set_frequency(RECEIVER *rx, long long frequency);
-extern void receiver_frequency_changed(RECEIVER *rx);
-extern void receiver_mode_changed(RECEIVER *rx);
-extern void receiver_filter_changed(RECEIVER *rx);
-extern void receiver_vfo_changed(RECEIVER *rx);
-extern void receiver_update_zoom(RECEIVER *rx);
+extern RECEIVER *rx_create_pure_signal_receiver(int id, int sample_rate, int pixels, int fps);
+extern RECEIVER *rx_create_receiver(int id, int pixels, int width, int height);
+extern void rx_change_sample_rate(RECEIVER *rx, int sample_rate);
+extern void rx_change_adc(RECEIVER *rx, int adc);
+extern void rx_set_frequency(RECEIVER *rx, long long frequency);
+extern void rx_frequency_changed(RECEIVER *rx);
+extern void rx_mode_changed(RECEIVER *rx);
+extern void rx_filter_changed(RECEIVER *rx);
+extern void rx_vfo_changed(RECEIVER *rx);
+extern void rx_update_zoom(RECEIVER *rx);
 
-extern void set_mode(const RECEIVER* rx, int m);
-extern void set_filter(RECEIVER *rx);
-extern void set_agc(RECEIVER *rx, int agc);
-extern void set_offset(const RECEIVER *rx, long long offset);
+extern void rx_set_mode(const RECEIVER* rx, int m);
+extern void rx_set_filter(RECEIVER *rx);
+extern void rx_set_agc(RECEIVER *rx, int agc);
+extern void rx_set_offset(const RECEIVER *rx, long long offset);
 
-extern void add_iq_samples(RECEIVER *rx, double i_sample, double q_sample);
-extern void add_div_iq_samples(RECEIVER *rx, double i0, double q0, double i1, double q1);
+extern void rx_add_iq_samples(RECEIVER *rx, double i_sample, double q_sample);
+extern void rx_add_div_iq_samples(RECEIVER *rx, double i0, double q0, double i1, double q1);
 
-extern void reconfigure_receiver(RECEIVER *rx, int height);
+extern void rx_reconfigure(RECEIVER *rx, int height);
 
-extern void receiverSaveState(RECEIVER *rx);
-extern void receiverRestoreState(RECEIVER *rx);
+extern void rx_save_state(RECEIVER *rx);
+extern void rx_restore_state(RECEIVER *rx);
 
-extern gboolean receiver_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer data);
-extern gboolean receiver_button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data);
-extern gboolean receiver_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpointer data);
-extern gboolean receiver_scroll_event(GtkWidget *widget, const GdkEventScroll *event, gpointer data);
+extern gboolean rx_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer data);
+extern gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data);
+extern gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpointer data);
+extern gboolean rx_scroll_event(GtkWidget *widget, const GdkEventScroll *event, gpointer data);
 
-extern void set_displaying(RECEIVER *rx, int state);
+extern void rx_set_displaying(RECEIVER *rx, int state);
 
-extern void receiver_set_active(RECEIVER *rx);
-extern void receiver_set_equalizer(RECEIVER *rx);
+extern void rx_set_active(RECEIVER *rx);
+extern void rx_set_equalizer(RECEIVER *rx);
+extern void rx_set_framerate(RECEIVER *rx, int fps);
+extern void rx_calculate_display_average(const RECEIVER *rx);
 
 #ifdef CLIENT_SERVER
-  extern void receiver_create_remote(RECEIVER *rx);
-  extern void receiver_remote_update_display(RECEIVER *rx);
+  extern void rx_create_remote(RECEIVER *rx);
+  extern void rx_remote_update_display(RECEIVER *rx);
 #endif
 
 #endif

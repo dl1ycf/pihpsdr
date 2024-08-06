@@ -83,7 +83,7 @@ static void zoom_value_changed_cb(GtkWidget *widget, gpointer data) {
   } else {
 #endif
     active_receiver->zoom = (int)(gtk_range_get_value(GTK_RANGE(zoom_scale)) + 0.5);;
-    receiver_update_zoom(active_receiver);
+    rx_update_zoom(active_receiver);
 #ifdef CLIENT_SERVER
   }
 
@@ -116,7 +116,7 @@ void set_zoom(int rx, double value) {
   if (ival < 1       ) { ival = 1; }
 
   receiver[rx]->zoom = ival;
-  receiver_update_zoom(receiver[rx]);
+  rx_update_zoom(receiver[rx]);
 
   if (display_zoompan && active_receiver->id == rx) {
     gtk_range_set_value (GTK_RANGE(zoom_scale), receiver[rx]->zoom);
