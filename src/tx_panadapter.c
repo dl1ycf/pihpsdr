@@ -105,8 +105,8 @@ void tx_panadapter_update(TRANSMITTER *tx) {
   if (tx->panadapter_surface) {
     int mywidth = gtk_widget_get_allocated_width (tx->panadapter);
     int myheight = gtk_widget_get_allocated_height (tx->panadapter);
-    int txvfo = get_tx_vfo();
-    int txmode = get_tx_mode();
+    int txvfo = vfo_get_tx_vfo();
+    int txmode = vfo_get_tx_mode();
     double filter_left, filter_right;
     float *samples = tx->pixel_samples;
     double hz_per_pixel = (double)tx->iq_output_rate / (double)tx->pixels;

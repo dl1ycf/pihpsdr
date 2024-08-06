@@ -332,6 +332,8 @@ gint window_y_pos = 0;
 
 int rx_height;
 
+static void radio_restore_state();
+
 void radio_stop() {
   if (can_transmit) {
     t_print("radio_stop: TX: stop display update\n");
@@ -438,7 +440,7 @@ static int set_full_screen(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
-void reconfigure_screen() {
+void radio_reconfigure_screen() {
   GdkWindow *gw = gtk_widget_get_window(top_window);
   GdkWindowState ws = gdk_window_get_state(GDK_WINDOW(gw));
   int last_fullscreen = SET(ws & GDK_WINDOW_STATE_FULLSCREEN);
@@ -532,7 +534,7 @@ void reconfigure_screen() {
   //
   // This re-creates all the panels and the Toolbar/Slider/Zoom area
   //
-  reconfigure_radio();
+  radio_reconfigure();
 
   if (last_fullscreen != my_fullscreen && my_fullscreen) {
     //
@@ -545,7 +547,7 @@ void reconfigure_screen() {
   g_idle_add(ext_vfo_update, NULL);
 }
 
-void reconfigure_radio() {
+void radio_reconfigure() {
   int i;
   int y;
   t_print("%s: receivers=%d\n", __FUNCTION__, receivers);
@@ -597,7 +599,7 @@ void reconfigure_radio() {
       rx_update_zoom(rx);
       rx_reconfigure(rx, rx_height);
 
-      if (!isTransmitting() || duplex) {
+      if (!radio_is_transmitting() || duplex) {
         gtk_fixed_move(GTK_FIXED(fixed), rx->panel, x, y);
       }
 
@@ -614,7 +616,7 @@ void reconfigure_radio() {
       rx_update_zoom(rx);
       rx_reconfigure(rx, rx_height / receivers);
 
-      if (!isTransmitting() || duplex) {
+      if (!radio_is_transmitting() || duplex) {
         gtk_fixed_move(GTK_FIXED(fixed), rx->panel, 0, y);
       }
 
@@ -686,7 +688,7 @@ void reconfigure_radio() {
 //
 static guint save_timer_id;
 static gboolean save_cb(gpointer data) {
-  radioSaveState();
+  radio_save_state();
   return TRUE;
 }
 
@@ -694,7 +696,7 @@ static gboolean save_cb(gpointer data) {
 
 //
 // These variables are set in hideall_cb and read
-// in radioSaveState.
+// in radio_save_state.
 // If the props file is written while "Hide"-ing,
 // these values are written instead of the current
 // hide/show status of the Zoom/Sliders/Toolbar area.
@@ -706,9 +708,9 @@ static int old_slid = 0;
 
 static gboolean hideall_cb  (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   //
-  // reconfigure_radio must not be called during TX
+  // radio_reconfigure must not be called during TX
   //
-  if (isTransmitting()) {
+  if (radio_is_transmitting()) {
     if (!duplex) { return TRUE; }
   }
 
@@ -722,7 +724,7 @@ static gboolean hideall_cb  (GtkWidget *widget, GdkEventButton *event, gpointer 
     old_slid = display_sliders;
     old_tool = display_toolbar;
     display_toolbar = display_sliders = display_zoompan = 0;
-    reconfigure_radio();
+    radio_reconfigure();
   } else {
     //
     // Re-display everything
@@ -732,7 +734,7 @@ static gboolean hideall_cb  (GtkWidget *widget, GdkEventButton *event, gpointer 
     display_zoompan = old_zoom;
     display_sliders = old_slid;
     display_toolbar = old_tool;
-    reconfigure_radio();
+    radio_reconfigure();
   }
 
   return TRUE;
@@ -744,7 +746,7 @@ static gboolean menu_cb (GtkWidget *widget, GdkEventButton *event, gpointer data
   return TRUE;
 }
 
-static void create_visual() {
+static void radio_create_visual() {
   int y = 0;
   fixed = gtk_fixed_new();
   g_object_ref(topgrid);  // so it does not get deleted
@@ -797,7 +799,7 @@ static void create_visual() {
     } else {
 #endif
       receiver[i] = rx_create_receiver(CHANNEL_RX0 + i, my_width, my_width, rx_height / RECEIVERS);
-      setSquelch(receiver[i]);
+      rx_set_squelch(receiver[i]);
 #ifdef CLIENT_SERVER
     }
 
@@ -862,7 +864,7 @@ static void create_visual() {
       can_transmit = 1;
       transmitter->x = 0;
       transmitter->y = VFO_HEIGHT;
-      calcDriveLevel();
+      radio_calc_drive_level();
 
       if (protocol == NEW_PROTOCOL || protocol == ORIGINAL_PROTOCOL) {
         double pk;
@@ -984,12 +986,12 @@ static void create_visual() {
   // the number of receivers otherwise radio_change_receivers
   // will do nothing.
   //
-  t_print("create_visual: receivers=%d RECEIVERS=%d\n", receivers, RECEIVERS);
+  t_print("radio_create_visual: receivers=%d RECEIVERS=%d\n", receivers, RECEIVERS);
 
   if (receivers != RECEIVERS) {
     int r = receivers;
     receivers = RECEIVERS;
-    t_print("create_visual: calling radio_change_receivers: receivers=%d r=%d\n", receivers, r);
+    t_print("radio_create_visual: calling radio_change_receivers: receivers=%d r=%d\n", receivers, r);
     radio_change_receivers(r);
   }
 
@@ -997,7 +999,7 @@ static void create_visual() {
   att_type_changed();                // ... and this hides the „wrong“ ones.
 }
 
-void start_radio() {
+void radio_start_radio() {
   //
   // Debug code. Placed here at the start of the program. piHPSDR  implicitly assumes
   //             that the entires in the action table (actions.c) are sorted by their
@@ -1504,10 +1506,10 @@ void start_radio() {
   }
 
   receivers = RECEIVERS;
-  radioRestoreState();
+  radio_restore_state();
   radio_change_region(region);
-  create_visual();
-  reconfigure_screen();
+  radio_create_visual();
+  radio_reconfigure_screen();
 
   // save every 30 seconds
   // save_timer_id=gdk_threads_add_timeout(30000, save_cb, NULL);
@@ -1523,7 +1525,7 @@ void start_radio() {
   }
 
   if (can_transmit) {
-    calcDriveLevel();
+    radio_calc_drive_level();
 
     if (transmitter->puresignal) {
       tx_set_ps(transmitter, transmitter->puresignal);
@@ -1641,7 +1643,7 @@ void radio_change_receivers(int r) {
     break;
   }
 
-  reconfigure_screen();
+  radio_reconfigure_screen();
   rx_set_active(receiver[0]);
 #ifdef CLIENT_SERVER
 
@@ -1669,7 +1671,7 @@ void radio_change_sample_rate(int rate) {
   switch (protocol) {
   case ORIGINAL_PROTOCOL:
     if (receiver[0]->sample_rate != rate) {
-      protocol_stop();
+      radio_protocol_stop();
 
       for (i = 0; i < receivers; i++) {
         rx_change_sample_rate(receiver[i], rate);
@@ -1677,7 +1679,7 @@ void radio_change_sample_rate(int rate) {
 
       rx_change_sample_rate(receiver[PS_RX_FEEDBACK], rate);
       old_protocol_set_mic_sample_rate(rate);
-      protocol_run();
+      radio_protocol_run();
 
       if (can_transmit) {
         tx_set_ps_sample_rate(transmitter, rate);
@@ -1689,9 +1691,9 @@ void radio_change_sample_rate(int rate) {
 
   case SOAPYSDR_PROTOCOL:
     if (receiver[0]->sample_rate != rate) {
-      protocol_stop();
+      radio_protocol_stop();
       rx_change_sample_rate(receiver[0], rate);
-      protocol_run();
+      radio_protocol_run();
     }
 
     break;
@@ -1834,7 +1836,7 @@ static void rxtx(int state) {
         //
         // Note that for doing "TwoTone" the silence is built into tx_set_twotone().
         //
-        switch (get_tx_mode()) {
+        switch (vfo_get_tx_mode()) {
         case modeCWU:
         case modeCWL:
           do_silence = 0; // no "silence"
@@ -1877,7 +1879,33 @@ static void rxtx(int state) {
   gpio_set_ptt(state);
 }
 
-void setMox(int state) {
+void radio_mox_update(int state) {
+  if (!can_transmit) { return; }
+
+  if (state && !TransmitAllowed()) {
+    state = 0;
+    tx_set_out_of_band(transmitter);
+  }
+
+  radio_set_mox(state);
+  g_idle_add(ext_vfo_update, NULL);
+}
+
+void radio_tune_update(int state) {
+  if (!can_transmit) { return; }
+
+  radio_set_mox(0);  // This will also cancel VOX and TUNE
+
+  if (state && !TransmitAllowed()) {
+    state = 0;
+    tx_set_out_of_band(transmitter);
+  }
+
+  radio_set_tune(state);
+  g_idle_add(ext_vfo_update, NULL);
+}
+
+void radio_set_mox(int state) {
   //t_print("%s: mox=%d vox=%d tune=%d NewState=%d\n", __FUNCTION__, mox,vox,tune,state);
   if (!can_transmit) { return; }
 
@@ -1890,7 +1918,7 @@ void setMox(int state) {
   // - deactivating MOX while VOX is pending makes a TX/RX transition
   //
   if (tune) {
-    setTune(0);
+    radio_set_tune(0);
   }
 
   vox_cancel();  // remove time-out
@@ -1900,7 +1928,7 @@ void setMox(int state) {
   // then switch from VOX to MOX mode but no RX/TX
   // transition is necessary.
   //
-  if (state != isTransmitting()) {
+  if (state != radio_is_transmitting()) {
     rxtx(state);
   }
 
@@ -1919,11 +1947,11 @@ void setMox(int state) {
   }
 }
 
-int getMox() {
+int radio_get_mox() {
   return mox;
 }
 
-void setVox(int state) {
+void radio_set_vox(int state) {
   //t_print("%s: mox=%d vox=%d tune=%d NewState=%d\n", __FUNCTION__, mox,vox,tune,state);
   if (!can_transmit) { return; }
 
@@ -1940,7 +1968,7 @@ void setVox(int state) {
   schedule_receive_specific();
 }
 
-void setTune(int state) {
+void radio_set_tune(int state) {
   //t_print("%s: mox=%d vox=%d tune=%d NewState=%d\n", __FUNCTION__, mox,vox,tune,state);
   if (!can_transmit) { return; }
 
@@ -2014,7 +2042,7 @@ void setTune(int state) {
         }
       }
 
-      int txmode = get_tx_mode();
+      int txmode = vfo_get_tx_mode();
       pre_tune_mode = txmode;
       pre_tune_cw_internal = cw_keyer_internal;
 #if 0
@@ -2063,7 +2091,7 @@ void setTune(int state) {
       }
 
       tune = state;
-      calcDriveLevel();
+      radio_calc_drive_level();
       rxtx(state);
     } else {
       rxtx(state);
@@ -2087,7 +2115,7 @@ void setTune(int state) {
       }
 
       tune = state;
-      calcDriveLevel();
+      radio_calc_drive_level();
     }
   }
 
@@ -2096,15 +2124,15 @@ void setTune(int state) {
   schedule_receive_specific();
 }
 
-int getTune() {
+int radio_get_tune() {
   return tune;
 }
 
-int isTransmitting() {
+int radio_is_transmitting() {
   return mox | vox | tune;
 }
 
-double getDrive() {
+double radio_get_drive() {
   if (can_transmit) {
     return transmitter->drive;
   } else {
@@ -2114,7 +2142,7 @@ double getDrive() {
 
 static int calcLevel(double d) {
   int level = 0;
-  int v = get_tx_vfo();
+  int v = vfo_get_tx_vfo();
   const BAND *band = band_get_band(vfo[v].band);
   double target_dbm = 10.0 * log10(d * 1000.0);
   double gbb = band->pa_calibration;
@@ -2133,7 +2161,7 @@ static int calcLevel(double d) {
   return level;
 }
 
-void calcDriveLevel() {
+void radio_calc_drive_level() {
   int level;
 
   if (!can_transmit) { return; }
@@ -2237,7 +2265,7 @@ void calcDriveLevel() {
   schedule_high_priority();
 }
 
-void setDrive(double value) {
+void radio_set_drive(double value) {
   //t_print("%s: drive=%f\n", __FUNCTION__, value);
   if (!can_transmit) { return; }
 
@@ -2246,7 +2274,7 @@ void setDrive(double value) {
   switch (protocol) {
   case ORIGINAL_PROTOCOL:
   case NEW_PROTOCOL:
-    calcDriveLevel();
+    radio_calc_drive_level();
     break;
 #ifdef SOAPYSDR
 
@@ -2255,79 +2283,6 @@ void setDrive(double value) {
     break;
 #endif
   }
-}
-
-void setSquelch(const RECEIVER *rx) {
-  //
-  // This is now called whenever
-  // - "squelch enable" changes
-  // - "squelch value"  changes
-  // - mode changes
-  //
-  double value;
-  int    fm_squelch = 0;
-  int    am_squelch = 0;
-  int    voice_squelch = 0;
-
-  //
-  // the "slider" value goes from 0 (no squelch) to 100 (fully engaged)
-  // and has to be mapped to
-  //
-  // AM    squelch:   -160.0 ... 0.00 dBm  linear interpolation
-  // FM    squelch:      1.0 ... 0.01      expon. interpolation
-  // Voice squelch:      0.0 ... 0.75      linear interpolation
-  //
-  switch (vfo[rx->id].mode) {
-  case modeAM:
-  case modeSAM:
-
-  // My personal experience is that "Voice squelch" is of very
-  // little use  when doing CW (this may apply to "AM squelch", too).
-  case modeCWU:
-  case modeCWL:
-    //
-    // Use AM squelch
-    //
-    value = ((rx->squelch / 100.0) * 160.0) - 160.0;
-    SetRXAAMSQThreshold(rx->id, value);
-    am_squelch = rx->squelch_enable;
-    break;
-
-  case modeLSB:
-  case modeUSB:
-  case modeDSB:
-    //
-    // Use Voice squelch (new in WDSP 1.21)
-    //
-    value = 0.0075 * rx->squelch;
-    voice_squelch = rx->squelch_enable;
-    SetRXASSQLThreshold(rx->id, value);
-    SetRXASSQLTauMute(rx->id, 0.1);
-    SetRXASSQLTauUnMute(rx->id, 0.1);
-    break;
-
-  case modeFMN:
-    //
-    // Use FM squelch
-    //
-    value = pow(10.0, -2.0 * rx->squelch / 100.0);
-    SetRXAFMSQThreshold(rx->id, value);
-    fm_squelch = rx->squelch_enable;
-    break;
-
-  default:
-    // no squelch for digital and other modes
-    // (this can be discussed).
-    break;
-  }
-
-  //
-  // activate the desired squelch, and deactivate
-  // all others
-  //
-  SetRXAAMSQRun(rx->id, am_squelch);
-  SetRXAFMSQRun(rx->id, fm_squelch);
-  SetRXASSQLRun(rx->id, voice_squelch);
 }
 
 void radio_set_satmode(int mode) {
@@ -2348,23 +2303,7 @@ void radio_set_rf_gain(const RECEIVER *rx) {
 #endif
 }
 
-void set_attenuation(int value) {
-  switch (protocol) {
-  case NEW_PROTOCOL:
-    schedule_high_priority();
-    break;
-#ifdef SOAPYSDR
-
-  case SOAPYSDR_PROTOCOL:
-    // I think we should never arrive here
-    t_print("%s: NOTREACHED assessment failed\n", __FUNCTION__);
-    soapy_protocol_set_gain_element(active_receiver, radio->info.soapy.rx_gain[0], (int)adc[0].gain);
-    break;
-#endif
-  }
-}
-
-void set_alex_antennas() {
+void radio_set_alex_antennas() {
   //
   // Obtain band of VFO-A and transmitter, set ALEX RX/TX antennas
   // and the step attenuator
@@ -2383,7 +2322,7 @@ void set_alex_antennas() {
     }
 
     if (can_transmit) {
-      band = band_get_band(vfo[get_tx_vfo()].band);
+      band = band_get_band(vfo[vfo_get_tx_vfo()].band);
       transmitter->alex_antenna = band->alexTxAntenna;
     }
   }
@@ -2392,7 +2331,7 @@ void set_alex_antennas() {
   schedule_general();               // possibly update PA disable
 }
 
-void tx_vfo_changed() {
+void radio_tx_vfo_changed() {
   //
   // When changing the active receiver or changing the split status,
   // the VFO that controls the transmitter my flip between VFOA/VFOB.
@@ -2400,12 +2339,12 @@ void tx_vfo_changed() {
   // and re-calculate the drive level from the band-specific PA calibration
   // values. For SOAPY, the only thing to do is the update the TX mode.
   //
-  // Note each time tx_vfo_changed() is called, calling set_alex_antennas()
+  // Note each time radio_tx_vfo_changed() is called, calling radio_set_alex_antennas()
   // is also due.
   //
   if (can_transmit) {
-    tx_set_mode(transmitter, get_tx_mode());
-    calcDriveLevel();
+    tx_set_mode(transmitter, vfo_get_tx_mode());
+    radio_calc_drive_level();
   }
 
   schedule_high_priority();         // possibly update RX/TX antennas
@@ -2413,7 +2352,7 @@ void tx_vfo_changed() {
   schedule_general();               // possibly update PA disable
 }
 
-void set_alex_attenuation(int v) {
+void radio_set_alex_attenuation(int v) {
   //
   // Change the value of the step attenuator. Store it
   // in the "band" data structure of the current band,
@@ -2440,18 +2379,18 @@ void radio_set_split(int val) {
   //
   // "split" *must only* be set through this interface,
   // since it may change the TX band and thus requires
-  // tx_vfo_changed() and set_alex_antennas().
+  // radio_tx_vfo_changed() and radio_set_alex_antennas().
   //
   if (can_transmit) {
     split = val;
-    tx_vfo_changed();
-    set_alex_antennas();
+    radio_tx_vfo_changed();
+    radio_set_alex_antennas();
     g_idle_add(ext_vfo_update, NULL);
   }
 }
 
-void radioRestoreState() {
-  t_print("radioRestoreState: %s\n", property_path);
+static void radio_restore_state() {
+  t_print("%s: path=%s\n", __FUNCTION__, property_path);
   g_mutex_lock(&property_mutex);
   loadProperties(property_path);
   //
@@ -2624,7 +2563,7 @@ void radioRestoreState() {
   filterRestoreState();
   bandRestoreState();
   memRestoreState();
-  vfoRestoreState();
+  vfo_restore_state();
   gpioRestoreActions();
 #ifdef MIDI
   midiRestoreState();
@@ -2650,8 +2589,8 @@ void radioRestoreState() {
   g_mutex_unlock(&property_mutex);
 }
 
-void radioSaveState() {
-  t_print("radioSaveState: %s\n", property_path);
+void radio_save_state() {
+  t_print("%s: path=%s\n", __FUNCTION__, property_path);
   g_mutex_lock(&property_mutex);
   clearProperties();
 
@@ -2680,7 +2619,7 @@ void radioSaveState() {
   SetPropI0("WindowPositionX",                               window_x_pos);
   SetPropI0("WindowPositionY",                               window_y_pos);
   //
-  // What comes now is essentially copied from radioRestoreState,
+  // What comes now is essentially copied from radio_restore_state,
   // with "GetProp" replaced by "SetProp".
   //
   //
@@ -2827,7 +2766,7 @@ void radioSaveState() {
   filterSaveState();
   bandSaveState();
   memSaveState();
-  vfoSaveState();
+  vfo_save_state();
   gpioSaveActions();
 #ifdef MIDI
   midiSaveState();
@@ -2838,7 +2777,7 @@ void radioSaveState() {
 
 #ifdef CLIENT_SERVER
 // cppcheck-suppress constParameterPointer
-int remote_start(void *data) {
+int radio_remote_start(void *data) {
   const char *server = (const char *)data;
   snprintf(property_path, sizeof(property_path), "%s@%s.props", radio->name, server);
   radio_is_remote = TRUE;
@@ -2863,9 +2802,9 @@ int remote_start(void *data) {
   RECEIVERS = 2;
   PS_RX_FEEDBACK = 2;
   PS_TX_FEEDBACK = 2;
-  radioRestoreState();
-  create_visual();
-  reconfigure_screen();
+  radio_restore_state();
+  radio_create_visual();
+  radio_reconfigure_screen();
 
   if (can_transmit) {
     if (transmitter->local_microphone) {
@@ -2886,7 +2825,7 @@ int remote_start(void *data) {
     }
   }
 
-  reconfigure_radio();
+  radio_reconfigure();
   g_idle_add(ext_vfo_update, NULL);
   gdk_window_set_cursor(gtk_widget_get_window(top_window), gdk_cursor_new(GDK_ARROW));
 
@@ -2958,7 +2897,7 @@ void my_combo_attach(GtkGrid *grid, GtkWidget *combo, int row, int col, int span
 // (xvtr bands are not counted here)
 //
 
-int max_band() {
+int radio_max_band() {
   int max = BANDS - 1;
 
   switch (device) {
@@ -2982,11 +2921,11 @@ int max_band() {
   return max;
 }
 
-void protocol_stop() {
+void radio_protocol_stop() {
   //
   // paranoia ...
   //
-  mox_update(0);
+  radio_mox_update(0);
   usleep(100000);
 
   switch (protocol) {
@@ -3006,7 +2945,7 @@ void protocol_stop() {
   }
 }
 
-void protocol_run() {
+void radio_protocol_run() {
   switch (protocol) {
   case ORIGINAL_PROTOCOL:
     old_protocol_run();
@@ -3024,13 +2963,13 @@ void protocol_run() {
   }
 }
 
-void protocol_restart() {
-  protocol_stop();
+void radio_protocol_restart() {
+  radio_protocol_stop();
   usleep(200000);
-  protocol_run();
+  radio_protocol_run();
 }
 
-gpointer auto_tune_thread(gpointer data) {
+static gpointer auto_tune_thread(gpointer data) {
   //
   // This routine is triggered when an "auto tune" event
   // occurs, which usually is triggered by an input.
@@ -3071,11 +3010,25 @@ gpointer auto_tune_thread(gpointer data) {
   return NULL;
 }
 
+void radio_start_auto_tune() {
+  static GThread *tune_thread_id = NULL;
+
+  if (tune_thread_id) {
+    auto_tune_end  = 1;
+    g_thread_join(tune_thread_id);
+  }
+  auto_tune_flag = 1;
+  auto_tune_end  = 0;
+  
+  tune_thread_id = g_thread_new("TUNE", auto_tune_thread, NULL);
+
+}
+
 //
 // The next four functions implement a temporary change
 // of settings during capture/replay.
 //
-void start_capture() {
+void radio_start_capture() {
   //
   // - turn off  equalizers for both RX
   //
@@ -3083,7 +3036,7 @@ void start_capture() {
   SetRXAEQRun(1, 0);
 }
 
-void end_capture() {
+void radio_end_capture() {
   //
   // - normalize what has been captured
   // - restore  RX equalizer on/off flags
@@ -3119,7 +3072,7 @@ void end_capture() {
   SetRXAEQRun(1, receiver[1]->eq_enable);
 }
 
-void start_playback() {
+void radio_start_playback() {
   //
   // - turn off TX equalizer
   // - turn off TX compression
@@ -3130,7 +3083,7 @@ void start_playback() {
   SetTXAPanelGain1(transmitter->id, 1.0);
 }
 
-void end_playback() {
+void radio_end_playback() {
   //
   // - restore TX equalizer on/off flag
   // - restore TX compressor on/off flag

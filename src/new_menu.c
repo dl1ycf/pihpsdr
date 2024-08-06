@@ -111,7 +111,7 @@ static gboolean close_cb () {
 // cppcheck-suppress constParameterCallback
 static gboolean restart_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
-  protocol_restart();
+  radio_protocol_restart();
   return TRUE;
 }
 

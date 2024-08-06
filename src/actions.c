@@ -695,7 +695,7 @@ int process_action(void *data) {
     if (can_transmit && a->mode == PRESSED) {
       switch (capture_state) {
       case CAP_INIT:
-        if (isTransmitting()) {
+        if (radio_is_transmitting()) {
           //
           // Hitting "capture" during TX when nothing has ever been
           // recorded results in a no-op
@@ -708,7 +708,7 @@ int process_action(void *data) {
         // recorded: allocate audio capture buffer, and start recording
         //
         capture_data = g_new(double, 480000);
-        start_capture();
+        radio_start_capture();
         capture_record_pointer = 0;
         capture_state = CAP_RECORDING;
         break;
@@ -719,12 +719,12 @@ int process_action(void *data) {
         // In this state, a recording is already in memory, so we can
         // either play-back (TX) or start a new recording (RX)
         //
-        if (isTransmitting()) {
-          start_playback();
+        if (radio_is_transmitting()) {
+          radio_start_playback();
           capture_replay_pointer = 0;
           capture_state = CAP_REPLAY;
         } else {
-          start_capture();
+          radio_start_capture();
           capture_record_pointer = 0;
           capture_state = CAP_RECORDING;
         }
@@ -738,7 +738,7 @@ int process_action(void *data) {
         // to user request (CAP_RECORDING) or because the audio
         // buffer was full (CAP_RECORDING_DONE)
         //
-        end_capture();
+        radio_end_capture();
         capture_state = CAP_AVAIL;
         break;
 
@@ -749,7 +749,7 @@ int process_action(void *data) {
         // to user request (CAP_REPLAY) or because the entire recording
         // has been re-played.
         //
-        end_playback();
+        radio_end_playback();
         capture_state = CAP_AVAIL;
         break;
       }
@@ -760,7 +760,7 @@ int process_action(void *data) {
   case COMP_ENABLE:
     if (can_transmit && a->mode == PRESSED) {
       tx_set_compressor(transmitter, NOT(transmitter->compressor));
-      mode_settings[get_tx_mode()].compressor = transmitter->compressor;
+      mode_settings[vfo_get_tx_mode()].compressor = transmitter->compressor;
       g_idle_add(ext_vfo_update, NULL);
     }
 
@@ -771,8 +771,8 @@ int process_action(void *data) {
       value = KnobOrWheel(a, transmitter->compressor_level, 0.0, 20.0, 1.0);
       tx_set_compressor_level(transmitter, value);
       tx_set_compressor(transmitter, value > 0.5);
-      mode_settings[get_tx_mode()].compressor = transmitter->compressor;
-      mode_settings[get_tx_mode()].compressor_level = transmitter->compressor_level;
+      mode_settings[vfo_get_tx_mode()].compressor = transmitter->compressor;
+      mode_settings[vfo_get_tx_mode()].compressor_level = transmitter->compressor_level;
       g_idle_add(ext_vfo_update, NULL);
     }
 
@@ -845,12 +845,12 @@ int process_action(void *data) {
     break;
 
   case DRIVE:
-    value = KnobOrWheel(a, getDrive(), 0.0, drive_max, 1.0);
+    value = KnobOrWheel(a, radio_get_drive(), 0.0, drive_max, 1.0);
     set_drive(value);
     break;
 
   case DUPLEX:
-    if (can_transmit && !isTransmitting() && a->mode == PRESSED) {
+    if (can_transmit && !radio_is_transmitting() && a->mode == PRESSED) {
       TOGGLE(duplex);
       g_idle_add(ext_set_duplex, NULL);
     }
@@ -1098,8 +1098,8 @@ int process_action(void *data) {
 
   case MOX:
     if (a->mode == PRESSED) {
-      int state = getMox();
-      mox_update(!state);
+      int state = radio_get_mox();
+      radio_mox_update(!state);
       //t_print("MOX pressed; bool = %d\n", (int)!state);
     }
 
@@ -1201,112 +1201,112 @@ int process_action(void *data) {
 
   case NUMPAD_0:
     if (a->mode == PRESSED) {
-      num_pad(0, active_receiver->id);
+      vfo_num_pad(0, active_receiver->id);
     }
 
     break;
 
   case NUMPAD_1:
     if (a->mode == PRESSED) {
-      num_pad(1, active_receiver->id);
+      vfo_num_pad(1, active_receiver->id);
     }
 
     break;
 
   case NUMPAD_2:
     if (a->mode == PRESSED) {
-      num_pad(2, active_receiver->id);
+      vfo_num_pad(2, active_receiver->id);
     }
 
     break;
 
   case NUMPAD_3:
     if (a->mode == PRESSED) {
-      num_pad(3, active_receiver->id);
+      vfo_num_pad(3, active_receiver->id);
     }
 
     break;
 
   case NUMPAD_4:
     if (a->mode == PRESSED) {
-      num_pad(4, active_receiver->id);
+      vfo_num_pad(4, active_receiver->id);
     }
 
     break;
 
   case NUMPAD_5:
     if (a->mode == PRESSED) {
-      num_pad(5, active_receiver->id);
+      vfo_num_pad(5, active_receiver->id);
     }
 
     break;
 
   case NUMPAD_6:
     if (a->mode == PRESSED) {
-      num_pad(6, active_receiver->id);
+      vfo_num_pad(6, active_receiver->id);
     }
 
     break;
 
   case NUMPAD_7:
     if (a->mode == PRESSED) {
-      num_pad(7, active_receiver->id);
+      vfo_num_pad(7, active_receiver->id);
     }
 
     break;
 
   case NUMPAD_8:
     if (a->mode == PRESSED) {
-      num_pad(8, active_receiver->id);
+      vfo_num_pad(8, active_receiver->id);
     }
 
     break;
 
   case NUMPAD_9:
     if (a->mode == PRESSED) {
-      num_pad(9, active_receiver->id);
+      vfo_num_pad(9, active_receiver->id);
     }
 
     break;
 
   case NUMPAD_BS:
     if (a->mode == PRESSED) {
-      num_pad(-6, active_receiver->id);
+      vfo_num_pad(-6, active_receiver->id);
     }
 
     break;
 
   case NUMPAD_CL:
     if (a->mode == PRESSED) {
-      num_pad(-1, active_receiver->id);
+      vfo_num_pad(-1, active_receiver->id);
     }
 
     break;
 
   case NUMPAD_ENTER:
     if (a->mode == PRESSED) {
-      num_pad(-2, active_receiver->id);
+      vfo_num_pad(-2, active_receiver->id);
     }
 
     break;
 
   case NUMPAD_KHZ:
     if (a->mode == PRESSED) {
-      num_pad(-3, active_receiver->id);
+      vfo_num_pad(-3, active_receiver->id);
     }
 
     break;
 
   case NUMPAD_MHZ:
     if (a->mode == PRESSED) {
-      num_pad(-4, active_receiver->id);
+      vfo_num_pad(-4, active_receiver->id);
     }
 
     break;
 
   case NUMPAD_DEC:
     if (a->mode == PRESSED) {
-      num_pad(-5, active_receiver->id);
+      vfo_num_pad(-5, active_receiver->id);
     }
 
     break;
@@ -1362,7 +1362,7 @@ int process_action(void *data) {
 
   case PTT:
     if (a->mode == PRESSED || a->mode == RELEASED) {
-      mox_update(a->mode == PRESSED);
+      radio_mox_update(a->mode == PRESSED);
     }
 
     break;
@@ -1568,8 +1568,8 @@ int process_action(void *data) {
 
   case TUNE:
     if (a->mode == PRESSED) {
-      int state = getTune();
-      tune_update(!state);
+      int state = radio_get_tune();
+      radio_tune_update(!state);
     }
 
     break;
@@ -1765,7 +1765,7 @@ int process_action(void *data) {
       MIDI_cw_is_active = 1;         // disable "CW handled in radio"
       cw_key_hit = 1;                // this tells rigctl to abort CAT CW
       schedule_transmit_specific();
-      mox_update(1);
+      radio_mox_update(1);
       break;
 
     case RELEASED:
@@ -1773,7 +1773,7 @@ int process_action(void *data) {
       schedule_transmit_specific();
 
       if (!radio_ptt) {
-        mox_update(0);
+        radio_mox_update(0);
       }
 
       break;

@@ -73,7 +73,7 @@ static void preamp_cb(GtkWidget *widget, gpointer data) {
 static void alex_att_cb(GtkWidget *widget, gpointer data) {
   if (have_alex_att) {
     int val = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-    set_alex_attenuation(val);
+    radio_set_alex_attenuation(val);
   }
 }
 

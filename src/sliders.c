@@ -192,7 +192,7 @@ void set_attenuation_value(double value) {
   if (!have_rx_att) { return; }
 
   adc[active_receiver->adc].attenuation = (int)value;
-  set_attenuation(adc[active_receiver->adc].attenuation);
+  schedule_high_priority();
 
   if (display_sliders) {
     gtk_range_set_value (GTK_RANGE(attenuation_scale), (double)adc[active_receiver->adc].attenuation);
@@ -214,7 +214,7 @@ static void attenuation_value_changed_cb(GtkWidget *widget, gpointer data) {
     send_attenuation(client_socket, active_receiver->id, (int)adc[active_receiver->adc].attenuation);
   } else {
 #endif
-    set_attenuation(adc[active_receiver->adc].attenuation);
+    schedule_high_priority();
 #ifdef CLIENT_SERVER
   }
 
@@ -542,13 +542,13 @@ void set_mic_gain(double value) {
 
 void set_drive(double value) {
   //t_print("%s value=%f\n",__FUNCTION__,value);
-  int txmode = get_tx_mode();
+  int txmode = vfo_get_tx_mode();
 
   if (txmode == modeDIGU || txmode == modeDIGL) {
     if (value > drive_digi_max) { value = drive_digi_max; }
   }
 
-  setDrive(value);
+  radio_set_drive(value);
 
   if (display_sliders) {
     gtk_range_set_value (GTK_RANGE(drive_scale), value);
@@ -560,14 +560,14 @@ void set_drive(double value) {
 static void drive_value_changed_cb(GtkWidget *widget, gpointer data) {
   double value = gtk_range_get_value(GTK_RANGE(drive_scale));
   //t_print("%s: value=%f\n", __FUNCTION__, value);
-  int txmode = get_tx_mode();
+  int txmode = vfo_get_tx_mode();
 
   if (txmode == modeDIGU || txmode == modeDIGL) {
     if (value > drive_digi_max) { value = drive_digi_max; }
   }
 
   gtk_range_set_value (GTK_RANGE(drive_scale), value);
-  setDrive(value);
+  radio_set_drive(value);
 }
 
 void set_filter_cut_high(int rx, int var) {
@@ -635,7 +635,7 @@ static void squelch_value_changed_cb(GtkWidget *widget, gpointer data) {
     send_squelch(client_socket, active_receiver->id, active_receiver->squelch_enable, active_receiver->squelch);
   } else {
 #endif
-    setSquelch(active_receiver);
+    rx_set_squelch(active_receiver);
 #ifdef CLIENT_SERVER
   }
 
@@ -650,7 +650,7 @@ static void squelch_enable_cb(GtkWidget *widget, gpointer data) {
     send_squelch(client_socket, active_receiver->id, active_receiver->squelch_enable, active_receiver->squelch);
   } else {
 #endif
-    setSquelch(active_receiver);
+    rx_set_squelch(active_receiver);
 #ifdef CLIENT_SERVER
   }
 
@@ -666,7 +666,7 @@ void set_squelch(RECEIVER *rx) {
   // depending on the "new" squelch value
   //
   rx->squelch_enable = (rx->squelch > 0.5);
-  setSquelch(rx);
+  rx_set_squelch(rx);
 
   if (display_sliders && rx->id == active_receiver->id) {
     gtk_range_set_value (GTK_RANGE(squelch_scale), rx->squelch);
@@ -859,7 +859,7 @@ GtkWidget *sliders_init(int my_width, int my_height) {
     gtk_widget_set_size_request(drive_scale, 0, height / 2);
     gtk_widget_set_valign(drive_scale, GTK_ALIGN_CENTER);
     gtk_range_set_increments (GTK_RANGE(drive_scale), 1.0, 1.0);
-    gtk_range_set_value (GTK_RANGE(drive_scale), getDrive());
+    gtk_range_set_value (GTK_RANGE(drive_scale), radio_get_drive());
     gtk_widget_show(drive_scale);
     gtk_grid_attach(GTK_GRID(sliders), drive_scale, s2pos, 1, swidth, 1);
     g_signal_connect(G_OBJECT(drive_scale), "value_changed", G_CALLBACK(drive_value_changed_cb), NULL);

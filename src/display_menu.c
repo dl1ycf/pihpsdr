@@ -151,12 +151,12 @@ static void waterfall_automatic_cb(GtkWidget *widget, gpointer data) {
 
 static void display_waterfall_cb(GtkWidget *widget, gpointer data) {
   active_receiver->display_waterfall = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-  reconfigure_radio();
+  radio_reconfigure();
 }
 
 static void display_panadapter_cb(GtkWidget *widget, gpointer data) {
   active_receiver->display_panadapter = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-  reconfigure_radio();
+  radio_reconfigure();
 }
 
 void display_menu(GtkWidget *parent) {

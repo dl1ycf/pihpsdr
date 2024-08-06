@@ -156,7 +156,7 @@ void oc_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(grid), oc_tx_title, i + 7, 2, 1, 1);
   }
 
-  int bands = max_band();
+  int bands = radio_max_band();
   int row = 3;
   //
   // fused loop. i runs over the following values:

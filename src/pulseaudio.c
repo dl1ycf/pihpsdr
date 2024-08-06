@@ -396,9 +396,9 @@ int cw_audio_write(RECEIVER *rx, float sample) {
 int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
   int result = 0;
   int err;
-  int txmode = get_tx_mode();
+  int txmode = vfo_get_tx_mode();
 
-  if (rx == active_receiver && isTransmitting() && (txmode == modeCWU || txmode == modeCWL)) {
+  if (rx == active_receiver && radio_is_transmitting() && (txmode == modeCWU || txmode == modeCWL)) {
     return 0;
   }
 

@@ -653,7 +653,7 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
     cairo_show_text(cr, "TX Inhibit");
   }
 
-  if (display_pacurr && isTransmitting() && !TxInhibit) {
+  if (display_pacurr && radio_is_transmitting() && !TxInhibit) {
     double v;  // value
     int flag;  // 0: dont, 1: do
     static unsigned int count = 0;

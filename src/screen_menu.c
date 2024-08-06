@@ -56,7 +56,7 @@ static int apply(gpointer data) {
   full_screen         = my_full_screen;
   vfo_layout          = my_vfo_layout;
   rx_stack_horizontal = my_rx_stack_horizontal;
-  reconfigure_screen();
+  radio_reconfigure_screen();
 
   //
   // VFO layout may have been re-adjusted so update combo-box

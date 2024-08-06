@@ -344,7 +344,7 @@ void update_action_table() {
   // determine the actions to be taken when a DDC packet arrives
   //
   int flag = 0;
-  int xmit = isTransmitting(); // store such that it cannot change while building the flag
+  int xmit = radio_is_transmitting(); // store such that it cannot change while building the flag
   int newdev = (device == NEW_DEVICE_ANGELIA  || device == NEW_DEVICE_ORION ||
                 device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN);
 
@@ -634,7 +634,7 @@ static void new_protocol_general() {
   const BAND *band;
   int rc;
   pthread_mutex_lock(&general_mutex);
-  int txvfo = get_tx_vfo();
+  int txvfo = vfo_get_tx_vfo();
   band = band_get_band(vfo[txvfo].band);
   memset(general_buffer, 0, sizeof(general_buffer));
   general_buffer[0] = (general_sequence >> 24) & 0xFF;
@@ -707,13 +707,13 @@ static void new_protocol_high_priority() {
   //
   // If piHPSDR is not (yet) transmitting, but a PTT signal came from the
   // radio, set HighPrio data accoring to the TX state as early as possible.
-  // To this end, isTransmitting() is ORed with radio_ptt.
+  // To this end, radio_is_transmitting() is ORed with radio_ptt.
   //
-  int xmit     = isTransmitting() | radio_ptt;
-  int txvfo    = get_tx_vfo();        // VFO governing the TX frequency
+  int xmit     = radio_is_transmitting() | radio_ptt;
+  int txvfo    = vfo_get_tx_vfo();    // VFO governing the TX frequency
   int rxvfo    = active_receiver->id; // id of the active receiver
   int othervfo = 1 - rxvfo;           // id of the "other" receiver (only valid if receivers > 1)
-  int txmode   = get_tx_mode();
+  int txmode   = vfo_get_tx_mode();
   const BAND *txband = band_get_band(vfo[txvfo].band);
   const BAND *rxband = band_get_band(vfo[rxvfo].band);
   high_priority_buffer_to_radio[0] = (high_priority_sequence >> 24) & 0xFF;
@@ -1388,7 +1388,7 @@ static void new_protocol_high_priority() {
 
 static void new_protocol_transmit_specific() {
   pthread_mutex_lock(&tx_spec_mutex);
-  int txmode = get_tx_mode();
+  int txmode = vfo_get_tx_mode();
   memset(transmit_specific_buffer, 0, sizeof(transmit_specific_buffer));
   transmit_specific_buffer[0] = (tx_specific_sequence >> 24) & 0xFF;
   transmit_specific_buffer[1] = (tx_specific_sequence >> 16) & 0xFF;
@@ -1524,7 +1524,7 @@ static void new_protocol_receive_specific() {
   int xmit;
   pthread_mutex_lock(&rx_spec_mutex);
   memset(receive_specific_buffer, 0, sizeof(receive_specific_buffer));
-  xmit = isTransmitting();
+  xmit = radio_is_transmitting();
   receive_specific_buffer[0] = (rx_specific_sequence >> 24) & 0xFF;
   receive_specific_buffer[1] = (rx_specific_sequence >> 16) & 0xFF;
   receive_specific_buffer[2] = (rx_specific_sequence >>  8) & 0xFF;
@@ -2431,7 +2431,6 @@ static void process_high_priority() {
   unsigned int val;
   int data;
   int radio_cw;
-  static GThread *tune_thread_id = NULL;
   //
   // variable used to manage analog inputs. The accumulators
   // record the value*16
@@ -2555,14 +2554,7 @@ static void process_high_priority() {
     auto_tune_end = data;
 
     if (data == 0 && !auto_tune_flag) {
-      auto_tune_flag = 1;
-      auto_tune_end  = 0;
-
-      if (tune_thread_id) {
-        g_thread_join(tune_thread_id);
-      }
-
-      tune_thread_id = g_thread_new("TUNE", auto_tune_thread, NULL);
+      radio_start_auto_tune();
     }
   } else {
     auto_tune_end = 1;
@@ -2605,9 +2597,9 @@ static void process_mic_data(const unsigned char *buffer) {
 }
 
 void new_protocol_cw_audio_samples(short left_audio_sample, short right_audio_sample) {
-  int txmode = get_tx_mode();
+  int txmode = vfo_get_tx_mode();
 
-  if (isTransmitting() && (txmode == modeCWU || txmode == modeCWL)) {
+  if (radio_is_transmitting() && (txmode == modeCWU || txmode == modeCWL)) {
     //
     // Only process samples if transmitting in CW
     //
@@ -2667,12 +2659,12 @@ void new_protocol_cw_audio_samples(short left_audio_sample, short right_audio_sa
 }
 
 void new_protocol_audio_samples(short left_audio_sample, short right_audio_sample) {
-  int txmode = get_tx_mode();
+  int txmode = vfo_get_tx_mode();
 
   //
   // Only process samples if NOT transmitting in CW
   //
-  if (isTransmitting() && (txmode == modeCWU || txmode == modeCWL)) { return; }
+  if (radio_is_transmitting() && (txmode == modeCWU || txmode == modeCWL)) { return; }
 
   pthread_mutex_lock(&send_rxaudio_mutex);
 

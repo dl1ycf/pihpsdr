@@ -111,7 +111,7 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
   int  units = 2;          // 0: xxx mW, 1: xx.y W, 2: xxx W
   double interval = 10.0;  // 1/10 of full reflection
   cairo_t *cr = cairo_create (meter_surface);
-  int txvfo = get_tx_vfo();
+  int txvfo = vfo_get_tx_vfo();
   const BAND *band = band_get_band(vfo[txvfo].band);
 
   //

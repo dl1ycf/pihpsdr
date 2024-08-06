@@ -494,7 +494,7 @@ int cw_audio_write(RECEIVER *rx, float sample) {
 
 int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
   snd_pcm_sframes_t delay;
-  int txmode = get_tx_mode();
+  int txmode = vfo_get_tx_mode();
 
   //
   // We have to stop the stream here if a CW side tone may occur.
@@ -504,7 +504,7 @@ int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
   // If *not* doing CW, the stream continues because we might wish
   // to listen to this rx while transmitting.
   //
-  if (rx == active_receiver && isTransmitting() && (txmode == modeCWU || txmode == modeCWL)) {
+  if (rx == active_receiver && radio_is_transmitting() && (txmode == modeCWU || txmode == modeCWL)) {
     return 0;
   }
 

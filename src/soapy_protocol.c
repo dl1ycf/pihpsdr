@@ -432,7 +432,7 @@ static void *receive_thread(void *arg) {
 void soapy_protocol_iq_samples(float isample, float qsample) {
   int flags = 0;
 
-  if (isTransmitting()) {
+  if (radio_is_transmitting()) {
     //
     // The "iqswap" logic has now been removed  from transmitter.c
     // and moved here, because this is where it is also handled
@@ -482,7 +482,7 @@ void soapy_protocol_set_rx_frequency(RECEIVER *rx, int v) {
 
 void soapy_protocol_set_tx_frequency(TRANSMITTER *tx) {
   int v;
-  v = get_tx_vfo();
+  v = vfo_get_tx_vfo();
 
   if (can_transmit && soapy_device != NULL) {
     double f;

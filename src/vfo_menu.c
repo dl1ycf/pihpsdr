@@ -56,7 +56,7 @@ static char *btn_labels[] = {"1", "2", "3",
                             };
 
 //
-// The parameters for num_pad corresponding to the button labels
+// The parameters for vfo_num_pad corresponding to the button labels
 //
 static int btn_actions[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, -5, 0, -6, -2, -3, -4, -1};
 
@@ -69,7 +69,7 @@ static void cleanup() {
     gtk_widget_destroy(tmp);
     sub_menu = NULL;
     active_menu  = NO_MENU;
-    num_pad(-1, myvfo);
+    vfo_num_pad(-1, myvfo);
   }
 }
 
@@ -78,10 +78,10 @@ static gboolean close_cb () {
   return TRUE;
 }
 
-static gboolean num_pad_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
+static gboolean vfo_num_pad_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
   int val = GPOINTER_TO_INT(data);
   char output[64];
-  num_pad(btn_actions[val], myvfo);
+  vfo_num_pad(btn_actions[val], myvfo);
 
   if (vfo[myvfo].entered_frequency[0]) {
     snprintf(output, 64, "<big><b>%s</b></big>", vfo[myvfo].entered_frequency);
@@ -117,7 +117,7 @@ static void vfo_cb(GtkComboBox *widget, gpointer data) {
 }
 
 static void duplex_cb(GtkWidget *widget, gpointer data) {
-  if (isTransmitting()) {
+  if (radio_is_transmitting()) {
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (widget), duplex);
     return;
   }
@@ -192,7 +192,7 @@ void vfo_menu(GtkWidget *parent, int id) {
       gtk_grid_attach(GTK_GRID(grid), btn[i], i % 3, 2 + (i / 3), 1, 1);
     }
 
-    g_signal_connect(btn[i], "button-press-event", G_CALLBACK(num_pad_cb), GINT_TO_POINTER(i));
+    g_signal_connect(btn[i], "button-press-event", G_CALLBACK(vfo_num_pad_cb), GINT_TO_POINTER(i));
   }
 
   set_btn_state();
@@ -271,7 +271,7 @@ void vfo_menu(GtkWidget *parent, int id) {
 // This is also called when hitting buttons on the
 // numpad of the MIDI device or the controller
 //
-void num_pad(int action, int id) {
+void vfo_num_pad(int action, int id) {
   double mult = 1.0;
   double fd;
   long long fl;

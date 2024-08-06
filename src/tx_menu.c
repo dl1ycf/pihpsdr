@@ -68,13 +68,13 @@ static void filled_cb(GtkWidget *widget, gpointer data) {
 
 static void comp_enable_cb(GtkWidget *widget, gpointer data) {
   tx_set_compressor(transmitter, gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget)));
-  mode_settings[get_tx_mode()].compressor = transmitter->compressor;
+  mode_settings[vfo_get_tx_mode()].compressor = transmitter->compressor;
   g_idle_add(ext_vfo_update, NULL);
 }
 
 static void comp_cb(GtkWidget *widget, gpointer data) {
   tx_set_compressor_level(transmitter, gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget)));
-  mode_settings[get_tx_mode()].compressor_level = transmitter->compressor_level;
+  mode_settings[vfo_get_tx_mode()].compressor_level = transmitter->compressor_level;
   g_idle_add(ext_vfo_update, NULL);
 }
 

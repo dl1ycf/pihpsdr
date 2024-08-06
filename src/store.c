@@ -116,7 +116,7 @@ void recall_memory_slot(int index) {
     vfo[id].filter = mem[index].filter;
   }
 
-  vfos_changed();
+  vfo_vfos_changed();
 }
 
 void store_memory_slot(int index) {

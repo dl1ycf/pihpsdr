@@ -62,7 +62,7 @@ static void rx_ant_cb(GtkToggleButton *widget, gpointer data) {
   int ant = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
   BAND *band = band_get_band(b);
   band->alexRxAntenna = ant;
-  set_alex_antennas();
+  radio_set_alex_antennas();
 }
 
 static void tx_ant_cb(GtkToggleButton *widget, gpointer data) {
@@ -70,7 +70,7 @@ static void tx_ant_cb(GtkToggleButton *widget, gpointer data) {
   int ant = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
   BAND *band = band_get_band(b);
   band->alexTxAntenna = ant;
-  set_alex_antennas();
+  radio_set_alex_antennas();
 }
 
 #ifdef SOAPYSDR
@@ -98,7 +98,7 @@ static void dac0_antenna_cb(GtkComboBox *widget, gpointer data) {
 
 static void show_hf() {
   GtkWidget *label;
-  int bands = max_band();
+  int bands = radio_max_band();
   hf_container = gtk_fixed_new();
   gtk_grid_attach(GTK_GRID(grid), hf_container, 0, 1, 6, 1);
   GtkWidget *mygrid = gtk_grid_new();

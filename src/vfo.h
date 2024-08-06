@@ -103,55 +103,49 @@ extern struct _mode_settings mode_settings[];
 #define STEPS 17
 extern char *step_labels[];
 
+//
+// Global functions declared in vfo.h start with "vfo_"
+//
 extern GtkWidget* vfo_init(int width, int height);
-extern int  vfo_get_stepindex(int id);
-extern void vfo_set_step_from_index(int id, int index);
-extern int  vfo_get_step_from_index(int index);
-extern void vfo_step(int steps);
-extern void vfo_id_step(int id, int steps);
-extern void vfo_move(long long hz, int round);
-extern void vfo_id_move(int id, long long hz, int round);
-extern void vfo_id_move_to(int id, long long hz);
-extern void vfo_move_to(long long hz);
-extern void vfo_update(void);
-
-extern void vfoSaveState(void);
-extern void vfoRestoreState(void);
-
-extern void vfo_band_changed(int id, int b);
-extern void vfo_bandstack_changed(int b);
-extern void vfo_id_mode_changed(int id, int m);
-extern void vfo_mode_changed(int m);
-extern void vfo_id_filter_changed(int id, int f);
-extern void vfo_filter_changed(int f);
-extern void vfo_id_deviation_changed(int id, int dev);
-extern void vfo_deviation_changed(int dev);
-extern void vfo_a_to_b(void);
-extern void vfo_b_to_a(void);
-extern void vfo_a_swap_b(void);
-
-extern int get_tx_vfo(void);
-extern int get_tx_mode(void);
-extern long long get_tx_freq(void);
-
-extern void vfo_xvtr_changed(void);
-
-extern void vfo_xit_toggle(void);
-extern void vfo_xit_incr(int incr);
-extern void vfo_xit_onoff(int enable);
-extern void vfo_xit_value(long long value);
-
-extern void vfo_rit_toggle(int rx);
-extern void vfo_rit_onoff(int rx, int enable);
-extern void vfo_rit_incr(int rx, int incr);
-extern void vfo_rit_value(int rx, long long value);
-
-extern void vfo_set_frequency(int vfo, long long f);
-
-extern void vfo_ctun_update(int id, int state);
-extern void vfo_apply_mode_settings(RECEIVER *rx);
-extern void vfos_changed(void);
-
-extern void num_pad(int val, int vfo);
+extern int        vfo_get_stepindex(int id);
+extern void       vfo_set_step_from_index(int id, int index);
+extern int        vfo_get_step_from_index(int index);
+extern void       vfo_step(int steps);
+extern void       vfo_id_step(int id, int steps);
+extern void       vfo_move(long long hz, int round);
+extern void       vfo_id_move(int id, long long hz, int round);
+extern void       vfo_id_move_to(int id, long long hz);
+extern void       vfo_move_to(long long hz);
+extern void       vfo_update(void);
+extern void       vfo_save_state(void);
+extern void       vfo_restore_state(void);
+extern void       vfo_band_changed(int id, int b);
+extern void       vfo_bandstack_changed(int b);
+extern void       vfo_id_mode_changed(int id, int m);
+extern void       vfo_mode_changed(int m);
+extern void       vfo_id_filter_changed(int id, int f);
+extern void       vfo_filter_changed(int f);
+extern void       vfo_id_deviation_changed(int id, int dev);
+extern void       vfo_deviation_changed(int dev);
+extern void       vfo_a_to_b(void);
+extern void       vfo_b_to_a(void);
+extern void       vfo_a_swap_b(void);
+extern int        vfo_get_tx_vfo(void);
+extern int        vfo_get_tx_mode(void);
+extern long long  vfo_get_tx_freq(void);
+extern void       vfo_xvtr_changed(void);
+extern void       vfo_xit_toggle(void);
+extern void       vfo_xit_incr(int incr);
+extern void       vfo_xit_onoff(int enable);
+extern void       vfo_xit_value(long long value);
+extern void       vfo_rit_toggle(int rx);
+extern void       vfo_rit_onoff(int rx, int enable);
+extern void       vfo_rit_incr(int rx, int incr);
+extern void       vfo_rit_value(int rx, long long value);
+extern void       vfo_set_frequency(int vfo, long long f);
+extern void       vfo_ctun_update(int id, int state);
+extern void       vfo_apply_mode_settings(RECEIVER *rx);
+extern void       vfo_vfos_changed(void);
+extern void       vfo_num_pad(int val, int vfo);
 
 #endif

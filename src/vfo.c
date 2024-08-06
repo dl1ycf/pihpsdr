@@ -89,7 +89,7 @@ static inline long long ROUND(long long freq, int nsteps, int step) {
 struct _vfo vfo[MAX_VFOS];
 struct _mode_settings mode_settings[MODES];
 
-static void vfoSaveBandstack() {
+static void vfo_save_bandstack() {
   BANDSTACK *bandstack = bandstack_get_bandstack(vfo[0].band);
   bandstack->current_entry = vfo[0].bandstack;
   BANDSTACK_ENTRY *entry = &bandstack->entry[vfo[0].bandstack];
@@ -232,8 +232,8 @@ static void modesettingsRestoreState() {
   }
 }
 
-void vfoSaveState() {
-  vfoSaveBandstack();
+void vfo_save_state() {
+  vfo_save_bandstack();
 
   for (int i = 0; i < MAX_VFOS; i++) {
     SetPropI1("vfo.%d.band", i,             vfo[i].band);
@@ -256,7 +256,7 @@ void vfoSaveState() {
   modesettingsSaveState();
 }
 
-void vfoRestoreState() {
+void vfo_restore_state() {
   for (int i = 0; i < MAX_VFOS; i++) {
     //
     // Set defaults, using a simple heuristics to get a
@@ -428,7 +428,7 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
   // Transmitter-specific settings are only changed if this VFO
   // controls the TX
   //
-  if ((id == get_tx_vfo()) && can_transmit) {
+  if ((id == vfo_get_tx_vfo()) && can_transmit) {
     transmitter->eq_enable   = mode_settings[m].en_txeq;
     transmitter->eq_tenband  = mode_settings[m].tx_eq_tenband;
 
@@ -481,7 +481,7 @@ void vfo_band_changed(int id, int b) {
   }
 
   if (id == 0) {
-    vfoSaveBandstack();
+    vfo_save_bandstack();
   }
 
   if (b == vfo[id].band) {
@@ -528,13 +528,13 @@ void vfo_band_changed(int id, int b) {
 
   //
   // In the case of CTUN, the offset is re-calculated
-  // during vfos_changed ==> rx_vfo_changed ==> rx_frequency_changed
+  // during vfo_vfos_changed ==> rx_vfo_changed ==> rx_frequency_changed
   //
   if (id < receivers && oldmode != vfo[id].mode) {
     vfo_apply_mode_settings(receiver[id]);
   }
 
-  vfos_changed();
+  vfo_vfos_changed();
 }
 
 void vfo_bandstack_changed(int b) {
@@ -544,7 +544,7 @@ void vfo_bandstack_changed(int b) {
   BANDSTACK *bandstack = bandstack_get_bandstack(vfo[id].band);
 
   if (id == 0) {
-    vfoSaveBandstack();
+    vfo_save_bandstack();
     bandstack->current_entry = b;
   }
 
@@ -571,7 +571,7 @@ void vfo_bandstack_changed(int b) {
     vfo_apply_mode_settings(receiver[id]);
   }
 
-  vfos_changed();
+  vfo_vfos_changed();
 }
 
 void vfo_mode_changed(int m) {
@@ -597,7 +597,7 @@ void vfo_id_mode_changed(int id, int m) {
   }
 
   if (can_transmit) {
-    tx_set_mode(transmitter, get_tx_mode());
+    tx_set_mode(transmitter, vfo_get_tx_mode());
   }
 
   //
@@ -664,7 +664,7 @@ void vfo_id_filter_changed(int id, int f) {
   g_idle_add(ext_vfo_update, NULL);
 }
 
-void vfos_changed() {
+void vfo_vfos_changed() {
   //
   // Use this when there are large changes in the VFOs.
   // Apply the new data
@@ -675,10 +675,10 @@ void vfos_changed() {
     rx_vfo_changed(receiver[1]);
   }
 
-  tx_vfo_changed();
-  set_alex_antennas();
+  radio_tx_vfo_changed();
+  radio_set_alex_antennas();
   //
-  // set_alex_antennas already scheduled a HighPrio and General packet,
+  // radio_set_alex_antennas already scheduled a HighPrio and General packet,
   // but if the mode changed to/from CW, we also need a DUCspecific packet
   //
   schedule_transmit_specific();
@@ -694,7 +694,7 @@ void vfo_a_to_b() {
     vfo_apply_mode_settings(receiver[1]);
   }
 
-  vfos_changed();
+  vfo_vfos_changed();
 }
 
 void vfo_b_to_a() {
@@ -706,7 +706,7 @@ void vfo_b_to_a() {
     vfo_apply_mode_settings(receiver[0]);
   }
 
-  vfos_changed();
+  vfo_vfos_changed();
 }
 
 void vfo_a_swap_b() {
@@ -723,7 +723,7 @@ void vfo_a_swap_b() {
     }
   }
 
-  vfos_changed();
+  vfo_vfos_changed();
 }
 
 //
@@ -1165,7 +1165,7 @@ void vfo_update() {
   int id = active_receiver->id;
   int m = vfo[id].mode;
   int f = vfo[id].filter;
-  int txvfo = get_tx_vfo();
+  int txvfo = vfo_get_tx_vfo();
   const VFO_BAR_LAYOUT *vfl = &vfo_layout_list[vfo_layout];
   //
   // Filter used in active receiver
@@ -1329,7 +1329,7 @@ void vfo_update() {
   //
   // Adjust VFO_A frequency for RIT/XIT
   //
-  if (isTransmitting() && txvfo == 0) {
+  if (radio_is_transmitting() && txvfo == 0) {
     if (vfo[0].xit_enabled) { af += vfo[0].xit; }
   } else {
     if (vfo[0].rit_enabled) { af += vfo[0].rit; }
@@ -1338,7 +1338,7 @@ void vfo_update() {
   //
   // Adjust VFO_B frequency for RIT/XIT
   //
-  if (isTransmitting() && txvfo == 1) {
+  if (radio_is_transmitting() && txvfo == 1) {
     if (vfo[1].xit_enabled) { af += vfo[1].xit; }
   } else {
     if (vfo[1].rit_enabled) { bf += vfo[1].rit; }
@@ -1360,7 +1360,7 @@ void vfo_update() {
   if (vfl->vfo_a_x != 0) {
     cairo_move_to(cr, abs(vfl->vfo_a_x), vfl->vfo_a_y);
 
-    if (txvfo == 0 && (isTransmitting() || oob)) {
+    if (txvfo == 0 && (radio_is_transmitting() || oob)) {
       cairo_set_source_rgba(cr, COLOUR_ALARM);
     } else if (vfo[0].entered_frequency[0]) {
       cairo_set_source_rgba(cr, COLOUR_ATTN);
@@ -1418,7 +1418,7 @@ void vfo_update() {
   if (vfl->vfo_b_x != 0) {
     cairo_move_to(cr, abs(vfl->vfo_b_x), abs(vfl->vfo_b_y));
 
-    if (txvfo == 1 && (isTransmitting() || oob)) {
+    if (txvfo == 1 && (radio_is_transmitting() || oob)) {
       cairo_set_source_rgba(cr, COLOUR_ALARM);
     } else if (vfo[1].entered_frequency[0]) {
       cairo_set_source_rgba(cr, COLOUR_ATTN);
@@ -1702,10 +1702,10 @@ void vfo_update() {
   if (vfl->eq_x != 0) {
     cairo_move_to(cr, vfl->eq_x, vfl->eq_y);
 
-    if (isTransmitting() && transmitter->eq_enable) {
+    if (radio_is_transmitting() && transmitter->eq_enable) {
       cairo_set_source_rgba(cr, COLOUR_ATTN);
       cairo_show_text(cr, "TxEQ");
-    } else if (!isTransmitting() && active_receiver->eq_enable) {
+    } else if (!radio_is_transmitting() && active_receiver->eq_enable) {
       cairo_set_source_rgba(cr, COLOUR_ATTN);
       cairo_show_text(cr, "RxEQ");
     } else {
@@ -1945,7 +1945,7 @@ GtkWidget* vfo_init(int width, int height) {
 // transmitter
 //
 
-int get_tx_vfo() {
+int vfo_get_tx_vfo() {
   int txvfo = active_receiver->id;
 
   if (split) { txvfo = 1 - txvfo; }
@@ -1953,7 +1953,7 @@ int get_tx_vfo() {
   return txvfo;
 }
 
-int get_tx_mode() {
+int vfo_get_tx_mode() {
   int txvfo = active_receiver->id;
 
   if (split) { txvfo = 1 - txvfo; }
@@ -1961,7 +1961,7 @@ int get_tx_mode() {
   return vfo[txvfo].mode;
 }
 
-long long get_tx_freq() {
+long long vfo_get_tx_freq() {
   int txvfo = active_receiver->id;
 
   if (split) { txvfo = 1 - txvfo; }
@@ -1975,7 +1975,7 @@ long long get_tx_freq() {
 
 void vfo_xit_value(long long value ) {
   CLIENT_MISSING;
-  int id = get_tx_vfo();
+  int id = vfo_get_tx_vfo();
   vfo[id].xit = value;
   vfo[id].xit_enabled = value ? 1 : 0;
   schedule_high_priority();
@@ -1984,7 +1984,7 @@ void vfo_xit_value(long long value ) {
 
 void vfo_xit_toggle() {
   CLIENT_MISSING;
-  int id = get_tx_vfo();
+  int id = vfo_get_tx_vfo();
   TOGGLE(vfo[id].xit_enabled);
   schedule_high_priority();
   g_idle_add(ext_vfo_update, NULL);
@@ -2026,7 +2026,7 @@ void vfo_rit_onoff(int id, int enable) {
 
 void vfo_xit_onoff(int enable) {
   CLIENT_MISSING;
-  int id = get_tx_vfo();
+  int id = vfo_get_tx_vfo();
   vfo[id].xit_enabled = SET(enable);
   schedule_high_priority();
   g_idle_add(ext_vfo_update, NULL);
@@ -2034,7 +2034,7 @@ void vfo_xit_onoff(int enable) {
 
 void vfo_xit_incr(int incr) {
   CLIENT_MISSING;
-  int id = get_tx_vfo();
+  int id = vfo_get_tx_vfo();
   long long value = vfo[id].xit + incr;
 
   if (value < -9999) {

@@ -92,7 +92,7 @@ void rx_set_active(RECEIVER *rx) {
   //
   // Abort any frequency entering in the current receiver
   //
-  num_pad(-1, active_receiver->id);
+  vfo_num_pad(-1, active_receiver->id);
   //
   // Make rx the new active receiver
   //
@@ -104,8 +104,8 @@ void rx_set_active(RECEIVER *rx) {
   //
   // Changing the active receiver flips the TX vfo
   //
-  tx_vfo_changed();
-  set_alex_antennas();
+  radio_tx_vfo_changed();
+  radio_set_alex_antennas();
 }
 
 // cppcheck-suppress constParameterPointer
@@ -553,6 +553,79 @@ void rx_remote_update_display(RECEIVER *rx) {
 
 #endif
 
+void rx_set_squelch(const RECEIVER *rx) {
+  //
+  // This is now called whenever
+  // - "squelch enable" changes
+  // - "squelch value"  changes
+  // - mode changes
+  //
+  double value;
+  int    fm_squelch = 0;
+  int    am_squelch = 0;
+  int    voice_squelch = 0;
+
+  //
+  // the "slider" value goes from 0 (no squelch) to 100 (fully engaged)
+  // and has to be mapped to
+  //
+  // AM    squelch:   -160.0 ... 0.00 dBm  linear interpolation
+  // FM    squelch:      1.0 ... 0.01      expon. interpolation
+  // Voice squelch:      0.0 ... 0.75      linear interpolation
+  //
+  switch (vfo[rx->id].mode) {
+  case modeAM:
+  case modeSAM:
+
+  // My personal experience is that "Voice squelch" is of very
+  // little use  when doing CW (this may apply to "AM squelch", too).
+  case modeCWU:
+  case modeCWL:
+    //
+    // Use AM squelch
+    //
+    value = ((rx->squelch / 100.0) * 160.0) - 160.0;
+    SetRXAAMSQThreshold(rx->id, value);
+    am_squelch = rx->squelch_enable;
+    break;
+
+  case modeLSB:
+  case modeUSB:
+  case modeDSB:
+    //
+    // Use Voice squelch (new in WDSP 1.21)
+    //
+    value = 0.0075 * rx->squelch;
+    voice_squelch = rx->squelch_enable;
+    SetRXASSQLThreshold(rx->id, value);
+    SetRXASSQLTauMute(rx->id, 0.1);
+    SetRXASSQLTauUnMute(rx->id, 0.1);
+    break;
+
+  case modeFMN:
+    //
+    // Use FM squelch
+    //
+    value = pow(10.0, -2.0 * rx->squelch / 100.0);
+    SetRXAFMSQThreshold(rx->id, value);
+    fm_squelch = rx->squelch_enable;
+    break;
+
+  default:
+    // no squelch for digital and other modes
+    // (this can be discussed).
+    break;
+  }
+
+  //
+  // activate the desired squelch, and deactivate
+  // all others
+  //
+  SetRXAAMSQRun(rx->id, am_squelch);
+  SetRXAFMSQRun(rx->id, fm_squelch);
+  SetRXASSQLRun(rx->id, voice_squelch);
+}
+
 void rx_set_displaying(RECEIVER *rx, int state) {
   rx->displaying = state;
 
@@ -602,7 +675,7 @@ void rx_set_mode(const RECEIVER *rx, int m) {
   //
   // The choice of the squelch method depends on the mode
   //
-  setSquelch(rx);
+  rx_set_squelch(rx);
 }
 
 void rx_set_filter(RECEIVER *rx) {
@@ -1371,7 +1444,7 @@ void rx_filter_changed(RECEIVER *rx) {
   rx_set_filter(rx);
 
   if (can_transmit) {
-    if ((transmitter->use_rx_filter && rx == active_receiver) || get_tx_mode() == modeFMN) {
+    if ((transmitter->use_rx_filter && rx == active_receiver) || vfo_get_tx_mode() == modeFMN) {
       tx_set_filter(transmitter);
     }
   }
@@ -1402,7 +1475,7 @@ static void rx_process_buffer(RECEIVER *rx) {
 
   //t_print("%s: rx=%p id=%d output_samples=%d audio_output_buffer=%p\n",__FUNCTION__,rx,rx->id,rx->output_samples,rx->audio_output_buffer);
   for (i = 0; i < rx->output_samples; i++) {
-    if (isTransmitting() && (!duplex || mute_rx_while_transmitting)) {
+    if (radio_is_transmitting() && (!duplex || mute_rx_while_transmitting)) {
       left_sample = 0.0;
       right_sample = 0.0;
       left_audio_sample = 0;

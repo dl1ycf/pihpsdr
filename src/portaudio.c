@@ -345,7 +345,7 @@ int pa_mic_cb(const void *inputBuffer, void *outputBuffer, unsigned long framesP
     // TX/RX transition.
     //
     //
-    if (!isTransmitting()) {
+    if (!radio_is_transmitting()) {
       if (last_was_tx) {
         last_was_tx = 0;
         mic_ring_outpt = 0;
@@ -570,7 +570,7 @@ void audio_close_output(RECEIVER *rx) {
 // we have to store the data such that the PA callback function
 // can access it.
 //
-// Note that the check on isTransmitting() takes care that "blocking"
+// Note that the check on radio_is_transmitting() takes care that "blocking"
 // by the mutex can only occur in the moment of a RX/TX transition if
 // both audio_write() and cw_audio_write() get a "go".
 //
@@ -578,10 +578,10 @@ void audio_close_output(RECEIVER *rx) {
 // normal operation.
 //
 int audio_write (RECEIVER *rx, float left, float right) {
-  int txmode = get_tx_mode();
+  int txmode = vfo_get_tx_mode();
   float *buffer = rx->local_audio_buffer;
 
-  if (rx == active_receiver && isTransmitting() && (txmode == modeCWU || txmode == modeCWL)) {
+  if (rx == active_receiver && radio_is_transmitting() && (txmode == modeCWU || txmode == modeCWL)) {
     //
     // If a CW side tone may occur, quickly return
     //

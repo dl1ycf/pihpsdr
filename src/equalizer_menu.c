@@ -117,7 +117,7 @@ static void tenband_cb (GtkWidget *widget, gpointer data) {
   case 2:
     if (can_transmit) {
       transmitter->eq_tenband = val;
-      m = vfo[get_tx_vfo()].mode;
+      m = vfo[vfo_get_tx_vfo()].mode;
       mode_settings[m].tx_eq_tenband = val;
     }
 
@@ -149,7 +149,7 @@ static void enable_cb (GtkWidget *widget, gpointer data) {
   case 2:
     if (can_transmit) {
       transmitter->eq_enable = val;
-      m = vfo[get_tx_vfo()].mode;
+      m = vfo[vfo_get_tx_vfo()].mode;
       mode_settings[m].en_txeq = val;
     }
 
@@ -200,7 +200,7 @@ static void freq_changed_cb (GtkWidget *widget, gpointer data) {
   case 2:
     if (can_transmit) {
       transmitter->eq_freq[i] = val;
-      m = vfo[get_tx_vfo()].mode;
+      m = vfo[vfo_get_tx_vfo()].mode;
       mode_settings[m].tx_eq_freq[i] = val;
     }
 
@@ -233,7 +233,7 @@ static void gain_changed_cb (GtkWidget *widget, gpointer data) {
   case 2:
     if (can_transmit) {
       transmitter->eq_gain[i] = val;
-      m = vfo[get_tx_vfo()].mode;
+      m = vfo[vfo_get_tx_vfo()].mode;
       mode_settings[m].tx_eq_gain[i] = val;
     }
 

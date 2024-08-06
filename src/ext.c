@@ -43,7 +43,7 @@
 
 // cppcheck-suppress constParameterPointer
 int ext_start_radio(void *data) {
-  start_radio();
+  radio_start_radio();
   return G_SOURCE_REMOVE;
 }
 
@@ -79,17 +79,17 @@ int ext_vfo_update(void *data) {
 }
 
 int ext_tune_update(void *data) {
-  tune_update(GPOINTER_TO_INT(data));
+  radio_tune_update(GPOINTER_TO_INT(data));
   return G_SOURCE_REMOVE;
 }
 
 int ext_mox_update(void *data) {
-  mox_update(GPOINTER_TO_INT(data));
+  radio_mox_update(GPOINTER_TO_INT(data));
   return G_SOURCE_REMOVE;
 }
 
 int ext_set_vox(void *data) {
-  setVox(GPOINTER_TO_INT(data));
+  radio_set_vox(GPOINTER_TO_INT(data));
   return G_SOURCE_REMOVE;
 }
 

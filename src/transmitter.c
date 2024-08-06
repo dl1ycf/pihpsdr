@@ -516,7 +516,7 @@ static gboolean tx_update_display(gpointer data) {
     int fwd_power;
     int rev_power;
     double v1;
-    rc = get_tx_vfo();
+    rc = vfo_get_tx_vfo();
     int is6m = (vfo[rc].band == band6);
     //
     // Updated values of constant1/2 throughout,
@@ -693,7 +693,7 @@ static gboolean tx_update_display(gpointer data) {
 
     if (tx->swr >= tx->swr_alarm) {
       if (pre_high_swr) {
-        if (tx->swr_protection && !getTune()) {
+        if (tx->swr_protection && !radio_get_tune()) {
           set_drive(0.0);
         }
 
@@ -1007,7 +1007,7 @@ TRANSMITTER *tx_create_transmitter(int id, int width, int height) {
   SetTXAAMCarrierLevel(tx->id, tx->am_carrier_level);
   SetTXACompressorGain(tx->id, tx->compressor_level);
   SetTXACompressorRun(tx->id, tx->compressor);
-  tx_set_mode(tx, get_tx_mode());
+  tx_set_mode(tx, vfo_get_tx_mode());
   XCreateAnalyzer(tx->id, &rc, 262144, 1, 1, "");
 
   if (rc != 0) {
@@ -1044,11 +1044,11 @@ void tx_set_equalizer(TRANSMITTER *tx) {
 }
 
 void tx_set_filter(TRANSMITTER *tx) {
-  int txmode = get_tx_mode();
+  int txmode = vfo_get_tx_mode();
   // load default values
   int low  = tx_filter_low;
   int high = tx_filter_high;  // 0 < low < high
-  int txvfo = get_tx_vfo();
+  int txvfo = vfo_get_tx_vfo();
   int rxvfo = active_receiver->id;
   tx->deviation = vfo[txvfo].deviation;
 
@@ -1158,7 +1158,7 @@ static void tx_full_buffer(TRANSMITTER *tx) {
   // It is important to query the TX mode and tune only *once* within this function, to assure that
   // the two "if (cwmode)" clauses give the same result.
   // cwmode only valid in the old protocol, in the new protocol we use a different mechanism
-  int txmode = get_tx_mode();
+  int txmode = vfo_get_tx_mode();
   cwmode = (txmode == modeCWL || txmode == modeCWU) && !tune && !tx->twotone;
 
   switch (protocol) {
@@ -1247,7 +1247,7 @@ static void tx_full_buffer(TRANSMITTER *tx) {
     g_mutex_unlock(&tx->display_mutex);
   }
 
-  if (isTransmitting()) {
+  if (radio_is_transmitting()) {
     if (tx->do_scale) {
       gain = gain * tx->drive_scale;
     }
@@ -1375,7 +1375,7 @@ static void tx_full_buffer(TRANSMITTER *tx) {
         }
       }
     }
-  } else {   // isTransmitting()
+  } else {   // radio_is_transmitting()
     if (txflag == 1 && protocol == NEW_PROTOCOL) {
       //
       // We arrive here ONCE after a TX -> RX transition
@@ -1394,7 +1394,7 @@ static void tx_full_buffer(TRANSMITTER *tx) {
 }
 
 void tx_add_mic_sample(TRANSMITTER *tx, float mic_sample) {
-  int txmode = get_tx_mode();
+  int txmode = vfo_get_tx_mode();
   double mic_sample_double;
   int i, j;
   mic_sample_double = (double)mic_sample;
@@ -1426,7 +1426,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, float mic_sample) {
   //
   // shape CW pulses when doing CW and transmitting, else nullify them
   //
-  if ((txmode == modeCWL || txmode == modeCWU) && isTransmitting()) {
+  if ((txmode == modeCWL || txmode == modeCWU) && radio_is_transmitting()) {
     int updown;
     float cwsample;
     //
@@ -1617,8 +1617,8 @@ void tx_add_ps_iq_samples(const TRANSMITTER *tx, double i_sample_tx, double q_sa
   rx_feedback->samples = rx_feedback->samples + 1;
 
   if (rx_feedback->samples >= rx_feedback->buffer_size) {
-    if (isTransmitting()) {
-      int txmode = get_tx_mode();
+    if (radio_is_transmitting()) {
+      int txmode = vfo_get_tx_mode();
       int cwmode = (txmode == modeCWL || txmode == modeCWU) && !tune && !tx->twotone;
 #if 0
       //
@@ -1773,7 +1773,7 @@ void tx_set_twotone(TRANSMITTER *tx, int state) {
   //
   if (state) {
     // set frequencies and levels
-    switch (get_tx_mode()) {
+    switch (vfo_get_tx_mode()) {
     case modeCWL:
     case modeLSB:
     case modeDIGL:

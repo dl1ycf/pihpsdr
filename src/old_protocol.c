@@ -1071,7 +1071,7 @@ static long long channel_freq(int chan) {
 
   // Radios (especially with small FPGAs) may use RX1/RX2 for feedback while transmitting,
   //
-  if (isTransmitting() && transmitter->puresignal && (chan == rx_feedback_channel() || chan == tx_feedback_channel())) {
+  if (radio_is_transmitting() && transmitter->puresignal && (chan == rx_feedback_channel() || chan == tx_feedback_channel())) {
     vfonum = -1;
   }
 
@@ -1080,7 +1080,7 @@ static long long channel_freq(int chan) {
     // indicates that we should use the TX frequency.
     // We have to adjust by the offset for CTUN mode
     //
-    vfonum = get_tx_vfo();
+    vfonum = vfo_get_tx_vfo();
     freq = vfo[vfonum].frequency - vfo[vfonum].lo;
 
     if (vfo[vfonum].ctun) { freq += vfo[vfonum].offset; }
@@ -1188,7 +1188,6 @@ static void process_control_bytes() {
   int previous_dot;
   int previous_dash;
   int data;
-  static GThread *tune_thread_id = NULL;
   unsigned int val;
   //
   // variable used to manage analog inputs. The accumulators
@@ -1280,14 +1279,7 @@ static void process_control_bytes() {
       auto_tune_end = data;
 
       if (data == 0 && !auto_tune_flag) {
-        auto_tune_flag = 1;
-        auto_tune_end  = 0;
-
-        if (tune_thread_id) {
-          g_thread_join(tune_thread_id);
-        }
-
-        tune_thread_id = g_thread_new("TUNE", auto_tune_thread, NULL);
+        radio_start_auto_tune();
       }
     } else {
       auto_tune_end = 1;
@@ -1320,7 +1312,7 @@ static void process_control_bytes() {
       // until the first packet reporting "no underflow" after each
       // RX/TX transition.
       //
-      if (!isTransmitting()) {
+      if (!radio_is_transmitting()) {
         // during RX: set flag to zero
         tx_fifo_flag = 0;
         tx_fifo_underrun = 0;
@@ -1479,7 +1471,7 @@ static void process_ozy_byte(int b) {
     right_sample |= (int)((unsigned char)b & 0xFF);
     right_sample_double = (double)right_sample * 1.1920928955078125E-7;
 
-    if (isTransmitting() && transmitter->puresignal) {
+    if (radio_is_transmitting() && transmitter->puresignal) {
       //
       // transmitting with PureSignal. Get sample pairs and feed to pscc
       //
@@ -1498,7 +1490,7 @@ static void process_ozy_byte(int b) {
       }
     }
 
-    if (!isTransmitting() && diversity_enabled) {
+    if (!radio_is_transmitting() && diversity_enabled) {
       //
       // receiving with DIVERSITY. Get sample pairs and feed to diversity mixer.
       // If the second RX is running, feed aux samples to that receiver.
@@ -1516,7 +1508,7 @@ static void process_ozy_byte(int b) {
       }
     }
 
-    if ((!isTransmitting() || duplex) && !diversity_enabled) {
+    if ((!radio_is_transmitting() || duplex) && !diversity_enabled) {
       //
       // RX without DIVERSITY. Feed samples to RX1 and RX2
       //
@@ -1655,7 +1647,7 @@ static gpointer process_ozy_input_buffer_thread(gpointer arg) {
 }
 
 void old_protocol_audio_samples(short left_audio_sample, short right_audio_sample) {
-  if (!isTransmitting()) {
+  if (!radio_is_transmitting()) {
     pthread_mutex_lock(&send_audio_mutex);
 
     if (txring_count < 0) {
@@ -1726,7 +1718,7 @@ void old_protocol_audio_samples(short left_audio_sample, short right_audio_sampl
 }
 
 void old_protocol_iq_samples(int isample, int qsample, int side) {
-  if (isTransmitting()) {
+  if (radio_is_transmitting()) {
     pthread_mutex_lock(&send_audio_mutex);
 
     if (txring_count < 0) {
@@ -1814,8 +1806,8 @@ void old_protocol_iq_samples(int isample, int qsample, int side) {
 }
 
 void ozy_send_buffer() {
-  int txmode = get_tx_mode();
-  int txvfo = get_tx_vfo();
+  int txmode = vfo_get_tx_mode();
+  int txvfo = vfo_get_tx_vfo();
   int rxvfo = active_receiver->id;
   int i;
   int rxb = vfo[rxvfo].band;
@@ -1925,7 +1917,7 @@ void ozy_send_buffer() {
       output_buffer[C2] |= 0x01;
     }
 
-    if (isTransmitting()) {
+    if (radio_is_transmitting()) {
       output_buffer[C2] |= txband->OCtx << 1;
 
       if (tune) {
@@ -1984,7 +1976,7 @@ void ozy_send_buffer() {
     // the feedback signal is routed automatically/internally
     // If feedback is to the second ADC, leave RX1 ANT settings untouched
     //
-    if (isTransmitting() && transmitter->puresignal) { i = receiver[PS_RX_FEEDBACK]->alex_antenna; }
+    if (radio_is_transmitting() && transmitter->puresignal) { i = receiver[PS_RX_FEEDBACK]->alex_antenna; }
 
     if (device == DEVICE_ORION2) {
       i += 100;
@@ -2082,7 +2074,7 @@ void ozy_send_buffer() {
     // and this should be
     //  enough.
     //
-    if (isTransmitting() || radio_ptt) {
+    if (radio_is_transmitting() || radio_ptt) {
       i = transmitter->alex_antenna;
 
       //
@@ -2200,13 +2192,13 @@ void ozy_send_buffer() {
       if (txband->disablePA || !pa_enabled) {
         output_buffer[C3] |= 0x80; // disable Alex T/R relay
 
-        if (isTransmitting()) {
+        if (radio_is_transmitting()) {
           output_buffer[C2] |= 0x40; // Manual Filter Selection
           output_buffer[C3] |= 0x20; // bypass all RX filters
         }
       }
 
-      if (!isTransmitting() && adc0_filter_bypass) {
+      if (!radio_is_transmitting() && adc0_filter_bypass) {
         output_buffer[C2] |= 0x40; // Manual Filter Selection
         output_buffer[C3] |= 0x20; // bypass all RX filters
       }
@@ -2217,7 +2209,7 @@ void ozy_send_buffer() {
       // un-altered. This is not necessary for feedback at the "ByPass" jack since filter bypass
       // is realized in hardware here.
       //
-      if (isTransmitting() && transmitter->puresignal && receiver[PS_RX_FEEDBACK]->alex_antenna == 6) {
+      if (radio_is_transmitting() && transmitter->puresignal && receiver[PS_RX_FEEDBACK]->alex_antenna == 6) {
         output_buffer[C2] |= 0x40;  // enable manual filter selection
         output_buffer[C3] &= 0x80;  // preserve ONLY "PA enable" bit and clear all filters including "6m LNA"
         output_buffer[C3] |= 0x20;  // bypass all RX filters
@@ -2308,7 +2300,7 @@ void ozy_send_buffer() {
         //
         int rxgain = adc[active_receiver->adc].gain + 12; // -12..48 to 0..60
 
-        if (isTransmitting()) {
+        if (radio_is_transmitting()) {
           //
           // If have_rx_gain, the "TX attenuation range" is extended from
           // -29 to +31 which is then mapped to 60 ... 0
@@ -2329,7 +2321,7 @@ void ozy_send_buffer() {
         //
         output_buffer[C4] = 0x20 | (adc[0].attenuation & 0x1F);
 
-        if (isTransmitting()) {
+        if (radio_is_transmitting()) {
           if (pa_enabled && !txband->disablePA) {
             output_buffer[C4] = 0x3F;
           }
@@ -2358,7 +2350,7 @@ void ozy_send_buffer() {
           output_buffer[C1] = 0x20 | (adc[1].attenuation & 0x1F);
         }
 
-        if (isTransmitting() && pa_enabled && !txband->disablePA) {
+        if (radio_is_transmitting() && pa_enabled && !txband->disablePA) {
           output_buffer[C1] = 0x3F;
         }
       }
@@ -2471,7 +2463,7 @@ void ozy_send_buffer() {
       //
       output_buffer[C0] = 0x24;
 
-      if (isTransmitting()) {
+      if (radio_is_transmitting()) {
         output_buffer[C1] |= 0x80; // ground RX2 on transmit, bit0-6 are Alex2 filters
       }
 
@@ -2703,7 +2695,7 @@ void ozy_send_buffer() {
   }
 
   // set mox
-  if (isTransmitting()) {
+  if (radio_is_transmitting()) {
     if (txmode == modeCWU || txmode == modeCWL) {
       //
       //    For "internal" CW, we should not set

@@ -119,14 +119,14 @@ gboolean keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data) {
   switch (event->keyval) {
   case GDK_KEY_space:
     if (can_transmit) {
-      if (getTune() == 1) {
-        setTune(0);
+      if (radio_get_tune() == 1) {
+        radio_set_tune(0);
       }
 
-      if (getMox() == 1) {
-        setMox(0);
+      if (radio_get_mox() == 1) {
+        radio_set_mox(0);
       } else if (TransmitAllowed()) {
-        setMox(1);
+        radio_set_mox(1);
       } else {
         tx_set_out_of_band(transmitter);
       }
@@ -160,67 +160,67 @@ gboolean keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data) {
   // entering a frequency
   //
   case GDK_KEY_KP_0:
-    num_pad(0, active_receiver->id);
+    vfo_num_pad(0, active_receiver->id);
     break;
 
   case GDK_KEY_KP_1:
-    num_pad(1, active_receiver->id);
+    vfo_num_pad(1, active_receiver->id);
     break;
 
   case GDK_KEY_KP_2:
-    num_pad(2, active_receiver->id);
+    vfo_num_pad(2, active_receiver->id);
     break;
 
   case GDK_KEY_KP_3:
-    num_pad(3, active_receiver->id);
+    vfo_num_pad(3, active_receiver->id);
     break;
 
   case GDK_KEY_KP_4:
-    num_pad(4, active_receiver->id);
+    vfo_num_pad(4, active_receiver->id);
     break;
 
   case GDK_KEY_KP_5:
-    num_pad(5, active_receiver->id);
+    vfo_num_pad(5, active_receiver->id);
     break;
 
   case GDK_KEY_KP_6:
-    num_pad(6, active_receiver->id);
+    vfo_num_pad(6, active_receiver->id);
     break;
 
   case GDK_KEY_KP_7:
-    num_pad(7, active_receiver->id);
+    vfo_num_pad(7, active_receiver->id);
     break;
 
   case GDK_KEY_KP_8:
-    num_pad(8, active_receiver->id);
+    vfo_num_pad(8, active_receiver->id);
     break;
 
   case GDK_KEY_KP_9:
-    num_pad(9, active_receiver->id);
+    vfo_num_pad(9, active_receiver->id);
     break;
 
   case GDK_KEY_KP_Divide:
-    num_pad(-1, active_receiver->id);
+    vfo_num_pad(-1, active_receiver->id);
     break;
 
   case GDK_KEY_KP_Multiply:
-    num_pad(-2, active_receiver->id);
+    vfo_num_pad(-2, active_receiver->id);
     break;
 
   case GDK_KEY_KP_Add:
-    num_pad(-3, active_receiver->id);
+    vfo_num_pad(-3, active_receiver->id);
     break;
 
   case GDK_KEY_KP_Enter:
-    num_pad(-4, active_receiver->id);
+    vfo_num_pad(-4, active_receiver->id);
     break;
 
   case GDK_KEY_KP_Decimal:
-    num_pad(-5, active_receiver->id);
+    vfo_num_pad(-5, active_receiver->id);
     break;
 
   case GDK_KEY_KP_Subtract:
-    num_pad(-6, active_receiver->id);
+    vfo_num_pad(-6, active_receiver->id);
     break;
 
   default:

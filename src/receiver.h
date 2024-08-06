@@ -296,6 +296,7 @@ extern void rx_set_active(RECEIVER *rx);
 extern void rx_set_equalizer(RECEIVER *rx);
 extern void rx_set_framerate(RECEIVER *rx, int fps);
 extern void rx_calculate_display_average(const RECEIVER *rx);
+extern void rx_set_squelch(const RECEIVER *rx);
 
 #ifdef CLIENT_SERVER
   extern void rx_create_remote(RECEIVER *rx);

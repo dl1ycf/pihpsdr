@@ -2266,7 +2266,7 @@ static void *client_thread(void* arg) {
       // when VFO-B is initialized we can create the visual. start the MIDI interface and start the data flowing
       if (v == VFO_B && !remote_started) {
         t_print("g_idle_add: remote_start\n");
-        g_idle_add(remote_start, (gpointer)server);
+        g_idle_add(radio_remote_start, (gpointer)server);
       } else if (remote_started) {
         t_print("g_idle_add: ext_vfo_update\n");
         g_idle_add(ext_vfo_update, NULL);
@@ -2971,7 +2971,7 @@ static int remote_command(void *data) {
   case CMD_RESP_RX_ATTENUATION: {
     ATTENUATION_COMMAND *attenuation_command = (ATTENUATION_COMMAND *)data;
     temp = ntohs(attenuation_command->attenuation);
-    set_attenuation(temp);
+    set_attenuation_value((double)temp);
   }
   break;
 
@@ -3046,7 +3046,7 @@ static int remote_command(void *data) {
 
     if (can_transmit) {
       split = split_command->split;
-      tx_set_mode(transmitter, get_tx_mode());
+      tx_set_mode(transmitter, vfo_get_tx_mode());
       g_idle_add(ext_vfo_update, NULL);
     }
 

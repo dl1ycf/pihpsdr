@@ -88,37 +88,6 @@ void update_toolbar_labels() {
   }
 }
 
-//
-// move mox_update and tune_update to actions.c on the long run
-// Note they are also called from RigCtl
-//
-
-void mox_update(int state) {
-  if (!can_transmit) { return; }
-
-  if (state && !TransmitAllowed()) {
-    state = 0;
-    tx_set_out_of_band(transmitter);
-  }
-
-  setMox(state);
-  g_idle_add(ext_vfo_update, NULL);
-}
-
-void tune_update(int state) {
-  if (!can_transmit) { return; }
-
-  setMox(0);  // This will also cancel VOX and TUNE
-
-  if (state && !TransmitAllowed()) {
-    state = 0;
-    tx_set_out_of_band(transmitter);
-  }
-
-  setTune(state);
-  g_idle_add(ext_vfo_update, NULL);
-}
-
 // cppcheck-suppress constParameterCallback
 static void toolbar_button_press_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
   int i = GPOINTER_TO_INT(data);

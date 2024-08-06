@@ -59,12 +59,12 @@ static gboolean close_cb () {
 static void pa_value_changed_cb(GtkWidget *widget, gpointer data) {
   BAND *band = (BAND *)data;
   band->pa_calibration = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  int txvfo = get_tx_vfo();
+  int txvfo = vfo_get_tx_vfo();
   int b = vfo[txvfo].band;
   const BAND *current = band_get_band(b);
 
   if (band == current) {
-    calcDriveLevel();
+    radio_calc_drive_level();
   }
 }
 
@@ -252,7 +252,7 @@ void pa_menu(GtkWidget *parent) {
   if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
     GtkWidget *grid = gtk_grid_new();
     gtk_grid_set_column_spacing (GTK_GRID(grid), 10);
-    int bands = max_band();
+    int bands = radio_max_band();
     int b = 0;
 
     if (tx_out_of_band_allowed) {

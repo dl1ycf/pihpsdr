@@ -347,7 +347,7 @@ static void* keyer_thread(void *arg) {
     // interrupt the automatic transmission by hitting a key, we want to automatically
     // switch back to RX. This is flagged by the variable enforce_cw_vox.
     //
-    txmode = get_tx_mode();
+    txmode = vfo_get_tx_mode();
     moxbefore = mox;
 
     if (enforce_cw_vox) { moxbefore = 0; }

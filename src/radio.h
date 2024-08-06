@@ -278,58 +278,54 @@ extern int METER_HEIGHT;
 extern int MENU_WIDTH;
 extern int rx_stack_horizontal;
 
-extern void radio_stop(void);
-extern void reconfigure_radio(void);
-extern void reconfigure_screen(void);
-extern void start_radio(void);
-extern void radio_change_receivers(int r);
-extern void radio_change_sample_rate(int rate);
-extern void set_alex_antennas(void);
-extern void tx_vfo_changed(void);
-extern void radio_split_toggle(void);
-extern void radio_set_split(int v);
-extern void setMox(int state);
-extern int getMox(void);
-extern void setTune(int state);
-extern int getTune(void);
-extern void setVox(int state);
-extern double getDrive(void);
-extern void setDrive(double d);
-extern void calcDriveLevel(void);
-extern void calcTuneDriveLevel(void);
-extern void setSquelch(const RECEIVER *rx);
-
-extern void radio_set_rf_gain(const RECEIVER *rx);
-
-extern void set_attenuation(int value);
-extern void set_alex_attenuation(int v);
-
-extern int isTransmitting(void);
-
-extern void radioRestoreState(void);
-extern void radioSaveState(void);
-
-extern void radio_set_satmode(int mode);
-
-extern void disable_rigctl(void);
+//
+// All global functions declared here start with "radio_",
+// exception: my_combo_attach()
+//
+extern void   radio_tune_update(int state);
+extern void   radio_mox_update(int state);
+extern void   radio_save_state();
+extern void   radio_stop(void);
+extern void   radio_reconfigure(void);
+extern void   radio_reconfigure_screen(void);
+extern void   radio_start_radio(void);
+extern void   radio_change_receivers(int r);
+extern void   radio_change_sample_rate(int rate);
+extern void   radio_set_alex_antennas(void);
+extern void   radio_tx_vfo_changed(void);
+extern void   radio_split_toggle(void);
+extern void   radio_set_split(int v);
+extern void   radio_set_mox(int state);
+extern int    radio_get_mox(void);
+extern void   radio_set_tune(int state);
+extern int    radio_get_tune(void);
+extern void   radio_set_vox(int state);
+extern double radio_get_drive(void);
+extern void   radio_set_drive(double d);
+extern void   radio_calc_drive_level(void);
+extern void   radio_calc_tune_drive_level(void);
+extern void   radio_set_rf_gain(const RECEIVER *rx);
+extern void   radio_set_attenuation(int value);
+extern void   radio_set_alex_attenuation(int v);
+extern int    radio_is_transmitting(void);
+extern void   radio_set_satmode(int mode);
+extern int    radio_max_band(void);
+extern void   radio_start_playback(void);
+extern void   radio_end_playback(void);
+extern void   radio_start_capture(void);
+extern void   radio_end_capture(void);
+extern void   radio_protocol_run(void);
+extern void   radio_protocol_stop(void);
+extern void   radio_protocol_restart(void);
+extern void   radio_start_auto_tune(void);
 
 #ifdef CLIENT_SERVER
-  extern int remote_start(void *data);
+  extern int radio_remote_start(void *data);
 #endif
 
 extern int optimize_for_touchscreen;
 extern void my_combo_attach(GtkGrid *grid, GtkWidget *combo, int row, int col, int spanrow, int spancol);
-extern int max_band(void);
-extern void protocol_run(void);
-extern void protocol_stop(void);
-extern void protocol_restart(void);
 
-extern void start_playback();
-extern void end_playback();
-extern void start_capture();
-extern void end_capture();
-
-extern gpointer auto_tune_thread(gpointer data);
 //
 // Macro to flag an unimplemented client/server feature
 //

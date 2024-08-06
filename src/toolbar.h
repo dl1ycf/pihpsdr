@@ -26,10 +26,6 @@ extern int function;
 extern SWITCH *toolbar_switches;
 
 void update_toolbar_labels(void);
-void ptt_update(int state);
-void mox_update(int state);
-void tune_update(int state);
-void tune_cb(GtkWidget *widget, gpointer data);
 
 void sim_mox_cb(GtkWidget *widget, gpointer data);
 void sim_s1_pressed_cb(GtkWidget *widget, gpointer data);

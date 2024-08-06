@@ -644,7 +644,7 @@ int TransmitAllowed() {
   //
   if (tx_out_of_band_allowed) { return 1; }
 
-  txvfo = get_tx_vfo();
+  txvfo = vfo_get_tx_vfo();
   txb = vfo[txvfo].band;
 
   if (txb == bandGen || txb  == bandWWV || txb  == bandAIR) { return 0; }
@@ -654,8 +654,8 @@ int TransmitAllowed() {
   // and the edges of our TX signal
   //
   txband = band_get_band(vfo[txvfo].band);
-  txfreq = get_tx_freq();
-  txmode = get_tx_mode();
+  txfreq = vfo_get_tx_freq();
+  txmode = vfo_get_tx_mode();
 
   switch (txmode) {
   case modeCWU:

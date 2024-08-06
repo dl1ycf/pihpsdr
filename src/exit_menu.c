@@ -51,7 +51,7 @@ void stop_program() {
 
   if (!radio_is_remote) {
 #endif
-    protocol_stop();
+    radio_protocol_stop();
     t_print("%s: protocol stopped\n", __FUNCTION__);
     radio_stop();
     t_print("%s: radio stopped\n", __FUNCTION__);
@@ -66,7 +66,7 @@ void stop_program() {
   }
 
 #endif
-  radioSaveState();
+  radio_save_state();
   t_print("%s: radio state saved\n", __FUNCTION__);
 }
 
