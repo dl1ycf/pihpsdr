@@ -3753,7 +3753,11 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           // For buttons which only have one action defined, schedule action upon PRESS
           //
           // For buttons which have both a "short press" and "long press" action defined:
-          // schedule "short press" action upon RELEASE, and "long press" action upon LONGPRESS
+          // Here the convention is such that the "short press" action may be executed
+          // before the long press  is detected.
+          // Example: Pressing the Band+ button (#16) for a long time will first
+          // cycle upwards through the list of bands (PRESS action), an then open
+          // the BAND menu (LONGPRESS action).
           //
           // Note the Arduino software is such that it generates a (v=1,v=0) sequence upon a short
           // press and a (v=1,v=2,v=0) sequence upon a long press, and that no events for other
@@ -3843,7 +3847,7 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
             break;
 
           case 14:  // Select next mode
-            if (RELEASE) {
+            if (PRESS) {
               schedule_action(MODE_PLUS, PRESSED, 0);
             }
 
@@ -3854,7 +3858,7 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
             break;
 
           case 15:  // Select next filter
-            if (RELEASE) {
+            if (PRESS) {
               schedule_action(FILTER_PLUS, PRESSED, 0);
             }
 
@@ -3865,7 +3869,7 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
             break;
 
           case 16:  // Select next band
-            if (RELEASE) {
+            if (PRESS) {
               schedule_action(BAND_PLUS, PRESSED, 0);
             }
 
