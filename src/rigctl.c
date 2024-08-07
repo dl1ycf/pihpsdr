@@ -3362,12 +3362,17 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
             schedule_action(DRIVE, RELATIVE, v);
             break;
 
-          case 7:  // RIT
-            schedule_action(RIT, RELATIVE, v);
+          case 7:  // RIT or XIT
+            if ((vfo[active_receiver->id].rit_enabled == 0) && (vfo[vfo_get_tx_vfo()].xit_enabled == 1)) {
+              schedule_action(XIT, RELATIVE, v);
+            } else {
+              schedule_action(RIT, RELATIVE, v);
+            }
+
             break;
 
-          case 8:  // XIT
-            schedule_action(XIT, RELATIVE, v);
+          case 8:  // Atten
+            schedule_action(ATTENUATION, RELATIVE, v);
             break;
 
           case 9:  // RX filter high
@@ -3740,13 +3745,12 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           // G2 Mk2 console, shift key is handled in console
           int PRESS     = 0;  // indicates a v=0 --> v=1 transision
           int LONGPRESS = 0;  // indicates a v=1 --> v=2 transision
-          int RELEASE   = 0;  // indicates a v=1 --> v=0 transision
+          //int RELEASE   = 0;  // indicates a v=1 --> v=0 transision
 
           static int last_v = 0;
-          static int myrit = 0;     // cycler between OFF/RIT/XIT states
 
           if (last_v == 0 && v == 1) PRESS     = 1;
-          if (last_v == 1 && v == 0) RELEASE   = 1;
+          //if (last_v == 1 && v == 0) RELEASE   = 1;
           if (last_v == 1 && v == 2) LONGPRESS = 1;
 
           //
@@ -3812,24 +3816,15 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 
           case 11: // toggle between off/RIT/XIT
             if (PRESS) {
-              switch (myrit) {
-              case 0:
+              if ((vfo[active_receiver->id].rit_enabled == 0) && (vfo[vfo_get_tx_vfo()].xit_enabled == 0)) {
                 vfo_rit_onoff(active_receiver->id, 1);
                 vfo_xit_onoff(0);
-                myrit = 1;
-                break;
-
-              case 1:
+              } else if ((vfo[active_receiver->id].rit_enabled == 1) && (vfo[vfo_get_tx_vfo()].xit_enabled == 0)) {
                 vfo_rit_onoff(active_receiver->id, 0);
                 vfo_xit_onoff(1);
-                myrit = 2;
-                break;
-
-              case 2:
+              } else {
                 vfo_rit_onoff(active_receiver->id, 0);
                 vfo_xit_onoff(0);
-                myrit = 0;
-                break;
               }
             }
 
