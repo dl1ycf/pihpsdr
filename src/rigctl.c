@@ -112,6 +112,22 @@ typedef struct _client {
   int last_led[MAX_ANDROMEDA_LEDS]; // last status of ANDROMEDA LEDs
 } CLIENT;
 
+//
+// A G2V2 VFO encoder has 480 ticks per revolution and reports the number of ticks
+// accumulated in 20 msec.
+// Thus, slow/fast/veryfast tuning with 1/2/3 revolutions per second generates
+// 9/19/29 ticks in one ZZZU/ZZZD command.
+// Up to 1 rev/sec, no modification should occur. At 2 rev/sec, the tuning speed should
+// be doubled, at 3 rev/sec and beyond it should be quadrupled.
+//
+// The following table maps input_ticks to output_ticks. If there are more than 30 input
+// ticks in one ZZZU/ZZZD message, the number is quadrupled, and this is defined
+// through the last entry in the table.
+//
+static uint8_t andromeda_vfo_speedup[32] = {  0,   1,   2,   3,   4,   5,   6,   7,
+                                              8,   9,  11,  12,  14,  17,  19,  22,
+                                             25,  29,  33,  38,  43,  48,  54,  61,
+                                             69,  77,  85,  95, 105, 116, 128,   4 };
 typedef struct _command {
   CLIENT *client;
   char *command;
@@ -3207,9 +3223,18 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //DESCR     Move down frequency of active receiver
       //SET       ZZZDxx;
       //NOTE      ANDROMEDA extension. x = number of VFO steps.
+      //NOTE      For x>10, the number of VFO steps is multiplied with
+      //NOTE      a speed-up factor that increases up to 4 at x=30.
+      //NOTE      This implements an over-proportional tuning speed if
+      //NOTE      turning the VFO knob faster and faster.
       //ENDDEF
       if (command[6] == ';') {
         int steps = 10*(command[4]-'0') + (command[5]-'0');
+        if (steps <= 30) {
+          steps = andromeda_vfo_speedup[steps];
+        } else {
+          steps *= andromeda_vfo_speedup[31];
+        }
         vfo_id_step(active_receiver->id, -steps);
       }
 
@@ -4004,9 +4029,18 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //DESCR     Move up frequency of active receiver
       //SET       ZZZUxx;
       //NOTE      ANDROMEDA extension. x = number of steps.
+      //NOTE      For x>10, the number of VFO steps is multiplied with
+      //NOTE      a speed-up factor that increases up to 4 at x=30.
+      //NOTE      This implements an over-proportional tuning speed if
+      //NOTE      turning the VFO knob faster and faster.
       //ENDDEF
       if (command[6] == ';') {
         int steps = 10*(command[4]-'0') + (command[5]-'0');
+        if (steps <= 30) {
+          steps = andromeda_vfo_speedup[steps];
+        } else {
+          steps *= andromeda_vfo_speedup[31];
+        }
         vfo_id_step(active_receiver->id, steps);
       }
 
