@@ -110,19 +110,19 @@ static int clear_out_of_band_warning(gpointer data) {
 // Sine tone generator based on phase words that are
 // passed as an argument. The phase (value 0-256) is encoded in
 // two integers (in the range 0-255) as
-//      
+//
 // phase = p1 + p2/256
-//      
+//
 // and the sine value is obtained from the table by linear
 // interpolateion
-//      
+//
 // sine := sintab[p1] + p2*(sintab(p1+1)-sintab(p2))/256.0
-//      
+//
 // and the phase word is updated, depending on the frequency f, as
-//        
+//
 // p1 := p1 + (256*f)/48000
 // p2 := p2 + (256*f)%48000
-//      
+//
 ///////////////////////////////////////////////////////////////////////////
 // The idea of this sine generator is
 // - it does not depend on an external sin function
@@ -131,7 +131,7 @@ static int clear_out_of_band_warning(gpointer data) {
 //   phase words and frequencies
 // - the phase is always continuous, even if there are frequency jumps
 ///////////////////////////////////////////////////////////////////////////
-          
+
 static float sine_generator(int *phase1, int *phase2, int freq) {
   register float val, s, d;
   register int p1 = *phase1;
@@ -142,22 +142,22 @@ static float sine_generator(int *phase1, int *phase2, int freq) {
   val = s + p2 * d * 0.00390625; // 1/256
   p1 += f256 / 48000;
   p2 += ((f256 % 48000) * 256) / 48000;
-        
+
   // correct overflows in fractional and integer phase to keep
   // p1,p2 within bounds
   if (p2 > 255) {
     p2 -= 256;
     p1++;
-  } 
-    
+  }
+
   if (p1 > 255) {
     p1 -= 256;
-  }       
-    
+  }
+
   *phase1 = p1;
   *phase2 = p2;
   return val;
-}   
+}
 
 void tx_set_out_of_band(TRANSMITTER *tx) {
   //
@@ -250,10 +250,10 @@ static void init_dl1ycf_ramp(double *ramp, int width) {
     double y8  = y4 + y4;                                //  8 Pi y
     double y10 = y4 + y6;                                // 10 Pi y
     ramp[i] = y - 0.12182865361171612    * sin(y2)
-                - 0.018557469249199286   * sin(y4)
-                - 0.0009378783245428506  * sin(y6)
-                + 0.0008567571519403228  * sin(y8)
-                + 0.00018706912431472442 * sin(y10);
+              - 0.018557469249199286   * sin(y4)
+              - 0.0009378783245428506  * sin(y6)
+              + 0.0008567571519403228  * sin(y8)
+              + 0.00018706912431472442 * sin(y10);
   }
 }
 
@@ -271,10 +271,11 @@ static void init_ve3nea_ramp(double *ramp, int width) {
     double y4 = y2 + y2;                                // 4 Pi y
     double y6 = y4 + y2;                                // 6 Pi y
     ramp[i] = y - 0.216623741219070588160524746528683032300505367020509  * sin(y2)
-                + 0.0313385510244222620730702412393990649034542979097027 * sin(y4)
-                - 0.0017272285577824274302258419105142557477932531124260 * sin(y6);
+              + 0.0313385510244222620730702412393990649034542979097027 * sin(y4)
+              - 0.0017272285577824274302258419105142557477932531124260 * sin(y6);
   }
 }
+
 #endif
 
 void tx_reconfigure(TRANSMITTER *tx, int width, int height) {
@@ -733,7 +734,6 @@ static void tx_init_analyzer(TRANSMITTER *tx) {
   const int afft_size = 16384;
   const int pixels = tx->pixels;
   int overlap;
-
   int max_w = afft_size + (int) min(keep_time * (double) tx->iq_output_rate,
                                     keep_time * (double) afft_size * (double) tx->fps);
   overlap = (int)max(0.0, ceil(afft_size - (double)tx->iq_output_rate / (double)tx->fps));
@@ -1598,7 +1598,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, float mic_sample) {
 }
 
 void tx_add_ps_iq_samples(const TRANSMITTER *tx, double i_sample_tx, double q_sample_tx, double i_sample_rx,
-                       double q_sample_rx) {
+                          double q_sample_rx) {
   RECEIVER *tx_feedback = receiver[PS_TX_FEEDBACK];
   RECEIVER *rx_feedback = receiver[PS_RX_FEEDBACK];
 
@@ -1682,7 +1682,6 @@ void tx_set_displaying(TRANSMITTER *tx, int state) {
 //
 void tx_set_framerate(TRANSMITTER *tx, int fps) {
   tx->fps = fps;
-
   tx_init_analyzer(tx);
   tx_set_displaying(tx, tx->displaying);
 }

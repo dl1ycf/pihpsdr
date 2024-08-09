@@ -63,7 +63,9 @@ static void tcp_autoreporting_cb(GtkWidget *widget, gpointer data) {
 
 static void rigctl_value_changed_cb(GtkWidget *widget, gpointer data) {
   if (rigctl_tcp_enable) { shutdown_tcp_rigctl(); }
+
   rigctl_tcp_port = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+
   if (rigctl_tcp_enable) { launch_tcp_rigctl(); }
 }
 
@@ -186,13 +188,11 @@ void rigctl_menu(GtkWidget *parent) {
   GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
   GtkWidget *grid = gtk_grid_new();
   gtk_grid_set_column_spacing (GTK_GRID(grid), 10);
-
   int row = 0;
   w = gtk_button_new_with_label("Close");
   gtk_widget_set_name(w, "close_button");
   g_signal_connect (w, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), w, 0, row, 2, 1);
-
   row++;
   w = gtk_label_new("TCP");
   gtk_widget_set_name(w, "boldlabel");
@@ -258,19 +258,16 @@ void rigctl_menu(GtkWidget *parent) {
 
     my_combo_attach(GTK_GRID(grid), serial_baud[i], 3, row, 1, 1);
     g_signal_connect(serial_baud[i], "changed", G_CALLBACK(baud_cb), GINT_TO_POINTER(i));
-
     serial_enable[i] = gtk_check_button_new_with_label("Enable");
     gtk_widget_set_name(serial_enable[i], "boldlabel");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (serial_enable[i]), SerialPorts[i].enable);
     gtk_grid_attach(GTK_GRID(grid), serial_enable[i], 4, row, 1, 1);
     g_signal_connect(serial_enable[i], "toggled", G_CALLBACK(serial_enable_cb), GINT_TO_POINTER(i));
-
     w = gtk_check_button_new_with_label("Andromeda");
     gtk_widget_set_name(w, "boldlabel");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), SerialPorts[i].andromeda);
     gtk_grid_attach(GTK_GRID(grid), w, 5, row, 1, 1);
     g_signal_connect(w, "toggled", G_CALLBACK(andromeda_cb), GINT_TO_POINTER(i));
-
     w = gtk_check_button_new_with_label("AutoRprt");
     gtk_widget_set_name(w, "boldlabel");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), SerialPorts[i].autoreporting);
@@ -284,7 +281,6 @@ void rigctl_menu(GtkWidget *parent) {
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), rigctl_debug);
   gtk_grid_attach(GTK_GRID(grid), w, 0, row, 4, 1);
   g_signal_connect(w, "toggled", G_CALLBACK(rigctl_debug_cb), NULL);
-
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);

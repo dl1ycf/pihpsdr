@@ -638,8 +638,9 @@ void filter_width_changed(int id, int increment) {
 
         break;
       }
-      // FALLTHROUGH
-      // only change high-audio-cut
+
+    // FALLTHROUGH
+    // only change high-audio-cut
     case modeLSB:
       filter->low -= increment * 25;
 
@@ -656,8 +657,9 @@ void filter_width_changed(int id, int increment) {
 
         break;
       }
-      // FALLTHROUGH
-      // only change high-audio-cut
+
+    // FALLTHROUGH
+    // only change high-audio-cut
     case modeUSB:
       filter->high += increment * 25;
 

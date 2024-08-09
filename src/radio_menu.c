@@ -105,6 +105,7 @@ static void rx_gain_calibration_value_changed_cb(GtkWidget *widget, gpointer dat
 static void vfo_divisor_value_changed_cb(GtkWidget *widget, gpointer data) {
   vfo_encoder_divisor = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
 }
+
 #endif
 
 static void ptt_ring_cb(GtkWidget *widget, gpointer data) {
@@ -589,7 +590,6 @@ void radio_menu(GtkWidget *parent) {
   if (row > max_row) { max_row = row; }
 
   row = max_row;
-
 #ifdef GPIO
   label = gtk_label_new("VFO Encoder Divisor:");
   gtk_widget_set_name(label, "boldlabel");

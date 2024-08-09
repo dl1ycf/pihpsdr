@@ -404,12 +404,13 @@ static void choose_vfo_layout() {
     vfo_layout = vfl - vfo_layout_list;
     t_print("%s: vfo_layout changed (width=%d)\n", __FUNCTION__, vfl->width);
   }
+
   //
   // If chosen layout leaves at least 50 pixels unused:
   // give 50 extra pixels to the meter
   //
-  if (vfo_layout_list[vfo_layout].width < VFO_WIDTH-50) {
-    VFO_WIDTH -=50;
+  if (vfo_layout_list[vfo_layout].width < VFO_WIDTH - 50) {
+    VFO_WIDTH -= 50;
     METER_WIDTH += 50;
   }
 }
@@ -3017,11 +3018,10 @@ void radio_start_auto_tune() {
     auto_tune_end  = 1;
     g_thread_join(tune_thread_id);
   }
+
   auto_tune_flag = 1;
   auto_tune_end  = 0;
-  
   tune_thread_id = g_thread_new("TUNE", auto_tune_thread, NULL);
-
 }
 
 //

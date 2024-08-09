@@ -522,7 +522,6 @@ static void micgain_value_changed_cb(GtkWidget *widget, gpointer data) {
 void set_linein_gain(double value) {
   //t_print("%s value=%f\n",__FUNCTION__, value);
   linein_gain = value;
-
   show_popup_slider(LINEIN_GAIN, 0, -34.0, 12.0, 1.0, linein_gain, "LineIn Gain");
 }
 
@@ -690,7 +689,6 @@ GtkWidget *sliders_init(int my_width, int my_height) {
   width = my_width;
   height = my_height;
   t_print("sliders_init: width=%d height=%d\n", width, height);
-
   //
   // The larger the width, the smaller the fraction used for the label can be
   // font size.
@@ -699,6 +697,7 @@ GtkWidget *sliders_init(int my_width, int my_height) {
   int t1pos, t2pos, t3pos;
   int s1pos, s2pos, s3pos, sqpos;
   char *csslabel;
+
   if (width < 1024) {
     // label  width: 1/9 of screen width
     // slider width: 2/9 of screen width
@@ -739,7 +738,6 @@ GtkWidget *sliders_init(int my_width, int my_height) {
   t3pos  =  s2pos + swidth;
   s3pos  =  t3pos + twidth;
   sqpos  =  s3pos + 1;
-
   sliders = gtk_grid_new();
   gtk_widget_set_size_request (sliders, width, height);
   gtk_grid_set_row_homogeneous(GTK_GRID(sliders), FALSE);
@@ -881,7 +879,7 @@ GtkWidget *sliders_init(int my_width, int my_height) {
   gtk_range_set_increments (GTK_RANGE(squelch_scale), 1.0, 1.0);
   gtk_range_set_value (GTK_RANGE(squelch_scale), active_receiver->squelch);
   gtk_widget_show(squelch_scale);
-  gtk_grid_attach(GTK_GRID(sliders), squelch_scale, sqpos, 1, swidth-1, 1);
+  gtk_grid_attach(GTK_GRID(sliders), squelch_scale, sqpos, 1, swidth - 1, 1);
   squelch_signal_id = g_signal_connect(G_OBJECT(squelch_scale), "value_changed", G_CALLBACK(squelch_value_changed_cb),
                                        NULL);
   squelch_enable = gtk_check_button_new();

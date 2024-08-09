@@ -1375,18 +1375,47 @@ void InitialiseCWKeyerRamp(bool Protocol2, uint32_t Length_us) {
 
     RampLength = (uint32_t)(((double)Length_us / SamplePeriod) + 1);
 
+    // ========================================================================
     //
-    // DL1YCF code:
+    // Calculate a "DL1YCF" ramp
+    // -------------------------
     //
+    // The "black magic" in the coefficients comes from optimizing them
+    // against the spectral pollution of a string of dots,
+    // namely with ramp width 7 msec for CW speed  5 - 15 wpm
+    //        and  ramp width 8 msec for CW speed 16 - 32 wpm
+    //        and  ramp width 9 msec for CW speed 33 - 40 wpm
+    //
+    // such that the spectra meet ARRL's "clean signal initiative" requirement
+    // for the maximum peak strength at frequencies with a distance to the
+    // carrier that is larger than an offset, namely
+    //
+    //  -20 dBc for offsets >   90 Hz
+    //  -40 dBc for offsets >  150 Hz
+    //  -60 dBc for offsets >  338 Hz
+    //
+    // and is also meets the extended DL1YCF criteria which restrict spectral
+    // pollution at larger offsets, namely
+    //
+    //  -80 dBc for offsets >  600 Hz
+    // -100 dBc for offsets >  900 Hz
+    // -120 dBc for offsets > 1200 Hz
+    //
+    // ========================================================================
+
     for (Cntr = 0; Cntr < RampLength; Cntr++) {
       uint32_t Sample;
       double y = (double) Cntr / (double) RampLength;     // between 0 and 1
-      double y2 = y * 6.2831853071795864769252867665590;  // 2 Pi y
-      double y4 = y2 + y2;                                // 4 Pi y
-      double y6 = y4 + y2;                                // 6 Pi y
-      double rampsample = y - 0.216623741219070588160524746528683032300505367020509  * sin(y2)
-                            + 0.0313385510244222620730702412393990649034542979097027 * sin(y4)
-                            - 0.0017272285577824274302258419105142557477932531124260 * sin(y6);
+      double y2  = y * 6.2831853071795864769252867665590;  //  2 Pi y
+      double y4  = y2 + y2;                                //  4 Pi y
+      double y6  = y4 + y2;                                //  6 Pi y
+      double y8  = y4 + y4;                                //  8 Pi y
+      double y10 = y4 + y6;                                // 10 Pi y
+      double rampsample = y - 0.12182865361171612    * sin(y2)
+                          - 0.018557469249199286   * sin(y4)
+                          - 0.0009378783245428506  * sin(y6)
+                          + 0.0008567571519403228  * sin(y8)
+                          + 0.00018706912431472442 * sin(y10);
       Sample = (uint32_t) (rampsample * 8388607.0);
       RegisterWrite(VADDRCWKEYERRAM + 4 * Cntr, Sample);
     }

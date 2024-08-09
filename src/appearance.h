@@ -32,13 +32,13 @@
 //
 // Note both the digital and analog RX meter "dBm" reading is printed in a font size
 // that is calculated based on available space.
-// 
+//
 //
 #define DISPLAY_FONT_NORMAL     "FreeSans"
 #ifdef __APPLE__
-#define DISPLAY_FONT_BOLD       "FreeSansBold"
+  #define DISPLAY_FONT_BOLD       "FreeSansBold"
 #else
-#define DISPLAY_FONT_BOLD       "FreeSans"
+  #define DISPLAY_FONT_BOLD       "FreeSans"
 #endif
 #define DISPLAY_FONT_SIZE1 10                       // no longer used, this is too small for elder hams
 #define DISPLAY_FONT_SIZE2 12                       // used for SWR, FWD in Tx meter, S-meter ticks, and panadapter labels

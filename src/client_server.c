@@ -3099,7 +3099,7 @@ static int remote_command(void *data) {
     const FPS_COMMAND *fps_command = (FPS_COMMAND *)data;
     int rx = fps_command->id;
     CHECK_RX(rx);
-    rx_set_framerate(receiver[rx],fps_command->fps);
+    rx_set_framerate(receiver[rx], fps_command->fps);
     send_fps(client->socket, rx, receiver[rx]->fps);
   }
   break;

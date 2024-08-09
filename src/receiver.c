@@ -628,11 +628,12 @@ void rx_set_squelch(const RECEIVER *rx) {
 
 void rx_set_displaying(RECEIVER *rx, int state) {
   rx->displaying = state;
-
 #ifdef CLIENT_SERVER
+
   if (radio_is_remote) {
     return;
   }
+
 #endif
 
   if (state) {
@@ -835,7 +836,6 @@ static void rx_init_analyzer(const RECEIVER *rx) {
   const int afft_size = 16384;
   const int pixels = rx->pixels;
   int overlap;
-
   int max_w = afft_size + (int) min(keep_time * (double) rx->sample_rate,
                                     keep_time * (double) afft_size * (double) rx->fps);
   overlap = (int)fmax(0.0, ceil(afft_size - (double)rx->sample_rate / (double)rx->fps));
@@ -868,11 +868,13 @@ static void rx_init_analyzer(const RECEIVER *rx) {
 //
 void rx_set_framerate(RECEIVER *rx, int fps) {
 #ifdef CLIENT_SERVER
+
   if (radio_is_remote) {
     return;
   }
+
 #endif
-  rx->fps = fps; 
+  rx->fps = fps;
   rx_set_displaying(rx, rx->displaying);
   rx_calculate_display_average(rx);
   rx_init_analyzer(rx);
@@ -927,7 +929,7 @@ RECEIVER *rx_create_pure_signal_receiver(int id, int sample_rate, int width, int
   if (id == PS_RX_FEEDBACK) {
     int result;
     //
-    // Note the parameters for the analyzer should match those 
+    // Note the parameters for the analyzer should match those
     // for the transmitter. The analyzer is only used if
     // displaying the RX feedback samples (MON button in PS menu).
     //

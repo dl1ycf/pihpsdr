@@ -327,95 +327,95 @@ bool is_already_running() {
 #define VADDRPRODVERSIONREG 0XC004
 
 void saturn_discovery() {
-    struct stat sb;
+  struct stat sb;
 
-    if (devices < MAX_DEVICES && stat("/dev/xdma0_user", &sb) == 0 && S_ISCHR(sb.st_mode)) {
-      uint8_t *mac = discovered[devices].info.network.mac_address;
-      uint32_t SoftwareInformation;                   // swid & version
-      uint32_t ProductInformation;                    // product id & version
-      uint32_t Version;                               // s/w version
-      uint32_t SWID;                                  // s/w id
-      uint32_t ProdID;                                // product version and id
-      uint32_t ClockInfo;                             // clock status
-      bool goodConfig = true;
-      char buf[256];
-      bool running = is_already_running();
+  if (devices < MAX_DEVICES && stat("/dev/xdma0_user", &sb) == 0 && S_ISCHR(sb.st_mode)) {
+    uint8_t *mac = discovered[devices].info.network.mac_address;
+    uint32_t SoftwareInformation;                   // swid & version
+    uint32_t ProductInformation;                    // product id & version
+    uint32_t Version;                               // s/w version
+    uint32_t SWID;                                  // s/w id
+    uint32_t ProdID;                                // product version and id
+    uint32_t ClockInfo;                             // clock status
+    bool goodConfig = true;
+    char buf[256];
+    bool running = is_already_running();
 
-      if (OpenXDMADriver() == 0) {
-        return;
-      }
-
-      saturn_register_init();
-      //
-      // read the raw data from registers
-      //
-      SoftwareInformation = RegisterRead(VADDRSWVERSIONREG);
-      ProductInformation = RegisterRead(VADDRPRODVERSIONREG);
-      ClockInfo = (SoftwareInformation & 0xF);                        // 4 clock bits
-      Version = (SoftwareInformation >> 4) & 0xFFFF;                  // 16 bit sw version
-      SWID = SoftwareInformation >> 20;                               // 12 bit software ID
-      ProdID = ProductInformation >> 16;                              // 16 bit product ID
-
-      if (ProdID != SATURNPRODUCTID) {
-        goodConfig = false;
-      }
-
-      if (SWID != SATURNGOLDENCONFIGID && SWID != SATURNPRIMARYCONFIGID) {
-        goodConfig = false;
-      }
-
-      if (ClockInfo != 0xF) {
-        goodConfig = false;  // not all clocks are present
-      }
-
-      if (Version < FIRMWARE_MIN_VERSION || Version > FIRMWARE_MAX_VERSION) {
-        t_print("Incompatible Saturn FPGA firmware version %d, need %d ... %d\n",
-                Version,
-                FIRMWARE_MIN_VERSION,
-                FIRMWARE_MAX_VERSION);
-        discovered[devices].status = STATE_INCOMPATIBLE;
-        goodConfig = false;
-      }
-
-      if (goodConfig) {
-        discovered[devices].status = (running) ? STATE_SENDING : STATE_AVAILABLE;
-      }
-
-      discovered[devices].protocol = NEW_PROTOCOL;
-      discovered[devices].device = NEW_DEVICE_SATURN;
-      discovered[devices].software_version = (RegisterRead(VADDRSWVERSIONREG) >> 4) & 0xFFFF;
-      discovered[devices].fpga_version = RegisterRead(VADDRUSERVERSIONREG);
-      STRLCPY(discovered[devices].name, "saturn",  sizeof(discovered[devices].name));
-      discovered[devices].frequency_min = 0.0;
-      discovered[devices].frequency_max = 61440000.0;
-      memset(buf, 0, 256);
-      FILE *fp = fopen("/sys/class/net/eth0/address", "rt");
-
-      if (fp) {
-        if (fgets(buf, sizeof buf, fp) > 0) {
-          sscanf(buf, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0],
-                 &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-        }
-
-        fclose(fp);
-      } else {
-        for (int i = 0; i < 6; i++) {
-          discovered[devices].info.network.mac_address[i] = 0;
-        }
-      }
-
-      discovered[devices].info.network.address_length = 0;
-      discovered[devices].info.network.interface_length = 0;
-      STRLCPY(discovered[devices].info.network.interface_name, "XDMA",
-              sizeof(discovered[devices].info.network.interface_name));
-      discovered[devices].use_tcp = 0;
-      discovered[devices].use_routing = 0;
-      discovered[devices].supported_receivers = 2;
-      t_print("discovery: found saturn device min=%0.3f MHz max=%0.3f MHz\n",
-              discovered[devices].frequency_min * 1E-6,
-              discovered[devices].frequency_max * 1E-6);
-      devices++;
+    if (OpenXDMADriver() == 0) {
+      return;
     }
+
+    saturn_register_init();
+    //
+    // read the raw data from registers
+    //
+    SoftwareInformation = RegisterRead(VADDRSWVERSIONREG);
+    ProductInformation = RegisterRead(VADDRPRODVERSIONREG);
+    ClockInfo = (SoftwareInformation & 0xF);                        // 4 clock bits
+    Version = (SoftwareInformation >> 4) & 0xFFFF;                  // 16 bit sw version
+    SWID = SoftwareInformation >> 20;                               // 12 bit software ID
+    ProdID = ProductInformation >> 16;                              // 16 bit product ID
+
+    if (ProdID != SATURNPRODUCTID) {
+      goodConfig = false;
+    }
+
+    if (SWID != SATURNGOLDENCONFIGID && SWID != SATURNPRIMARYCONFIGID) {
+      goodConfig = false;
+    }
+
+    if (ClockInfo != 0xF) {
+      goodConfig = false;  // not all clocks are present
+    }
+
+    if (Version < FIRMWARE_MIN_VERSION || Version > FIRMWARE_MAX_VERSION) {
+      t_print("Incompatible Saturn FPGA firmware version %d, need %d ... %d\n",
+              Version,
+              FIRMWARE_MIN_VERSION,
+              FIRMWARE_MAX_VERSION);
+      discovered[devices].status = STATE_INCOMPATIBLE;
+      goodConfig = false;
+    }
+
+    if (goodConfig) {
+      discovered[devices].status = (running) ? STATE_SENDING : STATE_AVAILABLE;
+    }
+
+    discovered[devices].protocol = NEW_PROTOCOL;
+    discovered[devices].device = NEW_DEVICE_SATURN;
+    discovered[devices].software_version = (RegisterRead(VADDRSWVERSIONREG) >> 4) & 0xFFFF;
+    discovered[devices].fpga_version = RegisterRead(VADDRUSERVERSIONREG);
+    STRLCPY(discovered[devices].name, "saturn",  sizeof(discovered[devices].name));
+    discovered[devices].frequency_min = 0.0;
+    discovered[devices].frequency_max = 61440000.0;
+    memset(buf, 0, 256);
+    FILE *fp = fopen("/sys/class/net/eth0/address", "rt");
+
+    if (fp) {
+      if (fgets(buf, sizeof buf, fp) > 0) {
+        sscanf(buf, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0],
+               &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+      }
+
+      fclose(fp);
+    } else {
+      for (int i = 0; i < 6; i++) {
+        discovered[devices].info.network.mac_address[i] = 0;
+      }
+    }
+
+    discovered[devices].info.network.address_length = 0;
+    discovered[devices].info.network.interface_length = 0;
+    STRLCPY(discovered[devices].info.network.interface_name, "XDMA",
+            sizeof(discovered[devices].info.network.interface_name));
+    discovered[devices].use_tcp = 0;
+    discovered[devices].use_routing = 0;
+    discovered[devices].supported_receivers = 2;
+    t_print("discovery: found saturn device min=%0.3f MHz max=%0.3f MHz\n",
+            discovered[devices].frequency_min * 1E-6,
+            discovered[devices].frequency_max * 1E-6);
+    devices++;
+  }
 }
 
 #define VDUCIQSAMPLESPERFRAME 240                      // samples per UDP frame

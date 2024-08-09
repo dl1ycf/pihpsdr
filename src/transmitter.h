@@ -179,7 +179,7 @@ extern void tx_set_compressor(TRANSMITTER *tx, int state);
 
 extern void tx_set_ps_sample_rate(const TRANSMITTER *tx, int rate);
 extern void tx_add_ps_iq_samples(const TRANSMITTER *tx, double i_sample_0, double q_sample_0, double i_sample_1,
-                              double q_sample_1);
+                                 double q_sample_1);
 
 extern void tx_set_ramps(TRANSMITTER *tx);
 extern void tx_set_equalizer(TRANSMITTER *tx);

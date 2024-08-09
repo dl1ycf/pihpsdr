@@ -219,25 +219,25 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
       double radius = cx - 20.0;
       double min_angle, max_angle, bydb;
 
-      if (cx - 0.342*radius < METER_HEIGHT - 5) {
+      if (cx - 0.342 * radius < METER_HEIGHT - 5) {
         min_angle = 200.0;
         max_angle = 340.0;
-      } else if (cx - 0.5*radius < METER_HEIGHT - 5) {
+      } else if (cx - 0.5 * radius < METER_HEIGHT - 5) {
         min_angle = 210.0;
         max_angle = 330.0;
       } else {
         min_angle = 220.0;
         max_angle = 320.0;
       }
-      bydb=(max_angle - min_angle)/114.0;
 
+      bydb = (max_angle - min_angle) / 114.0;
       cairo_set_line_width(cr, PAN_LINE_THICK);
       cairo_set_source_rgba(cr, COLOUR_METER);
-      cairo_arc(cr, cx, cx, radius, (min_angle+6.0*bydb) * M_PI / 180.0, max_angle * M_PI / 180.0);
+      cairo_arc(cr, cx, cx, radius, (min_angle + 6.0 * bydb) * M_PI / 180.0, max_angle * M_PI / 180.0);
       cairo_stroke(cr);
       cairo_set_line_width(cr, PAN_LINE_EXTRA);
       cairo_set_source_rgba(cr, COLOUR_ALARM);
-      cairo_arc(cr, cx, cx, radius + 2, (min_angle + 54.0*bydb) * M_PI / 180.0, max_angle * M_PI / 180.0);
+      cairo_arc(cr, cx, cx, radius + 2, (min_angle + 54.0 * bydb) * M_PI / 180.0, max_angle * M_PI / 180.0);
       cairo_stroke(cr);
       cairo_set_line_width(cr, PAN_LINE_THICK);
       cairo_set_source_rgba(cr, COLOUR_METER);
@@ -295,12 +295,12 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
         //
         // VHF/UHF (beyond 30 MHz): -147 dBm is S0
         //
-        angle = (fmax(-147.0, max_rxlvl) + 147.0)*bydb + min_angle;
+        angle = (fmax(-147.0, max_rxlvl) + 147.0) * bydb + min_angle;
       } else {
         //
         // HF (up to 30 MHz): -127 dBm is S0
         //
-        angle = (fmax(-127.0, max_rxlvl) + 127.0)*bydb + min_angle;
+        angle = (fmax(-127.0, max_rxlvl) + 127.0) * bydb + min_angle;
       }
 
       radians = angle * M_PI / 180.0;
@@ -309,6 +309,7 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
       cairo_stroke(cr);
       cairo_set_source_rgba(cr, COLOUR_METER);
       snprintf(sf, 32, "%d dBm", (int)(max_rxlvl - 0.5)); // assume max_rxlvl < 0 in roundig
+
       if (METER_WIDTH < 210) {
         cairo_set_font_size(cr, 16);
         cairo_move_to(cr, cx - 32, cx - radius + 30);
@@ -316,6 +317,7 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
         cairo_set_font_size(cr, 20);
         cairo_move_to(cr, cx - 40, cx - radius + 34);
       }
+
       cairo_show_text(cr, sf);
     }
     break;
@@ -333,10 +335,10 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
       double radius = cx - 20.0;
       double min_angle, max_angle;
 
-      if (cx - 0.342*radius < METER_HEIGHT - 5) {
+      if (cx - 0.342 * radius < METER_HEIGHT - 5) {
         min_angle = 200.0;
         max_angle = 340.0;
-      } else if (cx - 0.5*radius < METER_HEIGHT - 5) {
+      } else if (cx - 0.5 * radius < METER_HEIGHT - 5) {
         min_angle = 210.0;
         max_angle = 330.0;
       } else {
@@ -352,7 +354,7 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
       cairo_set_source_rgba(cr, COLOUR_METER);
 
       for (i = 0; i <= 100; i++) {
-        angle = (double)i *0.01 * max_angle + (double)(100-i) * 0.01 * min_angle;
+        angle = (double)i * 0.01 * max_angle + (double)(100 - i) * 0.01 * min_angle;
         radians = angle * M_PI / 180.0;
 
         if ((i % 10) == 0) {
@@ -380,7 +382,7 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
             //
             // move labels at the left side to the left
             //
-            x = x + 6.0 * (x / (2.0*cx) - 1.0);
+            x = x + 6.0 * (x / (2.0 * cx) - 1.0);
             cairo_move_to(cr, x, y);
             cairo_show_text(cr, sf);
           }
@@ -391,7 +393,7 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
 
       cairo_set_line_width(cr, PAN_LINE_EXTRA);
       cairo_set_source_rgba(cr, COLOUR_METER);
-      angle = max_pwr * (max_angle - min_angle) / (10.0*interval) + min_angle;
+      angle = max_pwr * (max_angle - min_angle) / (10.0 * interval) + min_angle;
 
       if (angle > max_angle + 5) { angle = max_angle + 5; }
 
@@ -454,7 +456,7 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
       cairo_select_font_face(cr, DISPLAY_FONT_BOLD, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
       cairo_set_font_size(cr, DISPLAY_FONT_SIZE2);
       cairo_set_source_rgba(cr, COLOUR_METER);
-      cairo_move_to(cr, offset+105.0, 10.0);
+      cairo_move_to(cr, offset + 105.0, 10.0);
       cairo_show_text(cr, "Mic Lvl");
       cairo_move_to(cr, offset, 0.0);
       cairo_line_to(cr, offset, 5.0);
@@ -519,6 +521,7 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
         cairo_line_to(cr, 5.0 + (vox_threshold * 100.0), Y1);
         cairo_stroke(cr);
       }
+
       cairo_set_source_rgba(cr, COLOUR_METER);
       cairo_set_font_size(cr, DISPLAY_FONT_SIZE2);
       cairo_move_to(cr, 110.0, Y1);
@@ -617,7 +620,6 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
       // Compute largest size for the digital S-meter reading such that
       // it fits, both horizontally and vertically
       //
-
       size = (METER_WIDTH - text_location) / 5;
 
       if (size > METER_HEIGHT / 3) { size = METER_HEIGHT / 3; }
@@ -627,7 +629,6 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
       snprintf(sf, 32, "%d dBm", (int)(max_rxlvl - 0.5));  // assume max_rxlvl < 0 in rounding
       cairo_move_to(cr, text_location, Y2);
       cairo_show_text(cr, sf);
-
       break;
 
     case POWER:
@@ -664,17 +665,18 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
             cairo_set_source_rgba(cr, COLOUR_OK); // display SWR in white color
           }
         }
-        snprintf(sf, 32, "SWR %1.1f:1", swr);
-        cairo_move_to(cr, METER_WIDTH/2, Y2);
-        cairo_show_text(cr, sf);
 
+        snprintf(sf, 32, "SWR %1.1f:1", swr);
+        cairo_move_to(cr, METER_WIDTH / 2, Y2);
+        cairo_show_text(cr, sf);
         cairo_select_font_face(cr, DISPLAY_FONT_BOLD, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
         cairo_set_font_size(cr, DISPLAY_FONT_SIZE2);
         cairo_set_source_rgba(cr, COLOUR_METER);  // revert to white color
         snprintf(sf, 32, "ALC %2.1f dB", max_alc);
-        cairo_move_to(cr, METER_WIDTH/2, Y4);
+        cairo_move_to(cr, METER_WIDTH / 2, Y4);
         cairo_show_text(cr, sf);
       }
+
       break;
     }
   }

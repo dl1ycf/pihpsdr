@@ -1574,7 +1574,7 @@ void *handler_ep6(void *arg) {
   while (1) {
     if (!enable_thread) { break; }
 
-    if (receivers >0) {
+    if (receivers > 0) {
       size = receivers * 6 + 2;
       n = 504 / size;  // number of samples per 512-byte-block
       // Time (in nanosecs) to "collect" the samples sent in one sendmsg
@@ -1585,6 +1585,7 @@ void *handler_ep6(void *arg) {
       n = 0;
       wait = 1000000L;
     }
+
     // plug in sequence numbers
     *(uint32_t *)(buffer + 4) = htonl(counter);
     ++counter;

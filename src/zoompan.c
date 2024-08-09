@@ -206,7 +206,6 @@ GtkWidget *zoompan_init(int my_width, int my_height) {
   width = my_width;
   height = my_height;
   //t_print("%s: width=%d height=%d\n", __FUNCTION__,width,height);
-
   //
   // the horizontal layout changes a little if the total width changes
   //
@@ -244,7 +243,6 @@ GtkWidget *zoompan_init(int my_width, int my_height) {
   } else {
     csslabel = "slider3";
   }
-
 
   zoompan = gtk_grid_new();
   gtk_widget_set_size_request (zoompan, width, height);

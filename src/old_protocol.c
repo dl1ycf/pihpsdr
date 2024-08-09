@@ -1071,7 +1071,8 @@ static long long channel_freq(int chan) {
 
   // Radios (especially with small FPGAs) may use RX1/RX2 for feedback while transmitting,
   //
-  if (radio_is_transmitting() && transmitter->puresignal && (chan == rx_feedback_channel() || chan == tx_feedback_channel())) {
+  if (radio_is_transmitting() && transmitter->puresignal && (chan == rx_feedback_channel()
+      || chan == tx_feedback_channel())) {
     vfonum = -1;
   }
 
@@ -1486,7 +1487,7 @@ static void process_ozy_byte(int b) {
       // this is pure paranoia, it allows for st_txfdbk < st_rxfdbk
       if (nreceiver + 1 == st_num_hpsdr_receivers) {
         tx_add_ps_iq_samples(transmitter, left_sample_double_tx, right_sample_double_tx, left_sample_double_rx,
-                          right_sample_double_rx);
+                             right_sample_double_rx);
       }
     }
 
@@ -1502,7 +1503,7 @@ static void process_ozy_byte(int b) {
         left_sample_double_aux = left_sample_double;
         right_sample_double_aux = right_sample_double;
         rx_add_div_iq_samples(receiver[0], left_sample_double_main, right_sample_double_main, left_sample_double_aux,
-                           right_sample_double_aux);
+                              right_sample_double_aux);
 
         if (receivers > 1) { rx_add_iq_samples(receiver[1], left_sample_double_aux, right_sample_double_aux); }
       }

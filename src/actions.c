@@ -858,6 +858,7 @@ int process_action(void *data) {
     break;
 
   case FILTER_MINUS:
+
     // since the widest filters start at f=0, FILTER_MINUS actually
     // cycles upwards
     if (a->mode == PRESSED) {
@@ -871,6 +872,7 @@ int process_action(void *data) {
     break;
 
   case FILTER_PLUS:
+
     // since the widest filters start at f=0, FILTER_PLUS actually
     // cycles downwards
     if (a->mode == PRESSED) {

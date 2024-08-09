@@ -87,12 +87,12 @@ static void tenband_cb (GtkWidget *widget, gpointer data) {
   int m;
 
   if (val) {
-    for (int i=5; i<11; i++) {
+    for (int i = 5; i < 11; i++) {
       gtk_widget_show(freqspin[i]);
       gtk_widget_show(scale   [i]);
     }
   } else {
-    for (int i=5; i<11; i++) {
+    for (int i = 5; i < 11; i++) {
       gtk_widget_hide(freqspin[i]);
       gtk_widget_hide(scale   [i]);
     }
@@ -308,12 +308,12 @@ static void eqid_changed_cb(GtkWidget *widget, gpointer data) {
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (tenband_b), ten);
 
   if (ten) {
-    for (int i=5; i<11; i++) {
+    for (int i = 5; i < 11; i++) {
       gtk_widget_show(freqspin[i]);
       gtk_widget_show(scale   [i]);
     }
   } else {
-    for (int i=5; i<11; i++) {
+    for (int i = 5; i < 11; i++) {
       gtk_widget_hide(freqspin[i]);
       gtk_widget_hide(scale   [i]);
     }
@@ -370,6 +370,7 @@ void equalizer_menu(GtkWidget *parent) {
       freqspin[i] = gtk_spin_button_new_with_range(50.0, 16000.0, 10.0);
       gtk_spin_button_set_value(GTK_SPIN_BUTTON(freqspin[i]), receiver[0]->eq_freq[i]);
       g_signal_connect(freqspin[i], "value-changed", G_CALLBACK(freq_changed_cb), GINT_TO_POINTER(i));
+
       if (i < 5) {
         gtk_grid_attach(GTK_GRID(grid), freqspin[i], 0, 2 * i + 2, 1, 1);
       } else {
@@ -382,11 +383,13 @@ void equalizer_menu(GtkWidget *parent) {
     gtk_range_set_increments (GTK_RANGE(scale[i]), 1.0, 1.0);
     gtk_range_set_value(GTK_RANGE(scale[i]), receiver[0]->eq_gain[i]);
     g_signal_connect(scale[i], "value-changed", G_CALLBACK(gain_changed_cb), GINT_TO_POINTER(i));
+
     if (i < 5) {
       gtk_grid_attach(GTK_GRID(grid), scale[i], 1, 2 * i + 2, 2, 2);
     } else {
       gtk_grid_attach(GTK_GRID(grid), scale[i], 5, 2 * i - 8, 2, 2);
     }
+
     gtk_scale_add_mark(GTK_SCALE(scale[i]), -12.0, GTK_POS_LEFT, "-12dB");
     gtk_scale_add_mark(GTK_SCALE(scale[i]), -9.0, GTK_POS_LEFT, NULL);
     gtk_scale_add_mark(GTK_SCALE(scale[i]), -6.0, GTK_POS_LEFT, NULL);
@@ -404,7 +407,7 @@ void equalizer_menu(GtkWidget *parent) {
   gtk_widget_show_all(dialog);
 
   if (!receiver[0]->eq_tenband) {
-    for (int i=5; i<11; i++) {
+    for (int i = 5; i < 11; i++) {
       gtk_widget_hide(freqspin[i]);
       gtk_widget_hide(scale   [i]);
     }
