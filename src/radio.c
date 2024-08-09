@@ -211,7 +211,7 @@ int cw_keyer_ptt_delay = 30;           // 0-255ms
 int cw_keyer_hang_time = 500;          // ms
 int cw_keyer_sidetone_frequency = 800; // Hz
 int cw_breakin = 1;                    // 0=disabled 1=enabled
-int cw_ramp_width = 8;                 // default value (in ms)
+int cw_ramp_width = 9;                 // default value (in ms)
 
 int enable_auto_tune = 0;
 int auto_tune_flag = 0;

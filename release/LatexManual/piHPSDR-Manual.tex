@@ -2638,23 +2638,32 @@ amplitude of  the RF pulse is slowly
 increased from zero to full amplitude at the beginning,
 and at the end the amplitudes slowly fall down to zero.
 This avoids harsh clicks in the RF signal
-(which could possibly been heard all over the band). The
-width is the rise/fall time of the envelope, the default value
-(8 msec) is fine for CW speeds up to 32 wpm, you can choose here values from
+(which could possibly been heard all over the band for
+hard keying). An optimized ramp function has been implemented
+that gives good click suppression both at small and large
+offsets from the carrier frequency. The
+width is the rise/fall time of the pulse envelope, using the default value
+(9 msec) you will meet ARRL's CSI (clean signal initiative) specification
+for all CW speeds up to 40 wpm. Ramp widths can be chosen from
 5 to 16 msec (piHPSDR does not allow values smaller than 5 msec
 to ensure that your CW signal does not produce overly strong clicks).
-If the RF pulse is made
+If the RF pulse is shaped
 by piHPSDR (\rett{CW handled in Radio} \textit{not} checked),
-this ,,ramp width change'' will be effective. A very recent Protocol-2 update
+you will get
+the optimized ramp function an the chosen ramp width.
+A very recent Protocol-2 update
 (March 2024) allows to send the ramp width to the radio as well.
 However, the FPGA firmware in the radio will ignore that value
-unless you have a very recent model, so with
+unless you run a very recent model, so with
 \rett{CW handled in Radio} checked, changing the ramp width in this menu
 has possibly no effect.
 
+The CW side tone needs pulse shaping as well to become pleasant.
 To make sure that the delay of the CW side tone is
-as small as possible,
-a ramp with a constant width of 5 msec is used here.
+as small as possible, a ramp with a raised cosine shape
+and a constant width of 5 msec (independent of the ramp width
+used for RF) is used when \rett{CW handled in Radio} \textit{not} checked
+such that piHPSDR shapes the side tone.
 
 \rett{Paddle Mode:} Here the choice is Iambic Mode A, Iambic Mode B,
 and  Straight Key. In Straight Key mode, the key has to be connected
