@@ -4464,7 +4464,7 @@ $\phantom{\Big|}${\large Response} & {FWp$_1$p$_1$p$_1$p$_1$;} \\\hline
 $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{When setting, this switches to the Var1 filter and sets its  width to p$_1$.} \\
  & \multicolumn{1}{|p{11cm}|}{Only valid for CW, FM, AM. Use SH/SL for LSB, USB, DIGL, DIGU.} \\
  & \multicolumn{1}{|p{11cm}|}{For AM, 8kHz filter width (p$_1$=0) or  16 kHz (p$_1$$\ne$0)} \\
- & \multicolumn{1}{|p{11cm}|}{For FM, 2.5kHz deviation (p$_1$=0) or 5 kHz (p$_1$$\ne$=0)} \\
+ & \multicolumn{1}{|p{11cm}|}{For FM, 2.5kHz deviation (p$_1$=0) or 5 kHz (p$_1$$\ne$0)} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -4895,7 +4895,6 @@ $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{p$_1$=0: XIT disabl
 \bottomrule
 \end{tabular}
 \end{center}
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -5396,7 +5395,7 @@ $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{The contents (frequ
 \begin{tabular}{|p{2cm}|p{11cm}|}
 \toprule
 $\phantom{\Big|}$\textbf{\large ZZXV} & Get extended status information \\\cline{1-2}
-$\phantom{\Big|}${\large Set} & {ZZVS;} \\\hline
+$\phantom{\Big|}${\large Read} & {ZZVS;} \\\hline
 $\phantom{\Big|}${\large Response} & {ZZVSp$_1$p$_1$p$_1$p$_1$;} \\\hline
 $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{Status is reported bit-wise in the status word p$_1$=0-1023.} \\
  & \multicolumn{1}{|p{11cm}|}{Bit 0: RIT; Bit 1: Lock, Bit2: Lock, Bit3: Split,} \\
@@ -5411,6 +5410,7 @@ $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{Status is reported 
 \toprule
 $\phantom{\Big|}$\textbf{\large ZZYR} & Get/Set active receiver \\\cline{1-2}
 $\phantom{\Big|}${\large Set} & {ZZYRp$_1$;} \\\hline
+$\phantom{\Big|}${\large Read} & {ZZYR;} \\\hline
 $\phantom{\Big|}${\large Response} & {ZZYRp$_1$;} \\\hline
 $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{The active receiver is either RX1 (p$_1$=0) or RX2 (p$_1$=1).} \\
 \bottomrule
@@ -5423,6 +5423,11 @@ $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{The active receiver
 $\phantom{\Big|}$\textbf{\large ZZZD} & Move down frequency of active receiver \\\cline{1-2}
 $\phantom{\Big|}${\large Set} & {ZZZDp$_1$p$_1$;} \\\hline
 $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{ANDROMEDA extension. p$_1$ = number of VFO steps.} \\
+ & \multicolumn{1}{|p{11cm}|}{For p$_1$$>$10, the number of VFO steps is multiplied with} \\
+ & \multicolumn{1}{|p{11cm}|}{a speed-up factor that increases up to 4 at p$_1$=30} \\
+ & \multicolumn{1}{|p{11cm}|}{(corresponds to 3 turns of the VFO dial per second).} \\
+ & \multicolumn{1}{|p{11cm}|}{This implements an over-proportional tuning speed if} \\
+ & \multicolumn{1}{|p{11cm}|}{turning the VFO knob faster and faster.} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -5448,7 +5453,8 @@ $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{ANDROMEDA extension
 $\phantom{\Big|}$\textbf{\large ZZZI} & ANDROMEDA reports \\\cline{1-2}
 $\phantom{\Big|}${\large Response} & {ZZZIp$_1$p$_1$p$_2$;} \\\hline
 $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{Automatic generated response for ANDROMEDA controller.} \\
- & \multicolumn{1}{|p{11cm}|}{The LED with number p$_1$ shall be switched on (p$_2$=1) or off (p$_2$=0).} \\
+ & \multicolumn{1}{|p{11cm}|}{The LED with number p$_1$ shall be switched on (p$_2$=1)} \\
+ & \multicolumn{1}{|p{11cm}|}{or off (p$_2$=0).} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -5473,14 +5479,13 @@ $\phantom{\Big|}${\large Set} & {ZZZSp$_1$p$_1$p$_2$p$_2$p$_3$p$_3$p$_3$;} \\\hl
 $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{ANDROMEDA extension.} \\
  & \multicolumn{1}{|p{11cm}|}{The ANDROMEDA type (p$_1$), hardware (p$_2$) and} \\
  & \multicolumn{1}{|p{11cm}|}{software (p$_3$) version is printed in the log file.} \\
- & \multicolumn{1}{|p{11cm}|}{The type (p$_1$) sent by a client (currently, 1 or 5)} \\
- & \multicolumn{1}{|p{11cm}|}{does affect the processing of ZZZE and ZZZP} \\
- & \multicolumn{1}{|p{11cm}|}{commands from that client.} \\
- & \multicolumn{1}{|p{11cm}|}{} \\
+ & \multicolumn{1}{|p{11cm}|}{The type (p$_1$) sent by a client does affect the} \\
+ & \multicolumn{1}{|p{11cm}|}{processing of ZZZE and ZZZP commands from that client.} \\
+ & \multicolumn{1}{|p{11cm}|}{Only the cases p$_1$=1 (original ANDROMEDA console)} \\
+ & \multicolumn{1}{|p{11cm}|}{and p$_1$=5 (G2V2 console) are implemented.} \\
 \bottomrule
 \end{tabular}
 \end{center}
-
 
 \begin{center}
 \begin{tabular}{|p{2cm}|p{11cm}|}
@@ -5488,9 +5493,15 @@ $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{ANDROMEDA extension
 $\phantom{\Big|}$\textbf{\large ZZZU} & Move up frequency of active receiver \\\cline{1-2}
 $\phantom{\Big|}${\large Set} & {ZZZUp$_1$p$_1$;} \\\hline
 $\phantom{\Big|}${\large Notes} & \multicolumn{1}{|p{11cm}|}{ANDROMEDA extension. p$_1$ = number of steps.} \\
+ & \multicolumn{1}{|p{11cm}|}{For p$_1$$>$10, the number of VFO steps is multiplied with} \\
+ & \multicolumn{1}{|p{11cm}|}{a speed-up factor that increases up to 4 at p$_1$=30} \\
+ & \multicolumn{1}{|p{11cm}|}{(corresponds to 3 turns of the VFO dial per second).} \\
+ & \multicolumn{1}{|p{11cm}|}{This implements an over-proportional tuning speed if} \\
+ & \multicolumn{1}{|p{11cm}|}{turning the VFO knob faster and faster.} \\
 \bottomrule
 \end{tabular}
 \end{center}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter[Connect a Morse Key]{Attaching Morse Keys or Paddles}
