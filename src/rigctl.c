@@ -3122,7 +3122,7 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 
       //CATDEF    ZZXV
       //DESCR     Get extended status information
-      //SET       ZZVS;
+      //READ      ZZVS;
       //RESP      ZZVSxxxx;
       //NOTE      Status is reported bit-wise in the status word x=0-1023.
       //NOTE      Bit 0: RIT; Bit 1: Lock, Bit2: Lock, Bit3: Split,
@@ -3187,7 +3187,7 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //CATDEF    ZZYR
       //DESCR     Get/Set active receiver
       //SET       ZZYRx;
-      //GET       ZZYR;
+      //READ      ZZYR;
       //RESP      ZZYRx;
       //NOTE      The active receiver is either RX1 (x=0) or RX2 (x=1).
       //ENDDEF
@@ -3223,8 +3223,9 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //DESCR     Move down frequency of active receiver
       //SET       ZZZDxx;
       //NOTE      ANDROMEDA extension. x = number of VFO steps.
-      //NOTE      For x>10, the number of VFO steps is multiplied with
-      //NOTE      a speed-up factor that increases up to 4 at x=30.
+      //NOTE      For x$>$10, the number of VFO steps is multiplied with
+      //NOTE      a speed-up factor that increases up to 4 at x=30
+      //NOTE      (corresponds to 3 turns of the VFO dial per second).
       //NOTE      This implements an over-proportional tuning speed if
       //NOTE      turning the VFO knob faster and faster.
       //ENDDEF
@@ -4006,10 +4007,10 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //NOTE      ANDROMEDA extension.
       //NOTE      The ANDROMEDA type (x), hardware (y) and
       //NOTE      software (z) version is printed in the log file.
-      //NOTE      The type (x) sent by a client (currently, 1 or 5)
-      //NOTE      does affect the processing of ZZZE and ZZZP
-      //NOTE      commands from that client.
-      //NOTE
+      //NOTE      The type (x) sent by a client does affect the
+      //NOTE      processing of ZZZE and ZZZP commands from that client.
+      //NOTE      Only the cases x=1 (original ANDROMEDA console)
+      //NOTE      and x=5 (G2V2 console) are implemented.
       //ENDDEF
       if (command[11] == ';') {
         //
@@ -4029,8 +4030,9 @@ gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //DESCR     Move up frequency of active receiver
       //SET       ZZZUxx;
       //NOTE      ANDROMEDA extension. x = number of steps.
-      //NOTE      For x>10, the number of VFO steps is multiplied with
-      //NOTE      a speed-up factor that increases up to 4 at x=30.
+      //NOTE      For x$>$10, the number of VFO steps is multiplied with
+      //NOTE      a speed-up factor that increases up to 4 at x=30
+      //NOTE      (corresponds to 3 turns of the VFO dial per second).
       //NOTE      This implements an over-proportional tuning speed if
       //NOTE      turning the VFO knob faster and faster.
       //ENDDEF
@@ -4450,7 +4452,7 @@ int parse_cmd(void *data) {
       //NOTE      When setting, this switches to the Var1 filter and sets its  width to x.
       //NOTE      Only valid for CW, FM, AM. Use SH/SL for LSB, USB, DIGL, DIGU.
       //NOTE      For AM, 8kHz filter width (x=0) or  16 kHz (x$\ne$0)
-      //NOTE      For FM, 2.5kHz deviation (x=0) or 5 kHz (x$\ne$=0)
+      //NOTE      For FM, 2.5kHz deviation (x=0) or 5 kHz (x$\ne$0)
       //ENDDEF
       if (command[2] == ';') {
         int val = 0;
