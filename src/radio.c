@@ -1165,7 +1165,7 @@ void radio_start_radio() {
   switch (protocol) {
   case ORIGINAL_PROTOCOL:
     STRLCPY(p, "Protocol 1", 32);
-    snprintf(version, 32, "v%d.%d)",
+    snprintf(version, 32, "v%d.%d",
              radio->software_version / 10,
              radio->software_version % 10);
     snprintf(ip, 32, "%s", inet_ntoa(radio->info.network.address.sin_addr));
@@ -1174,7 +1174,7 @@ void radio_start_radio() {
 
   case NEW_PROTOCOL:
     STRLCPY(p, "Protocol 2", 32);
-    snprintf(version, 32, "v%d.%d)",
+    snprintf(version, 32, "v%d.%d",
              radio->software_version / 10,
              radio->software_version % 10);
     snprintf(ip, 32, "%s", inet_ntoa(radio->info.network.address.sin_addr));
