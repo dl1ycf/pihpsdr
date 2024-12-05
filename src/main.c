@@ -494,6 +494,11 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
 }
 
 int main(int argc, char **argv) {
+  // when command line arguments are more than 1 (app name) return version or help info
+  if (argc > 1) {
+    version_info_print(argv[1]);
+    return 0;
+  } 
   GtkApplication *pihpsdr;
   int rc;
   char name[1024];

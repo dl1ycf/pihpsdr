@@ -25,4 +25,17 @@ extern char build_commit[];
 extern char build_options[];
 extern char build_audio[];
 
+void version_info_print(char * cmdlp);
+
+//
+// For "minor" versions up to 17, there is no "major" one.
+// For "minor" version 18,  the "major" version is 1
+// With each firmware update, the "minor" version is increased (it is not reset upon advancinc the major)
+// The "major" version is increased if piHPSDR compatibility is broken
+//
+#define FIRMWARE_MIN_MINOR    8 // Minimum FPGA "minor" software version that this software requires
+#define FIRMWARE_MAX_MINOR   18 // Maximum FPGA "minor" software version that this software is tested on
+#define FIRMWARE_MIN_MAJOR    1 // Minimum FPGA "major" software version that this software requires
+#define FIRMWARE_MAX_MAJOR    1 // Minimum FPGA "major" software version that this software requires
+
 #endif

@@ -629,10 +629,10 @@ void *IncomingDUCSpecific(void *arg) {                  // listener thread
 #define VSPKSAMPLESPERFRAME 64                      // samples per UDP frame
 #define VMEMWORDSPERFRAME 32                        // 8 byte writes per UDP msg
 #define VSPKSAMPLESPERMEMWORD 2                     // 2 samples (each 4 bytres) per 8 byte word
-#define VDMABUFFERSIZE 32768            // memory buffer to reserve
+#define SRVVDMABUFFERSIZE 32768            // memory buffer to reserve
 #define VALIGNMENT 4096                             // buffer alignment
 #define VBASE 0x1000                // DMA start at 4K into buffer
-#define VDMATRANSFERSIZE 256                        // write 1 message at a time
+#define SRVVDMATRANSFERSIZE 256                        // write 1 message at a time
 
 //
 // listener thread for incoming DDC (speaker) audio packets
@@ -651,7 +651,7 @@ void *IncomingSpkrAudio(void *arg) {                    // listener thread
   // variables for DMA buffer
   //
   uint8_t* SpkWriteBuffer = NULL;             // data for DMA to write to spkr
-  uint32_t SpkBufferSize = VDMABUFFERSIZE;
+  uint32_t SpkBufferSize = SRVVDMABUFFERSIZE;
   unsigned char* SpkBasePtr;                // ptr to DMA location in spk memory
   int DMAWritefile_fd = -1;               // DMA read file device
   bool FIFOOverflow, FIFOUnderflow, FIFOOverThreshold;
@@ -722,10 +722,10 @@ void *IncomingSpkrAudio(void *arg) {                    // listener thread
       }
 
       // copy data from UDP Buffer & DMA write it
-      memcpy(SpkBasePtr, UDPInBuffer + 4, VDMATRANSFERSIZE);              // copy out spk samples
+      memcpy(SpkBasePtr, UDPInBuffer + 4, SRVVDMATRANSFERSIZE);              // copy out spk samples
       //            if(RegVal == 100)
-      //                DumpMemoryBuffer(SpkBasePtr, VDMATRANSFERSIZE);
-      DMAWriteToFPGA(DMAWritefile_fd, SpkBasePtr, VDMATRANSFERSIZE, VADDRSPKRSTREAMWRITE);
+      //                DumpMemoryBuffer(SpkBasePtr, SRVVDMATRANSFERSIZE);
+      DMAWriteToFPGA(DMAWritefile_fd, SpkBasePtr, SRVVDMATRANSFERSIZE, VADDRSPKRSTREAMWRITE);
     }
   }
 
@@ -739,7 +739,6 @@ void *IncomingSpkrAudio(void *arg) {                    // listener thread
 }
 #endif
 
-#define VIQSAMPLESPERFRAME 240                      // samples per UDP frame
 #define VMEMDUCWORDSPERFRAME 180                       // memory writes per UDP frame
 #define VBYTESPERSAMPLE 6             // 24 bit + 24 bit samples
 #define VDMADUCTRANSFERSIZE 1440                       // write 1 message at a time

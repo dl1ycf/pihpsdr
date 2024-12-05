@@ -34,6 +34,32 @@
 
 #include "saturnregisters.h"
 
+#define SDRBOARDID 1                          // Hermes
+#define SDRSWVERSION 1                        // version of this software
+#define VDISCOVERYSIZE 60                     // discovery packet
+#define VDISCOVERYREPLYSIZE 60                // reply packet
+#define VWIDEBANDSIZE 1028                    // wideband scalar samples
+#define VCONSTTXAMPLSCALEFACTOR 0x0001FFFF    // 18 bit scale value - set to 1/2 of full scale
+#define VCONSTTXAMPLSCALEFACTOR_13 0x0002000  // 18 bit scale value - set to 1/32 of full scale FWV13+
+#define VDMATRANSFERSIZE 4096
+#define VDMABUFFERSIZE 131072                 // memory buffer to reserve (4x DDC FIFO so OK)
+#define VALIGNMENT 4096                       // buffer alignment
+#define VBASE 0x1000                          // offset into I/Q buffer for DMA to start
+#define VIQSAMPLESPERFRAME 238
+#define VIQBYTESPERFRAME 6*VIQSAMPLESPERFRAME // total bytes in one outgoing frame
+#define VIQDUCSAMPLESPERFRAME 240
+
+#define VSPKSAMPLESPERFRAME 64                // samples per UDP frame
+#define VMEMWORDSPERFRAME 32                  // 8 byte writes per UDP msg
+#define VSPKSAMPLESPERMEMWORD 2               // 2 samples (each 4 bytres) per 8 byte word
+#define VDMASPKBUFFERSIZE 32768               // memory buffer to reserve
+#define VDMASPKTRANSFERSIZE 256               // write 1 message at a time
+
+#define VMICSAMPLESPERFRAME 64
+#define VDMAMICBUFFERSIZE 32768           // memory buffer to reserve
+#define VDMAMICTRANSFERSIZE 128                        // read 1 message at a time
+#define VMICPACKETSIZE 132
+
 void saturn_discovery(void);
 void saturn_init(void);
 void saturn_register_init(void);
