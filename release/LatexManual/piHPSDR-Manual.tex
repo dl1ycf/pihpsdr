@@ -6,6 +6,7 @@
 \usepackage{enumitem}
 \usepackage{multirow}
 \usepackage{booktabs}
+\usepackage{xspace}
 \usepackage[font=small,labelfont=bf]{caption}
 \captionsetup[figure]{name=Fig.}
 \parindent 0pt
@@ -13,7 +14,7 @@
 \def\rett#1{\texttt{\color{red}#1}}
 \def\bltt#1{\texttt{\color{blue}#1}}
 \def\grtt#1{\texttt{\color{magenta}#1}}
-\def\pH{pi\-HPSDR }
+\def\pH{pi\-HPSDR\xspace}
 \graphicspath{{./figures/}}
 \begin{document}
 \frontmatter
@@ -273,7 +274,8 @@ the menu lets you choose between
 
 \begin{itemize}[font=\texttt, left=80pt]
 \item[No Controller]{Choose this if no GPIO controller is wired to your Raspberry Pi. This is the default
-when you first start \pH.}
+when you first start \pH. Some GPIO lines are still used e.g. for PTT or CW. If this conflicts with other
+hardware connected to the GPIO, it is better to compile \pH without the GPIO option.}
 \item[Controller1]{Choose this if you have the original \pH controller put to the market by ApacheLabs
 (or a clone thereof), called the Controller1 in the rest
 of this manual.}
@@ -283,13 +285,11 @@ single encoders. This special case is not covered in this manual.}
 on a single shaft), or a clone thereof.
 This controller is denoted Controller2 in the rest of this manual.}
 \item[G2 Front Panel]{Choose this if you have an Anan G2 radio with a built-in controller.}
-\item[G2 Mk2 Panel]{Choose this if you have an Anan G2 Mk2 radio (with LEDs in the front panel).}
+\item[G2 Mk2 Panel]{Choose this if you have an Anan G2 Mk2 (also known as ,,G2 Ultra'') 
+radio (with LEDs in the front panel).
+This not only tells \pH not to use any GPIO lines, but also to use a serial line to connect to the front panel.
+So this setting is needed for G2 Mk2 even if \pH is compiled without GPIO support.}
 \end{itemize}
-
-If \pH is compiles without GPIO support, you can only choose between \rett{No Controller} and
-\rett{G2 Mk2 Panel} (the latter is controlled by a serial connection rather than by GPIO lines).
-The effect of choosing \rett{G2 Mk2 Panel} is that \pH will then use a default when configuring
-the serial lines that is suitable of an Anan G2-MkII radio.
 
 \textbf{Attention.} Be sure to choose a controller only if such a controller is actually connected to your
 Raspberry Pi. Unexpected things can happen if you chose one type of controller here but have totally different
