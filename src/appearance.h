@@ -45,12 +45,12 @@
 // that are used in various places. All three colours should be clearly readable
 // when written on a (usually dark) background.
 //
-#define COLOUR_ALARM         1.00, 0.00, 0.00, 1.00 // Default: 1.00, 0.00, 0.00, 1.00
-#define COLOUR_ALARM_WEAK    0.50, 0.00, 0.00, 1.00 // Default: 0.50, 0.00, 0.00, 1.00
-#define COLOUR_ATTN          1.00, 1.00, 0.00, 1.00 // Default: 1.00, 1.00, 0.00, 1.00
-#define COLOUR_ATTN_WEAK     0.50, 0.50, 0.00, 1.00 // Default: 0.50, 0.50, 0.00, 1.00
-#define COLOUR_OK            0.00, 1.00, 0.00, 1.00 // Default: 0.00, 1.00, 0.00, 1.00
-#define COLOUR_OK_WEAK       0.00, 0.50, 0.00, 1.00 // Default: 0.00, 0.50, 0.00, 1.00
+#define COLOUR_ALARM         1.00, 0.00, 0.00, 1.00
+#define COLOUR_ALARM_WEAK    0.50, 0.00, 0.00, 1.00
+#define COLOUR_ATTN          1.00, 1.00, 0.00, 1.00
+#define COLOUR_ATTN_WEAK     0.50, 0.50, 0.00, 1.00
+#define COLOUR_OK            0.00, 1.00, 0.00, 1.00
+#define COLOUR_OK_WEAK       0.00, 0.50, 0.00, 1.00
 
 //
 // Colours for drawing horizontal (dBm) and vertical (Frequency)
@@ -60,10 +60,11 @@
 // The PAN_FILTER must be somewhat transparent, such that it does not hide a PAN_LINE.
 //
 
-#define COLOUR_PAN_FILTER    0.30, 0.30, 0.30, 0.66 // Default: 0.25, 0.25, 0.25, 0.75
-#define COLOUR_PAN_LINE      0.00, 1.00, 1.00, 1.00 // Default: 0.00, 1.00, 1.00, 1.00
-#define COLOUR_PAN_LINE_WEAK 0.00, 0.50, 0.50, 1.00 // Default: 0.00, 0.50, 0.50, 1.00
-#define COLOUR_PAN_60M       0.60, 0.30, 0.30, 1.00 // Default: 0.60, 0.30, 0.30, 1.00
+#define COLOUR_PAN_FILTER    0.30, 0.30, 0.30, 0.66
+#define COLOUR_PAN_LINE      0.00, 1.00, 1.00, 1.00
+#define COLOUR_PAN_LINE_WEAK 0.00, 0.50, 0.50, 1.00
+#define COLOUR_PAN_60M       0.60, 0.30, 0.30, 1.00
+#define COLOUR_PAN_TEXT      1.00, 1.00, 1.00, 1.00 // dBm labels
 
 //
 // Main background colours, allowing different colors for the panadapters and
@@ -73,24 +74,24 @@
 // METER is a special colour for data/ticks in the "meter" surface
 //
 
-#define COLOUR_PAN_BACKGND   0.15, 0.15, 0.15, 1.00 // Default: 0.00, 0.00, 0.00, 1.00
-#define COLOUR_VFO_BACKGND   0.15, 0.15, 0.15, 1.00 // Default: 0.00, 0.00, 0.00, 1.00
-#define COLOUR_SHADE         0.70, 0.70, 0.70, 1.00 // Default: 0.70, 0.70, 0.70, 1.00
-#define COLOUR_METER         1.00, 1.00, 1.00, 1.00 // Default: 1.00, 1.00, 1.00, 1.00
+#define COLOUR_PAN_BACKGND   0.15, 0.15, 0.15, 1.00
+#define COLOUR_VFO_BACKGND   0.15, 0.15, 0.15, 1.00
+#define COLOUR_SHADE         0.70, 0.70, 0.70, 1.00
+#define COLOUR_METER         1.00, 1.00, 1.00, 1.00
 
 //
 // Settings for a coloured (gradient) spectrum, only availabe for RX.
 // The first and last colour are also used for the digital S-meter bar graph
 //
 
-#define COLOUR_GRAD1         0.00, 1.00, 0.00, 1.00 // Default: 0.00, 1.00, 0.00, 1.0
-#define COLOUR_GRAD2         1.00, 0.66, 0.00, 1.00 // Default: 1.00, 0.66, 0.00, 1.00
-#define COLOUR_GRAD3         1.00, 1.00, 0.00, 1.00 // Default: 1.00, 1.00, 0.00, 1.00
-#define COLOUR_GRAD4         1.00, 0.00, 0.00, 1.00 // Default: 1.00, 0.00, 0.00, 1.00
-#define COLOUR_GRAD1_WEAK    0.00, 0.50, 0.00, 1.00 // Default: 0.00, 0.50, 0.00, 1.00
-#define COLOUR_GRAD2_WEAK    0.50, 0.33, 0.00, 1.00 // Default: 0.50, 0.33, 0.00, 1.00
-#define COLOUR_GRAD3_WEAK    0.50, 0.50, 0.00, 1.00 // Default: 0.50, 0.50, 0.00, 1.00
-#define COLOUR_GRAD4_WEAK    0.50, 0.00, 0.00, 1.00 // Default: 0.50, 0.00, 0.00, 1.00
+#define COLOUR_GRAD1         0.00, 1.00, 0.00, 1.00
+#define COLOUR_GRAD2         1.00, 0.66, 0.00, 1.00
+#define COLOUR_GRAD3         1.00, 1.00, 0.00, 1.00
+#define COLOUR_GRAD4         1.00, 0.00, 0.00, 1.00
+#define COLOUR_GRAD1_WEAK    0.00, 0.50, 0.00, 1.00
+#define COLOUR_GRAD2_WEAK    0.50, 0.33, 0.00, 1.00
+#define COLOUR_GRAD3_WEAK    0.50, 0.50, 0.00, 1.00
+#define COLOUR_GRAD4_WEAK    0.50, 0.00, 0.00, 1.00
 
 //
 // Settings for a "black and white" spectrum (note the TX spectrum is always B&W).
@@ -101,9 +102,9 @@
 // FILL3 is used for a line spectrum of an active receiver
 //
 
-#define COLOUR_PAN_FILL1     1.00, 1.00, 1.00, 0.25 // Default: 1.00, 1.00, 1.00, 0.25
-#define COLOUR_PAN_FILL2     1.00, 1.00, 1.00, 0.50 // Default: 1.00, 1.00, 1.00, 0.50
-#define COLOUR_PAN_FILL3     1.00, 1.00, 1.00, 0.75 // Default: 1.00, 1.00, 1.00, 0.75
+#define COLOUR_PAN_FILL1     1.00, 1.00, 1.00, 0.25
+#define COLOUR_PAN_FILL2     1.00, 1.00, 1.00, 0.50
+#define COLOUR_PAN_FILL3     1.00, 1.00, 1.00, 0.75
 
 //
 // thin and thick line widths in the panadapers

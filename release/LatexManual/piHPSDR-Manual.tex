@@ -146,6 +146,7 @@ description, depending on whether the text refers to the command in an abstract 
 can be found on the screen. This may be confusing upon first reading, but I shall try to follow the colouring
  convention as laid out here.
 
+\clearpage
 \section{Version history}
 \label{sec:versionhistory}
 Here we list the main new featured introduced in each version.
@@ -153,13 +154,15 @@ Here we list the main new featured introduced in each version.
 \medskip
 \textbf{\pH Version 2.4, released January 2024}
 \begin{itemize}
+\item{Possibility to label peaks (with dBm values) in the RX/TX panadapters (contributed
+by Lukasz).}
 \item{Dynamically change the font \pH is using (\bltt{Screen} menu)}
 \item{Dynamically assign functions to G2 Ultra panel knobs/buttons (\bltt{G2panel} menu)}
 \item{Stripped-down TCI server for use with logbook programs and linear amplifiers (\bltt{CAT/TCI} menu)}
 \end{itemize}
 
 \medskip
-\textbf{\pH Version 2.3, released October 2024}
+\textbf{\pH Version 2.3, released August 2024}
 \begin{itemize}
 \item{Preliminary ``accessibility'' support for the blind (see Appendix \ref{sec:accessibility})}
 \item{Added the ``trained'' NR2 noise reduction method introduced with WDSP 1.25 (\bltt{Noise} menu)}
@@ -205,7 +208,7 @@ into the RJ45 jacks of the computer and of the radio (see Appendix
 
 \begin{figure}
 \center
-\includegraphics[width=12cm]{Planning.png}
+\includegraphics[scale=0.45]{Planning.png}
 \caption{\pH screen while completing the \textit{wisdom plans}.}
 \label{fig:Planning}
 \end{figure}
@@ -233,7 +236,7 @@ the network connection, you then see a screen with a discovery menu (Fig. \ref{f
 
 \begin{figure}
 \center
-\includegraphics[width=12cm]{Start.png}
+\includegraphics[scale=0.45]{Start.png}
 \caption{A radio has been discovered. You are ready  to start it.}
 \label{fig:Start}
 \end{figure}
@@ -357,7 +360,7 @@ if this succeeds, you see something like shown in Fig. \ref{fig:FirstDisplay}.
 
 \begin{figure}
 \center
-\includegraphics[width=12cm]{FirstDisplay.png}
+\includegraphics[scale=0.45]{FirstDisplay.png}
 \caption{The radio with two RX. Sliders and Toolbar are not on display
 by default when using a controller.}
 \label{fig:FirstDisplay}
@@ -431,7 +434,7 @@ is completely black in the above picture since there was no RF signal.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{SingleReceiver.png}
+\includegraphics[scale=0.45]{SingleReceiver.png}
 \caption{\pH with a single RX and all controls (Zoom/Pan,
 Sliders, Toolbar) at the  bottom.}
 \label{fig:SingleReceiver}
@@ -470,7 +473,7 @@ are filled:
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{ScopeFilling.png}
+\includegraphics[scale=0.40]{ScopeFilling.png}
 \caption{Display options for the spectrum scope.}
 \end{figure}
 
@@ -491,7 +494,7 @@ is no gradient option.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{ZoomPan.png}
+\includegraphics[scale=0.45]{ZoomPan.png}
 \caption{The spectrum scope of Fig. \ref{fig:SingleReceiver} with a
 large Zoom value.}
 \end{figure}
@@ -565,7 +568,7 @@ Note that the slider area can be hidden (removed) via the \bltt{Display} menu (s
 \section{The \texttt{Hide} button}
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{Hidden.png}
+\includegraphics[scale=0.35]{Hidden.png}
 \caption{\pH window with the Toolbar/Sliders/Zoom
 area ,,hidden''.}
 \end{figure}
@@ -622,7 +625,7 @@ the RX  panel, there is the \rett{Hide} button!
 
 \begin{figure}
 \center
-\includegraphics[width=12cm]{SliderOnScreen.png}
+\includegraphics[scale=0.45]{SliderOnScreen.png}
 \caption{A pop-up attenuation slider.}
 \label{fig:SliderOnScreen}
 \end{figure}
@@ -743,7 +746,7 @@ same way, a secondary click in the TX panel will open the
 \label{sec:VFObar}
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{VFObar.png}
+\includegraphics[scale=0.45]{VFObar.png}
 \caption{The VFO bar}
 \label{fig:VFObar}
 \end{figure}
@@ -919,7 +922,7 @@ during TX.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=8cm]{MeterDesigns.png}
+\includegraphics[scale=0.45]{MeterDesigns.png}
 \caption{Different designs for the meter.}
 \label{fig:MeterDesigns}
 \end{figure}
@@ -1013,7 +1016,7 @@ that setting, the behavious may be unexpected or even undetermined.
 \section{The main \pH menu}
 \begin{figure}[ht]
 \center
-\includegraphics[width=10cm]{MainMenu.png}
+\includegraphics[scale=0.45]{MainMenu.png}
 \caption{The Main men, opened by the \rett{Menu} button.}
 \label{fig:MainMenu}
 \end{figure}
@@ -1064,7 +1067,7 @@ where ,,much happens'' anyway in the GUI seems a good compromise.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=6cm]{ExitMenu.png}
+\includegraphics[scale=0.45]{ExitMenu.png}
 \caption{The \bltt{Exit} menu.}
 \end{figure}
 
@@ -1096,7 +1099,7 @@ program but no re-boot or shutdown takes place, due to missing administrator pri
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=10cm]{AboutMenu.png}
+\includegraphics[scale=0.45]{AboutMenu.png}
 \caption{The \bltt{About} menu.}
 \end{figure}
 
@@ -1130,7 +1133,7 @@ the colons by dashes and appending ,,.props''.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=10cm]{RadioMenu.png}
+\includegraphics[scale=0.45]{RadioMenu.png}
 \caption{The \bltt{Radio} menu.}
 \label{fig:RadioMenu}
 \end{figure}
@@ -1337,7 +1340,7 @@ if the signal in the meter is too strong. For most HPSDR radios, the default val
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=10cm]{RadioMenuMetis.png}
+\includegraphics[scale=0.45]{RadioMenuMetis.png}
 \caption{The \bltt{Radio} menu for a legacy METIS board.}
 \label{fig:RadioMenuMetis}
 \end{figure}
@@ -1401,7 +1404,7 @@ the slider area and the VFO bar have switched to  the new font.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{ScreenMenu.png}
+\includegraphics[scale=0.45]{ScreenMenu.png}
 \caption{The \bltt{Screen} menu.}
 \label{fig:ScreenMenu}
 \end{figure}
@@ -1438,7 +1441,7 @@ you leave the full screen mode.
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{VFObarChoice.png}
+\includegraphics[scale=0.30]{VFObarChoice.png}
 \caption{Five choices for the VFO bar built into \pH.}
 \label{fig:VFObarChoice}
 \end{figure}
@@ -1468,7 +1471,7 @@ in  the smallest layouts, but if one is restricted to such small screen one has 
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=10cm]{640x400.png}
+\includegraphics[scale=0.45]{640x400.png}
 \caption{\pH running in a 640 x 400 window.}
 \label{fig:640x400}
 \end{figure}
@@ -1545,15 +1548,23 @@ are shown while transmitting. Such data is only available for Orion-II and SATUR
 
 The \bltt{Display} menu is used to customise the overall layout of the \pH
 window and the pan-adapters of the active receiver. Adjustments
-for the TX pan-adapter must be done in the \bltt{TX} menu. The menu is shown
-in Fig. \ref{fig:DisplayMenu}.
+for the TX pan-adapter must be done in the \bltt{TX} menu. The menu has two sub-menus,
+namely the general settings and the peak label settings, the selection is done
+in the topmost row. 
+
+\subsection{Display Menu: General}
+
+For the general settings, the \bltt{Display} menis shown
+in Fig. \ref{fig:DisplayMenuGeneral}.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=10cm]{DisplayMenu.png}
-\caption{The \bltt{Display} menu.}
-\label{fig:DisplayMenu}
+\includegraphics[scale=0.45]{DisplayMenuGeneral.png}
+\caption{The \bltt{Display} menu (General settings).}
+\label{fig:DisplayMenuGeneral}
 \end{figure}
+
+
 
 \rett{Frames Per Second:} This adjust how often the RX display is re-drawn.
 10 frames per second (the default) is a good value.
@@ -1611,13 +1622,47 @@ on the RX panels. With the pan-adapter enabled, you can have the waterfall alone
  except on machines with very weak CPUs, since \textit{not} displaying neither waterfall
  nor pan-adapter saves some CPU time in the graphics back-end.
 
+\subsection{Display Menu: Peak Labels}
+
+The ``Peak Labels'' sub-menu allows one to control if and how labels
+(values in dBm) are printed at the most prominent peaks on the
+RX panadapter (Fig. \ref{fig:DisplayMenuPeak}):
+
+
+\begin{figure}[ht]
+\center
+\includegraphics[scale=0.45]{DisplayMenuPeak.png}
+\caption{The \bltt{Display} menu (Peak label settings).}
+\label{fig:DisplayMenuPeak}
+\end{figure}
+
+\rett{Label Strongest Peaks} This enables peak detection and labelling.
+
+\rett{Label in Passband Only} If the box is checked only the peaks within the 
+current filter passband  are shown.
+
+\rett{No Labels Below Noise Floor} This suppresses labelling of peaks below the noise floor.
+
+\rett{Number of Peaks to Label:} Set maximum number of peaks to be shown. There can always be less,
+ but no more than this number. The strongest peaks will be labeled first.
+
+\rett{Ignore Adjacent Peaks:} Determine how close two peaks can be such that both are labeled.
+ The higher the number the closer the peaks can be to each other. It's a divisor of the 
+ full window width so setting it to 1 will mean only one peak can occupy the entire window,
+
+\rett{Noise Floor Percentile:} This is the percentile setting that defines the noise floor. If the
+percentile is 50, then the noise floor is the level of that pixel that is in the middle of the list
+if all pixels are sorted by their dBm value (a safety margin of 3 dBm is added).
+If the \rett{No Labels Below Noise Floor} box is ticked
+peaks below this value will not be labeled.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{Meter} menu}
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=6cm]{MeterMenu.png}
+\includegraphics[scale=0.45]{MeterMenu.png}
 \caption{The \bltt{Meter} menu.}
 \label{fig:Meter}
 \end{figure}
@@ -1663,7 +1708,7 @@ For RX-only radios, the TX ALC setting will not be shown in the menu.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{XVTRMenu.png}
+\includegraphics[scale=0.45]{XVTRMenu.png}
 \caption{The \bltt{XVTR} (transverter) menu.}
 \label{fig:XVTRMenu}
 \end{figure}
@@ -1721,7 +1766,7 @@ of the radio, if something does not fit. It is therefore recommended to push
 
 \begin{figure}[h!]
 \center
-\includegraphics[width=12cm]{QO100-XVTR.png}
+\includegraphics[scale=0.45]{QO100-XVTR.png}
 \caption{\bltt{XVTR} setup for QO-100 operation.}
 \label{fig:QO100-XVTR}
 \end{figure}
@@ -1737,7 +1782,7 @@ for disabling the PA.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=6cm]{QO100-BandMenu.png}
+\includegraphics[scale=0.45]{QO100-BandMenu.png}
 \caption{The \bltt{Band} menu after defining the QO100 band.}
 \label{fig:QO100-BandMenu}
 \end{figure}
@@ -1751,7 +1796,7 @@ a screen shot from operation with an Adalm PLUTO, where the 70 MHz (4 m) band is
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{QO100-Waterfall.png}
+\includegraphics[scale=0.45]{QO100-Waterfall.png}
 \caption{Working QO100 with \pH and the Pluto.}
 \label{fig:QO100-Waterfall}
 \end{figure}
@@ -1792,7 +1837,7 @@ of the main menu. These are all VFO-related menus.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=6cm]{VFOmenu.png}
+\includegraphics[scale=0.45]{VFOmenu.png}
 \caption{The \bltt{VFO} menu.}
 \label{fig:VFOmenu}
 \end{figure}
@@ -1864,7 +1909,7 @@ is highlighted.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=8cm]{BandMenu.png}
+\includegraphics[scale=0.45]{BandMenu.png}
 \caption{The \bltt{Band} menu.}
 \label{fig:BandMenu}
 \end{figure}
@@ -1897,7 +1942,7 @@ will end up in the General band. If you have defined transverter bands (see the
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=10cm]{BandstackMenu.png}
+\includegraphics[scale=0.45]{BandstackMenu.png}
 \caption{The \bltt{BndStack} (Band stack) menu.}
 \label{fig:BandstackMenu}
 \end{figure}
@@ -1923,7 +1968,7 @@ is restored.
 \section{The \texttt{Mode} menu}
 \begin{figure}[ht]
 \center
-\includegraphics[width=8cm]{ModeMenu.png}
+\includegraphics[scale=0.45]{ModeMenu.png}
 \caption{The \bltt{Mode} menu.}
 \label{fig:ModeMenu}
 \end{figure}
@@ -1940,7 +1985,7 @@ a lot of settings are changed ''behind the scenes'' if you change a mode.
 
  \begin{figure}[ht]
 \center
-\includegraphics[width=10cm]{MemMenu.png}
+\includegraphics[scale=0.45]{MemMenu.png}
 \caption{The \bltt{Memory} menu.}
 \label{fig:MemMenu}
 \end{figure}
@@ -1968,7 +2013,7 @@ receiver settings.
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=10cm]{RXMenu.png}
+\includegraphics[scale=0.45]{RXMenu.png}
 \caption{The \bltt{RX} menu.}
 \label{fig:RXMenu}
 \end{figure}
@@ -2067,7 +2112,7 @@ because one then hears the hounds and the fox on different ears.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=10cm]{FilterMenuUSB.png}
+\includegraphics[scale=0.45]{FilterMenuUSB.png}
 \caption{The \bltt{Filter} menu (single side band modes).}
 \label{fig:FilterMenuUSB}
 \end{figure}
@@ -2091,7 +2136,7 @@ a 1.0k filter for DIGU/DIGL passes audio frequencies between 1000 and 2000 Hz.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=10cm]{FilterMenuCW.png}
+\includegraphics[scale=0.45]{FilterMenuCW.png}
 \caption{The \bltt{Filter} menu for CWL/CWU.}
 \label{fig:FilterMenuCW}
 \end{figure}
@@ -2171,7 +2216,7 @@ blanker NB2 ).
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=10cm]{NoiseMenu1.png}
+\includegraphics[scale=0.45]{NoiseMenu1.png}
 \caption{The \bltt{Noise} menu (with NR settings).}
 \label{fig:NoiseMenu1}
 \end{figure}
@@ -2231,7 +2276,7 @@ The options to control the noise blanker algorithms are:
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=10cm]{NoiseMenu2.png}
+\includegraphics[scale=0.45]{NoiseMenu2.png}
 \caption{The \bltt{Noise} menu (with NB settings).}
 \label{fig:NoiseMenu2}
 \end{figure}
@@ -2252,7 +2297,7 @@ noise blanker from detecting (and blanking) impulse noise.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=6cm]{AGCMenu.png}
+\includegraphics[scale=0.45]{AGCMenu.png}
 \caption{The \bltt{AGC} menu.}
 \label{fig:AGCMenu}
 \end{figure}
@@ -2283,7 +2328,7 @@ QRM and only very little DX signal.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=8cm]{DiversityMenu.png}
+\includegraphics[scale=0.45]{DiversityMenu.png}
 \caption{The \bltt{Diversity} menu.}
 \label{fig:DiversityMenu}
 \end{figure}
@@ -2307,7 +2352,7 @@ the RX ,,BFO frequency''.
 \label{sec:txmenu}
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{TXMenu.png}
+\includegraphics[scale=0.45]{TXMenu.png}
 \caption{The \bltt{TX} menu with the TX settings.}
 \label{fig:TXMenu}
 \end{figure}
@@ -2315,9 +2360,10 @@ the RX ,,BFO frequency''.
 The \bltt{TX} menu can be opened from the main menu, or just by a secondary mouse click
 into the TX pan-adapter (while transmitting). The menu is shown in Fig. \ref{fig:TXMenu}.
 This menu has three sub-menus, called the \rett{TX Settings} for general transmitter settings,
-the \rett{CFC settings} for controlling the continuous frequency compressor (CFC), and the
-\rett{DwdExp Settings} for controlling the downward expander (DEXP). With the radio buttons
-in the top row of the menu you can switch between the three sub-menus. When you open the TX
+the \rett{CFC settings} for controlling the continuous frequency compressor (CFC),  the
+\rett{DwdExp Settings} for controlling the downward expander (DEXP), and the \rett{Peak Lables}
+settings for controlling if and how peaks are labeled with their dBm values. With the radio buttons
+in the top row of the menu you can switch between the four sub-menus. When you open the TX
 menu for the first time after starting \pH, the TX settings are shown. Subsequently opening
 the TX menu always shows the sub-menu that was on display when the TX  menu was closed the last
 time.
@@ -2451,7 +2497,7 @@ since many digital modes (unlike SSB voice) are constantly transmitting at full 
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{TX_CFC.png}
+\includegraphics[scale=0.45]{TX_CFC.png}
 \caption{The TX menu with the CFC settings}
 \label{fig:CFCmenu}
 \end{figure}
@@ -2485,7 +2531,7 @@ corner frequency while linear interpolation is used between corner frequencies.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{TX_DEXP.png}
+\includegraphics[scale=0.45]{TX_DEXP.png}
 \caption{The TX menu with the DEXP settings}
 \label{fig:DEXPmenu}
 \end{figure}
@@ -2535,6 +2581,41 @@ new triggering audio arrives within that time, the gate is closed and the noise 
 \rett{Filter Low-Cut (Hz)} and \rett{Filter  High-Cut (Hz)} specify the frequency edges of the side
 channel filter (if it is enabled). The defaults given here (1000--2000 Hz) are well suited  for distinguishing
 human voice from humming noise coming from fans etc.
+
+
+
+\subsection{TX Menu: Peak Labels}
+
+The ``Peak Labels'' sub-menu allows one to control if and how labels
+(values in dBm) are printed at the most prominent peaks on the
+TX panadapter (Fig. \ref{fig:TXPeakMenu}):
+
+\begin{figure}[ht]
+\center
+\includegraphics[scale=0.45]{TX_PEAK.png}
+\caption{The TX menu with the peak label settings}
+\label{fig:TXPeakMenu}
+\end{figure}
+
+\rett{Label Strongest Peaks} This enables peak detection and labelling.
+
+\rett{Label in Passband Only} If the box is checked only the peaks within the 
+current filter passband  are shown.
+
+\rett{No Labels Below Noise Floor} This suppresses labelling of peaks below the noise floor.
+
+\rett{Number of Peaks to Label:} Set maximum number of peaks to be shown. There can always be less,
+ but no more than this number. The strongest peaks will be labeled first.
+
+\rett{Ignore Adjacent Peaks:} Determine how close two peaks can be such that both are labeled.
+ The higher the number the closer the peaks can be to each other. It's a divisor of the 
+ full window width so setting it to 1 will mean only one peak can occupy the entire window,
+
+\rett{Noise Floor Percentile:} This is the percentile setting that defines the noise floor. If the
+percentile is 50, then the noise floor is the level of that pixel that is in the middle of the list
+if all pixels are sorted by their dBm value (a safety margin of 3 dBm is added).
+If the \rett{No Labels Below Noise Floor} box is ticked
+peaks below this value will not be labeled.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{PA} Menu}
 
@@ -2545,7 +2626,7 @@ The menu presents itself as shown in Fig. \ref{fig:PAMenuCalibrate}.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=10cm]{PAmenuCalibrate.png}
+\includegraphics[scale=0.45]{PAmenuCalibrate.png}
 \caption{The PA menu, PA calibration screen}
 \label{fig:PAMenuCalibrate}
 \end{figure}
@@ -2602,7 +2683,7 @@ and looks like in Fig. \ref{fig:PAMenuWatt}.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=8cm]{PAmenuWatt.png}
+\includegraphics[scale=0.45]{PAmenuWatt.png}
 \caption{The PA menu, Watt meter calibration}
 \label{fig:PAMenuWatt}
 \end{figure}
@@ -2666,7 +2747,7 @@ is shown in Fig. \ref{fig:VOXMenu}.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=8cm]{VOXMenu.png}
+\includegraphics[scale=0.45]{VOXMenu.png}
 \caption{The VOX menu}
 \label{fig:VOXMenu}
 \end{figure}
@@ -2694,7 +2775,7 @@ VOX is very nice for rag-chew phone QSOs, I won't recommend it for contest opera
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=10cm]{PSMenu.png}
+\includegraphics[scale=0.45]{PSMenu.png}
 \caption{The PureSignal (PS) menu}
 \label{fig:PSMenu}
 \end{figure}
@@ -2783,12 +2864,6 @@ this box is changed.}
  calibration is probably no longer valid but still kept. So unless you have good reason,
  do not use the \rett{OneShot} option.
 
-\begin{figure}[ht]
-\center
-\includegraphics[width=12cm]{PSnomon.png}
-\caption{PS: TwoTone without MON}
-\label{fig:PSnomon}
-\end{figure}
 
 \rett{Feedback Lvl}. When doing a PS calibration through a two-tone experiment, this string
 turns red if the feedback level is good. It turns yellow if the feedback level is slightly
@@ -2799,13 +2874,6 @@ The feedback level reported by the PS calibration algorithm is further reported 
 \rett{Correcting}. When doing a PS calibration through a two-tone experiment, this string
 is green if calibration was successful and PS correction takes place, and the string is
 red if no good calibration could be made.
-
-\begin{figure}[t!]
-\center
-\includegraphics[width=12cm]{PSmon.png}
-\caption{PS: TwoTone with MON}
-\label{fig:PSmon}
-\end{figure}
 
 \rett{TX ATT}. This element can occur both as a text field or as a spin button.
 If PURESIGNAL is enabled while \rett{Auto Attenuate} is not enabled, it is a spin button with which
@@ -2828,6 +2896,13 @@ by the calibration algorithm in the GetPk field. The  value
 chosen by \pH can be incorrect if you use a highly experimental firmware on your
 HPSDR board with modified TX DAC filters, but this should normally not happen.
 
+\begin{figure}[t!]
+\center
+\includegraphics[scale=0.45]{PSnomon.png}
+\caption{PS: TwoTone without MON}
+\label{fig:PSnomon}
+\end{figure}
+
 If you want to use PURESIGNAL, it is required to enable PURESIGNAL by checking the
 \rett{Enable PS} box, and it is recommended to use auto calibration (check the
 \rett{Auto Attenuate} box). PURESIGNAL is then activated and calibrated by
@@ -2844,37 +2919,49 @@ two peaks on the TX pan-adapter during the two-tone experiment.
 
 \begin{figure}[t!]
 \center
-\includegraphics[width=12cm]{PSoff.png}
+\includegraphics[scale=0.45]{PSmon.png}
+\caption{PS: TwoTone with MON}
+\label{fig:PSmon}
+\end{figure}
+
+\begin{figure}[t!]
+\center
+\includegraphics[scale=0.45]{PSoff.png}
 \caption{PS: after hitting OFF}
 \label{fig:PSoff}
 \end{figure}
 
-To demonstrate what happens, I show an example performed with a Hermes\-Lite-II
-radio running Protocol-1. Checking both \rett{Enable PS} and
+To demonstrate how PURESIGNAL works, I show an example performed with a Hermes\-Lite-II
+radio running Protocol-1. The radio runs at a sample rate of 96 kHz, since it is my
+experience that PURESIGNAL does not work too well in Protocol-1 when it is run
+at 48 kHz. I also activated the optional ``peak labelling''
+in the \bltt{TX Menu} such that the four main peaks heights are also printed
+(in dBm) on the screen. Checking both \rett{Enable PS} and
 \rett{Auto Attenuation}, and hitting the \rett{Two Tone} button, it needs only few
 seconds to stabilise and then Fig. \ref{fig:PSnomon} results, where the TX
 spectrum scope and the PS menu window have been arranged such that they do
 not cover each other. Although both the PS menu and the spectrum scope state
 that PS is working and correcting, the signal does not look good: a two-tone
-signal should only have two peaks, but here one sees the two main peaks at $-6$ dBm
-and two IM3 satellites at about $-42$ dBm.
-The reason is, that the TX spectrum scope
-normally shows the signal that is sent to the PA, so we see a distorted signal.
-However this distortion is magically exactly such that the PA makes a nice signal
+signal should only have two peaks, but here one sees the two main peaks at $-7$ dBm
+and two IM3 satellites at about $-43$ dBm (this amounts to an IM3 value of only $-36$ dBc).
+The reason for this seemingly bad performance is of course, that the TX spectrum scope
+normally shows the signal that is \textit{sent} to the PA, so we see a signal that
+is distorted on purpose, and magically
+exactly such that the PA makes a nice signal
 out of this (\textit{adaptive pre-distortion}). If one wants to see what the antenna
  is actually transmitting, one must
-push the \rett{MON} button such that it is highlighted.
+activate the \rett{MON} button such that it is highlighted.
 This is shown in Fig. \ref{fig:PSmon}, where one sees the
 feedback signal, that is, what the PA sends to the antenna.
-This is a much cleaner two-tone signal (the first satellites are at $-56$ dBm,
-the IM3 value is about $-50$ dBc). To demonstrate how effective the PS algorithm is,
-I have pushed the \rett{OFF} button which stops the PureSignal calibration, the result
+This is a much cleaner two-tone signal (the IM3 value is about $-50$ dBc).
+To demonstrate how effective the PS algorithm is,
+I have pushed the \rett{OFF} button which stops the PureSignal correction, the result
 is shown in Fig. \ref{fig:PSoff}. After hitting that button, IM3 satellites immediately
-grow and rise to about $-40$ dBm (which means IM3
-about $-34$ dBc), which is s reflects the intrinsic
+grow and IM3 decreases to 
+about $-35$ dBc which reflects the intrinsic
 non-linearity of the PA.
- Note that this is still a quite acceptable value,
-unless you have a class-A amplifier, your PA probably won't be much better.
+ Note that this is still a quite acceptable value.
+Unless you have a class-A amplifier, your PA probably won't be much better.
 This experiment demonstrates that adaptive pre-distortion is a mechanism that allows you to produce a clean
 signal with a quality that would be impossible (or \textit{very} difficult) to achieve
 with traditional hardware.
@@ -2886,7 +2973,7 @@ is shown in Fig. \ref{fig:CWMenu}.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=8cm]{CWMenu.png}
+\includegraphics[scale=0.45]{CWMenu.png}
 \caption{The CW menu}
 \label{fig:CWMenu}
 \end{figure}
@@ -3004,7 +3091,7 @@ are reversed, so you need not re-wire your paddle.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=8cm]{DSPMenu.png}
+\includegraphics[scale=0.45]{DSPMenu.png}
 \caption{The DSP menu.}
 \label{fig:DSPMenu}
 \end{figure}
@@ -3070,7 +3157,7 @@ is shown in Fig. \ref{fig:EqualizerMenu}.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=9cm]{EqualizerMenu.png}
+\includegraphics[scale=0.45]{EqualizerMenu.png}
 \caption{The Equaliser menu}
 \label{fig:EqualizerMenu}
 \end{figure}
@@ -3132,7 +3219,7 @@ is much simpler because there are much fewer choices possible.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=10cm]{ANTmenu.png}
+\includegraphics[scale=0.45]{ANTmenu.png}
 \caption{The ANT (antenna) menu.}
 \label{fig:ANTmenu}
 \end{figure}
@@ -3210,7 +3297,7 @@ there is no such update so the problem remains.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{OCMenu.png}
+\includegraphics[scale=0.45]{OCMenu.png}
 \caption{The OC (open collector) menu.}
 \label{fig:OCMenu}
 \end{figure}
@@ -3262,7 +3349,7 @@ configured via the Toolbar menu.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{ToolbarMenu1.png}
+\includegraphics[scale=0.45]{ToolbarMenu1.png}
 \caption{The Toolbar menu, just opened.}
 \label{fig:ToolbarMenu1}
 \end{figure}
@@ -3277,7 +3364,7 @@ layer is currently active.
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{ToolbarMenu2.png}
+\includegraphics[scale=0.45]{ToolbarMenu2.png}
 \caption{Toolbar menu. Changing third button in \texttt{F1} layer.}
 \label{fig:ToolbarMenu2}
 \end{figure}
@@ -3292,7 +3379,7 @@ in Fig. \ref{fig:ToolbarMenu2}.
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{ToolbarMenu3.png}
+\includegraphics[scale=0.45]{ToolbarMenu3.png}
 \caption{Just selected \texttt{Band20}.}
 \label{fig:ToolbarMenu3}
 \end{figure}
@@ -3310,7 +3397,7 @@ switch the active receiver to the 20m band (see the explanation of all the comma
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{ToolbarMenu4.png}
+\includegraphics[scale=0.45]{ToolbarMenu4.png}
 \caption{Toolbar assignment accomplished.}
 \label{fig:ToolbarMenu4}
 \end{figure}
@@ -3322,7 +3409,7 @@ are updated (Fig. \ref{fig:ToolbarMenu5}).
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{ToolbarMenu5.png}
+\includegraphics[scale=0.45]{ToolbarMenu5.png}
 \caption{The new \texttt{F1} layer is operative.}
 \label{fig:ToolbarMenu5}
 \end{figure}
@@ -3356,11 +3443,10 @@ This controller (or rather the Arduino inside) is connected to the host computer
 USB-to-serial
 device on the host computer. The CAT command set is explained in Appendix \ref{sec:catcommands}. In most
 cases, using
-the Kenwood TS-2000 as the radio model would do it, if the digi mode or laptop program uses the \texttt{hamlib} library  to
-interface with
-radios, either choose TS-2000 or (preferably) the ,,OpenHPSDR PiHPSDR'' radio model because this uses time-
-out values
-adapted to \pH.
+the Kenwood TS-2000 as the radio model would do it, if the digi mode or laptop program uses the
+\texttt{hamlib} library  to interface with
+radios, either choose TS-2000 or (preferably) the ,,OpenHPSDR PiHPSDR'' radio model because this
+uses time-out values adapted to \pH.
 
 If compiled  with TCI  support, \pH also offers a (substantially  stripped-down) TCI server, and in this
 case this menu is named \bltt{CAT/TCI}. \pH cannot
@@ -3373,7 +3459,7 @@ with TCI support,  this menu is simply called  \bltt{CAT} and lower part  of the
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{CATmenu.png}
+\includegraphics[scale=0.45]{CATmenu.png}
 \caption{The CAT/TCI  menu.}
 \label{fig:CATmenu}
 \end{figure}
@@ -3399,17 +3485,11 @@ Which names to use
 is highly operating system dependent. On a RaspPi,  USB-to-serial
 adapters (which are nowadays the standard way to add serial ports to a computer) have names such as
 \texttt{/dev/ttyACM0} or \texttt{/dev/USB0} (on RaspPi) or \texttt{/dev/tty.usbserial-....} (on MacOS).
-The serial port shown in the third line of Fig. \ref{fig:CATmenu}, \texttt{/dev/ttyAMA3},
-is used on the Anan G2-Ultra radios for communicating with the front panel. If you chose
-\rett{G2 Mk2 Panel} in the discovery menu, this port will be assigned by default to the third
-slot and it is also enabled, this can be changed in the CAT/TCI menu and will then also be written to
-the props file.
- It is important to know that \pH does not try to ,,detect'' serial
-ports, you must know the proper name (e.g. by looking at the contents of the \texttt{/dev} directory).
-Named pipes can be created everywhere in the file system hierarchy using the command
-,,\texttt{mkdir -p <some\_arbitrary\_name>}''. Names pipes can be used for the communication between \pH
-and another program running on the same computer, and are only meaningful if that other program neither
-supports CAT-over-TCP nor TCI.
+On Anan G2-Ultra radios, a serial line is used for the communication with the front panel. This
+port is detected automatically and the third "Serial" line done not contain any controls but simply
+states the auto-detected port name and whether the connection to the panel has been sucessfully
+established.
+
 
 To the right of the serial port text field, there is a pop-down menu for choosing the baud rate. Only 4800,
 9600, 19200, and 38400 baud are offered, but this should cover most cases.
@@ -3499,7 +3579,7 @@ the \pH MIDI configuration menu must be flexible enough to handle all these situ
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{MIDImenu1.png}
+\includegraphics[scale=0.45]{MIDImenu1.png}
 \caption{The (virgin) MIDI menu.}
 \label{fig:MIDImenu1}
 \end{figure}
@@ -3569,7 +3649,7 @@ is fine for most applications.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{MIDImenu2.png}
+\includegraphics[scale=0.45]{MIDImenu2.png}
 \caption{The MIDI menu, VFO wheel turned.}
 \label{fig:MIDImenu2}
 \end{figure}
@@ -3607,14 +3687,14 @@ we have chosen to map all values from 0-63 to a left turn, and all values from 6
 to a right turn.
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{MIDImenu3.png}
+\includegraphics[scale=0.45]{MIDImenu3.png}
 \caption{The MIDI menu, selecting VFO command}
 \label{fig:MIDImenu3}
 \end{figure}
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{MIDImenu4.png}
+\includegraphics[scale=0.45]{MIDImenu4.png}
 \caption{The MIDI menu, VFO command selected}
 \label{fig:MIDImenu4}
 \end{figure}
@@ -3642,14 +3722,14 @@ to change the VFO frequency.
 \section{The \texttt{Encoders} Menu}
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{g2_frontpanel.png}
+\includegraphics[scale=1.00]{g2_frontpanel.png}
 \caption{A picture of the (first generation) G2 front panel (image courtesy of Apache Labs).}
 \label{fig:g2_frontpanel}
 \end{figure}
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=8cm]{EncoderMenuG2.png}
+\includegraphics[scale=0.45]{EncoderMenuG2.png}
 \caption{The Encoder menu for the G2 front panel controller}
 \label{fig:EncoderMenuG2}
 \end{figure}
@@ -3691,7 +3771,7 @@ on the enclosure (see Fig. \ref{fig:g2_frontpanel}).
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=10cm]{Apache_Controller2.png}
+\includegraphics[scale=0.8]{Apache_Controller2.png}
 \caption{A picture of the Controller2 (image by courtesy of Apache Labs).}
 \label{fig:Apache_Controller2}
 \end{figure}
@@ -3706,14 +3786,14 @@ for groups with three buttons each, and it should be clear which group belongs t
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=10cm]{EncoderMenuV2.png}
+\includegraphics[scale=0.45]{EncoderMenuV2.png}
 \caption{The Encoder menu for Controller2}
 \label{fig:EncoderMenuV2}
 \end{figure}
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=10cm]{Apache_Controller1.png}
+\includegraphics[scale=0.75]{Apache_Controller1.png}
 \caption{A picture of the Controller1 (image by courtesy of Apache Labs).}
 \label{fig:Apache_Controller1}
 \end{figure}
@@ -3730,7 +3810,7 @@ function printed on the enclosure.
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=6cm]{EncoderMenuV1.png}
+\includegraphics[scale=0.45]{EncoderMenuV1.png}
 \caption{The Encoder menu for Controller1}
 \label{fig:EncoderMenuV1}
 \end{figure}
@@ -3767,7 +3847,7 @@ shown in Fig. \ref{fig:SwitchMenuG2} which match the functions printed on the en
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=10cm]{SwitchMenuG2.png}
+\includegraphics[scale=0.45]{SwitchMenuG2.png}
 \caption{The Switches menu for the G2 front panel controller.}
 \label{fig:SwitchMenuG2}
 \end{figure}
@@ -3789,7 +3869,7 @@ shown in Fig. \ref{fig:SwitchMenuV2} which match the functions printed on the en
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=10cm]{SwitchMenuV2.png}
+\includegraphics[scale=0.45]{SwitchMenuV2.png}
 \caption{The Switches menu for Controller2.}
 \label{fig:SwitchMenuV2}
 \end{figure}
@@ -3799,7 +3879,7 @@ shown in Fig. \ref{fig:SwitchMenuV2} which match the functions printed on the en
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=10cm]{g2ultra.png}
+\includegraphics[scale=0.25]{g2ultra.png}
 \caption{The front panel of a second-generation G2 radio(image courtesy of Apache Labs).} 
 \label{fig:g2ultrapanel}
 \end{figure}
@@ -3817,7 +3897,7 @@ After first opening the \bltt{G2panel} menu, it looks quite empty (Fig. \ref{fig
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=8cm]{g2panelmenu-1.png}
+\includegraphics[scale=0.45]{g2panelmenu-1.png}
 \caption{The \bltt{G2panel} menu, just opened.} 
 \label{fig:g2panelmenu-initial}
 \end{figure}
@@ -3830,7 +3910,7 @@ the TUNE button, the menu changes to the following (Fig. \ref{fig2:g2panelmenu-r
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=8cm]{g2panelmenu-2.png}
+\includegraphics[scale=0.45]{g2panelmenu-2.png}
 \caption{The \bltt{G2panel} menu, reporting the last ``panel action''.} 
 \label{fig:g2panelmenu-initial}
 \end{figure}
@@ -3850,7 +3930,7 @@ command which switches TX compression on/off (Fig. \ref{fig:g2panelmenu-chosen})
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=8cm]{g2panelmenu-3.png}
+\includegraphics[scale=0.45]{g2panelmenu-3.png}
 \caption{The \bltt{G2panel} menu, reporting the newly chosen command.} 
 \label{fig:g2panelmenu-chosen}
 \end{figure}
@@ -3955,7 +4035,7 @@ Fig. \ref{fig:capture1} shows the status bar, as it has been brought up by hitti
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=6cm]{Capture1.png}
+\includegraphics[scale=0.45]{Capture1.png}
 \caption{The Recording/Playback status bar.}
 \label{fig:capture1}
 \end{figure}
@@ -3973,7 +4053,7 @@ vertical yellow line) is completely replayed (Fig. \ref{fig:capture2}). Again, t
 the \bltt{Capture} button.
 \begin{figure}[ht]
 \center
-\includegraphics[width=6cm]{Capture2.png}
+\includegraphics[scale=0.45]{Capture2.png}
 \caption{Replaying recorded audio data}
 \label{fig:capture2}
 \end{figure}
@@ -6588,14 +6668,14 @@ We begin with the \pH settings in the \bltt{RX} (Fig. \ref{fig:rx_settings_alsa_
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{rx_settings_alsa_audio.png}
+\includegraphics[scale=0.45]{rx_settings_alsa_audio.png}
 \caption{RX menu settings for using loopback with ALSA.}
 \label{fig:rx_settings_alsa_audio}
 \end{figure}
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{tx_settings_alsa_audio.png}
+\includegraphics[scale=0.45]{tx_settings_alsa_audio.png}
 \caption{TX menu settings for using loopback with ALSA.}
 \label{fig:tx_settings_alsa_audio}
 \end{figure}
@@ -6607,7 +6687,7 @@ window is shown):
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{wsjtx_settings_alsa_audio.png}
+\includegraphics[scale=0.45]{wsjtx_settings_alsa_audio.png}
 \caption{WSJTX audio settings for using loopback with ALSA.}
 \label{fig:wsjtx_settings_alsa_audio}
 \end{figure}
@@ -6620,7 +6700,7 @@ tab for establishing the CAT connection, although this is not specific to ALSA
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{wsjtx_settings_radio.png}
+\includegraphics[scale=0.45]{wsjtx_settings_radio.png}
 \caption{WSJTX radio settings for CAT connection to \pH.}
 \label{fig:wsjtx_settings_radio}
 \end{figure}
@@ -6633,6 +6713,10 @@ takes care WSJTX switches \pH to DIGU mode, and using \rett{Fake It} for the Spl
 Operation method is just my personal preference.
 
 \subsection[PulseAudio: NullSink modules]{PulseAudio: Null-Sink modules as virtual audio cables}
+
+\textbf{Important:}In nearly all latest LINUX releases, PulseAudio has been replaced by
+PipeWire, the difference is covered in the following section!
+
 There are no explicit loop-back devices with PulseAudio since they are not needed.
 For \textit{every} PulseAudio output device, there is a corresponding ,,Monitor'' device
 which can be used for sound input, and where the data sent to the primary (output) device
@@ -6723,7 +6807,7 @@ microphone.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{rx_settings_pa_audio.png}
+\includegraphics[scale=0.45]{rx_settings_pa_audio.png}
 \caption{RX menu settings with PulseAudio}
 \label{fig:rx_settings_pa_audio}
 \end{figure}
@@ -6731,7 +6815,7 @@ microphone.
 \begin{figure}[ht]
 \label{fig:pa2}
 \center
-\includegraphics[width=12cm]{tx_settings_pa_audio.png}
+\includegraphics[scale=0.45]{tx_settings_pa_audio.png}
 \caption{TX menu settings with PulseAudio}
 \label{fig:tx_settings_pa_audio}
 \end{figure}
@@ -6742,7 +6826,7 @@ the same as in the ALSA case.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=12cm]{wsjtx_settings_pa_audio.png}
+\includegraphics[scale=0.45]{wsjtx_settings_pa_audio.png}
 \caption{WSJTX audio settings with PulseAudio}
 \label{fig:wstx_settings_pa_audio}
 \end{figure}
@@ -6780,8 +6864,10 @@ commands.
 \subsection[PipeWire: NullSink modules]{PipeWire: Null-Sink modules as virtual audio cables}
 The PipeWire case is very similar to the PulseAudio case, so we concentrate
 on the differences only. Creating the null-sink modules (,,cables'') is
-done in the same way as described in the previous chapter, except that
-the command now is \texttt{pactl} instead of \texttt{pacmd}:
+done in the same way as described in the previous chapter with very slight modifications:
+for example one can use \texttt{pactl} but not \texttt{pacmd}, and to give the sink name
+when loading the module the parameter reads \texttt{sink\_name} (with an underscore)
+instead of \texttt{sink name}.
 
 \texttt{pactl load-module module-null-sink sink\_name=RXcable rate=48000 \\
 sink\_properties="device.description=RXcable"
@@ -6845,14 +6931,14 @@ when switching between SSB and digi. The following picture just shows my setup
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{loopback_rx.png}
+\includegraphics[scale=0.35]{loopback_rx.png}
 \caption{Setting up ,,loopback'' on MacOS, RXcable}
 \label{fig:loopback_rx}
 \end{figure}
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=12cm]{loopback_tx.png}
+\includegraphics[scale=0.35]{loopback_tx.png}
 \caption{Setting up ,,loopback'' on MacOS, TXcable}
 \label{fig:loopback_tx}
 \end{figure}
@@ -7029,7 +7115,7 @@ other single-board computers with a GPIO.
 
 \begin{figure}[ht!]
 \center
-\includegraphics[width=14cm]{GPIO.pdf}
+\includegraphics[scale=0.6]{GPIO.pdf}
 \caption{GPIO lines used with various controllers. Note that Controller2V2 and the G2 front panel
 share the used GPIO lines.}
 \label{fig:GPIO}
@@ -7170,7 +7256,7 @@ simply by typing in the command ,,make'' in the \pH directory (see Appendix \ref
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=9cm]{piEnableI2C.png}
+\includegraphics[scale=0.45]{piEnableI2C.png}
 \caption{Enabling the I2C controller.}
 \label{fig:piEnableI2C}
 \end{figure}
@@ -7276,7 +7362,7 @@ The \pH repository is downloaded, and support libraries are installed, with the 
 Proceeding as shown above will provide an up-to-date ,,snap shot'' of the \pH repository.
 This ensures that you have the latest (development) version which corresponds to the present
 version of the manual, but there is a chance that there is a recently introduced bug
-which has not yet been found and fixed. Currently, the development version has version number 2.4.
+which has not yet been found and fixed. Currently, the development version has version number 2.5.
 
 There is also a ,,release'' version which is the previous version. The ,,release'' version lags
 behind the current development since new features are not included there. This means that any
@@ -7360,7 +7446,7 @@ directory and recompile by executing ``make''.
 
 \begin{figure}[ht]
 \center
-\includegraphics[width=9cm]{piDontAsk.png}
+\includegraphics[scale=0.45]{piDontAsk.png}
 \caption{Suppress being asked options when clicking the \pH desktop icon.}
 \label{fig:piDontAsk}
 \end{figure}
@@ -7558,7 +7644,7 @@ The \pH repository is downloaded, and support libraries are installed, with the 
 Proceeding as shown above will provide an up-to-date ,,snap shot'' of the \pH repository.
 This ensures that you have the latest (development) version which corresponds to the present
 version of the manual, but there is a chance that there is a recently introduced bug
-which has not yet been found and fixed. Currently, the development version has version number 2.4.
+which has not yet been found and fixed. Currently, the development version has version number 2.5.
 
 There is also a ,,release'' version which is the previous version. The ,,release'' version lags
 behind the current development since new features are not included there. This means that any

@@ -10,6 +10,9 @@ January 2025:
 
 - "Feature Freeze" for the up-coming 2.4 release.
 
+- add option to "label" peaks in RX/TX panadapter
+  with their dbm values (contribution of Lukasz)
+
 - dynamically change the font piHPSDR is using
   (in the Screen menu)
 
