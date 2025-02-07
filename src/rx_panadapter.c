@@ -122,7 +122,7 @@ void rx_panadapter_update(RECEIVER *rx) {
   int mode = vfo[rx->id].mode;
   long long frequency = vfo[rx->id].frequency;
   int vfoband = vfo[rx->id].band;
-  long long offset = vfo[rx->id].ctun ? vfo[rx->id].offset : 0;
+  long long offset;
   //
   // soffset contains all corrections for attenuation and preamps
   // Perhaps some adjustment is necessary for those old radios which have
@@ -131,6 +131,16 @@ void rx_panadapter_update(RECEIVER *rx) {
   const BAND *band = band_get_band(vfoband);
   int calib = rx_gain_calibration - band->gain;
   soffset = (double) calib + (double)adc[rx->adc].attenuation - adc[rx->adc].gain;
+
+  //
+  // offset is used to calculate the filter edges. They move  with the RIT value
+  //
+
+  if (vfo[rx->id].ctun) {
+    offset = vfo[rx->id].offset;
+  } else {
+    offset = vfo[rx->id].rit_enabled ? vfo[rx->id].rit : 0;
+  }
 
   if (filter_board == ALEX && rx->adc == 0) {
     soffset += (double)(10 * rx->alex_attenuation - 20 * rx->preamp);
@@ -180,7 +190,9 @@ void rx_panadapter_update(RECEIVER *rx) {
     }
   }
 
-  // filter
+  //
+  // Filter edges.
+  //
   cairo_set_source_rgba (cr, COLOUR_PAN_FILTER);
   double filter_left = ((double)rx->pixels * 0.5) - (double)rx->pan + (((double)rx->filter_low + offset) / HzPerPixel);
   double filter_right = ((double)rx->pixels * 0.5) - (double)rx->pan + (((double)rx->filter_high + offset) / HzPerPixel);
