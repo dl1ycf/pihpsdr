@@ -386,7 +386,7 @@ static gpointer discover_receive_thread(gpointer data) {
             } else {
               STRLCPY(discovered[devices].name, "HermesLite V2", sizeof(discovered[devices].name));
               discovered[devices].device = DEVICE_HERMES_LITE2;
-              t_print("discovered HL2: Gateware Major Version=%d Minor Version=%d\n", buffer[9], buffer[15]);
+              t_print("discovered HL2: Gateware Major Version=%d Minor Version=%d\n", buffer[9], buffer[21]);
             }
 
             discovered[devices].frequency_min = 0.0;
