@@ -168,7 +168,7 @@ struct hl2word {
   unsigned char c2;
   unsigned char c3;
   unsigned char c4;
-} hl2addr[64];
+} hl2addr[128];
 
 const double hl2drv[16] = { 0.421697, 0.446684, 0.473151, 0.501187, 0.530884, 0.562341, 0.595662,
                             0.630957, 0.668344, 0.707946, 0.749894, 0.794328, 0.841395, 0.891251,
@@ -894,6 +894,7 @@ int main(int argc, char *argv[]) {
         buffer[9] = 73;
         buffer[10] = ODEV_HERMES_LITE;
         buffer[19] = 4; // number of receivers
+        buffer[21] = 2;   // Version 73.2
       }
 
       if (sock_TCP_Client > -1) {
@@ -1529,8 +1530,8 @@ void process_ep2(uint8_t *frame) {
 
     if (hl2addr[rc].c1 != frame[1] || hl2addr[rc].c2 != frame[2] ||
         hl2addr[rc].c3 != frame[3] || hl2addr[rc].c4 != frame[4]) {
-      t_print("        HL2 AHL2 DDR=0x%2x C1=0x%2x C2=0x%2x C3=0x%2x C4=0x%2x\n",
-              rc, frame[1], frame[2], frame[3], frame[4]);
+      t_print("        HL2 ADDR=0x%2x C0=0x%02x C1=0x%02x C2=0x%02x C3=0x%02x C4=0x%02x\n",
+              rc, frame[0], frame[1], frame[2], frame[3], frame[4]);
       hl2addr[rc].c1 = frame[1];
       hl2addr[rc].c2 = frame[2];
       hl2addr[rc].c3 = frame[3];
