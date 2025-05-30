@@ -2143,13 +2143,59 @@ void tx_off(const TRANSMITTER *tx) {
   ASSERT_SERVER();
   // switch TX OFF, wait until slew-down completed
   SetChannelState(tx->id, 0, 1);
+#ifdef SOAPYSDR
+  if (have_lime) {
+    // LIME: set TX gain to zero, disconnect antenna, execute TRX relay, and "unmute" receivers
+    soapy_protocol_set_tx_gain(transmitter, 0); //set gain to zero
+    soapy_protocol_set_tx_antenna(transmitter, 0); //set antenna to none which disconnects the output
+
+    const char *bank = "MAIN"; //set GPIO to signal the relay to RX
+    t_print("Transmitter:Setting GPIO to 0");
+    SoapySDRDevice *sdr = get_soapy_device();
+    SoapySDRDevice_writeGPIODir(sdr,bank,0xFF);
+    SoapySDRDevice_writeGPIO(sdr,bank, 0x00);
+
+
+    for (int i = 0; i < RECEIVERS; i++) {
+      soapy_protocol_unattenuate(receiver[i]); //unattenuate RX (relays for UHF+ are very leaky)
+    }
+  }
+#endif
 }
 
 void tx_on(const TRANSMITTER *tx) {
   ASSERT_SERVER();
   // switch TX ON
   SetChannelState(tx->id, 1, 0);
+#ifdef SOAPYSDR
+  if (have_lime) {
+    // LIME: "mute" receivers, execute TRX relay, connect TX antenna, set nominal TX drive
+    for (int i = 0; i < RECEIVERS; i++) {
+      soapy_protocol_attenuate(receiver[i]);
+    }
+
+
+    SoapySDRDevice *sdr = get_soapy_device();
+    const char *bank = "MAIN";
+
+    t_print("Transmitter:Setting GPIO to 1");
+    SoapySDRDevice_writeGPIODir(sdr,bank,0xFF);
+    SoapySDRDevice_writeGPIO(sdr,bank, 0x01);
+    usleep(30000);
+    soapy_protocol_set_tx_antenna(transmitter, dac.antenna);
+    soapy_protocol_set_tx_gain(transmitter, transmitter->drive);
+  }
+#endif
 }
+
+void tx_frequency_changed(TRANSMITTER *tx) {
+#if SOAPYSDR
+  if(protocol == SOAPYSDR_PROTOCOL) {
+    soapy_protocol_set_tx_frequency(tx);
+  }
+#endif
+}
+
 
 void tx_ps_getinfo(TRANSMITTER *tx) {
   ASSERT_SERVER();

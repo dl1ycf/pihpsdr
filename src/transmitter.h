@@ -238,6 +238,7 @@ extern void   tx_queue_cw_event(int state, int wait);
 extern void tx_create_remote(TRANSMITTER *rx);
 extern void tx_remote_update_display(TRANSMITTER *rx);
 extern void tx_remote_update_display(TRANSMITTER *tx);
+extern void tx_frequency_changed(TRANSMITTER *tx); // only for SOAPY
 
 #endif
 

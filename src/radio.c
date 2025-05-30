@@ -1386,6 +1386,9 @@ void radio_start_radio() {
   if (device == SOAPYSDR_USB_DEVICE) {
     soapy_iqswap = 1;
     receivers = 1;
+    if (radio->info.soapy.rx_channels > 1) {   // have_lime
+      receivers = 2;
+    }
     filter_board = NO_FILTER_BOARD;
   }
 
@@ -1475,8 +1478,11 @@ void radio_start_radio() {
   case SOAPYSDR_PROTOCOL:
     t_print("%s: setup RECEIVERS SOAPYSDR\n", __FUNCTION__);
     RECEIVERS = 1;
-    PS_TX_FEEDBACK = 1;
-    PS_RX_FEEDBACK = 2;
+    if (radio->info.soapy.rx_channels > 1) {   // have_lime
+      RECEIVERS = 2;
+    }
+    PS_TX_FEEDBACK = RECEIVERS;
+    PS_RX_FEEDBACK = RECEIVERS + 1;
     break;
 
   default:
@@ -1521,39 +1527,67 @@ void radio_start_radio() {
   schedule_high_priority();
 
   if (protocol == SOAPYSDR_PROTOCOL) {
-    RECEIVER *rx = receiver[0];
+    for (int i = 0; i < RECEIVERS; i++) {
+      RECEIVER *rx = receiver[i];
+      //
+      // LIME: do not start receivers before TX is running
+      // before the TX is running
+      //
+      if (!have_lime) {
 #ifdef SOAPYSDR
-    soapy_protocol_create_receiver(rx);
+        soapy_protocol_create_receiver(rx);
 #endif
+      }
+    }
 
     if (can_transmit) {
 #ifdef SOAPYSDR
       soapy_protocol_create_transmitter(transmitter);
       soapy_protocol_set_tx_antenna(transmitter, dac.antenna);
-      soapy_protocol_set_tx_gain(transmitter, transmitter->drive);
+      //
+      // LIME: set TX gain to 30 for the auto-calibration that takes place
+      //       upon starting the transmitter
+      //
+      soapy_protocol_set_tx_gain(transmitter, have_lime ? 30 : transmitter->drive);
       soapy_protocol_set_tx_frequency(transmitter);
       soapy_protocol_start_transmitter(transmitter);
+      if (have_lime) {
+        // LIME: set TX gain to 0 to avoid  LO leak. This is then set
+        //       to the nominal drive when starting the transmitter
+        soapy_protocol_set_tx_gain(transmitter, 0);
+      }
 #endif
     }
 
+    for (int id = 0; id < RECEIVERS; id++) {
+      RECEIVER *rx = receiver[id];
+      int rxadc = rx->adc;
 #ifdef SOAPYSDR
-    soapy_protocol_set_rx_antenna(rx, adc[0].antenna);
-    soapy_protocol_set_rx_frequency(rx, VFO_A);
-    soapy_protocol_set_automatic_gain(rx, adc[0].agc);
+      soapy_protocol_set_automatic_gain(rx, adc[rxadc].agc);
+      soapy_protocol_set_rx_antenna(rx, adc[rxadc].antenna);
+      soapy_protocol_set_rx_frequency(rx, id);
+      if (have_lime) {
+        // LIME: create the receivers (this was deferred) and start them
+        //       do this in a single call for both!
+        if (id == 0) {
+          soapy_protocol_create_receivers(receiver);
+          soapy_protocol_start_receivers(receiver);
+        }
+      } else {
+        soapy_protocol_start_receiver(rx);
+      }
 
-    if (!adc[0].agc) { soapy_protocol_set_gain(rx); }
+      soapy_protocol_set_gain(rx);
+
+      if (!adc[rxadc].agc) { soapy_protocol_set_gain(rx); }
 
 #endif
 
-    if (vfo[0].ctun) {
-      rx_set_frequency(rx, vfo[0].ctun_frequency);
+      if (vfo[id].ctun) {
+        rx_set_frequency(rx, vfo[id].ctun_frequency);
+      }
     }
 
-#ifdef SOAPYSDR
-    soapy_protocol_start_receiver(rx);
-    //t_print("radio: set rf_gain=%f\n",rx->rf_gain);
-    soapy_protocol_set_gain(rx);
-#endif
   }
 
   g_idle_add(ext_vfo_update, NULL);
@@ -2402,7 +2436,11 @@ void radio_set_drive(double value) {
 
   case SOAPYSDR_PROTOCOL:
 #ifdef SOAPYSDR
-    soapy_protocol_set_tx_gain(transmitter, transmitter->drive);
+    // LIME: do not change TX drive if not transmitting
+    //       (this is now done on each RX/TX and TX/RX transition)
+    if (!have_lime || radio_is_transmitting()) {
+      soapy_protocol_set_tx_gain(transmitter, transmitter->drive);
+    }
 #endif
     break;
   }

@@ -84,20 +84,31 @@ static void tx_ant_cb(GtkToggleButton *widget, gpointer data) {
 }
 
 static void adc_antenna_cb(GtkComboBox *widget, gpointer data) {
-  adc[0].antenna = gtk_combo_box_get_active(widget);
+  int rxadc = active_receiver->adc;
+  adc[rxadc].antenna = gtk_combo_box_get_active(widget);
 
   if (device == SOAPYSDR_USB_DEVICE) {
     if (radio_is_remote) {
       send_soapy_rxant(client_socket);
     } else {
 #ifdef SOAPYSDR
-      soapy_protocol_set_rx_antenna(receiver[0], adc[0].antenna);
+      soapy_protocol_set_rx_antenna(active_receiver, adc[rxadc].antenna);
 #endif
     }
   }
 }
 
 static void dac_antenna_cb(GtkComboBox *widget, gpointer data) {
+
+  if (radio_is_transmitting() || !can_transmit) {
+    //
+    // Suppress TX antenna changes while transmitting
+    // or if there is no transceiver
+    //
+    gtk_combo_box_set_active(widget, dac.antenna);
+    return;
+  }
+
   dac.antenna = gtk_combo_box_get_active(widget);
 
   if (device == SOAPYSDR_USB_DEVICE) {
