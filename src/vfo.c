@@ -150,6 +150,9 @@ static void modesettingsSaveState() {
     SetPropI1("modeset.%d.dexp_filter_high", i,      mode_settings[i].dexp_filter_high);
     SetPropI1("modeset.%d.cfc", i,                   mode_settings[i].cfc);
     SetPropI1("modeset.%d.cfc_eq", i,                mode_settings[i].cfc_eq);
+    SetPropI1("modeset.%d.tx_filter_low", i,         mode_settings[i].tx_filter_low);
+    SetPropI1("modeset.%d.tx_filter_high", i,        mode_settings[i].tx_filter_high);
+    SetPropI1("modeset.%d.use_rx_filter", i,         mode_settings[i].use_rx_filter);
 
     for (int j = 0; j < 11; j++) {
       SetPropF2("modeset.%d.txeq.%d", i, j,          mode_settings[i].tx_eq_gain[j]);
@@ -252,6 +255,9 @@ static void modesettingsRestoreState() {
     mode_settings[i].dexp_filter_high = 2000;
     mode_settings[i].cfc = 0;
     mode_settings[i].cfc_eq = 0;
+    mode_settings[i].tx_filter_low = 150;
+    mode_settings[i].tx_filter_high = 2850;
+    mode_settings[i].use_rx_filter  = 0;
 
     for (int j = 0; j < 11; j++) {
       mode_settings[i].tx_eq_gain[j] = 0;
@@ -338,6 +344,9 @@ static void modesettingsRestoreState() {
     GetPropI1("modeset.%d.dexp_filter_high", i,      mode_settings[i].dexp_filter_high);
     GetPropI1("modeset.%d.cfc", i,                   mode_settings[i].cfc);
     GetPropI1("modeset.%d.cfc_eq", i,                mode_settings[i].cfc_eq);
+    GetPropI1("modeset.%d.tx_filter_low", i,         mode_settings[i].tx_filter_low);
+    GetPropI1("modeset.%d.tx_filter_high", i,        mode_settings[i].tx_filter_high);
+    GetPropI1("modeset.%d.use_rx_filter", i,         mode_settings[i].use_rx_filter);
 
     for (int j = 0; j < 11; j++) {
       GetPropF2("modeset.%d.txeq.%d", i, j,          mode_settings[i].tx_eq_gain[j]);
@@ -644,6 +653,11 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
       transmitter->cfc_post[i] = mode_settings[m].cfc_post[i];
     }
 
+    transmitter->use_rx_filter = mode_settings[m].use_rx_filter;
+    tx_filter_low = mode_settings[m].tx_filter_low;
+    tx_filter_high = mode_settings[m].tx_filter_high;
+
+    tx_set_filter(transmitter);
     tx_set_compressor(transmitter);
     tx_set_dexp(transmitter);
     tx_set_equalizer(transmitter);

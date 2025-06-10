@@ -231,11 +231,23 @@ static void spinbtn_cb(GtkWidget *widget, gpointer data) {
 
     case TX_FILTER_LOW:
       tx_filter_low = vi;
+
+      if (!radio_is_remote) {
+        mode_settings[mode].tx_filter_low = vi;
+        copy_mode_settings(mode);
+      }
+
       tx_set_filter(transmitter);
       break;
 
     case TX_FILTER_HIGH:
       tx_filter_high = vi;
+
+      if (!radio_is_remote) {
+        mode_settings[mode].tx_filter_high = vi;
+        copy_mode_settings(mode);
+      }
+
       tx_set_filter(transmitter);
       break;
 
@@ -438,6 +450,12 @@ static void chkbtn_cb(GtkWidget *widget, gpointer data) {
 
     case TX_USE_RX_FILTER:
       transmitter->use_rx_filter = v;
+
+      if (!radio_is_remote) {
+        mode_settings[mode].use_rx_filter = v;
+        copy_mode_settings(mode);
+      }
+
       tx_set_filter(transmitter);
 
       if (v) {
