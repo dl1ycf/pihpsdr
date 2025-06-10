@@ -991,7 +991,7 @@ Furthermore, the ALC (automatic level control) value of the transmitter is
 shown. Negative ALC values (in peak mode) indicate that the volume of the TX input audio
 could be increased to get full output  power. During TX (and also during RX when using
 voice control (VOX), the actual level of the TX audio  signal is shown through
-the small \rett{MicLvl} bar. The audio level is in dB from $-40\ldots0$ dB. Note that
+the small \rett{Mic Lvl} bar. The audio level is in dB from $-40\ldots0$ dB. Note that
 this refers to the peak level of the  incoming ``TX microphone'' audio data, there can
 be further amplification in the TX  chain through the \bltt{Mic} slider. All this
 is explained in detail in chapter \ref{sec:txchain} on the TX audio chain.
@@ -4258,7 +4258,7 @@ that comes from a microphone. Note that for FM mode, things are slightly more co
 because of the FM preemphasis, this is explained in chapter \ref{sec:txmenu}, set the
 explanation of the \rett{FM PreEmp/ALC} button.
 
-\textbf{Start of the TX audio chain}
+\textbf{The \texttt{Mic Lvl} indicator}
 
 At the beginning of the signal chain, there invariably is an analog-to-digital converter (ADC)
 in the sound card (or the codec) the microphone is connected to via an analog wire (the ADC may
@@ -4274,15 +4274,25 @@ gear is leveled such that you stay significantly below FS during normal speech. 
 represent the signal as a floating point number, you can apply virtually any amplification without
 introducing distortion, so from here on until close to the end of the TX chain, clipping is not an issue.
 
-It is clearly of interest how the peak input levels are, and this is displayed in the \texttt{MicLvl}
+It is clearly of interest how the peak input levels are, and this is displayed in the \texttt{Mic Lvl}
 meter that shows up at the top of the meter (to the right of the VFO bar) during TX. This is the input
 level that \pH ``sees'' before any processing takes place. The scale of this meter is $-40\ldots 0$ dBFS,
 so at normal speech it should show more than half-deflection. If it stays below, this can be
 compensated by advancing MicGain to positive values. But in this case you may want to first check
 whether  the operating system applies extra attenuation (Pulseaudio/Pipewire: \texttt{pavucontrol} program,
- MacOS: Audio/MIDI setup utility). Dynamic microphones have rather low  output levels, so 
+ MacOS: Audio/MIDI setup utility). Dynamic microphones have rather low  output levels, so
 adding a battery powered preamplifier (I have built a small one that could be fitted inside
-the microphone stand) could also be useful.
+the microphone stand) could also be useful. To warn about possible clippings (integer overflows) of the
+microphone signal, the \texttt{Mic Lvl} bar
+is shown in green colour if peak levels are below -3 dB FS (71\% of the peak amplitude), a yellow colour is used
+between -3 and -0.5 dB,  and a red colour if peak microphone levels are above -0.5 dB FS (94\% of the peak amplitude).
+ For example, when using a microphe, connected to the radio, with an adjustable preamplifier,
+its gain should be reduced if the \texttt{Mic Lvl} bar regularly flashes yellow or red.
+This can also occur if a microphone is connected to the radio which does not need the extra (20 dB)
+mic level boost (see the \bltt{TX menu}, but the mic boost is engaged  regardless.
+On the other hand,
+for digital modes when using a virtual audio cable, the peak level is about 100\% almost constantly
+and here it is no reason to worry if the \texttt{Mic Lvl} bar is constantly red.
 
 \textbf{The downward expander (DEXP), a flexible noise gate}
 

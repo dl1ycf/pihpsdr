@@ -485,7 +485,19 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
         peak = 21.714 * log(peak) + 100.0; //  mapped to 0 .. 100
       }
 
-      cairo_set_source_rgba(cr, COLOUR_OK);
+      //
+      // 92.50 = -3.0 dB, Amplitude 0.71
+      // 98.75 = -0.5 dB, Amplitude 0.94
+      //
+      if (peak < 92.5) {
+        cairo_set_source_rgba(cr, COLOUR_OK);
+      } else if (peak < 98.75) {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ALARM);
+      }
+
+
       cairo_rectangle(cr, offset, 0.0, peak, 5.0);
       cairo_fill(cr);
       cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
@@ -545,6 +557,10 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
       cairo_stroke(cr);
       double peak = vox_get_peak();
 
+      //
+      // Map peak value to a scale -40 ... 0 dB.
+      // 21.714 = 50 / ln(10)
+      //
       if (peak > 1.0) {
         peak = 100.0;
       } else if (peak < 0.01) {
@@ -553,7 +569,18 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
         peak = 21.714 * log(peak) + 100.0; //  mapped to 0 .. 100
       }
 
-      cairo_set_source_rgba(cr, COLOUR_OK);
+      //
+      // 92.50 = -3.0 dB, Amplitude 0.71
+      // 98.75 = -0.5 dB, Amplitude 0.94
+      //
+      if (peak < 92.5) {
+        cairo_set_source_rgba(cr, COLOUR_OK);
+      } else if (peak < 98.75) {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ALARM);
+      }
+
       cairo_rectangle(cr, 5.0, Y1 - 10, peak, 5);
       cairo_fill(cr);
 
