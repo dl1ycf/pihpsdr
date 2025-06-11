@@ -173,7 +173,7 @@ by Lukasz).}
 \begin{itemize}
 \item{Preliminary ``accessibility'' support for the blind (see Appendix \ref{sec:accessibility})}
 \item{Added the ``trained'' NR2 noise reduction method introduced with WDSP 1.25 (\bltt{Noise} menu)}
-\item{Extended the RX and TX equalizers to 10 bands (\bltt{Equalizer} menu)}
+\item{Extended the RX and TX equalisers to 10 bands (\bltt{Equalizer} menu)}
 \item{Support for HermesLite-II I/O board}
 \item{Added audio capture and replay (see Chapter \ref{sec:capture})}
 \item{Added a multi-function encoder (Appendix \ref{sec:multiencoder})}
@@ -322,12 +322,12 @@ connect to radios which are not on the same sub-net as the computer, in principl
 radio on the world
 provided it is on the internet. I have been told that the original HPSDR standard states that a broadcast packet
 \textit{must} be used, so radios strictly adhering to that standard
-won't reply to ``routed'' discovery packets. The radios I have tested (ANAN-7000, RedPitya StemLab, HermesLite-II) all
-allow being discovered by such non-broadcast packets, so using the IP addr might become a
+won't reply to ``routed'' discovery packets. The radios I have tested (ANAN-7000, RedPitaya STEMlab, HermesLite-II) all
+allow being discovered by such non-broadcast packets, so using the IP address might become a
 preferred option in your shack if the radio is configured to have a fixed IP address, since this
 speeds up the start of the radio considerably.
 
-In rare cases (the RedPitaya StemLab case is the only one I know of) it is  possible to use the TCP protocol
+In rare cases (the RedPitaya STEMlab case is the only one I know of) it is  possible to use the TCP protocol
 rather than the standard UDP one for communicating with the radio. A ``TCP discovery'' will wait for three
 seconds if there is no response (this is the case for most radios). Therefore, trying to
 connect via TCP is only done if the \rett{Enable TCP} box is checked.
@@ -363,8 +363,8 @@ This controller is denoted Controller2 in the rest of this manual.}
 \item[G2 Front Panel]{Choose this if you have an Anan G2 radio with a built-in controller.}
 \item[G2 Mk2 Panel]{Choose this if you have an Anan G2 Mk2 (also known as ,,G2 Ultra'')
 radio (with LEDs in the front panel).
-This tells \pH not to use any GPIO lines, if it is compied with GPIO support. However, it is
-strongly recommended \textit{not} to eable GPIO for G2 Ultras. Previously, \pH required this choice
+This tells \pH not to use any GPIO lines, if it is compiled with GPIO support. However, it is
+strongly recommended \textit{not} to enable GPIO for G2 Ultras. Previously, \pH required this choice
 to set up the serial line for the panel controller of the G2 Ultras, but this is now handled
 automatically.}
 \end{itemize}
@@ -1032,7 +1032,7 @@ recommended.
 
 \section{Using menus \textit{and} controllers/panels}
 
-Menus in piHPSR are windows that pop up if a menu is opened. These windows by default are positioned such
+Menus in \pH are windows that pop up if a menu is opened. These windows by default are positioned such
 that they cover a relevant part of the \pH window. If you have a large display, you can move the menu
 window such that it no longer covers the panadapter(s), if you want.
 
@@ -1053,7 +1053,7 @@ to make adjustments and then close it, before continuing operating \pH using a c
 \pH does not block the controller or the panel once a menu has popped open, using the panel while a menu
 is open is not supported. In most cases, \pH will behave as expected, but
 if you change a \pH setting with a controller or a panel while a menu is open that lets you change just
-that setting, the behavious may be unexpected or even undetermined.
+that setting, the behaviour may be unexpected or even undetermined.
 
 \section{The main \pH menu}
 \begin{figure}[ht]
@@ -1477,7 +1477,7 @@ free of charge from the internet, installation on LINUX usually requires to crea
 a directory \texttt{\$HOME/.fonts} (if it not exists already), then copy the downloaded
 font files (\texttt{*.otf} or \texttt{*.ttf}) to that directory and run the command
 \texttt{fc-cache -v -f} in a terminal window. Installation on MacOS is even simpler:
-double-clicking a font  (\texttt{*.ttf}) file will opens the FontBook application
+double-clicking a font  (\texttt{*.ttf}) file will open the MacOS FontBook application
 which shows you the new font, and then click on the "Install" button.
 
 The spin buttons in the next line can be used to adjust the window width and height.
@@ -1605,7 +1605,7 @@ in the topmost row.
 
 \subsection{Display Menu: General}
 
-For the general settings, the \bltt{Display} menis shown
+For the general settings, the \bltt{Display} menus shown
 in Fig. \ref{fig:DisplayMenuGeneral}.
 
 \begin{figure}[ht]
@@ -1702,9 +1702,9 @@ current filter passband  are shown.
 \rett{No Labels Below Noise Floor} This suppresses labelling of peaks below the noise floor.
 
 \rett{Number of Peaks to Label:} Set maximum number of peaks to be shown. There can always be less,
-but no more than this number. The strongest peaks will be labeled first.
+but no more than this number. The strongest peaks will be labelled first.
 
-\rett{Ignore Adjacent Peaks:} Determine how close two peaks can be such that both are labeled.
+\rett{Ignore Adjacent Peaks:} Determine how close two peaks can be such that both are labelled.
 The higher the number the closer the peaks can be to each other. It's a divisor of the
 full window width so setting it to 1 will mean only one peak can occupy the entire window,
 
@@ -1712,7 +1712,7 @@ full window width so setting it to 1 will mean only one peak can occupy the enti
 percentile is 50, then the noise floor is the level of that pixel that is in the middle of the list
 if all pixels are sorted by their dBm value (a safety margin of 3 dBm is added).
 If the \rett{No Labels Below Noise Floor} box is ticked
-peaks below this value will not be labeled.
+peaks below this value will not be labelled.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1947,7 +1947,7 @@ In addition to frequency entry, the VFO menu offers a convenient way of changing
 some \pH settings, simply because the VFO menu can be opened by a simple
 mouse click into the VFO bar.
 
-\rett{Rit Step:} In this pop-down menu, the RIT step size can be chosen (1/10/100 Hz).
+\rett{RIT Step:} In this pop-down menu, the RIT step size can be chosen (1/10/100 Hz).
 
 \rett{VFO Step:} In this pop-down menu, the VFO step size can be chosen. The VFO step
 sizes range from 1 Hz to 1 MHz.
@@ -2064,7 +2064,7 @@ in the memory slots.
 So if you have some often used frequencies (e.g. for a net), the
 \bltt{Memory} menu allows you to become QRV there with only few mouse clicks.
 
-\textbf{Special behavior in SAT/RSAT mode.} Normally (that is, not in \bltt{SAT} or \bltt{RSAT} mode), a memory store
+\textbf{Special behaviour in SAT/RSAT mode.} Normally (that is, not in \bltt{SAT} or \bltt{RSAT} mode), a memory store
 operation stores the frequency/band/mode/filter settings of the active receiver in the memory slot,
 and a memory recall operation retrieves this data and modifies the active receiver accordingly. This would be
 too little to become QRV if one operates one of the satellite  modes. So when \bltt{SAT} or \bltt{RSAT} is
@@ -2432,7 +2432,7 @@ into the TX pan-adapter (while transmitting). The menu is shown in Fig. \ref{fig
 This menu has three sub-menus, called the \rett{TX Settings} for general transmitter settings,
 the \rett{CFC settings} for controlling the continuous frequency compressor (CFC),  the
 \rett{DwdExp Settings} for controlling the downward expander (DEXP), and the \rett{Peak Lables}
-settings for controlling if and how peaks are labeled with their dBm values. With the radio buttons
+settings for controlling if and how peaks are labelled with their dBm values. With the radio buttons
 in the top row of the menu you can switch between the four sub-menus. When you open the TX
 menu for the first time after starting \pH, the TX settings are shown. Subsequently opening
 the TX menu always shows the sub-menu that was on display when the TX  menu was closed the last
@@ -2679,9 +2679,9 @@ current filter passband  are shown.
 \rett{No Labels Below Noise Floor} This suppresses labelling of peaks below the noise floor.
 
 \rett{Number of Peaks to Label:} Set maximum number of peaks to be shown. There can always be less,
-but no more than this number. The strongest peaks will be labeled first.
+but no more than this number. The strongest peaks will be labelled first.
 
-\rett{Ignore Adjacent Peaks:} Determine how close two peaks can be such that both are labeled.
+\rett{Ignore Adjacent Peaks:} Determine how close two peaks can be such that both are labelled.
 The higher the number the closer the peaks can be to each other. It's a divisor of the
 full window width so setting it to 1 will mean only one peak can occupy the entire window,
 
@@ -2689,7 +2689,7 @@ full window width so setting it to 1 will mean only one peak can occupy the enti
 percentile is 50, then the noise floor is the level of that pixel that is in the middle of the list
 if all pixels are sorted by their dBm value (a safety margin of 3 dBm is added).
 If the \rett{No Labels Below Noise Floor} box is ticked
-peaks below this value will not be labeled.
+peaks below this value will not be labelled.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{PA} Menu}
 
@@ -3575,7 +3575,7 @@ adapters (which are nowadays the standard way to add serial ports to a computer)
 \texttt{/dev/ttyACM0} or \texttt{/dev/USB0} (on RaspPi) or \texttt{/dev/tty.usbserial-....} (on MacOS).
 On Anan G2-Ultra radios, a serial line is used for the communication with the front panel. This
 port is detected automatically and the third "Serial" line done not contain any controls but simply
-states the auto-detected port name and whether the connection to the panel has been sucessfully
+states the auto-detected port name and whether the connection to the panel has been successfully
 established.
 
 
@@ -4164,8 +4164,8 @@ TX if doing SSB. When TXing in CW, very little data (the CW key-down/up time sta
 to the server.
 My first tests indicate that client/server operation works very well even
 if parts of the connection between Client and Server
-is using a WLAN. I mention this because my attempts using WLAN for connection to the \textit{radio}
-(that is, for the baseband IQ data) were not entirely satisfactory.
+is using a WiFi. I mention this because my attempts using WiFi for connection to the \textit{radio}
+(that is, for the base band IQ data) were not entirely satisfactory.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Miscellaneous Topics}
@@ -4185,15 +4185,15 @@ one normally does not want neither noise reduction or equaliser being active on 
 side, nor a speech processor for transmitting.
 
 On the other side, one often wants the same settings for USB and LSB, or for DIGU and DIGL.
-Therefore mode groups have been defined that encompass USB/LSB/DSB, or CWU/CWL, or
-DIGU/DIGL. AM and FM, on the other hand, ,,mode groups'' with only one member.
+Therefore three mode groups have been defined that encompass USB/LSB/DSB, CWU/CWL, and
+DIGU/DIGL. There are two more mode ,,groups'' with AM and FM  as the only one member.
 
 Each mode  has an associated RX/TX profile containing lots of settings (see below).
 When switching a mode (either by an explicit request, or implicitly by a VFO swap/copy
 operation, a band or band stack change, or by recalling a memory slot), the profile of
-that mode overwrites the current settings.
+that mode overwrites the current settings. 
 
-The RX/TX profile for a specific mode (group) is updated whenever one of the setting
+The RX/TX profile for a specific mode (group) is updated whenever one of the settings
 contained in the profile is updated for RX1 or for the transmitter. Note that the
 mode-specific RX/TX profile is also applied to RX2 if the mode of RX2 is changed,
 but changing the settings for RX2 does not update the profile.
@@ -4201,8 +4201,8 @@ but changing the settings for RX2 does not update the profile.
 For example, if you have adjusted the noise reduction settings while operating USB,
 these settings are stored in the RX/TX profiles of the USB, LSB, and DSB modes. Whenever
 switching to USB, LSB or DSB in the future (until the profile is changed again), these
-settings become active. So you can quickly switch, say, between USB/LSB, CWU/CWL and
-DIGU/DIGL and always get the settings that you have chosen for that mode.
+settings become active. So you can quickly cycle, say, between USB, CWU and
+DIGU and upon each mode change you get the settings that you have chosen for that mode.
 
 Here is the list of settings that form the RX/TX profile:
 
@@ -4239,7 +4239,7 @@ chain which process the input signal in the following order
 \begin{itemize}
 \item{The downward expander (DEXP)}
 \item{The Mic gain slider (MicGain)}
-\item{The equalizer (TXEQ)}
+\item{The equaliser (TXEQ)}
 \item{The auto-leveller (AUTOLVL)}
 \item{The continous frequency compressor (CFC)}
 \item{The speech processor (CMPR)}
@@ -4259,7 +4259,7 @@ that comes from a microphone. Note that for FM mode, things are slightly more co
 because of the FM preemphasis, this is explained in chapter \ref{sec:txmenu}, set the
 explanation of the \rett{FM PreEmp/ALC} button.
 
-\textbf{The \texttt{Mic Lvl} indicator}
+\subsection{Start of the TX chain: The MicLvl indicator}
 
 At the beginning of the signal chain, there invariably is an analog-to-digital converter (ADC)
 in the sound card (or the codec) the microphone is connected to via an analog wire (the ADC may
@@ -4295,7 +4295,7 @@ On the other hand,
 for digital modes when using a virtual audio cable, the peak level is about 100\% almost constantly
 and here it is no reason to worry if the \texttt{Mic Lvl} bar is constantly red.
 
-\textbf{The downward expander (DEXP), a flexible noise gate}
+\subsection{The downward expander (DEXP), a flexible noise gate}
 
 The first processor in the TX chain is the downward expander (DEXP). This is best simply viewed as
 a noise gate. Well, it is a fancy noise gate. It only opens if there is input signal of sufficient
@@ -4305,7 +4305,7 @@ through the desktop) won't open it. Furthermore, when the gate is closed, it doe
 signal but applies a non-linear amplification. Usually you will have the DEXP activated with default
 settings for phone operation and it is not discussed further here.
 
-\textbf{MicGain and peak TX ALC value}
+\subsection{MicGain and peak TX ALC value}
 
 The problem is now that the TX chain needs data that is about 0 dBFS. If it is below, you have not only
 low output power (in SSB) or thin modulation (AM, FM) but also parts of the machine, e.g. the speech
@@ -4327,16 +4327,15 @@ is important. So in the simplest case, the recipe for adjusting the TX input cha
 {\color{red} Slowly adjust MicGain until the TX ALC peak is about zero when applying normal speech to the
 microphone.}
 
-\textbf{The TX equaliser}
+\subsection{The TX equaliser}
 
-Then comes the TX equaliser which is less important (in my view, I personally do not
-use it). It is described in chapter \ref{sec:eqmenu} and I guess any reader knows what
+Then comes the TX equaliser, which is described in chapter \ref{sec:eqmenu} and I guess any reader knows what
 an equaliser is. What is relevant here is, that the filtering
-involved in the equaliser changes the peak signal amplitude. While this could be compensated
+involved in the equaliser changes the peak signal amplitude. This could be compensated
 by changing the MicGain slider, but the preferred way is to adjust the frequency independent gain
 of the equaliser such that the peak amplitude remains unchanged when switching on/off the equaliser.
 
-\textbf{The auto leveller}
+\subsection{The auto leveler}
 
 The next important part is the auto leveller (AUTOLVL). It solves the problem that the input
 signal may vary in amplitude, for example because the distance between your mouth and the microphone is
@@ -4346,13 +4345,13 @@ In \pH, there is user-accessible control for the auto leveller, it is automatica
 use the speech processor (CMPR) or the continuous frequency compressor (CFC).  So if you want the auto
 leveller but no compression just activate CMPR with a compression value of 0 dB.
 
-\textbf{The continuous frequency compressor (CFC)}
+\subsection{The continuous frequency compressor (CFC)}
 
 This is again a part that is not of prime importance. It is a generalised version of the speech processor
 that applies a frequency-dependent compression value. The CFC settings are part of the \bltt{TX} menu
 and are described in chapter \ref{sec:cfc}.
 
-\textbf{The speech processor (CMPR)}
+\subsection{The speech processor (CMPR)}
 
 Normal speech is very different from a constant sine signal. The amplitudes are greatly varying, and
 the average power emitted by your transmitter will be considerably below its PEP rating even if the
@@ -4380,7 +4379,7 @@ that the signal after filtering exceeds FS. This overshooting can be eliminated 
 \textit{controlled envelope SSB} (CESSB) correction, and \pH automatically activates CESSB if the
 speech processor is on and the compression level larger than 5 dB.
 
-\textbf{The automatic level control (ALC)}
+\subsection{The automatic level control (ALC)}
 
 At the very end of the TX audio signal chain, it has to be \textit{guaranteed} that the baseband
 signal does not exeed FS. The ALC does nothing if the signal at the end of the chain stays below FS,
