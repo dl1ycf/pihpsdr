@@ -126,7 +126,7 @@ typedef struct _transmitter {
   double compressor_level;
 
   int cfc;                  // use Continuous Frequency Compressor (CFC)
-  int cfc_eq;               // use post-equalizer of the CFC
+  int cfc_eq;               // use post-equaliser of the CFC
   //
   // cfc_freq[0] is NOT USED
   // cfc_lvl [0] contains the added frequency-independent compression
@@ -175,7 +175,7 @@ typedef struct _transmitter {
   GMutex cw_ramp_mutex;   // needed when changing the ramp width during TX
 
   //
-  // Equalizer data
+  // Equaliser data
   //
   int    eq_enable;
   double eq_freq[11];  // frequency in Hz

@@ -322,7 +322,7 @@ static void spinbtn_cb(GtkWidget *widget, gpointer data) {
       copy_mode_settings(mode);
     }
   } else if (d == CFCPOST) {
-    // The CFC Post-equalizer gain spin buttons
+    // The CFC Post-equaliser gain spin buttons
     transmitter->cfc_post[e] = v;
     tx_set_compressor(transmitter);
 
@@ -932,7 +932,7 @@ void tx_menu(GtkWidget *parent) {
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), transmitter->cfc);
   gtk_grid_attach(GTK_GRID(cfc_grid), btn, 0, row, 3, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(chkbtn_cb), GINT_TO_POINTER(CFC_ONOFF));
-  btn = gtk_check_button_new_with_label("Use Post-Compression Equalizer");
+  btn = gtk_check_button_new_with_label("Use Post-Compression Equaliser");
   gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), transmitter->cfc_eq);
   gtk_grid_attach(GTK_GRID(cfc_grid), btn, 3, row, 3, 1);

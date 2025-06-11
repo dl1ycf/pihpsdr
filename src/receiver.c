@@ -1108,7 +1108,7 @@ static void rx_process_buffer(RECEIVER *rx) {
     if (rx == active_receiver && capture_state == CAP_RECORDING) {
       if (capture_record_pointer < capture_max) {
         //
-        // normalize samples:
+        // normalise samples:
         // when using AGC, the samples of strong s9 signals are about 0.8
         //
         double scale = 0.6 * pow(10.0, -0.05 * rx->volume);
@@ -1764,7 +1764,7 @@ void rx_set_equalizer(RECEIVER *rx) {
   }
 
   //
-  // Apply the equalizer parameters stored in rx
+  // Apply the equaliser parameters stored in rx
   //
   SetRXAEQProfile(rx->id, 10, rx->eq_freq, rx->eq_gain);
   SetRXAEQRun(rx->id, rx->eq_enable);

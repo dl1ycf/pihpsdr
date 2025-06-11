@@ -285,7 +285,7 @@ void get_midi_devices() {
   if (first) {
     //
     // perhaps not necessary in C, but good programming practise:
-    // initialize the table upon the first call
+    // initialise the table upon the first call
     //
     first = 0;
 

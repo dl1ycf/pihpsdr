@@ -177,7 +177,7 @@ int ps_calibration_timer(gpointer arg) {
 
   if (state < 0) {
     //
-    // Initialized two-tone experiment
+    // Initialised two-tone experiment
     //
     state = 1;          // start with PS reset
     clear_fields();     // clear all data until the next calibration has been done

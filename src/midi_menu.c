@@ -452,7 +452,7 @@ static void updateDescription() {
   }
 
   //
-  // Modify or initialize the command
+  // Modify or initialise the command
   //
   current_cmd->channel = thisChannel;
   current_cmd->type   = thisType;

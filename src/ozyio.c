@@ -610,7 +610,7 @@ void ozy_i2c_readvars() {
   penny_fw = buffer[1];
   t_print("penny firmware=%d\n", (int)buffer[1]);
   writepenny(1, 1);
-  t_print("penny TLV320 initialized\n");
+  t_print("penny TLV320 initialised\n");
 }
 
 static int file_exists (const char * fileName) {

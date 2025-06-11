@@ -162,7 +162,7 @@ void MidiAddCommand(int note, struct desc *desc) {
   // Actions with channel == -1 (ANY) must go to the end of the list
   //
   if (MidiCommandsTable[note] == NULL) {
-    // initialize linked list
+    // initialise linked list
     MidiCommandsTable[note] = desc;
   } else if (desc->channel >= 0) {
     // add to top of the list

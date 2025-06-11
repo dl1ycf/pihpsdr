@@ -89,7 +89,7 @@ enum _display_enum {
   SMETER_AVERAGE,
   ALC_PEAK,
   ALC_AVERAGE,
-  ALC_GAIN,  // no longer used but kept to stabilize enum valus
+  ALC_GAIN,  // no longer used but kept to stabilise enum valus
   DET_PEAK,
   DET_AVERAGE,
   DET_ROSENFELL,

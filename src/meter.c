@@ -60,7 +60,7 @@ meter_configure_event_cb (GtkWidget         *widget,
 
   meter_surface = gdk_window_create_similar_surface (gtk_widget_get_window (widget),
                   CAIRO_CONTENT_COLOR, METER_WIDTH, METER_HEIGHT);
-  /* Initialize the surface to black */
+  /* Initialise the surface to black */
   cairo_t *cr;
   cr = cairo_create (meter_surface);
   cairo_set_source_rgba(cr, COLOUR_VFO_BACKGND);

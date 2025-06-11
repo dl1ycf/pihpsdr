@@ -102,8 +102,8 @@ typedef struct _client {
   int busy;                         // serial only (for FIFO handling)
   int done;                         // serial only (for FIFO handling)
   int running;                      // set this to zero to terminate client
-  socklen_t address_length;         // TCP only: initialized by accept(), never used
-  struct sockaddr_in address;       // TCP only: initialized by accept(), never used
+  socklen_t address_length;         // TCP only: initialised by accept(), never used
+  struct sockaddr_in address;       // TCP only: initialised by accept(), never used
   GThread *thread_id;               // ID of thread that serves the client
   guint andromeda_timer;            // for reporting ANDROMEDA LED states
   guint auto_timer;                 // for auto-reporting FA/FB
@@ -1157,7 +1157,7 @@ static gpointer rigctl_server(gpointer data) {
 
     //
     // A slot is available, try to get connection via accept()
-    // (this initializes fd, address, address_length)
+    // (this initialises fd, address, address_length)
     //
     t_print("%s: slot= %d waiting for connection\n", __FUNCTION__, spare);
     tcp_client[spare].fd = accept(server_socket, (struct sockaddr*)&tcp_client[spare].address,
@@ -1185,7 +1185,7 @@ static gpointer rigctl_server(gpointer data) {
     }
 
     //
-    // Initialize client data structure
+    // Initialise client data structure
     //
     tcp_client[spare].fifo            = 0;
     tcp_client[spare].busy            = 0;
@@ -1991,7 +1991,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
     case 'R': //ZZER
 
       //DO NOT DOCUMENT, THIS WILL BE REMOVED
-      // set/read rx equalizer
+      // set/read rx equaliser
       if (command[4] == ';') {
         snprintf(reply,  sizeof(reply), "ZZER%d;", receiver[0]->eq_enable);
         send_resp(client->fd, reply) ;
@@ -2004,7 +2004,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
     case 'T': //ZZET
 
       //DO NOT DOCUMENT, THIS WILL BE REMOVED
-      // set/read tx equalizer
+      // set/read tx equaliser
       if (can_transmit) {
         if (command[4] == ';') {
           snprintf(reply,  sizeof(reply), "ZZET%d;", transmitter->eq_enable);
@@ -3507,7 +3507,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 
         if (client->andromeda_type == 4 || client->andromeda_type == 5) {
           //
-          // Initialize commands.
+          // Initialise commands.
           //
           if (client->buttonvec) { g_free(client->buttonvec); }
 
@@ -5701,7 +5701,7 @@ int launch_serial_rigctl (int id) {
   }
 
   //
-  // Initialize the rest of the CLIENT data structure
+  // Initialise the rest of the CLIENT data structure
   // (except fd and fifo)
   //
   serial_client[id].busy               = 0;
@@ -5732,7 +5732,7 @@ int launch_serial_rigctl (int id) {
   serial_client[id].auto_timer = g_timeout_add(750, autoreport_handler, &serial_client[id]);
 
   //
-  // If this is a serial line to an ANDROMEDA controller, initialize it and start a periodic GTK task
+  // If this is a serial line to an ANDROMEDA controller, initialise it and start a periodic GTK task
   //
   if (SerialPorts[id].andromeda) {
     //

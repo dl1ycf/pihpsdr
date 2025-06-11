@@ -794,7 +794,7 @@ void soapy_protocol_init(gboolean hf) {
   char temp[32];
   SoapySDR_setLogLevel(SOAPY_SDR_TRACE);
   t_print("%s: hf=%d driver=%s\n", __FUNCTION__, hf, radio->name);
-  // initialize the radio
+  // initialise the radio
   SoapySDRKwargs_set(&args, "driver", radio->name);
 
   if (strcmp(radio->name, "rtlsdr") == 0) {

@@ -29,11 +29,11 @@
  * RF1: ADC noise plus a signal at 14.1 MHz at -73 dBm
  * RF2: ADC noise
  * RF3: TX feedback signal with some distortion.
- * RF4: normalized undistorted TX signal
+ * RF4: normalised undistorted TX signal
  *
  * RF1 and RF2 signal strenght vary according to Preamp and Attenuator settings
  * RF3 signal strength varies according to TX-drive and TX-ATT settings
- * RF4 signal strength is normalized to amplitude of 0.407 (old protocol) or 0.2899 (new protocol)
+ * RF4 signal strength is normalised to amplitude of 0.407 (old protocol) or 0.2899 (new protocol)
  *     note HERMESLITEV2 old protocol: 0.23
  *
  * The connection with the ADCs are:
@@ -426,7 +426,7 @@ int main(int argc, char *argv[]) {
   }
 
   //
-  //      Initialize the data in the sample tables
+  //      Initialise the data in the sample tables
   //
   t_print(".... producing random noise\n");
   // Produce some noise
@@ -466,7 +466,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    // normalize
+    // normalise
     off = 0.0;
 
     for (i = 0; i < LENDIV; i++) {

@@ -644,7 +644,7 @@ static gpointer tci_server(gpointer data) {
 
     //
     // A slot is available, try to get connection via accept()
-    // (this initializes fd, address, address_length)
+    // (this initialises fd, address, address_length)
     //
     fd = accept(server_socket, (struct sockaddr*)&tci_client[spare].address,
                 &tci_client[spare].address_length);
@@ -729,7 +729,7 @@ static gpointer tci_server(gpointer data) {
 
     //
     // If everything worked as expected:
-    // Initialize client data structure,
+    // Initialise client data structure,
     // spawn off thread that "listens" to the connection,
     // start periodic job that reports frequency/mode changes
     //

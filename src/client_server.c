@@ -22,7 +22,7 @@
  * Server = piHPSDR running on a "local" attached to the radio
  * Client = piHPSDR running on a "remote" computer without a radio
  *
- * The server starts after all data has been initialized and the props file has
+ * The server starts after all data has been initialised and the props file has
  * been read, and then sends out all this data to the client.
  *
  * It then periodically sends audio (INFO_RXAUDIO) and pixel (INFO_SPECTRUM) data,
@@ -363,7 +363,7 @@ static int recv_bytes(int s, char *buffer, int bytes) {
 // remote_rxaudio occurs while sending another packet.
 //
 static int send_bytes(int s, char *buffer, int bytes) {
-  static GMutex send_mutex;  // static so correctly initialized
+  static GMutex send_mutex;  // static so correctly initialised
   int bytes_sent = 0;
 
   if (s < 0) { return -1; }
@@ -1130,7 +1130,7 @@ static void server_loop() {
   mic_ring_outpt = 0;
   mic_ring_inpt = 0;
   //
-  // The server starts with sending  a lot of data to initialize
+  // The server starts with sending  a lot of data to initialise
   // the data on the client side.
   //
   //
@@ -1804,7 +1804,7 @@ void send_squelch(int s, int id, int enable, double squelch) {
 
 void send_eq(int s, int id) {
   //
-  // The client sends this whenever an equalizer is changed
+  // The client sends this whenever an equaliser is changed
   //
   EQUALIZER_COMMAND command;
   SYNC(command.header.sync);
@@ -3396,7 +3396,7 @@ static void *client_thread(void* arg) {
         if (rx == active_receiver && capture_state == CAP_RECORDING) {
           if (capture_record_pointer < capture_max) {
             //
-            // normalize samples:
+            // normalise samples:
             // when using AGC, the samples of strong s9 signals are about 0.8
             //
             double scale = 0.6 * pow(10.0, -0.05 * rx->volume);

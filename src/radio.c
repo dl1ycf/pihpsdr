@@ -301,7 +301,7 @@ double div_phase = 0.0;    // phase for diversity (in degrees, 0 ... 360)
 
 //
 // Audio capture and replay
-// (Equalizers are switched off during capture and replay)
+// (Equalisers are switched off during capture and replay)
 //
 int capture_state = CAP_INIT;
 const int capture_max = 960000;  // 20 seconds
@@ -893,7 +893,7 @@ static void radio_create_visual() {
 
   // init local keyer if enabled
   if (cw_keyer_internal == 0) {
-    t_print("Initialize keyer.....\n");
+    t_print("Initialise keyer.....\n");
     keyer_update();
   }
 
@@ -1014,7 +1014,7 @@ void radio_start_radio() {
   // we must first set the RadioBerry flags
   //
   if (gpio_init() < 0) {
-    t_print("GPIO failed to initialize\n");
+    t_print("GPIO failed to initialise\n");
   }
 
 #endif
@@ -3196,7 +3196,7 @@ void radio_start_auto_tune() {
 //
 void radio_start_capture() {
   //
-  // - turn off  equalizers for both RX but keep the state in rx
+  // - turn off  equalisers for both RX but keep the state in rx
   //
   for (int i = 0; i < receivers; i++) {
     int eq = receiver[i]->eq_enable;
@@ -3208,8 +3208,8 @@ void radio_start_capture() {
 
 void radio_end_capture() {
   //
-  // - normalize what has been captured
-  // - restore  RX equalizer on/off flags
+  // - normalise what has been captured
+  // - restore  RX equaliser on/off flags
   //
   double max = 0.0;
 
@@ -3229,7 +3229,7 @@ void radio_end_capture() {
   if (max > 0.05) {
     //
     // If max. amplitude is below -25 dB, then assume this
-    // is "noise only" and do not normalize
+    // is "noise only" and do not normalise
     //
     max = 1.0 / max;  // scale factor
 
@@ -3239,7 +3239,7 @@ void radio_end_capture() {
   }
 
   //
-  // re-activate equalizers if they had been active before
+  // re-activate equalisers if they had been active before
   //
   for (int i = 0; i < receivers; i++) {
     rx_set_equalizer(receiver[i]);
@@ -3248,7 +3248,7 @@ void radio_end_capture() {
 
 void radio_start_playback() {
   //
-  // - turn off TX equalizer   but keep equalizer  info in transmitter->eq_enable
+  // - turn off TX equaliser   but keep equaliser  info in transmitter->eq_enable
   // - turn off TX compression but keep compressor info in transmitter->compression
   // - set mic gain  to zero   but keep mic_gain   info in transmitter->mic_gain
   // - disable CFC             but keep            info in transmitter->mic_gain
@@ -3281,7 +3281,7 @@ void radio_start_playback() {
 void radio_end_playback() {
   //
   // re-inforce settings stored in transmitter:
-  // - TX equalizer on/off
+  // - TX equaliser on/off
   // - TX compressor on/off
   // - TX mic gain setting
   // - CFC and DEXP

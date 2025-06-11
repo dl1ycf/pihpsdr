@@ -116,14 +116,14 @@ struct _mode_settings {
   int anf;                          // Automatic notch filter
   int snb;                          // Spectral noise blanker
   int agc;                          // AGC characteristics (slow/medium/fast etc.)
-  int en_rxeq;                      // RX equalizer on/off
-  double rx_eq_freq[11];            // RX equalizer settings
+  int en_rxeq;                      // RX equaliser on/off
+  double rx_eq_freq[11];            // RX equaliser settings
   double rx_eq_gain[11];
   //
   // TX (EQ, CMPR, DEXP, CRC) settings
   //
-  int en_txeq;                      // TX equalizer on/off
-  double tx_eq_freq[11];            // TX equalizer settings
+  int en_txeq;                      // TX equaliser on/off
+  double tx_eq_freq[11];            // TX equaliser settings
   double tx_eq_gain[11];
   int compressor;                   // TX compressor on/off
   double compressor_level;          // TX compressor level
@@ -140,7 +140,7 @@ struct _mode_settings {
   int dexp_filter_low;              // DEXP side channel filter low-cut
   int dexp_filter_high;             // DEXP side channel filter high-cut
   int cfc;                          // Continuous Frequency Compressor (CFC) on/off
-  int cfc_eq;                       // CFC post-equalizer on/off
+  int cfc_eq;                       // CFC post-equaliser on/off
   double cfc_freq[11];              // CFC corner frequencies
   double cfc_lvl[11];               // CFC compression at corner frequency
   double cfc_post[11];              // CFC post-EQ gain at corner frequency

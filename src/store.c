@@ -116,7 +116,7 @@ void recall_memory_slot(int index) {
   // recalling a memory slot will change
   //
   // - noise reduction settings
-  // - equalizer settings
+  // - equaliser settings
   // - VFO step size
   // - TX compressor settings
   //

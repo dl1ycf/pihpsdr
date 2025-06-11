@@ -88,7 +88,7 @@ static void save_xvtr () {
       }
 
       //
-      // Initialize all bandstack entries where the frequency is not inside the
+      // Initialise all bandstack entries where the frequency is not inside the
       // transverter band
       //
       for (int b = 0; b < bandstack->entries; b++) {

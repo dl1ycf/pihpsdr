@@ -451,7 +451,7 @@ void new_protocol_init() {
   int i;
 
   //
-  // This function initializes the P2 engine and does everything that
+  // This function initialises the P2 engine and does everything that
   // is only done once. Actions needed for a normal P2 restart are
   // then done in new_protocol_menu_start()
   //
@@ -479,7 +479,7 @@ void new_protocol_init() {
   }
 
   //
-  // Initialize semaphores for the never-finishing threads
+  // Initialise semaphores for the never-finishing threads
   // (HighPrio, Mic, rxIQ) and spawn these threads.
   //
 #ifdef __APPLE__

@@ -585,8 +585,8 @@ void rx_panadapter_update(RECEIVER *rx) {
     double previous_text_positions[num_peaks][2]; // Store previous text positions (x, y)
 
     for (int j = 0; j < num_peaks; j++) {
-      previous_text_positions[j][0] = -1; // Initialize x positions
-      previous_text_positions[j][1] = -1; // Initialize y positions
+      previous_text_positions[j][0] = -1; // Initialise x positions
+      previous_text_positions[j][1] = -1; // Initialise y positions
     }
 
     for (int j = 0; j < num_peaks; j++) {

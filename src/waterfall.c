@@ -187,7 +187,7 @@ void waterfall_update(RECEIVER *rx) {
     // waterfall. However, for the panadapter these are overwritten in due course,
     // while artifacts "stay" on the waterfall. We therefore refrain from updating
     // the waterfall *now* and continue updating when the VFO frequency has
-    // stabilized. This will not remove the artifacts in any case but is a big
+    // stabilised. This will not remove the artifacts in any case but is a big
     // improvement.
     //
     if (!freq_changed) {

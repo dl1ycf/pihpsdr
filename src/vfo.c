@@ -1398,7 +1398,7 @@ static gboolean vfo_configure_event_cb (GtkWidget         *widget,
                 CAIRO_CONTENT_COLOR,
                 gtk_widget_get_allocated_width (widget),
                 gtk_widget_get_allocated_height (widget));
-  /* Initialize the surface to black */
+  /* Initialise the surface to black */
   cairo_t *cr;
   cr = cairo_create (vfo_surface);
   cairo_set_source_rgba(cr, COLOUR_VFO_BACKGND);
@@ -1438,7 +1438,7 @@ void vfo_update() {
   int w = rxhigh - rxlow;
 
   //
-  // CW: renormalize the filter edges to zero
+  // CW: renormalise the filter edges to zero
   //
   if (m == modeCWL) {
     rxhigh += cw_keyer_sidetone_frequency;
@@ -1989,7 +1989,7 @@ void vfo_update() {
 
   // -----------------------------------------------------------
   //
-  // Draw string indicating equalizer status
+  // Draw string indicating equaliser status
   //
   // -----------------------------------------------------------
   if (vfl->eq_x != 0) {

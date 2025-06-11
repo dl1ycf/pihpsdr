@@ -227,7 +227,7 @@ static gboolean xvtr_cb (GtkWidget *widget, GdkEventButton *event, gpointer data
   return TRUE;
 }
 
-static gboolean equalizer_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
+static gboolean equaliser_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   equalizer_menu(top_window);
   return TRUE;
@@ -655,15 +655,15 @@ void new_menu() {
     col++;
     //
     // Fifth column: Menus for RX and TX
-    //               DSP, Equalizer, Meter, Ant, OC
+    //               DSP, Equaliser, Meter, Ant, OC
     //
     GtkWidget *dsp_b = gtk_button_new_with_label("DSP");
     g_signal_connect (dsp_b, "button-press-event", G_CALLBACK(dsp_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), dsp_b, col, row, 1, 1);
     row++;
-    GtkWidget *equalizer_b = gtk_button_new_with_label("Equalizer");
-    g_signal_connect (equalizer_b, "button-press-event", G_CALLBACK(equalizer_cb), NULL);
-    gtk_grid_attach(GTK_GRID(grid), equalizer_b, col, row, 1, 1);
+    GtkWidget *equaliser_b = gtk_button_new_with_label("Equaliser");
+    g_signal_connect (equaliser_b, "button-press-event", G_CALLBACK(equaliser_cb), NULL);
+    gtk_grid_attach(GTK_GRID(grid), equaliser_b, col, row, 1, 1);
     row++;
     GtkWidget *ant_b = gtk_button_new_with_label("Ant");
     g_signal_connect (ant_b, "button-press-event", G_CALLBACK(ant_cb), NULL);

@@ -1294,7 +1294,7 @@ static void tx_full_buffer(TRANSMITTER *tx) {
     //
     // The main reason why we do NOT constructe an artificial microphone
     // signal to generate the RF pulse is that we do not want MicGain
-    // and equalizer settings to interfere.
+    // and equaliser settings to interfere.
     //
     fexchange0(tx->id, tx->mic_input_buffer, tx->iq_output_buffer, &error);
     //
@@ -1997,7 +1997,7 @@ void tx_set_framerate(TRANSMITTER *tx) {
   ASSERT_SERVER();
   //
   // When changing the TX display frame rate, the TX display update timer
-  // has to be restarted, as well as the initializer
+  // has to be restarted, as well as the initialiser
   //
   tx_set_analyzer(tx);
   tx_set_displaying(tx);

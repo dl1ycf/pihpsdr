@@ -1226,7 +1226,7 @@ void *rx_thread(void *data) {
       //
       // PS: produce sample PAIRS,
       // a) distorted TX data (with Drive and Attenuation and ADC noise)
-      // b) original TX data (normalized)
+      // b) original TX data (normalised)
       //
       // DIV: produce sample PAIRS,
       // a) add man-made-noise on I-sample of RX channel

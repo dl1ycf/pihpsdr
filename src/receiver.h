@@ -261,7 +261,7 @@ typedef struct _receiver {
   double display_average_time;
 
   //
-  // Equalizer data
+  // Equaliser data
   //
   int  eq_enable;
   double eq_freq[11];

@@ -2162,7 +2162,7 @@ static void ozy_send_buffer() {
       // If using PureSignal and a feedback to EXT1, we have to manually activate the RX HPF/BPF
       // filters and select "bypass" since the feedback signal must arrive at the board
       // un-altered. This is not necessary for feedback at the "ByPass" jack since filter bypass
-      // is realized in hardware here.
+      // is realised in hardware here.
       //
       if (radio_is_transmitting() && transmitter->puresignal && receiver[PS_RX_FEEDBACK]->alex_antenna == 6) {
         output_buffer[C2] |= 0x40;  // enable manual filter selection

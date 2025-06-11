@@ -120,7 +120,7 @@ the code. A lot of extensions and improvements have been added by myself, theref
 to the version of \pH that can be found on my GitHub account \texttt{https://github.com/dl1ycf/pihpsdr}.
 
 Because \pH can be used on many different types of computers, and because operating systems change
-rather quickly over time, I do no longer have precompiled binaries in the repository. Such binaries
+rather quickly over time, I do no longer have pre-compiled binaries in the repository. Such binaries
 usually only work on a specific hardware, and with a specific variant (e.g. 32-bit compared to 64-bit) of
 the operating system. It is therefore necessary to build \pH \textit{on the target system}
 from the sources. I know this sounds daunting to non-LINUX-nerds. But I have put much effort into making
@@ -173,7 +173,7 @@ by Lukasz).}
 \begin{itemize}
 \item{Preliminary ``accessibility'' support for the blind (see Appendix \ref{sec:accessibility})}
 \item{Added the ``trained'' NR2 noise reduction method introduced with WDSP 1.25 (\bltt{Noise} menu)}
-\item{Extended the RX and TX equalisers to 10 bands (\bltt{Equalizer} menu)}
+\item{Extended the RX and TX equalisers to 10 bands (\bltt{Equaliser} menu)}
 \item{Support for HermesLite-II I/O board}
 \item{Added audio capture and replay (see Chapter \ref{sec:capture})}
 \item{Added a multi-function encoder (Appendix \ref{sec:multiencoder})}
@@ -1289,11 +1289,11 @@ menu).
 Note that the last four options (\rett{Split}, \rett{Duplex}, \rett{Mute RX when TX},
 and \rett{PA enable} are not shown for RX-only radios.
 
-\rett{Optimize for TouchScreen} The normal procedure to make a selection from a
+\rett{Optimise for TouchScreen} The normal procedure to make a selection from a
 pop-down menu (such as the \rett{Receivers:} button on this screen) is to click
 (and hold) it with a mouse, then drag the mouse to your choice, and then the selection
 is made by releasing the mouse button. This is very difficult to achieve on a touch
-screen. Therefore, if \rett{Optimize for TouchScreen} checkbox is checked, the pop-down
+screen. Therefore, if \rett{Optimise for TouchScreen} checkbox is checked, the pop-down
 menus are modified as follows: You click and release on the menu button, then it pops
 down and stays open. Then you make your selection by a second click/release sequence
 on your choice. While this is (only a little bit) more involved than the normal procedure
@@ -1697,7 +1697,7 @@ RX panadapter (Fig. \ref{fig:DisplayMenuPeak}):
 \rett{Label Strongest Peaks} This enables peak detection and labelling.
 
 \rett{Label in Passband Only} If the box is checked only the peaks within the
-current filter passband  are shown.
+current filter pass-band  are shown.
 
 \rett{No Labels Below Noise Floor} This suppresses labelling of peaks below the noise floor.
 
@@ -2587,7 +2587,7 @@ between 0 dB (no compression) and +20 dB.
 the speech processor, using the CFC automatically enables the TX auto-leveller but note CESSB
 overshoot control is \textit{not} enabled automatically.
 
-\rett{Use Post-Compression Equalizer}. This checkbox is used  to enable/disable the post-compression
+\rett{Use Post-Compression Equaliser}. This checkbox is used  to enable/disable the post-compression
 equaliser.
 
 \rett{Add Freq.-Indep. Compression} With this spin button, one can specify an \textit{additional}
@@ -2674,7 +2674,7 @@ TX panadapter (Fig. \ref{fig:TXPeakMenu}):
 \rett{Label Strongest Peaks} This enables peak detection and labelling.
 
 \rett{Label in Passband Only} If the box is checked only the peaks within the
-current filter passband  are shown.
+current filter pass-band  are shown.
 
 \rett{No Labels Below Noise Floor} This suppresses labelling of peaks below the noise floor.
 
@@ -2793,7 +2793,7 @@ the 200W spin button, then the value in the 100W spin button will read 125. So i
 single shot, you have roughly calibrated the Watt meter.
 
 A finer calibration only makes sense if you have a highly accurate Watt meter, since
-the (un-calibrated) reading in \pH may actually be more accurate than your
+the (uncalibrated) reading in \pH may actually be more accurate than your
 Watt meter. Using your highly accurate Watt meter,
 you can now move the drive slider until your Watt meter exactly reads one of the
 lower power values, and use the corresponding spin button to change the calibration
@@ -2868,7 +2868,7 @@ such harmonics are  damped by the TX low-pass filters. Higher-order non-linear e
 however, lead to additional in-band signals, in our example they occur at
 7102/7099, 7103/7098 etc. kHz. The low-pass filters cannot eliminate these signals,
 they lead to unwanted signals (,,splatter'') that disturb QSOs on neighbouring
-frequencies. With PureSignal, you can greatly reduce these un-wanted signals.
+frequencies. With PureSignal, you can greatly reduce these unwanted signals.
 If you open the \bltt{PS} menu for the first time it looks like shown in Fig.
 \ref{fig:PSMenu}.
 
@@ -3116,7 +3116,7 @@ be from zero to six times the dot length.
 %and at the end the amplitudes slowly fall down to zero.
 %This avoids harsh clicks in the RF signal
 %(which could possibly been heard all over the band for
-%hard keying). An optimized ramp function has been implemented
+%hard keying). An optimised ramp function has been implemented
 %that gives good click suppression both at small and large
 %offsets from the carrier frequency. The
 %width is the rise/fall time of the pulse envelope, using the default value
@@ -3127,7 +3127,7 @@ be from zero to six times the dot length.
 %If the RF pulse is shaped
 %by \pH (\rett{CW handled in Radio} \textit{not} checked),
 %you will get
-%the optimized ramp function an the chosen ramp width.
+%the optimised ramp function an the chosen ramp width.
 %A very recent Protocol-2 update
 %(March 2024) allows to send the ramp width to the radio as well.
 %However, the FPGA firmware in the radio will ignore that value
@@ -3228,18 +3228,18 @@ transmitter.
 \section{The \texttt{Equaliser} Menu}
 \label{sec:eqmenu}
 
-In the \bltt{Equalizer} menu, you can modify the frequency response of
+In the \bltt{Equaliser} menu, you can modify the frequency response of
 the RX and TX audio. You can adjust the RX equaliser to your personal
 preferences for listening to the RX audio. The TX equaliser affects
 your transmitted signal. You can, for example, provide some extra
 amplification to the low-frequency part of your voice. The menu
-is shown in Fig. \ref{fig:EqualizerMenu}.
+is shown in Fig. \ref{fig:EqualiserMenu}.
 
 \begin{figure}[ht]
 \center
-\includegraphics[scale=0.45]{EqualizerMenu.png}
+\includegraphics[scale=0.45]{EqualiserMenu.png}
 \caption{The Equaliser menu}
-\label{fig:EqualizerMenu}
+\label{fig:EqualiserMenu}
 \end{figure}
 
 With the radio buttons in the top row you can select
@@ -4053,7 +4053,7 @@ essentially that what can be heard on the air anyway. The method of generating C
 converted to a ,,time-stamped event model'', so sending CW is perfectly possible with remote operation.
 
 Since this is a legal requirement in many countries, access to the server is password protected to prevent
-illegal use of the transmitter. While the password is stored un-encrypted on the server side, a challenge/response
+illegal use of the transmitter. While the password is stored unencrypted on the server side, a challenge/response
 model ensures that a non-encrypted password is never contained in the data stream connection the client and
 the server.
 
@@ -4241,7 +4241,7 @@ chain which process the input signal in the following order
 \item{The Mic gain slider (MicGain)}
 \item{The equaliser (TXEQ)}
 \item{The auto-leveller (AUTOLVL)}
-\item{The continous frequency compressor (CFC)}
+\item{The continuous frequency compressor (CFC)}
 \item{The speech processor (CMPR)}
 \item{The controlled envelope SSB overshoot control (CESSB)}
 \item{The automatic level control (ALC)}
@@ -4256,7 +4256,7 @@ all be switched off. If the audio level is constant but below full scale, the in
 amplified via MicGain until the TX ALC value is just below or at 0 dB.
 All what follows is concerned with the potential problems of human speech
 that comes from a microphone. Note that for FM mode, things are slightly more complicated
-because of the FM preemphasis, this is explained in chapter \ref{sec:txmenu}, set the
+because of the FM pre-emphasis, this is explained in chapter \ref{sec:txmenu}, set the
 explanation of the \rett{FM PreEmp/ALC} button.
 
 \subsection{Start of the TX chain: The MicLvl indicator}
@@ -4271,7 +4271,7 @@ is converted to a floating point number in the range $\-1.0\ldots+1.0$. Here we 
 whose peak amplitudes are $\pm 1.0$ a \textit{full scale} (FS) signal. Due to the clipping of the ADC,
 the signal cannot exceed FS. The adjustment should be such that you reach FS if you violently
 whistle into the microphone, you reach FS but since clipping leads to extreme distortion, most audio
-gear is leveled such that you stay significantly below FS during normal speech. Note that once you
+gear is levelled such that you stay significantly below FS during normal speech. Note that once you
 represent the signal as a floating point number, you can apply virtually any amplification without
 introducing distortion, so from here on until close to the end of the TX chain, clipping is not an issue.
 
@@ -4280,14 +4280,14 @@ meter that shows up at the top of the meter (to the right of the VFO bar) during
 level that \pH ``sees'' before any processing takes place. The scale of this meter is $-40\ldots 0$ dBFS,
 so at normal speech it should show more than half-deflection. If it stays below, this can be
 compensated by advancing MicGain to positive values. But in this case you may want to first check
-whether  the operating system applies extra attenuation (Pulseaudio/Pipewire: \texttt{pavucontrol} program,
+whether  the operating system applies extra attenuation (PulseAudio/PipeWire: \texttt{pavucontrol} program,
  MacOS: Audio/MIDI setup utility). Dynamic microphones have rather low  output levels, so
 adding a battery powered preamplifier (I have built a small one that could be fitted inside
 the microphone stand) could also be useful. To warn about possible clippings (integer overflows) of the
 microphone signal, the \texttt{Mic Lvl} bar
 is shown in green colour if peak levels are below -3 dB FS (71\% of the peak amplitude), a yellow colour is used
 between -3 and -0.5 dB,  and a red colour if peak microphone levels are above -0.5 dB FS (94\% of the peak amplitude).
- For example, when using a microphe, connected to the radio, with an adjustable preamplifier,
+ For example, when using a microphone, connected to the radio, with an adjustable preamplifier,
 its gain should be reduced if the \texttt{Mic Lvl} bar regularly flashes yellow or red.
 This can also occur if a microphone is connected to the radio which does not need the extra (20 dB)
 mic level boost (see the \bltt{TX menu}, but the mic boost is engaged  regardless.
@@ -4309,13 +4309,13 @@ settings for phone operation and it is not discussed further here.
 
 The problem is now that the TX chain needs data that is about 0 dBFS. If it is below, you have not only
 low output power (in SSB) or thin modulation (AM, FM) but also parts of the machine, e.g. the speech
-processor (CMPR) or the adaptive predistortion (PURESIGNAL) won't work.
+processor (CMPR) or the adaptive pre-distortion (PURESIGNAL) won't work.
 So on one hand we should stay
 well below FS do avoid clipping in the ADC, but on the other hand we need amplification to reach FS.
-At the very end of the TX chain, the baseband signal is converted again from a floating point
-to an integer representation (in the range $\pm 2^{23}$) so it is critical to ensure that the baseband
+At the very end of the TX chain, the base-band signal is converted again from a floating point
+to an integer representation (in the range $\pm 2^{23}$) so it is critical to ensure that the base-band
 signal (in floating point representation) does not exceed $\pm 1.0$. This is where the ALC (automatic
-level control) at the end of the TX chain sets in: it attenuates the baseband signal such that it
+level control) at the end of the TX chain sets in: it attenuates the base-band signal such that it
 ``fits''. The optimum level is reached when the ALC (peak) value is about zero, since this means
 the signal is about FS (negative ALC peak reading indicate a signal below FS, while positive readings
 indicate it is above FS).
@@ -4335,7 +4335,7 @@ involved in the equaliser changes the peak signal amplitude. This could be compe
 by changing the MicGain slider, but the preferred way is to adjust the frequency independent gain
 of the equaliser such that the peak amplitude remains unchanged when switching on/off the equaliser.
 
-\subsection{The auto leveler}
+\subsection{The auto leveller}
 
 The next important part is the auto leveller (AUTOLVL). It solves the problem that the input
 signal may vary in amplitude, for example because the distance between your mouth and the microphone is
@@ -4374,15 +4374,15 @@ Since the speech processor implicitly assumes that the input signal peaks at FS,
 always used if the speech processor is activated. It therefore seems a good idea to always use the
 compressor when operating phone, but to select 0 dB compression level when you do not want compression.
 
-The additional filtering that has to be applied after clipping may introduce some artifacts, namely
+The additional filtering that has to be applied after clipping may introduce some artefacts, namely
 that the signal after filtering exceeds FS. This overshooting can be eliminated by the
 \textit{controlled envelope SSB} (CESSB) correction, and \pH automatically activates CESSB if the
 speech processor is on and the compression level larger than 5 dB.
 
 \subsection{The automatic level control (ALC)}
 
-At the very end of the TX audio signal chain, it has to be \textit{guaranteed} that the baseband
-signal does not exeed FS. The ALC does nothing if the signal at the end of the chain stays below FS,
+At the very end of the TX audio signal chain, it has to be \textit{guaranteed} that the base-band
+signal does not exceed FS. The ALC does nothing if the signal at the end of the chain stays below FS,
 and it attenuates the signal to not exceed FS in the other case. The TX ALC peak meter shows the
 peak amplitude \textit{before} ALC, so it is positive (negative) if the input signal is too strong
 (weak).
@@ -4490,7 +4490,7 @@ be in the range 11--14 for the HL2, depending on the filtering in the RF front e
 area of \pH does not show an attenuation (\texttt{ATT}) slider, but instead a \texttt{RF gain}
 slider that encompasses values from -12 to +48. A value of about 14 lets the HL2 behave similar
 to a standard HPSDR radio with the \texttt{ATT} slider at zero. Note that when using adaptive
-predistortion (PURESIGNAL), the whole range of these values is used when auto-levelling the
+pre-distortion (PURESIGNAL), the whole range of these values is used when auto-levelling the
 RX feedback signal.
 
 Normally, the HL2 is used together with the N2ADR  filter
@@ -4508,7 +4508,7 @@ value that this leads to essentially no RF output. While this would not be a pro
 carefully and went to the PA menu first, this is obviously not the case. Therefore, as a bonus to HL2 users,
 the default PA calibration value (for all bands) is
 reduced to 40.5 dB for HermesLite-II (and RadioBerry) radios. This only applies at the very first start
-of piHPSDR, since in later runs the default value will be overwritten anyway when reading the settings (the props
+of \pH, since in later runs the default value will be overwritten anyway when reading the settings (the props
 file).
 
 
@@ -4527,7 +4527,7 @@ file).
  requires a special settings of the open-collector outputs, so to be sure these are set, the safest way
  after playing around in the \bltt{OC} menu
  is to choose another filter board in the \bltt{Radio} menu and then again the \texttt{N2ADR} board
- because then the necessary adjustement to the open-collector settings are automatically made.
+ because then the necessary adjustment to the open-collector settings are automatically made.
  Note that when
  using the \texttt{N2ADR} filter board, you should  change  settings in the open collector (\bltt{OC})
  menu for transverter bands only!
@@ -4570,9 +4570,9 @@ and a modification of the source code and recompilation is required if you are n
 
 After a RX/TX transition, the HL2 does not start transmitting until the internal buffer (within the FPGA)
 for the TX samples reaches a  minimum filling, this is the TX latency. A too low value may lead to
-frequent TX buffer underruns especially for a  sloppy network connection, a too high value does not
+frequent TX buffer under-runs especially for a  sloppy network connection, a too high value does not
 only delay the TX signal but also risks TX buffer overflows. Experience in the HL2  discussion group
-seems to be that the defaul value of 20 msec of the HL2 firmware
+seems to be that the default value of 20 msec of the HL2 firmware
 is somewhat small, so \pH sets the TX latency to 40 msec. My measurements
 indicate that the buffer can hold about 75 msec of TX data so a value of 40 msec should leave enough headroom.
 
@@ -4586,8 +4586,8 @@ value of the TX latency, the PTT hang time is not very critical so I set it to 2
 The HL2 transfers some non-standard information about its state to the host program (\pH) that can be displayed.
 If the box \rett{Display PA current} is checked in the \bltt{Screen} menu (see Fig. \ref{fig:ScreenMenu}),
 the PA temperature and the PA current is shown (while transmitting) in the panadapter in the upper
-left corner in yellow color. If \rett{Display Warnings} is checked in the same menu, then in addition to
-the usual warnings, also an underrun or an overflow of the FPGA TX sample buffer is reported.
+left corner in yellow colour. If \rett{Display Warnings} is checked in the same menu, then in addition to
+the usual warnings, also an under-run or an overflow of the FPGA TX sample buffer is reported.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{RadioBerry support}
@@ -4603,7 +4603,7 @@ Normally the RadioBerry hardware is a ``hat'' that is mounted on a RaspberryPi c
 the drivers for the RadioBerry but which also can run the SDR software. The communication between
  \pH and the RadioBerry driver is via the local loop-back internet
 interface. Normally \pH does not query loop-back devices when discovering radios, but to support
-the RadioBerry, local loopback devices are queried for protocol-2.
+the RadioBerry, local loop-back devices are queried for protocol-2.
 
 The communication between the RaspberryPi and the RadioBerry uses nearly all GPIO lines of the
 RaspPi, so the general recommendation is to compile \pH without GPIO support. However, two GPIO lines
@@ -4642,7 +4642,7 @@ P, E, which stand for
 \end{itemize}
 
 The main difference between a "potentiometer" and an "encoder" is, that the former reports a
-value in a predefine interval between a minimum and a maximum,
+value in a predefined interval between a minimum and a maximum,
 while
 an encoder can be turned in either direction without stopping. This means that a potentiometer
 reports a value (between minimum and maximum), while an encoder reports an increment,
@@ -7205,14 +7205,14 @@ We begin with the \pH settings in the \bltt{RX} (Fig. \ref{fig:rx_settings_alsa_
 \begin{figure}[ht]
 \center
 \includegraphics[scale=0.45]{rx_settings_alsa_audio.png}
-\caption{RX menu settings for using loopback with ALSA.}
+\caption{RX menu settings for using loop-back with ALSA.}
 \label{fig:rx_settings_alsa_audio}
 \end{figure}
 
 \begin{figure}[ht]
 \center
 \includegraphics[scale=0.45]{tx_settings_alsa_audio.png}
-\caption{TX menu settings for using loopback with ALSA.}
+\caption{TX menu settings for using loop-back with ALSA.}
 \label{fig:tx_settings_alsa_audio}
 \end{figure}
 
@@ -7459,7 +7459,7 @@ the easiest, most flexible, and (from my side) most recommended option is
 to buy a third-party product,  ,,loopback'' from RogueAmoeba
 (\texttt{https://rogueamoeba.com/loopback/}).
 Note I have no connections with that company, I am just using this product and
-can recommend it. It can not only be used to create loopback devices, but you get
+can recommend it. It can not only be used to create loop-back devices, but you get
 a patch panel so you can, for example, send the RX audio both to a headphone device
 and to a virtual cable, thus eliminating the need to change \pH menu settings
 when switching between SSB and digi. The following picture just shows my setup
@@ -7490,7 +7490,7 @@ and a local microphone with device TXcable in the \bltt{TX} menu. In WSJTX,
 simply choose RXcable as the input and TXcable as the output device.
 
 As an additional bonus, loopback can also mix output devices. For example, one can create
-an additional loopback device with, say, name RX2, which can also be connected to
+an additional loop-back device with, say, name RX2, which can also be connected to
 the headphone output as shown for RXcable. If \pH is running two receivers,
 one can use the \bltt{RX} menu to send the audio output of the first receiver to RXcable
 and the audio output of the second receiver to RX2. Additionally one can activate only
@@ -7590,7 +7590,7 @@ This is an option for RedPitaya based radios that have a web interface that must
 to start the SDR application. If you have a RedPitaya exclusively being used as a radio, this
 app is most likely auto-started when powering up the RedPitaya so you do not need the STEMLAB
 option.
-If you have a RedPitaya and no autostart of the SDR application, and not compiled \pH
+If you have a RedPitaya and no auto-start of the SDR application, and not compiled \pH
 with the STEMLAB option, you can open a web browser on your host computer, start the SDR application on the RedPitaya,
 and then start \pH. With the STEMLAB option, this can all be done by \pH.
 This option is not activated by default since it delays the startup a little bit  and  this should  be
@@ -7639,7 +7639,7 @@ share the used GPIO lines. The assignment is different for a RadioBerry, see cha
 Fig. \ref{fig:GPIO} lists which GPIO lines are used for which controller option. In the first column,
 the GPIO pin number (0--31) is listed. The second column indicates the function often
 associated with this pin in the RaspberryPi community, and the third column states on which connector
-(P1 or P5) this pin can be found. P1 is the main 40-pin GPIO header of the RaspberryPI, while P5 is
+(P1 or P5) this pin can be found. P1 is the main 40-pin GPIO header of the RaspberryPi, while P5 is
 an auxiliary connector that carries pins one should normally not use (like those for a second I2C
 devices). The four last columns indicate the use of this GPIO pin in four different setups, namely
 with no controller, with the Controller1, with the Controller2 equipped with single encoders, and
@@ -7661,8 +7661,8 @@ Then there are up to four input lines (\texttt{CWL}, \texttt{CWR}, \texttt{CWKEY
 and two output lined (\texttt{PTTOUT}, \texttt{CWOUT}) which can be assigned to available (blue-coloured)
 GPIO lines. Shown in Fig. \ref{fig:GPIO} is the default assignment done in the program, but any of the
 six mentioned functions (to be explained below) can be mapped on any of the available (blue coloured)
-GPIO lines. Unfortunately, there is only a single un-used GPIO line for the Controller2 with double
-encoders and the G2 front panel, and only five un-used GPIO lines for Controller1, so it is not possible
+GPIO lines. Unfortunately, there is only a single unused GPIO line for the Controller2 with double
+encoders and the G2 front panel, and only five unused GPIO lines for Controller1, so it is not possible
 to assign all six possible functions to GPIO lines. The six additional functions are
 
 \rett{CWL} (Input with pull-up, active low). This input triggers a "left paddle pressed/
@@ -7785,7 +7785,7 @@ administrative task via the \grtt{sudo} program are listed.
 (you own the computer and/or have installed the Linux operating system)
  you should have administrator privileges.
 
-On a RaspBerry Pi, the user account that you created during installation
+On a Raspberry Pi, the user account that you created during installation
 will have administrator privileges by default, so you can
 execute \grtt{sudo} commands without being asked a password.
 }
@@ -7858,7 +7858,7 @@ libraries such as libgpiod that are missing in the repository, which you can ign
 (and the libinstall.sh script does so). The reason is, that SoapySDR in the standard repository
 is quite outdated (version 0.7) while \pH requires a more recent version (0.8) because the
 SoapySDR API has changed from 0.7 to 0.8. The necessity to compile SoapySDR from the sources
-may be dropped in the future, if the libraries in the standard repositiories are all updated
+may be dropped in the future, if the libraries in the standard repositories are all updated
 to the 0.8 API. Use the command
 
 \grtt{SoapySDRUtil -info}
@@ -8037,7 +8037,7 @@ some general principles should be made clear:
 most recent release branch.}
 \item{New features will only be included in the master branch, while the release branch is ``feature frozen''.}
 \item{In the following, it will both be explained how to upgrade your current branch, or how to
-switch to the lastest version of  another branch (e.g. to move from a release version to the current version).}
+switch to the latest version of  another branch (e.g. to move from a release version to the current version).}
 \end{itemize}
 
 \textbf{Which branches do exist?}
@@ -8101,7 +8101,7 @@ modifications, this usually means you are an expert and know what to do.
 \textbf{Standard update procedure}
 
 The standard update procedure will bring \pH on your computer to the latest version of
-that specic branch (either the master ``current'' branch or a release branch).
+that specific branch (either the master ``current'' branch or a release branch).
 Just use the following commands in a terminal window
 
 \grtt{cd \$HOME/pihpsdr} \\
@@ -8117,7 +8117,7 @@ Note the command \texttt{libinstall.sh} will take some time and is not necessary
 \textbf{Switching to the master branch}
 
 No matter what your starting point is, the following commands will bring you to the
-lastest ``current'' version, that is, the lastest version of the master branch:
+latest ``current'' version, that is, the latest version of the master branch:
 
 \grtt{cd \$HOME/pihpsdr} \\
 \grtt{git checkout master} \\
@@ -8130,7 +8130,7 @@ lastest ``current'' version, that is, the lastest version of the master branch:
 \textbf{Switching to a release branch}
 
 No matter whether your starting point is the master branch or another release branch, the following
-commmands will bring you to  the v2.4 release branch:
+commands will bring you to  the v2.4 release branch:
 
 \grtt{cd \$HOME/pihpsdr} \\
 \grtt{git checkout Rel-2.4} \\
@@ -8152,9 +8152,9 @@ have been used. Very old MacOS systems (e.g. Catalina) are no longer supported b
 system still supported by HomeBrew.}
 
 If you want to run \pH on an Apple Macintosh computer (iMac, Mac Mini, iBook Air, PowerBook), then
-you \textit{have to} compile \pH from the sources. Producing a precompiled binary that can be
+you \textit{have to} compile \pH from the sources. Producing a pre-compiled binary that can be
 distributed and run simply by double-clicking is overly complicated for applications using the GTK
-graphical user interface (as piHSPDR does). But fear not, the procedure is actually very simple because
+graphical user interface (as \pH does). But fear not, the procedure is actually very simple because
 all the difficult things are avoided by using the HomeBrew toolkit.
 
 \begin{center}
@@ -8459,7 +8459,7 @@ modifications, this usually means you are an expert and know what to do.
 \textbf{Standard update procedure}
 
 The standard update procedure will bring \pH on your computer to the latest version of
-that specic branch (either the master ``current'' branch or a release branch).
+that spefic branch (either the master ``current'' branch or a release branch).
 Just use the following commands in a terminal window
 
 \grtt{cd \$HOME/pihpsdr} \\
