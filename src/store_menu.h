@@ -1,5 +1,6 @@
 /* Copyright (C)
 * 2016 - Steve Wilson, KA6S
+* 2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by

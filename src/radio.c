@@ -1,5 +1,6 @@
 /* Copyright (C)
 * 2015 - John Melton, G0ORX/N6LYT
+* 2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -1519,16 +1520,6 @@ void radio_start_radio() {
     }
   }
 
-  if (can_transmit) {
-    radio_calc_drive_level();
-
-    if (transmitter->puresignal) {
-      tx_ps_onoff(transmitter, 1);
-    }
-  }
-
-  schedule_high_priority();
-
   if (protocol == SOAPYSDR_PROTOCOL) {
     for (int i = 0; i < RECEIVERS; i++) {
       RECEIVER *rx = receiver[i];
@@ -1596,7 +1587,6 @@ void radio_start_radio() {
     }
   }
 
-  g_idle_add(ext_vfo_update, NULL);
   gdk_window_set_cursor(gtk_widget_get_window(top_window), gdk_cursor_new(GDK_ARROW));
 #ifdef MIDI
 
@@ -1629,6 +1619,21 @@ void radio_start_radio() {
   if (open_test_menu) {
     test_menu(top_window);
   }
+
+  if (can_transmit) {
+    radio_calc_drive_level();  // This is probably not necessary
+  }
+  //
+  // Switching PureSignal on/off with P2 stops/restarts
+  // the protocol, so we do it here, after having
+  // completely started the ratdio
+  //
+  if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
+    tx_ps_onoff(transmitter, SET(transmitter->puresignal));
+  }
+
+  g_idle_add(ext_vfo_update, NULL);
+  schedule_high_priority();
 }
 
 void radio_remote_change_receivers(int r) {

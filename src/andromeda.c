@@ -1,6 +1,6 @@
 /* Copyright (C)
 * 2023 - Rick Koch N1GP
-* 2025 - Christoph van W"ullen, DL1YCF
+* 2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
