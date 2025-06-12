@@ -239,7 +239,7 @@ static void get_info(char *driver) {
     }
 
     snprintf(discovered[devices].info.soapy.version, sizeof(discovered[devices].info.soapy.version),
-               "%s%s%s%s", fw_version, gw_version, hw_version, p_version);
+             "%s%s%s%s", fw_version, gw_version, hw_version, p_version);
 
     //
     // Client/Server:
@@ -252,7 +252,6 @@ static void get_info(char *driver) {
 
     discovered[devices].info.soapy.rx_channels = rx_channels;
     discovered[devices].info.soapy.rx_gains = rx_gains_length;
-
     SoapySDRRange rx_range = SoapySDRDevice_getGainRange(sdr, SOAPY_SDR_RX, 0);
     t_print("RX total gain available: %f -> %f step=%f\n", rx_range.minimum, rx_range.maximum, rx_range.step);
     discovered[devices].info.soapy.rx_gain_step = rx_range.step;
@@ -261,7 +260,8 @@ static void get_info(char *driver) {
 
     for (size_t i = 0; i < rx_gains_length; i++) {
       rx_range = SoapySDRDevice_getGainElementRange(sdr, SOAPY_SDR_RX, 0, rx_gains[i]);
-      t_print("RX gain element available: %s, %f -> %f step=%f\n", rx_gains[i], rx_range.minimum, rx_range.maximum, rx_range.step);
+      t_print("RX gain element available: %s, %f -> %f step=%f\n", rx_gains[i], rx_range.minimum, rx_range.maximum,
+              rx_range.step);
       snprintf(discovered[devices].info.soapy.rx_gain_elem_name[i], 64, "%s", rx_gains[i]);
       discovered[devices].info.soapy.rx_gain_elem_step[i] = rx_range.step;
       discovered[devices].info.soapy.rx_gain_elem_min[i] = rx_range.minimum;
@@ -283,7 +283,6 @@ static void get_info(char *driver) {
       if (tx_gains_length > 8) { tx_gains_length = 8; }
 
       discovered[devices].info.soapy.tx_gains = tx_gains_length;
-
       SoapySDRRange tx_range = SoapySDRDevice_getGainRange(sdr, SOAPY_SDR_TX, 0);
       t_print("TX total gain, %f -> %f step=%f\n", tx_range.minimum, tx_range.maximum, tx_range.step);
       discovered[devices].info.soapy.tx_gain_step = tx_range.step;

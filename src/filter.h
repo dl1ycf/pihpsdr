@@ -58,5 +58,4 @@ extern void filter_shift_changed(int id, int increment);
 extern void filter_high_changed(int id, int increment);
 extern void filter_low_changed(int id, int increment);
 extern void filter_cut_default(int id);
-extern void filter_set_cwpeak(int id, int peak);
 #endif

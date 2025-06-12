@@ -89,6 +89,7 @@ void loadProperties(const char* filename) {
 
     while (fgets(string, sizeof(string), f)) {
       lines++;
+
       if (string[0] != '#') {
         name = strtok(string, "=");
         value = strtok(NULL, "\n");
@@ -120,6 +121,7 @@ void loadProperties(const char* filename) {
 
     fclose(f);
   }
+
   t_print("loadProperties: %s, lines read: %d\n", filename, lines);
 }
 

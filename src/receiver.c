@@ -1757,12 +1757,42 @@ void rx_set_deviation(const RECEIVER *rx) {
   SetRXAFMDeviation(rx->id, (double)rx->deviation);
 }
 
+void rx_capture_start(const RECEIVER *rx) {
+  ASSERT_SERVER();
+  //
+  // Turn OFF equalizer, but leave mode_settings and RX
+  // data structure unaffected.
+  //
+  SetRXAEQRun(rx->id, 0);
+}
+
+void rx_capture_end(const RECEIVER *rx) {
+  ASSERT_SERVER();
+  //
+  // Restore equalizer setting from RX data
+  //
+  SetRXAEQRun(rx->id, rx->eq_enable);
+}
+
 void rx_set_equalizer(RECEIVER *rx) {
   if (radio_is_remote) {
     send_eq(client_socket, rx->id);
     return;
   }
 
+  if (rx->id == 0) {
+    int mode = vfo[rx->id].mode;
+    mode_settings[mode].en_rxeq = rx->eq_enable;
+
+    for (int i = 0; i < 11; i++) {
+      mode_settings[mode].rx_eq_freq[i] = rx->eq_freq[i];
+      mode_settings[mode].rx_eq_gain[i] = rx->eq_gain[i];
+    }
+
+    copy_mode_settings(mode);
+  }
+
+  g_idle_add(ext_vfo_update, NULL);
   //
   // Apply the equaliser parameters stored in rx
   //
@@ -1804,6 +1834,34 @@ void rx_set_noise(const RECEIVER *rx) {
     return;
   }
 
+  if (rx->id == 0) {
+    int mode = vfo[rx->id].mode;
+    mode_settings[mode].nr = rx->nr;
+    mode_settings[mode].nb = rx->nb;
+    mode_settings[mode].anf = rx->anf;
+    mode_settings[mode].snb = rx->snb;
+    mode_settings[mode].nr2_ae = rx->nr2_ae;
+    mode_settings[mode].nr_agc = rx->nr_agc;
+    mode_settings[mode].nb2_mode = rx->nb2_mode;
+    mode_settings[mode].nr2_gain_method = rx->nr2_gain_method;
+    mode_settings[mode].nr2_npe_method = rx->nr2_npe_method;
+    mode_settings[mode].nr2_trained_threshold = rx->nr2_trained_threshold;
+    mode_settings[mode].nr2_trained_t2 = rx->nr2_trained_t2;
+    mode_settings[mode].nb_tau = rx->nb_tau;
+    mode_settings[mode].nb_advtime = rx->nb_advtime;
+    mode_settings[mode].nb_hang = rx->nb_hang;
+    mode_settings[mode].nb_thresh = rx->nb_thresh;
+#ifdef EXTNR
+    mode_settings[mode].nr4_reduction_amount = rx->nr4_reduction_amount;
+    mode_settings[mode].nr4_smoothing_factor = rx->nr4_smoothing_factor;
+    mode_settings[mode].nr4_whitening_factor = rx->nr4_whitening_factor;
+    mode_settings[mode].nr4_noise_rescale = rx->nr4_noise_rescale;
+    mode_settings[mode].nr4_post_threshold = rx->nr4_post_threshold;
+#endif
+    copy_mode_settings(mode);
+  }
+
+  g_idle_add(ext_vfo_update, NULL);
   //
   // Set/Update all parameters stored  in rx
   // that areassociated with the "QRM fighters"
@@ -1880,7 +1938,6 @@ void rx_set_offset(const RECEIVER *rx, long long offset) {
     RXANBPSetShiftFrequency(rx->id, (double)offset);
     SetRXAShiftRun(rx->id, 1);
   }
-
 }
 
 void rx_set_squelch(const RECEIVER *rx) {

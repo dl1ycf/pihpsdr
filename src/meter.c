@@ -497,7 +497,6 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
         cairo_set_source_rgba(cr, COLOUR_ALARM);
       }
 
-
       cairo_rectangle(cr, offset, 0.0, peak, 5.0);
       cairo_fill(cr);
       cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);

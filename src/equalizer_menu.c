@@ -57,45 +57,6 @@ static gboolean close_cb () {
 }
 
 
-void update_rxeq(RECEIVER *rx) {
-  int id = rx->id;
-
-  //
-  // Update the mode settings
-  //
-  if (id == 0 && !radio_is_remote) {
-    int mode = vfo[id].mode;
-    mode_settings[mode].en_rxeq = rx->eq_enable;
-
-    for (int i = 0; i < 11; i++) {
-      mode_settings[mode].rx_eq_freq[i] = rx->eq_freq[i];
-      mode_settings[mode].rx_eq_gain[i] = rx->eq_gain[i];
-    }
-
-    copy_mode_settings(mode);
-  }
-
-  rx_set_equalizer(rx);
-  g_idle_add(ext_vfo_update, NULL);
-}
-
-void update_txeq(TRANSMITTER *tx) {
-  if (!radio_is_remote) {
-    int mode = vfo[vfo_get_tx_vfo()].mode;
-    mode_settings[mode].en_txeq = transmitter->eq_enable;
-
-    for (int i = 0; i < 11; i++) {
-      mode_settings[mode].tx_eq_freq[i] = tx->eq_freq[i];
-      mode_settings[mode].tx_eq_gain[i] = tx->eq_gain[i];
-    }
-
-    copy_mode_settings(mode);
-  }
-
-  tx_set_equalizer(tx);
-  g_idle_add(ext_vfo_update, NULL);
-}
-
 static void enable_cb (GtkWidget *widget, gpointer data) {
   int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
 
@@ -104,7 +65,7 @@ static void enable_cb (GtkWidget *widget, gpointer data) {
   case 1:
     if (eqid < receivers) {
       receiver[eqid]->eq_enable = val;
-      update_rxeq(receiver[eqid]);
+      rx_set_equalizer(receiver[eqid]);
     }
 
     break;
@@ -112,7 +73,7 @@ static void enable_cb (GtkWidget *widget, gpointer data) {
   case 2:
     if (can_transmit) {
       transmitter->eq_enable = val;
-      update_txeq(transmitter);
+      tx_set_equalizer(transmitter);
     }
 
     break;
@@ -128,7 +89,7 @@ static void freq_changed_cb (GtkWidget *widget, gpointer data) {
   case 1:
     if (eqid < receivers) {
       receiver[eqid]->eq_freq[i] = val;
-      update_rxeq(receiver[eqid]);
+      rx_set_equalizer(receiver[eqid]);
     }
 
     break;
@@ -136,7 +97,7 @@ static void freq_changed_cb (GtkWidget *widget, gpointer data) {
   case 2:
     if (can_transmit) {
       transmitter->eq_freq[i] = val;
-      update_txeq(transmitter);
+      tx_set_equalizer(transmitter);
     }
 
     break;
@@ -153,7 +114,7 @@ static void gain_changed_cb (GtkWidget *widget, gpointer data) {
   case 1:
     if (eqid < receivers) {
       receiver[eqid]->eq_gain[i] = val;
-      update_rxeq(receiver[eqid]);
+      rx_set_equalizer(receiver[eqid]);
     }
 
     break;
@@ -161,7 +122,7 @@ static void gain_changed_cb (GtkWidget *widget, gpointer data) {
   case 2:
     if (can_transmit) {
       transmitter->eq_gain[i] = val;
-      update_txeq(transmitter);
+      tx_set_equalizer(transmitter);
     }
 
     break;

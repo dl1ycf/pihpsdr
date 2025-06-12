@@ -99,7 +99,6 @@ static void adc_antenna_cb(GtkComboBox *widget, gpointer data) {
 }
 
 static void dac_antenna_cb(GtkComboBox *widget, gpointer data) {
-
   if (radio_is_transmitting() || !can_transmit) {
     //
     // Suppress TX antenna changes while transmitting

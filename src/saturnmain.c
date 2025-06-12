@@ -797,7 +797,7 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
         //
         ADCOverflows |= (uint8_t)GetADCOverflow();
 
-	if (ADCOverflows != 0 && SleepCount > 100)  {
+        if (ADCOverflows != 0 && SleepCount > 100)  {
           // We come here during RX only
           SleepCount = 100;
         }

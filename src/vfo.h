@@ -165,6 +165,8 @@ extern GtkWidget* vfo_init(int width, int height);
 extern int        vfo_id_get_stepindex(int id);
 extern void       vfo_id_set_step_from_index(int id, int index);
 extern int        vfo_get_step_from_index(int index);
+extern void       vfo_id_cwpeak_changed(int id, int p);
+extern void       vfo_cwpeak_changed(int p);
 extern void       vfo_step(int steps);
 extern void       vfo_id_step(int id, int steps);
 extern void       vfo_set_rit_step(int step);

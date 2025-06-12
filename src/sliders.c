@@ -476,12 +476,6 @@ static void micgain_value_changed_cb(GtkWidget *widget, gpointer data) {
     double gain = gtk_range_get_value(GTK_RANGE(widget));
     transmitter->mic_gain = gain;
     tx_set_mic_gain(transmitter);
-
-    if (!radio_is_remote) {
-      int mode = vfo_get_tx_mode();
-      mode_settings[mode].mic_gain = transmitter->mic_gain;
-      copy_mode_settings(mode);
-    }
   }
 }
 
@@ -508,12 +502,6 @@ void set_mic_gain(double value) {
   if (can_transmit) {
     transmitter->mic_gain = value;
     tx_set_mic_gain(transmitter);
-
-    if (!radio_is_remote) {
-      int mode = vfo_get_tx_mode();
-      mode_settings[mode].mic_gain = transmitter->mic_gain;
-      copy_mode_settings(mode);
-    }
   }
 }
 

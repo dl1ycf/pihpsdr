@@ -294,6 +294,8 @@ extern void   rx_on(const RECEIVER *rx);
 extern void   rx_reconfigure(RECEIVER *rx, int height);
 extern void   rx_restore_state(RECEIVER *rx);
 extern void   rx_save_state(const RECEIVER *rx);
+extern void   rx_capture_start(const RECEIVER *rx);
+extern void   rx_capture_end(const RECEIVER *rx);
 
 extern void   rx_set_active(RECEIVER *rx);
 extern void   rx_set_af_binaural(const RECEIVER *rx);

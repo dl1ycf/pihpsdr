@@ -1072,6 +1072,7 @@ static long long channel_freq(int chan) {
     } else if (vfo[vfonum].mode == modeCWL) {
       freq += (long long)cw_keyer_sidetone_frequency;
     }
+
     freq += frequency_calibration - vfo[vfonum].lo;
   }
 

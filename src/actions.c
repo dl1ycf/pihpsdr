@@ -500,17 +500,8 @@ int process_action(void *data) {
 
   case ANF:
     if (a->mode == PRESSED) {
-      int id = active_receiver->id;
       TOGGLE(active_receiver->anf);
-
-      if (id == 0 && !radio_is_remote) {
-        int mode = vfo[id].mode;
-        mode_settings[mode].anf = active_receiver->anf;
-        copy_mode_settings(mode);
-      }
-
-      update_noise(active_receiver);
-      g_idle_add(ext_vfo_update, NULL);
+      rx_set_noise(active_receiver);
     }
 
     break;
@@ -732,7 +723,13 @@ int process_action(void *data) {
     break;
 
   case CAPTURE:
-    if (can_transmit && a->mode == PRESSED) {
+
+    //
+    // Audio capture and playback is handled on the server side only
+    //
+    if (radio_is_remote && a->mode == PRESSED) {
+      send_capture(client_socket);
+    } else if (can_transmit && a->mode == PRESSED) {
       switch (capture_state) {
       case CAP_INIT:
         //
@@ -808,13 +805,6 @@ int process_action(void *data) {
     if (can_transmit && a->mode == PRESSED) {
       TOGGLE(transmitter->compressor);
       tx_set_compressor(transmitter);
-
-      if (!radio_is_remote) {
-        int mode = vfo_get_tx_mode();
-        mode_settings[mode].compressor = transmitter->compressor;
-        copy_mode_settings(mode);
-      }
-
       g_idle_add(ext_vfo_update, NULL);
     }
 
@@ -822,18 +812,10 @@ int process_action(void *data) {
 
   case COMPRESSION:
     if (can_transmit) {
-      int mode = vfo_get_tx_mode();
       value = KnobOrWheel(a, transmitter->compressor_level, 0.0, 20.0, 1.0);
       transmitter->compressor = SET(value > 0.5);
       transmitter->compressor_level = value;
       tx_set_compressor(transmitter);
-
-      if (!radio_is_remote) {
-        mode_settings[mode].compressor = transmitter->compressor;
-        mode_settings[mode].compressor_level = transmitter->compressor_level;
-        copy_mode_settings(mode);
-      }
-
       g_idle_add(ext_vfo_update, NULL);
     }
 
@@ -850,7 +832,7 @@ int process_action(void *data) {
   case CW_AUDIOPEAKFILTER:
     if (a->mode == PRESSED) {
       int id = active_receiver->id;
-      filter_set_cwpeak(id, NOT(vfo[id].cwAudioPeakFilter));
+      vfo_id_cwpeak_changed(id, NOT(vfo[id].cwAudioPeakFilter));
     }
 
     break;
@@ -1224,25 +1206,17 @@ int process_action(void *data) {
 
   case NB:
     if (a->mode == PRESSED) {
-      int id = active_receiver->id;
       active_receiver->nb++;
 
       if (active_receiver->nb > 2) { active_receiver->nb = 0; }
 
-      if (id == 0 && !radio_is_remote) {
-        int mode = vfo[id].mode;
-        mode_settings[mode].nb = active_receiver->nb;
-        copy_mode_settings(mode);
-      }
-
-      update_noise(active_receiver);
+      rx_set_noise(active_receiver);
     }
 
     break;
 
   case NR:
     if (a->mode == PRESSED) {
-      int id = active_receiver->id;
       active_receiver->nr++;
 #ifdef EXTNR
 
@@ -1253,14 +1227,7 @@ int process_action(void *data) {
       if (active_receiver->nr > 2) { active_receiver->nr = 0; }
 
 #endif
-
-      if (id == 0 && !radio_is_remote) {
-        int mode = vfo[id].mode;
-        mode_settings[mode].nr = active_receiver->nr;
-        copy_mode_settings(mode);
-      }
-
-      update_noise(active_receiver);
+      rx_set_noise(active_receiver);
     }
 
     break;
@@ -1639,16 +1606,8 @@ int process_action(void *data) {
 
   case SNB:
     if (a->mode == PRESSED) {
-      int id = active_receiver->id;
       TOGGLE(active_receiver->snb);
-
-      if (id == 0 && !radio_is_remote) {
-        int mode = vfo[id].mode;
-        mode_settings[mode].snb = active_receiver->snb;
-        copy_mode_settings(mode);
-      }
-
-      update_noise(active_receiver);
+      rx_set_noise(active_receiver);
     }
 
     break;

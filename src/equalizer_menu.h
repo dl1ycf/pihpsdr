@@ -22,5 +22,3 @@
 #include "transmitter.h"
 
 void equalizer_menu(GtkWidget *parent);
-void update_rxeq(RECEIVER *rx);
-void update_txeq(TRANSMITTER *tx);

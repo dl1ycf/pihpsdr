@@ -57,116 +57,79 @@ static gboolean close_cb () {
   return TRUE;
 }
 
-void update_noise(const RECEIVER *rx) {
-  int id = rx->id;
-
-  //
-  // Update the mode settings
-  //
-  if (id == 0 && !radio_is_remote) {
-    int mode = vfo[id].mode;
-    mode_settings[mode].nr = rx->nr;
-    mode_settings[mode].nb = rx->nb;
-    mode_settings[mode].anf = rx->anf;
-    mode_settings[mode].snb = rx->snb;
-    mode_settings[mode].nr2_ae = rx->nr2_ae;
-    mode_settings[mode].nr_agc = rx->nr_agc;
-    mode_settings[mode].nb2_mode = rx->nb2_mode;
-    mode_settings[mode].nr2_gain_method = rx->nr2_gain_method;
-    mode_settings[mode].nr2_npe_method = rx->nr2_npe_method;
-    mode_settings[mode].nr2_trained_threshold = rx->nr2_trained_threshold;
-    mode_settings[mode].nr2_trained_t2 = rx->nr2_trained_t2;
-    mode_settings[mode].nb_tau = rx->nb_tau;
-    mode_settings[mode].nb_advtime = rx->nb_advtime;
-    mode_settings[mode].nb_hang = rx->nb_hang;
-    mode_settings[mode].nb_thresh = rx->nb_thresh;
-#ifdef EXTNR
-    mode_settings[mode].nr4_reduction_amount = rx->nr4_reduction_amount;
-    mode_settings[mode].nr4_smoothing_factor = rx->nr4_smoothing_factor;
-    mode_settings[mode].nr4_whitening_factor = rx->nr4_whitening_factor;
-    mode_settings[mode].nr4_noise_rescale = rx->nr4_noise_rescale;
-    mode_settings[mode].nr4_post_threshold = rx->nr4_post_threshold;
-#endif
-    copy_mode_settings(mode);
-  }
-
-  rx_set_noise(rx);
-  g_idle_add(ext_vfo_update, NULL);
-}
-
 static void nb_cb(GtkToggleButton *widget, gpointer data) {
   myrx->nb = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void nr_cb(GtkToggleButton *widget, gpointer data) {
   myrx->nr = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void anf_cb(GtkWidget *widget, gpointer data) {
   myrx->anf = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void snb_cb(GtkWidget *widget, gpointer data) {
   myrx->snb = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void ae_cb(GtkWidget *widget, gpointer data) {
   myrx->nr2_ae = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void pos_cb(GtkWidget *widget, gpointer data) {
   myrx->nr_agc = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void mode_cb(GtkWidget *widget, gpointer data) {
   myrx->nb2_mode = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void gain_cb(GtkWidget *widget, gpointer data) {
   myrx->nr2_gain_method = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void npe_cb(GtkWidget *widget, gpointer data) {
   myrx->nr2_npe_method = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void trained_thr_cb(GtkWidget *widget, gpointer data) {
   myrx->nr2_trained_threshold = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void trained_t2_cb(GtkWidget *widget, gpointer data) {
   myrx->nr2_trained_t2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void slew_cb(GtkWidget *widget, gpointer data) {
   myrx->nb_tau = 0.001 * gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void lead_cb(GtkWidget *widget, gpointer data) {
   myrx->nb_advtime = 0.001 * gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void lag_cb(GtkWidget *widget, gpointer data) {
   myrx->nb_hang = 0.001 * gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void thresh_cb(GtkWidget *widget, gpointer data) {
   myrx->nb_thresh = 0.165 * gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void nr_sel_changed(GtkWidget *widget, gpointer data) {
@@ -199,27 +162,27 @@ static void nr4_sel_changed(GtkWidget *widget, gpointer data) {
 
 static void nr4_reduction_cb(GtkWidget *widget, gpointer data) {
   myrx->nr4_reduction_amount = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void nr4_smoothing_cb(GtkWidget *widget, gpointer data) {
   myrx->nr4_smoothing_factor = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void nr4_whitening_cb(GtkWidget *widget, gpointer data) {
   myrx->nr4_whitening_factor = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void nr4_rescale_cb(GtkWidget *widget, gpointer data) {
   myrx->nr4_noise_rescale = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 static void nr4_threshold_cb(GtkWidget *widget, gpointer data) {
   myrx->nr4_post_threshold = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  update_noise(myrx);
+  rx_set_noise(myrx);
 }
 
 #endif

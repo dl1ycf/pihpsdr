@@ -861,24 +861,3 @@ void filter_shift_changed(int id, int increment) {
 
   show_filter_shift(id, shft);
 }
-
-void filter_set_cwpeak(int id, int peak) {
-  vfo[id].cwAudioPeakFilter = peak;
-
-  if (radio_is_remote) {
-    send_cwpeak(client_socket, id, peak);
-  } else {
-    if (id == 0) {
-      int mode = vfo[id].mode;
-      mode_settings[mode].cwPeak = vfo[id].cwAudioPeakFilter;
-      copy_mode_settings(mode);
-    }
-
-    if (id < receivers) {
-      rx_set_cw_peak(receiver[id], peak, (double) cw_keyer_sidetone_frequency);
-    }
-  }
-
-  g_idle_add(ext_vfo_update, NULL);
-}
-

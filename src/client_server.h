@@ -29,11 +29,6 @@
 
 #define mydouble uint64_t
 
-typedef enum {
-  RECEIVER_DETACHED,
-  RECEIVER_ATTACHED
-} CLIENT_STATE;
-
 enum _header_type_enum {
   CMD_ADC,
   CMD_AGC,
@@ -44,6 +39,7 @@ enum _header_type_enum {
   CMD_BAND_SEL,
   CMD_BANDSTACK,
   CMD_BINAURAL,
+  CMD_CAPTURE,
   CMD_COMPRESSOR,
   CMD_CTCSS,
   CMD_CTUN,
@@ -143,7 +139,7 @@ enum _header_type_enum {
   CLIENT_SERVER_COMMANDS,
 };
 
-#define CLIENT_SERVER_VERSION 0x01000008 // 32-bit version number
+#define CLIENT_SERVER_VERSION 0x01000009 // 32-bit version number
 #define SPECTRUM_DATA_SIZE 4096          // Maximum width of a panadapter
 #define AUDIO_DATA_SIZE 1024             // 1024 stereo samples
 
@@ -825,6 +821,7 @@ extern void send_band(int s, int rx, int band);
 extern void send_band_data(int s, int band);
 extern void send_bandstack(int s, int old, int new);
 extern void send_bandstack_data(int s, int band, int stack);
+extern void send_capture(int s);
 extern void send_ctcss(int s);
 extern void send_ctun(int s, int vfo, int ctun);
 extern void send_cw(int s, int state,  int wait);

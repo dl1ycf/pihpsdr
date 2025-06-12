@@ -449,6 +449,7 @@ void server_tx_audio(short sample) {
 
   if (txaudio_buffer_index >= AUDIO_DATA_SIZE) {
     int txmode = vfo_get_tx_mode();
+
     if (radio_is_transmitting() && txmode != modeCWU && txmode != modeCWL && !tune && !transmitter->twotone) {
       //
       // The actual transmission of the mic audio samples only takes  place
@@ -1522,6 +1523,7 @@ static void server_loop() {
     case CMD_BANDSTACK:
     case CMD_BAND_SEL:
     case CMD_BINAURAL:
+    case CMD_CAPTURE:
     case CMD_CTCSS:
     case CMD_CTUN:
     case CMD_CW:
@@ -1876,6 +1878,13 @@ void send_noise(int s, const RECEIVER *rx) {
   command.nr4_post_threshold        = to_double(-10.0);
 #endif
   send_bytes(s, (char *)&command, sizeof(command));
+}
+
+void send_capture(int s) {
+  HEADER header;
+  SYNC(header.sync);
+  header.data_type = to_short(CMD_CAPTURE);
+  send_bytes(s, (char *)&header, sizeof(header));
 }
 
 void send_bandstack(int s, int old, int new) {
@@ -2542,7 +2551,6 @@ static void *listen_thread(void *arg) {
     unsigned char sha[SHA512_DIGEST_LENGTH];
     inet_ntop(AF_INET, &(((struct sockaddr_in *)&remoteclient.address)->sin_addr), (char *)s, 2 * SHA512_DIGEST_LENGTH);
     t_print("Client_connected from %s\n", s);
-
     //
     // send version number to the client
     //
@@ -3347,7 +3355,7 @@ static void *client_thread(void* arg) {
           }
 
           for (int i = 0; i < rx->width; i++) {
-            rx->pixel_samples[i] = (float)((int)spectrum_data.sample[i]-200);
+            rx->pixel_samples[i] = (float)((int)spectrum_data.sample[i] - 200);
           }
 
           g_mutex_unlock(&rx->display_mutex);
@@ -3385,29 +3393,12 @@ static void *client_thread(void* arg) {
       RECEIVER *rx = receiver[adata.rx];
       int numsamples = from_short(adata.numsamples);
 
+      //
+      // Note CAPTURing is only done on the server side
+      //
       for (int i = 0; i < numsamples; i++) {
         short left_sample = from_short(adata.samples[(i * 2)]);
         short right_sample = from_short(adata.samples[(i * 2) + 1]);
-
-        //
-        // If CAPTURing, record the audio samples *before*
-        // manipulating them
-        //
-        if (rx == active_receiver && capture_state == CAP_RECORDING) {
-          if (capture_record_pointer < capture_max) {
-            //
-            // normalise samples:
-            // when using AGC, the samples of strong s9 signals are about 0.8
-            //
-            double scale = 0.6 * pow(10.0, -0.05 * rx->volume);
-            capture_data[capture_record_pointer++] = scale * (left_sample + right_sample);
-          } else {
-            // switching the state to RECORD_DONE takes care that the
-            // CAPTURE switch is "pressed" only once
-            capture_state = CAP_RECORD_DONE;
-            schedule_action(CAPTURE, PRESSED, 0);
-          }
-        }
 
         if (radio_is_transmitting() && (!duplex || mute_rx_while_transmitting)) {
           left_sample = 0.0;
@@ -3477,6 +3468,11 @@ static void *client_thread(void* arg) {
     case CMD_SAT: {
       sat_mode = header.b1;
       g_idle_add(ext_vfo_update, NULL);
+    }
+    break;
+
+    case CMD_CAPTURE: {
+      schedule_action(CAPTURE, PRESSED, 0);
     }
     break;
 
@@ -3744,7 +3740,7 @@ int radio_connect_remote(char *host, int port, const char *pwd) {
 
 //
 // Execute a remote command through the GTK idle queue
-// and send a response.
+// and (possibly) send a response.
 // Because of the response required, we cannot just
 // delegate to actions.c
 //
@@ -4133,7 +4129,7 @@ static int remote_command(void *data) {
       rx->nr4_noise_rescale      = from_double(command->nr4_noise_rescale);
       rx->nr4_post_threshold     = from_double(command->nr4_post_threshold);
 #endif
-      update_noise(rx);
+      rx_set_noise(rx);
       send_rx_data(remoteclient.socket, id);
     }
   }
@@ -4516,7 +4512,7 @@ static int remote_command(void *data) {
   break;
 
   case CMD_CWPEAK: {
-    filter_set_cwpeak(header->b1, header->b2);
+    vfo_id_cwpeak_changed(header->b1, header->b2);
   }
   break;
 
@@ -4539,7 +4535,7 @@ static int remote_command(void *data) {
         rx->eq_gain[i] = from_double(command->gain[i]);
       }
 
-      update_rxeq(rx);
+      rx_set_equalizer(rx);
     }
   }
   break;
@@ -4554,7 +4550,7 @@ static int remote_command(void *data) {
         transmitter->eq_gain[i] = from_double(command->gain[i]);
       }
 
-      update_txeq(transmitter);
+      tx_set_equalizer(transmitter);
     }
 
     break;

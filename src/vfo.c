@@ -656,7 +656,6 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
     transmitter->use_rx_filter = mode_settings[m].use_rx_filter;
     tx_filter_low = mode_settings[m].tx_filter_low;
     tx_filter_high = mode_settings[m].tx_filter_high;
-
     tx_set_filter(transmitter);
     tx_set_compressor(transmitter);
     tx_set_dexp(transmitter);
@@ -854,6 +853,30 @@ void vfo_id_deviation_changed(int id, int dev) {
 
   if (id < receivers) {
     rx_filter_changed(receiver[id]);
+  }
+
+  g_idle_add(ext_vfo_update, NULL);
+}
+
+void vfo_cwpeak_changed(int p) {
+  vfo_id_cwpeak_changed(active_receiver->id, p);
+}
+
+void vfo_id_cwpeak_changed(int id, int p) {
+  vfo[id].cwAudioPeakFilter = p;
+
+  if (radio_is_remote) {
+    send_cwpeak(client_socket, id, p);
+  } else {
+    if (id == 0) {
+      int mode = vfo[id].mode;
+      mode_settings[mode].cwPeak = p;
+      copy_mode_settings(mode);
+    }
+
+    if (id < receivers) {
+      rx_set_cw_peak(receiver[id], p, (double) cw_keyer_sidetone_frequency);
+    }
   }
 
   g_idle_add(ext_vfo_update, NULL);

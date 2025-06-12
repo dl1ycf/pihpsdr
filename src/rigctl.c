@@ -2518,7 +2518,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       } else if (command[5] == ';') {
         if (atoi(&command[4])) { receiver[0]->nb = 1; }
 
-        update_noise(receiver[0]);
+        rx_set_noise(receiver[0]);
       }
 
       break;
@@ -2532,7 +2532,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       } else if (command[5] == ';') {
         if (atoi(&command[4])) { receiver[0]->nb = 2; }
 
-        update_noise(receiver[0]);
+        rx_set_noise(receiver[0]);
       }
 
       break;
@@ -2547,7 +2547,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         } else if (command[5] == ';') {
           if (atoi(&command[4])) { receiver[1]->nb = 1; }
 
-          update_noise(receiver[1]);
+          rx_set_noise(receiver[1]);
         }
       } else {
         implemented = FALSE;
@@ -2565,7 +2565,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         } else if (command[5] == ';') {
           if (atoi(&command[4])) { receiver[1]->nb = 2; }
 
-          update_noise(receiver[1]);
+          rx_set_noise(receiver[1]);
         }
       } else {
         implemented = FALSE;
@@ -2581,7 +2581,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         send_resp(client->fd, reply);
       } else if (command[5] == ';') {
         receiver[0]->snb = atoi(&command[4]);
-        update_noise(receiver[0]);
+        rx_set_noise(receiver[0]);
       }
 
       break;
@@ -2595,7 +2595,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           send_resp(client->fd, reply);
         } else if (command[5] == ';') {
           receiver[1]->snb = atoi(&command[4]);
-          update_noise(receiver[1]);
+          rx_set_noise(receiver[1]);
         }
       } else {
         implemented = FALSE;
@@ -2613,7 +2613,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         } else if (command[5] == ';') {
           if (atoi(&command[4])) { receiver[0]->nr = 1; }
 
-          update_noise(receiver[0]);
+          rx_set_noise(receiver[0]);
         }
       }
 
@@ -2628,7 +2628,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       } else if (command[5] == ';') {
         if (atoi(&command[4])) { receiver[0]->nr = 2; }
 
-        update_noise(receiver[0]);
+        rx_set_noise(receiver[0]);
       }
 
       break;
@@ -2642,7 +2642,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       } else if (command[5] == ';') {
         if (atoi(&command[4])) { receiver[0]->anf = 1; }
 
-        update_noise(receiver[0]);
+        rx_set_noise(receiver[0]);
       }
 
       break;
@@ -2657,7 +2657,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         } else if (command[5] == ';') {
           if (atoi(&command[4])) { receiver[1]->anf = 1; }
 
-          update_noise(receiver[1]);
+          rx_set_noise(receiver[1]);
         }
       } else {
         implemented = FALSE;
@@ -2675,7 +2675,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         } else if (command[5] == ';') {
           if (atoi(&command[4])) { receiver[1]->nr = 1; }
 
-          update_noise(receiver[1]);
+          rx_set_noise(receiver[1]);
         }
       } else {
         implemented = FALSE;
@@ -2693,7 +2693,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         } else if (command[5] == ';') {
           if (atoi(&command[4])) { receiver[1]->nr = 2; }
 
-          update_noise(receiver[1]);
+          rx_set_noise(receiver[1]);
         }
       } else {
         implemented = FALSE;
@@ -4423,7 +4423,7 @@ static int parse_cmd(void *data) {
         send_resp(client->fd, reply);
       } else if (command[3] == ';') {
         receiver[0]->nb = atoi(&command[2]);
-        update_noise(receiver[0]);
+        rx_set_noise(receiver[0]);
       }
 
       break;
@@ -4447,7 +4447,7 @@ static int parse_cmd(void *data) {
         send_resp(client->fd, reply);
       } else if (command[3] == ';')  {
         receiver[0]->nr = atoi(&command[2]);
-        update_noise(receiver[0]);
+        rx_set_noise(receiver[0]);
       }
 
       break;
@@ -4466,7 +4466,7 @@ static int parse_cmd(void *data) {
         send_resp(client->fd, reply);
       } else if (command[3] == ';') {
         receiver[0]->anf = atoi(&command[2]);
-        update_noise(receiver[0]);
+        rx_set_noise(receiver[0]);
       }
 
       break;
