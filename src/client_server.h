@@ -690,10 +690,13 @@ typedef struct __attribute__((__packed__)) _display_data {
   uint8_t tx_fifo_underrun;
   uint8_t TxInhibit;
   uint8_t txzero;
+  uint8_t capture_state;
   uint16_t exciter_power;
   uint16_t ADC0;
   uint16_t ADC1;
   uint16_t sequence_errors;
+  uint32_t capture_record_pointer;
+  uint32_t capture_replay_pointer;
 } DISPLAY_DATA;
 
 typedef struct __attribute__((__packed__)) _ps_data {

@@ -182,8 +182,14 @@ static inline uint64_t to_ll(long long x) {
   return ret;
 }
 
+static inline uint32_t to_int(int x) {
+  int32_t s32 = x;
+  uint32_t ret = htonl(s32);
+  return ret;
+}
+
 static inline uint16_t to_short(int x) {
-  short s16 = x;
+  int16_t s16 = x;
   uint16_t ret = htons(s16);
   return ret;
 }
@@ -206,8 +212,13 @@ static inline long long from_ll(uint64_t y) {
   return (long long) u64;
 }
 
+static inline int from_int(uint32_t y) {
+  int32_t s32 = ntohl(y);
+  return (int) s32;
+}
+
 static inline int from_short(uint16_t y) {
-  short s16 = ntohs(y);
+  int16_t s16 = ntohs(y);
   return (int) s16;
 }
 
@@ -221,7 +232,6 @@ static inline int from_short(uint16_t y) {
 // Note: digest length for SHA512 is 64 bytes.
 //
 static void generate_pwd_hash(unsigned char *s, unsigned char *hash, const char *pwd) {
-  t_print("Start generating pwd hash\n");
   int pwdlen = strlen(pwd);
 
   if (pwdlen > SHA512_DIGEST_LENGTH) { pwdlen = SHA512_DIGEST_LENGTH; }
@@ -256,8 +266,6 @@ static void generate_pwd_hash(unsigned char *s, unsigned char *hash, const char 
     //
     SHA512(s, SHA512_DIGEST_LENGTH + pwdlen, hash);
   }
-
-  t_print("End generating pwd hash\n");
 }
 
 //
@@ -383,7 +391,7 @@ static int send_bytes(int s, char *buffer, int bytes) {
 
       if (!radio_is_remote) {
         //
-        // This is the server. Stop client.
+        // This is the server. Note client's death.
         //
         remoteclient.running = FALSE;
       }
@@ -483,19 +491,21 @@ void server_tx_audio(short sample) {
 void remote_rxaudio(const RECEIVER *rx, short left_sample, short right_sample) {
   int id = rx->id;
   int i = rxaudio_buffer_index[id] * 2;
+
+  if (!remoteclient.running) {
+    return;
+  }
+
   rxaudio_data[id].samples[i] = to_short(left_sample);
   rxaudio_data[id].samples[i + 1] = to_short(right_sample);
   rxaudio_buffer_index[id]++;
 
   if (rxaudio_buffer_index[id] >= AUDIO_DATA_SIZE) {
-    if (remoteclient.running) {
-      SYNC(rxaudio_data[id].header.sync);
-      rxaudio_data[id].header.data_type = to_short(INFO_RXAUDIO);
-      rxaudio_data[id].rx = id;
-      rxaudio_data[id].numsamples = from_short(rxaudio_buffer_index[id]);
-      send_bytes(remoteclient.socket, (char *)&rxaudio_data[id], sizeof(RXAUDIO_DATA));
-    }
-
+    SYNC(rxaudio_data[id].header.sync);
+    rxaudio_data[id].header.data_type = to_short(INFO_RXAUDIO);
+    rxaudio_data[id].rx = id;
+    rxaudio_data[id].numsamples = from_short(rxaudio_buffer_index[id]);
+    send_bytes(remoteclient.socket, (char *)&rxaudio_data[id], sizeof(RXAUDIO_DATA));
     rxaudio_buffer_index[id] = 0;
   }
 }
@@ -510,7 +520,7 @@ void remote_send_rxspectrum(int id) {
   SPECTRUM_DATA spectrum_data;
   int numsamples = 0;
 
-  if (!remoteclient.send_rx_spectrum[id] || id >= receivers) {
+  if (!remoteclient.send_rx_spectrum[id] || id >= receivers || !remoteclient.running) {
     return;
   }
 
@@ -566,7 +576,7 @@ void remote_send_txspectrum() {
   SPECTRUM_DATA spectrum_data;
   int numsamples = 0;
 
-  if (!remoteclient.send_tx_spectrum || !can_transmit) {
+  if (!remoteclient.send_tx_spectrum || !can_transmit || !remoteclient.running) {
     return;
   }
 
@@ -623,8 +633,12 @@ void remote_send_txspectrum() {
 
 static int send_periodic_data(gpointer arg) {
   //
-  // Use this periodic function to update PS info
+  // Use this periodic function to update PS and display info
   //
+  if (!remoteclient.running) {
+    return TRUE;
+  }
+
   if (can_transmit) {
     if (transmitter->puresignal) {
       PS_DATA ps_data;
@@ -661,12 +675,21 @@ static int send_periodic_data(gpointer arg) {
   disp_data.tx_fifo_underrun = tx_fifo_underrun;
   disp_data.TxInhibit = TxInhibit;
   disp_data.txzero = can_transmit ? (transmitter->drive < 0.5) : 0;
+  disp_data.capture_state = capture_state;
   disp_data.exciter_power = to_short(exciter_power);
   disp_data.ADC0 = to_short(ADC0);
   disp_data.ADC1 = to_short(ADC1);
   disp_data.sequence_errors = to_short(sequence_errors);
+  disp_data.capture_record_pointer = to_int(capture_record_pointer);
+  disp_data.capture_replay_pointer = to_int(capture_replay_pointer);
   send_bytes(remoteclient.socket, (char *)&disp_data, sizeof(DISPLAY_DATA));
-  return remoteclient.running;
+
+  //
+  // if sending the data failed due to an interrupted connection,
+  // server_loop() will terminate and this source ID be removed
+  // elsewhere.
+  //
+  return TRUE;
 }
 
 static void send_start_radio(int sock) {
@@ -1124,7 +1147,7 @@ void send_vfo_data(int sock, int v) {
 //
 static void server_loop() {
   HEADER header;
-  t_print("Client connected on port %d\n", remoteclient.address.sin_port);
+  t_print("%s: Client connected on port %d\n", __FUNCTION__, remoteclient.address.sin_port);
   //
   // Allocate ring buffer for TX mic data
   //
@@ -1212,7 +1235,7 @@ static void server_loop() {
   //
   while (remoteclient.running) {
     //
-    // Getting out-of-sync data is a very rare  event with TCP
+    // Getting out-of-sync data is a very rare event with TCP
     // (I am not sure whether this can happen unless there is a program error)
     // so try first to read a complete header in one shot, and if this files,
     // do a re-sync
@@ -1226,7 +1249,8 @@ static void server_loop() {
     }
 
     if (memcmp(header.sync, syncbytes, sizeof(syncbytes))  != 0) {
-      t_print("header.sync mismatch: %02x %02x %02x %02x\n",
+      t_print("%s: header.sync mismatch: %02x %02x %02x %02x\n",
+              __FUNCTION__,
               header.sync[0],
               header.sync[1],
               header.sync[2],
@@ -1255,9 +1279,9 @@ static void server_loop() {
       }
 
       if (remoteclient.running) {
-        t_print("Re-SYNC was successful!\n");
+        t_print("%s: Re-SYNC was successful!\n", __FUNCTION__);
       } else {
-        t_print("Re-SYNC failed.\n");
+        t_print("%s: Re-SYNC failed.\n", __FUNCTION__);
       }
     }
 
@@ -1589,7 +1613,7 @@ static void server_loop() {
     }
   }
 
-  t_print("Server Loop Terminating\n");
+  t_print("%s: Terminating\n", __FUNCTION__);
 }
 
 void send_startstop_rxspectrum(int s, int id, int state) {
@@ -1778,7 +1802,6 @@ void send_agc_gain(int s, const RECEIVER *rx) {
 
 void send_rfgain(int s, int id, double gain) {
   DOUBLE_COMMAND command;
-  t_print("send_rfgain rx=%d gain=%f\n", id, gain);
   SYNC(command.header.sync);
   command.header.data_type = to_short(CMD_RFGAIN);
   command.header.b1 = id;
@@ -2476,7 +2499,6 @@ void send_anan10E(int s, int new) {
 
 void send_region(int s, int region) {
   HEADER header;
-  t_print("send_region region=%d\n", region);
   //
   // prepeare for bandstack reorganisation
   //
@@ -2500,7 +2522,7 @@ static void *listen_thread(void *arg) {
   struct sockaddr_in address;
   struct timeval timeout;
   int on = 1;
-  t_print("hpsdr_server: listening on port %d\n", listen_port);
+  t_print("%s: listening on port %d\n", __FUNCTION__, listen_port);
 
   while (server_running) {
     if (listen_socket >= 0) { close(listen_socket); }
@@ -2509,7 +2531,7 @@ static void *listen_thread(void *arg) {
     listen_socket = socket(AF_INET, SOCK_STREAM, 0);
 
     if (listen_socket < 0) {
-      t_print("listen_thread: socket failed\n");
+      t_print("%s: socket() failed\n", __FUNCTION__);
       return NULL;
     }
 
@@ -2522,24 +2544,25 @@ static void *listen_thread(void *arg) {
     address.sin_port = to_short(listen_port);
 
     if (bind(listen_socket, (struct sockaddr * )&address, sizeof(address)) < 0) {
-      t_print("listen_thread: bind failed\n");
+      t_print("%s: bind() failed\n", __FUNCTION__);
       return NULL;
     }
 
     // listen for connections
     if (listen(listen_socket, 5) < 0) {
-      t_print("listen_thread: listen failed\n");
+      t_print("%s: listen() failed\n", __FUNCTION__);
       break;
     }
 
     remoteclient.address_length = sizeof(remoteclient.address);
-    t_print("hpsdr_server: accept\n");
+    t_print("%s: accepting connections...\n", __FUNCTION__);
 
     if ((remoteclient.socket = accept(listen_socket, (struct sockaddr * )&remoteclient.address,
                                       &remoteclient.address_length)) < 0) {
-      t_print("listen_thread: accept failed\n");
+      t_print("%s: accept() failed\n");
       break;
     }
+
 
     //
     // Set a time-out of 30 seconds. The client is supposed to send a heart-beat packet at least
@@ -2548,10 +2571,12 @@ static void *listen_thread(void *arg) {
     timeout.tv_sec = 30;
     timeout.tv_usec = 0;
     setsockopt(remoteclient.socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    timeout.tv_sec =  1;
+    setsockopt(remoteclient.socket, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
     unsigned char s[2 * SHA512_DIGEST_LENGTH];
     unsigned char sha[SHA512_DIGEST_LENGTH];
     inet_ntop(AF_INET, &(((struct sockaddr_in *)&remoteclient.address)->sin_addr), (char *)s, 2 * SHA512_DIGEST_LENGTH);
-    t_print("Client_connected from %s\n", s);
+    t_print("%s: client_connected from %s\n", __FUNCTION__, s);
     //
     // send version number to the client
     //
@@ -2569,7 +2594,7 @@ static void *listen_thread(void *arg) {
     generate_pwd_hash(s, sha, hpsdr_pwd);
 
     if (recv_bytes(remoteclient.socket, (char *)s, SHA512_DIGEST_LENGTH) < 0) {
-      t_print("Could not receive Passwd Response/n");
+      t_print("%s: could not receive Passwd Response\n", __FUNCTION__);
       remoteclient.running = FALSE;
     }
 
@@ -2577,7 +2602,7 @@ static void *listen_thread(void *arg) {
     // Handle too-short server passwords as if the passwords did not match
     //
     if (memcmp(sha, s, SHA512_DIGEST_LENGTH)  != 0 || strlen(hpsdr_pwd) < 5) {
-      t_print("ATTENTION: Wrong Password from Client.\n");
+      t_print("%s: ATTENTION: Wrong Password from Client.\n", __FUNCTION__);
       sleep(1);
       *s = 0xF7;
     } else {
@@ -2617,19 +2642,18 @@ static void *listen_thread(void *arg) {
       cw_keyer_internal = old_cwi;
       keyer_update();  // possibly restart iambic keyer
       schedule_transmit_specific();
-    }
+      //
+      // If the connection breaks while transmitting, go RX
+      //
+      g_idle_add(ext_set_mox, GINT_TO_POINTER(0));
 
-    //
-    // If the connection breaks while transmitting, go RX
-    //
-    g_idle_add(ext_set_mox, GINT_TO_POINTER(0));
-
-    //
-    // Stop sending periodic data
-    //
-    if (remoteclient.timer_id != 0) {
-      g_source_remove(remoteclient.timer_id);
-      remoteclient.timer_id = 0;
+      //
+      // Stop sending periodic data
+      //
+      if (remoteclient.timer_id != 0) {
+        g_source_remove(remoteclient.timer_id);
+        remoteclient.timer_id = 0;
+      }
     }
 
     if (remoteclient.socket != -1) {
@@ -2845,10 +2869,13 @@ static void *client_thread(void* arg) {
       tx_fifo_overrun = data.tx_fifo_overrun;
       tx_fifo_underrun = data.tx_fifo_underrun;
       TxInhibit = data.TxInhibit;
+      capture_state = data.capture_state;
       exciter_power = from_short(data.exciter_power);
       ADC0 = from_short(data.ADC0);
       ADC1 = from_short(data.ADC1);
       sequence_errors = from_short(data.sequence_errors);
+      capture_record_pointer = from_int(data.capture_record_pointer);
+      capture_replay_pointer = from_int(data.capture_replay_pointer);
 
       //
       // This will only happen after a "SWR protection event" on
@@ -3472,11 +3499,6 @@ static void *client_thread(void* arg) {
     }
     break;
 
-    case CMD_CAPTURE: {
-      schedule_action(CAPTURE, PRESSED, 0);
-    }
-    break;
-
     case CMD_DUP: {
       duplex = header.b1;
       g_idle_add(ext_vfo_update, NULL);
@@ -3618,7 +3640,6 @@ static void *client_thread(void* arg) {
     break;
 
     case CMD_MOX: {
-      t_print("RCVD MOX=%d\n", header.b1);
       g_idle_add(ext_radio_remote_set_mox, GINT_TO_POINTER(header.b1));
     }
     break;
@@ -4744,6 +4765,11 @@ static int remote_command(void *data) {
       tx_set_dexp(transmitter);
       g_idle_add(ext_vfo_update, NULL);
     }
+  }
+  break;
+
+  case CMD_CAPTURE: {
+    schedule_action(CAPTURE, PRESSED, 0);
   }
   break;
 
