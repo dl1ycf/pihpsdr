@@ -901,8 +901,6 @@ void send_radio_data(int sock) {
   data.cw_keyer_sidetone_frequency = to_short(cw_keyer_sidetone_frequency);
   data.rx_gain_calibration = to_short(rx_gain_calibration);
   data.device = to_short(device);
-  data.tx_filter_low = to_short(tx_filter_low);
-  data.tx_filter_high = to_short(tx_filter_high);
   data.display_width = to_short(display_width);
   //
   data.drive_min = to_double(drive_min);
@@ -1007,6 +1005,8 @@ static void send_tx_data(int sock) {
     data.width = to_short(tx->width);
     data.height = to_short(tx->height);
     data.attenuation = to_short(tx->attenuation);
+    data.tx_default_filter_low = to_short(tx->default_filter_low);
+    data.tx_default_filter_high = to_short(tx->default_filter_high);
     data.fft_size = to_ll(tx->fft_size);
 
     //
@@ -2159,8 +2159,8 @@ void send_txfilter(int s) {
     SYNC(header.sync);
     header.data_type = to_short(CMD_TXFILTER);
     header.b1 = transmitter->use_rx_filter;
-    header.s1 = to_short(tx_filter_low);
-    header.s2 = to_short(tx_filter_high);
+    header.s1 = to_short(transmitter->default_filter_low);
+    header.s2 = to_short(transmitter->default_filter_high);
     send_bytes(s, (char *)&header, sizeof(HEADER));
   }
 }
@@ -3082,8 +3082,6 @@ static void *client_thread(void* arg) {
       cw_keyer_sidetone_frequency = from_short(data.cw_keyer_sidetone_frequency);
       rx_gain_calibration = from_short(data.rx_gain_calibration);
       device = radio->device = from_short(data.device);
-      tx_filter_low = from_short(data.tx_filter_low);
-      tx_filter_high = from_short(data.tx_filter_high);
       display_width = from_short(data.display_width);
       //
       drive_min = from_double(data.drive_min);
@@ -3275,6 +3273,8 @@ static void *client_thread(void* arg) {
       transmitter->width                     = from_short(data.width);
       transmitter->height                    = from_short(data.height);
       transmitter->attenuation               = from_short(data.attenuation);
+      transmitter->default_filter_low        = from_short(data.tx_default_filter_low);
+      transmitter->default_filter_high       = from_short(data.tx_default_filter_high);
       //
       transmitter->fft_size                  = from_ll(data.fft_size);
       //
@@ -4665,8 +4665,8 @@ static int remote_command(void *data) {
   case CMD_TXFILTER: {
     if (can_transmit) {
       transmitter->use_rx_filter = header->b1;
-      tx_filter_low = from_short(header->s1);
-      tx_filter_high = from_short(header->s2);
+      transmitter->default_filter_low = from_short(header->s1);
+      transmitter->default_filter_high = from_short(header->s2);
       tx_set_filter(transmitter);
     }
   }

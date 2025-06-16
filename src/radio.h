@@ -82,8 +82,7 @@ enum _capture_state {
 
 //
 // WDSP-independent constants used for display, detector and alc modes
-// We start at 100 so we can apply defaults is values are read from
-// "old" props files.
+// We start at 100 so no confusion with values from "old" props files
 //
 enum _display_enum {
   SMETER_PEAK     = 100,
@@ -228,11 +227,6 @@ extern int OCmemory_tune_time;
 extern long long tune_timeout;
 
 extern int analog_meter;
-
-extern int tx_filter_low;
-extern int tx_filter_high;
-
-extern int ctun;
 
 extern int vox_enabled;
 extern double vox_threshold;

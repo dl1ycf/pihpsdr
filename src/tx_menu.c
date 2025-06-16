@@ -225,12 +225,12 @@ static void spinbtn_cb(GtkWidget *widget, gpointer data) {
       break;
 
     case TX_FILTER_LOW:
-      tx_filter_low = vi;
+      transmitter->default_filter_low = vi;
       tx_set_filter(transmitter);
       break;
 
     case TX_FILTER_HIGH:
-      tx_filter_high = vi;
+      transmitter->default_filter_high = vi;
       tx_set_filter(transmitter);
       break;
 
@@ -675,7 +675,7 @@ void tx_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(tx_grid), label, col, row, 1, 1);
   col++;
   tx_spin_low = gtk_spin_button_new_with_range(0.0, 8000.0, 1.0);
-  gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_spin_low), (double)tx_filter_low);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_spin_low), (double)transmitter->default_filter_low);
   gtk_grid_attach(GTK_GRID(tx_grid), tx_spin_low, col, row, 1, 1);
   g_signal_connect(tx_spin_low, "value-changed", G_CALLBACK(spinbtn_cb), GINT_TO_POINTER(TX_FILTER_LOW));
   col++;
@@ -704,7 +704,7 @@ void tx_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(tx_grid), label, col, row, 1, 1);
   col++;
   tx_spin_high = gtk_spin_button_new_with_range(0.0, 8000.0, 1.0);
-  gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_spin_high), (double)tx_filter_high);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_spin_high), (double)transmitter->default_filter_high);
   gtk_grid_attach(GTK_GRID(tx_grid), tx_spin_high, col, row, 1, 1);
   g_signal_connect(tx_spin_high, "value-changed", G_CALLBACK(spinbtn_cb), GINT_TO_POINTER(TX_FILTER_HIGH));
   col++;

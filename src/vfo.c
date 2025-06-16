@@ -151,8 +151,8 @@ static void modesettingsSaveState() {
     SetPropI1("modeset.%d.dexp_filter_high", i,      mode_settings[i].dexp_filter_high);
     SetPropI1("modeset.%d.cfc", i,                   mode_settings[i].cfc);
     SetPropI1("modeset.%d.cfc_eq", i,                mode_settings[i].cfc_eq);
-    SetPropI1("modeset.%d.tx_filter_low", i,         mode_settings[i].tx_filter_low);
-    SetPropI1("modeset.%d.tx_filter_high", i,        mode_settings[i].tx_filter_high);
+    SetPropI1("modeset.%d.tx_default_filter_low", i, mode_settings[i].tx_default_filter_low);
+    SetPropI1("modeset.%d.tx_default_filter_high", i,mode_settings[i].tx_default_filter_high);
     SetPropI1("modeset.%d.use_rx_filter", i,         mode_settings[i].use_rx_filter);
 
     for (int j = 0; j < 11; j++) {
@@ -256,8 +256,8 @@ static void modesettingsRestoreState() {
     mode_settings[i].dexp_filter_high = 2000;
     mode_settings[i].cfc = 0;
     mode_settings[i].cfc_eq = 0;
-    mode_settings[i].tx_filter_low = 150;
-    mode_settings[i].tx_filter_high = 2850;
+    mode_settings[i].tx_default_filter_low = 150;
+    mode_settings[i].tx_default_filter_high = 2850;
     mode_settings[i].use_rx_filter  = 0;
 
     for (int j = 0; j < 11; j++) {
@@ -300,63 +300,68 @@ static void modesettingsRestoreState() {
     mode_settings[i].tx_eq_freq[10] =  5000.0;
     mode_settings[i].rx_eq_freq[10] =  5000.0;
     mode_settings[i].cfc_freq  [10] =  5000.0;
-    GetPropI1("modeset.%d.filter", i,                mode_settings[i].filter);
-    GetPropI1("modeset.%d.cwPeak", i,                mode_settings[i].cwPeak);
-    GetPropI1("modeset.%d.step", i,                  mode_settings[i].step);
-    GetPropI1("modeset.%d.rit_step", i,              mode_settings[i].rit_step);
-    GetPropI1("modeset.%d.nb", i,                    mode_settings[i].nb);
-    GetPropF1("modeset.%d.nb_tau", i,                mode_settings[i].nb_tau);
-    GetPropF1("modeset.%d.nb_hang", i,               mode_settings[i].nb_hang);
-    GetPropF1("modeset.%d.nb_advtime", i,            mode_settings[i].nb_advtime);
-    GetPropF1("modeset.%d.nb_thresh", i,             mode_settings[i].nb_thresh);
-    GetPropI1("modeset.%d.nb2_mode", i,              mode_settings[i].nb2_mode);
-    GetPropI1("modeset.%d.nr", i,                    mode_settings[i].nr);
-    GetPropI1("modeset.%d.nr_agc", i,                mode_settings[i].nr_agc);
-    GetPropI1("modeset.%d.nr2_gain_method", i,       mode_settings[i].nr2_gain_method);
-    GetPropI1("modeset.%d.nr2_npe_method", i,        mode_settings[i].nr2_npe_method);
-    GetPropI1("modeset.%d.nr2_ae", i,                mode_settings[i].nr2_ae);
-    GetPropF1("modeset.%d.nr2_trained_threshold", i, mode_settings[i].nr2_trained_threshold);
-    GetPropF1("modeset.%d.nr2_trained_t2", i,        mode_settings[i].nr2_trained_t2);
+    GetPropI1("modeset.%d.filter", i,                 mode_settings[i].filter);
+    GetPropI1("modeset.%d.cwPeak", i,                 mode_settings[i].cwPeak);
+    GetPropI1("modeset.%d.step", i,                   mode_settings[i].step);
+    GetPropI1("modeset.%d.rit_step", i,               mode_settings[i].rit_step);
+    GetPropI1("modeset.%d.nb", i,                     mode_settings[i].nb);
+    GetPropF1("modeset.%d.nb_tau", i,                 mode_settings[i].nb_tau);
+    GetPropF1("modeset.%d.nb_hang", i,                mode_settings[i].nb_hang);
+    GetPropF1("modeset.%d.nb_advtime", i,             mode_settings[i].nb_advtime);
+    GetPropF1("modeset.%d.nb_thresh", i,              mode_settings[i].nb_thresh);
+    GetPropI1("modeset.%d.nb2_mode", i,               mode_settings[i].nb2_mode);
+    GetPropI1("modeset.%d.nr", i,                     mode_settings[i].nr);
+    GetPropI1("modeset.%d.nr_agc", i,                 mode_settings[i].nr_agc);
+    GetPropI1("modeset.%d.nr2_gain_method", i,        mode_settings[i].nr2_gain_method);
+    GetPropI1("modeset.%d.nr2_npe_method", i,         mode_settings[i].nr2_npe_method);
+    GetPropI1("modeset.%d.nr2_ae", i,                 mode_settings[i].nr2_ae);
+    GetPropF1("modeset.%d.nr2_trained_threshold", i,  mode_settings[i].nr2_trained_threshold);
+    GetPropF1("modeset.%d.nr2_trained_t2", i,         mode_settings[i].nr2_trained_t2);
 #ifdef EXTNR
-    GetPropF1("modeset.%d.nr4_reduction_amount", i,  mode_settings[i].nr4_reduction_amount);
-    GetPropF1("modeset.%d.nr4_smoothing_factor", i,  mode_settings[i].nr4_smoothing_factor);
-    GetPropF1("modeset.%d.nr4_whitening_factor", i,  mode_settings[i].nr4_whitening_factor);
-    GetPropF1("modeset.%d.nr4_noise_rescale", i,     mode_settings[i].nr4_noise_rescale);
-    GetPropF1("modeset.%d.nr4_post_threshold", i,    mode_settings[i].nr4_post_threshold);
+    GetPropF1("modeset.%d.nr4_reduction_amount", i,   mode_settings[i].nr4_reduction_amount);
+    GetPropF1("modeset.%d.nr4_smoothing_factor", i,   mode_settings[i].nr4_smoothing_factor);
+    GetPropF1("modeset.%d.nr4_whitening_factor", i,   mode_settings[i].nr4_whitening_factor);
+    GetPropF1("modeset.%d.nr4_noise_rescale", i,      mode_settings[i].nr4_noise_rescale);
+    GetPropF1("modeset.%d.nr4_post_threshold", i,     mode_settings[i].nr4_post_threshold);
 #endif
-    GetPropI1("modeset.%d.anf", i,                   mode_settings[i].anf);
-    GetPropI1("modeset.%d.snb", i,                   mode_settings[i].snb);
-    GetPropI1("modeset.%d.agc", i,                   mode_settings[i].agc);
-    GetPropI1("modeset.%d.en_rxeq", i,               mode_settings[i].en_rxeq);
-    GetPropI1("modeset.%d.en_txeq", i,               mode_settings[i].en_txeq);
-    GetPropI1("modeset.%d.compressor", i,            mode_settings[i].compressor);
-    GetPropF1("modeset.%d.compressor_level", i,      mode_settings[i].compressor_level);
-    GetPropF1("modeset.%d.mic_gain", i,              mode_settings[i].mic_gain);
-    GetPropI1("modeset.%d.dexp", i,                  mode_settings[i].dexp);
-    GetPropI1("modeset.%d.dexp_trigger", i,          mode_settings[i].dexp_trigger);
-    GetPropF1("modeset.%d.dexp_tau", i,              mode_settings[i].dexp_tau);
-    GetPropF1("modeset.%d.dexp_attack", i,           mode_settings[i].dexp_attack);
-    GetPropF1("modeset.%d.dexp_release", i,          mode_settings[i].dexp_release);
-    GetPropF1("modeset.%d.dexp_hold", i,             mode_settings[i].dexp_hold);
-    GetPropI1("modeset.%d.dexp_exp", i,              mode_settings[i].dexp_exp);
-    GetPropF1("modeset.%d.dexp_hyst", i,             mode_settings[i].dexp_hyst);
-    GetPropI1("modeset.%d.dexp_filter", i,           mode_settings[i].dexp_filter);
-    GetPropI1("modeset.%d.dexp_filter_low", i,       mode_settings[i].dexp_filter_low);
-    GetPropI1("modeset.%d.dexp_filter_high", i,      mode_settings[i].dexp_filter_high);
-    GetPropI1("modeset.%d.cfc", i,                   mode_settings[i].cfc);
-    GetPropI1("modeset.%d.cfc_eq", i,                mode_settings[i].cfc_eq);
-    GetPropI1("modeset.%d.tx_filter_low", i,         mode_settings[i].tx_filter_low);
-    GetPropI1("modeset.%d.tx_filter_high", i,        mode_settings[i].tx_filter_high);
-    GetPropI1("modeset.%d.use_rx_filter", i,         mode_settings[i].use_rx_filter);
+    GetPropI1("modeset.%d.anf", i,                    mode_settings[i].anf);
+    GetPropI1("modeset.%d.snb", i,                    mode_settings[i].snb);
+    GetPropI1("modeset.%d.agc", i,                    mode_settings[i].agc);
+    GetPropI1("modeset.%d.en_rxeq", i,                mode_settings[i].en_rxeq);
+    GetPropI1("modeset.%d.en_txeq", i,                mode_settings[i].en_txeq);
+    GetPropI1("modeset.%d.compressor", i,             mode_settings[i].compressor);
+    GetPropF1("modeset.%d.compressor_level", i,       mode_settings[i].compressor_level);
+    GetPropF1("modeset.%d.mic_gain", i,               mode_settings[i].mic_gain);
+    GetPropI1("modeset.%d.dexp", i,                   mode_settings[i].dexp);
+    GetPropI1("modeset.%d.dexp_trigger", i,           mode_settings[i].dexp_trigger);
+    GetPropF1("modeset.%d.dexp_tau", i,               mode_settings[i].dexp_tau);
+    GetPropF1("modeset.%d.dexp_attack", i,            mode_settings[i].dexp_attack);
+    GetPropF1("modeset.%d.dexp_release", i,           mode_settings[i].dexp_release);
+    GetPropF1("modeset.%d.dexp_hold", i,              mode_settings[i].dexp_hold);
+    GetPropI1("modeset.%d.dexp_exp", i,               mode_settings[i].dexp_exp);
+    GetPropF1("modeset.%d.dexp_hyst", i,              mode_settings[i].dexp_hyst);
+    GetPropI1("modeset.%d.dexp_filter", i,            mode_settings[i].dexp_filter);
+    GetPropI1("modeset.%d.dexp_filter_low", i,        mode_settings[i].dexp_filter_low);
+    GetPropI1("modeset.%d.dexp_filter_high", i,       mode_settings[i].dexp_filter_high);
+    GetPropI1("modeset.%d.cfc", i,                    mode_settings[i].cfc);
+    GetPropI1("modeset.%d.cfc_eq", i,                 mode_settings[i].cfc_eq);
+    //
+    // The next two lines will soon be removed (backwards compatibility)
+    //
+    GetPropI1("modeset.%d.tx_filter_low", i,          mode_settings[i].tx_default_filter_low);
+    GetPropI1("modeset.%d.tx_filter_high", i,         mode_settings[i].tx_default_filter_high);
+    GetPropI1("modeset.%d.tx_default_filter_low", i,  mode_settings[i].tx_default_filter_low);
+    GetPropI1("modeset.%d.tx_default_filter_high", i, mode_settings[i].tx_default_filter_low);
+    GetPropI1("modeset.%d.use_rx_filter", i,          mode_settings[i].use_rx_filter);
 
     for (int j = 0; j < 11; j++) {
-      GetPropF2("modeset.%d.txeq.%d", i, j,          mode_settings[i].tx_eq_gain[j]);
-      GetPropF2("modeset.%d.txeqfrq.%d", i, j,       mode_settings[i].tx_eq_freq[j]);
-      GetPropF2("modeset.%d.rxeq.%d", i, j,          mode_settings[i].rx_eq_gain[j]);
-      GetPropF2("modeset.%d.rxeqfrq.%d", i, j,       mode_settings[i].rx_eq_freq[j]);
-      GetPropF2("modeset.%d.cfc_frq.%d", i, j,       mode_settings[i].cfc_freq[j]);
-      GetPropF2("modeset.%d.cfc_lvl.%d", i, j,       mode_settings[i].cfc_lvl[j]);
-      GetPropF2("modeset.%d.cfc_post.%d", i, j,      mode_settings[i].cfc_post[j]);
+      GetPropF2("modeset.%d.txeq.%d", i, j,           mode_settings[i].tx_eq_gain[j]);
+      GetPropF2("modeset.%d.txeqfrq.%d", i, j,        mode_settings[i].tx_eq_freq[j]);
+      GetPropF2("modeset.%d.rxeq.%d", i, j,           mode_settings[i].rx_eq_gain[j]);
+      GetPropF2("modeset.%d.rxeqfrq.%d", i, j,        mode_settings[i].rx_eq_freq[j]);
+      GetPropF2("modeset.%d.cfc_frq.%d", i, j,        mode_settings[i].cfc_freq[j]);
+      GetPropF2("modeset.%d.cfc_lvl.%d", i, j,        mode_settings[i].cfc_lvl[j]);
+      GetPropF2("modeset.%d.cfc_post.%d", i, j,       mode_settings[i].cfc_post[j]);
     }
   }
 }
@@ -655,8 +660,8 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
     }
 
     transmitter->use_rx_filter = mode_settings[m].use_rx_filter;
-    tx_filter_low = mode_settings[m].tx_filter_low;
-    tx_filter_high = mode_settings[m].tx_filter_high;
+    transmitter->default_filter_low = mode_settings[m].tx_default_filter_low;
+    transmitter->default_filter_high = mode_settings[m].tx_default_filter_high;
     tx_set_filter(transmitter);
     tx_set_compressor(transmitter);
     tx_set_dexp(transmitter);

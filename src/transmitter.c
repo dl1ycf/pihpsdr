@@ -339,6 +339,8 @@ void tx_save_state(const TRANSMITTER *tx) {
     SetPropI1("transmitter.%d.alcmode",                             tx->id,    tx->alcmode);
     SetPropI1("transmitter.%d.fft_size",                            tx->id,    tx->fft_size);
     SetPropI1("transmitter.%d.fps",                                 tx->id,    tx->fps);
+    SetPropI1("transmitter.%d.default_filter_low",                  tx->id,    tx->default_filter_low);
+    SetPropI1("transmitter.%d.default_filter_high",                 tx->id,    tx->default_filter_high);
     SetPropI1("transmitter.%d.filter_low",                          tx->id,    tx->filter_low);
     SetPropI1("transmitter.%d.filter_high",                         tx->id,    tx->filter_high);
     SetPropI1("transmitter.%d.use_rx_filter",                       tx->id,    tx->use_rx_filter);
@@ -422,6 +424,11 @@ void tx_restore_state(TRANSMITTER *tx) {
     GetPropI1("transmitter.%d.alcmode",                             tx->id,    tx->alcmode);
     GetPropI1("transmitter.%d.fft_size",                            tx->id,    tx->fft_size);
     GetPropI1("transmitter.%d.fps",                                 tx->id,    tx->fps);
+    // The next two  lines will soon be removed (backwards compatibility)
+    GetPropI0("tx_filter_low",                                                 tx->default_filter_low);
+    GetPropI0("tx_filter_high",                                                tx->default_filter_low);
+    GetPropI1("transmitter.%d.default_filter_low",                  tx->id,    tx->default_filter_low);
+    GetPropI1("transmitter.%d.default_filter_high",                 tx->id,    tx->default_filter_high);
     GetPropI1("transmitter.%d.filter_low",                          tx->id,    tx->filter_low);
     GetPropI1("transmitter.%d.filter_high",                         tx->id,    tx->filter_high);
     GetPropI1("transmitter.%d.use_rx_filter",                       tx->id,    tx->use_rx_filter);
@@ -959,8 +966,10 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
           __FUNCTION__,
           tx->id, tx->buffer_size, tx->dsp_rate, tx->iq_output_rate, tx->output_samples,
           tx->width, tx->height);
-  tx->filter_low = tx_filter_low;
-  tx->filter_high = tx_filter_high;
+  tx->default_filter_low = 150;
+  tx->default_filter_high = 2850;
+  tx->filter_low = 150;
+  tx->filter_high = 2850;
   tx->use_rx_filter = FALSE;
   tx->out_of_band = 0;
   tx->twotone = 0;
@@ -1912,12 +1921,12 @@ void tx_set_filter(TRANSMITTER *tx) {
 
   int txmode = vfo_get_tx_mode();
   mode_settings[txmode].use_rx_filter  = tx->use_rx_filter;
-  mode_settings[txmode].tx_filter_low  = tx_filter_low;
-  mode_settings[txmode].tx_filter_high = tx_filter_high;
+  mode_settings[txmode].tx_default_filter_low  = tx->default_filter_low;
+  mode_settings[txmode].tx_default_filter_high = tx->default_filter_high;
   copy_mode_settings(txmode);
   // load default values (0 < low < high), defaults: low=150, high=2850
-  int low  = tx_filter_low;
-  int high = tx_filter_high;
+  int low  = tx->default_filter_low;
+  int high = tx->default_filter_high;
   int txvfo = vfo_get_tx_vfo();
   int rxvfo = active_receiver->id;
   tx->deviation = vfo[txvfo].deviation;

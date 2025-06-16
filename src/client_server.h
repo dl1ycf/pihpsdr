@@ -140,7 +140,7 @@ enum _header_type_enum {
   CLIENT_SERVER_COMMANDS,
 };
 
-#define CLIENT_SERVER_VERSION 0x01000009 // 32-bit version number
+#define CLIENT_SERVER_VERSION 0x01000011 // 32-bit version number
 #define SPECTRUM_DATA_SIZE 4096          // Maximum width of a panadapter
 #define AUDIO_DATA_SIZE 1024             // 1024 stereo samples
 
@@ -378,8 +378,6 @@ typedef struct __attribute__((__packed__)) _radio_data {
   uint16_t cw_keyer_sidetone_frequency;
   uint16_t rx_gain_calibration;
   uint16_t device;
-  uint16_t tx_filter_low;
-  uint16_t tx_filter_high;
   uint16_t display_width;
   //
   mydouble drive_min;
@@ -490,6 +488,7 @@ typedef struct __attribute__((__packed__)) _transmitter_data {
   uint8_t  eq_enable;
   uint8_t  alcmode;
   uint8_t  swr_protection;
+  uint8_t  usr_rx_filter;
   //
   uint16_t fps;
   uint16_t dexp_filter_low;
@@ -502,6 +501,8 @@ typedef struct __attribute__((__packed__)) _transmitter_data {
   uint16_t width;
   uint16_t height;
   uint16_t attenuation;
+  uint16_t tx_default_filter_low;
+  uint16_t tx_default_filter_high;
   //
   uint64_t fft_size;
   //

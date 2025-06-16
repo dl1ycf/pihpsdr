@@ -51,6 +51,8 @@ typedef struct _transmitter {
   int display_average_mode;
   double display_average_time;
 
+  int default_filter_low;
+  int default_filter_high;
   int filter_low;
   int filter_high;
   int use_rx_filter;

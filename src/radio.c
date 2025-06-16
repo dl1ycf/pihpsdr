@@ -278,9 +278,6 @@ long long tune_timeout;
 
 int analog_meter = 0;
 
-int tx_filter_low = 150;
-int tx_filter_high = 2850;
-
 static int pre_tune_mode;
 static int pre_tune_cw_internal;
 
@@ -2631,8 +2628,6 @@ static void radio_restore_state() {
     GetPropI0("mic_bias_enabled",                            mic_bias_enabled);
     GetPropI0("mic_ptt_tip_bias_ring",                       mic_ptt_tip_bias_ring);
     GetPropI0("mic_input_xlr",                               mic_input_xlr);
-    GetPropI0("tx_filter_low",                               tx_filter_low);
-    GetPropI0("tx_filter_high",                              tx_filter_high);
     GetPropI0("cw_keys_reversed",                            cw_keys_reversed);
     GetPropI0("cw_keyer_speed",                              cw_keyer_speed);
     GetPropI0("cw_keyer_mode",                               cw_keyer_mode);
@@ -2832,8 +2827,6 @@ void radio_save_state() {
     SetPropI0("mic_bias_enabled",                            mic_bias_enabled);
     SetPropI0("mic_ptt_tip_bias_ring",                       mic_ptt_tip_bias_ring);
     SetPropI0("mic_input_xlr",                               mic_input_xlr);
-    SetPropI0("tx_filter_low",                               tx_filter_low);
-    SetPropI0("tx_filter_high",                              tx_filter_high);
     SetPropI0("cw_keys_reversed",                            cw_keys_reversed);
     SetPropI0("cw_keyer_speed",                              cw_keyer_speed);
     SetPropI0("cw_keyer_mode",                               cw_keyer_mode);

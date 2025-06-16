@@ -148,8 +148,8 @@ struct _mode_settings {
   //
   // TX filter settings
   //
-  int tx_filter_low;
-  int tx_filter_high;
+  int tx_default_filter_low;
+  int tx_default_filter_high;
   int use_rx_filter;
 };
 
