@@ -59,7 +59,9 @@
 #endif
 #include "startup.h"
 #include "test_menu.h"
+#ifdef TTS
 #include "tts.h"
+#endif
 #include "version.h"
 #include "vfo.h"
 
@@ -132,6 +134,7 @@ gboolean keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data) {
   // F6                ==>  Attenuation/Preamp
   //
   switch (event->keyval) {
+#ifdef TTS
   case GDK_KEY_F1:
     tts_freq();
     break;
@@ -155,6 +158,7 @@ gboolean keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data) {
   case GDK_KEY_F6:
     tts_atten();
     break;
+#endif
 
   case GDK_KEY_space:
     radio_toggle_mox();

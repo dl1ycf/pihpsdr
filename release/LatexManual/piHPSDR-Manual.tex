@@ -241,6 +241,9 @@ the fastest way to perform FFTs (\textit{fast Fourier transformations}) on the g
 When this ,,wisdom'' is secured, \pH tries to detect a radio on the network. If everything went well with
 the network connection, you then see a screen with a discovery menu (Fig. \ref{fig:Start}).
 
+\clearpage
+\textbf{The Start button}
+
 \begin{figure}
 \center
 \includegraphics[scale=0.45]{Start.png}
@@ -260,6 +263,14 @@ radio is outside the range of the network adapter which received the discovery p
 In most cases when you see this, it results from a radio being caught in the act of initialising
 itself, and pressing the \rett{Discover} button again to re-start the discovery process then
 usually lets the problem vanish.
+
+{\color{red} Note when using a VPN tunnel:} I have heard of cases where VPN is used to attach
+a remote subnet as if it were a local one, and where the virtual  ,,ethernet adapter''
+that realises the VPN tunnel is assigned a netmask that is too narrow such that the start
+button is deactivated and shows the text \rett{Subnet!} although a connection is indeed possible.
+In such cases, the easiest remedy is to manually type in the IP address of the radio (which is
+shown in the line containing the deactivated button) in the \rett{Radio  IP Addr} text field
+(see below) and then click the \rett{Discover} button.
 
 If more than one radio is available, or a radio can be connected via more than one network interface,
 you will see several \rett{Start} buttons.
@@ -309,38 +320,44 @@ stores its settings. On a G2, this is usually \texttt{\$HOME/github/pihpsdr}.
 }
 \end{itemize}
 
+\textbf{Connection to a radio with known IP address}
 
-Sometimes \pH needs to know the IP address of the radio. This is, for example, the case for the
-\texttt{STEMlab} discovery
-described above. In such a case the IP address in numerical form (xxx.xxx.xxx.xxx) can be entered in the box
+Sometime \pH \textit{needs} to know the IP address of the radio, for example to perform
+a \texttt{STEMlab} discovery as described above. But also if the radio and the computer running
+\pH are not on the same network segment, a successful radio discovery may only be possible
+by directly querying the radio by its IP address. To use this feature,
+the IP address in numerical form (xxx.xxx.xxx.xxx) can be entered in the box
 with the label \rett{Radio IP Addr}. If a legal IP address is contained in this box, protocol-1 and
 protocol-2 discovery queries
-will also be sent to the IP address specified, in addition to the standard broadcast discovery packets which
+will  be sent to the IP address specified, in addition to the standard broadcast discovery packets which
 can only reach
 radios on the same network segment. With a known IP address (and if supported by the radio),  one can
 connect to radios which are not on the same sub-net as the computer, in principle you can connect to any
 radio on the world
-provided it is on the internet. I have been told that the original HPSDR standard states that a broadcast packet
-\textit{must} be used, so radios strictly adhering to that standard
-won't reply to ``routed'' discovery packets. The radios I have tested (ANAN-7000, RedPitaya STEMlab, HermesLite-II) all
-allow being discovered by such non-broadcast packets, so using the IP address might become a
-preferred option in your shack if the radio is configured to have a fixed IP address, since this
-speeds up the start of the radio considerably.
-
-In rare cases (the RedPitaya STEMlab case is the only one I know of) it is  possible to use the TCP protocol
-rather than the standard UDP one for communicating with the radio. A ``TCP discovery'' will wait for three
-seconds if there is no response (this is the case for most radios). Therefore, trying to
-connect via TCP is only done if the \rett{Enable TCP} box is checked.
+provided it is on the internet. My advice is to always use this possiblitiy if the radio and the host
+computer are not on the same network segment, for example if one connects to a distant radio via an
+unsecured internet connection of via a VPN (VPN stands for \textit{virtual private network}) tunnel.
 
 Note that if a radio IP address is specified, the discovery process skips sending broadcast discovery
 packets if a radio could be detected on the specified IP address. So if you specify a radio IP address
 and such a radio exists, \pH will not discover any other radio that might also be connected to the same
-network segment.
+network segment. The advantage is, that the start of the radio speeds up considerably.
+
+In rare cases (the RedPitaya STEMlab and RadioBerry cases are the only one I know of)
+it is  possible to use the TCP protocol
+rather than the standard UDP one for communicating with the radio. A ``TCP discovery'' will wait for three
+seconds if there is no response (there will be no response unless a TCP-enabled radio is present).
+Therefore, trying to connect via TCP is only done if the \rett{Enable TCP} box is checked.
+
+
 
 The \rett{Discover} button re-starts the discovery process. This is useful if the radio has been powered up
 too late and
 was not yet ready when \pH was started. Simply press \rett{Discover} to start another attempt. This is
 largely equivalent to quitting and restarting \pH but much more convenient.
+
+\textbf{Specifying a ,,piHPSDR controller'' or a ,,Anan G2 panel''}
+
 
 The combo-box (pop-down menu) to the left of the \rett{Discover} button lets you choose which type of GPIO
 controller you
@@ -4191,7 +4208,7 @@ DIGU/DIGL. There are two more mode ,,groups'' with AM and FM  as the only one me
 Each mode  has an associated RX/TX profile containing lots of settings (see below).
 When switching a mode (either by an explicit request, or implicitly by a VFO swap/copy
 operation, a band or band stack change, or by recalling a memory slot), the profile of
-that mode overwrites the current settings. 
+that mode overwrites the current settings.
 
 The RX/TX profile for a specific mode (group) is updated whenever one of the settings
 contained in the profile is updated for RX1 or for the transmitter. Note that the
@@ -5483,29 +5500,18 @@ section we will only list the keyboard binding that are captured and processed b
 eye-sight. The idea is that pressing one of the function keys generates a message that
 is read aloud and that informs about frequency, mode, etc.
 
-Integrating a text-to-speech functionality inside \pH is beyond the scope of the program,
-but there are programs around, e.g. \texttt{eSpeak} (both for LINUX and MacOS) and
-\texttt{say} (a program that comes with MacOS). Note that the version of \texttt{eSpeak}
-that is currently being maintained seems to be called \texttt{espeak-ng}.
-
-The ,,hook'' actually used
-in \pH is as follows (now it becomes technical): a message that is to be read aloud is
-simply sent out as a ,,promiscuous'' (a.k.a. broadcast) UDP packet to port number 19080.
-A program running on the same computer, or even on another computer on the same network, can
+In all cases (MacOS and Linux) a broadcast UDP packet containing the text to be spoken
+is ent out to port number 19080. A program running on the same computer, or even on another
+computer on the same network, can
 then receive the packet and take care of the reading. A sample program that does so
-is included in the \pH source code tree (\texttt{udplistener.c}) for demonstration purposes.
-This program is instrumented to use either the \texttt{eSpeak} program, or the text-to-speech
-program \texttt{/usr/bin/say} that comes with MacOS. Although \texttt{eSpeak} can
-be installed on MacOS via HomeBrew, using  \texttt{/usr/bin/say}  is the preferred option there.
+is included in the \pH source code tree (\texttt{udplistener.c}) for demonstration purposes,
+that is instrumented to use  the \texttt{eSpeak} program.
 
-For MacOS, the language and the voice used by the \texttt{say} program can be chosen in
-the usual "Accessibility" preferences pane. For \texttt{espeak-ng}, there is a plethora of
-command-line options fine-tuning its behaviour (which are not used by the \texttt{udplistener}
-program since it is simply a demo), but I have not seen how to customise \texttt{espeak-ng}
-through a preferences file (I might be wrong on this). How to handle the audio output
-is up to the user, on a Macintosh, you can easily have the RX audio and the text-to-speech
-audio on the same audio device. For LINUX, there are so many audio options that I could
-not dwell into this deeper.
+Additionally, the MacOS builtin speech synthesiser is used so there should be no need
+for the \texttt{udplistener.c} program there. piHPSDR specifies english (en-GB)
+language for the text to be spoken.
+
+The functions currently implemented are:
 
 \rett{F1} Hitting the F1 function key reads the frequency of the active receiver.
 
@@ -7595,6 +7601,12 @@ with the STEMLAB option, you can open a web browser on your host computer, start
 and then start \pH. With the STEMLAB option, this can all be done by \pH.
 This option is not activated by default since it delays the startup a little bit  and  this should  be
 avoided if  there is no need for it, and it needs the \texttt{libcurl}  library to be installed on your system.
+}
+
+\item[\rett{TTS}] {(default: \texttt{ON})
+Activates the text-to-speech capability, meant to improve accessibility for the blind
+(see section \ref{sec:accessibility}). With this option, hitting e.g. function key F1
+reads the current frequency aloud. 
 }
 
 \item[\rett{AUDIO}] {(default: empty)

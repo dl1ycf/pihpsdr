@@ -20,6 +20,7 @@ SOAPYSDR=OFF
 STEMLAB=OFF
 AUDIO=PULSE
 EXTENDED_NR=OFF
+TTS=ON
 
 #######################################################################################
 #
@@ -127,7 +128,7 @@ endif
 
 ifeq ($(MIDI),ON)
 MIDI_OPTIONS=-D MIDI
-MIDI_HEADERS= midi.h midi_menu.h
+MIDI_HEADERS= src/midi.h src/midi_menu.h
 ifeq ($(UNAME_S), Darwin)
 MIDI_SOURCES= src/mac_midi.c src/midi2.c src/midi3.c src/midi_menu.c
 MIDI_OBJS= src/mac_midi.o src/midi2.o src/midi3.o src/midi_menu.o
@@ -143,6 +144,29 @@ CPP_DEFINES += -DMIDI
 CPP_SOURCES += src/mac_midi.c src/midi2.c src/midi3.c src/midi_menu.c
 CPP_SOURCES += src/alsa_midi.c src/midi2.c src/midi3.c src/midi_menu.c
 
+##############################################################################
+#
+# Stuff for text-to-speech, if requested
+#
+##############################################################################
+
+ifeq ($(TTS),ON)
+TTS_OPTIONS=-D TTS
+TTS_HEADERS= src/tts.h
+ifeq ($(UNAME_S), Darwin)
+TTS_SOURCES= src/tts.c src/MacTTS.m
+TTS_OBJS= src/tts.o src/MacTTS.o
+TTS_LIBS= -framework Foundation -framework AVFoundation
+endif
+ifeq ($(UNAME_S), Linux)
+TTS_OPTIONS=-D TTS
+TTS_HEADERS= src/tts.h
+TTS_SOURCES= src/tts.c
+TTS_OBJS= src/tts.o
+endif
+endif
+CPP_DEFINES += -DTTS
+CPP_SOURCES += src/tts.c
 
 ##############################################################################
 #
@@ -381,6 +405,7 @@ OPTIONS=$(MIDI_OPTIONS) $(USBOZY_OPTIONS) \
 	$(SATURN_OPTIONS) \
 	$(STEMLAB_OPTIONS) \
 	$(SERVER_OPTIONS) \
+	$(TTS_OPTIONS) \
 	$(AUDIO_OPTIONS) $(EXTNR_OPTIONS) $(TCI_OPTIONS) \
 	-D GIT_DATE='"$(GIT_DATE)"' -D GIT_VERSION='"$(GIT_VERSION)"' -D GIT_COMMIT='"$(GIT_COMMIT)"'
 
@@ -390,6 +415,9 @@ COMPILE=$(CC) $(CFLAGS) $(OPTIONS) $(INCLUDES)
 .c.o:
 	$(COMPILE) -c -o $@ $<
 
+.m.o:
+	$(COMPILE) -c -o $@ $<
+
 ##############################################################################
 #
 # All the libraries we need to link with (including WDSP, libm, $(SYSLIBS))
@@ -397,7 +425,7 @@ COMPILE=$(CC) $(CFLAGS) $(OPTIONS) $(INCLUDES)
 ##############################################################################
 
 LIBS=	$(LDFLAGS) $(AUDIO_LIBS) $(USBOZY_LIBS) $(GTKLIBS) $(GPIO_LIBS) $(SOAPYSDRLIBS) $(STEMLAB_LIBS) \
-	$(MIDI_LIBS) $(OPENSSL_LIBS) $(WDSP_LIBS) -lm $(SYSLIBS)
+	$(MIDI_LIBS) $(TTS_LIBS) $(OPENSSL_LIBS) $(WDSP_LIBS) -lm $(SYSLIBS)
 
 ##############################################################################
 #
@@ -484,7 +512,6 @@ src/test_menu.c \
 src/toolbar.c \
 src/toolbar_menu.c \
 src/transmitter.c \
-src/tts.c \
 src/tx_menu.c \
 src/tx_panadapter.c \
 src/version.c \
@@ -579,7 +606,6 @@ src/test_menu.h \
 src/toolbar.h \
 src/toolbar_menu.h \
 src/transmitter.h \
-src/tts.h \
 src/tx_menu.h \
 src/tx_panadapter.h \
 src/version.h \
@@ -668,7 +694,6 @@ src/test_menu.o \
 src/toolbar.o \
 src/toolbar_menu.o \
 src/transmitter.o \
-src/tts.o \
 src/tx_menu.o \
 src/tx_panadapter.o \
 src/version.o \
@@ -687,13 +712,13 @@ src/zoompan.o
 ##############################################################################
 
 $(PROGRAM):  $(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS) $(SOAPYSDR_OBJS) \
-		$(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(SATURN_OBJS)
+		$(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(SATURN_OBJS) $(TTS_OBJS)
 	$(COMPILE) -c -o src/version.o src/version.c
 ifneq (z$(WDSP_INCLUDE), z)
 	@+make -C wdsp
 endif
 	$(LINK) -o $(PROGRAM) $(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS) $(SOAPYSDR_OBJS) \
-		$(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(SATURN_OBJS) \
+		$(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(SATURN_OBJS) $(TTS_OBJS)\
 		$(LIBS)
 
 ##############################################################################
@@ -792,6 +817,7 @@ bootloader:	src/bootloader.c
 # Create a file named DEPEND containing dependencies, to be added to
 # the Makefile. This is done here because we need lots of #defines
 # to make it right.
+# Since src/MacTTS.c is Objective-C, create the final line manually
 #
 #############################################################################
 
@@ -799,10 +825,11 @@ bootloader:	src/bootloader.c
 DEPEND:
 	rm -f DEPEND
 	touch DEPEND
-	makedepend -DMIDI -DSATURN -DUSBOZY -DSOAPYSDR -DEXTNR -DGPIO \
+	export LC_ALL=C && makedepend -DMIDI -DSATURN -DUSBOZY -DSOAPYSDR -DEXTNR -DGPIO \
 		-DSTEMLAB_DISCOVERY -DCLIENT_SERVER -DPULSEAUDIO \
-		-DPORTAUDIO -DALSA -D__APPLE__ -D__linux__ \
+		-DPORTAUDIO -DALSA -DTTS -D__APPLE__ -D__linux__ \
 		-f DEPEND -I./src src/*.c src/*.h
+	echo "src/MacTTS.o: src/message.h" >> DEPEND
 #############################################################################
 #
 # This is for MacOS "app" creation ONLY
@@ -1186,7 +1213,7 @@ src/transmitter.o: src/discovered.h src/sintab.h src/sliders.h src/actions.h
 src/transmitter.o: src/soapy_protocol.h src/toolbar.h src/gpio.h
 src/transmitter.o: src/tx_panadapter.h src/vfo.h src/vox.h src/waterfall.h
 src/tts.o: src/message.h src/radio.h src/adc.h src/dac.h src/discovered.h
-src/tts.o: src/receiver.h src/transmitter.h src/vfo.h src/mode.h
+src/tts.o: src/receiver.h src/transmitter.h src/vfo.h src/mode.h src/MacTTS.h
 src/tx_menu.o: src/audio.h src/receiver.h src/ext.h src/client_server.h
 src/tx_menu.o: src/mode.h src/transmitter.h src/filter.h src/message.h
 src/tx_menu.o: src/new_menu.h src/new_protocol.h src/MacOS.h src/radio.h
@@ -1253,3 +1280,4 @@ src/tx_panadapter.o: src/transmitter.h
 src/vfo.o: src/receiver.h src/mode.h
 src/vox.o: src/transmitter.h
 src/waterfall.o: src/receiver.h
+src/MacTTS.o: src/message.h
