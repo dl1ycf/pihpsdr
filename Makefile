@@ -152,7 +152,7 @@ CPP_SOURCES += src/alsa_midi.c src/midi2.c src/midi3.c src/midi_menu.c
 
 ifeq ($(TTS),ON)
 TTS_OPTIONS=-D TTS
-TTS_HEADERS= src/tts.h
+TTS_HEADERS= src/tts.h src/MacTTS.h
 ifeq ($(UNAME_S), Darwin)
 TTS_SOURCES= src/tts.c src/MacTTS.m
 TTS_OBJS= src/tts.o src/MacTTS.o
@@ -160,7 +160,7 @@ TTS_LIBS= -framework Foundation -framework AVFoundation
 endif
 ifeq ($(UNAME_S), Linux)
 TTS_OPTIONS=-D TTS
-TTS_HEADERS= src/tts.h
+TTS_HEADERS= src/tts.h src/MacTTS.h
 TTS_SOURCES= src/tts.c
 TTS_OBJS= src/tts.o
 endif
