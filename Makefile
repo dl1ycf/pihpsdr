@@ -854,7 +854,7 @@ ifneq (z$(WDSP_INCLUDE), z)
 	@+make -C wdsp
 endif
 	$(LINK) -headerpad_max_install_names -o $(PROGRAM) $(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS)  \
-		$(SOAPYSDR_OBJS) $(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(SATURN_OBJS) \
+		$(SOAPYSDR_OBJS) $(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(SATURN_OBJS) $(TTS_OBJS) \
 		$(TCI_OBJS) $(LIBS) $(LDFLAGS)
 	@rm -rf pihpsdr.app
 	@mkdir -p pihpsdr.app/Contents/MacOS
