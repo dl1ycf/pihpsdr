@@ -424,9 +424,6 @@ void tx_restore_state(TRANSMITTER *tx) {
     GetPropI1("transmitter.%d.alcmode",                             tx->id,    tx->alcmode);
     GetPropI1("transmitter.%d.fft_size",                            tx->id,    tx->fft_size);
     GetPropI1("transmitter.%d.fps",                                 tx->id,    tx->fps);
-    // The next two  lines will soon be removed (backwards compatibility)
-    GetPropI0("tx_filter_low",                                                 tx->default_filter_low);
-    GetPropI0("tx_filter_high",                                                tx->default_filter_low);
     GetPropI1("transmitter.%d.default_filter_low",                  tx->id,    tx->default_filter_low);
     GetPropI1("transmitter.%d.default_filter_high",                 tx->id,    tx->default_filter_high);
     GetPropI1("transmitter.%d.filter_low",                          tx->id,    tx->filter_low);
