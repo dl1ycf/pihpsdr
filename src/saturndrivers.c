@@ -108,7 +108,7 @@ unsigned int GetFirmwareMajorVersion(void) {
 
 //
 // initiate a DMA to the FPGA with specified parameters
-// returns 1 if success, else 0
+// returns 0 if success, else -EIO
 // fd: file device (an open file)
 // SrcData: pointer to memory block to transfer
 // Length: number of bytes to copy
@@ -118,16 +118,9 @@ int DMAWriteToFPGA(int fd, unsigned char*SrcData, uint32_t Length, uint32_t AXIA
   ssize_t rc;                 // response code
   off_t OffsetAddr;
   OffsetAddr = AXIAddr;
-  rc = lseek(fd, OffsetAddr, SEEK_SET);
-
-  if (rc != OffsetAddr) {
-    t_print("seek off 0x%lx != 0x%lx.\n", rc, OffsetAddr);
-    t_perror("seek file");
-    return -EIO;
-  }
 
   // write data to FPGA from memory buffer
-  rc = write(fd, SrcData, Length);
+  rc = pwrite(fd, SrcData, Length, OffsetAddr);
 
   if (rc < 0) {
     t_print("write 0x%x @ 0x%lx failed %ld.\n", Length, OffsetAddr, rc);
@@ -140,7 +133,7 @@ int DMAWriteToFPGA(int fd, unsigned char*SrcData, uint32_t Length, uint32_t AXIA
 
 //
 // initiate a DMA from the FPGA with specified parameters
-// returns 1 if success, else 0
+// returns 0 if success, else -EIO
 // fd: file device (an open file)
 // DestData: pointer to memory block to transfer
 // Length: number of bytes to copy
@@ -150,16 +143,9 @@ int DMAReadFromFPGA(int fd, unsigned char*DestData, uint32_t Length, uint32_t AX
   ssize_t rc;                 // response code
   off_t OffsetAddr;
   OffsetAddr = AXIAddr;
-  rc = lseek(fd, OffsetAddr, SEEK_SET);
 
-  if (rc != OffsetAddr) {
-    t_print("seek off 0x%lx != 0x%lx.\n", rc, OffsetAddr);
-    t_perror("seek file");
-    return -EIO;
-  }
-
-  // write data to FPGA from memory buffer
-  rc = read(fd, DestData, Length);
+  // read data from FPGA to memory buffer
+  rc = pread(fd, DestData, Length, OffsetAddr);
 
   if (rc < 0) {
     t_print("read 0x%x @ 0x%lx failed %ld.\n", Length, OffsetAddr, rc);
