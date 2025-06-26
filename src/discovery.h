@@ -25,3 +25,4 @@ extern int  tcp_enable;
 
 extern int delayed_discovery(gpointer data);
 extern void discovery(void);
+extern gboolean discovery_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data);

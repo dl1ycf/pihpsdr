@@ -53,6 +53,9 @@
 #ifdef STEMLAB_DISCOVERY
   #include "stemlab_discovery.h"
 #endif
+#ifdef TTS
+  #include "tts.h"
+#endif
 
 static GtkWidget *discovery_dialog;
 static DISCOVERED *d;
@@ -66,6 +69,13 @@ static int        host_entry_changed = 0;
 static int        host_pos = 0;
 static int        host_empty = 0;
 static gulong     host_combo_signal_id = 0;
+
+#define           DISCOVERY_VIRGIN   0
+#define           DISCOVERY_RUNNING  1
+#define           DISCOVERY_COMPLETE 2
+#define           DISCOVERY_STARTING 3
+
+static int        discovery_state = 0;
 
 
 GtkWidget *tcpaddr;
@@ -103,6 +113,7 @@ static gboolean close_cb() {
 
 static gboolean start_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   radio = (DISCOVERED *)data;
+  discovery_state = DISCOVERY_STARTING;
 #ifdef STEMLAB_DISCOVERY
 
   // We need to start the STEMlab app before destroying the dialog, since
@@ -289,6 +300,7 @@ static gboolean connect_cb(GtkWidget *widget, GdkEventButton *event, gpointer us
   char myhost[256];
   int  myport;
   const char *mypwd;
+  discovery_state = DISCOVERY_STARTING;
   host_entry_cb(host_entry, NULL);
   *myhost = 0;
   myport = 0;
@@ -384,6 +396,154 @@ static void password_visibility_cb(GtkToggleButton *button, gpointer user_data) 
   }
 }
 
+// cppcheck-suppress constParameterCallback
+gboolean discovery_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data) {
+  gboolean ret = TRUE;
+#ifdef TTS
+  char text[2048];
+#endif
+  //
+  // This is called when an "intercepted" key stroke is
+  // received before the radio starts
+  //
+  t_print("-------------------------------KEY\n");
+  switch (event->keyval) {
+#ifdef TTS
+  case GDK_KEY_F1:
+    switch (discovery_state) {
+    case DISCOVERY_VIRGIN:
+      tts_send("Discovery has not yet been started\n");
+      break;
+
+    case DISCOVERY_RUNNING:
+      tts_send("Discovery process is running\n");
+      break;
+
+    case DISCOVERY_COMPLETE:
+      snprintf(text, sizeof(text), "Discovery complete, %d radios found\n", devices);
+      tts_send(text);
+      break;
+
+    case DISCOVERY_STARTING:
+      tts_send("Just starting a radio\n");
+      break;
+    }
+    break;
+
+  case GDK_KEY_F2:
+    if (devices > 0) {
+      char *p;
+      char *r;
+      switch(discovered[0].protocol) {
+      case ORIGINAL_PROTOCOL:
+        p = "running Protocol 1";
+        break;
+      case NEW_PROTOCOL:
+        p = "running Protocol 2";
+        break;
+      case SOAPYSDR_PROTOCOL:
+        p = "run by the Soapy Library";
+        break;
+      }
+
+      switch(discovered[0].device) {
+      case DEVICE_OZY:
+        r = "Old Ozy";
+        break;
+
+      case DEVICE_METIS:
+      case NEW_DEVICE_ATLAS:
+      case DEVICE_GRIFFIN:
+        r = "Old Metis";
+        break;
+
+      case DEVICE_HERMES:
+      case NEW_DEVICE_HERMES:
+      case NEW_DEVICE_HERMES2:
+        r = "Hermes";
+        break;
+
+      case DEVICE_ANGELIA:
+      case NEW_DEVICE_ANGELIA:
+        r = "Angelia";
+        break;
+
+      case DEVICE_ORION:
+      case NEW_DEVICE_ORION:
+        r = "Orion";
+        break;
+
+      case DEVICE_ORION2:
+      case NEW_DEVICE_ORION2:
+        r = "Orion 2";
+        break;
+
+      case DEVICE_STEMLAB:
+      case DEVICE_STEMLAB_Z20:
+        r = "Red Pitaya StemLab";
+        break;
+
+      case DEVICE_HERMES_LITE:
+      case DEVICE_HERMES_LITE2:
+      case NEW_DEVICE_HERMES_LITE:
+      case NEW_DEVICE_HERMES_LITE2:
+        r = "Hermes Light";
+        break;
+
+      case NEW_DEVICE_SATURN:
+        r = "An An G2 Saturn";
+        break;
+
+      case SOAPYSDR_USB_DEVICE:
+        r = "Soapy";
+        break;
+
+      default:
+        r = "unkown";
+      }
+
+      snprintf(text, sizeof(text), "First radio is %s, %s", r, p);
+      tts_send(text);
+    } else {
+      tts_send("No info, no radio has been found");
+    }
+    break;
+#endif
+
+  case GDK_KEY_F3:
+    if (devices > 0) {
+#ifdef TTS
+      tts_send("Starting first radio");
+#endif
+      start_cb(NULL, NULL, &discovered[0]);
+    } else {
+#ifdef TTS
+      tts_send("Cannot start, no radio has been found");
+#endif
+    }
+    break;
+
+  case GDK_KEY_F4:
+    if (discovery_state == DISCOVERY_COMPLETE) {
+#ifdef TTS
+      tts_send("Restarting Discovery Process");
+#endif
+      gtk_widget_destroy(discovery_dialog);
+      g_timeout_add(100, delayed_discovery, NULL);
+    } else {
+#ifdef TTS
+      tts_send("Discovery not yet complete, cannot restart");
+#endif
+    }
+    break;
+
+  default:
+    // do not intercept
+    ret = FALSE;
+  }
+  return ret;
+}
+
 //----------------------------------------------------+
 // Build the discovery window                         |
 //----------------------------------------------------+
@@ -392,6 +552,7 @@ static void discovery() {
   //
   // On the discovery screen, make the combo-boxes "touchscreen-friendly"
   //
+  discovery_state = DISCOVERY_RUNNING;
   optimize_for_touchscreen = 1;
   protocolsRestoreState();
   selected_device = 0;
@@ -486,6 +647,8 @@ static void discovery() {
   gdk_window_set_cursor(gtk_widget_get_window(top_window), gdk_cursor_new(GDK_ARROW));
   discovery_dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(discovery_dialog), GTK_WINDOW(top_window));
+  gtk_widget_add_events(discovery_dialog, GDK_KEY_PRESS_MASK);
+  g_signal_connect(discovery_dialog, "key_press_event", G_CALLBACK(discovery_keypress_cb), NULL);
   GtkWidget *headerbar = gtk_header_bar_new();
   gtk_window_set_titlebar(GTK_WINDOW(discovery_dialog), headerbar);
   gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(headerbar), TRUE);
@@ -767,6 +930,7 @@ static void discovery() {
       if (start_cb(NULL, NULL, (gpointer)d)) { return; }
     }
   }
+  discovery_state = DISCOVERY_COMPLETE;
 }
 
 //

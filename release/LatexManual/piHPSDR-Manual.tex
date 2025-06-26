@@ -5498,36 +5498,64 @@ section we will only list the keyboard binding that are captured and processed b
 \section{Accessibility for the Blind}
 \label{sec:accessibility}
 \pH has built-in support for making operating easier for those with very limited
-eye-sight. The idea is that pressing one of the function keys generates a message that
-is read aloud and that informs about frequency, mode, etc.
+eye-sight. The idea is that when a radio is running, pressing one of the function keys generates
+a message that
+is read aloud and that informs about frequency, mode, etc. While the radio is still in the
+discovery process, information about the discovery status is reported by reading this aloud.
 
 In all cases (MacOS and Linux) a broadcast UDP packet containing the text to be spoken
 is ent out to port number 19080. A program running on the same computer, or even on another
 computer on the same network, can
 then receive the packet and take care of the reading. A sample program that does so
 is included in the \pH source code tree (\texttt{udplistener.c}) for demonstration purposes,
-that is instrumented to use  the \texttt{eSpeak} program.
+that is instrumented to use  the \texttt{eSpeak} program. It is the task of the user to
+make good use of the data contained in the UDP packet.
 
 Additionally, the MacOS builtin speech synthesiser is used so there should be no need
 for the \texttt{udplistener.c} program there. piHPSDR specifies english (en-GB)
 language for the text to be spoken.
 
-The functions currently implemented are:
+The whole text-to-speech feature, if it is not needed, can be suppressed by compiling
+\pH \textit{without} the \texttt{TTS} compile-time option (see Sec. \ref{sec:compiletime}).
+Note that even without \texttt{TTS}, 
+the function keys F3 (start first radio) and F4 (restart
+discovery process) still work on the discovery screen, but without producing any speech.
 
-\rett{F1} Hitting the F1 function key reads the frequency of the active receiver.
+\textbf{Functions currently implement during startup/discovery are}
 
-\rett{F2} Hitting the F2 function key reads the mode of the active receiver.
+\begin{itemize}
+\item[\rett{F1}]{Hitting the F1 function key reports the status of the discovery process,
+whether it has not yet started, or whether it is running, or whether it is completed.
+In the latter case the number of radios discovered is reported as well.}
 
-\rett{F3} Hitting the F3 function key reads the filter width of the active receiver.
+\item[\rett{F2}]{Hitting the F2 function key reports information (which radio model, and
+which protocol it is running) for the first discovered radio,
+or reports that  this could not be done since no radio has been
+discovered.}
 
-\rett{F4} Hitting the F4 function key reads the S-meter value of the active receiver.
-Note there may be strong fluctuations in the reported value.
+\item[\rett{F3}]{Hitting the F3 function key starts the discovered radio that is first
+discovered radio, or reports that  this could not be done since no radio has been
+discovered.}
+\item[\rett{F4}]{Hitting the F4 function key restarts the discovery process.}
+\end{itemize}
 
-\rett{F5} Hitting the F5 function key reads the value of the TX drive slider.
+\textbf{Functions currently implemented for a radio that is  already running are}
 
-\rett{F6} Hitting the F6 function key reads the RF gain/attenuation in the front
-end of the active receiver.
+\begin{itemize}
+\item[\rett{F1}]{Hitting the F1 function key reads the frequency of the active receiver.}
 
+\item[\rett{F2}]{Hitting the F2 function key reads the mode of the active receiver.}
+
+\item[\rett{F3}]{Hitting the F3 function key reads the filter width of the active receiver.}
+
+\item[\rett{F4}]{Hitting the F4 function key reads the S-meter value of the active receiver.
+Note there may be strong fluctuations in the reported value.}
+
+\item[\rett{F5}]{Hitting the F5 function key reads the value of the TX drive slider.}
+
+\item[\rett{F6}]{Hitting Hitting the F6 function key reads the RF gain/attenuation in the front
+end of the active receiver.}
+\end{itemize}
 
 \section{Other keyboard shortcuts}
 

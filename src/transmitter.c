@@ -818,6 +818,9 @@ void tx_create_dialog(TRANSMITTER *tx) {
   //t_print("create_dialog: add tx->panel\n");
   gtk_widget_set_size_request (tx->panel, tx_dialog_width, tx_dialog_height);
   gtk_container_add(GTK_CONTAINER(content), tx->panel);
+  //
+  // Handle key presses in the TX dialog through the handler in main.c
+  //
   gtk_widget_add_events(tx->dialog, GDK_KEY_PRESS_MASK);
   g_signal_connect(tx->dialog, "key_press_event", G_CALLBACK(keypress_cb), NULL);
 }

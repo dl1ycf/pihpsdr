@@ -46,5 +46,6 @@ extern GtkWidget *topgrid;
 extern void status_text(const char *text);
 
 extern gboolean keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data);
+extern gulong keypress_signal_id;
 extern int fatal_error(void *data);
 #endif

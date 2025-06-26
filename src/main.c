@@ -80,6 +80,7 @@ static GdkCursor *cursor_watch;
 
 GtkWidget *top_window = NULL;
 GtkWidget *topgrid;
+gulong keypress_signal_id = 0;
 
 static GtkWidget *status_label;
 
@@ -104,9 +105,6 @@ static void* wisdom_thread(void *arg) {
 // cppcheck-suppress constParameterCallback
 gboolean keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data) {
   gboolean ret = TRUE;
-
-  // Ignore key-strokes until radio is ready
-  if (radio == NULL) { return FALSE; }
 
   //
   // Intercept key-strokes. The "keypad" stuff
@@ -283,6 +281,11 @@ static int init(void *data) {
   char wisdom_directory[1025];
   char text[1024];
   t_print("%s\n", __FUNCTION__);
+  //
+  // We want to intercept some key strokes
+  //
+  gtk_widget_add_events(top_window, GDK_KEY_PRESS_MASK);
+  keypress_signal_id = g_signal_connect(top_window, "key_press_event", G_CALLBACK(discovery_keypress_cb), NULL);
   audio_get_cards();
   cursor_arrow = gdk_cursor_new(GDK_ARROW);
   cursor_watch = gdk_cursor_new(GDK_WATCH);
@@ -408,11 +411,6 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   }
 
   g_signal_connect (top_window, "delete-event", G_CALLBACK (main_delete), NULL);
-  //
-  // We want to use the space-bar as an alternative to go to TX
-  //
-  gtk_widget_add_events(top_window, GDK_KEY_PRESS_MASK);
-  g_signal_connect(top_window, "key_press_event", G_CALLBACK(keypress_cb), NULL);
   topgrid = gtk_grid_new();
   gtk_widget_set_size_request(topgrid, display_width, display_height);
   gtk_grid_set_row_homogeneous(GTK_GRID(topgrid), FALSE);
