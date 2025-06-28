@@ -2,7 +2,7 @@
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2013 Warren Pratt, NR0V
+Copyright (C) 2013, 2024, 2025 Warren Pratt, NR0V
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -30,15 +30,6 @@ warren@wpratt.com
 #include <semaphore.h>
 #include <string.h>
 #include "linux_port.h"
-#ifdef ANDROID
-#include <android/log.h>
-#define APPNAME "WDSP"
-#define LOGD(LOG_TAG, ...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
-#define LOGI(LOG_TAG, ...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG,__VA_ARGS__)
-#define LOGV(LOG_TAG, ...) __android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, __VA_ARGS__)
-#define LOGW(LOG_TAG, ...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
-#define LOGE(LOG_TAG, ...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
-#endif
 #endif
 
 #ifdef _WIN32
@@ -84,6 +75,7 @@ warren@wpratt.com
 #include "gen.h"
 #include "icfir.h"
 #include "iir.h"
+#include "impulse_cache.h"
 #include "iobuffs.h"
 #include "iqc.h"
 #include "lmath.h"
@@ -120,7 +112,7 @@ warren@wpratt.com
 #define OUTREAL                         float               // data type for channel output buffer
 
 // display definitions
-#define dMAX_DISPLAYS                   64                  // maximum number of displays = max instances
+#define dMAX_DISPLAYS                   72                  // maximum number of displays = max instances
 #define dMAX_STITCH                     4                   // maximum number of sub-spans to stitch together
 #define dMAX_NUM_FFT                    1                   // maximum number of ffts for an elimination
 #define dMAX_PIXELS                     16384               // maximum number of pixels that can be requested

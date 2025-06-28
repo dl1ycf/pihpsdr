@@ -15,7 +15,7 @@
  *
  *  0  all OK
  * -1  sizeof(double) is not 8
- * -2  error opening file "calculus"
+ * -2  error opening file "zetaHat.bin"
  * -3  read error
  */
 

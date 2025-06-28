@@ -2,7 +2,7 @@
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2013-2019 Warren Pratt, NR0V
+Copyright (C) 2013-2025 Warren Pratt, NR0V
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -36,8 +36,9 @@ char* wisdom_get_status()
 }
 
 PORT
-void WDSPwisdom (char* directory)
+int WDSPwisdom (char* directory)
 {
+    int wisdom_return = 0; // 0 from existing, 1 rebuilt
     fftw_plan tplan;
     int psize;
 #ifdef _WIN32
@@ -60,11 +61,6 @@ void WDSPwisdom (char* directory)
         fprintf(stdout, "Optimizing FFT sizes through %d\n\n", maxsize);
         fprintf(stdout, "Please do not close this window until wisdom plans are completed.\n\n");
         sprintf(status, "Optimizing FFT sizes through %d", maxsize);
-#ifdef __ANDROID__
-        utf8 = (*env)->NewStringUTF(env,status);
-        (*env)->CallVoidMethod(env, obj, update, utf8);
-#endif
-
         psize = 64;
         while (psize <= MAX_WISDOM_SIZE_FILTER)
         {
@@ -117,5 +113,7 @@ void WDSPwisdom (char* directory)
 #ifdef _WIN32
         FreeConsole();                          // dismiss console
 #endif
+        wisdom_return = 1;
     }
+    return wisdom_return;
 }

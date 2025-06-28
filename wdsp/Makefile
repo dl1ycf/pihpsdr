@@ -40,6 +40,7 @@ gain.c\
 gen.c\
 icfir.c\
 iir.c\
+impulse_cache.c\
 iobuffs.c\
 iqc.c\
 linux_port.c\
@@ -68,7 +69,7 @@ varsamp.c\
 version.c\
 wcpAGC.c\
 wisdom.c\
-zetahat.c
+zetaHat.c
 
 HEADERS=amd.h\
 ammod.h\
@@ -103,6 +104,7 @@ gain.h\
 gen.h\
 icfir.h\
 iir.h\
+impulse_cache.h\
 iobuffs.h\
 iqc.h\
 linux_port.h\
@@ -129,7 +131,7 @@ syncbuffs.h\
 TXA.h\
 utilities.h\
 wcpAGC.h \
-zetahat.h
+zetaHat.h
 
 OBJS=linux_port.o\
 amd.o\
@@ -163,6 +165,7 @@ gain.o\
 gen.o\
 icfir.o\
 iir.o\
+impulse_cache.o\
 iobuffs.o\
 iqc.o\
 lmath.o\
@@ -190,7 +193,7 @@ version.o\
 varsamp.o\
 wcpAGC.o\
 wisdom.o\
-zetahat.o
+zetaHat.o
 
 libwdsp.a:	$(OBJS)
 	ar rv libwdsp.a $(OBJS)
