@@ -890,9 +890,6 @@ static gpointer tci_listener(gpointer data) {
     while ((numbytes =  digest_frame(buff, msg, offset, &type)) > 0) {
       switch (type) {
       case opTEXT:
-        for (size_t i = 0; i < strlen(msg); i++) {
-          msg[i] = tolower(msg[i]);
-        }
 
         if (rigctl_debug) {
           t_print("TCI%d command rcvd=%s\n", client->seq, msg);
@@ -924,11 +921,11 @@ static gpointer tci_listener(gpointer data) {
             arg[argc] = cp + 1;
             argc++;
             *cp = 0;
-          }
-
-          if (*cp == ';') {
+          } else if (*cp == ';') {
             *cp = 0;
             break;
+          } else {
+            *cp = tolower(*cp);
           }
 
           if (argc >= ARGLEN) {

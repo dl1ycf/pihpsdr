@@ -352,9 +352,11 @@ void keyer_event(int left, int state) {
 
 static void* keyer_thread(void *arg) {
   struct timespec loop_delay;
-  double tdown;
   int i;
-  int kdelay;
+  // initializing the following two variables
+  // makes the clang static analyzer happy
+  double tdown = 0.0;
+  int kdelay = 0;
   int txmode;
   int moxbefore;
   int cwvox;

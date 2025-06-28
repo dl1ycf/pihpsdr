@@ -406,7 +406,6 @@ gboolean discovery_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer d
   // This is called when an "intercepted" key stroke is
   // received before the radio starts
   //
-  t_print("-------------------------------KEY\n");
   switch (event->keyval) {
 #ifdef TTS
   case GDK_KEY_F1:
@@ -443,6 +442,9 @@ gboolean discovery_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer d
         break;
       case SOAPYSDR_PROTOCOL:
         p = "run by the Soapy Library";
+        break;
+      default:
+        p = "run by unknown protocol";
         break;
       }
 

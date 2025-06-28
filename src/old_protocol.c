@@ -593,6 +593,7 @@ static void open_udp_socket() {
   if (tmp < 0) {
     t_perror("P1 create data socket:");
     g_idle_add(fatal_error, "FATAL: P1 could not create data socket");
+    return;
   }
 
   int optval = 1;
@@ -719,6 +720,7 @@ static void open_tcp_socket() {
   if (tmp < 0) {
     t_perror("P1: create TCP socket:");
     g_idle_add(fatal_error, "FATAL: P1 could not create TCP socket");
+    return;
   }
 
   int optval = 1;
