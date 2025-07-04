@@ -682,8 +682,9 @@ void *IncomingSpkrAudio(void *arg) {                    // listener thread
   memset(SpkWriteBuffer, 0, SpkBufferSize);
   //
   // open DMA device driver
+  // there is at least one XDMA device driver around which *needs* write-only here
   //
-  DMAWritefile_fd = open(VSPKDMADEVICE, O_RDWR);
+  DMAWritefile_fd = open(VSPKDMADEVICE, O_WRONLY);
 
   if (DMAWritefile_fd < 0) {
     t_print("XDMA write device open failed for spk data\n");

@@ -481,6 +481,7 @@ static void saturn_init_duc_iq() {
   memset(IQWriteBuffer, 0, IQBufferSize);
   //
   // open DMA device driver
+  // there is at least one XDMA device driver around which *needs* write-only here
   //
   DMADUCWritefile_fd = open(VDUCDMADEVICE, O_WRONLY);
 
@@ -595,6 +596,7 @@ static void saturn_init_speaker_audio() {
   memset(SpkWriteBuffer, 0, SpkBufferSize);
   //
   // open DMA device driver
+  // there is at least one XDMA device driver around which *needs* write-only here
   //
   DMASpkWritefile_fd = open(VSPKDMADEVICE, O_WRONLY);
 
@@ -862,6 +864,7 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
   memset(MicReadBuffer, 0, MicBufferSize);
   //
   // open DMA device driver
+  // there is at least one XDMA device driver around which *needs* read-only here
   //
   DMAReadfile_fd = open(VMICDMADEVICE, O_RDONLY);
 
@@ -1042,6 +1045,7 @@ static gpointer saturn_rx_thread(gpointer arg) {
 
   //
   // open DMA device driver
+  // there is at least one XDMA device driver around which *needs* read-only here
   //
   IQReadfile_fd = open(VDDCDMADEVICE, O_RDONLY);
 

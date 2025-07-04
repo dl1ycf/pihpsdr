@@ -67,6 +67,9 @@ int register_fd;                             // device identifier
 int OpenXDMADriver(void) {
   int Result = 0;
 
+  //
+  // Note this fd is used for both pread() and pwrite() so use read-write mode
+  //
   if ((register_fd = open("/dev/xdma0_user", O_RDWR)) == -1) {
     t_print("register R/W address space not available\n");
   } else {
