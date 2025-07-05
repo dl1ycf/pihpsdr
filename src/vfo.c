@@ -346,7 +346,7 @@ static void modesettingsRestoreState() {
     GetPropI1("modeset.%d.cfc", i,                    mode_settings[i].cfc);
     GetPropI1("modeset.%d.cfc_eq", i,                 mode_settings[i].cfc_eq);
     GetPropI1("modeset.%d.tx_default_filter_low", i,  mode_settings[i].tx_default_filter_low);
-    GetPropI1("modeset.%d.tx_default_filter_high", i, mode_settings[i].tx_default_filter_low);
+    GetPropI1("modeset.%d.tx_default_filter_high", i, mode_settings[i].tx_default_filter_high);
     GetPropI1("modeset.%d.use_rx_filter", i,          mode_settings[i].use_rx_filter);
 
     for (int j = 0; j < 11; j++) {
