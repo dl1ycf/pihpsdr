@@ -448,7 +448,7 @@ void sliders_af_gain(int id) {
   //
   // This ONLY moves the slider
   //
-  RECEIVER *rx = receiver[id];
+  const RECEIVER *rx = receiver[id];
   if (display_sliders && id == active_receiver->id) {
     if (af_signal_id) { g_signal_handler_block(G_OBJECT(af_gain_scale), af_signal_id); }
     gtk_range_set_value (GTK_RANGE(af_gain_scale), rx->volume);

@@ -27,7 +27,7 @@
 // printf() and perror() calls, then the compiler can check for the correct ordering
 // of the var-args
 //
-#define TPRINTDEBUG 1
+//#define TPRINTDEBUG 1
 
 #ifdef TPRINTDEBUG
 #define t_print printf

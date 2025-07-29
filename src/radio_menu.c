@@ -462,6 +462,7 @@ void radio_menu(GtkWidget *parent) {
   int col;
   GtkWidget *label;
   GtkWidget *ChkBtn;
+  GtkWidget *Separator;
   dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
   GtkWidget *headerbar = gtk_header_bar_new();
@@ -831,7 +832,7 @@ void radio_menu(GtkWidget *parent) {
   //
   // Insert small separation between top columns and bottom rows
   //
-  GtkWidget *Separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+  Separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
   gtk_widget_set_size_request(Separator, -1, 3);
   gtk_grid_attach(GTK_GRID(grid), Separator, col, row, 6, 1);
   row++;
@@ -986,7 +987,7 @@ void radio_menu(GtkWidget *parent) {
 
   if (device == SOAPYSDR_USB_DEVICE && !radio_is_remote) {
     row++;
-    GtkWidget *Separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+    Separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_widget_set_size_request(Separator, -1, 3);
     gtk_grid_attach(GTK_GRID(grid), Separator, 0, row, 6, 1);
     row++;

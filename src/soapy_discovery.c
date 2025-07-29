@@ -38,8 +38,6 @@ static void get_info(char *driver) {
   SoapySDRKwargs args = {};
   int software_version = 0;
   const char *address = NULL;
-  int rtlsdr_val = 0;
-  int sdrplay_val = 0;
   char fw_version[32];
   char gw_version[32];
   char hw_version[32];
@@ -60,22 +58,20 @@ static void get_info(char *driver) {
 
   SoapySDRKwargs_set(&args, "driver", driver);
 
+  //
+  // In case more than one RTLsdr or SDRplay devices are connected,
+  // enumerate them
+  //
   if (strcmp(driver, "rtlsdr") == 0) {
     char count[16];
     snprintf(count, sizeof(count), "%d", rtlsdr_count);
     SoapySDRKwargs_set(&args, "rtl", count);
-    rtlsdr_val = rtlsdr_count;
-    rtlsdr_count++;
-    discovered[devices].soapy.rtlsdr_count = rtlsdr_val;
-    discovered[devices].soapy.sdrplay_count = 0;
+    discovered[devices].soapy.rtlsdr_count = rtlsdr_count++;
   } else if (strcmp(driver, "sdrplay") == 0) {
     char label[16];
     snprintf(label, sizeof(label), "SDRplay Dev%d", sdrplay_count);
     SoapySDRKwargs_set(&args, "label", label);
-    sdrplay_val = sdrplay_count;
-    sdrplay_count++;
-    discovered[devices].soapy.rtlsdr_count = 0;
-    discovered[devices].soapy.sdrplay_count = sdrplay_val;
+    discovered[devices].soapy.sdrplay_count = sdrplay_count++;
   }
 
   SoapySDRDevice *sdr = SoapySDRDevice_make(&args);
@@ -226,9 +222,9 @@ static void get_info(char *driver) {
       t_print( "%s: RX%d antenna: %s\n", __FUNCTION__, (int)(id + 1), antennas[i]);
       snprintf(discovered[devices].soapy.rx[id].antenna[i], 64, "%s", antennas[i]);
     }
- 
+
     range = SoapySDRDevice_getGainRange(sdr, SOAPY_SDR_RX, id);
-    t_print("%s: RX%d total gain available: %f -> %f step=%f\n", __FUNCTION__, 
+    t_print("%s: RX%d total gain available: %f -> %f step=%f\n", __FUNCTION__,
             (int)(id + 1), range.minimum, range.maximum, range.step);
     discovered[devices].soapy.rx[id].gain_step = range.step;
     discovered[devices].soapy.rx[id].gain_min  = range.minimum;
@@ -385,6 +381,7 @@ void soapy_discovery() {
   SoapySDRKwargs input_args = {};
   t_print("%s\n", __FUNCTION__);
   rtlsdr_count = 0;
+  sdrplay_count = 0;
   SoapySDRKwargs_set(&input_args, "hostname", "pluto.local");
   SoapySDRKwargs *results = SoapySDRDevice_enumerate(&input_args, &length);
   t_print("%s: length=%d\n", __FUNCTION__, (int)length);
