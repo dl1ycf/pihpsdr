@@ -118,7 +118,7 @@ typedef struct _transmitter {
 
   int attenuation;      // Attenuation in the RX ADC0 chain (!) if TX is active
 
-  int drive;            // value of the drive slider
+  int drive;            // value of the drive slider (should use dac.gain)
   int tune_use_drive;
   int tune_drive;
 

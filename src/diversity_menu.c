@@ -153,7 +153,7 @@ void set_diversity_gain(double val) {
     gtk_range_set_value(GTK_RANGE(gain_coarse_scale), gain_coarse);
     gtk_range_set_value(GTK_RANGE(gain_fine_scale), gain_fine);
   } else {
-    show_diversity_gain();
+    sliders_diversity_gain();
   }
 
   set_gain_phase();
@@ -181,7 +181,7 @@ void set_diversity_phase(double value) {
     gtk_range_set_value(GTK_RANGE(phase_coarse_scale), phase_coarse);
     gtk_range_set_value(GTK_RANGE(phase_fine_scale), phase_fine);
   } else {
-    show_diversity_phase();
+    sliders_diversity_phase();
   }
 
   set_gain_phase();

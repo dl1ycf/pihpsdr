@@ -2287,8 +2287,8 @@ void tx_off(const TRANSMITTER *tx) {
     // execute TRX relay,
     // set RX gains to nominal value
     //
-    soapy_protocol_set_tx_gain(tx, 0);
-    soapy_protocol_set_tx_antenna(tx, 0); // 0 is NONE
+    soapy_protocol_set_tx_gain(0);
+    soapy_protocol_set_tx_antenna(0); // 0 is NONE
     const char *bank = "MAIN"; //set GPIO to signal the relay to RX
     t_print("%s: Setting LIME GPIO to 0\n", __FUNCTION__);
     SoapySDRDevice *sdr = get_soapy_device();
@@ -2296,7 +2296,7 @@ void tx_off(const TRANSMITTER *tx) {
     SoapySDRDevice_writeGPIO(sdr, bank, 0x00);
 
     for (int i = 0; i < RECEIVERS; i++) {
-      soapy_protocol_unattenuate(receiver[i]);
+      soapy_protocol_rx_unattenuate(i);
     }
   }
 
@@ -2320,7 +2320,7 @@ void tx_on(const TRANSMITTER *tx) {
 
     if (!duplex) {
       for (int i = 0; i < RECEIVERS; i++) {
-        soapy_protocol_attenuate(receiver[i]);
+        soapy_protocol_rx_attenuate(i);
       }
     }
 
@@ -2330,8 +2330,8 @@ void tx_on(const TRANSMITTER *tx) {
     SoapySDRDevice_writeGPIODir(sdr, bank, 0xFF);
     SoapySDRDevice_writeGPIO(sdr, bank, 0x01);
     usleep(30000);
-    soapy_protocol_set_tx_antenna(tx, dac.antenna);
-    soapy_protocol_set_tx_gain(tx, tx->drive);
+    soapy_protocol_set_tx_antenna(dac.antenna);
+    soapy_protocol_set_tx_gain(tx->drive);
   }
 
 #endif

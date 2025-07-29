@@ -70,12 +70,12 @@ void loadProperties(const char* filename) {
   if (f == NULL && !strcmp(filename, "saturn.xdma.props")) {
     char oldstyle_path[128];
     snprintf(oldstyle_path, sizeof(oldstyle_path), "%02X-%02X-%02X-%02X-%02X-%02X.props",
-             radio->info.network.mac_address[0],
-             radio->info.network.mac_address[1],
-             radio->info.network.mac_address[2],
-             radio->info.network.mac_address[3],
-             radio->info.network.mac_address[4],
-             radio->info.network.mac_address[5]);
+             radio->network.mac_address[0],
+             radio->network.mac_address[1],
+             radio->network.mac_address[2],
+             radio->network.mac_address[3],
+             radio->network.mac_address[4],
+             radio->network.mac_address[5]);
     f = fopen(oldstyle_path, "r");
   }
 

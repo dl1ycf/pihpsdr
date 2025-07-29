@@ -84,6 +84,30 @@
 #define HAMLAB_RP_TRX      8    // found: hamlab_sdr_transceiver_hpsdr
 #define BARE_REDPITAYA    16    // barebone RedPitaya (no STEMlab)
 
+//
+// This struct combines the data that was obtained
+// from querying a specific (RX or TX) SoapySDR channel
+//
+struct _SOAPYCHANNEL {
+  // overall gain
+  double gain_min;
+  double gain_max;
+  double gain_step;
+  // gain elements (max. 8)
+  int gains;
+  double gain_elem_min[8];
+  double gain_elem_max[8];
+  double gain_elem_step[8];
+  char   gain_elem_name[8][64];
+  // antennas (max. 8)
+  int    antennas;
+  char   antenna[8][64];
+  // some data only for RX channels
+  int    has_automatic_gain;
+};
+
+typedef struct _SOAPYCHANNEL SOAPYCHANNEL;
+
 struct _DISCOVERED {
   int protocol;
   int device;
@@ -94,60 +118,35 @@ struct _DISCOVERED {
   int fpga_version;
   int status;
   int supported_receivers;
-  int supported_transmitters;
   int adcs;
   int dacs;
   double frequency_min;
   double frequency_max;
-  union {
-    struct network {
-      unsigned char mac_address[6];
-      int address_length;
-      struct sockaddr_in address;
-      int interface_length;
-      struct sockaddr_in interface_address;
-      struct sockaddr_in interface_netmask;
-      char interface_name[64];
-    } network;
 
-    struct soapy {
-      char hardware_key[64];
-      char driver_key[64];
-      double rx_gain_step;
-      double rx_gain_min;
-      double rx_gain_max;
-      double tx_gain_step;
-      double tx_gain_min;
-      double tx_gain_max;
-      double rx_gain_elem_step[8];
-      double rx_gain_elem_min[8];
-      double rx_gain_elem_max[8];
-      double tx_gain_elem_step[8];
-      double tx_gain_elem_min[8];
-      double tx_gain_elem_max[8];
-      int    rx_antennas;
-      int    tx_antennas;
-      char rx_antenna[8][64];
-      char tx_antenna[8][64];
-      int sample_rate;
-      int    rx_gains;
-      int    tx_gains;
-      char rx_gain_elem_name[8][64];
-      char tx_gain_elem_name[8][64];
-      int rx_has_automatic_gain;
-      int    tx_channels;
-      char version[128];
-      int rtlsdr_count;
-      int sdrplay_count;
-      int    rx_channels;
-      gboolean rx_has_automatic_dc_offset_correction;
-      int    sensors;
-      char **sensor;
-      gboolean has_temp;
-      char address[64];
-    } soapy;
+  struct network {
+    unsigned char mac_address[6];
+    int address_length;
+    struct sockaddr_in address;
+    int interface_length;
+    struct sockaddr_in interface_address;
+    struct sockaddr_in interface_netmask;
+    char interface_name[64];
+  } network;
 
-  } info;
+  struct soapy {
+    char         hardware_key[64];
+    char         driver_key[64];
+    char         address[64];
+    char         version[128];
+    int          rtlsdr_count;
+    int          sdrplay_count;
+    int          sample_rate;
+    int          rx_channels;
+    int          tx_channels;
+    SOAPYCHANNEL rx[2];
+    SOAPYCHANNEL tx;
+  } soapy;
+
 };
 
 typedef struct _DISCOVERED DISCOVERED;

@@ -683,15 +683,15 @@ static void open_udp_socket() {
   }
 
   // bind to the interface
-  t_print("binding UDP socket to %s:%d\n", inet_ntoa(radio->info.network.interface_address.sin_addr),
-          ntohs(radio->info.network.interface_address.sin_port));
+  t_print("binding UDP socket to %s:%d\n", inet_ntoa(radio->network.interface_address.sin_addr),
+          ntohs(radio->network.interface_address.sin_port));
 
-  if (bind(tmp, (struct sockaddr * )&radio->info.network.interface_address, radio->info.network.interface_length) < 0) {
+  if (bind(tmp, (struct sockaddr * )&radio->network.interface_address, radio->network.interface_length) < 0) {
     t_perror("P1: bind socket:");
     g_idle_add(fatal_error, "FATAL: P1 could not bind data socket");
   }
 
-  memcpy(&data_addr, &radio->info.network.address, radio->info.network.address_length);
+  memcpy(&data_addr, &radio->network.address, radio->network.address_length);
   data_addr.sin_port = htons(DATA_PORT);
   //
   // Set value of data_socket only after everything succeeded
@@ -711,10 +711,10 @@ static void open_tcp_socket() {
     close(tmp);
   }
 
-  memcpy(&data_addr, &radio->info.network.address, radio->info.network.address_length);
+  memcpy(&data_addr, &radio->network.address, radio->network.address_length);
   data_addr.sin_port = htons(DATA_PORT);
   data_addr.sin_family = AF_INET;
-  t_print("Trying to open TCP connection to %s\n", inet_ntoa(radio->info.network.address.sin_addr));
+  t_print("Trying to open TCP connection to %s\n", inet_ntoa(radio->network.address.sin_addr));
   tmp = socket(AF_INET, SOCK_STREAM, 0);
 
   if (tmp < 0) {

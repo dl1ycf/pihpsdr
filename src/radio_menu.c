@@ -64,49 +64,52 @@ static gboolean close_cb () {
 }
 
 static void rx_gain_element_changed_cb(GtkWidget *widget, gpointer data) {
+  
   if (device == SOAPYSDR_USB_DEVICE) {
+    int id = GPOINTER_TO_INT(data);
     double gain = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-    adc[active_receiver->adc].gain = gain;
 
     if (radio_is_remote) {
       return;
     }
 
 #ifdef SOAPYSDR
-    soapy_protocol_set_gain_element(active_receiver, (char *)gtk_widget_get_name(widget), (int) gain);
+    soapy_protocol_set_rx_gain_element(id, (char *)gtk_widget_get_name(widget), gain);
 #endif
+    sliders_rf_gain(id, id);
   }
 }
 
 static void tx_gain_element_changed_cb(GtkWidget *widget, gpointer data) {
   if (can_transmit && device == SOAPYSDR_USB_DEVICE) {
     double gain = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-    dac.gain = gain;
 
     if (radio_is_remote) {
       return;
     }
 
 #ifdef SOAPYSDR
-    soapy_protocol_set_tx_gain_element(transmitter, (char *)gtk_widget_get_name(widget), (int) gain);
+    soapy_protocol_set_tx_gain_element((char *)gtk_widget_get_name(widget), (int) gain);
 #endif
+    sliders_drive();
   }
 }
 
 static void agc_changed_cb(GtkWidget *widget, gpointer data) {
   if (device == SOAPYSDR_USB_DEVICE) {
+    int id = GPOINTER_TO_INT(data);
     int agc = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-    adc[active_receiver->adc].agc = agc;
+    adc[id].agc = agc;
 
     if (radio_is_remote) {
-      send_soapy_agc(client_socket, 0);
+      send_soapy_agc(client_socket, id);
       return;
     }
 
 #ifdef SOAPYSDR
-    soapy_protocol_set_automatic_gain(active_receiver, agc);
+    soapy_protocol_set_automatic_gain(id, agc);
 
-    if (!agc) { soapy_protocol_set_gain(active_receiver); }
+    if (!agc) { soapy_protocol_set_rx_gain(id); }
 
 #endif
   }
@@ -299,7 +302,7 @@ void load_filters() {
   // This switches between StepAttenuator slider and CHARLY25 ATT/Preamp checkboxes
   // when the filter board is switched to/from CHARLY25
   //
-  att_type_changed();
+  sliders_att_type_changed();
 }
 
 static void filter_cb(GtkWidget *widget, gpointer data) {
@@ -363,7 +366,13 @@ static void sample_rate_cb(GtkToggleButton *widget, gpointer data) {
   if (sscanf(p, "%d", &samplerate) != 1) { return; }
 
   if (radio_is_remote) {
-    send_sample_rate(client_socket, 0, samplerate);
+    //
+    // We arrive here only for P1 and SOAPY and change the sample rate
+    // of *all* receivers
+    //
+    for (int id = 0; id < RECEIVERS; id++) {
+      send_sample_rate(client_socket, id, samplerate);
+    } 
   } else {
     radio_change_sample_rate(samplerate);
   }
@@ -540,7 +549,7 @@ void radio_menu(GtkWidget *parent) {
     row++;
     char rate_string[16];
     GtkWidget *sample_rate_combo_box = gtk_combo_box_text_new();
-    int rate = radio->info.soapy.sample_rate;
+    int rate = radio->soapy.sample_rate;
     int pos = 0;
 
     while (rate >= 48000) {
@@ -824,7 +833,7 @@ void radio_menu(GtkWidget *parent) {
   //
   GtkWidget *Separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
   gtk_widget_set_size_request(Separator, -1, 3);
-  gtk_grid_attach(GTK_GRID(grid), Separator, col, row, 5, 1);
+  gtk_grid_attach(GTK_GRID(grid), Separator, col, row, 6, 1);
   row++;
 
   if (can_transmit) {
@@ -920,13 +929,17 @@ void radio_menu(GtkWidget *parent) {
     g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &soapy_iqswap);
     col++;
 
-    if (radio->info.soapy.rx_has_automatic_gain) {
-      ChkBtn = gtk_check_button_new_with_label("Hardware AGC");
-      gtk_widget_set_name(ChkBtn, "boldlabel");
-      gtk_grid_attach(GTK_GRID(grid), ChkBtn, col, row, 1, 1);
-      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(ChkBtn), adc[active_receiver->adc].agc);
-      g_signal_connect(ChkBtn, "toggled", G_CALLBACK(agc_changed_cb), NULL);
-      col++;
+    for (int id = 0; id < RECEIVERS; id++) {
+      if (radio->soapy.rx[id].has_automatic_gain) {
+        char text[64];
+        snprintf(text, sizeof(text), "HW AGC RX%d", id + 1);
+        ChkBtn = gtk_check_button_new_with_label(text);
+        gtk_widget_set_name(ChkBtn, "boldlabel");
+        gtk_grid_attach(GTK_GRID(grid), ChkBtn, col, row, 1, 1);
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(ChkBtn), adc[id].agc);
+        g_signal_connect(ChkBtn, "toggled", G_CALLBACK(agc_changed_cb), GINT_TO_POINTER(id));
+        col++;
+      }
     }
   }
   break;
@@ -963,6 +976,7 @@ void radio_menu(GtkWidget *parent) {
   col++;
   label = gtk_label_new("RX Gain\nCalibration (dB):");
   gtk_widget_set_name(label, "boldlabel");
+  gtk_widget_set_halign(label, GTK_ALIGN_START);
   gtk_grid_attach(GTK_GRID(grid), label, col, row, 1, 1);
   col++;
   GtkWidget *rx_gain_calibration_b = gtk_spin_button_new_with_range(-50.0, 50.0, 1.0);
@@ -970,105 +984,86 @@ void radio_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), rx_gain_calibration_b, col, row, 1, 1);
   g_signal_connect(rx_gain_calibration_b, "value_changed", G_CALLBACK(rx_gain_calibration_value_changed_cb), NULL);
 
-  if (device == SOAPYSDR_USB_DEVICE) {
+  if (device == SOAPYSDR_USB_DEVICE && !radio_is_remote) {
     row++;
-    col = 0;
-    //
-    // If there is only a single RX or TX gain element, then we need not display it
-    // since it is better done via the main "Drive" or "RF gain" slider.
-    // At the moment, we present spin-buttons for the individual gain ranges
-    // for SDRplay, RTLsdr, and whenever there is more than on RX or TX gain element.
-    //
-    int display_gains = 0;
-
-    //
-    // For RTL sticks, there is a single gain element named "TUNER", and this is very well
-    // controlled by the main RF gain slider. This perhaps also true for sdrplay, but
-    // I could not test this because I do not have the hardware
-    //
-    //if (strcmp(radio->name, "sdrplay") == 0 || strcmp(radio->name, "rtlsdr") == 0) { display_gains = 1; }
-    if (strcmp(radio->name, "sdrplay") == 0 )  { display_gains = 1; }
-
-    if (radio->info.soapy.rx_gains > 1) { display_gains = 1; }
-
-    if (radio->info.soapy.tx_gains > 1) { display_gains = 1; }
-
-    //
-    // For the time being, do not allow manipulation of individual gain elements on the client
-    //
-    if (display_gains && !radio_is_remote) {
-      //
-      // Select RX gain from one out of a list of ranges (represented by spin buttons)
-      //
-      label = gtk_label_new("RX Gains:");
-      gtk_widget_set_name(label, "boldlabel");
-      gtk_widget_set_halign(label, GTK_ALIGN_START);
-      gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
-
-      if (can_transmit) {
-        label = gtk_label_new("TX Gains:");
-        gtk_widget_set_name(label, "boldlabel");
-        gtk_widget_set_halign(label, GTK_ALIGN_START);
-        gtk_grid_attach(GTK_GRID(grid), label, 2, row, 1, 1);
-      }
-    }
-
+    GtkWidget *Separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+    gtk_widget_set_size_request(Separator, -1, 3);
+    gtk_grid_attach(GTK_GRID(grid), Separator, 0, row, 6, 1);
     row++;
     max_row = row;
 
-    if (display_gains) {
-      //
-      // Draw a spin-button for each range
-      //
-      for (int i = 0; i < radio->info.soapy.rx_gains; i++) {
-        label = gtk_label_new(radio->info.soapy.rx_gain_elem_name[i]);
-        gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
-        col++;
-        double range_step = radio->info.soapy.rx_gain_elem_step[i];
-        double range_min  = radio->info.soapy.rx_gain_elem_min[i];
-        double range_max  = radio->info.soapy.rx_gain_elem_max[i];
+    //
+    // Display spin buttons for gain elements, but only if there are more than one
+    //
 
-        if (range_step == 0.0) {
-          range_step = 1.0;
-        }
-
-        GtkWidget *rx_gain = gtk_spin_button_new_with_range(range_min, range_max, range_step);
-        gtk_widget_set_name (rx_gain, radio->info.soapy.rx_gain_elem_name[i]);
-#ifdef SOAPYSDR
-        int value = soapy_protocol_get_gain_element(active_receiver, radio->info.soapy.rx_gain_elem_name[i]);
-        gtk_spin_button_set_value(GTK_SPIN_BUTTON(rx_gain), (double)value);
-#endif
-        gtk_grid_attach(GTK_GRID(grid), rx_gain, 1, row, 1, 1);
-        g_signal_connect(rx_gain, "value_changed", G_CALLBACK(rx_gain_element_changed_cb), NULL);
+    col = 0;
+    for (int id = 0; id < RECEIVERS; id++) {
+      if (radio->soapy.rx[id].gains > 0) {
+        char text[64];
+        row = max_row;
+        snprintf(text, sizeof(text), "RX%d Gains:", id+1);
+        label = gtk_label_new(text);
+        gtk_widget_set_name(label, "boldlabel");
+        gtk_widget_set_halign(label, GTK_ALIGN_START);
+        gtk_grid_attach(GTK_GRID(grid), label, col + 1, row, 1, 1);
         row++;
+
+        for (int i = 0; i < radio->soapy.rx[id].gains; i++) {
+          label = gtk_label_new(radio->soapy.rx[id].gain_elem_name[i]);
+          gtk_widget_set_name(label, "boldlabel");
+          gtk_widget_set_halign(label, GTK_ALIGN_END);
+          gtk_grid_attach(GTK_GRID(grid), label, col, row, 1, 1);
+          double range_step = radio->soapy.rx[id].gain_elem_step[i];
+          double range_min  = radio->soapy.rx[id].gain_elem_min[i];
+          double range_max  = radio->soapy.rx[id].gain_elem_max[i];
+
+          if (range_step == 0.0) {
+            range_step = 1.0;
+          }
+
+          GtkWidget *wgain = gtk_spin_button_new_with_range(range_min, range_max, range_step);
+          gtk_widget_set_name (wgain, radio->soapy.rx[id].gain_elem_name[i]);
+#ifdef SOAPYSDR
+          double value = soapy_protocol_get_rx_gain_element(id, radio->soapy.rx[id].gain_elem_name[i]);
+          gtk_spin_button_set_value(GTK_SPIN_BUTTON(wgain), value);
+#endif
+          gtk_grid_attach(GTK_GRID(grid), wgain, col+1, row, 1, 1);
+          g_signal_connect(wgain, "value_changed", G_CALLBACK(rx_gain_element_changed_cb), GINT_TO_POINTER(id));
+          row++;
+        }
+        col += 2;
       }
     }
 
-    row = max_row;
+    if (can_transmit && radio->soapy.tx.gains > 0) {
+      row = max_row;
+      label = gtk_label_new("TX Gains:");
+      gtk_widget_set_name(label, "boldlabel");
+      gtk_widget_set_halign(label, GTK_ALIGN_START);
+      gtk_grid_attach(GTK_GRID(grid), label, col + 1, row, 1, 1);
+      row++;
 
-    if (can_transmit && display_gains) {
-      //
-      // Select TX gain out of a list of discrete ranges
-      //
-      for (int i = 0; i < radio->info.soapy.tx_gains; i++) {
-        label = gtk_label_new(radio->info.soapy.tx_gain_elem_name[i]);
-        gtk_grid_attach(GTK_GRID(grid), label, 2, row, 1, 1);
-        double range_step = radio->info.soapy.tx_gain_elem_step[i];
-        double range_min  = radio->info.soapy.tx_gain_elem_min[i];
-        double range_max  = radio->info.soapy.tx_gain_elem_max[i];
+      for (int i = 0; i < radio->soapy.tx.gains; i++) {
+        label = gtk_label_new(radio->soapy.tx.gain_elem_name[i]);
+        gtk_widget_set_name(label, "boldlabel");
+        gtk_widget_set_halign(label, GTK_ALIGN_END);
+        gtk_grid_attach(GTK_GRID(grid), label, col, row, 1, 1);
+        double range_step = radio->soapy.tx.gain_elem_step[i];
+        double range_min  = radio->soapy.tx.gain_elem_min[i];
+        double range_max  = radio->soapy.tx.gain_elem_max[i];
 
         if (range_step == 0.0) {
           range_step = 1.0;
         }
 
-        GtkWidget *tx_gain = gtk_spin_button_new_with_range(range_min, range_max, range_step);
-        gtk_widget_set_name (tx_gain, radio->info.soapy.tx_gain_elem_name[i]);
+        GtkWidget *wgain = gtk_spin_button_new_with_range(range_min, range_max, range_step);
+        gtk_widget_set_name (wgain, radio->soapy.tx.gain_elem_name[i]);
 #ifdef SOAPYSDR
-        int value = soapy_protocol_get_tx_gain_element(transmitter, radio->info.soapy.tx_gain_elem_name[i]);
-        gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_gain), (double)value);
+        int value = soapy_protocol_get_tx_gain_element(radio->soapy.tx.gain_elem_name[i]);
+        gtk_spin_button_set_value(GTK_SPIN_BUTTON(wgain), (double)value);
 #endif
-        gtk_grid_attach(GTK_GRID(grid), tx_gain, 3, row, 1, 1);
-        g_signal_connect(tx_gain, "value_changed", G_CALLBACK(tx_gain_element_changed_cb), NULL);
+        gtk_grid_attach(GTK_GRID(grid), wgain, col+1, row, 1, 1);
+        g_signal_connect(wgain, "value_changed", G_CALLBACK(tx_gain_element_changed_cb), NULL);
         row++;
       }
     }

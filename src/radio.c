@@ -123,7 +123,7 @@ int sat_mode = SAT_NONE;
 
 int region = REGION_OTHER;
 
-int soapy_radio_sample_rate;   // alias for radio->info.soapy.sample_rate
+int soapy_radio_sample_rate;   // alias for radio->soapy.sample_rate
 int soapy_iqswap;
 
 DISCOVERED *radio = NULL;
@@ -836,7 +836,7 @@ void radio_reconfigure() {
     }
 
     gtk_widget_show_all(sliders);  // ... this shows both C25 and Alex ATT/Preamp, and both Mic/Linein sliders
-    att_type_changed();            // ... and this hides the „wrong“ ones.
+    sliders_att_type_changed();    // ... and this hides the „wrong“ ones.
     y += SLIDERS_HEIGHT;
   } else {
     if (sliders != NULL) {
@@ -1015,7 +1015,7 @@ static void radio_create_visual() {
       break;
 
     case SOAPYSDR_PROTOCOL:
-      radio_has_transmitter = (radio->info.soapy.tx_channels != 0);
+      radio_has_transmitter = (radio->soapy.tx_channels != 0);
       break;
     }
 
@@ -1125,7 +1125,7 @@ static void radio_create_visual() {
   }
 
   gtk_widget_show_all (top_window);  // ... this shows both the HPSDR and C25 preamp/att sliders
-  att_type_changed();                // ... and this hides the „wrong“ ones.
+  sliders_att_type_changed();        // ... and this hides the „wrong“ ones.
 }
 
 void radio_start_radio() {
@@ -1194,7 +1194,7 @@ void radio_start_radio() {
     have_lime = 1;
   }
 
-  if (device == NEW_DEVICE_SATURN && (strcmp(radio->info.network.interface_name, "XDMA") == 0)) {
+  if (device == NEW_DEVICE_SATURN && (strcmp(radio->network.interface_name, "XDMA") == 0)) {
     have_saturn_xdma = 1;
   }
 
@@ -1292,8 +1292,8 @@ void radio_start_radio() {
     break;
 
   case SOAPYSDR_USB_DEVICE:
-    drive_min = radio->info.soapy.tx_gain_min;
-    drive_max = radio->info.soapy.tx_gain_max;
+    drive_min = radio->soapy.tx.gain_min;
+    drive_max = radio->soapy.tx.gain_max;
     pa_power = PA_1W;
     break;
 
@@ -1393,8 +1393,8 @@ void radio_start_radio() {
     snprintf(version, sizeof(version), "v%d.%d",
              radio->software_version / 10,
              radio->software_version % 10);
-    snprintf(ip, sizeof(ip), "%s", inet_ntoa(radio->info.network.address.sin_addr));
-    snprintf(iface, sizeof(iface), "%s", radio->info.network.interface_name);
+    snprintf(ip, sizeof(ip), "%s", inet_ntoa(radio->network.address.sin_addr));
+    snprintf(iface, sizeof(iface), "%s", radio->network.interface_name);
     break;
 
   case NEW_PROTOCOL:
@@ -1402,14 +1402,14 @@ void radio_start_radio() {
     snprintf(version, sizeof(version), "v%d.%d",
              radio->software_version / 10,
              radio->software_version % 10);
-    snprintf(ip, sizeof(ip), "%s", inet_ntoa(radio->info.network.address.sin_addr));
-    snprintf(iface, sizeof(iface), "%s", radio->info.network.interface_name);
+    snprintf(ip, sizeof(ip), "%s", inet_ntoa(radio->network.address.sin_addr));
+    snprintf(iface, sizeof(iface), "%s", radio->network.interface_name);
     break;
 
   case SOAPYSDR_PROTOCOL:
     snprintf(p, sizeof(p), "SoapySDR");
     snprintf(version, sizeof(version), "%4.20s v%d.%d.%d",
-             radio->info.soapy.driver_key,
+             radio->soapy.driver_key,
              (radio->software_version % 10000) / 100,
              (radio->software_version % 100) / 10,
              radio->software_version % 10);
@@ -1488,7 +1488,7 @@ void radio_start_radio() {
     // but for the sake of backwards compatibility this "hook" is currently
     // only activated for the LIME.
     //
-    if (have_lime && radio->info.soapy.rx_channels > 1) {
+    if (have_lime && radio->soapy.rx_channels > 1) {
         snprintf(property_path, sizeof(property_path), "%s-2rx.props", radio->name);
     }
     break;
@@ -1498,12 +1498,12 @@ void radio_start_radio() {
       snprintf(property_path, sizeof(property_path), "saturn.xdma.props");
     } else {
       snprintf(property_path, sizeof(property_path), "%02X-%02X-%02X-%02X-%02X-%02X.props",
-               radio->info.network.mac_address[0],
-               radio->info.network.mac_address[1],
-               radio->info.network.mac_address[2],
-               radio->info.network.mac_address[3],
-               radio->info.network.mac_address[4],
-               radio->info.network.mac_address[5]);
+               radio->network.mac_address[0],
+               radio->network.mac_address[1],
+               radio->network.mac_address[2],
+               radio->network.mac_address[3],
+               radio->network.mac_address[4],
+               radio->network.mac_address[5]);
     }
 
     break;
@@ -1538,7 +1538,7 @@ void radio_start_radio() {
 
   case SOAPYSDR_USB_DEVICE:
 
-    if (radio->info.soapy.rx_channels > 1) {
+    if (radio->soapy.rx_channels > 1) {
       n_adc = 2;
     } else {
       n_adc = 1;
@@ -1563,7 +1563,7 @@ void radio_start_radio() {
     soapy_iqswap = 1;
     receivers = 1;
 
-    if (radio->info.soapy.rx_channels > 1) {
+    if (radio->soapy.rx_channels > 1) {
       receivers = 2;
     }
 
@@ -1601,8 +1601,8 @@ void radio_start_radio() {
   adc[0].agc = FALSE;
 
   if (device == SOAPYSDR_USB_DEVICE) {
-    adc[0].min_gain = radio->info.soapy.rx_gain_min;
-    adc[0].max_gain = radio->info.soapy.rx_gain_max;
+    adc[0].min_gain = radio->soapy.rx[0].gain_min;
+    adc[0].max_gain = radio->soapy.rx[0].gain_max;
     adc[0].gain = adc[0].min_gain;
   }
 
@@ -1620,10 +1620,10 @@ void radio_start_radio() {
   adc[1].agc = FALSE;
 
   if (device == SOAPYSDR_USB_DEVICE) {
-    adc[1].min_gain = radio->info.soapy.rx_gain_min;
-    adc[1].max_gain = radio->info.soapy.rx_gain_max;
+    adc[1].min_gain = radio->soapy.rx[1].gain_min;
+    adc[1].max_gain = radio->soapy.rx[1].gain_max;
     adc[1].gain = adc[1].min_gain;
-    soapy_radio_sample_rate = radio->info.soapy.sample_rate;
+    soapy_radio_sample_rate = radio->soapy.sample_rate;
   }
 
 #ifdef GPIO
@@ -1655,7 +1655,7 @@ void radio_start_radio() {
   case SOAPYSDR_PROTOCOL:
     RECEIVERS = 1;
 
-    if (radio->info.soapy.rx_channels > 1) {
+    if (radio->soapy.rx_channels > 1) {
       RECEIVERS = 2;
     }
 
@@ -1704,65 +1704,68 @@ void radio_start_radio() {
       //       since this starts auto-calibration.
       //       Do not forget to do this below in the LIME case!
       //
-      for (int i = 0; i < RECEIVERS; i++) {
-        soapy_protocol_create_receiver(receiver[i]);
+      switch (RECEIVERS) {
+      case 1:
+        soapy_protocol_create_single_receiver(receiver[0]);
+        break;
+      case 2:
+        soapy_protocol_create_dual_receiver(receiver[0], receiver[1]);
+        break;
+      default:
+        t_print("%s:WARNING:SOAPY: can only create 1 or 2 receivers\n", __FUNCTION__);
+        break;
       }
     }
 
     if (can_transmit) {
       t_print("%s: create SOAPY transmitter\n", __FUNCTION__);
       soapy_protocol_create_transmitter(transmitter);
-      soapy_protocol_set_tx_antenna(transmitter, dac.antenna);
+      soapy_protocol_set_tx_antenna(dac.antenna);
       //
       // LIME: set TX gain to 30 for the auto-calibration that takes place
       //       upon starting the transmitter
       //
-      soapy_protocol_set_tx_gain(transmitter, have_lime ? 30 : transmitter->drive);
-      soapy_protocol_set_tx_frequency(transmitter);
-      soapy_protocol_start_transmitter(transmitter);
+      soapy_protocol_set_tx_gain(have_lime ? 30 : transmitter->drive);
+      soapy_protocol_set_tx_frequency();
+      soapy_protocol_start_transmitter();
       if (have_lime) {
         // LIME: set TX gain to 0 to avoid  LO leak. The TX gain
         //       is set to the nominal drive upon RX/TX transistons,
         //       and reset to zero upon TX/RX transitions.
-        soapy_protocol_set_tx_gain(transmitter, 0);
+        soapy_protocol_set_tx_gain(0);
       }
     }
 
+    t_print("%s: start %d SOAPY receiver(s)\n", __FUNCTION__, RECEIVERS);
+
+    //
+    // Start receivers, in the LIME case first create them
+    //
+    switch (RECEIVERS) {
+    case 1:
+      if (have_lime) { soapy_protocol_create_single_receiver(receiver[0]); }
+      soapy_protocol_start_single_receiver(receiver[0]);
+      break;
+    case 2:
+      if (have_lime) { soapy_protocol_create_dual_receiver(receiver[0], receiver[1]); }
+      soapy_protocol_start_dual_receiver(receiver[0], receiver[1]);
+      break;
+    default:
+      t_print("%s:WARNING:SOAPY: can only start 1 or 2 receivers\n", __FUNCTION__);
+      break;
+    }
+
+    //
+    // Apply RX setting to the SOAPY receivers
+    //
     for (int id = 0; id < RECEIVERS; id++) {
       RECEIVER *rx = receiver[id];
-      int rxadc = rx->adc;
 
-      if (have_lime && RECEIVERS == 2) {
-        //
-        // LIME: This one has a single (Soapy) receiver with two
-        //       channels, so we have to create and start this
-        //       *pair* in the first pass through this loop
-        //
-        // ATTENTION: this does not apply to a LIME-mini!
-        //
-        if (id == 0) {
-          t_print("%s: create and start a dual SOAPY receiver\n", __FUNCTION__);
-          soapy_protocol_create_dual_receiver(receiver[0],receiver[1]);
-          soapy_protocol_start_dual_receiver(receiver[0],receiver[1]);
-        }
-      } else {
-        if (have_lime) {
-          //
-          // LIME with 1RX: creating the receiver has been deferred so
-          // we need to do this HERE.
-          //
-          t_print("%s: create 1 SOAPY receiver\n", __FUNCTION__);
-          soapy_protocol_create_receiver(rx);
-        }
-        t_print("%s: start 1 SOAPY receiver\n", __FUNCTION__);
-        soapy_protocol_start_receiver(rx);
-      }
+      soapy_protocol_set_automatic_gain(id, adc[id].agc);
+      soapy_protocol_set_rx_antenna(id, adc[id].antenna);
+      soapy_protocol_set_rx_frequency(id);
 
-      soapy_protocol_set_automatic_gain(rx, adc[rxadc].agc);
-      soapy_protocol_set_rx_antenna(rx, adc[rxadc].antenna);
-      soapy_protocol_set_rx_frequency(rx, id);
-
-      if (!adc[rxadc].agc) { soapy_protocol_set_gain(rx); }
+      if (!adc[id].agc) { soapy_protocol_set_rx_gain(id); }
 
       if (vfo[id].ctun) {
         rx_set_frequency(rx, vfo[id].ctun_frequency);
@@ -2017,8 +2020,7 @@ static void rxtx(int state) {
 
       if (protocol == SOAPYSDR_PROTOCOL) {
 #ifdef SOAPYSDR
-        soapy_protocol_set_tx_frequency(transmitter);
-        //soapy_protocol_start_transmitter(transmitter);
+        soapy_protocol_set_tx_frequency();
 #endif
       }
     } else {
@@ -2054,6 +2056,9 @@ static void rxtx(int state) {
 
       if (protocol == SOAPYSDR_PROTOCOL) {
 #ifdef SOAPYSDR
+        //
+        // Do not stop, since starting the transmitter takes long
+        //
         //soapy_protocol_stop_transmitter(transmitter);
 #endif
       }
@@ -2649,7 +2654,7 @@ void radio_set_drive(double value) {
     //       (this is now done on each RX/TX and TX/RX transition)
     //
     if (!have_lime || radio_is_transmitting()) {
-      soapy_protocol_set_tx_gain(transmitter, transmitter->drive);
+      soapy_protocol_set_tx_gain(transmitter->drive);
     }
 #endif
     break;
@@ -3319,7 +3324,7 @@ void radio_protocol_stop() {
 
   case SOAPYSDR_PROTOCOL:
 #ifdef SOAPYSDR
-    soapy_protocol_stop_receiver(receiver[0]);
+    soapy_protocol_stop_receivers();
 #endif
     break;
   }
@@ -3337,7 +3342,16 @@ void radio_protocol_run() {
 
   case SOAPYSDR_PROTOCOL:
 #ifdef SOAPYSDR
-    soapy_protocol_start_receiver(receiver[0]);
+    switch(RECEIVERS) {
+      case 1:
+        soapy_protocol_start_single_receiver(receiver[0]);
+        break;
+      case 2:
+        soapy_protocol_start_dual_receiver(receiver[0], receiver[1]);
+        break;
+      default:
+        t_print("%s:WARNING:SOAPY:only 1 or 2 receivers allowed\n", __FUNCTION__);
+      }
 #endif
     break;
   }

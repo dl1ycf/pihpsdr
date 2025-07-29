@@ -90,20 +90,38 @@ static char host_addr[128] = "127.0.0.1:50000";
 
 static void host_entry_cb(GtkWidget *widget, gpointer data);
 
-static void print_device(int i) {
-  t_print("%s: found protocol=%d device=%d software_version=%d status=%d address=%s (%02X:%02X:%02X:%02X:%02X:%02X) on %s\n", __FUNCTION__, 
-          discovered[i].protocol,
-          discovered[i].device,
-          discovered[i].software_version,
-          discovered[i].status,
-          inet_ntoa(discovered[i].info.network.address.sin_addr),
-          discovered[i].info.network.mac_address[0],
-          discovered[i].info.network.mac_address[1],
-          discovered[i].info.network.mac_address[2],
-          discovered[i].info.network.mac_address[3],
-          discovered[i].info.network.mac_address[4],
-          discovered[i].info.network.mac_address[5],
-          discovered[i].info.network.interface_name);
+static void print_devices(void) {
+  t_print("%s: discovery found %d devices\n", __FUNCTION__, devices);
+
+  for (int i = 0; i < devices; i++) {
+    switch(discovered[i].protocol) {
+    case ORIGINAL_PROTOCOL:
+    case NEW_PROTOCOL:
+      t_print("%s: found protocol=%d device=%d software_version=%d status=%d address=%s (%02X:%02X:%02X:%02X:%02X:%02X) on %s\n", __FUNCTION__, 
+              discovered[i].protocol,
+              discovered[i].device,
+              discovered[i].software_version,
+              discovered[i].status,
+              inet_ntoa(discovered[i].network.address.sin_addr),
+              discovered[i].network.mac_address[0],
+              discovered[i].network.mac_address[1],
+              discovered[i].network.mac_address[2],
+              discovered[i].network.mac_address[3],
+              discovered[i].network.mac_address[4],
+              discovered[i].network.mac_address[5],
+              discovered[i].network.interface_name);
+      break;
+    case SOAPYSDR_PROTOCOL:
+      t_print("%s: found protocol=%d driver=%s software_version=%d driver_key=%s hardware_key=%s on %s\n", __FUNCTION__, 
+              discovered[i].protocol,
+              discovered[i].name,
+              discovered[i].software_version,
+              discovered[i].soapy.driver_key,
+              discovered[i].soapy.hardware_key,
+              discovered[i].soapy.address);
+      break;
+    }
+  }
 }
 
 static gboolean close_cb() {
@@ -579,13 +597,13 @@ static void discovery() {
       discovered[devices].frequency_max = 61440000.0;
 
       for (int i = 0; i < 6; i++) {
-        discovered[devices].info.network.mac_address[i] = 0;
+        discovered[devices].network.mac_address[i] = 0;
       }
 
       discovered[devices].status = STATE_AVAILABLE;
-      discovered[devices].info.network.address_length = 0;
-      discovered[devices].info.network.interface_length = 0;
-      snprintf(discovered[devices].info.network.interface_name, sizeof(discovered[devices].info.network.interface_name),
+      discovered[devices].network.address_length = 0;
+      discovered[devices].network.interface_length = 0;
+      snprintf(discovered[devices].network.interface_name, sizeof(discovered[devices].network.interface_name),
                "USB");
       discovered[devices].use_tcp = 0;
       discovered[devices].use_routing = 0;
@@ -642,10 +660,7 @@ static void discovery() {
   status_text("Discovery completed.");
   // subsequent discoveries check all protocols enabled.
   discover_only_stemlab = 0;
-  t_print("%s: found %d devices\n", __FUNCTION__, devices);
-
-  for (int i = 0; i < devices; i++) { print_device(i); }
-
+  print_devices();
   gdk_window_set_cursor(gtk_widget_get_window(top_window), gdk_cursor_new(GDK_ARROW));
   discovery_dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(discovery_dialog), GTK_WINDOW(top_window));
@@ -676,17 +691,16 @@ static void discovery() {
 
     for (row = 0; row < devices; row++) {
       d = &discovered[row];
-      t_print("%s: Device Protocol=%d name=%s\n", __FUNCTION__, d->protocol, d->name);
       snprintf(version, sizeof(version), "v%d.%d",
                d->software_version / 10,
                d->software_version % 10);
       snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
-               d->info.network.mac_address[0],
-               d->info.network.mac_address[1],
-               d->info.network.mac_address[2],
-               d->info.network.mac_address[3],
-               d->info.network.mac_address[4],
-               d->info.network.mac_address[5]);
+               d->network.mac_address[0],
+               d->network.mac_address[1],
+               d->network.mac_address[2],
+               d->network.mac_address[3],
+               d->network.mac_address[4],
+               d->network.mac_address[5]);
 
       switch (d->protocol) {
       case ORIGINAL_PROTOCOL:
@@ -694,7 +708,7 @@ static void discovery() {
         if (d->device == DEVICE_OZY) {
           snprintf(text, sizeof(text), "%s (%s via USB)", d->name,
                    d->protocol == ORIGINAL_PROTOCOL ? "Protocol 1" : "Protocol 2");
-        } else if (d->device == NEW_DEVICE_SATURN && strcmp(d->info.network.interface_name, "XDMA") == 0) {
+        } else if (d->device == NEW_DEVICE_SATURN && strcmp(d->network.interface_name, "XDMA") == 0) {
           snprintf(text, sizeof(text), "%s (%s v%d) fpga:%x (%s) on /dev/xdma*", d->name,
                    d->protocol == ORIGINAL_PROTOCOL ? "Protocol 1" : "Protocol 2", d->software_version,
                    d->fpga_version, macStr);
@@ -703,22 +717,22 @@ static void discovery() {
                    d->name,
                    d->protocol == ORIGINAL_PROTOCOL ? "Protocol 1" : "Protocol 2",
                    version,
-                   inet_ntoa(d->info.network.address.sin_addr),
+                   inet_ntoa(d->network.address.sin_addr),
                    macStr,
-                   d->info.network.interface_name);
+                   d->network.interface_name);
         }
 
         break;
 
       case SOAPYSDR_PROTOCOL:
 #ifdef SOAPYSDR
-        snprintf(text, sizeof(text), "%s (Protocol SOAPY_SDR %s) on %s", d->name, d->info.soapy.version, d->info.soapy.address);
+        snprintf(text, sizeof(text), "%s (Protocol SOAPY_SDR %s) on %s", d->name, d->soapy.version, d->soapy.address);
 #endif
         break;
 
       case STEMLAB_PROTOCOL:
         snprintf(text, sizeof(text), "Choose SDR App from %s: ",
-                 inet_ntoa(d->info.network.address.sin_addr));
+                 inet_ntoa(d->network.address.sin_addr));
       }
 
       GtkWidget *label = gtk_label_new(text);
@@ -758,14 +772,14 @@ static void discovery() {
         //  b) we have a "routed" (TCP or UDP) connection to the radio
         //  c) radio and network address are in the same subnet
         //
-        if (!strncmp(inet_ntoa(d->info.network.address.sin_addr), "169.254.", 8)) { can_connect = 1; }
+        if (!strncmp(inet_ntoa(d->network.address.sin_addr), "169.254.", 8)) { can_connect = 1; }
 
-        if (!strncmp(inet_ntoa(d->info.network.interface_address.sin_addr), "169.254.", 8)) { can_connect = 1; }
+        if (!strncmp(inet_ntoa(d->network.interface_address.sin_addr), "169.254.", 8)) { can_connect = 1; }
 
         if (d->use_routing) { can_connect = 1; }
 
-        if ((d->info.network.interface_address.sin_addr.s_addr & d->info.network.interface_netmask.sin_addr.s_addr) ==
-            (d->info.network.address.sin_addr.s_addr & d->info.network.interface_netmask.sin_addr.s_addr)) { can_connect = 1; }
+        if ((d->network.interface_address.sin_addr.s_addr & d->network.interface_netmask.sin_addr.s_addr) ==
+            (d->network.address.sin_addr.s_addr & d->network.interface_netmask.sin_addr.s_addr)) { can_connect = 1; }
 
         if (!can_connect) {
           gtk_button_set_label(GTK_BUTTON(start_button), "Subnet!");

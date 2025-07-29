@@ -223,9 +223,9 @@ static void new_discover(struct ifaddrs* iface, int discflag) {
       //
       // METIS detection UDP packet sent to fixed IP address got a valid response.
       //
-      memcpy((void *)&discovered[rc].info.network.address, (void *)&to_addr, sizeof(to_addr));
-      discovered[rc].info.network.address_length = sizeof(to_addr);
-      snprintf(discovered[rc].info.network.interface_name, sizeof(discovered[rc].info.network.interface_name), "UDP");
+      memcpy((void *)&discovered[rc].network.address, (void *)&to_addr, sizeof(to_addr));
+      discovered[rc].network.address_length = sizeof(to_addr);
+      snprintf(discovered[rc].network.interface_name, sizeof(discovered[rc].network.interface_name), "UDP");
       discovered[rc].use_routing = 1;
     }
 
@@ -348,16 +348,16 @@ static gpointer new_discover_receive_thread(gpointer data) {
             }
 
             for (i = 0; i < 6; i++) {
-              discovered[devices].info.network.mac_address[i] = buffer[i + 5];
+              discovered[devices].network.mac_address[i] = buffer[i + 5];
             }
 
-            memcpy((void*)&discovered[devices].info.network.address, (void*)&addr, sizeof(addr));
-            discovered[devices].info.network.address_length = sizeof(addr);
-            memcpy((void*)&discovered[devices].info.network.interface_address, (void*)&interface_addr, sizeof(interface_addr));
-            memcpy((void*)&discovered[devices].info.network.interface_netmask, (void*)&interface_netmask,
+            memcpy((void*)&discovered[devices].network.address, (void*)&addr, sizeof(addr));
+            discovered[devices].network.address_length = sizeof(addr);
+            memcpy((void*)&discovered[devices].network.interface_address, (void*)&interface_addr, sizeof(interface_addr));
+            memcpy((void*)&discovered[devices].network.interface_netmask, (void*)&interface_netmask,
                    sizeof(interface_netmask));
-            discovered[devices].info.network.interface_length = sizeof(interface_addr);
-            snprintf(discovered[devices].info.network.interface_name, sizeof(discovered[devices].info.network.interface_name), "%s",
+            discovered[devices].network.interface_length = sizeof(interface_addr);
+            snprintf(discovered[devices].network.interface_name, sizeof(discovered[devices].network.interface_name), "%s",
                      interface_name);
             discovered[devices].supported_receivers = 2;
             //
@@ -380,14 +380,14 @@ static gpointer new_discover_receive_thread(gpointer data) {
                     discovered[devices].software_version,
                     buffer[23] & 0xFF,
                     discovered[devices].status,
-                    inet_ntoa(discovered[devices].info.network.address.sin_addr),
-                    discovered[devices].info.network.mac_address[0],
-                    discovered[devices].info.network.mac_address[1],
-                    discovered[devices].info.network.mac_address[2],
-                    discovered[devices].info.network.mac_address[3],
-                    discovered[devices].info.network.mac_address[4],
-                    discovered[devices].info.network.mac_address[5],
-                    discovered[devices].info.network.interface_name);
+                    inet_ntoa(discovered[devices].network.address.sin_addr),
+                    discovered[devices].network.mac_address[0],
+                    discovered[devices].network.mac_address[1],
+                    discovered[devices].network.mac_address[2],
+                    discovered[devices].network.mac_address[3],
+                    discovered[devices].network.mac_address[4],
+                    discovered[devices].network.mac_address[5],
+                    discovered[devices].network.interface_name);
             discovered[devices].frequency_min = frequency_min;
             discovered[devices].frequency_max = frequency_max;
             devices++;

@@ -595,43 +595,43 @@ void new_protocol_init() {
     }
 
     // bind to the interface
-    if (bind(data_socket, (struct sockaddr * )&radio->info.network.interface_address,
-             radio->info.network.interface_length) < 0) {
+    if (bind(data_socket, (struct sockaddr * )&radio->network.interface_address,
+             radio->network.interface_length) < 0) {
       t_perror("bind socket failed for data_socket:");
       g_idle_add(fatal_error, "FATAL: P2 Bind failed for data socket");
     }
 
     t_print("new_protocol_init: data_socket %d bound to interface %s:%d\n", data_socket,
-            inet_ntoa(radio->info.network.interface_address.sin_addr), ntohs(radio->info.network.interface_address.sin_port));
-    memcpy(&base_addr, &radio->info.network.address, radio->info.network.address_length);
-    base_addr_length = radio->info.network.address_length;
+            inet_ntoa(radio->network.interface_address.sin_addr), ntohs(radio->network.interface_address.sin_port));
+    memcpy(&base_addr, &radio->network.address, radio->network.address_length);
+    base_addr_length = radio->network.address_length;
     base_addr.sin_port = htons(GENERAL_REGISTERS_FROM_HOST_PORT);
-    //t_print("base_addr=%s\n",inet_ntoa(radio->info.network.address.sin_addr));
-    memcpy(&receiver_addr, &radio->info.network.address, radio->info.network.address_length);
-    receiver_addr_length = radio->info.network.address_length;
+    //t_print("base_addr=%s\n",inet_ntoa(radio->network.address.sin_addr));
+    memcpy(&receiver_addr, &radio->network.address, radio->network.address_length);
+    receiver_addr_length = radio->network.address_length;
     receiver_addr.sin_port = htons(RECEIVER_SPECIFIC_REGISTERS_FROM_HOST_PORT);
-    //t_print("receive_addr=%s\n",inet_ntoa(radio->info.network.address.sin_addr));
-    memcpy(&transmitter_addr, &radio->info.network.address, radio->info.network.address_length);
-    transmitter_addr_length = radio->info.network.address_length;
+    //t_print("receive_addr=%s\n",inet_ntoa(radio->network.address.sin_addr));
+    memcpy(&transmitter_addr, &radio->network.address, radio->network.address_length);
+    transmitter_addr_length = radio->network.address_length;
     transmitter_addr.sin_port = htons(TRANSMITTER_SPECIFIC_REGISTERS_FROM_HOST_PORT);
-    //t_print("transmit_addr=%s\n",inet_ntoa(radio->info.network.address.sin_addr));
-    memcpy(&high_priority_addr, &radio->info.network.address, radio->info.network.address_length);
-    high_priority_addr_length = radio->info.network.address_length;
+    //t_print("transmit_addr=%s\n",inet_ntoa(radio->network.address.sin_addr));
+    memcpy(&high_priority_addr, &radio->network.address, radio->network.address_length);
+    high_priority_addr_length = radio->network.address_length;
     high_priority_addr.sin_port = htons(HIGH_PRIORITY_FROM_HOST_PORT);
-    //t_print("high_priority_addr=%s\n",inet_ntoa(radio->info.network.address.sin_addr));
+    //t_print("high_priority_addr=%s\n",inet_ntoa(radio->network.address.sin_addr));
     //t_print("new_protocol_thread: high_priority_addr setup for port %d\n",HIGH_PRIORITY_FROM_HOST_PORT);
-    memcpy(&audio_addr, &radio->info.network.address, radio->info.network.address_length);
-    audio_addr_length = radio->info.network.address_length;
+    memcpy(&audio_addr, &radio->network.address, radio->network.address_length);
+    audio_addr_length = radio->network.address_length;
     audio_addr.sin_port = htons(AUDIO_FROM_HOST_PORT);
-    //t_print("audio_addr=%s\n",inet_ntoa(radio->info.network.address.sin_addr));
-    memcpy(&iq_addr, &radio->info.network.address, radio->info.network.address_length);
-    iq_addr_length = radio->info.network.address_length;
+    //t_print("audio_addr=%s\n",inet_ntoa(radio->network.address.sin_addr));
+    memcpy(&iq_addr, &radio->network.address, radio->network.address_length);
+    iq_addr_length = radio->network.address_length;
     iq_addr.sin_port = htons(TX_IQ_FROM_HOST_PORT);
 
-    //t_print("iq_addr=%s\n",inet_ntoa(radio->info.network.address.sin_addr));
+    //t_print("iq_addr=%s\n",inet_ntoa(radio->network.address.sin_addr));
     for (i = 0; i < MAX_DDC; i++) {
-      memcpy(&data_addr[i], &radio->info.network.address, radio->info.network.address_length);
-      data_addr_length[i] = radio->info.network.address_length;
+      memcpy(&data_addr[i], &radio->network.address, radio->network.address_length);
+      data_addr_length[i] = radio->network.address_length;
       data_addr[i].sin_port = htons(RX_IQ_TO_HOST_PORT_0 + i);
     }
   }

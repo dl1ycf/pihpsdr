@@ -160,6 +160,33 @@ void show_popup_slider(enum ACTION action, int rx, double min, double max, doubl
   }
 }
 
+static void update_c25_att() {
+  //
+  // Only effective with the CHARLY25 filter board.
+  // Change the Att/Preamp combo-box to the current attenuation status
+  //  
+  if (filter_board == CHARLY25) {
+    char id[16];
+
+    if (active_receiver->adc != 0) {
+      active_receiver->alex_attenuation = 0;
+      active_receiver->preamp = 0;
+      active_receiver->dither = 0;
+    }
+  
+    //
+    // This is to recover from an "illegal" props file
+    //
+    if (active_receiver->preamp || active_receiver->dither) {
+      active_receiver->alex_attenuation = 0;
+    }
+    
+    int att = -12 * active_receiver->alex_attenuation + 18 * active_receiver->dither + 18 * active_receiver->preamp;
+    snprintf(id, sizeof(id), "%d", att);
+    gtk_combo_box_set_active_id(GTK_COMBO_BOX(c25_att_combobox), id);
+  }
+}
+
 int sliders_active_receiver_changed(void *data) {
   if (display_sliders) {
     //
@@ -189,8 +216,22 @@ int sliders_active_receiver_changed(void *data) {
   return FALSE;
 }
 
+void sliders_attenuation(int id) {
+  if (!have_rx_att) { return; }
+  //
+  // This ONLY moves the slider
+  //
+  if (display_sliders && active_receiver->id == id) {
+    gtk_range_set_value (GTK_RANGE(attenuation_scale), (double)adc[id].attenuation);
+  } else {
+    char title[64];
+    snprintf(title, sizeof(title), "Attenuation - ADC-%d (dB)", id);
+    show_popup_slider(ATTENUATION, id, 0.0, 31.0, 1.0, (double)adc[id].attenuation,
+                      title);
+  }
+}
+
 void set_attenuation_value(double value) {
-  //t_print("%s value=%f\n",__FUNCTION__,value);
   if (!have_rx_att) { return; }
 
   int id = active_receiver->adc;
@@ -202,14 +243,7 @@ void set_attenuation_value(double value) {
     schedule_high_priority();
   }
 
-  if (display_sliders) {
-    gtk_range_set_value (GTK_RANGE(attenuation_scale), (double)adc[id].attenuation);
-  } else {
-    char title[64];
-    snprintf(title, sizeof(title), "Attenuation - ADC-%d (dB)", id);
-    show_popup_slider(ATTENUATION, id, 0.0, 31.0, 1.0, (double)adc[id].attenuation,
-                      title);
-  }
+  sliders_attenuation(id);
 }
 
 static void attenuation_value_changed_cb(GtkWidget *widget, gpointer data) {
@@ -224,7 +258,7 @@ static void attenuation_value_changed_cb(GtkWidget *widget, gpointer data) {
   }
 }
 
-void att_type_changed() {
+void sliders_att_type_changed() {
   //
   // This function manages a transition from/to a CHARLY25 filter board
   // Note all sliders might be non-existent, e.g. if sliders are not
@@ -326,7 +360,7 @@ static void c25_att_combobox_changed(GtkWidget *widget, gpointer data) {
   }
 }
 
-void update_c25_att() {
+void sliders_c25_att() {
   //
   // Only effective with the CHARLY25 filter board.
   // Change the Att/Preamp combo-box to the current attenuation status
@@ -358,25 +392,45 @@ static void agcgain_value_changed_cb(GtkWidget *widget, gpointer data) {
   rx_set_agc(active_receiver);
 }
 
-void set_agc_gain(int rx, double value) {
-  //t_print("%s value=%f\n",__FUNCTION__, value);
-  if (rx >= receivers) { return; }
-
-  receiver[rx]->agc_gain = value;
-  rx_set_agc(receiver[rx]);
-
-  if (display_sliders && active_receiver->id == rx) {
-    gtk_range_set_value (GTK_RANGE(agc_scale), receiver[rx]->agc_gain);
+void sliders_agc_gain(int id) {
+  //
+  // This ONLY moves the slider
+  //
+  if (display_sliders && active_receiver->id == id) {
+    gtk_range_set_value (GTK_RANGE(agc_scale), receiver[id]->agc_gain);
   } else {
     char title[64];
-    snprintf(title, sizeof(title), "AGC Gain RX%d", rx + 1);
-    show_popup_slider(AGC_GAIN, rx, -20.0, 120.0, 1.0, receiver[rx]->agc_gain, title);
+    snprintf(title, sizeof(title), "AGC Gain RX%d", id + 1);
+    show_popup_slider(AGC_GAIN, id, -20.0, 120.0, 1.0, receiver[id]->agc_gain, title);
   }
+}
+
+void set_agc_gain(int id, double value) {
+  if (id >= receivers) { return; }
+
+  receiver[id]->agc_gain = value;
+  rx_set_agc(receiver[id]);
+
+  sliders_agc_gain(id);
 }
 
 static void afgain_value_changed_cb(GtkWidget *widget, gpointer data) {
   active_receiver->volume = gtk_range_get_value(GTK_RANGE(af_gain_scale));
   rx_set_af_gain(active_receiver);
+}
+
+void sliders_af_gain(int id) {
+  //
+  // This ONLY moves the slider
+  //
+  RECEIVER *rx = receiver[id];
+  if (display_sliders && id == active_receiver->id) {
+    gtk_range_set_value (GTK_RANGE(af_gain_scale), rx->volume);
+  } else {
+    char title[64];
+    snprintf(title, sizeof(title), "AF Gain RX%d", id + 1);
+    show_popup_slider(AF_GAIN, id, -40.0, 0.0, 1.0, rx->volume, title);
+  }
 }
 
 void set_af_gain(int id, double value) {
@@ -386,13 +440,7 @@ void set_af_gain(int id, double value) {
   rx->volume = value;
   rx_set_af_gain(rx);
 
-  if (display_sliders && id == active_receiver->id) {
-    gtk_range_set_value (GTK_RANGE(af_gain_scale), value);
-  } else {
-    char title[64];
-    snprintf(title, sizeof(title), "AF Gain RX%d", id + 1);
-    show_popup_slider(AF_GAIN, id, -40.0, 0.0, 1.0, value, title);
-  }
+  sliders_af_gain(id);
 }
 
 static void rf_gain_value_changed_cb(GtkWidget *widget, gpointer data) {
@@ -406,7 +454,7 @@ static void rf_gain_value_changed_cb(GtkWidget *widget, gpointer data) {
   switch (protocol) {
   case SOAPYSDR_PROTOCOL:
 #ifdef SOAPYSDR
-    soapy_protocol_set_gain(active_receiver);
+    soapy_protocol_set_rx_gain(active_receiver->id);
 #endif
     break;
 
@@ -415,22 +463,12 @@ static void rf_gain_value_changed_cb(GtkWidget *widget, gpointer data) {
   }
 }
 
-void set_rf_gain(int rx, double value) {
+void sliders_rf_gain(int id, int rxadc) {
   if (!have_rx_gain) { return; }
-
-  if (rx >= receivers) { return; }
-
-  int rxadc = receiver[rx]->adc;
-  //t_print("%s rx=%d adc=%d val=%f\n",__FUNCTION__, rx, rxadc, value);
-  adc[rxadc].gain = value;
-
-  if (protocol == SOAPYSDR_PROTOCOL) {
-#ifdef SOAPYSDR
-    soapy_protocol_set_gain(receiver[rx]);
-#endif
-  }
-
-  if (display_sliders && active_receiver->id == rx) {
+  //
+  // This ONLY moves the slider
+  //
+  if (display_sliders && active_receiver->id == id) {
     gtk_range_set_value (GTK_RANGE(rf_gain_scale), adc[rxadc].gain);
   } else {
     char title[64];
@@ -439,8 +477,28 @@ void set_rf_gain(int rx, double value) {
   }
 }
 
-void show_filter_width(int rx, int width) {
-  //t_print("%s width=%d\n",__FUNCTION__, width);
+void set_rf_gain(int id, double value) {
+  if (!have_rx_gain) { return; }
+
+  if (id >= receivers) { return; }
+
+  int rxadc = receiver[id]->adc;
+  //t_print("%s rx=%d adc=%d val=%f\n",__FUNCTION__, rx, rxadc, value);
+  adc[rxadc].gain = value;
+
+  if (protocol == SOAPYSDR_PROTOCOL) {
+#ifdef SOAPYSDR
+    soapy_protocol_set_rx_gain(id);
+#endif
+  }
+
+  sliders_rf_gain(id, rxadc);
+}
+
+void sliders_filter_width(int rx, int width) {
+  //
+  // This ONLY moves the slider
+  //
   char title[64];
   int min, max;
   snprintf(title, sizeof(title), "Filter Width RX%d (Hz)", rx + 1);
@@ -462,8 +520,10 @@ void show_filter_width(int rx, int width) {
   show_popup_slider(IF_WIDTH, rx, (double)(min), (double)(max), 1.0, (double) width, title);
 }
 
-void show_filter_shift(int rx, int shift) {
-  //t_print("%s shift=%d\n",__FUNCTION__, shift);
+void sliders_filter_shift(int rx, int shift) {
+  //
+  // This ONLY moves the slider
+  //
   char title[64];
   int min, max;
   snprintf(title, sizeof(title), "Filter SHIFT RX%d (Hz)", rx + 1);
@@ -480,6 +540,13 @@ static void micgain_value_changed_cb(GtkWidget *widget, gpointer data) {
   }
 }
 
+void sliders_linein_gain() {
+  //
+  // This ONLY moves the slider
+  //
+  show_popup_slider(LINEIN_GAIN, 0, -34.0, 12.0, 1.0, linein_gain, "LineIn Gain");
+}
+
 void set_linein_gain(double value) {
   //t_print("%s value=%f\n",__FUNCTION__, value);
   linein_gain = value;
@@ -490,19 +557,41 @@ void set_linein_gain(double value) {
     schedule_high_priority();
   }
 
-  show_popup_slider(LINEIN_GAIN, 0, -34.0, 12.0, 1.0, linein_gain, "LineIn Gain");
+  sliders_linein_gain();
+}
+
+void sliders_mic_gain() {
+  //
+  // This ONLY moves the slider
+  //
+  if (can_transmit) {
+    if (display_sliders ) {
+      gtk_range_set_value (GTK_RANGE(mic_gain_scale), transmitter->mic_gain);
+    } else {
+      show_popup_slider(MIC_GAIN, 0, -12.0, 50.0, 1.0, transmitter->mic_gain, "Mic Gain");
+    }
+  }
 }
 
 void set_mic_gain(double value) {
-  if (display_sliders) {
-    gtk_range_set_value (GTK_RANGE(mic_gain_scale), value);
-  } else {
-    show_popup_slider(MIC_GAIN, 0, -12.0, 50.0, 1.0, value, "Mic Gain");
-  }
-
   if (can_transmit) {
     transmitter->mic_gain = value;
     tx_set_mic_gain(transmitter);
+  }
+
+  sliders_mic_gain();
+}
+
+void sliders_drive(void) {
+  //
+  // This ONLY moves the slider
+  //
+  if (can_transmit) {
+    if (display_sliders) {
+      gtk_range_set_value (GTK_RANGE(drive_scale), (double) transmitter->drive);
+    } else {
+    show_popup_slider(DRIVE, 0, drive_min, drive_max, 1.0, (double) transmitter->drive, "TX Drive");
+    }
   }
 }
 
@@ -513,13 +602,8 @@ void set_drive(double value) {
     if (value > drive_digi_max) { value = drive_digi_max; }
   }
 
-  if (display_sliders) {
-    gtk_range_set_value (GTK_RANGE(drive_scale), value);
-  } else {
-    show_popup_slider(DRIVE, 0, drive_min, drive_max, 1.0, value, "TX Drive");
-  }
-
   radio_set_drive(value);
+  sliders_drive();
 }
 
 static void drive_value_changed_cb(GtkWidget *widget, gpointer data) {
@@ -535,8 +619,10 @@ static void drive_value_changed_cb(GtkWidget *widget, gpointer data) {
   radio_set_drive(value);
 }
 
-void show_filter_high(int rx, int var) {
-  //t_print("%s var=%d\n",__FUNCTION__,var);
+void sliders_filter_high(int rx, int var) {
+  //
+  // This ONLY moves the slider
+  //
   char title[64];
   int min, max;
   snprintf(title, sizeof(title), "Filter Cut High RX%d (Hz)", rx + 1);
@@ -556,7 +642,10 @@ void show_filter_high(int rx, int var) {
   show_popup_slider(FILTER_CUT_HIGH, rx, (double)(min), (double)(max), 1.00, (double) var, title);
 }
 
-void show_filter_low(int rx, int var) {
+void sliders_filter_low(int rx, int var) {
+  //
+  // This ONLY moves the slider
+  //
   char title[64];
   int min, max;
   snprintf(title, sizeof(title), "Filter Cut Low RX%d (Hz)", rx + 1);
@@ -601,6 +690,22 @@ static void squelch_enable_cb(GtkWidget *widget, gpointer data) {
   rx_set_squelch(active_receiver);
 }
 
+void sliders_squelch(int id) {
+  //
+  // This ONLY moves the slider and updates the checkbutton
+  //
+  RECEIVER *rx = receiver[id];
+
+  if (display_sliders && id == active_receiver->id) {
+    gtk_range_set_value (GTK_RANGE(squelch_scale), rx->squelch);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(squelch_enable), rx->squelch_enable);
+  } else {
+    char title[64];
+    snprintf(title, sizeof(title), "Squelch RX%d (Hz)", id + 1);
+    show_popup_slider(SQUELCH, id, 0.0, 100.0, 1.0, rx->squelch, title);
+  }
+}
+
 void set_squelch(RECEIVER *rx) {
   //t_print("%s\n",__FUNCTION__);
   //
@@ -612,21 +717,20 @@ void set_squelch(RECEIVER *rx) {
   rx->squelch_enable = (rx->squelch > 0.5);
   rx_set_squelch(rx);
 
-  if (display_sliders && rx->id == active_receiver->id) {
-    gtk_range_set_value (GTK_RANGE(squelch_scale), rx->squelch);
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(squelch_enable), rx->squelch_enable);
-  } else {
-    char title[64];
-    snprintf(title, sizeof(title), "Squelch RX%d (Hz)", rx->id + 1);
-    show_popup_slider(SQUELCH, rx->id, 0.0, 100.0, 1.0, rx->squelch, title);
-  }
+  sliders_squelch(rx->id);
 }
 
-void show_diversity_gain() {
+void sliders_diversity_gain() {
+  //
+  // This ONLY moves the slider and updates the checkbutton
+  //
   show_popup_slider(DIV_GAIN, 0, -27.0, 27.0, 0.01, div_gain, "Diversity Gain");
 }
 
-void show_diversity_phase() {
+void sliders_diversity_phase() {
+  //
+  // This ONLY moves the slider and updates the checkbutton
+  //
   show_popup_slider(DIV_PHASE, 0, -180.0, 180.0, 0.1, div_phase, "Diversity Phase");
 }
 

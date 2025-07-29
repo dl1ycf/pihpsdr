@@ -498,9 +498,9 @@ void filter_cut_default(int id) {
 // they have to be reversed for LSB/DIGU.
 //
 //
-// Note that show_filter_* *only* puts a scale on the screen
+// Note that sliders_filter_* *only* puts a scale on the screen
 // but does not do anything. The call that actually creates the pop-up
-// slider WILL NOT RETURN until that slider is destroyed, so show_filter_*
+// slider WILL NOT RETURN until that slider is destroyed, so sliders_filter_*
 // must be the last statement in this and the following functions.
 //
 void filter_high_changed(int id, int increment) {
@@ -587,7 +587,7 @@ void filter_high_changed(int id, int increment) {
   }
 
   g_idle_add(ext_vfo_update, NULL);
-  show_filter_high(id, new);
+  sliders_filter_high(id, new);
 }
 
 void filter_low_changed(int id, int increment) {
@@ -674,7 +674,7 @@ void filter_low_changed(int id, int increment) {
   }
 
   g_idle_add(ext_vfo_update, NULL);
-  show_filter_low(id, new);
+  sliders_filter_low(id, new);
 }
 
 //
@@ -778,7 +778,7 @@ void filter_width_changed(int id, int increment) {
   }
 
   g_idle_add(ext_vfo_update, NULL);
-  show_filter_width(id, high - low);
+  sliders_filter_width(id, high - low);
 }
 
 //
@@ -860,5 +860,5 @@ void filter_shift_changed(int id, int increment) {
     shft -= cw_keyer_sidetone_frequency;
   }
 
-  show_filter_shift(id, shft);
+  sliders_filter_shift(id, shft);
 }

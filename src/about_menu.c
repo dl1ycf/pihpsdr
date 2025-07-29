@@ -110,8 +110,8 @@ void about_menu(GtkWidget *parent) {
     } else {
       char interface_addr[128];
       char addr[128];
-      snprintf(addr, sizeof(addr), "%s", inet_ntoa(radio->info.network.address.sin_addr));
-      snprintf(interface_addr, sizeof(interface_addr), "%s", inet_ntoa(radio->info.network.interface_address.sin_addr));
+      snprintf(addr, sizeof(addr), "%s", inet_ntoa(radio->network.address.sin_addr));
+      snprintf(interface_addr, sizeof(interface_addr), "%s", inet_ntoa(radio->network.interface_address.sin_addr));
 
       if (have_saturn_xdma) {
         snprintf(text, sizeof(text), "Device: Saturn (via XDMA), Protocol %s, v%d.%d\n",
@@ -123,14 +123,14 @@ void about_menu(GtkWidget *parent) {
                                      "IP Address: %s on %s (%s)",
                  radio->name, radio->protocol == ORIGINAL_PROTOCOL ? "1" : "2",
                  radio->software_version / 10, radio->software_version % 10,
-                 radio->info.network.mac_address[0],
-                 radio->info.network.mac_address[1],
-                 radio->info.network.mac_address[2],
-                 radio->info.network.mac_address[3],
-                 radio->info.network.mac_address[4],
-                 radio->info.network.mac_address[5],
+                 radio->network.mac_address[0],
+                 radio->network.mac_address[1],
+                 radio->network.mac_address[2],
+                 radio->network.mac_address[3],
+                 radio->network.mac_address[4],
+                 radio->network.mac_address[5],
                  addr,
-                 radio->info.network.interface_name,
+                 radio->network.interface_name,
                  interface_addr);
       }
     }
@@ -141,7 +141,7 @@ void about_menu(GtkWidget *parent) {
   case SOAPYSDR_PROTOCOL:
     snprintf(text, sizeof(text), "Device: %s (via SoapySDR)\n"
                                  "    %s (%s)",
-             radio->name, radio->info.soapy.hardware_key, radio->info.soapy.driver_key);
+             radio->name, radio->soapy.hardware_key, radio->soapy.driver_key);
     break;
 #endif
   }

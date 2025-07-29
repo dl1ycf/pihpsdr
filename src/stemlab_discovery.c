@@ -164,7 +164,7 @@ int alpine_start_app(const char * const app_id) {
   // Copy IP addr and name of app to app_start_url
   //
   snprintf(app_start_url, sizeof(app_start_url), "http://%s/%s/",
-           inet_ntoa(radio->info.network.address.sin_addr),
+           inet_ntoa(radio->network.address.sin_addr),
            app_id);
   curl_error = curl_easy_setopt(curl_handle, CURLOPT_URL, app_start_url);
   check_curl("Failed setting cURL URL");
@@ -214,7 +214,7 @@ int stemlab_start_app(const char * const app_id) {
   // stop command
   //
   snprintf(app_start_url, sizeof(app_start_url), "http://%s/bazaar?stop=%s",
-           inet_ntoa(radio->info.network.address.sin_addr),
+           inet_ntoa(radio->network.address.sin_addr),
            app_id);
   curl_error = curl_easy_setopt(curl_handle, CURLOPT_URL, app_start_url);
   check_curl("Failed setting cURL URL");
@@ -226,7 +226,7 @@ int stemlab_start_app(const char * const app_id) {
   // start command
   //
   snprintf(app_start_url, sizeof(app_start_url), "http://%s/bazaar?start=%s",
-           inet_ntoa(radio->info.network.address.sin_addr),
+           inet_ntoa(radio->network.address.sin_addr),
            app_id);
   curl_error = curl_easy_setopt(curl_handle, CURLOPT_URL, app_start_url);
   check_curl("Failed setting cURL URL");
@@ -346,7 +346,7 @@ void stemlab_discovery() {
   //
   // Constructe "device" descripter. Hi-Jack the software version field to
   // encode which RedPitaya apps are present.
-  // What is needed in the interface data is only info.network.address.sin_addr,
+  // What is needed in the interface data is only network.address.sin_addr,
   // but the address and netmask of the interface must be compatible with this
   // address to avoid an error condition upstream. That means
   // (addr & mask) == (interface_addr & mask) must be fulfilled. This is easily
@@ -358,13 +358,13 @@ void stemlab_discovery() {
   snprintf(dev->name, sizeof(dev->name), "STEMlab");
   dev->software_version = app_list;                               // encodes list of SDR apps present
   dev->status = STATE_AVAILABLE;
-  memset(dev->info.network.mac_address, 0, 6);                    // not used
-  dev->info.network.address_length = sizeof(struct sockaddr_in);
-  dev->info.network.address.sin_family = AF_INET;
-  dev->info.network.address.sin_addr = ip_address.sin_addr;
-  dev->info.network.address.sin_port = htons(1024);
-  dev->info.network.interface_length = sizeof(struct sockaddr_in);
-  dev->info.network.interface_address = ip_address;                // same as RedPitaya address
-  dev->info.network.interface_netmask = netmask;                   // does not matter
-  snprintf(dev->info.network.interface_name, sizeof(dev->info.network.interface_name), "%s", "");
+  memset(dev->network.mac_address, 0, 6);                    // not used
+  dev->network.address_length = sizeof(struct sockaddr_in);
+  dev->network.address.sin_family = AF_INET;
+  dev->network.address.sin_addr = ip_address.sin_addr;
+  dev->network.address.sin_port = htons(1024);
+  dev->network.interface_length = sizeof(struct sockaddr_in);
+  dev->network.interface_address = ip_address;                // same as RedPitaya address
+  dev->network.interface_netmask = netmask;                   // does not matter
+  snprintf(dev->network.interface_name, sizeof(dev->network.interface_name), "%s", "");
 }
