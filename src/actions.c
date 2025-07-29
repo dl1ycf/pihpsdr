@@ -451,18 +451,18 @@ int process_action(void *data) {
 
   case AF_GAIN:
     value = KnobOrWheel(a, active_receiver->volume, -40.0, 0.0, 1.0);
-    set_af_gain(active_receiver->id, value);
+    radio_set_af_gain(active_receiver->id, value);
     break;
 
   case AF_GAIN_RX1:
     value = KnobOrWheel(a, receiver[0]->volume, -40.0, 0.0, 1.0);
-    set_af_gain(0, value);
+    radio_set_af_gain(0, value);
     break;
 
   case AF_GAIN_RX2:
     if (receivers == 2) {
       value = KnobOrWheel(a, receiver[1]->volume, -40.0, 0.0, 1.0);
-      set_af_gain(1, value);
+      radio_set_af_gain(1, value);
     }
 
     break;
@@ -483,18 +483,18 @@ int process_action(void *data) {
 
   case AGC_GAIN:
     value = KnobOrWheel(a, active_receiver->agc_gain, -20.0, 120.0, 1.0);
-    set_agc_gain(active_receiver->id, value);
+    radio_set_agc_gain(active_receiver->id, value);
     break;
 
   case AGC_GAIN_RX1:
     value = KnobOrWheel(a, receiver[0]->agc_gain, -20.0, 120.0, 1.0);
-    set_agc_gain(0, value);
+    radio_set_agc_gain(0, value);
     break;
 
   case AGC_GAIN_RX2:
     if (receivers == 2) {
       value = KnobOrWheel(a, receiver[1]->agc_gain, -20.0, 120.0, 1.0);
-      set_agc_gain(1, value);
+      radio_set_agc_gain(1, value);
     }
 
     break;
@@ -510,7 +510,7 @@ int process_action(void *data) {
   case ATTENUATION:
     if (have_rx_att) {
       value = KnobOrWheel(a, adc[active_receiver->adc].attenuation,   0.0, 31.0, 1.0);
-      set_attenuation_value(value);
+      radio_set_attenuation(active_receiver->id, value);
     }
 
     break;
@@ -883,7 +883,7 @@ int process_action(void *data) {
 
   case DRIVE:
     value = KnobOrWheel(a, radio_get_drive(), 0.0, drive_max, 1.0);
-    set_drive(value);
+    radio_set_drive(value);
     break;
 
   case DUPLEX:
@@ -1005,7 +1005,7 @@ int process_action(void *data) {
 
   case LINEIN_GAIN:
     value = KnobOrWheel(a, linein_gain, -34.0, 12.5, 1.5);
-    set_linein_gain(value);
+    radio_set_linein_gain(value);
     break;
 
   case LOCK:
@@ -1114,7 +1114,7 @@ int process_action(void *data) {
   case MIC_GAIN:
     if (can_transmit) {
       value = KnobOrWheel(a, transmitter->mic_gain, -12.0, 50.0, 1.0);
-      set_mic_gain(value);
+      radio_set_mic_gain(value);
     }
 
     break;
@@ -1421,7 +1421,7 @@ int process_action(void *data) {
     if (have_rx_gain) {
       value = KnobOrWheel(a, adc[active_receiver->adc].gain, adc[active_receiver->adc].min_gain,
                           adc[active_receiver->adc].max_gain, 1.0);
-      set_rf_gain(active_receiver->id, value);
+      radio_set_rf_gain(active_receiver->id, value);
     }
 
     break;
@@ -1429,7 +1429,7 @@ int process_action(void *data) {
   case RF_GAIN_RX1:
     if (have_rx_gain) {
       value = KnobOrWheel(a, adc[receiver[0]->adc].gain, adc[receiver[0]->adc].min_gain, adc[receiver[0]->adc].max_gain, 1.0);
-      set_rf_gain(0, value);
+      radio_set_rf_gain(0, value);
     }
 
     break;
@@ -1437,7 +1437,7 @@ int process_action(void *data) {
   case RF_GAIN_RX2:
     if (have_rx_gain && receivers == 2) {
       value = KnobOrWheel(a, adc[receiver[1]->adc].gain, adc[receiver[1]->adc].min_gain, adc[receiver[1]->adc].max_gain, 1.0);
-      set_rf_gain(1, value);
+      radio_set_rf_gain(1, value);
     }
 
     break;
@@ -1622,21 +1622,18 @@ int process_action(void *data) {
 
   case SQUELCH:
     value = KnobOrWheel(a, active_receiver->squelch, 0.0, 100.0, 1.0);
-    active_receiver->squelch = value;
-    set_squelch(active_receiver);
+    radio_set_squelch(active_receiver->id, value);
     break;
 
   case SQUELCH_RX1:
     value = KnobOrWheel(a, receiver[0]->squelch, 0.0, 100.0, 1.0);
-    receiver[0]->squelch = value;
-    set_squelch(receiver[0]);
+    radio_set_squelch(0, value);
     break;
 
   case SQUELCH_RX2:
     if (receivers == 2) {
       value = KnobOrWheel(a, receiver[1]->squelch, 0.0, 100.0, 1.0);
-      receiver[1]->squelch = value;
-      set_squelch(receiver[1]);
+      radio_set_squelch(1, value);
     }
 
     break;

@@ -2902,7 +2902,7 @@ static void *client_thread(void* arg) {
       //
       if (can_transmit) {
         if (data.txzero && transmitter->drive > 0.4) {
-          set_drive(0.0);
+          radio_set_drive(0.0);
         }
       }
     }
@@ -3644,7 +3644,8 @@ static void *client_thread(void* arg) {
 
     case CMD_ATTENUATION: {
       int id = header.b1;
-      adc[receiver[id]->adc].attenuation = from_short(header.s1);
+      double value = (double) from_short(header.s1);
+      radio_set_attenuation(id, value);
     }
     break;
 
@@ -4026,19 +4027,19 @@ static int remote_command(void *data) {
 
   case CMD_VOLUME: {
     const DOUBLE_COMMAND *command = (DOUBLE_COMMAND *)data;
-    set_af_gain(command->header.b1, from_double(command->dbl));
+    radio_set_af_gain(command->header.b1, from_double(command->dbl));
   }
   break;
 
   case CMD_MICGAIN: {
     const DOUBLE_COMMAND *command = (DOUBLE_COMMAND *)data;
-    set_mic_gain(from_double(command->dbl));
+    radio_set_mic_gain(from_double(command->dbl));
   }
   break;
 
   case CMD_DRIVE: {
     const DOUBLE_COMMAND *command = (DOUBLE_COMMAND *)data;
-    set_drive(from_double(command->dbl));
+    radio_set_drive(from_double(command->dbl));
   }
   break;
 
@@ -4121,7 +4122,7 @@ static int remote_command(void *data) {
     if (r < receivers) {
       RECEIVER *rx = receiver[r];
       rx->agc_hang_threshold = from_double(agc_gain_command->hang_thresh);
-      set_agc_gain(r, from_double(agc_gain_command->gain));
+      radio_set_agc_gain(r, from_double(agc_gain_command->gain));
       rx_set_agc(rx);
       //
       // Now hang and thresh have been calculated and need be sent back
@@ -4133,26 +4134,23 @@ static int remote_command(void *data) {
 
   case CMD_RFGAIN: {
     const DOUBLE_COMMAND *command = (DOUBLE_COMMAND *) data;
-    set_rf_gain(command->header.b1, from_double(command->dbl));
+    radio_set_rf_gain(command->header.b1, from_double(command->dbl));
   }
   break;
 
   case CMD_ATTENUATION: {
-    int att = from_short(header->s1);
-    set_attenuation_value((double)att);
-    send_attenuation(remoteclient.socket, active_receiver->id, att);
+    int id = header->b1;
+    double att = (double) from_short(header->s1);
+    radio_set_attenuation(id, att);
+    send_attenuation(remoteclient.socket, id, att);
   }
   break;
 
   case CMD_SQUELCH: {
     const DOUBLE_COMMAND *command = (DOUBLE_COMMAND *)data;
-    int r = command->header.b1;
-
-    if (r < receivers) {
-      receiver[r]->squelch_enable = command->header.b2;
-      receiver[r]->squelch = from_double(command->dbl);
-      set_squelch(receiver[r]);
-    }
+    int id = command->header.b1;
+    double val = from_double(command->dbl);
+    radio_set_squelch(id, val);
   }
   break;
 
@@ -4743,7 +4741,7 @@ static int remote_command(void *data) {
     drive_digi_max = from_double(command->dbl);
 
     if ((mode == modeDIGL || mode == modeDIGU) && transmitter->drive > drive_digi_max + 0.5) {
-      set_drive(drive_digi_max);
+      radio_set_drive(drive_digi_max);
     }
   }
   break;

@@ -317,7 +317,7 @@ extern double radio_get_drive(void);
 extern void   radio_set_drive(double d);
 extern void   radio_calc_drive_level(void);
 extern void   radio_calc_tune_drive_level(void);
-extern void   radio_set_attenuation(int value);
+extern void   radio_set_attenuation(int id, double value);
 extern void   radio_set_alex_attenuation(int v);
 extern int    radio_is_transmitting(void);
 extern void   radio_set_satmode(int mode);
@@ -331,6 +331,13 @@ extern void   radio_protocol_stop(void);
 extern void   radio_protocol_restart(void);
 extern void   radio_start_auto_tune(void);
 extern void   radio_set_anan10E(int new);
+extern void   radio_set_squelch_enable(int id, int enable);
+extern void   radio_set_squelch(int id, double value);
+extern void   radio_set_agc_gain(int id, double value);
+extern void   radio_set_af_gain(int id, double value);
+extern void   radio_set_rf_gain(int id, double value);
+extern void   radio_set_mic_gain(double value);
+extern void   radio_set_linein_gain(double value);
 
 extern int compare_doubles(const void *a, const void *b);
 

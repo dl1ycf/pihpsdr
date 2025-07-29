@@ -37,6 +37,7 @@ extern void sliders_agc_gain(int id);
 extern void sliders_af_gain(int id);
 extern void sliders_rf_gain(int id, int rxadc);
 extern void sliders_attenuation(int id);
+extern void sliders_squelch(int id);
 extern void sliders_mic_gain(void);
 extern void sliders_linein_gain(void);
 extern void sliders_drive(void);

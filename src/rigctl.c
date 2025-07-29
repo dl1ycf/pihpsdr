@@ -1416,7 +1416,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           receiver[0]->volume = 20.0 * log10(0.01 * (double) gain);
         }
 
-        set_af_gain(0, receiver[0]->volume);
+        radio_set_af_gain(0, receiver[0]->volume);
       }
 
       break;
@@ -1464,7 +1464,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         send_resp(client->fd, reply) ;
       } else {
         int threshold = atoi(&command[4]);
-        set_agc_gain(VFO_A, (double)threshold);
+        radio_set_agc_gain(VFO_A, (double)threshold);
       }
 
       break;
@@ -1485,7 +1485,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           send_resp(client->fd, reply) ;
         } else {
           int threshold = atoi(&command[4]);
-          set_agc_gain(VFO_B, (double)threshold);
+          radio_set_agc_gain(VFO_B, (double)threshold);
         }
       } else {
         implemented = FALSE;
@@ -2281,7 +2281,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           receiver[0]->volume = 20.0 * log10(0.01 * (double) gain);
         }
 
-        set_af_gain(0, receiver[0]->volume);
+        radio_set_af_gain(0, receiver[0]->volume);
       }
 
       break;
@@ -2309,7 +2309,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           receiver[1]->volume = 20.0 * log10(0.01 * (double) gain);
         }
 
-        set_af_gain(1, receiver[1]->volume);
+        radio_set_af_gain(1, receiver[1]->volume);
       }
              )
       break;
@@ -2438,7 +2438,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           send_resp(client->fd, reply);
         } else if (command[7] == ';') {
           int val = atoi(&command[4]);
-          set_mic_gain(((double) val * 0.8857) - 12.0);
+          radio_set_mic_gain(((double) val * 0.8857) - 12.0);
         }
       } else {
         implemented = FALSE;
@@ -3619,7 +3619,7 @@ static int parse_cmd(void *data) {
         int id = SET(command[2] == '1');
         int gain = atoi(&command[3]);
         double vol = (gain < 3) ? -40.0 : 20.0 * log10((double) gain / 255.0);
-        RXCHECK(id, receiver[id]->volume = vol; set_af_gain(0, receiver[id]->volume));
+        RXCHECK(id, receiver[id]->volume = vol; radio_set_af_gain(0, receiver[id]->volume));
       }
 
       break;
@@ -4368,7 +4368,7 @@ static int parse_cmd(void *data) {
 
           if (gain > 50.0) { gain = 50.0; }
 
-          set_mic_gain(gain);
+          radio_set_mic_gain(gain);
         }
       } else {
         implemented = FALSE;
@@ -4544,7 +4544,7 @@ static int parse_cmd(void *data) {
           snprintf(reply,  sizeof(reply), "PC%03d;", (int)transmitter->drive);
           send_resp(client->fd, reply);
         } else if (command[5] == ';') {
-          set_drive((double)atoi(&command[2]));
+          radio_set_drive((double)atoi(&command[2]));
         }
       }
 
@@ -4692,13 +4692,13 @@ static int parse_cmd(void *data) {
         if (have_rx_gain) {
           // map 0...99 scale to -12...48
           att = (int)((((double)att / 99.0) * 60.0) - 12.0);
-          set_rf_gain(VFO_A, (double)att);
+          radio_set_rf_gain(VFO_A, (double)att);
         }
 
         if (have_rx_att) {
           // mapp 0...99 scale to 0...31
           att = (int)(((double)att / 99.0) * 31.0);
-          set_attenuation_value((double)att);
+          radio_set_attenuation(VFO_A, (double)att);
         }
       }
 
@@ -5220,10 +5220,8 @@ static int parse_cmd(void *data) {
       } else if (command[6] == ';') {
         int id = atoi(&command[2]);
         int p2 = atoi(&command[3]);
-        RXCHECK(id,
-                receiver[id]->squelch = (int)((double)p2 / 255.0 * 100.0 + 0.5);
-                set_squelch(receiver[id]);
-               )
+        double val = (double)p2 / 255.0 * 100.0 + 0.5;
+        radio_set_squelch(id, val);
       }
 
       break;

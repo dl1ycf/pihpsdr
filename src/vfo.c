@@ -662,7 +662,7 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
     tx_set_dexp(transmitter);
     tx_set_equalizer(transmitter);
     suppress_popup_sliders = 1;
-    set_mic_gain(mode_settings[m].mic_gain);
+    radio_set_mic_gain(mode_settings[m].mic_gain);
     suppress_popup_sliders = 0;
   }
 

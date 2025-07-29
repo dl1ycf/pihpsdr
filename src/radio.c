@@ -2630,11 +2630,118 @@ void radio_calc_drive_level() {
   schedule_high_priority();
 }
 
+void radio_set_rf_gain(int id, double value) {
+  if (!have_rx_gain) { return; }
+
+  if (id >= receivers) { return; }
+
+  int rxadc = receiver[id]->adc;
+  adc[rxadc].gain = value;
+
+  sliders_rf_gain(id, rxadc);
+
+  if (radio_is_remote) {
+    send_rfgain(client_socket, id, adc[rxadc].gain);
+    return;
+  }
+
+  if (protocol == SOAPYSDR_PROTOCOL) {
+#ifdef SOAPYSDR
+    soapy_protocol_set_rx_gain(id);
+#endif
+  }
+}
+
+void radio_set_squelch_enable(int id, int enable) {
+  if (id >= receivers) { return; }
+  RECEIVER *rx = receiver[id];
+  rx->squelch_enable = enable;
+  rx_set_squelch(rx);
+}
+
+void radio_set_squelch(int id, double value) {
+  //t_print("%s\n",__FUNCTION__);
+  //
+  // automatically enable/disable squelch if squelch value changed
+  // you can still enable/disable squelch via the check-box, but
+  // as soon the slider is moved squelch is enabled/disabled
+  // depending on the "new" squelch value
+  //
+  if (id >= receivers) { return; }
+  RECEIVER *rx = receiver[id];
+  rx->squelch = value;
+  rx->squelch_enable = (rx->squelch > 0.5);
+  rx_set_squelch(rx);
+
+  sliders_squelch(rx->id);
+}
+
+void radio_set_linein_gain(double value) {
+  linein_gain = value;
+
+  if (radio_is_remote) {
+    send_txmenu(client_socket);
+  } else {
+    schedule_high_priority();
+  }
+
+  sliders_linein_gain();
+}
+
+void radio_set_mic_gain(double value) {
+  if (can_transmit) {
+    transmitter->mic_gain = value;
+    tx_set_mic_gain(transmitter);
+  }
+  sliders_mic_gain();
+}
+
+void radio_set_af_gain(int id, double value) {
+  if (id >= receivers) { return; }
+
+  RECEIVER *rx = receiver[id];
+  rx->volume = value;
+  rx_set_af_gain(rx);
+
+  sliders_af_gain(id);
+}
+
+void radio_set_agc_gain(int id, double value) {
+  if (id >= receivers) { return; }
+
+  receiver[id]->agc_gain = value;
+  rx_set_agc(receiver[id]);
+
+  sliders_agc_gain(id);
+}
+
+void radio_set_attenuation(int id, double value) {
+  if (id >= receivers) { return; }
+  if (!have_rx_att) { return; }
+  
+  adc[id].attenuation = value;
+
+  if (radio_is_remote) {
+    send_attenuation(client_socket, id, adc[id].attenuation);
+  } else {
+    schedule_high_priority();
+  } 
+    
+  sliders_attenuation(id);
+}
+
 void radio_set_drive(double value) {
-  //t_print("%s: drive=%f\n", __FUNCTION__, value);
+  t_print("%s: drive=%f\n", __FUNCTION__, value);
   if (!can_transmit) { return; }
 
+  int txmode = vfo_get_tx_mode();
+
+  if (txmode == modeDIGU || txmode == modeDIGL) {
+    if (value > drive_digi_max) { value = drive_digi_max; }
+  }
+
   transmitter->drive = value;
+  sliders_drive();
 
   if (radio_is_remote) {
     send_drive(client_socket, value);

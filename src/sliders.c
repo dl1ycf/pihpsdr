@@ -73,8 +73,123 @@ static GtkWidget *drive_label;
 static GtkWidget *drive_scale;
 static GtkWidget *squelch_label;
 static GtkWidget *squelch_scale;
-static gulong     squelch_signal_id;
 static GtkWidget *squelch_enable;
+
+static gulong drive_signal_id = 0;
+static gulong att_signal_id = 0;
+static gulong rf_signal_id = 0;
+static gulong af_signal_id = 0;
+static gulong mic_signal_id = 0;
+static gulong squelch_signal_id = 0;
+static gulong agc_signal_id = 0;
+
+//
+// call-back functions. They simply call utility functions radio_*()
+//
+
+static void attenuation_value_changed_cb(GtkWidget *widget, gpointer data) {
+  double value = gtk_range_get_value(GTK_RANGE(attenuation_scale));
+  radio_set_attenuation(active_receiver->id, value);
+}
+
+static void agcgain_value_changed_cb(GtkWidget *widget, gpointer data) {
+  double value = gtk_range_get_value(GTK_RANGE(agc_scale));
+  radio_set_agc_gain(active_receiver->id, value);
+}
+
+static void afgain_value_changed_cb(GtkWidget *widget, gpointer data) {
+  double value = gtk_range_get_value(GTK_RANGE(af_gain_scale));
+  radio_set_af_gain(active_receiver->id, value);
+}
+
+static void rf_gain_value_changed_cb(GtkWidget *widget, gpointer data) {
+  double value = gtk_range_get_value(GTK_RANGE(rf_gain_scale));
+  radio_set_rf_gain(active_receiver->id, value);
+}
+
+static void micgain_value_changed_cb(GtkWidget *widget, gpointer data) {
+  double value = gtk_range_get_value(GTK_RANGE(widget));
+  radio_set_mic_gain(value);
+}
+
+static void drive_value_changed_cb(GtkWidget *widget, gpointer data) {
+  double value = gtk_range_get_value(GTK_RANGE(drive_scale));
+  radio_set_drive(value);
+}
+
+static void squelch_value_changed_cb(GtkWidget *widget, gpointer data) {
+  double value = gtk_range_get_value(GTK_RANGE(widget));
+  radio_set_squelch(active_receiver->id, value);
+}
+
+static void squelch_enable_cb(GtkWidget *widget, gpointer data) {
+  int val = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
+  radio_set_squelch_enable(active_receiver->id, val);
+}
+
+//
+// This callback is special, because it translates C25 ATT combobox
+// settings into alex_attenuation/preamp/dither
+//
+static void c25_att_cb(GtkWidget *widget, gpointer data) {
+  int val = atoi(gtk_combo_box_get_active_id(GTK_COMBO_BOX(widget)));
+
+  if (active_receiver->adc == 0) {
+    //
+    // this button is only valid for the first ADC
+    // store attenuation, such that in meter.c the correct level is displayed
+    // There is no adjustable preamp or attenuator, so nail these values to zero
+    //
+    switch (val) {
+    case -36:
+      active_receiver->alex_attenuation = 3;
+      active_receiver->preamp = 0;
+      active_receiver->dither = 0;
+      break;
+    
+    case -24:
+      active_receiver->alex_attenuation = 2;
+      active_receiver->preamp = 0;
+      active_receiver->dither = 0;
+      break;
+      
+    case -12:
+      active_receiver->alex_attenuation = 1;
+      active_receiver->preamp = 0;
+      active_receiver->dither = 0;
+      break;
+    
+    case 0:
+      active_receiver->alex_attenuation = 0;
+      active_receiver->preamp = 0;
+      active_receiver->dither = 0;
+      break;
+
+    case 18:
+      active_receiver->alex_attenuation = 0;
+      active_receiver->preamp = 1;
+      active_receiver->dither = 0;
+      break;
+
+    case 36:
+      active_receiver->alex_attenuation = 0;
+      active_receiver->preamp = 1;
+      active_receiver->dither = 1;
+      break;
+    }
+  } else {
+    //
+    // For second ADC, always show "0 dB" on the button
+    //
+    active_receiver->alex_attenuation = 0;
+    active_receiver->preamp = 0;
+    active_receiver->dither = 0;
+
+    if (val != 0) {
+      gtk_combo_box_set_active_id(GTK_COMBO_BOX(c25_att_combobox), "0");
+    }
+  }
+}
 
 //
 // general tool for displaying a pop-up slider. This can also be used for a value for which there
@@ -160,6 +275,10 @@ void show_popup_slider(enum ACTION action, int rx, double min, double max, doubl
   }
 }
 
+//
+// Some gymnastics to handle the CHARLY25 case which has two combo-boxes
+// instead of an attenuation slider
+//
 static void update_c25_att() {
   //
   // Only effective with the CHARLY25 filter board.
@@ -187,77 +306,6 @@ static void update_c25_att() {
   }
 }
 
-int sliders_active_receiver_changed(void *data) {
-  if (display_sliders) {
-    //
-    // Change sliders and check-boxes to reflect the state of the
-    // new active receiver
-    //
-    gtk_range_set_value(GTK_RANGE(af_gain_scale), active_receiver->volume);
-    gtk_range_set_value (GTK_RANGE(agc_scale), active_receiver->agc_gain);
-    //
-    // need block/unblock so setting the value of the receivers does not
-    // enable/disable squelch
-    //
-    g_signal_handler_block(G_OBJECT(squelch_scale), squelch_signal_id);
-    gtk_range_set_value (GTK_RANGE(squelch_scale), active_receiver->squelch);
-    g_signal_handler_unblock(G_OBJECT(squelch_scale), squelch_signal_id);
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(squelch_enable), active_receiver->squelch_enable);
-
-    if (filter_board == CHARLY25) {
-      update_c25_att();
-    } else {
-      if (attenuation_scale != NULL) { gtk_range_set_value (GTK_RANGE(attenuation_scale), (double)adc[active_receiver->adc].attenuation); }
-
-      if (rf_gain_scale != NULL) { gtk_range_set_value (GTK_RANGE(rf_gain_scale), adc[active_receiver->adc].gain); }
-    }
-  }
-
-  return FALSE;
-}
-
-void sliders_attenuation(int id) {
-  if (!have_rx_att) { return; }
-  //
-  // This ONLY moves the slider
-  //
-  if (display_sliders && active_receiver->id == id) {
-    gtk_range_set_value (GTK_RANGE(attenuation_scale), (double)adc[id].attenuation);
-  } else {
-    char title[64];
-    snprintf(title, sizeof(title), "Attenuation - ADC-%d (dB)", id);
-    show_popup_slider(ATTENUATION, id, 0.0, 31.0, 1.0, (double)adc[id].attenuation,
-                      title);
-  }
-}
-
-void set_attenuation_value(double value) {
-  if (!have_rx_att) { return; }
-
-  int id = active_receiver->adc;
-  adc[id].attenuation = (int)value;
-
-  if (radio_is_remote) {
-    send_attenuation(client_socket, id, adc[id].attenuation);
-  } else {
-    schedule_high_priority();
-  }
-
-  sliders_attenuation(id);
-}
-
-static void attenuation_value_changed_cb(GtkWidget *widget, gpointer data) {
-  if (!have_rx_att) { return; }
-
-  adc[active_receiver->adc].attenuation = gtk_range_get_value(GTK_RANGE(attenuation_scale));
-
-  if (radio_is_remote) {
-    send_attenuation(client_socket, active_receiver->id, adc[active_receiver->adc].attenuation);
-  } else {
-    schedule_high_priority();
-  }
-}
-
 void sliders_att_type_changed() {
   //
   // This function manages a transition from/to a CHARLY25 filter board
@@ -271,12 +319,13 @@ void sliders_att_type_changed() {
     if (rf_gain_label != NULL) { gtk_widget_hide(rf_gain_label); }
 
     if (attenuation_scale != NULL) {
-      set_attenuation_value(0.0);
+      radio_set_attenuation(0, 0.0);
+      radio_set_attenuation(1, 0.0);
       gtk_widget_hide(attenuation_scale);
     }
 
     if (rf_gain_scale != NULL) {
-      set_rf_gain(active_receiver->id, rx_gain_calibration);
+      radio_set_rf_gain(active_receiver->id, rx_gain_calibration);
       gtk_widget_hide(rf_gain_scale);
     }
 
@@ -300,63 +349,56 @@ void sliders_att_type_changed() {
   sliders_active_receiver_changed(NULL);
 }
 
-static void c25_att_combobox_changed(GtkWidget *widget, gpointer data) {
-  int val = atoi(gtk_combo_box_get_active_id(GTK_COMBO_BOX(widget)));
+//
+// The following functions, sliders_*(), "do" nothing but simply
+// change sliders/buttons to reflect the current radio status.
+// Usually sliders are "blocked" while their value is changed
+// to prevent them to emit a signal.
+//
 
-  if (active_receiver->adc == 0) {
+int sliders_active_receiver_changed(void *data) {
+  if (display_sliders) {
     //
-    // this button is only valid for the first ADC
-    // store attenuation, such that in meter.c the correct level is displayed
-    // There is no adjustable preamp or attenuator, so nail these values to zero
+    // Change sliders and check-boxes to reflect the state of the
+    // new active receiver
     //
-    switch (val) {
-    case -36:
-      active_receiver->alex_attenuation = 3;
-      active_receiver->preamp = 0;
-      active_receiver->dither = 0;
-      break;
+    gtk_range_set_value(GTK_RANGE(af_gain_scale), active_receiver->volume);
+    gtk_range_set_value (GTK_RANGE(agc_scale), active_receiver->agc_gain);
+    //
+    // need block/unblock so setting the value of the receivers does not
+    // enable/disable squelch
+    //
+    if (squelch_signal_id) { g_signal_handler_block(G_OBJECT(squelch_scale), squelch_signal_id); }
+    gtk_range_set_value (GTK_RANGE(squelch_scale), active_receiver->squelch);
+    if (squelch_signal_id) { g_signal_handler_unblock(G_OBJECT(squelch_scale), squelch_signal_id); }
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(squelch_enable), active_receiver->squelch_enable);
 
-    case -24:
-      active_receiver->alex_attenuation = 2;
-      active_receiver->preamp = 0;
-      active_receiver->dither = 0;
-      break;
+    if (filter_board == CHARLY25) {
+      update_c25_att();
+    } else {
+      if (attenuation_scale != NULL) { gtk_range_set_value (GTK_RANGE(attenuation_scale), (double)adc[active_receiver->adc].attenuation); }
 
-    case -12:
-      active_receiver->alex_attenuation = 1;
-      active_receiver->preamp = 0;
-      active_receiver->dither = 0;
-      break;
-
-    case 0:
-      active_receiver->alex_attenuation = 0;
-      active_receiver->preamp = 0;
-      active_receiver->dither = 0;
-      break;
-
-    case 18:
-      active_receiver->alex_attenuation = 0;
-      active_receiver->preamp = 1;
-      active_receiver->dither = 0;
-      break;
-
-    case 36:
-      active_receiver->alex_attenuation = 0;
-      active_receiver->preamp = 1;
-      active_receiver->dither = 1;
-      break;
+      if (rf_gain_scale != NULL) { gtk_range_set_value (GTK_RANGE(rf_gain_scale), adc[active_receiver->adc].gain); }
     }
+  }
+
+  return FALSE;
+}
+
+void sliders_attenuation(int id) {
+  if (!have_rx_att) { return; }
+  //
+  // This ONLY moves the slider
+  //
+  if (display_sliders && active_receiver->id == id) {
+    if (att_signal_id) { g_signal_handler_block(G_OBJECT(attenuation_scale), att_signal_id); }
+    gtk_range_set_value (GTK_RANGE(attenuation_scale), (double)adc[id].attenuation);
+    if (att_signal_id) { g_signal_handler_unblock(G_OBJECT(attenuation_scale), att_signal_id); }
   } else {
-    //
-    // For second ADC, always show "0 dB" on the button
-    //
-    active_receiver->alex_attenuation = 0;
-    active_receiver->preamp = 0;
-    active_receiver->dither = 0;
-
-    if (val != 0) {
-      gtk_combo_box_set_active_id(GTK_COMBO_BOX(c25_att_combobox), "0");
-    }
+    char title[64];
+    snprintf(title, sizeof(title), "Attenuation - ADC-%d (dB)", id);
+    show_popup_slider(ATTENUATION, id, 0.0, 31.0, 1.0, (double)adc[id].attenuation,
+                      title);
   }
 }
 
@@ -387,36 +429,19 @@ void sliders_c25_att() {
   }
 }
 
-static void agcgain_value_changed_cb(GtkWidget *widget, gpointer data) {
-  active_receiver->agc_gain = gtk_range_get_value(GTK_RANGE(agc_scale));
-  rx_set_agc(active_receiver);
-}
-
 void sliders_agc_gain(int id) {
   //
   // This ONLY moves the slider
   //
   if (display_sliders && active_receiver->id == id) {
+    if (agc_signal_id) { g_signal_handler_block(G_OBJECT(agc_scale), agc_signal_id); }
     gtk_range_set_value (GTK_RANGE(agc_scale), receiver[id]->agc_gain);
+    if (agc_signal_id) { g_signal_handler_unblock(G_OBJECT(agc_scale), agc_signal_id); }
   } else {
     char title[64];
     snprintf(title, sizeof(title), "AGC Gain RX%d", id + 1);
     show_popup_slider(AGC_GAIN, id, -20.0, 120.0, 1.0, receiver[id]->agc_gain, title);
   }
-}
-
-void set_agc_gain(int id, double value) {
-  if (id >= receivers) { return; }
-
-  receiver[id]->agc_gain = value;
-  rx_set_agc(receiver[id]);
-
-  sliders_agc_gain(id);
-}
-
-static void afgain_value_changed_cb(GtkWidget *widget, gpointer data) {
-  active_receiver->volume = gtk_range_get_value(GTK_RANGE(af_gain_scale));
-  rx_set_af_gain(active_receiver);
 }
 
 void sliders_af_gain(int id) {
@@ -425,41 +450,13 @@ void sliders_af_gain(int id) {
   //
   RECEIVER *rx = receiver[id];
   if (display_sliders && id == active_receiver->id) {
+    if (af_signal_id) { g_signal_handler_block(G_OBJECT(af_gain_scale), af_signal_id); }
     gtk_range_set_value (GTK_RANGE(af_gain_scale), rx->volume);
+    if (af_signal_id) { g_signal_handler_unblock(G_OBJECT(af_gain_scale), af_signal_id); }
   } else {
     char title[64];
     snprintf(title, sizeof(title), "AF Gain RX%d", id + 1);
     show_popup_slider(AF_GAIN, id, -40.0, 0.0, 1.0, rx->volume, title);
-  }
-}
-
-void set_af_gain(int id, double value) {
-  if (id >= receivers) { return; }
-
-  RECEIVER *rx = receiver[id];
-  rx->volume = value;
-  rx_set_af_gain(rx);
-
-  sliders_af_gain(id);
-}
-
-static void rf_gain_value_changed_cb(GtkWidget *widget, gpointer data) {
-  adc[active_receiver->adc].gain = gtk_range_get_value(GTK_RANGE(rf_gain_scale));
-
-  if (radio_is_remote) {
-    send_rfgain(client_socket, active_receiver->id, adc[active_receiver->adc].gain);
-    return;
-  }
-
-  switch (protocol) {
-  case SOAPYSDR_PROTOCOL:
-#ifdef SOAPYSDR
-    soapy_protocol_set_rx_gain(active_receiver->id);
-#endif
-    break;
-
-  default:
-    break;
   }
 }
 
@@ -469,30 +466,14 @@ void sliders_rf_gain(int id, int rxadc) {
   // This ONLY moves the slider
   //
   if (display_sliders && active_receiver->id == id) {
+    if (rf_signal_id) { g_signal_handler_block(G_OBJECT(rf_gain_scale), rf_signal_id); }
     gtk_range_set_value (GTK_RANGE(rf_gain_scale), adc[rxadc].gain);
+    if (rf_signal_id) { g_signal_handler_unblock(G_OBJECT(rf_gain_scale), rf_signal_id); }
   } else {
     char title[64];
     snprintf(title, sizeof(title), "RF Gain ADC %d", rxadc);
     show_popup_slider(RF_GAIN, rxadc, adc[rxadc].min_gain, adc[rxadc].max_gain, 1.0, adc[rxadc].gain, title);
   }
-}
-
-void set_rf_gain(int id, double value) {
-  if (!have_rx_gain) { return; }
-
-  if (id >= receivers) { return; }
-
-  int rxadc = receiver[id]->adc;
-  //t_print("%s rx=%d adc=%d val=%f\n",__FUNCTION__, rx, rxadc, value);
-  adc[rxadc].gain = value;
-
-  if (protocol == SOAPYSDR_PROTOCOL) {
-#ifdef SOAPYSDR
-    soapy_protocol_set_rx_gain(id);
-#endif
-  }
-
-  sliders_rf_gain(id, rxadc);
 }
 
 void sliders_filter_width(int rx, int width) {
@@ -532,32 +513,11 @@ void sliders_filter_shift(int rx, int shift) {
   show_popup_slider(IF_SHIFT, rx, (double)(min), (double) (max), 1.0, (double) shift, title);
 }
 
-static void micgain_value_changed_cb(GtkWidget *widget, gpointer data) {
-  if (can_transmit) {
-    double gain = gtk_range_get_value(GTK_RANGE(widget));
-    transmitter->mic_gain = gain;
-    tx_set_mic_gain(transmitter);
-  }
-}
-
 void sliders_linein_gain() {
   //
   // This ONLY moves the slider
   //
   show_popup_slider(LINEIN_GAIN, 0, -34.0, 12.0, 1.0, linein_gain, "LineIn Gain");
-}
-
-void set_linein_gain(double value) {
-  //t_print("%s value=%f\n",__FUNCTION__, value);
-  linein_gain = value;
-
-  if (radio_is_remote) {
-    send_txmenu(client_socket);
-  } else {
-    schedule_high_priority();
-  }
-
-  sliders_linein_gain();
 }
 
 void sliders_mic_gain() {
@@ -566,57 +526,29 @@ void sliders_mic_gain() {
   //
   if (can_transmit) {
     if (display_sliders ) {
+      if (mic_signal_id) { g_signal_handler_block(G_OBJECT(mic_gain_scale), mic_signal_id); }
       gtk_range_set_value (GTK_RANGE(mic_gain_scale), transmitter->mic_gain);
+      if (mic_signal_id) { g_signal_handler_unblock(G_OBJECT(mic_gain_scale), mic_signal_id); }
     } else {
       show_popup_slider(MIC_GAIN, 0, -12.0, 50.0, 1.0, transmitter->mic_gain, "Mic Gain");
     }
   }
 }
 
-void set_mic_gain(double value) {
-  if (can_transmit) {
-    transmitter->mic_gain = value;
-    tx_set_mic_gain(transmitter);
-  }
-
-  sliders_mic_gain();
-}
-
 void sliders_drive(void) {
+  t_print("%s\n", __FUNCTION__);
   //
   // This ONLY moves the slider
   //
   if (can_transmit) {
     if (display_sliders) {
+      if (drive_signal_id) { g_signal_handler_block(G_OBJECT(drive_scale), drive_signal_id); }
       gtk_range_set_value (GTK_RANGE(drive_scale), (double) transmitter->drive);
+      if (drive_signal_id) { g_signal_handler_unblock(G_OBJECT(drive_scale), drive_signal_id); }
     } else {
     show_popup_slider(DRIVE, 0, drive_min, drive_max, 1.0, (double) transmitter->drive, "TX Drive");
     }
   }
-}
-
-void set_drive(double value) {
-  int txmode = vfo_get_tx_mode();
-
-  if (txmode == modeDIGU || txmode == modeDIGL) {
-    if (value > drive_digi_max) { value = drive_digi_max; }
-  }
-
-  radio_set_drive(value);
-  sliders_drive();
-}
-
-static void drive_value_changed_cb(GtkWidget *widget, gpointer data) {
-  double value = gtk_range_get_value(GTK_RANGE(drive_scale));
-  //t_print("%s: value=%f\n", __FUNCTION__, value);
-  int txmode = vfo_get_tx_mode();
-
-  if (txmode == modeDIGU || txmode == modeDIGL) {
-    if (value > drive_digi_max) { value = drive_digi_max; }
-  }
-
-  gtk_range_set_value (GTK_RANGE(drive_scale), value);
-  radio_set_drive(value);
 }
 
 void sliders_filter_high(int rx, int var) {
@@ -678,18 +610,6 @@ void sliders_filter_low(int rx, int var) {
   show_popup_slider(FILTER_CUT_LOW, rx, (double)(min), (double)(max), 1.00, (double) var, title);
 }
 
-static void squelch_value_changed_cb(GtkWidget *widget, gpointer data) {
-  active_receiver->squelch = gtk_range_get_value(GTK_RANGE(widget));
-  active_receiver->squelch_enable = (active_receiver->squelch > 0.5);
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(squelch_enable), active_receiver->squelch_enable);
-  rx_set_squelch(active_receiver);
-}
-
-static void squelch_enable_cb(GtkWidget *widget, gpointer data) {
-  active_receiver->squelch_enable = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
-  rx_set_squelch(active_receiver);
-}
-
 void sliders_squelch(int id) {
   //
   // This ONLY moves the slider and updates the checkbutton
@@ -704,20 +624,6 @@ void sliders_squelch(int id) {
     snprintf(title, sizeof(title), "Squelch RX%d (Hz)", id + 1);
     show_popup_slider(SQUELCH, id, 0.0, 100.0, 1.0, rx->squelch, title);
   }
-}
-
-void set_squelch(RECEIVER *rx) {
-  //t_print("%s\n",__FUNCTION__);
-  //
-  // automatically enable/disable squelch if squelch value changed
-  // you can still enable/disable squelch via the check-box, but
-  // as soon the slider is moved squelch is enabled/disabled
-  // depending on the "new" squelch value
-  //
-  rx->squelch_enable = (rx->squelch > 0.5);
-  rx_set_squelch(rx);
-
-  sliders_squelch(rx->id);
 }
 
 void sliders_diversity_gain() {
@@ -885,7 +791,7 @@ GtkWidget *sliders_init(int my_width, int my_height) {
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(c25_att_combobox), "18",  "+18 dB");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(c25_att_combobox), "36",  "+36 dB");
   my_combo_attach(GTK_GRID(c25_grid), c25_att_combobox, 0, 0, 2, 1);
-  g_signal_connect(G_OBJECT(c25_att_combobox), "changed", G_CALLBACK(c25_att_combobox_changed), NULL);
+  g_signal_connect(G_OBJECT(c25_att_combobox), "changed", G_CALLBACK(c25_att_cb), NULL);
   gtk_container_add(GTK_CONTAINER(c25_container), c25_grid);
 
   if (can_transmit) {
@@ -911,12 +817,13 @@ GtkWidget *sliders_init(int my_width, int my_height) {
     gtk_range_set_value (GTK_RANGE(drive_scale), radio_get_drive());
     gtk_widget_show(drive_scale);
     gtk_grid_attach(GTK_GRID(sliders), drive_scale, s2pos, 1, swidth, 1);
-    g_signal_connect(G_OBJECT(drive_scale), "value_changed", G_CALLBACK(drive_value_changed_cb), NULL);
+    drive_signal_id = g_signal_connect(G_OBJECT(drive_scale), "value_changed", G_CALLBACK(drive_value_changed_cb), NULL);
   } else {
     mic_gain_label = NULL;
     mic_gain_scale = NULL;
     drive_label = NULL;
     drive_scale = NULL;
+    drive_signal_id = 0;
   }
 
   squelch_label = gtk_label_new("Sqlch");

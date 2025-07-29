@@ -286,7 +286,7 @@ static void spinbtn_cb(GtkWidget *widget, gpointer data) {
       if (radio_is_remote) {
         send_digidrivemax(client_socket);
       } else if ((mode == modeDIGL || mode == modeDIGU) && transmitter->drive > v + 0.5) {
-        set_drive(v);
+        radio_set_drive(v);
       }
 
       break;

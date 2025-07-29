@@ -706,7 +706,7 @@ static gboolean tx_update_display(gpointer data) {
     if (tx->swr >= tx->swr_alarm) {
       if (pre_high_swr) {
         if (tx->swr_protection && !tx->tune) {
-          set_drive(0.0);
+          radio_set_drive(0.0);
         }
 
         high_swr_seen = 1;
@@ -2756,7 +2756,7 @@ void tx_set_mode(TRANSMITTER* tx, int mode) {
   if (tx != NULL) {
     if (mode == modeDIGU || mode == modeDIGL) {
       if (tx->drive > drive_digi_max + 0.5) {
-        set_drive(drive_digi_max);
+        radio_set_drive(drive_digi_max);
       }
     }
 
