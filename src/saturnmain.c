@@ -331,7 +331,7 @@ void saturn_discovery() {
   struct stat sb;
 
   if (devices < MAX_DEVICES && stat("/dev/xdma0_user", &sb) == 0 && S_ISCHR(sb.st_mode)) {
-    uint8_t *mac = discovered[devices].info.network.mac_address;
+    uint8_t *mac = discovered[devices].network.mac_address;
     uint32_t SoftwareInformation;                   // swid & version
     uint32_t ProductInformation;                    // product id & version
     uint32_t MinorVersion;                          // s/w version
@@ -434,13 +434,13 @@ void saturn_discovery() {
       fclose(fp);
     } else {
       for (int i = 0; i < 6; i++) {
-        discovered[devices].info.network.mac_address[i] = 0;
+        discovered[devices].network.mac_address[i] = 0;
       }
     }
 
-    discovered[devices].info.network.address_length = 0;
-    discovered[devices].info.network.interface_length = 0;
-    snprintf(discovered[devices].info.network.interface_name, sizeof(discovered[devices].info.network.interface_name),
+    discovered[devices].network.address_length = 0;
+    discovered[devices].network.interface_length = 0;
+    snprintf(discovered[devices].network.interface_name, sizeof(discovered[devices].network.interface_name),
              "XDMA");
     discovered[devices].use_tcp = 0;
     discovered[devices].use_routing = 0;
