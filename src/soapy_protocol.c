@@ -698,28 +698,14 @@ static gpointer soapy_receive_dual_thread(gpointer data) {
       continue;
     }
 
-    //
-    // DIVERSITY handling is preferably done before resampling
-    // so so not call rx_add_div_iq_samples() but update rx1buff HERE
-    //
-    if (diversity_enabled && rxpair[0]->sample_rate == rxpair[1]->sample_rate) {
-      if (soapy_iqswap) {
-        // (Q,I) pairs
-        for (int i = 0; i < elements; i++) {
-          rx1buff[2 * i + 1] += (div_cos * rx2buff[2 * i + 1] - div_sin * rx2buff[2 * i]);
-          rx1buff[2 * i    ] += (div_sin * rx2buff[2 * i + 1] + div_cos * rx2buff[2 * i]);
-        }
-      } else {
-        // (I,Q) pairs
-        for (int i = 0; i < elements; i++) {
-          rx1buff[2 * i    ] += (div_cos * rx2buff[2 * i] - div_sin * rx2buff[2 * i + 1]);
-          rx1buff[2 * i + 1] += (div_sin * rx2buff[2 * i] + div_cos * rx2buff[2 * i + 1]);
-        }
-      }
-    }
-
     process_rx_buffer(rxpair[0], rx1buff, elements, 1);
     if (receivers > 1) {
+      //
+      // Do not just stop delivering samples to RX2 if it is muted
+      // (this may happen if the RX1/RX2 frequency difference is too large)
+      // but rather feed zero samples
+      //
+      if (lime_mute_rx2) { memset(rx2buff, 0, 2*elements*sizeof(float)); }
       process_rx_buffer(rxpair[1], rx2buff, elements, 0);  // suppress mic sample generation
     }
   }
