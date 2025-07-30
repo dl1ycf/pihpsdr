@@ -854,7 +854,7 @@ void soapy_protocol_set_rx_frequency(int id) {
             lo_freq -= 3.0e6;
           }
         }
-        t_print("%s: New LIME LO freq=%f\n", lo_freq);
+        t_print("%s: New LIME LO RX1/RX2 freq=%f\n", __FUNCTION__, lo_freq);
 
         rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, 1, "RF", lo_freq, NULL);
 
@@ -871,7 +871,7 @@ void soapy_protocol_set_rx_frequency(int id) {
 
       // LO freq is set, determine and set offset
 
-      t_print("%s: New LIME RX%d offset=%f\n", id, fd - lo_freq);
+      t_print("%s: New LIME RX%d offset=%f\n", __FUNCTION__, id, fd - lo_freq);
       rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, id, "BB", fd - lo_freq, NULL);
 
       if (rc != 0) {
@@ -883,7 +883,7 @@ void soapy_protocol_set_rx_frequency(int id) {
         // If 2 RX are running and the LO freq has been changed, we need to re-calculate the offset of
         // the "other" receiver
         //
-        t_print("%s: New LIME RX%d offset=%f\n", sid, fd2 - lo_freq);
+        t_print("%s: New LIME RX%d offset=%f\n", __FUNCTION__, sid, fd2 - lo_freq);
         rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, sid, "BB", fd2 - lo_freq, NULL);
 
         if (rc != 0) {
