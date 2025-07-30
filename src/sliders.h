@@ -24,7 +24,13 @@
 #include "transmitter.h"
 #include "actions.h"
 
+extern GtkWidget *sliders_init(int my_width, int my_height);
+
+void show_popup_slider(enum ACTION action, int rx, double min, double max, double delta, double value,
+                       const char *title);
+
 extern int sliders_active_receiver_changed(void *data);
+extern int sliders_att_type_changed(void *data);
 
 //
 // These functions ONLY move the sliders
@@ -37,29 +43,10 @@ extern void sliders_agc_gain(int id);
 extern void sliders_af_gain(int id);
 extern void sliders_rf_gain(int id, int rxadc);
 extern void sliders_attenuation(int id);
+extern void sliders_c25_att(int id);
 extern void sliders_squelch(int id);
 extern void sliders_mic_gain(void);
 extern void sliders_linein_gain(void);
 extern void sliders_drive(void);
 extern void sliders_diversity_gain(void);
 extern void sliders_diversity_phase(void);
-extern void sliders_att_type_changed(void);
-
-extern void set_agc_gain(int rx, double value);
-extern void set_af_gain(int rx, double value);
-extern void set_rf_gain(int rx, double value);
-extern void set_mic_gain(double value);
-extern void set_linein_gain(double value);
-extern void set_drive(double drive);
-extern void set_attenuation_value(double attenuation);
-extern GtkWidget *sliders_init(int my_width, int my_height);
-
-
-extern void set_squelch(RECEIVER *rx);
-
-extern void show_diversity_gain(void);
-extern void show_diversity_phase(void);
-
-void show_popup_slider(enum ACTION action, int rx, double min, double max, double delta, double value,
-                       const char *title);
-

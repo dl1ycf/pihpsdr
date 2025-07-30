@@ -302,7 +302,7 @@ void load_filters() {
   // This switches between StepAttenuator slider and CHARLY25 ATT/Preamp checkboxes
   // when the filter board is switched to/from CHARLY25
   //
-  sliders_att_type_changed();
+  g_idle_add(sliders_att_type_changed, NULL);
 }
 
 static void filter_cb(GtkWidget *widget, gpointer data) {

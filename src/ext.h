@@ -29,7 +29,6 @@ extern int ext_radio_remote_change_receivers(void *data);
 extern int ext_radio_remote_set_mox(void *data);
 extern int ext_radio_remote_set_vox(void *data);
 extern int ext_radio_remote_set_tune(void *data);
-extern int ext_att_type_changed(void *data);
 
 //
 // The following calls functions can be called usig g_idle_add

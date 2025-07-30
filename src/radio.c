@@ -835,8 +835,8 @@ void radio_reconfigure() {
       gtk_fixed_move(GTK_FIXED(fixed), sliders, 0, y);
     }
 
-    gtk_widget_show_all(sliders);  // ... this shows both C25 and Alex ATT/Preamp, and both Mic/Linein sliders
-    sliders_att_type_changed();    // ... and this hides the „wrong“ ones.
+    gtk_widget_show_all(sliders);                // ... this shows both C25 and Alex ATT/Preamp
+    g_idle_add(sliders_att_type_changed, NULL);  // ... and this hides the „wrong“ ones.
     y += SLIDERS_HEIGHT;
   } else {
     if (sliders != NULL) {
@@ -1124,8 +1124,8 @@ static void radio_create_visual() {
     }
   }
 
-  gtk_widget_show_all (top_window);  // ... this shows both the HPSDR and C25 preamp/att sliders
-  sliders_att_type_changed();        // ... and this hides the „wrong“ ones.
+  gtk_widget_show_all (top_window);             // ... this shows both the HPSDR and C25 preamp/att sliders
+  g_idle_add(sliders_att_type_changed, NULL);   // ... and this hides the „wrong“ ones.
 }
 
 void radio_start_radio() {
@@ -2713,6 +2713,77 @@ void radio_set_agc_gain(int id, double value) {
   rx_set_agc(receiver[id]);
 
   sliders_agc_gain(id);
+}
+
+void radio_set_c25_att(int id, int val) {
+  //
+  // The CHARLY25 board has two preamps with 18dB each,
+  // and two attenuators with 12 and 24 dB.
+  // These are controlled with the preamp, dither, and alex_attenuation
+  // settings stored in RX1.
+  // Here we set these variables according to the desired overall
+  // attenuation/amplification (in dB) "val".
+  //
+  // For CHARLY25, RX1->adc == 0 and RX2 -->adc == 1.
+  //
+  if (filter_board != CHARLY25) { return; }
+
+  if (id >= RECEIVERS) { return; }
+
+  RECEIVER *rx = receiver[id];
+
+  if (id == 0) {
+    switch (val) {
+    case -36:
+      rx->alex_attenuation = 3;
+      rx->preamp = 0;
+      rx->dither = 0;
+      adc[0].gain = -36.0;
+      break;
+
+    case -24:
+      rx->alex_attenuation = 2;
+      rx->preamp = 0;
+      rx->dither = 0;
+      adc[0].gain = -24.0;
+      break;
+
+    case -12:
+      rx->alex_attenuation = 1;
+      rx->preamp = 0;
+      rx->dither = 0;
+      adc[0].gain = -12.0;
+      break;
+
+    case 0:
+    default:
+      rx->alex_attenuation = 0;
+      rx->preamp = 0;
+      rx->dither = 0;
+      adc[0].gain = 0.0;
+      break;
+
+    case 18:
+      rx->alex_attenuation = 0;
+      rx->preamp = 1;
+      rx->dither = 0;
+      adc[0].gain = 18.0;
+      break;
+
+    case 36:
+      rx->alex_attenuation = 0;
+      rx->preamp = 1;
+      rx->dither = 1;
+      break;
+    }
+  } else {
+    rx->alex_attenuation = 0;
+    rx->preamp = 0;
+    rx->dither = 0;
+    adc[1].gain = 0.0;
+  }
+
+  sliders_c25_att(id);
 }
 
 void radio_set_attenuation(int id, double value) {

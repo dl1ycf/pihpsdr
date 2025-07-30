@@ -178,9 +178,3 @@ int ext_radio_remote_change_receivers(void *data) {
   radio_remote_change_receivers(r);
   return G_SOURCE_REMOVE;
 }
-
-// cppcheck-suppress constParameterPointer
-int ext_att_type_changed(void *data) {
-  sliders_att_type_changed();
-  return G_SOURCE_REMOVE;
-}

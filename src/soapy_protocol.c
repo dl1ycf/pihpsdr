@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <math.h>
 
 #include <SoapySDR/Constants.h>
 #include <SoapySDR/Device.h>
@@ -83,6 +84,12 @@ static int tx_output_buffer_index;
 //
 const double lime_rx_bw = 12000000.0;
 const double lime_tx_bw =   768000.0;
+
+//
+// LIME: flag for "muting" RX2 if RX1/RX2 freq. difference is larger than 10 MHz
+//       (note RX1/RX2 share the LO)
+//
+static int lime_mute_rx2 = 0;
 
 //
 // TO BE REMOVED: any other function that needs this should be
@@ -360,7 +367,7 @@ void soapy_protocol_start_single_receiver(RECEIVER *rx) {
   int rc;
 
   if (rx->id != 0) {
-    t_print("%s: WARNING: SOAPY: id nonzero\n", __FUNCTION__); 
+    t_print("%s: WARNING: SOAPY: id nonzero\n", __FUNCTION__);
   }
 
   size_t channel = rx->id;
@@ -386,7 +393,7 @@ void soapy_protocol_start_dual_receiver(RECEIVER *rx1, RECEIVER *rx2) {
   if (rx1->id != 0 || rx2->id != 1) {
     t_print("%s:WARNING:SOAPY: id not 0 and 1\n", __FUNCTION__);
     return;
-  } 
+  }
 
   double rate1 = SoapySDRDevice_getSampleRate(soapy_device, SOAPY_SDR_RX, rx1->id);
   double rate2 = SoapySDRDevice_getSampleRate(soapy_device, SOAPY_SDR_RX, rx2->id);
@@ -791,75 +798,106 @@ void soapy_protocol_set_rx_frequency(int id) {
       // LIME is *very* special:
       // we should not adjust the LO frequency while moving around
       // within a band, instead, keep the LO freq fixed and vary the offset.
-      // To this end, we query the current LO frequency. If our new target freq is in the
-      // range LO + 1Mhz ... LO + 5MHz, do not move LO but adjust offset.
-      // If our new target frequency is outside, set it to Min(f - 3 MHz, 0)
+      // To this end, we query the current LO frequency. If our new target freq
+      // leads to and offset whose absolute value is in the range 1-5 MHz,
+      // do not move LO but adjust offset.
+      // If the LO freq is not compatible with this, choose a new one and change both LO and offset.
       //
       double lo_freq = SoapySDRDevice_getFrequencyComponent(soapy_device, SOAPY_SDR_RX, id, "RF");
       double fd = (double) f;
+      int lo_ok = 1;
+      double diff;
+      diff = fabs(fd - lo_freq);
+      if (diff < 1.0E6 || diff > 5.0E6) { lo_ok = 0; }
+      double fd2 = fd;
+      int sid;
 
-      if (fd <= lo_freq + 1.0E6 || fd > lo_freq + 5.0E6) {
+      lime_mute_rx2 = 0;
+      if (receivers > 2) {
         //
-        // need new LO freq
+        // A further complication arises because RX1 and RX2 share the LO, so the LO freq must
+        // be compatible with both RX. If this is not possible (RX1 and RX2 frequency more
+        // than 10 MHz apart) mute RX2.
         //
-        lo_freq = fd - 3.0E6;
+        sid = 1 - id;
+        long long f2 = vfo[sid].frequency;
 
-        if (lo_freq < 1.0E6) { lo_freq = 1.0E6; }
+        if (vfo[sid].mode == modeCWU) {
+          f2 -= (long long)cw_keyer_sidetone_frequency;
+        } else if (vfo[sid].mode == modeCWL) {
+          f2 += (long long)cw_keyer_sidetone_frequency;
+        }
 
-        if (diversity_enabled) {
-          //
-          // If diversity is enabled set both frequencies simultaneously
-          //
-          rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, 0, "RF", lo_freq, NULL);
+        f2 += frequency_calibration - vfo[sid].lo;
 
-          if (rc != 0) {
-            t_print("%s: DIV-RX1-LO failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
-          }
-
-          rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, 1, "RF", lo_freq, NULL);
-
-          if (rc != 0) {
-            t_print("%s: DIV-RX2-LO failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
-          }
-
+        fd2 = (double) f2;
+        if (fabs(fd - fd2) > 10.0e6) {
+          lime_mute_rx2 = 1;
+          if (id == 1) { lo_ok = 1; } // No need to change LO if RX2 moves astray
+          fd2 = fd;
         } else {
+          diff = fabs(fd2 - lo_freq);
+          if (diff < 1.0E6 || diff > 5.0E6) { lo_ok = 0; }
+        }
+      }
 
-          rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, id, "RF", lo_freq, NULL);
+      if (!lo_ok) {
+        //
+        // need new LO freq. If RX2 is not running or muted, LO will be 3 MHz below RX1
+        //
 
-          if (rc != 0) {
-            t_print("%s: RX-LO failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+        if (receivers < 2 || lime_mute_rx2) {
+          lo_freq = fd - 3.0e6;
+        } else {
+          lo_freq = 0.5*(fd + fd2);
+          if (fabs(fd-fd2) < 2.0e6) {
+            lo_freq -= 3.0e6;
           }
+        }
+        t_print("%s: New LIME LO freq=%f\n", lo_freq);
+
+        rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, 1, "RF", lo_freq, NULL);
+
+        if (rc != 0) {
+          t_print("%s: RX2-LO failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+        }
+
+        rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, 0, "RF", lo_freq, NULL);
+
+        if (rc != 0) {
+          t_print("%s: RX1-LO failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
         }
       }
 
       // LO freq is set, determine and set offset
 
-      if (diversity_enabled) {
-        rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, 0, "BB", fd - lo_freq, NULL);
+      t_print("%s: New LIME RX%d offset=%f\n", id, fd - lo_freq);
+      rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, id, "BB", fd - lo_freq, NULL);
+
+      if (rc != 0) {
+        t_print("%s: RX%d-BB failed: %s\n", __FUNCTION__, id + 1, SoapySDR_errToStr(rc));
+      }
+
+      if (!lo_ok && receivers > 1 && !lime_mute_rx2) {
+        //
+        // If 2 RX are running and the LO freq has been changed, we need to re-calculate the offset of
+        // the "other" receiver
+        //
+        t_print("%s: New LIME RX%d offset=%f\n", sid, fd2 - lo_freq);
+        rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, sid, "BB", fd2 - lo_freq, NULL);
 
         if (rc != 0) {
-          t_print("%s: DIV-RX1-BB failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
-        }
-
-        rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, 1, "BB", fd - lo_freq, NULL);
-
-        if (rc != 0) {
-          t_print("%s: DIV-RX2-BB failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
-        }
-      } else {
-        rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, id, "BB", fd - lo_freq, NULL);
-
-        if (rc != 0) {
-          t_print("%s: RX-BB failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+          t_print("%s: RX%d-BB failed: %s\n", __FUNCTION__, sid + 1, SoapySDR_errToStr(rc));
         }
       }
     } else {
       //
-      // Not LIME: 
+      // Not LIME: just set frequency.
+      //
       rc = SoapySDRDevice_setFrequency(soapy_device, SOAPY_SDR_RX, id, (double)f, NULL);
 
       if (rc != 0) {
-        t_print("%s: RX failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+        t_print("%s: RX%d failed: %s\n", __FUNCTION__, id + 1, SoapySDR_errToStr(rc));
       }
     }
   }

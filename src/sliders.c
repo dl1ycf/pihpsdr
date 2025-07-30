@@ -56,32 +56,35 @@ static guint scale_timer;
 static enum ACTION scale_status = NO_ACTION;
 static GtkWidget *scale_dialog;
 
-static GtkWidget *af_gain_label;
-static GtkWidget *af_gain_scale;
+static GtkWidget *af_gain_scale = NULL;
+static gulong af_signal_id = 0;
+
 static GtkWidget *rf_gain_label = NULL;
 static GtkWidget *rf_gain_scale = NULL;
-static GtkWidget *agc_gain_label;
+static gulong rf_signal_id = 0;
+
 static GtkWidget *agc_scale;
+static gulong agc_signal_id = 0;
+
 static GtkWidget *attenuation_label = NULL;
 static GtkWidget *attenuation_scale = NULL;
-static GtkWidget *c25_container = NULL;
-static GtkWidget *c25_att_combobox = NULL;
-static GtkWidget *c25_att_label = NULL;
-static GtkWidget *mic_gain_label;
-static GtkWidget *mic_gain_scale;
-static GtkWidget *drive_label;
-static GtkWidget *drive_scale;
-static GtkWidget *squelch_label;
-static GtkWidget *squelch_scale;
-static GtkWidget *squelch_enable;
-
-static gulong drive_signal_id = 0;
 static gulong att_signal_id = 0;
-static gulong rf_signal_id = 0;
-static gulong af_signal_id = 0;
+
+static GtkWidget *c25_container = NULL;
+static GtkWidget *c25_combobox = NULL;
+static GtkWidget *c25_label = NULL;
+static gulong c25_signal_id = 0;
+
+static GtkWidget *mic_gain_scale;
 static gulong mic_signal_id = 0;
+
+static GtkWidget *drive_scale;
+static gulong drive_signal_id = 0;
+
+static GtkWidget *squelch_scale;
 static gulong squelch_signal_id = 0;
-static gulong agc_signal_id = 0;
+static GtkWidget *squelch_enable;
+static gulong squelch_enable_signal_id = 0;
 
 //
 // call-back functions. They simply call utility functions radio_*()
@@ -127,68 +130,9 @@ static void squelch_enable_cb(GtkWidget *widget, gpointer data) {
   radio_set_squelch_enable(active_receiver->id, val);
 }
 
-//
-// This callback is special, because it translates C25 ATT combobox
-// settings into alex_attenuation/preamp/dither
-//
 static void c25_att_cb(GtkWidget *widget, gpointer data) {
   int val = atoi(gtk_combo_box_get_active_id(GTK_COMBO_BOX(widget)));
-
-  if (active_receiver->adc == 0) {
-    //
-    // this button is only valid for the first ADC
-    // store attenuation, such that in meter.c the correct level is displayed
-    // There is no adjustable preamp or attenuator, so nail these values to zero
-    //
-    switch (val) {
-    case -36:
-      active_receiver->alex_attenuation = 3;
-      active_receiver->preamp = 0;
-      active_receiver->dither = 0;
-      break;
-    
-    case -24:
-      active_receiver->alex_attenuation = 2;
-      active_receiver->preamp = 0;
-      active_receiver->dither = 0;
-      break;
-      
-    case -12:
-      active_receiver->alex_attenuation = 1;
-      active_receiver->preamp = 0;
-      active_receiver->dither = 0;
-      break;
-    
-    case 0:
-      active_receiver->alex_attenuation = 0;
-      active_receiver->preamp = 0;
-      active_receiver->dither = 0;
-      break;
-
-    case 18:
-      active_receiver->alex_attenuation = 0;
-      active_receiver->preamp = 1;
-      active_receiver->dither = 0;
-      break;
-
-    case 36:
-      active_receiver->alex_attenuation = 0;
-      active_receiver->preamp = 1;
-      active_receiver->dither = 1;
-      break;
-    }
-  } else {
-    //
-    // For second ADC, always show "0 dB" on the button
-    //
-    active_receiver->alex_attenuation = 0;
-    active_receiver->preamp = 0;
-    active_receiver->dither = 0;
-
-    if (val != 0) {
-      gtk_combo_box_set_active_id(GTK_COMBO_BOX(c25_att_combobox), "0");
-    }
-  }
+  radio_set_c25_att(active_receiver->id, val);
 }
 
 //
@@ -275,45 +219,15 @@ void show_popup_slider(enum ACTION action, int rx, double min, double max, doubl
   }
 }
 
-//
-// Some gymnastics to handle the CHARLY25 case which has two combo-boxes
-// instead of an attenuation slider
-//
-static void update_c25_att() {
+int sliders_att_type_changed(gpointer data) {
   //
-  // Only effective with the CHARLY25 filter board.
-  // Change the Att/Preamp combo-box to the current attenuation status
-  //  
+  // Prepeare sliders to reflect whether we have a CHARLY25 or not
+  // This is invoked via the GTK queue
+  //
   if (filter_board == CHARLY25) {
-    char id[16];
-
-    if (active_receiver->adc != 0) {
-      active_receiver->alex_attenuation = 0;
-      active_receiver->preamp = 0;
-      active_receiver->dither = 0;
-    }
-  
     //
-    // This is to recover from an "illegal" props file
+    // The filter board is now CHARLY25, but may have been before as well
     //
-    if (active_receiver->preamp || active_receiver->dither) {
-      active_receiver->alex_attenuation = 0;
-    }
-    
-    int att = -12 * active_receiver->alex_attenuation + 18 * active_receiver->dither + 18 * active_receiver->preamp;
-    snprintf(id, sizeof(id), "%d", att);
-    gtk_combo_box_set_active_id(GTK_COMBO_BOX(c25_att_combobox), id);
-  }
-}
-
-void sliders_att_type_changed() {
-  //
-  // This function manages a transition from/to a CHARLY25 filter board
-  // Note all sliders might be non-existent, e.g. if sliders are not
-  // displayed at all. So verify all widgets are non-NULL
-  //
-  //t_print("%s\n",__FUNCTION__);
-  if (filter_board == CHARLY25) {
     if (attenuation_label != NULL) { gtk_widget_hide(attenuation_label); }
 
     if (rf_gain_label != NULL) { gtk_widget_hide(rf_gain_label); }
@@ -331,7 +245,9 @@ void sliders_att_type_changed() {
 
     if (c25_container != NULL) { gtk_widget_show(c25_container); }
 
-    if (c25_att_label != NULL) { gtk_widget_show(c25_att_label); }
+    if (c25_label != NULL) { gtk_widget_show(c25_label); }
+
+    sliders_c25_att(active_receiver->id);
   } else {
     if (attenuation_label != NULL) { gtk_widget_show(attenuation_label); }
 
@@ -341,12 +257,38 @@ void sliders_att_type_changed() {
 
     if (rf_gain_scale != NULL) { gtk_widget_show(rf_gain_scale); }
 
-    if (c25_container != NULL) { gtk_widget_hide(c25_container); }
+    if (c25_container != NULL) {
+      radio_set_c25_att(0, 0);
+      gtk_widget_hide(c25_container);
+    }
 
-    if (c25_att_label != NULL) { gtk_widget_hide(c25_att_label); }
+    if (c25_label != NULL) { gtk_widget_hide(c25_label); }
+    sliders_attenuation(active_receiver->id);
+    sliders_rf_gain(active_receiver->id, active_receiver->adc);
   }
+  return FALSE;
+}
 
-  sliders_active_receiver_changed(NULL);
+int sliders_active_receiver_changed(void *data) {
+  //
+  // Do this only when sliders are on display, pop-up sliders
+  // are not wanted here. This is invoked via the GTK queue.
+  //
+  if (display_sliders) {
+    //
+    // Change sliders and check-boxes to reflect the state of the
+    // new active receiver
+    //
+    int id = active_receiver->id;
+    int rxadc = active_receiver->adc;
+    sliders_af_gain(id);
+    sliders_rf_gain(id, rxadc);
+    sliders_agc_gain(id);
+    sliders_squelch(id);
+    sliders_c25_att(id);
+    sliders_attenuation(id);
+  }
+  return FALSE;
 }
 
 //
@@ -356,41 +298,33 @@ void sliders_att_type_changed() {
 // to prevent them to emit a signal.
 //
 
-int sliders_active_receiver_changed(void *data) {
-  if (display_sliders) {
-    //
-    // Change sliders and check-boxes to reflect the state of the
-    // new active receiver
-    //
-    gtk_range_set_value(GTK_RANGE(af_gain_scale), active_receiver->volume);
-    gtk_range_set_value (GTK_RANGE(agc_scale), active_receiver->agc_gain);
-    //
-    // need block/unblock so setting the value of the receivers does not
-    // enable/disable squelch
-    //
-    if (squelch_signal_id) { g_signal_handler_block(G_OBJECT(squelch_scale), squelch_signal_id); }
-    gtk_range_set_value (GTK_RANGE(squelch_scale), active_receiver->squelch);
-    if (squelch_signal_id) { g_signal_handler_unblock(G_OBJECT(squelch_scale), squelch_signal_id); }
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(squelch_enable), active_receiver->squelch_enable);
-
-    if (filter_board == CHARLY25) {
-      update_c25_att();
-    } else {
-      if (attenuation_scale != NULL) { gtk_range_set_value (GTK_RANGE(attenuation_scale), (double)adc[active_receiver->adc].attenuation); }
-
-      if (rf_gain_scale != NULL) { gtk_range_set_value (GTK_RANGE(rf_gain_scale), adc[active_receiver->adc].gain); }
-    }
+void sliders_c25_att(int id) {
+  if (id > receivers) { return; }
+  if (filter_board != CHARLY25) { return; }
+  //
+  // Only change the combo-box
+  // 
+  if (display_sliders && active_receiver->id == id && c25_combobox != NULL) {
+    char lbl[16];
+    int att = (int) (adc[id].gain + 0.5);
+    snprintf(lbl, sizeof(lbl), "%d", att);
+    if (c25_signal_id) { g_signal_handler_block(G_OBJECT(c25_combobox), c25_signal_id); }
+    gtk_combo_box_set_active_id(GTK_COMBO_BOX(c25_combobox), lbl);
+    if (c25_signal_id) { g_signal_handler_unblock(G_OBJECT(c25_combobox), c25_signal_id); }
+  } else if (id == 0) {
+    char title[64];
+    snprintf(title, sizeof(title), "Attenuation - ADC-%d (dB)", id);
+    show_popup_slider(ATTENUATION, id, -36.0, 36.0, 6.0, (double)adc[id].attenuation,
+                      title);
   }
-
-  return FALSE;
 }
 
 void sliders_attenuation(int id) {
-  if (!have_rx_att) { return; }
+  if (id > receivers) { return; }
   //
   // This ONLY moves the slider
   //
-  if (display_sliders && active_receiver->id == id) {
+  if (display_sliders && active_receiver->id == id && attenuation_scale != 0) {
     if (att_signal_id) { g_signal_handler_block(G_OBJECT(attenuation_scale), att_signal_id); }
     gtk_range_set_value (GTK_RANGE(attenuation_scale), (double)adc[id].attenuation);
     if (att_signal_id) { g_signal_handler_unblock(G_OBJECT(attenuation_scale), att_signal_id); }
@@ -402,38 +336,12 @@ void sliders_attenuation(int id) {
   }
 }
 
-void sliders_c25_att() {
-  //
-  // Only effective with the CHARLY25 filter board.
-  // Change the Att/Preamp combo-box to the current attenuation status
-  //
-  if (filter_board == CHARLY25) {
-    char id[16];
-
-    if (active_receiver->adc != 0) {
-      active_receiver->alex_attenuation = 0;
-      active_receiver->preamp = 0;
-      active_receiver->dither = 0;
-    }
-
-    //
-    // This is to recover from an "illegal" props file
-    //
-    if (active_receiver->preamp || active_receiver->dither) {
-      active_receiver->alex_attenuation = 0;
-    }
-
-    int att = -12 * active_receiver->alex_attenuation + 18 * active_receiver->dither + 18 * active_receiver->preamp;
-    snprintf(id, sizeof(id), "%d", att);
-    gtk_combo_box_set_active_id(GTK_COMBO_BOX(c25_att_combobox), id);
-  }
-}
-
 void sliders_agc_gain(int id) {
+  if (id > receivers) { return; }
   //
   // This ONLY moves the slider
   //
-  if (display_sliders && active_receiver->id == id) {
+  if (display_sliders && active_receiver->id == id && agc_scale != NULL) {
     if (agc_signal_id) { g_signal_handler_block(G_OBJECT(agc_scale), agc_signal_id); }
     gtk_range_set_value (GTK_RANGE(agc_scale), receiver[id]->agc_gain);
     if (agc_signal_id) { g_signal_handler_unblock(G_OBJECT(agc_scale), agc_signal_id); }
@@ -445,11 +353,12 @@ void sliders_agc_gain(int id) {
 }
 
 void sliders_af_gain(int id) {
+  if (id > receivers) { return; }
   //
   // This ONLY moves the slider
   //
   const RECEIVER *rx = receiver[id];
-  if (display_sliders && id == active_receiver->id) {
+  if (display_sliders && id == active_receiver->id && af_gain_scale != NULL) {
     if (af_signal_id) { g_signal_handler_block(G_OBJECT(af_gain_scale), af_signal_id); }
     gtk_range_set_value (GTK_RANGE(af_gain_scale), rx->volume);
     if (af_signal_id) { g_signal_handler_unblock(G_OBJECT(af_gain_scale), af_signal_id); }
@@ -461,7 +370,8 @@ void sliders_af_gain(int id) {
 }
 
 void sliders_rf_gain(int id, int rxadc) {
-  if (!have_rx_gain) { return; }
+  if (id > receivers) { return; }
+  if (rf_gain_scale == NULL) { return; }
   //
   // This ONLY moves the slider
   //
@@ -476,13 +386,14 @@ void sliders_rf_gain(int id, int rxadc) {
   }
 }
 
-void sliders_filter_width(int rx, int width) {
+void sliders_filter_width(int id, int width) {
+  if (id > receivers) { return; }
   //
   // This ONLY moves the slider
   //
   char title[64];
   int min, max;
-  snprintf(title, sizeof(title), "Filter Width RX%d (Hz)", rx + 1);
+  snprintf(title, sizeof(title), "Filter Width RX%d (Hz)", id + 1);
   min = 0;
   max = 2 * width;
 
@@ -498,19 +409,20 @@ void sliders_filter_width(int rx, int width) {
     min = width - 2000;
   }
 
-  show_popup_slider(IF_WIDTH, rx, (double)(min), (double)(max), 1.0, (double) width, title);
+  show_popup_slider(IF_WIDTH, id, (double)(min), (double)(max), 1.0, (double) width, title);
 }
 
-void sliders_filter_shift(int rx, int shift) {
+void sliders_filter_shift(int id, int shift) {
+  if (id > receivers) { return; }
   //
   // This ONLY moves the slider
   //
   char title[64];
   int min, max;
-  snprintf(title, sizeof(title), "Filter SHIFT RX%d (Hz)", rx + 1);
+  snprintf(title, sizeof(title), "Filter SHIFT RX%d (Hz)", id + 1);
   min = shift - 500;
   max = shift + 500;
-  show_popup_slider(IF_SHIFT, rx, (double)(min), (double) (max), 1.0, (double) shift, title);
+  show_popup_slider(IF_SHIFT, id, (double)(min), (double) (max), 1.0, (double) shift, title);
 }
 
 void sliders_linein_gain() {
@@ -551,13 +463,14 @@ void sliders_drive(void) {
   }
 }
 
-void sliders_filter_high(int rx, int var) {
+void sliders_filter_high(int id, int var) {
+  if (id > receivers) { return; }
   //
   // This ONLY moves the slider
   //
   char title[64];
   int min, max;
-  snprintf(title, sizeof(title), "Filter Cut High RX%d (Hz)", rx + 1);
+  snprintf(title, sizeof(title), "Filter Cut High RX%d (Hz)", id + 1);
   //
   // The hi-cut is always non-negative
   //
@@ -571,16 +484,17 @@ void sliders_filter_high(int rx, int var) {
     min = var - 1000;
   }
 
-  show_popup_slider(FILTER_CUT_HIGH, rx, (double)(min), (double)(max), 1.00, (double) var, title);
+  show_popup_slider(FILTER_CUT_HIGH, id, (double)(min), (double)(max), 1.00, (double) var, title);
 }
 
-void sliders_filter_low(int rx, int var) {
+void sliders_filter_low(int id, int var) {
+  if (id > receivers) { return; }
   //
   // This ONLY moves the slider
   //
   char title[64];
   int min, max;
-  snprintf(title, sizeof(title), "Filter Cut Low RX%d (Hz)", rx + 1);
+  snprintf(title, sizeof(title), "Filter Cut Low RX%d (Hz)", id + 1);
 
   //
   // The low-cut is either always positive, or always negative for a given mode
@@ -607,18 +521,23 @@ void sliders_filter_low(int rx, int var) {
     }
   }
 
-  show_popup_slider(FILTER_CUT_LOW, rx, (double)(min), (double)(max), 1.00, (double) var, title);
+  show_popup_slider(FILTER_CUT_LOW, id, (double)(min), (double)(max), 1.00, (double) var, title);
 }
 
 void sliders_squelch(int id) {
+  if (id > receivers) { return; }
   //
   // This ONLY moves the slider and updates the checkbutton
   //
   RECEIVER *rx = receiver[id];
 
   if (display_sliders && id == active_receiver->id) {
+    if (squelch_signal_id) { g_signal_handler_block(G_OBJECT(squelch_scale), squelch_signal_id); }
+    if (squelch_enable_signal_id) { g_signal_handler_block(G_OBJECT(squelch_enable), squelch_enable_signal_id); }
     gtk_range_set_value (GTK_RANGE(squelch_scale), rx->squelch);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(squelch_enable), rx->squelch_enable);
+    if (squelch_enable_signal_id) { g_signal_handler_unblock(G_OBJECT(squelch_enable), squelch_enable_signal_id); }
+    if (squelch_signal_id) { g_signal_handler_unblock(G_OBJECT(squelch_scale), squelch_signal_id); }
   } else {
     char title[64];
     snprintf(title, sizeof(title), "Squelch RX%d (Hz)", id + 1);
@@ -641,6 +560,7 @@ void sliders_diversity_phase() {
 }
 
 GtkWidget *sliders_init(int my_width, int my_height) {
+  GtkWidget *label;
   width = my_width;
   height = my_height;
   t_print("sliders_init: width=%d height=%d\n", width, height);
@@ -699,11 +619,11 @@ GtkWidget *sliders_init(int my_width, int my_height) {
   gtk_widget_set_size_request (sliders, width, height);
   gtk_grid_set_row_homogeneous(GTK_GRID(sliders), FALSE);
   gtk_grid_set_column_homogeneous(GTK_GRID(sliders), TRUE);
-  af_gain_label = gtk_label_new("AF");
-  gtk_widget_set_name(af_gain_label, csslabel);
-  gtk_widget_set_halign(af_gain_label, GTK_ALIGN_END);
-  gtk_widget_show(af_gain_label);
-  gtk_grid_attach(GTK_GRID(sliders), af_gain_label, t1pos, 0, twidth, 1);
+  label = gtk_label_new("AF");
+  gtk_widget_set_name(label, csslabel);
+  gtk_widget_set_halign(label, GTK_ALIGN_END);
+  gtk_widget_show(label);
+  gtk_grid_attach(GTK_GRID(sliders), label, t1pos, 0, twidth, 1);
   af_gain_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, -40.0, 0.0, 1.00);
   gtk_widget_set_size_request(af_gain_scale, 0, height / 2);
   gtk_widget_set_valign(af_gain_scale, GTK_ALIGN_CENTER);
@@ -712,11 +632,11 @@ GtkWidget *sliders_init(int my_width, int my_height) {
   gtk_widget_show(af_gain_scale);
   gtk_grid_attach(GTK_GRID(sliders), af_gain_scale, s1pos, 0, swidth, 1);
   g_signal_connect(G_OBJECT(af_gain_scale), "value_changed", G_CALLBACK(afgain_value_changed_cb), NULL);
-  agc_gain_label = gtk_label_new("AGC");
-  gtk_widget_set_name(agc_gain_label, csslabel);
-  gtk_widget_set_halign(agc_gain_label, GTK_ALIGN_END);
-  gtk_widget_show(agc_gain_label);
-  gtk_grid_attach(GTK_GRID(sliders), agc_gain_label, t2pos, 0, twidth, 1);
+  label = gtk_label_new("AGC");
+  gtk_widget_set_name(label, csslabel);
+  gtk_widget_set_halign(label, GTK_ALIGN_END);
+  gtk_widget_show(label);
+  gtk_grid_attach(GTK_GRID(sliders), label, t2pos, 0, twidth, 1);
   agc_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, -20.0, 120.0, 1.0);
   gtk_widget_set_size_request(agc_scale, 0, height / 2);
   gtk_widget_set_valign(agc_scale, GTK_ALIGN_CENTER);
@@ -770,10 +690,10 @@ GtkWidget *sliders_init(int my_width, int my_height) {
   // Because "touch-screen friendly" comboboxes cannot be shown/hidden properly,
   // we put this into a container
   //
-  c25_att_label = gtk_label_new("Att/Pre");
-  gtk_widget_set_name(c25_att_label, csslabel);
-  gtk_widget_set_halign(c25_att_label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(sliders), c25_att_label, t3pos, 0, twidth, 1);
+  c25_label = gtk_label_new("Att/Pre");
+  gtk_widget_set_name(c25_label, csslabel);
+  gtk_widget_set_halign(c25_label, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(sliders), c25_label, t3pos, 0, twidth, 1);
   c25_container = gtk_fixed_new();
   gtk_grid_attach(GTK_GRID(sliders), c25_container, s3pos, 0, swidth, 1);
   GtkWidget *c25_grid = gtk_grid_new();
@@ -782,23 +702,23 @@ GtkWidget *sliders_init(int my_width, int my_height) {
   // One could achieve a finer granulation by combining attenuators and preamps,
   // but it seems sufficient to either engage attenuators or preamps
   //
-  c25_att_combobox = gtk_combo_box_text_new();
-  gtk_widget_set_name(c25_att_combobox, csslabel);
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(c25_att_combobox), "-36", "-36 dB");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(c25_att_combobox), "-24", "-24 dB");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(c25_att_combobox), "-12", "-12 dB");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(c25_att_combobox), "0",   "  0 dB");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(c25_att_combobox), "18",  "+18 dB");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(c25_att_combobox), "36",  "+36 dB");
-  my_combo_attach(GTK_GRID(c25_grid), c25_att_combobox, 0, 0, 2, 1);
-  g_signal_connect(G_OBJECT(c25_att_combobox), "changed", G_CALLBACK(c25_att_cb), NULL);
+  c25_combobox = gtk_combo_box_text_new();
+  gtk_widget_set_name(c25_combobox, csslabel);
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(c25_combobox), "-36", "-36 dB");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(c25_combobox), "-24", "-24 dB");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(c25_combobox), "-12", "-12 dB");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(c25_combobox), "0",   "  0 dB");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(c25_combobox), "18",  "+18 dB");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(c25_combobox), "36",  "+36 dB");
+  my_combo_attach(GTK_GRID(c25_grid), c25_combobox, 0, 0, 2, 1);
+  g_signal_connect(G_OBJECT(c25_combobox), "changed", G_CALLBACK(c25_att_cb), NULL);
   gtk_container_add(GTK_CONTAINER(c25_container), c25_grid);
 
   if (can_transmit) {
-    mic_gain_label = gtk_label_new("Mic");
-    gtk_widget_set_name(mic_gain_label, csslabel);
-    gtk_widget_set_halign(mic_gain_label, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(sliders), mic_gain_label, t1pos, 1, twidth, 1);
+    label = gtk_label_new("Mic");
+    gtk_widget_set_name(label, csslabel);
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(sliders), label, t1pos, 1, twidth, 1);
     mic_gain_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, -12.0, 50.0, 1.0);
     gtk_widget_set_size_request(mic_gain_scale, 0, height / 2);
     gtk_widget_set_valign(mic_gain_scale, GTK_ALIGN_CENTER);
@@ -806,10 +726,10 @@ GtkWidget *sliders_init(int my_width, int my_height) {
     gtk_grid_attach(GTK_GRID(sliders), mic_gain_scale, s1pos, 1, swidth, 1);
     gtk_range_set_value (GTK_RANGE(mic_gain_scale), transmitter->mic_gain);
     g_signal_connect(G_OBJECT(mic_gain_scale), "value_changed", G_CALLBACK(micgain_value_changed_cb), NULL);
-    drive_label = gtk_label_new("TX Drv");
-    gtk_widget_set_name(drive_label, csslabel);
-    gtk_widget_set_halign(drive_label, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(sliders), drive_label, t2pos, 1, twidth, 1);
+    label = gtk_label_new("TX Drv");
+    gtk_widget_set_name(label, csslabel);
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(sliders), label, t2pos, 1, twidth, 1);
     drive_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, drive_min, drive_max, 1.00);
     gtk_widget_set_size_request(drive_scale, 0, height / 2);
     gtk_widget_set_valign(drive_scale, GTK_ALIGN_CENTER);
@@ -818,19 +738,13 @@ GtkWidget *sliders_init(int my_width, int my_height) {
     gtk_widget_show(drive_scale);
     gtk_grid_attach(GTK_GRID(sliders), drive_scale, s2pos, 1, swidth, 1);
     drive_signal_id = g_signal_connect(G_OBJECT(drive_scale), "value_changed", G_CALLBACK(drive_value_changed_cb), NULL);
-  } else {
-    mic_gain_label = NULL;
-    mic_gain_scale = NULL;
-    drive_label = NULL;
-    drive_scale = NULL;
-    drive_signal_id = 0;
   }
 
-  squelch_label = gtk_label_new("Sqlch");
-  gtk_widget_set_name(squelch_label, csslabel);
-  gtk_widget_set_halign(squelch_label, GTK_ALIGN_END);
-  gtk_widget_show(squelch_label);
-  gtk_grid_attach(GTK_GRID(sliders), squelch_label, t3pos, 1, twidth, 1);
+  label = gtk_label_new("Sqlch");
+  gtk_widget_set_name(label, csslabel);
+  gtk_widget_set_halign(label, GTK_ALIGN_END);
+  gtk_widget_show(label);
+  gtk_grid_attach(GTK_GRID(sliders), label, t3pos, 1, twidth, 1);
   squelch_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 100.0, 1.0);
   gtk_widget_set_size_request(squelch_scale, 0, height / 2);
   gtk_widget_set_valign(squelch_scale, GTK_ALIGN_CENTER);
@@ -845,6 +759,6 @@ GtkWidget *sliders_init(int my_width, int my_height) {
   gtk_widget_show(squelch_enable);
   gtk_grid_attach(GTK_GRID(sliders), squelch_enable, s3pos, 1, 1, 1);
   gtk_widget_set_halign(squelch_enable, GTK_ALIGN_CENTER);
-  g_signal_connect(squelch_enable, "toggled", G_CALLBACK(squelch_enable_cb), NULL);
+  squelch_enable_signal_id = g_signal_connect(squelch_enable, "toggled", G_CALLBACK(squelch_enable_cb), NULL);
   return sliders;
 }

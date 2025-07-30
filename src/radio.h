@@ -318,6 +318,7 @@ extern void   radio_set_drive(double d);
 extern void   radio_calc_drive_level(void);
 extern void   radio_calc_tune_drive_level(void);
 extern void   radio_set_attenuation(int id, double value);
+extern void   radio_set_c25_att(int id, int value);
 extern void   radio_set_alex_attenuation(int v);
 extern int    radio_is_transmitting(void);
 extern void   radio_set_satmode(int mode);
