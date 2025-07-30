@@ -97,7 +97,7 @@ static void print_devices(void) {
     switch(discovered[i].protocol) {
     case ORIGINAL_PROTOCOL:
     case NEW_PROTOCOL:
-      t_print("%s: found protocol=%d device=%d software_version=%d status=%d address=%s (%02X:%02X:%02X:%02X:%02X:%02X) on %s\n", __FUNCTION__, 
+      t_print("%s: found protocol=%d device=%d software_version=%d status=%d address=%s (%02X:%02X:%02X:%02X:%02X:%02X) on %s\n", __FUNCTION__,
               discovered[i].protocol,
               discovered[i].device,
               discovered[i].software_version,
@@ -112,7 +112,7 @@ static void print_devices(void) {
               discovered[i].network.interface_name);
       break;
     case SOAPYSDR_PROTOCOL:
-      t_print("%s: found protocol=%d driver=%s software_version=%d driver_key=%s hardware_key=%s on %s\n", __FUNCTION__, 
+      t_print("%s: found protocol=%d driver=%s software_version=%d driver_key=%s hardware_key=%s on %s\n", __FUNCTION__,
               discovered[i].protocol,
               discovered[i].name,
               discovered[i].software_version,

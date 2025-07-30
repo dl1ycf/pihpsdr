@@ -4149,8 +4149,10 @@ static int remote_command(void *data) {
   case CMD_SQUELCH: {
     const DOUBLE_COMMAND *command = (DOUBLE_COMMAND *)data;
     int id = command->header.b1;
+    int en = command->header.b2;
     double val = from_double(command->dbl);
     radio_set_squelch(id, val);
+    radio_set_squelch_enable(id, en);
   }
   break;
 
