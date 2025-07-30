@@ -212,10 +212,6 @@ void waterfall_update(RECEIVER *rx) {
         soffset += (float)(10 * rx->alex_attenuation - 20 * rx->preamp);
       }
 
-      if (filter_board == CHARLY25 && rx->adc == 0) {
-        soffset += (float)(12 * rx->alex_attenuation - 18 * rx->preamp - 18 * rx->dither);
-      }
-
       average = 0.0F;
 
       for (int i = 0; i < width; i++) {

@@ -1588,12 +1588,13 @@ void radio_start_radio() {
   dac.antenna = 0;
   dac.gain = 0;
 
-  if (have_rx_gain && (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL)) {
-    //
-    // The "magic values" here are for the AD98656 chip that is used in radios
-    // such as the HermesLite and the RadioBerry. This is a best estimate and
-    // will be overwritten with data from the props file.
-    //
+  //
+  // The "magic values" here are for the AD98656 chip that is used in radios
+  // such as the HermesLite and the RadioBerry. This is a best estimate and
+  // will be overwritten with SOAPY-discovered data, and later with
+  // data from the props file.
+  //
+  if (have_rx_gain) {
     adc[0].min_gain = -12.0;
     adc[0].max_gain = +48.0;
   }
@@ -1612,7 +1613,7 @@ void radio_start_radio() {
   adc[1].min_gain = 0.0;
   adc[1].max_gain = 100.0;
 
-  if (have_rx_gain && (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL)) {
+  if (have_rx_gain) {
     adc[1].min_gain = -12.0;
     adc[1].max_gain = +48.0;
   }
@@ -2631,12 +2632,11 @@ void radio_calc_drive_level() {
 }
 
 void radio_set_rf_gain(int id, double value) {
-  if (!have_rx_gain) { return; }
-
   if (id >= receivers) { return; }
 
   int rxadc = receiver[id]->adc;
   adc[rxadc].gain = value;
+  adc[rxadc].attenuation = 0.0;
 
   sliders_rf_gain(id, rxadc);
 
@@ -2738,21 +2738,24 @@ void radio_set_c25_att(int id, int val) {
       rx->alex_attenuation = 3;
       rx->preamp = 0;
       rx->dither = 0;
-      adc[0].gain = -36.0;
+      adc[0].attenuation = 36.0;
+      adc[0].gain = 0.0;
       break;
 
     case -24:
       rx->alex_attenuation = 2;
       rx->preamp = 0;
       rx->dither = 0;
-      adc[0].gain = -24.0;
+      adc[0].attenuation = 24.0;
+      adc[0].gain = 0.0;
       break;
 
     case -12:
       rx->alex_attenuation = 1;
       rx->preamp = 0;
       rx->dither = 0;
-      adc[0].gain = -12.0;
+      adc[0].attenuation= 12.0;
+      adc[0].gain = 0.0;
       break;
 
     case 0:
@@ -2760,6 +2763,7 @@ void radio_set_c25_att(int id, int val) {
       rx->alex_attenuation = 0;
       rx->preamp = 0;
       rx->dither = 0;
+      adc[0].attenuation = 0.0;
       adc[0].gain = 0.0;
       break;
 
@@ -2767,6 +2771,7 @@ void radio_set_c25_att(int id, int val) {
       rx->alex_attenuation = 0;
       rx->preamp = 1;
       rx->dither = 0;
+      adc[0].attenuation = 0.0;
       adc[0].gain = 18.0;
       break;
 
@@ -2774,12 +2779,15 @@ void radio_set_c25_att(int id, int val) {
       rx->alex_attenuation = 0;
       rx->preamp = 1;
       rx->dither = 1;
+      adc[0].attenuation = 0.0;
+      adc[0].gain = 36.0;
       break;
     }
   } else {
     rx->alex_attenuation = 0;
     rx->preamp = 0;
     rx->dither = 0;
+    adc[0].attenuation = 0.0;
     adc[1].gain = 0.0;
   }
 
@@ -2788,8 +2796,8 @@ void radio_set_c25_att(int id, int val) {
 
 void radio_set_attenuation(int id, double value) {
   if (id >= receivers) { return; }
-  if (!have_rx_att) { return; }
   
+  adc[id].gain = rx_gain_calibration;
   adc[id].attenuation = value;
 
   if (radio_is_remote) {

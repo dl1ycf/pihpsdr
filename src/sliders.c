@@ -224,6 +224,7 @@ int sliders_att_type_changed(gpointer data) {
   // Prepeare sliders to reflect whether we have a CHARLY25 or not
   // This is invoked via the GTK queue
   //
+  suppress_popup_sliders = 1;
   if (filter_board == CHARLY25) {
     //
     // The filter board is now CHARLY25, but may have been before as well
@@ -266,14 +267,12 @@ int sliders_att_type_changed(gpointer data) {
     sliders_attenuation(active_receiver->id);
     sliders_rf_gain(active_receiver->id, active_receiver->adc);
   }
+  suppress_popup_sliders = 0;
   return FALSE;
 }
 
 int sliders_active_receiver_changed(void *data) {
-  //
-  // Do this only when sliders are on display, pop-up sliders
-  // are not wanted here. This is invoked via the GTK queue.
-  //
+  suppress_popup_sliders = 1;
   if (display_sliders) {
     //
     // Change sliders and check-boxes to reflect the state of the
@@ -288,6 +287,7 @@ int sliders_active_receiver_changed(void *data) {
     sliders_c25_att(id);
     sliders_attenuation(id);
   }
+  suppress_popup_sliders = 0;
   return FALSE;
 }
 
@@ -306,7 +306,7 @@ void sliders_c25_att(int id) {
   // 
   if (display_sliders && active_receiver->id == id && c25_combobox != NULL) {
     char lbl[16];
-    int att = (int) (adc[id].gain + 0.5);
+    int att = (int) (adc[id].gain - (double) adc[id].attenuation + 0.5);
     snprintf(lbl, sizeof(lbl), "%d", att);
     if (c25_signal_id) { g_signal_handler_block(G_OBJECT(c25_combobox), c25_signal_id); }
     gtk_combo_box_set_active_id(GTK_COMBO_BOX(c25_combobox), lbl);
@@ -711,7 +711,7 @@ GtkWidget *sliders_init(int my_width, int my_height) {
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(c25_combobox), "18",  "+18 dB");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(c25_combobox), "36",  "+36 dB");
   my_combo_attach(GTK_GRID(c25_grid), c25_combobox, 0, 0, 2, 1);
-  g_signal_connect(G_OBJECT(c25_combobox), "changed", G_CALLBACK(c25_att_cb), NULL);
+  c25_signal_id = g_signal_connect(G_OBJECT(c25_combobox), "changed", G_CALLBACK(c25_att_cb), NULL);
   gtk_container_add(GTK_CONTAINER(c25_container), c25_grid);
 
   if (can_transmit) {

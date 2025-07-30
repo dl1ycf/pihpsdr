@@ -799,7 +799,7 @@ void soapy_protocol_set_rx_frequency(int id) {
       int sid;
 
       lime_mute_rx2 = 0;
-      if (receivers > 2) {
+      if (receivers > 1) {
         //
         // A further complication arises because RX1 and RX2 share the LO, so the LO freq must
         // be compatible with both RX. If this is not possible (RX1 and RX2 frequency more

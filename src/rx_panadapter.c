@@ -145,10 +145,6 @@ void rx_panadapter_update(RECEIVER *rx) {
     soffset += (double)(10 * rx->alex_attenuation - 20 * rx->preamp);
   }
 
-  if (filter_board == CHARLY25 && rx->adc == 0) {
-    soffset += (double)(12 * rx->alex_attenuation - 18 * rx->preamp - 18 * rx->dither);
-  }
-
   // In diversity mode, the RX2 frequency tracks the RX1 frequency
   if (diversity_enabled && rx->id == 1) {
     frequency = vfo[0].frequency;

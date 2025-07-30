@@ -516,10 +516,6 @@ static int rx_update_display(gpointer data) {
       double level = rx_get_smeter(rx);
       level += (double)calib + (double)adc[rx->adc].attenuation - adc[rx->adc].gain;
 
-      if (filter_board == CHARLY25 && rx->adc == 0) {
-        level += (double)(12 * rx->alex_attenuation - 18 * rx->preamp - 18 * rx->dither);
-      }
-
       if (filter_board == ALEX && rx->adc == 0) {
         level += (double)(10 * rx->alex_attenuation);
       }

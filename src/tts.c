@@ -227,12 +227,6 @@ void tts_atten() {
   char msg[128];
   int level = adc[active_receiver->adc].attenuation - adc[active_receiver->adc].gain;
 
-  if (filter_board == CHARLY25 && active_receiver->adc == 0) {
-    level += 12 * active_receiver->alex_attenuation
-             - 18 * active_receiver->preamp
-             - 18 * active_receiver->dither;
-  }
-
   if (filter_board == ALEX && active_receiver->adc == 0) {
     level += 10 * active_receiver->alex_attenuation;
   }
