@@ -369,8 +369,8 @@ void ant_menu(GtkWidget *parent) {
     int row = 1;
 
     for (int id = 0; id < RECEIVERS; id++) {
-      char text[64];
       if (radio->soapy.rx[id].antennas > 0) {
+        char text[64];
         snprintf(text, sizeof(text), "RX%d Antenna:", id+1);
         GtkWidget *label = gtk_label_new(text);
         gtk_widget_set_name(label, "boldlabel");
