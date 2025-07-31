@@ -162,7 +162,7 @@ extern int mic_input_xlr;
 
 extern int receivers;
 
-extern ADC adc[2];
+extern ADC adc[3];
 extern DAC dac;
 
 extern int locked;
@@ -205,8 +205,6 @@ extern int pre_mox;
 extern int memory_tune;
 extern int full_tune;
 
-extern int adc0_overload;
-extern int adc1_overload;
 extern int tx_fifo_underrun;
 extern int tx_fifo_overrun;
 extern int high_swr_seen;
@@ -272,8 +270,6 @@ extern int hl2_cl1_input;
 
 extern int anan10E;
 
-extern int adc0_filter_bypass;   // Bypass ADC0 filters on receive
-extern int adc1_filter_bypass;   // Bypass ADC1 filters on receiver  (ANAN-7000/8000/G2)
 extern int mute_spkr_amp;        // Mute audio amplifier in radio    (ANAN-7000, G2)
 extern int mute_spkr_xmit;       // Mute audio amplifier in radio upon transmitting (ANAN-7000, G2)
 

@@ -668,8 +668,8 @@ static int send_periodic_data(gpointer arg) {
   DISPLAY_DATA disp_data;
   SYNC(disp_data.header.sync);
   disp_data.header.data_type = to_short(INFO_DISPLAY);
-  disp_data.adc0_overload = adc0_overload;
-  disp_data.adc1_overload = adc1_overload;
+  disp_data.adc0_overload = adc[0].overload;
+  disp_data.adc1_overload = adc[1].overload;
   disp_data.high_swr_seen = high_swr_seen;
   disp_data.tx_fifo_overrun = tx_fifo_overrun;
   disp_data.tx_fifo_underrun = tx_fifo_underrun;
@@ -704,11 +704,11 @@ void send_rxmenu(int sock, int id) {
   SYNC(data.header.sync);
   data.header.data_type = to_short(CMD_RXMENU);
   data.id = id;
-  data.dither = receiver[id]->dither;
-  data.random = receiver[id]->random;
-  data.preamp = receiver[id]->preamp;
-  data.adc0_filter_bypass = adc0_filter_bypass;
-  data.adc1_filter_bypass = adc1_filter_bypass;
+  data.dither = adc[id].dither;
+  data.random = adc[id].random;
+  data.preamp = adc[id].preamp;
+  data.adc0_filter_bypass = adc[0].filter_bypass;
+  data.adc1_filter_bypass = adc[1].filter_bypass;
   send_bytes(sock, (char *)&data, sizeof(RXMENU_DATA));
 }
 
@@ -855,8 +855,6 @@ void send_radio_data(int sock) {
   data.mute_rx_while_transmitting = mute_rx_while_transmitting;
   data.mute_spkr_amp = mute_spkr_amp;
   data.mute_spkr_xmit = mute_spkr_xmit;
-  data.adc0_filter_bypass = adc0_filter_bypass;
-  data.adc1_filter_bypass = adc1_filter_bypass;
   data.split = split;
   data.sat_mode = sat_mode;
   data.duplex = duplex;
@@ -976,6 +974,12 @@ void send_adc_data(int sock, int i) {
   SYNC(data.header.sync);
   data.header.data_type = to_short(INFO_ADC);
   data.adc = i;
+  data.preamp = adc[i].preamp;
+  data.dither = adc[i].dither;
+  data.random = adc[i].random;
+  data.alex_antenna = adc[i].alex_antenna;
+  data.alex_attenuation = adc[i].alex_attenuation;
+  data.filter_bypass = adc[i].filter_bypass;
   data.antenna = to_short(adc[i].antenna);
   data.attenuation = to_short(adc[i].attenuation);
   data.gain = to_double(adc[i].gain);
@@ -1077,11 +1081,6 @@ static void send_rx_data(int sock, int id) {
   data.display_detector_mode = rx->display_detector_mode;
   data.display_average_mode  = rx->display_average_mode;
   data.zoom                  = rx->zoom;
-  data.dither                = rx->dither;
-  data.random                = rx->random;
-  data.preamp                = rx->preamp;
-  data.alex_antenna          = rx->alex_antenna;
-  data.alex_attenuation      = rx->alex_attenuation;
   data.squelch_enable        = rx->squelch_enable;
   data.binaural              = rx->binaural;
   data.eq_enable             = rx->eq_enable;
@@ -2239,7 +2238,7 @@ void send_psatt(int s) {
     header.b1 = transmitter->auto_on;
     header.b2 = transmitter->feedback;
     header.s1 = to_short(transmitter->attenuation);
-    header.s2 = to_short(receiver[PS_RX_FEEDBACK]->alex_antenna);
+    header.s2 = to_short(adc[2].alex_antenna);
     send_bytes(s, (char *)&header, sizeof(HEADER));
   }
 }
@@ -2882,8 +2881,8 @@ static void *client_thread(void* arg) {
 
       if (recv_bytes(client_socket, (char *)&data + sizeof(HEADER), sizeof(data) - sizeof(HEADER)) < 0) { return NULL; }
 
-      adc0_overload = data.adc0_overload;
-      adc1_overload = data.adc1_overload;
+      adc[0].overload = data.adc0_overload;
+      adc[1].overload = data.adc1_overload;
       high_swr_seen = data.high_swr_seen;
       tx_fifo_overrun = data.tx_fifo_overrun;
       tx_fifo_underrun = data.tx_fifo_underrun;
@@ -3054,8 +3053,6 @@ static void *client_thread(void* arg) {
       mute_rx_while_transmitting = data.mute_rx_while_transmitting;
       mute_spkr_amp = data.mute_spkr_amp;
       mute_spkr_xmit = data.mute_spkr_xmit;
-      adc0_filter_bypass = data.adc0_filter_bypass;
-      adc1_filter_bypass = data.adc1_filter_bypass;
       split = data.split;
       sat_mode = data.sat_mode;
       duplex = data.duplex;
@@ -3185,6 +3182,12 @@ static void *client_thread(void* arg) {
       if (recv_bytes(client_socket, (char *)&data + sizeof(HEADER), sizeof(ADC_DATA) - sizeof(HEADER)) < 0) { return NULL; }
 
       int i = data.adc;
+      adc[i].preamp = data.preamp;
+      adc[i].dither = data.dither;
+      adc[i].random = data.random;
+      adc[i].alex_antenna = data.alex_antenna;
+      adc[i].alex_attenuation = data.alex_attenuation;
+      adc[i].filter_bypass = data.filter_bypass;
       adc[i].antenna = from_short(data.antenna);
       adc[i].attenuation = from_short(data.attenuation);
       adc[i].gain = from_double(data.gain);
@@ -3215,11 +3218,6 @@ static void *client_thread(void* arg) {
       rx->display_detector_mode = data.display_detector_mode;
       rx->display_average_mode  = data.display_average_mode;
       rx->zoom                  = data.zoom;
-      rx->dither                = data.dither;
-      rx->random                = data.random;
-      rx->preamp                = data.preamp;
-      rx->alex_antenna          = data.alex_antenna;
-      rx->alex_attenuation      = data.alex_attenuation;
       rx->squelch_enable        = data.squelch_enable;
       rx->binaural              = data.binaural;
       rx->eq_enable             = data.eq_enable;
@@ -3874,18 +3872,19 @@ static int remote_command(void *data) {
   break;
 
   case INFO_ADC: {
-    //
-    // Sending ADC data from the client to the server has a very limited scope:
-    // - antenna (for SoapySDR)
-    //
     const ADC_DATA *command = (ADC_DATA *)data;
     int id = command->adc;
-    int ant = from_short(command->antenna);
-    adc[id].antenna = ant;
+    adc[id].preamp = command->preamp;
+    adc[id].dither = command->dither;
+    adc[id].random = command->random;
+    adc[id].alex_antenna = command->alex_antenna;
+    adc[id].alex_attenuation = command->alex_attenuation;
+    adc[id].filter_bypass = command->filter_bypass;
+    adc[id].antenna = from_short(command->antenna);
 #ifdef SOAPYSDR
 
     if (device == SOAPYSDR_USB_DEVICE) {
-      soapy_protocol_set_rx_antenna(id, ant);
+      soapy_protocol_set_rx_antenna(id, adc[id].antenna);
     }
 
 #endif
@@ -4675,13 +4674,18 @@ static int remote_command(void *data) {
   break;
 
   case CMD_RXMENU: {
+    //
+    // cannot use send_agc since we transfer bypass info
+    // from both ADCs
+    // Data included here is what is changed in the RX menu
+    //
     const RXMENU_DATA *command = (RXMENU_DATA *)data;
     int id = command->id;
-    receiver[id]->dither = command->dither;
-    receiver[id]->random = command->random;
-    receiver[id]->preamp = command->preamp;
-    adc0_filter_bypass = command->adc0_filter_bypass;
-    adc1_filter_bypass = command->adc1_filter_bypass;
+    adc[id].dither = command->dither;
+    adc[id].random = command->random;
+    adc[id].preamp = command->preamp;
+    adc[0].filter_bypass = command->adc0_filter_bypass;
+    adc[1].filter_bypass = command->adc1_filter_bypass;
     schedule_receive_specific();
     schedule_high_priority();
   }
@@ -4835,7 +4839,7 @@ static int remote_command(void *data) {
       transmitter->auto_on = header->b1;
       transmitter->feedback = header->b2;
       transmitter->attenuation = from_short(header->s1);
-      receiver[PS_RX_FEEDBACK]->alex_antenna = from_short(header->s2);
+      adc[2].alex_antenna = from_short(header->s2);
       schedule_high_priority();
     }
   }

@@ -506,11 +506,11 @@ static gpointer ozy_i2c_thread(gpointer arg) {
 
       case 2:
         ozy_i2c_readpwr(I2C_MERC1_ADC_OFS);
-        adc0_overload |= mercury_overload[0];
+        adc[0].overload |= mercury_overload[0];
 
         if (mercury_software_version[1]) {
           ozy_i2c_readpwr(I2C_MERC2_ADC_OFS);
-          adc1_overload |= mercury_overload[1];
+          adc[1].overload |= mercury_overload[1];
         }
 
         cycle = 3;
@@ -1227,7 +1227,7 @@ static void process_control_bytes() {
 
   switch ((control_in[0] >> 3) & 0x1F) {
   case 0:
-    adc0_overload |= (control_in[1] & 0x01);
+    adc[0].overload |= (control_in[1] & 0x01);
 
     //
     // Hermes IOx inputs (x=1,2,3,4), used for TxInhibit and AutoTune
@@ -1338,8 +1338,8 @@ static void process_control_bytes() {
     break;
 
   case 4:
-    adc0_overload |= control_in[1] & 0x01;
-    adc1_overload |= control_in[2] & 0x01;
+    adc[0].overload |= control_in[1] & 0x01;
+    adc[1].overload |= control_in[2] & 0x01;
 
     if (mercury_software_version[0] != control_in[1] >> 1 && control_in[1] >> 1 != 0x7F) {
       mercury_software_version[0] = control_in[1] >> 1;
@@ -1896,20 +1896,18 @@ static void ozy_send_buffer() {
       output_buffer[C2] |= rxband->OCrx << 1;
     }
 
-    output_buffer[C3] = (receiver[0]->alex_attenuation) & 0x03;  // do not set higher bits
+    output_buffer[C3] = adc[0].alex_attenuation & 0x03;
 
     //
     // The protocol does not have different random/dither bits for different Mercury
-    // cards, therefore we OR the settings for all receivers no matter which ADC is assigned
+    // cards, therefore we OR the settings for both ADCs that may be present
     //
-    for (i = 0; i < receivers; i++) {
-      if (receiver[i]->random) {
-        output_buffer[C3] |= LT2208_RANDOM_ON;
-      }
+    if (adc[0].random || adc[1].random) {
+      output_buffer[C3] |= LT2208_RANDOM_ON;
+    }
 
-      if (receiver[i]->dither) {
-        output_buffer[C3] |= LT2208_DITHER_ON;
-      }
+    if (adc[0].dither || adc[1].dither) {
+      output_buffer[C3] |= LT2208_DITHER_ON;
     }
 
     //
@@ -1920,14 +1918,14 @@ static void ozy_send_buffer() {
       output_buffer[C3] |= LT2208_DITHER_ON;
     }
 
-    if (filter_board == CHARLY25 && receiver[0]->preamp) {
+    if (filter_board == CHARLY25 && adc[0].preamp) {
       output_buffer[C3] |= LT2208_GAIN_ON;
     }
 
     //
     // Set ALEX RX1_ANT and RX1_OUT
     //
-    i = receiver[0]->alex_antenna;
+    i = adc[0].alex_antenna;
 
     //
     // Upon TX, we might have to activate a different RX path for the
@@ -1935,7 +1933,7 @@ static void ozy_send_buffer() {
     // the feedback signal is routed automatically/internally
     // If feedback is to the second ADC, leave RX1 ANT settings untouched
     //
-    if (radio_is_transmitting() && transmitter->puresignal) { i = receiver[PS_RX_FEEDBACK]->alex_antenna; }
+    if (radio_is_transmitting() && transmitter->puresignal) { i = adc[2].alex_antenna; }
 
     if (device == DEVICE_ORION2) {
       i += 100;
@@ -2046,7 +2044,7 @@ static void ozy_send_buffer() {
         i = 0;
       }
     } else {
-      i = receiver[0]->alex_antenna;
+      i = adc[0].alex_antenna;
 
       //
       // Not using ANT1,2,3: can leave relais in TX state unless using new PA board
@@ -2157,7 +2155,7 @@ static void ozy_send_buffer() {
         }
       }
 
-      if (!radio_is_transmitting() && adc0_filter_bypass) {
+      if (!radio_is_transmitting() && adc[0].filter_bypass) {
         output_buffer[C2] |= 0x40; // Manual Filter Selection
         output_buffer[C3] |= 0x20; // bypass all RX filters
       }
@@ -2168,7 +2166,7 @@ static void ozy_send_buffer() {
       // un-altered. This is not necessary for feedback at the "ByPass" jack since filter bypass
       // is realised in hardware here.
       //
-      if (radio_is_transmitting() && transmitter->puresignal && receiver[PS_RX_FEEDBACK]->alex_antenna == 6) {
+      if (radio_is_transmitting() && transmitter->puresignal && adc[2].alex_antenna == 6) {
         output_buffer[C2] |= 0x40;  // enable manual filter selection
         output_buffer[C3] &= 0x80;  // preserve ONLY "PA enable" bit and clear all filters including "6m LNA"
         output_buffer[C3] |= 0x20;  // bypass all RX filters
@@ -2220,13 +2218,7 @@ static void ozy_send_buffer() {
       output_buffer[C0] = 0x14;
 
       if (have_preamp) {
-        //
-        // For each receiver with the preamp bit set, activate the preamp
-        // of the ADC associated with that receiver
-        //
-        for (i = 0; i < receivers; i++) {
-          output_buffer[C1] |= ((receiver[i]->preamp & 0x01) << receiver[i]->adc);
-        }
+        output_buffer[C1] = adc[0].preamp | (adc[1].preamp << 1);
       }
 
       if (mic_ptt_enabled == 0) {
@@ -2427,7 +2419,7 @@ static void ozy_send_buffer() {
         output_buffer[C1] |= 0x80; // ground RX2 on transmit, bit0-6 are Alex2 filters
       }
 
-      if (receiver[0]->alex_antenna == 5) { // XVTR
+      if (adc[0].alex_antenna == 5) { // XVTR
         output_buffer[C2] |= 0x02;          // Alex2 XVTR enable
       }
 
@@ -2435,7 +2427,7 @@ static void ozy_send_buffer() {
         output_buffer[C2] |= 0x40;       // Synchronize RX5 and TX frequency on transmit (ANAN-7000)
       }
 
-      if (adc1_filter_bypass) {
+      if (adc[1].filter_bypass) {
         //
         // This becomes only effective if manual filter selection is enabled
         // and this is only done if the adc0 filter bypass is also selected
@@ -2578,7 +2570,7 @@ static void ozy_send_buffer() {
 
         hl2_iob_rfmode = 0;
 
-        if (receiver[0]->alex_antenna != 0) {
+        if (adc[0].alex_antenna != 0) {
           hl2_iob_rfmode = 1;
 
           if (transmitter->puresignal) {

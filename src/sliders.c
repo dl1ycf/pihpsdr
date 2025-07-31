@@ -233,16 +233,19 @@ int sliders_att_type_changed(gpointer data) {
 
     if (rf_gain_label != NULL) { gtk_widget_hide(rf_gain_label); }
 
-    if (attenuation_scale != NULL) {
-      radio_set_attenuation(0, 0.0);
-      radio_set_attenuation(1, 0.0);
-      gtk_widget_hide(attenuation_scale);
-    }
+    //
+    // Set gain/attenuation depending on the CHARLY25 settings
+    //
+    radio_set_attenuation(0, 0);
+    radio_set_attenuation(1, 0);
+    radio_set_rf_gain(0, rx_gain_calibration);
+    radio_set_rf_gain(1, rx_gain_calibration);
 
-    if (rf_gain_scale != NULL) {
-      radio_set_rf_gain(active_receiver->id, rx_gain_calibration);
-      gtk_widget_hide(rf_gain_scale);
-    }
+    if (adc[0].preamp || adc[0].dither) { adc[0].alex_attenuation = 0; }
+
+    if (attenuation_scale != NULL) { gtk_widget_hide(attenuation_scale); }
+
+    if (rf_gain_scale != NULL) { gtk_widget_hide(rf_gain_scale); }
 
     if (c25_container != NULL) { gtk_widget_show(c25_container); }
 
@@ -250,6 +253,14 @@ int sliders_att_type_changed(gpointer data) {
 
     sliders_c25_att(active_receiver->id);
   } else {
+    adc[0].preamp = 0;
+    adc[0].dither = 0;
+    adc[0].alex_attenuation = 0;
+    radio_set_attenuation(0, 0);
+    radio_set_attenuation(1, 0);
+    radio_set_rf_gain(0, rx_gain_calibration);
+    radio_set_rf_gain(1, rx_gain_calibration);
+
     if (attenuation_label != NULL) { gtk_widget_show(attenuation_label); }
 
     if (rf_gain_label != NULL) { gtk_widget_show(rf_gain_label); }
@@ -258,12 +269,10 @@ int sliders_att_type_changed(gpointer data) {
 
     if (rf_gain_scale != NULL) { gtk_widget_show(rf_gain_scale); }
 
-    if (c25_container != NULL) {
-      radio_set_c25_att(0, 0);
-      gtk_widget_hide(c25_container);
-    }
+    if (c25_container != NULL) { gtk_widget_hide(c25_container); }
 
     if (c25_label != NULL) { gtk_widget_hide(c25_label); }
+
     sliders_attenuation(active_receiver->id);
     sliders_rf_gain(active_receiver->id, active_receiver->adc);
   }
@@ -302,20 +311,16 @@ void sliders_c25_att(int id) {
   if (id > receivers) { return; }
   if (filter_board != CHARLY25) { return; }
   //
-  // Only change the combo-box
-  // 
+  // Only change the combo-box (no popup slider)
+  //
   if (display_sliders && active_receiver->id == id && c25_combobox != NULL) {
     char lbl[16];
-    int att = (int) (adc[id].gain - (double) adc[id].attenuation + 0.5);
+    int rxadc = active_receiver->adc;
+    int att = -12 * adc[rxadc].alex_attenuation + 18 * (adc[rxadc].dither + adc[rxadc].preamp);
     snprintf(lbl, sizeof(lbl), "%d", att);
     if (c25_signal_id) { g_signal_handler_block(G_OBJECT(c25_combobox), c25_signal_id); }
     gtk_combo_box_set_active_id(GTK_COMBO_BOX(c25_combobox), lbl);
     if (c25_signal_id) { g_signal_handler_unblock(G_OBJECT(c25_combobox), c25_signal_id); }
-  } else if (id == 0) {
-    char title[64];
-    snprintf(title, sizeof(title), "Attenuation - ADC-%d (dB)", id);
-    show_popup_slider(ATTENUATION, id, -36.0, 36.0, 6.0, (double)adc[id].attenuation,
-                      title);
   }
 }
 

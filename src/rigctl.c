@@ -146,15 +146,6 @@ SERIALPORT SerialPorts[MAX_SERIAL];
 
 static gpointer rigctl_client (gpointer data);
 
-//
-// This macro handles cases where RX2 is referred to but might not
-// exist. These macros lead to an action only  if the RX exists.
-// RXCHECK_ERR sets an error flag if RX is non-exisiting.
-// RXCHECK     just silently ignores the command
-//
-#define RXCHECK_ERR(id, what) if (id >= 0 && id < receivers) { what; } else { implemented = FALSE; }
-#define RXCHECK(id, what)     if (id >= 0 && id < receivers) { what; }
-
 int rigctl_tcp_running() {
   return (server_socket >= 0);
 }
@@ -1409,14 +1400,15 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         send_resp(client->fd, reply) ;
       } else {
         int gain = atoi(&command[4]);
+        double volume;
 
         if (gain < 2) {
-          receiver[0]->volume = -40.0;
+          volume = -40.0;
         } else {
-          receiver[0]->volume = 20.0 * log10(0.01 * (double) gain);
+          volume = 20.0 * log10(0.01 * (double) gain);
         }
 
-        radio_set_af_gain(0, receiver[0]->volume);
+        radio_set_af_gain(0, volume);
       }
 
       break;
@@ -1478,7 +1470,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //RESP      ZZASxxxx;
       //NOTE      x -20...120, must contain + or - sign.
       //ENDDEF
-      if (receivers == 2) {
+      if (receivers > 1) {
         if (command[4] == ';') {
           // send reply back
           snprintf(reply,  sizeof(reply), "ZZAS%+04d;", (int)(receiver[1]->agc_gain));
@@ -1526,7 +1518,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //NOTE      Wraps from lowest to highest band.
       //ENDDEF
       if (command[4] == ';') {
-        if (receivers == 2) {
+        if (receivers > 1) {
           band_minus(receiver[1]->id);
         } else {
           implemented = FALSE;
@@ -1543,7 +1535,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //NOTE      Wraps from highest to lowest band.
       //ENDDEF
       if (command[4] == ';') {
-        if (receivers == 2) {
+        if (receivers > 1) {
           band_plus(receiver[1]->id);
         } else {
           implemented = FALSE;
@@ -2227,20 +2219,18 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //RESP      ZZGUx;
       //NOTE      x=0: AGC OFF, x=1: LONG, x=2: SLOW, x=3: MEDIUM, x=4: FAST
       //ENDDEF
-      RXCHECK(1,
-      if (command[4] == ';') {
-      snprintf(reply,  sizeof(reply), "ZZGU%d;", receiver[1]->agc);
-        send_resp(client->fd, reply) ;
-      } else if (command[5] == ';') {
-      int agc = atoi(&command[4]);
-        // update RX2 AGC
-        RXCHECK(1,
-                receiver[1]->agc = agc;
-                rx_set_agc(receiver[1]);
-                g_idle_add(ext_vfo_update, NULL);
-               )
+      if (receivers > 1) {
+        if (command[4] == ';') {
+        snprintf(reply,  sizeof(reply), "ZZGU%d;", receiver[1]->agc);
+          send_resp(client->fd, reply) ;
+        } else if (command[5] == ';') {
+        int agc = atoi(&command[4]);
+          // update RX2 AGC
+          receiver[1]->agc = agc;
+          rx_set_agc(receiver[1]);
+          g_idle_add(ext_vfo_update, NULL);
+        }
       }
-             )
       break;
 
     default:
@@ -2273,15 +2263,16 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         send_resp(client->fd, reply) ;
       } else {
         int gain = atoi(&command[4]);
+        double volume;
 
         // gain is 0..100
         if (gain < 2) {
-          receiver[0]->volume = -40.0;
+          volume = -40.0;
         } else {
-          receiver[0]->volume = 20.0 * log10(0.01 * (double) gain);
+          volume = 20.0 * log10(0.01 * (double) gain);
         }
 
-        radio_set_af_gain(0, receiver[0]->volume);
+        radio_set_af_gain(0, volume);
       }
 
       break;
@@ -2294,24 +2285,25 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //RESP      ZZLCxxx;
       //NOTE      x = 0...100, mapped logarithmically to -40 ... 0 dB.
       //ENDDEF
-      RXCHECK(1,
-      if (command[4] == ';') {
-      // send reply back
-      snprintf(reply,  sizeof(reply), "ZZLC%03d;", (int)(255.0 * pow(10.0, 0.05 * receiver[1]->volume)));
+      if (receivers > 1) {
+        if (command[4] == ';') {
+        // send reply back
+        snprintf(reply,  sizeof(reply), "ZZLC%03d;", (int)(255.0 * pow(10.0, 0.05 * receiver[1]->volume)));
         send_resp(client->fd, reply) ;
-      } else {
-        int gain = atoi(&command[4]);
-
-        // gain is 0..100
-        if (gain < 2) {
-          receiver[1]->volume = -40.0;
         } else {
-          receiver[1]->volume = 20.0 * log10(0.01 * (double) gain);
-        }
+          int gain = atoi(&command[4]);
+          double volume;
 
-        radio_set_af_gain(1, receiver[1]->volume);
+          // gain is 0..100
+          if (gain < 2) {
+            volume = -40.0;
+          } else {
+            volume = 20.0 * log10(0.01 * (double) gain);
+          }
+
+          radio_set_af_gain(1, volume);
+        }
       }
-             )
       break;
 
     case 'I': //ZZLI
@@ -2374,15 +2366,15 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //RESP      ZZMBx;
       //NOTE      x=0: RX2 not muted, x=1: muted.
       //ENDDEF
-      RXCHECK(1,
-      if (command[4] == ';') {
-      snprintf(reply,  sizeof(reply), "ZZMA%d;", receiver[1]->mute_radio);
-        send_resp(client->fd, reply) ;
-      } else {
-        int mute = atoi(&command[4]);
-        receiver[1]->mute_radio = mute;
+      if (receivers > 1) {
+        if (command[4] == ';') {
+        snprintf(reply,  sizeof(reply), "ZZMA%d;", receiver[1]->mute_radio);
+          send_resp(client->fd, reply) ;
+        } else {
+          int mute = atoi(&command[4]);
+          receiver[1]->mute_radio = mute;
+        }
       }
-             )
       break;
 
     case 'D': //ZZMD
@@ -2541,7 +2533,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
     case 'C': //ZZNC
 
       //DO NOT DOCUMENT, THIS WILL BE REMOVED
-      if (receivers == 2) {
+      if (receivers > 1) {
         if (command[4] == ';') {
           snprintf(reply,  sizeof(reply), "ZZNC%d;", (receiver[1]->nb == 1));
           send_resp(client->fd, reply);
@@ -2559,7 +2551,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
     case 'D': //ZZND
 
       //DO NOT DOCUMENT, THIS WILL BE REMOVED
-      if (receivers == 2) {
+      if (receivers > 1) {
         if (command[4] == ';') {
           snprintf(reply,  sizeof(reply), "ZZND%d;", (receiver[1]->nb == 2));
           send_resp(client->fd, reply);
@@ -2590,7 +2582,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
     case 'O': //ZZNO
 
       //DO NOT DOCUMENT, THIS WILL BE REMOVED
-      if (receivers == 2) {
+      if (receivers > 1) {
         if (command[4] == ';') {
           snprintf(reply,  sizeof(reply), "ZZNO%d;", receiver[1]->snb);
           send_resp(client->fd, reply);
@@ -2651,7 +2643,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
     case 'U': //ZZNU
 
       //DO NOT DOCUMENT, THIS WILL BE REMOVED
-      if (receivers == 2) {
+      if (receivers > 1) {
         if (command[4] == ';') {
           snprintf(reply,  sizeof(reply), "ZZNU%d;", receiver[1]->anf);
           send_resp(client->fd, reply);
@@ -2669,7 +2661,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
     case 'V': //ZZNV
 
       //DO NOT DOCUMENT, THIS WILL BE REMOVED
-      if (receivers == 2) {
+      if (receivers > 1) {
         if (command[4] == ';') {
           snprintf(reply,  sizeof(reply), "ZZNV%d;", (receiver[1]->nr == 1));
           send_resp(client->fd, reply);
@@ -2687,7 +2679,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
     case 'W': //ZZNW
 
       //DO NOT DOCUMENT, THIS WILL BE REMOVED
-      if (receivers == 2) {
+      if (receivers > 1) {
         if (command[4] == ';') {
           snprintf(reply,  sizeof(reply), "ZZNW%d;", (receiver[1]->nr == 2));
           send_resp(client->fd, reply);
@@ -3159,7 +3151,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
     case 'O': //ZZXO
 
       //DO NOT DOCUMENT, THIS WILL BE REMOVED
-      if (receivers == 2) {
+      if (receivers > 1) {
         if (command[4] == ';') {
           int status = ((receiver[1]->agc) & 0x03);
           int a = adc[receiver[1]->adc].attenuation;
@@ -3611,15 +3603,15 @@ static int parse_cmd(void *data) {
       //ENDDEF
       if (command[3] == ';') {
         int id = SET(command[2] == '1');
-        RXCHECK(id,
-                snprintf(reply,  sizeof(reply), "AG%1d%03d;", id, (int)(255.0 * pow(10.0, 0.05 * receiver[id]->volume)));
-                send_resp(client->fd, reply);
-               )
+        if (id >= 0 && id < receivers) {
+          snprintf(reply,  sizeof(reply), "AG%1d%03d;", id, (int)(255.0 * pow(10.0, 0.05 * receiver[id]->volume)));
+          send_resp(client->fd, reply);
+        }
       } else if (command[6] == ';') {
         int id = SET(command[2] == '1');
         int gain = atoi(&command[3]);
         double vol = (gain < 3) ? -40.0 : 20.0 * log10((double) gain / 255.0);
-        RXCHECK(id, receiver[id]->volume = vol; radio_set_af_gain(0, receiver[id]->volume));
+        radio_set_af_gain(id, vol);
       }
 
       break;
@@ -3920,7 +3912,9 @@ static int parse_cmd(void *data) {
         send_resp(client->fd, reply) ;
       } else if (command[3] == ';') {
         int id = SET(command[2] == '1');
-        RXCHECK(id, schedule_action(id == 0 ? RX1 : RX2, PRESSED, 0));
+        if (receivers > id) {
+          schedule_action(id == 0 ? RX1 : RX2, PRESSED, 0);
+        }
         g_idle_add(ext_vfo_update, NULL);
       }
 
@@ -4512,15 +4506,15 @@ static int parse_cmd(void *data) {
       //SET       PAx;
       //READ      PA;
       //RESP      PAx;
-      //NOTE      Applies to RX1
+      //NOTE      Applies to the ADC connected with RX1
       //NOTE      x=0: RX1 preamp off, x=1: on
       //NOTE      newer HPSDR radios do not have a switchable preamp
       //ENDDEF
       if (command[2] == ';') {
-        snprintf(reply,  sizeof(reply), "PA%d0;", receiver[0]->preamp);
+        snprintf(reply,  sizeof(reply), "PA%d0;", adc[receiver[0]->adc].preamp);
         send_resp(client->fd, reply);
       } else if (command[4] == ';') {
-        receiver[0]->preamp = command[2] == '1';
+        adc[receiver[0]->adc].preamp = (command[2] == '1');
       }
 
       break;
@@ -5189,14 +5183,14 @@ static int parse_cmd(void *data) {
       //ENDDEF
       if (command[3] == ';') {
         int id = atoi(&command[2]);
-        RXCHECK (id,
-                 int val = (int)((receiver[id]->meter + 127.0) * 0.277778);
+        if (id >= 0 && id < receivers) {
+          int val = (int)((receiver[id]->meter + 127.0) * 0.277778);
 
-        if (val > 30) { val = 30; }
-      if (val < 0 ) { val = 0; }
-      snprintf(reply,  sizeof(reply), "SM%d%04d;", id, val);
-      send_resp(client->fd, reply);
-              )
+          if (val > 30) { val = 30; }
+          if (val < 0 ) { val = 0; }
+          snprintf(reply,  sizeof(reply), "SM%d%04d;", id, val);
+          send_resp(client->fd, reply);
+        }
       }
 
       break;
@@ -5213,10 +5207,10 @@ static int parse_cmd(void *data) {
       //ENDDEF
       if (command[3] == ';') {
         int id = atoi(&command[2]);
-        RXCHECK(id,
-                snprintf(reply,  sizeof(reply), "SQ%d%03d;", id, (int)((double)receiver[id]->squelch / 100.0 * 255.0 + 0.5));
-                send_resp(client->fd, reply);
-               )
+        if (id >= 0 && id < receivers) {
+          snprintf(reply,  sizeof(reply), "SQ%d%03d;", id, (int)((double)receiver[id]->squelch / 100.0 * 255.0 + 0.5));
+          send_resp(client->fd, reply);
+        }
       } else if (command[6] == ';') {
         int id = atoi(&command[2]);
         int p2 = atoi(&command[3]);

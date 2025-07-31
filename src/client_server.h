@@ -461,6 +461,13 @@ typedef struct __attribute__((__packed__)) _dac_data {
 typedef struct __attribute__((__packed__)) _adc_data {
   HEADER header;
   uint8_t adc;
+  uint8_t random;
+  uint8_t dither;
+  uint8_t preamp;
+  uint8_t alex_antenna;
+  uint8_t alex_attenuation;
+  uint8_t overload;
+  uint8_t filter_bypass;
   //
   uint16_t antenna;
   uint16_t attenuation;
@@ -561,11 +568,6 @@ typedef struct __attribute__((__packed__)) _receiver_data {
   uint8_t display_detector_mode;
   uint8_t display_average_mode;
   uint8_t zoom;
-  uint8_t dither;
-  uint8_t random;
-  uint8_t preamp;
-  uint8_t alex_antenna;
-  uint8_t alex_attenuation;
   uint8_t squelch_enable;
   uint8_t binaural;
   uint8_t eq_enable;

@@ -223,9 +223,10 @@ gboolean rx_scroll_event(GtkWidget *widget, const GdkEventScroll *event, gpointe
 
 void rx_save_state(const RECEIVER *rx) {
   //
-  // For a PS_RX_FEEDBACK, we only store/restore the alex antenna and ADC
+  // For a PS_RX_FEEDBACK, we only store/restore the ADC
+  // This is currently hard-wired to ADC0, but can be changed
+  // by manually editing the props file.
   //
-  SetPropI1("receiver.%d.alex_antenna", rx->id,               rx->alex_antenna);
   SetPropI1("receiver.%d.adc", rx->id,                        rx->adc);
 
   if (rx->id == PS_RX_FEEDBACK) { return; }
@@ -268,19 +269,11 @@ void rx_save_state(const RECEIVER *rx) {
     SetPropI1("receiver.%d.display_detector_mode", rx->id,      rx->display_detector_mode);
     SetPropI1("receiver.%d.display_average_mode", rx->id,       rx->display_average_mode);
     SetPropF1("receiver.%d.display_average_time", rx->id,       rx->display_average_time);
-
-    if (have_alex_att) {
-      SetPropI1("receiver.%d.alex_attenuation", rx->id,         rx->alex_attenuation);
-    }
-
     SetPropF1("receiver.%d.volume", rx->id,                     rx->volume);
     SetPropI1("receiver.%d.agc", rx->id,                        rx->agc);
     SetPropF1("receiver.%d.agc_gain", rx->id,                   rx->agc_gain);
     SetPropF1("receiver.%d.agc_slope", rx->id,                  rx->agc_slope);
     SetPropF1("receiver.%d.agc_hang_threshold", rx->id,         rx->agc_hang_threshold);
-    SetPropI1("receiver.%d.dither", rx->id,                     rx->dither);
-    SetPropI1("receiver.%d.random", rx->id,                     rx->random);
-    SetPropI1("receiver.%d.preamp", rx->id,                     rx->preamp);
     SetPropI1("receiver.%d.nb", rx->id,                         rx->nb);
     SetPropI1("receiver.%d.nr", rx->id,                         rx->nr);
     SetPropI1("receiver.%d.anf", rx->id,                        rx->anf);
@@ -319,19 +312,13 @@ void rx_save_state(const RECEIVER *rx) {
 }
 
 void rx_restore_state(RECEIVER *rx) {
-  t_print("%s: id=%d\n", __FUNCTION__, rx->id);
-
-  if (!radio_is_remote) {
-    GetPropI1("receiver.%d.alex_antenna", rx->id,               rx->alex_antenna);
-    //SOAPY: do not allow ADC changes
-    if (protocol != SOAPYSDR_PROTOCOL) {
-      GetPropI1("receiver.%d.adc", rx->id,                      rx->adc);
-    }
-  }
-
   //
-  // For a PS_RX_FEEDBACK, we only store/restore the alex antenna and ADC
+  // For a PS_RX_FEEDBACK, we only store/restore the ADC
+  // This is currently hard-wired to ADC0, but can be changed
+  // by manually editing the props file.
   //
+  GetPropI1("receiver.%d.adc", rx->id,                        rx->adc);
+
   if (rx->id == PS_RX_FEEDBACK) { return; }
 
   //
@@ -380,19 +367,11 @@ void rx_restore_state(RECEIVER *rx) {
     GetPropI1("receiver.%d.display_detector_mode", rx->id,      rx->display_detector_mode);
     GetPropI1("receiver.%d.display_average_mode", rx->id,       rx->display_average_mode);
     GetPropF1("receiver.%d.display_average_time", rx->id,       rx->display_average_time);
-
-    if (have_alex_att) {
-      GetPropI1("receiver.%d.alex_attenuation", rx->id,         rx->alex_attenuation);
-    }
-
     GetPropF1("receiver.%d.volume", rx->id,                     rx->volume);
     GetPropI1("receiver.%d.agc", rx->id,                        rx->agc);
     GetPropF1("receiver.%d.agc_gain", rx->id,                   rx->agc_gain);
     GetPropF1("receiver.%d.agc_slope", rx->id,                  rx->agc_slope);
     GetPropF1("receiver.%d.agc_hang_threshold", rx->id,         rx->agc_hang_threshold);
-    GetPropI1("receiver.%d.dither", rx->id,                     rx->dither);
-    GetPropI1("receiver.%d.random", rx->id,                     rx->random);
-    GetPropI1("receiver.%d.preamp", rx->id,                     rx->preamp);
     GetPropI1("receiver.%d.nb", rx->id,                         rx->nb);
     GetPropI1("receiver.%d.nr", rx->id,                         rx->nr);
     GetPropI1("receiver.%d.anf", rx->id,                        rx->anf);
@@ -517,7 +496,15 @@ static int rx_update_display(gpointer data) {
       level += (double)calib + (double)adc[rx->adc].attenuation - adc[rx->adc].gain;
 
       if (filter_board == ALEX && rx->adc == 0) {
-        level += (double)(10 * rx->alex_attenuation);
+        level += (double)(10 * adc[0].alex_attenuation);
+      }
+
+      if (filter_board == CHARLY25 && rx->adc == 0) {
+        level += (double)(12 * adc[0].alex_attenuation - 18 * (adc[0].preamp + adc[0].dither));
+      }
+
+      if (have_preamp && filter_board != CHARLY25) {
+        level -= (double)(20 * adc[rx->adc].preamp);
       }
 
       rx->meter = level;
@@ -624,9 +611,8 @@ RECEIVER *rx_create_pure_signal_receiver(int id, int sample_rate, int width, int
     // The analyzer is only used if
     // displaying the RX feedback samples (MON button in PS menu).
     //
-    rx->alex_antenna = 0;
     rx->adc = 0;
-    rx_restore_state(rx);
+    rx_restore_state(rx);  // this may change the adc
     g_mutex_init(&rx->mutex);
     g_mutex_init(&rx->display_mutex);
     rx->sample_rate = sample_rate;
@@ -713,6 +699,10 @@ RECEIVER *rx_create_receiver(int id, int pixels, int width, int height) {
     case DEVICE_HERMES_LITE2:
     case NEW_DEVICE_ATLAS:
     case NEW_DEVICE_HERMES:
+      //
+      // Assume a single adc for these devices.
+      // ?? Multiple Mecury cards ??
+      //
       rx->adc = 0;
       break;
 
@@ -722,7 +712,6 @@ RECEIVER *rx_create_receiver(int id, int pixels, int width, int height) {
     }
   }
 
-  //t_print("%s: RXid=%d default adc=%d\n",__FUNCTION__,rx->id, rx->adc);
   rx->sample_rate = 48000;
 
   rx->resampler = NULL;
@@ -772,9 +761,6 @@ RECEIVER *rx_create_receiver(int id, int pixels, int width, int height) {
   rx->display_average_mode = AVG_LOGRECURSIVE;
   rx->display_average_time = 120.0;
   rx->volume = -20.0;
-  rx->dither = 0;
-  rx->random = 0;
-  rx->preamp = 0;
   rx->nb = 0;
   rx->nr = 0;
   rx->anf = 0;
@@ -808,15 +794,6 @@ RECEIVER *rx_create_receiver(int id, int pixels, int width, int height) {
   rx->nr4_noise_rescale = 2.0;
   rx->nr4_post_threshold = -10.0;
 #endif
-  const BAND *b = band_get_band(vfo[rx->id].band);
-  rx->alex_antenna = b->alexRxAntenna;
-
-  if (have_alex_att) {
-    rx->alex_attenuation = b->alexAttenuation;
-  } else {
-    rx->alex_attenuation = 0;
-  }
-
   rx->agc = AGC_MEDIUM;
   rx->agc_gain = 80.0;
   rx->agc_slope = 35.0;

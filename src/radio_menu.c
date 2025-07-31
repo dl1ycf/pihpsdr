@@ -64,7 +64,7 @@ static gboolean close_cb () {
 }
 
 static void rx_gain_element_changed_cb(GtkWidget *widget, gpointer data) {
-  
+
   if (device == SOAPYSDR_USB_DEVICE) {
     int id = GPOINTER_TO_INT(data);
     double gain = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
@@ -372,7 +372,7 @@ static void sample_rate_cb(GtkToggleButton *widget, gpointer data) {
     //
     for (int id = 0; id < RECEIVERS; id++) {
       send_sample_rate(client_socket, id, samplerate);
-    } 
+    }
   } else {
     radio_change_sample_rate(samplerate);
   }

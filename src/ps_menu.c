@@ -413,15 +413,15 @@ static void ps_ant_cb(GtkWidget *widget, gpointer data) {
 
   switch (val) {
   case 0:
-    receiver[PS_RX_FEEDBACK]->alex_antenna = 0;
+    adc[2].alex_antenna = 0;
     break;
 
   case 1:
-    receiver[PS_RX_FEEDBACK]->alex_antenna = 6;
+    adc[2].alex_antenna = 6;
     break;
 
   case 2:
-    receiver[PS_RX_FEEDBACK]->alex_antenna = 7;
+    adc[2].alex_antenna = 7;
     break;
   }
 
@@ -649,7 +649,7 @@ void ps_menu(GtkWidget *parent) {
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(ps_ant_combo), NULL, "Ext1");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(ps_ant_combo), NULL, "ByPass");
 
-  switch (receiver[PS_RX_FEEDBACK]->alex_antenna) {
+  switch (adc[2].alex_antenna) {
   case 0:
     gtk_combo_box_set_active(GTK_COMBO_BOX(ps_ant_combo), 0);
     break;

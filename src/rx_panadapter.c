@@ -108,7 +108,7 @@ void rx_panadapter_update(RECEIVER *rx) {
   long long f;
   long long divisor;
   double soffset;
-  gboolean active = (active_receiver == rx);
+  int active = (active_receiver == rx);
   int mywidth = gtk_widget_get_allocated_width (rx->panadapter);
   int myheight = gtk_widget_get_allocated_height (rx->panadapter);
   samples = rx->pixel_samples;
@@ -131,6 +131,18 @@ void rx_panadapter_update(RECEIVER *rx) {
   int calib = rx_gain_calibration - band->gain;
   soffset = (double) calib + (double)adc[rx->adc].attenuation - adc[rx->adc].gain;
 
+  if (filter_board == ALEX && rx->adc == 0) {
+    soffset += (double)(10 * adc[0].alex_attenuation);
+  }
+
+  if (filter_board == CHARLY25 && rx->adc == 0) {
+    soffset += (double)(12 * adc[0].alex_attenuation - 18 * (adc[0].preamp + adc[0].dither));
+  }
+
+  if (have_preamp && filter_board != CHARLY25) {
+    soffset -= (double)(20 * adc[rx->adc].preamp);
+  }
+
   //
   // offset is used to calculate the filter edges. They move  with the RIT value
   //
@@ -139,10 +151,6 @@ void rx_panadapter_update(RECEIVER *rx) {
     offset = vfo[rx->id].offset;
   } else {
     offset = vfo[rx->id].rit_enabled ? vfo[rx->id].rit : 0;
-  }
-
-  if (filter_board == ALEX && rx->adc == 0) {
-    soffset += (double)(10 * rx->alex_attenuation - 20 * rx->preamp);
   }
 
   // In diversity mode, the RX2 frequency tracks the RX1 frequency
@@ -726,19 +734,19 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
       }
     }
 
-    if (adc0_overload || adc1_overload) {
+    if (adc[0].overload || adc[1].overload) {
       static unsigned int adc_error_count = 0;
       cairo_move_to(cr, 100.0, 70.0);
 
-      if (adc0_overload && !adc1_overload) {
+      if (adc[0].overload && !adc[1].overload) {
         cairo_show_text(cr, "ADC0 overload");
       }
 
-      if (adc1_overload && !adc0_overload) {
+      if (adc[1].overload && !adc[0].overload) {
         cairo_show_text(cr, "ADC1 overload");
       }
 
-      if (adc0_overload && adc1_overload) {
+      if (adc[0].overload && adc[1].overload) {
         cairo_show_text(cr, "ADC0+1 overload");
       }
 
@@ -746,8 +754,8 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
 
       if (adc_error_count > 2 * fps) {
         adc_error_count = 0;
-        adc0_overload = 0;
-        adc1_overload = 0;
+        adc[0].overload = 0;
+        adc[1].overload = 0;
 #ifdef USBOZY
         mercury_overload[0] = 0;
         mercury_overload[1] = 0;

@@ -168,8 +168,6 @@ int hl2_cl1_input = 0;
 //
 int anan10E = 0;
 
-int adc0_filter_bypass = 0; // Bypass ADC0 filters on receive
-int adc1_filter_bypass = 0; // Bypass ADC1 filters on receiver              (ANAN-7000/8000/G2)
 int mute_spkr_amp = 0;      // Mute audio amplifier in radio                (ANAN-7000, G2)
 int mute_spkr_xmit= 0;      // Mute audio amplifier in radio upon transmit  (ANAN-7000, G2)
 
@@ -195,7 +193,7 @@ int mic_input_xlr = 0;
 
 int receivers;
 
-ADC adc[2];
+ADC adc[3];    // adc[2] contains the PS RX feedback antenna nothing else
 DAC dac;
 
 int locked = 0;
@@ -229,8 +227,6 @@ int ozy_software_version;
 int mercury_software_version[2] = {0, 0};
 int penelope_software_version;
 
-int adc0_overload = 0;
-int adc1_overload = 0;
 int tx_fifo_underrun = 0;
 int tx_fifo_overrun = 0;
 int sequence_errors = 0;
@@ -1585,6 +1581,31 @@ void radio_start_radio() {
   adc[0].gain = rx_gain_calibration;
   adc[0].min_gain = 0.0;
   adc[0].max_gain = 100.0;
+  adc[0].agc = 0;
+  adc[0].dither = 0;
+  adc[0].random = 0;
+  adc[0].preamp = 0;
+  adc[0].alex_antenna = 0;
+  adc[0].alex_attenuation = 0;
+  adc[0].filter_bypass = 0;
+  adc[0].overload = 0;
+
+  adc[1].antenna = 0;
+  adc[1].attenuation = 0;
+  adc[1].gain = rx_gain_calibration;
+  adc[1].min_gain = 0.0;
+  adc[1].max_gain = 100.0;
+  adc[1].agc = 0;
+  adc[1].dither = 0;
+  adc[1].random = 0;
+  adc[1].preamp = 0;
+  adc[1].alex_antenna = 0;
+  adc[1].alex_attenuation = 0;
+  adc[1].filter_bypass = 0;
+  adc[1].overload = 0;
+
+  adc[2].alex_antenna = 0;  // PS RX feedback antenna
+
   dac.antenna = 0;
   dac.gain = 0;
 
@@ -1597,30 +1618,14 @@ void radio_start_radio() {
   if (have_rx_gain) {
     adc[0].min_gain = -12.0;
     adc[0].max_gain = +48.0;
+    adc[1].min_gain = -12.0;
+    adc[1].max_gain = +48.0;
   }
-
-  adc[0].agc = FALSE;
 
   if (device == SOAPYSDR_USB_DEVICE) {
     adc[0].min_gain = radio->soapy.rx[0].gain_min;
     adc[0].max_gain = radio->soapy.rx[0].gain_max;
     adc[0].gain = adc[0].min_gain;
-  }
-
-  adc[1].antenna = 0;
-  adc[1].attenuation = 0;
-  adc[1].gain = rx_gain_calibration;
-  adc[1].min_gain = 0.0;
-  adc[1].max_gain = 100.0;
-
-  if (have_rx_gain) {
-    adc[1].min_gain = -12.0;
-    adc[1].max_gain = +48.0;
-  }
-
-  adc[1].agc = FALSE;
-
-  if (device == SOAPYSDR_USB_DEVICE) {
     adc[1].min_gain = radio->soapy.rx[1].gain_min;
     adc[1].max_gain = radio->soapy.rx[1].gain_max;
     adc[1].gain = adc[1].min_gain;
@@ -2633,6 +2638,7 @@ void radio_calc_drive_level() {
 
 void radio_set_rf_gain(int id, double value) {
   if (id >= receivers) { return; }
+  if (!have_rx_gain) { return; }
 
   int rxadc = receiver[id]->adc;
   adc[rxadc].gain = value;
@@ -2728,67 +2734,45 @@ void radio_set_c25_att(int id, int val) {
   //
   if (filter_board != CHARLY25) { return; }
 
-  if (id >= RECEIVERS) { return; }
-
-  RECEIVER *rx = receiver[id];
-
   if (id == 0) {
     switch (val) {
     case -36:
-      rx->alex_attenuation = 3;
-      rx->preamp = 0;
-      rx->dither = 0;
-      adc[0].attenuation = 36.0;
-      adc[0].gain = 0.0;
+      adc[0].alex_attenuation = 3;
+      adc[0].preamp = 0;
+      adc[0].dither = 0;
       break;
 
     case -24:
-      rx->alex_attenuation = 2;
-      rx->preamp = 0;
-      rx->dither = 0;
-      adc[0].attenuation = 24.0;
-      adc[0].gain = 0.0;
+      adc[0].alex_attenuation = 2;
+      adc[0].preamp = 0;
+      adc[0].dither = 0;
       break;
 
     case -12:
-      rx->alex_attenuation = 1;
-      rx->preamp = 0;
-      rx->dither = 0;
-      adc[0].attenuation= 12.0;
-      adc[0].gain = 0.0;
+      adc[0].alex_attenuation = 1;
+      adc[0].preamp = 0;
+      adc[0].dither = 0;
       break;
 
     case 0:
     default:
-      rx->alex_attenuation = 0;
-      rx->preamp = 0;
-      rx->dither = 0;
-      adc[0].attenuation = 0.0;
-      adc[0].gain = 0.0;
+      adc[0].alex_attenuation = 0;
+      adc[0].preamp = 0;
+      adc[0].dither = 0;
       break;
 
     case 18:
-      rx->alex_attenuation = 0;
-      rx->preamp = 1;
-      rx->dither = 0;
-      adc[0].attenuation = 0.0;
-      adc[0].gain = 18.0;
+      adc[0].alex_attenuation = 0;
+      adc[0].preamp = 1;
+      adc[0].dither = 0;
       break;
 
     case 36:
-      rx->alex_attenuation = 0;
-      rx->preamp = 1;
-      rx->dither = 1;
-      adc[0].attenuation = 0.0;
-      adc[0].gain = 36.0;
+      adc[0].alex_attenuation = 0;
+      adc[0].preamp = 1;
+      adc[0].dither = 1;
       break;
     }
-  } else {
-    rx->alex_attenuation = 0;
-    rx->preamp = 0;
-    rx->dither = 0;
-    adc[0].attenuation = 0.0;
-    adc[1].gain = 0.0;
   }
 
   sliders_c25_att(id);
@@ -2796,7 +2780,8 @@ void radio_set_c25_att(int id, int val) {
 
 void radio_set_attenuation(int id, double value) {
   if (id >= receivers) { return; }
-  
+  if (!have_rx_att) { return; }
+
   adc[id].gain = rx_gain_calibration;
   adc[id].attenuation = value;
 
@@ -2804,8 +2789,8 @@ void radio_set_attenuation(int id, double value) {
     send_attenuation(client_socket, id, adc[id].attenuation);
   } else {
     schedule_high_priority();
-  } 
-    
+  }
+
   sliders_attenuation(id);
 }
 
@@ -2868,10 +2853,10 @@ void radio_set_alex_antennas() {
 
   if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
     band = band_get_band(vfo[VFO_A].band);
-    receiver[0]->alex_antenna = band->alexRxAntenna;
+    adc[0].alex_antenna = band->alexRxAntenna;
 
     if (filter_board != CHARLY25) {
-      receiver[0]->alex_attenuation = band->alexAttenuation;
+      adc[0].alex_attenuation = band->alexAttenuation;
     }
 
     if (can_transmit) {
@@ -2907,9 +2892,8 @@ void radio_tx_vfo_changed() {
 
 void radio_set_alex_attenuation(int v) {
   //
-  // Change the value of the step attenuator. Store it
-  // in the "band" data structure of the current band,
-  // and in the receiver[0] data structure
+  // Change the value of the ALEX attenuator. Store it
+  // in the "band" data structure of the current band (this is obsolete)
   //
   if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
     //
@@ -2918,7 +2902,7 @@ void radio_set_alex_attenuation(int v) {
     //
     BAND *band = band_get_band(vfo[VFO_A].band);
     band->alexAttenuation = v;
-    receiver[0]->alex_attenuation = v;
+    adc[0].alex_attenuation = v;
   }
 
   schedule_high_priority();
@@ -3045,8 +3029,6 @@ static void radio_restore_state() {
     GetPropI0("radio.display_pacurr",                        display_pacurr);
     GetPropI0("mute_spkr_amp",                               mute_spkr_amp);
     GetPropI0("mute_spkr_xmit",                              mute_spkr_xmit);
-    GetPropI0("adc0_filter_bypass",                          adc0_filter_bypass);
-    GetPropI0("adc1_filter_bypass",                          adc1_filter_bypass);
 #ifdef SATURN
     GetPropI0("client_enable_tx",                            client_enable_tx);
     GetPropI0("saturn_server_en",                            saturn_server_en);
@@ -3063,8 +3045,15 @@ static void radio_restore_state() {
       GetPropF1("radio.adc[%d].min_gain", i,                 adc[i].min_gain);
       GetPropF1("radio.adc[%d].max_gain", i,                 adc[i].max_gain);
       GetPropI1("radio.adc[%d].agc", i,                      adc[i].agc);
+      GetPropI1("radio.adc[%d].dither", i,                   adc[i].dither);
+      GetPropI1("radio.adc[%d].random", i,                   adc[i].random);
+      GetPropI1("radio.adc[%d].preamp", i,                   adc[i].preamp);
+      GetPropI1("radio.adc[%d].alex_attenuation", i,         adc[i].alex_attenuation);
+      GetPropI1("radio.adc[%d].alex_antenna", i,             adc[i].alex_antenna);
+      GetPropI1("radio.adc[%d].filter_bypass", i,            adc[i].filter_bypass);
     }
 
+    GetPropI1("radio.adc[%d].alex_antenna", 2,               adc[2].alex_antenna);  // for PS RX feedback
     GetPropI0("radio.dac.antenna",                           dac.antenna);
     GetPropF0("radio.dac.gain",                              dac.gain);
     filterRestoreState();
@@ -3245,8 +3234,6 @@ void radio_save_state() {
     SetPropI0("radio.display_pacurr",                        display_pacurr);
     SetPropI0("mute_spkr_amp",                               mute_spkr_amp);
     SetPropI0("mute_spkr_xmit",                              mute_spkr_xmit);
-    SetPropI0("adc0_filter_bypass",                          adc0_filter_bypass);
-    SetPropI0("adc1_filter_bypass",                          adc1_filter_bypass);
 #ifdef SATURN
     SetPropI0("client_enable_tx",                            client_enable_tx);
     SetPropI0("saturn_server_en",                            saturn_server_en);
@@ -3263,8 +3250,15 @@ void radio_save_state() {
       SetPropF1("radio.adc[%d].min_gain", i,                 adc[i].min_gain);
       SetPropF1("radio.adc[%d].max_gain", i,                 adc[i].max_gain);
       SetPropI1("radio.adc[%d].agc", i,                      adc[i].agc);
+      SetPropI1("radio.adc[%d].dither", i,                   adc[i].dither);
+      SetPropI1("radio.adc[%d].random", i,                   adc[i].random);
+      SetPropI1("radio.adc[%d].preamp", i,                   adc[i].preamp);
+      SetPropI1("radio.adc[%d].alex_attenuation", i,         adc[i].alex_attenuation);
+      SetPropI1("radio.adc[%d].alex_antenna", i,             adc[i].alex_antenna);
+      SetPropI1("radio.adc[%d].filter_bypass", i,            adc[i].filter_bypass);
     }
 
+    SetPropI1("radio.adc[%d].alex_antenna", 2,               adc[2].alex_antenna);  // for PS RX feedback
     SetPropI0("radio.dac.antenna",                           dac.antenna);
     SetPropF0("radio.dac.gain",                              dac.gain);
     filterSaveState();

@@ -76,10 +76,6 @@ typedef struct _receiver {
 
   double hz_per_pixel;
 
-  int dither;
-  int random;
-  int preamp;
-
   //
   // Encodings for "QRM fighters"
   //
@@ -156,9 +152,6 @@ typedef struct _receiver {
   double nr4_noise_rescale;
   double nr4_post_threshold;
 #endif
-
-  int alex_antenna;
-  int alex_attenuation;
 
   int filter_low;
   int filter_high;

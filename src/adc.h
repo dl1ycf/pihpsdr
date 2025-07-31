@@ -28,7 +28,14 @@ typedef struct _adc {
   double gain;
   double min_gain;
   double max_gain;
-  gboolean agc;
+  int    agc;
+  int    dither;
+  int    random;
+  int    preamp;
+  int    alex_attenuation;
+  int    alex_antenna;
+  int    filter_bypass;
+  int    overload;
 } ADC;
 
 #endif
