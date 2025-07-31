@@ -796,7 +796,7 @@ void soapy_protocol_set_rx_frequency(int id) {
       diff = fabs(fd - lo_freq);
       if (diff < 1.0E6 || diff > 5.0E6) { lo_ok = 0; }
       double fd2 = fd;
-      int sid;
+      int sid = (id == 0 ? 1 : 0); // ID of the "other" receiver (if receivers > 1)
 
       lime_mute_rx2 = 0;
       if (receivers > 1) {
@@ -805,7 +805,6 @@ void soapy_protocol_set_rx_frequency(int id) {
         // be compatible with both RX. If this is not possible (RX1 and RX2 frequency more
         // than 10 MHz apart) mute RX2.
         //
-        sid = 1 - id;
         long long f2 = vfo[sid].frequency;
 
         if (vfo[sid].mode == modeCWU) {
@@ -840,7 +839,7 @@ void soapy_protocol_set_rx_frequency(int id) {
             lo_freq -= 3.0e6;
           }
         }
-        t_print("%s: New LIME LO RX1/RX2 freq=%f\n", __FUNCTION__, lo_freq);
+        //t_print("%s: New LIME LO RX1/RX2 freq=%f\n", __FUNCTION__, lo_freq);
 
         rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, 1, "RF", lo_freq, NULL);
 
@@ -857,7 +856,7 @@ void soapy_protocol_set_rx_frequency(int id) {
 
       // LO freq is set, determine and set offset
 
-      t_print("%s: New LIME RX%d offset=%f\n", __FUNCTION__, id, fd - lo_freq);
+      //t_print("%s: New LIME RX%d offset=%f\n", __FUNCTION__, id, fd - lo_freq);
       rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, id, "BB", fd - lo_freq, NULL);
 
       if (rc != 0) {
@@ -878,7 +877,7 @@ void soapy_protocol_set_rx_frequency(int id) {
       }
     } else {
       //
-      // Not LIME: just set frequency.
+      // if not LIME, we simply use setFrequency instead of setFrequencyComponent
       //
       rc = SoapySDRDevice_setFrequency(soapy_device, SOAPY_SDR_RX, id, (double)f, NULL);
 
@@ -923,8 +922,6 @@ void soapy_protocol_set_tx_frequency() {
         //
         lo_freq = fd - 3.0E6;
 
-        if (lo_freq < 1.0E6) { lo_freq = 1.0E6; }
-
         rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_TX, 0, "RF", lo_freq, NULL);
 
         if (rc != 0) {
@@ -939,6 +936,9 @@ void soapy_protocol_set_tx_frequency() {
         t_print("%s: TX-BB failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
       }
     } else {
+      //
+      // if not LIME, we simply use setFrequency instead of setFrequencyComponent
+      //
       rc = SoapySDRDevice_setFrequency(soapy_device, SOAPY_SDR_TX, 0, (double) f, NULL);
 
       if (rc != 0) {

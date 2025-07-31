@@ -985,7 +985,31 @@ void radio_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), rx_gain_calibration_b, col, row, 1, 1);
   g_signal_connect(rx_gain_calibration_b, "value_changed", G_CALLBACK(rx_gain_calibration_value_changed_cb), NULL);
 
-  if (device == SOAPYSDR_USB_DEVICE && !radio_is_remote) {
+  //
+  // If we are running a SoapySDR radio where at least one channel
+  // has more than one gain element, draw a separator line and
+  // produce controls that allow manipulation of these gain elements.
+  //
+  // A channel with only a singe gain element is not shown (use the
+  // RF-gain or TX-drive slider instead).
+  //
+  // Currently, this is not supported on the client side since we must
+  // then asynchronously query the gain elements (the change with the
+  // RF-gain and TX-drive slider in an unpredictable way).
+  //
+  int soapy_display_gains = 0;
+
+  for (int id = 0; id < RECEIVERS; id++) {
+    if (radio->soapy.rx[id].gains > 1) { soapy_display_gains = 1; }
+  }
+
+  if (radio->soapy.tx.gains > 1) { soapy_display_gains = 1; }
+
+  if ((device != SOAPYSDR_USB_DEVICE) || radio_is_remote) {
+    soapy_display_gains = 0;
+  }
+
+  if (soapy_display_gains) {
     row++;
     Separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_widget_set_size_request(Separator, -1, 3);
@@ -1060,8 +1084,8 @@ void radio_menu(GtkWidget *parent) {
         GtkWidget *wgain = gtk_spin_button_new_with_range(range_min, range_max, range_step);
         gtk_widget_set_name (wgain, radio->soapy.tx.gain_elem_name[i]);
 #ifdef SOAPYSDR
-        int value = soapy_protocol_get_tx_gain_element(radio->soapy.tx.gain_elem_name[i]);
-        gtk_spin_button_set_value(GTK_SPIN_BUTTON(wgain), (double)value);
+        double value = soapy_protocol_get_tx_gain_element(radio->soapy.tx.gain_elem_name[i]);
+        gtk_spin_button_set_value(GTK_SPIN_BUTTON(wgain), value);
 #endif
         gtk_grid_attach(GTK_GRID(grid), wgain, col+1, row, 1, 1);
         g_signal_connect(wgain, "value_changed", G_CALLBACK(tx_gain_element_changed_cb), NULL);
