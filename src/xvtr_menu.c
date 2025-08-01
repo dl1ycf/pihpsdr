@@ -61,7 +61,7 @@ static void save_xvtr () {
       txt = gtk_entry_get_text(GTK_ENTRY(lo_error[i]));
       xvtr->errorLO = atoll(txt);
       txt = gtk_entry_get_text(GTK_ENTRY(gain[i]));
-      xvtr->gain = atoi(txt);
+      xvtr->gaincalib = atoi(txt);
 
       if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
         xvtr->disablePA = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(disable_pa[i]));
@@ -118,7 +118,7 @@ static void save_xvtr () {
     gtk_entry_set_text(GTK_ENTRY(lo_frequency[i]), f);
     snprintf(f, sizeof(f), "%lld", xvtr->errorLO);
     gtk_entry_set_text(GTK_ENTRY(lo_error[i]), f);
-    snprintf(f, sizeof(f), "%d", xvtr->gain);
+    snprintf(f, sizeof(f), "%d", xvtr->gaincalib);
     gtk_entry_set_text(GTK_ENTRY(gain[i]), f);
 
     if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
@@ -252,7 +252,7 @@ void xvtr_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(grid), lo_error[i], 4, i + 2, 1, 1);
     gain[i] = gtk_entry_new();
     gtk_entry_set_width_chars(GTK_ENTRY(gain[i]), 3);
-    snprintf(f, sizeof(f), "%d", xvtr->gain);
+    snprintf(f, sizeof(f), "%d", xvtr->gaincalib);
     gtk_entry_set_text(GTK_ENTRY(gain[i]), f);
     gtk_grid_attach(GTK_GRID(grid), gain[i], 5, i + 2, 1, 1);
 

@@ -1925,15 +1925,15 @@ static void ozy_send_buffer() {
     //
     // Set ALEX RX1_ANT and RX1_OUT
     //
-    i = adc[0].alex_antenna;
+    i = adc[0].antenna;
 
     //
     // Upon TX, we might have to activate a different RX path for the
-    // attenuated feedback signal. Use alex_antenna == 0, if
+    // attenuated feedback signal. Use antenna == 0, if
     // the feedback signal is routed automatically/internally
     // If feedback is to the second ADC, leave RX1 ANT settings untouched
     //
-    if (radio_is_transmitting() && transmitter->puresignal) { i = adc[2].alex_antenna; }
+    if (radio_is_transmitting() && transmitter->puresignal) { i = adc[2].antenna; }
 
     if (device == DEVICE_ORION2) {
       i += 100;
@@ -2032,7 +2032,7 @@ static void ozy_send_buffer() {
     //  enough.
     //
     if (radio_is_transmitting() || radio_ptt) {
-      i = transmitter->alex_antenna;
+      i = transmitter->antenna;
 
       //
       // TX antenna outside allowd range: this cannot happen.
@@ -2040,16 +2040,16 @@ static void ozy_send_buffer() {
       //
       if (i < 0 || i > 2) {
         t_print("WARNING: illegal TX antenna chosen, using ANT1\n");
-        transmitter->alex_antenna = 0;
+        transmitter->antenna = 0;
         i = 0;
       }
     } else {
-      i = adc[0].alex_antenna;
+      i = adc[0].antenna;
 
       //
       // Not using ANT1,2,3: can leave relais in TX state unless using new PA board
       //
-      if (i > 2 && !new_pa_board) { i = transmitter->alex_antenna; }
+      if (i > 2 && !new_pa_board) { i = transmitter->antenna; }
     }
 
     switch (i) {
@@ -2166,7 +2166,7 @@ static void ozy_send_buffer() {
       // un-altered. This is not necessary for feedback at the "ByPass" jack since filter bypass
       // is realised in hardware here.
       //
-      if (radio_is_transmitting() && transmitter->puresignal && adc[2].alex_antenna == 6) {
+      if (radio_is_transmitting() && transmitter->puresignal && adc[2].antenna == 6) {
         output_buffer[C2] |= 0x40;  // enable manual filter selection
         output_buffer[C3] &= 0x80;  // preserve ONLY "PA enable" bit and clear all filters including "6m LNA"
         output_buffer[C3] |= 0x20;  // bypass all RX filters
@@ -2419,7 +2419,7 @@ static void ozy_send_buffer() {
         output_buffer[C1] |= 0x80; // ground RX2 on transmit, bit0-6 are Alex2 filters
       }
 
-      if (adc[0].alex_antenna == 5) { // XVTR
+      if (adc[0].antenna == 5) { // XVTR
         output_buffer[C2] |= 0x02;          // Alex2 XVTR enable
       }
 
@@ -2570,7 +2570,7 @@ static void ozy_send_buffer() {
 
         hl2_iob_rfmode = 0;
 
-        if (adc[0].alex_antenna != 0) {
+        if (adc[0].antenna != 0) {
           hl2_iob_rfmode = 1;
 
           if (transmitter->puresignal) {

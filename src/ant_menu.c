@@ -65,7 +65,7 @@ static void rx_ant_cb(GtkToggleButton *widget, gpointer data) {
   if (radio_is_remote) {
     send_band_data(client_socket, b);
   } else {
-    radio_set_alex_antennas();
+    radio_apply_band_settings();
   }
 }
 
@@ -78,7 +78,7 @@ static void tx_ant_cb(GtkToggleButton *widget, gpointer data) {
   if (radio_is_remote) {
     send_band_data(client_socket, b);
   } else {
-    radio_set_alex_antennas();
+    radio_apply_band_settings();
   }
 }
 
@@ -99,23 +99,24 @@ static void adc_antenna_cb(GtkComboBox *widget, gpointer data) {
 }
 
 static void dac_antenna_cb(GtkComboBox *widget, gpointer data) {
-  if (radio_is_transmitting() || !can_transmit) {
+  if (!can_transmit) { return; }
+  if (radio_is_transmitting()) {
     //
     // Suppress TX antenna changes while transmitting
     // or if there is no transceiver
     //
-    gtk_combo_box_set_active(widget, dac.antenna);
+    gtk_combo_box_set_active(widget, transmitter->antenna);
     return;
   }
 
-  dac.antenna = gtk_combo_box_get_active(widget);
+  transmitter->antenna = gtk_combo_box_get_active(widget);
 
   if (device == SOAPYSDR_USB_DEVICE) {
     if (radio_is_remote) {
       send_soapy_txant(client_socket);
     } else {
 #ifdef SOAPYSDR
-      soapy_protocol_set_tx_antenna(dac.antenna);
+      soapy_protocol_set_tx_antenna(transmitter->antenna);
 #endif
     }
   }
@@ -369,8 +370,8 @@ void ant_menu(GtkWidget *parent) {
     int row = 1;
 
     for (int id = 0; id < RECEIVERS; id++) {
-      char text[64];
       if (radio->soapy.rx[id].antennas > 0) {
+        char text[64];
         snprintf(text, sizeof(text), "RX%d Antenna:", id+1);
         GtkWidget *label = gtk_label_new(text);
         gtk_widget_set_name(label, "boldlabel");
@@ -398,7 +399,7 @@ void ant_menu(GtkWidget *parent) {
         gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(box), NULL, radio->soapy.tx.antenna[i]);
       }
 
-      gtk_combo_box_set_active(GTK_COMBO_BOX(box), dac.antenna);
+      gtk_combo_box_set_active(GTK_COMBO_BOX(box), transmitter->antenna);
       g_signal_connect(box, "changed", G_CALLBACK(dac_antenna_cb), NULL);
       my_combo_attach(GTK_GRID(grid), box, 1, row, 1, 1);
     }

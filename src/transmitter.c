@@ -342,7 +342,7 @@ void tx_save_state(const TRANSMITTER *tx) {
     SetPropI1("transmitter.%d.filter_low",                          tx->id,    tx->filter_low);
     SetPropI1("transmitter.%d.filter_high",                         tx->id,    tx->filter_high);
     SetPropI1("transmitter.%d.use_rx_filter",                       tx->id,    tx->use_rx_filter);
-    SetPropI1("transmitter.%d.alex_antenna",                        tx->id,    tx->alex_antenna);
+    SetPropI1("transmitter.%d.alex_antenna",                        tx->id,    tx->antenna);
     SetPropI1("transmitter.%d.puresignal",                          tx->id,    tx->puresignal);
     SetPropI1("transmitter.%d.auto_on",                             tx->id,    tx->auto_on);
     SetPropI1("transmitter.%d.feedback",                            tx->id,    tx->feedback);
@@ -429,7 +429,7 @@ void tx_restore_state(TRANSMITTER *tx) {
     GetPropI1("transmitter.%d.filter_low",                          tx->id,    tx->filter_low);
     GetPropI1("transmitter.%d.filter_high",                         tx->id,    tx->filter_high);
     GetPropI1("transmitter.%d.use_rx_filter",                       tx->id,    tx->use_rx_filter);
-    GetPropI1("transmitter.%d.alex_antenna",                        tx->id,    tx->alex_antenna);
+    GetPropI1("transmitter.%d.alex_antenna",                        tx->id,    tx->antenna);
     GetPropI1("transmitter.%d.puresignal",                          tx->id,    tx->puresignal);
     GetPropI1("transmitter.%d.auto_on",                             tx->id,    tx->auto_on);
     GetPropI1("transmitter.%d.feedback",                            tx->id,    tx->feedback);
@@ -962,7 +962,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->panadapter_hide_noise_filled = 1;
   tx->panadapter_peaks_in_passband_filled = 0;
   tx->displaying = 0;
-  tx->alex_antenna = 0; // default: ANT1
+  tx->antenna = 0; // default: ANT1
   t_print("%s: id=%d buffer_size=%d dsp_rate=%d iq_output_rate=%d output_samples=%d width=%d height=%d\n",
           __FUNCTION__,
           tx->id, tx->buffer_size, tx->dsp_rate, tx->iq_output_rate, tx->output_samples,
@@ -2330,7 +2330,7 @@ void tx_on(const TRANSMITTER *tx) {
     SoapySDRDevice_writeGPIODir(sdr, bank, 0xFF);
     SoapySDRDevice_writeGPIO(sdr, bank, 0x01);
     usleep(30000);
-    soapy_protocol_set_tx_antenna(dac.antenna);
+    soapy_protocol_set_tx_antenna(tx->antenna);
     soapy_protocol_set_tx_gain(tx->drive);
   }
 

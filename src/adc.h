@@ -33,7 +33,6 @@ typedef struct _adc {
   int    random;
   int    preamp;
   int    alex_attenuation;
-  int    alex_antenna;
   int    filter_bypass;
   int    overload;
 } ADC;

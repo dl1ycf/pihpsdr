@@ -41,6 +41,7 @@ static GtkWidget *local_audio_b = NULL;
 static GtkWidget *output = NULL;
 static RECEIVER *myrx;
 static int myadc;
+static int myid;
 
 static void cleanup() {
   if (dialog != NULL) {
@@ -59,42 +60,23 @@ static gboolean close_cb () {
 }
 
 static void dither_cb(GtkWidget *widget, gpointer data) {
-  adc[myadc].dither = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-
-  if (radio_is_remote) {
-    send_rxmenu(client_socket, myadc);
-    return;
-  }
-
-  schedule_receive_specific();
+  int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  radio_set_dither(myid, val);
 }
 
 static void random_cb(GtkWidget *widget, gpointer data) {
-  adc[myadc].random = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-
-  if (radio_is_remote) {
-    send_rxmenu(client_socket, myadc);
-    return;
-  }
-
-  schedule_receive_specific();
+  int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  radio_set_random(myid, val);
 }
 
 static void preamp_cb(GtkWidget *widget, gpointer data) {
-  adc[myadc].preamp = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-
-  if (radio_is_remote) {
-    send_rxmenu(client_socket, myadc);
-  }
-
-  schedule_receive_specific();
+  int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  radio_set_preamp(myid, val);
 }
 
 static void alex_att_cb(GtkWidget *widget, gpointer data) {
-  if (have_alex_att) {
-    int val = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-    radio_set_alex_attenuation(val);
-  }
+  int val = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  radio_set_alex_attenuation(val);
 }
 
 static void sample_rate_cb(GtkToggleButton *widget, gpointer data) {
@@ -108,17 +90,18 @@ static void sample_rate_cb(GtkToggleButton *widget, gpointer data) {
   if (sscanf(p, "%d", &samplerate) != 1) { return; }
 
   if (radio_is_remote) {
-    send_sample_rate(client_socket, myrx->id, samplerate);
-  } else {
-    rx_change_sample_rate(myrx, samplerate);
+    send_sample_rate(client_socket, myid, samplerate);
+    return;
   }
+
+  rx_change_sample_rate(myrx, samplerate);
 }
 
 static void adc_cb(GtkToggleButton *widget, gpointer data) {
   myrx->adc = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
 
   if (radio_is_remote) {
-    send_adc(client_socket, myrx->id, myrx->adc);
+    send_adc(client_socket, myid, myadc);
     return;
   }
 
@@ -126,7 +109,7 @@ static void adc_cb(GtkToggleButton *widget, gpointer data) {
 }
 
 static void local_audio_cb(GtkWidget *widget, gpointer data) {
-  t_print("local_audio_cb: rx=%d\n", myrx->id);
+  t_print("local_audio_cb: rx=%d\n", myid);
 
   if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget))) {
     if (audio_open_output(myrx) == 0) {
@@ -160,9 +143,10 @@ static void adc_filter_bypass_cb(GtkWidget *widget, gpointer data) {
 
   if (radio_is_remote) {
     send_rxmenu(client_socket, myadc);
-  } else {
-    schedule_high_priority();
+    return;
   }
+
+  schedule_high_priority();
 }
 
 //
@@ -177,7 +161,7 @@ static void local_output_changed_cb(GtkWidget *widget, gpointer data) {
   }
 
   if (i >= 0) {
-    t_print("local_output_changed rx=%d %s\n", myrx->id, output_devices[i].name);
+    t_print("local_output_changed rx=%d %s\n", myid, output_devices[i].name);
     snprintf(myrx->audio_name, sizeof(myrx->audio_name), "%s", output_devices[i].name);
   }
 
@@ -188,7 +172,7 @@ static void local_output_changed_cb(GtkWidget *widget, gpointer data) {
     }
   }
 
-  t_print("local_output_changed rx=%d local_audio=%d\n", myrx->id, myrx->local_audio);
+  t_print("local_output_changed rx=%d local_audio=%d\n", myid, myrx->local_audio);
 }
 
 static void audio_channel_cb(GtkWidget *widget, gpointer data) {
@@ -219,7 +203,8 @@ void rx_menu(GtkWidget *parent) {
   //
   myrx = active_receiver;
   myadc = myrx->adc;
-  snprintf(title, sizeof(title), "piHPSDR - Receive (RX%d VFO-%s)", myrx->id + 1, myrx->id == 0 ? "A" : "B");
+  myid = myrx->id;
+  snprintf(title, sizeof(title), "piHPSDR - Receive (RX%d VFO-%s)", myid + 1, myid == 0 ? "A" : "B");
   GtkWidget *headerbar = gtk_header_bar_new();
   gtk_window_set_titlebar(GTK_WINDOW(dialog), headerbar);
   gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(headerbar), TRUE);

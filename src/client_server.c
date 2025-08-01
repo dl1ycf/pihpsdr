@@ -77,7 +77,6 @@
 #include "audio.h"
 #include "client_server.h"
 #include "band.h"
-#include "dac.h"
 #include "diversity_menu.h"
 #include "discovered.h"
 #include "equalizer_menu.h"
@@ -707,6 +706,7 @@ void send_rxmenu(int sock, int id) {
   data.dither = adc[id].dither;
   data.random = adc[id].random;
   data.preamp = adc[id].preamp;
+  data.alex_attenuation = adc[id].alex_attenuation;
   data.adc0_filter_bypass = adc[0].filter_bypass;
   data.adc1_filter_bypass = adc[1].filter_bypass;
   send_bytes(sock, (char *)&data, sizeof(RXMENU_DATA));
@@ -783,10 +783,9 @@ void send_band_data(int sock, int b) {
   data.OCtx = band->OCtx;
   data.alexRxAntenna = band->alexRxAntenna;
   data.alexTxAntenna = band->alexTxAntenna;
-  data.alexAttenuation = band->alexAttenuation;
   data.disablePA = band->disablePA;
   data.current = band->bandstack->current_entry;
-  data.gain = to_short(band->gain);
+  data.gaincalib = to_short(band->gaincalib);
   data.pa_calibration = to_double(band->pa_calibration);
   data.frequencyMin = to_ll(band->frequencyMin);
   data.frequencyMax = to_ll(band->frequencyMax);
@@ -960,15 +959,6 @@ void send_radio_data(int sock) {
   send_bytes(sock, (char *)&data, sizeof(RADIO_DATA));
 }
 
-void send_dac_data(int sock) {
-  DAC_DATA data;
-  SYNC(data.header.sync);
-  data.header.data_type = to_short(INFO_DAC);
-  data.antenna = dac.antenna;
-  data.gain    = to_double(dac.gain);
-  send_bytes(sock, (char *)&data, sizeof(DAC_DATA));
-}
-
 void send_adc_data(int sock, int i) {
   ADC_DATA data;
   SYNC(data.header.sync);
@@ -977,10 +967,9 @@ void send_adc_data(int sock, int i) {
   data.preamp = adc[i].preamp;
   data.dither = adc[i].dither;
   data.random = adc[i].random;
-  data.alex_antenna = adc[i].alex_antenna;
+  data.antenna = adc[i].antenna;
   data.alex_attenuation = adc[i].alex_attenuation;
   data.filter_bypass = adc[i].filter_bypass;
-  data.antenna = to_short(adc[i].antenna);
   data.attenuation = to_short(adc[i].attenuation);
   data.gain = to_double(adc[i].gain);
   data.min_gain = to_double(adc[i].min_gain);
@@ -1000,7 +989,7 @@ static void send_tx_data(int sock) {
     data.display_detector_mode = tx->display_detector_mode;
     data.display_average_mode = tx->display_average_mode;
     data.use_rx_filter = tx->use_rx_filter;
-    data.alex_antenna = tx->alex_antenna;
+    data.antenna = tx->antenna;
     data.puresignal = tx->puresignal;
     data.feedback = tx->feedback;
     data.auto_on = tx->auto_on;
@@ -1188,10 +1177,6 @@ static void server_loop() {
   //
   send_adc_data(remoteclient.socket, 0);
   send_adc_data(remoteclient.socket, 1);
-  //
-  // send DAC data structure
-  //
-  send_dac_data(remoteclient.socket);
 
   //
   // Send filter edges of the Var1 and Var2 filters
@@ -1374,20 +1359,6 @@ static void server_loop() {
       command->header = header;
 
       if (recv_bytes(remoteclient.socket, (char *)command + sizeof(HEADER), sizeof(ADC_DATA) - sizeof(HEADER)) > 0) {
-        g_idle_add(remote_command, command);
-      }
-    }
-    break;
-
-    case INFO_DAC: {
-      //
-      // Sending DAC data from the client to the server has a very limited scope:
-      // - antenna (for SoapySDR)
-      //
-      DAC_DATA *command = g_new(DAC_DATA, 1);
-      command->header = header;
-
-      if (recv_bytes(remoteclient.socket, (char *)command + sizeof(HEADER), sizeof(DAC_DATA) - sizeof(HEADER)) > 0) {
         g_idle_add(remote_command, command);
       }
     }
@@ -2238,7 +2209,7 @@ void send_psatt(int s) {
     header.b1 = transmitter->auto_on;
     header.b2 = transmitter->feedback;
     header.s1 = to_short(transmitter->attenuation);
-    header.s2 = to_short(adc[2].alex_antenna);
+    header.s2 = to_short(adc[2].antenna);
     send_bytes(s, (char *)&header, sizeof(HEADER));
   }
 }
@@ -2331,11 +2302,13 @@ void send_soapy_rxant(int s, int id) {
 }
 
 void send_soapy_txant(int s) {
-  HEADER header;
-  SYNC(header.sync);
-  header.data_type = to_short(CMD_SOAPY_TXANT);
-  header.b1 = dac.antenna;
-  send_bytes(s, (char *)&header, sizeof(HEADER));
+  if (can_transmit) {
+    HEADER header;
+    SYNC(header.sync);
+    header.data_type = to_short(CMD_SOAPY_TXANT);
+    header.b1 = transmitter->antenna;
+    send_bytes(s, (char *)&header, sizeof(HEADER));
+  }
 }
 
 void send_soapy_agc(int s, int id) {
@@ -2976,10 +2949,9 @@ static void *client_thread(void* arg) {
       band->OCtx = data.OCtx;
       band->alexRxAntenna = data.alexRxAntenna;
       band->alexTxAntenna = data.alexTxAntenna;
-      band->alexAttenuation = data.alexAttenuation;
       band->disablePA = data.disablePA;
       band->bandstack->current_entry = data.current;
-      band->gain = from_short(data.gain);
+      band->gaincalib = from_short(data.gaincalib);
       band->pa_calibration = from_double(data.pa_calibration);
       band->frequencyMin = from_ll(data.frequencyMin);
       band->frequencyMax = from_ll(data.frequencyMax);
@@ -3166,16 +3138,6 @@ static void *client_thread(void* arg) {
     }
     break;
 
-    case INFO_DAC: {
-      DAC_DATA data;
-
-      if (recv_bytes(client_socket, (char *)&data + sizeof(HEADER), sizeof(DAC_DATA) - sizeof(HEADER)) < 0) { return NULL; }
-
-      dac.antenna = data.antenna;
-      dac.gain = from_double(data.gain);
-    }
-    break;
-
     case INFO_ADC: {
       ADC_DATA data;
 
@@ -3185,7 +3147,7 @@ static void *client_thread(void* arg) {
       adc[i].preamp = data.preamp;
       adc[i].dither = data.dither;
       adc[i].random = data.random;
-      adc[i].alex_antenna = data.alex_antenna;
+      adc[i].antenna = data.antenna;
       adc[i].alex_attenuation = data.alex_attenuation;
       adc[i].filter_bypass = data.filter_bypass;
       adc[i].antenna = from_short(data.antenna);
@@ -3280,7 +3242,7 @@ static void *client_thread(void* arg) {
       transmitter->display_detector_mode     = data.display_detector_mode;
       transmitter->display_average_mode      = data.display_average_mode;
       transmitter->use_rx_filter             = data.use_rx_filter;
-      transmitter->alex_antenna              = data.alex_antenna;
+      transmitter->antenna                   = data.antenna;
       transmitter->puresignal                = data.puresignal;
       transmitter->feedback                  = data.feedback;
       transmitter->auto_on                   = data.auto_on;
@@ -3821,10 +3783,9 @@ static int remote_command(void *data) {
     band->OCtx = band_data->OCtx;
     band->alexRxAntenna = band_data->alexRxAntenna;
     band->alexTxAntenna = band_data->alexTxAntenna;
-    band->alexAttenuation = band_data->alexAttenuation;
     band->disablePA = band_data->disablePA;
     band->bandstack->current_entry = band_data->current;
-    band->gain = from_short(band_data->gain);
+    band->gaincalib = from_short(band_data->gaincalib);
     band->pa_calibration = from_double(band_data->pa_calibration);
     band->frequencyMin = from_ll(band_data->frequencyMin);
     band->frequencyMax = from_ll(band_data->frequencyMax);
@@ -3833,7 +3794,7 @@ static int remote_command(void *data) {
     //
     // make some changes effective
     //
-    radio_set_alex_antennas();
+    radio_apply_band_settings();
     radio_calc_drive_level();
     schedule_high_priority();
   }
@@ -3877,7 +3838,7 @@ static int remote_command(void *data) {
     adc[id].preamp = command->preamp;
     adc[id].dither = command->dither;
     adc[id].random = command->random;
-    adc[id].alex_antenna = command->alex_antenna;
+    adc[id].antenna = command->antenna;
     adc[id].alex_attenuation = command->alex_attenuation;
     adc[id].filter_bypass = command->filter_bypass;
     adc[id].antenna = from_short(command->antenna);
@@ -3885,23 +3846,6 @@ static int remote_command(void *data) {
 
     if (device == SOAPYSDR_USB_DEVICE) {
       soapy_protocol_set_rx_antenna(id, adc[id].antenna);
-    }
-
-#endif
-  }
-  break;
-
-  case INFO_DAC: {
-    //
-    // Sending DAC data from the client to the server has a very limited scope:
-    // - antenna (for SoapySDR)
-    //
-    const DAC_DATA *command = (DAC_DATA *)data;
-    dac.antenna = from_short(command->antenna);
-#ifdef SOAPYSDR
-
-    if (device == SOAPYSDR_USB_DEVICE && can_transmit) {
-      soapy_protocol_set_tx_antenna(dac.antenna);
     }
 
 #endif
@@ -4337,9 +4281,9 @@ static int remote_command(void *data) {
 
   case CMD_SOAPY_TXANT: {
     if (device == SOAPYSDR_USB_DEVICE && can_transmit) {
-      dac.antenna = header->b1;
+      transmitter->antenna = header->b1;
 #ifdef SOAPYSDR
-      soapy_protocol_set_tx_antenna(dac.antenna);
+      soapy_protocol_set_tx_antenna(transmitter->antenna);
 #endif
     }
   }
@@ -4684,8 +4628,14 @@ static int remote_command(void *data) {
     adc[id].dither = command->dither;
     adc[id].random = command->random;
     adc[id].preamp = command->preamp;
+    adc[id].alex_attenuation = command->alex_attenuation;
     adc[0].filter_bypass = command->adc0_filter_bypass;
     adc[1].filter_bypass = command->adc1_filter_bypass;
+
+    if (id == 0) {
+      radio_set_alex_attenuation(command->alex_attenuation);
+    }
+
     schedule_receive_specific();
     schedule_high_priority();
   }
@@ -4839,7 +4789,7 @@ static int remote_command(void *data) {
       transmitter->auto_on = header->b1;
       transmitter->feedback = header->b2;
       transmitter->attenuation = from_short(header->s1);
-      adc[2].alex_antenna = from_short(header->s2);
+      adc[2].antenna = from_short(header->s2);
       schedule_high_priority();
     }
   }

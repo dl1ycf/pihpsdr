@@ -40,7 +40,6 @@
 #include "channel.h"
 #include "client_server.h"
 #include "css.h"
-#include "dac.h"
 #include "discovered.h"
 #include "ext.h"
 #include "filter.h"
@@ -124,7 +123,7 @@ int sat_mode = SAT_NONE;
 int region = REGION_OTHER;
 
 int soapy_radio_sample_rate;   // alias for radio->soapy.sample_rate
-int soapy_iqswap;
+int soapy_iqswap = 1;
 
 DISCOVERED *radio = NULL;
 int radio_is_remote = FALSE;
@@ -194,7 +193,6 @@ int mic_input_xlr = 0;
 int receivers;
 
 ADC adc[3];    // adc[2] contains the PS RX feedback antenna nothing else
-DAC dac;
 
 int locked = 0;
 
@@ -232,6 +230,12 @@ int tx_fifo_overrun = 0;
 int sequence_errors = 0;
 int high_swr_seen = 0;
 
+//
+// "slow ADC" readings:
+// e.g. used for exciter/forware/reverse power,
+// and for PA voltage/current/temperature,
+// depending on the radio model
+//
 unsigned int exciter_power = 0;
 unsigned int alex_forward_power = 0;
 unsigned int alex_reverse_power = 0;
@@ -259,7 +263,7 @@ int have_rx_gain = 0;
 int have_rx_att = 0;
 int have_alex_att = 0;
 int have_preamp = 0;
-int have_dither = 1;
+int have_dither = 0;
 int have_saturn_xdma = 0;
 int have_lime = 0;
 int have_radioberry1 = 0;
@@ -1314,6 +1318,7 @@ void radio_start_radio() {
     have_rx_att = 1; // Sure?
     have_alex_att = 1;
     have_preamp = 1;
+    have_dither = 1;
     break;
 
   case DEVICE_HERMES:
@@ -1324,6 +1329,7 @@ void radio_start_radio() {
   case NEW_DEVICE_HERMES2:
   case NEW_DEVICE_ANGELIA:
   case NEW_DEVICE_ORION:
+    have_dither = 1;
     have_rx_att = 1;
     have_alex_att = 1;
     break;
@@ -1332,6 +1338,7 @@ void radio_start_radio() {
   case NEW_DEVICE_ORION2:
   case NEW_DEVICE_SATURN:
     // ANAN7000/8000/G2 boards have no ALEX attenuator
+    have_dither = 1;
     have_rx_att = 1;
     break;
 
@@ -1351,27 +1358,26 @@ void radio_start_radio() {
     break;
 
   case SOAPYSDR_USB_DEVICE:
-    have_dither = 0;
+    soapy_iqswap = 1;  // This is the default
     have_rx_gain = 1;
     rx_gain_calibration = 10;
     break;
 
   case DEVICE_STEMLAB:
-    have_dither = 0;
     break;
 
   default:
     //
     // DEFAULT: we have a step attenuator nothing else
     //
-    have_dither = 0;
     have_rx_att = 1;
     break;
   }
 
   //
   // The GUI expects that we either have a gain or an attenuation slider,
-  // but not both.
+  // but not both. This check is pure paranoia, the code above should
+  // never set both.
   //
   if (have_rx_gain) {
     have_rx_att = 0;
@@ -1535,6 +1541,7 @@ void radio_start_radio() {
   case SOAPYSDR_USB_DEVICE:
 
     if (radio->soapy.rx_channels > 1) {
+      // This is to allow DIVERSITY in the future
       n_adc = 2;
     } else {
       n_adc = 1;
@@ -1547,8 +1554,6 @@ void radio_start_radio() {
     break;
   }
 
-  soapy_iqswap = 0;
-
   //
   // In most cases, ALEX is the best default choice for the filter board.
   // here we set filter_board to a different default value for some
@@ -1556,13 +1561,6 @@ void radio_start_radio() {
   // with data from the props file.
   //
   if (device == SOAPYSDR_USB_DEVICE) {
-    soapy_iqswap = 1;
-    receivers = 1;
-
-    if (radio->soapy.rx_channels > 1) {
-      receivers = 2;
-    }
-
     filter_board = NO_FILTER_BOARD;
   }
 
@@ -1585,7 +1583,7 @@ void radio_start_radio() {
   adc[0].dither = 0;
   adc[0].random = 0;
   adc[0].preamp = 0;
-  adc[0].alex_antenna = 0;
+  adc[0].antenna = 0;
   adc[0].alex_attenuation = 0;
   adc[0].filter_bypass = 0;
   adc[0].overload = 0;
@@ -1599,15 +1597,12 @@ void radio_start_radio() {
   adc[1].dither = 0;
   adc[1].random = 0;
   adc[1].preamp = 0;
-  adc[1].alex_antenna = 0;
+  adc[1].antenna = 0;
   adc[1].alex_attenuation = 0;
   adc[1].filter_bypass = 0;
   adc[1].overload = 0;
 
-  adc[2].alex_antenna = 0;  // PS RX feedback antenna
-
-  dac.antenna = 0;
-  dac.gain = 0;
+  adc[2].antenna = 0;  // PS RX feedback antenna
 
   //
   // The "magic values" here are for the AD98656 chip that is used in radios
@@ -1726,7 +1721,7 @@ void radio_start_radio() {
     if (can_transmit) {
       t_print("%s: create SOAPY transmitter\n", __FUNCTION__);
       soapy_protocol_create_transmitter(transmitter);
-      soapy_protocol_set_tx_antenna(dac.antenna);
+      soapy_protocol_set_tx_antenna(transmitter->antenna);
       //
       // LIME: set TX gain to 30 for the auto-calibration that takes place
       //       upon starting the transmitter
@@ -2656,6 +2651,14 @@ void radio_set_rf_gain(int id, double value) {
     soapy_protocol_set_rx_gain(id);
 #endif
   }
+
+  //
+  // If this is RX1, store value "by the band"
+  //
+  if (id == 0) {
+    BAND *band = band_get_band(vfo[id].band);
+    band->gain = value;
+  }
 }
 
 void radio_set_squelch_enable(int id, int enable) {
@@ -2778,20 +2781,70 @@ void radio_set_c25_att(int id, int val) {
   sliders_c25_att(id);
 }
 
-void radio_set_attenuation(int id, double value) {
+void radio_set_dither(int id, int value) {
+  if (id >= receivers) { return; }
+
+  int rxadc = receiver[id]->adc;
+  adc[rxadc].dither = value;
+
+  if (radio_is_remote) {
+    send_rxmenu(client_socket, rxadc);
+    return;
+  }
+
+  schedule_receive_specific();
+}
+
+void radio_set_random(int id, int value) {
+  if (id >= receivers) { return; }
+
+  int rxadc = receiver[id]->adc;
+  adc[rxadc].random = value;
+
+  if (radio_is_remote) {
+    send_rxmenu(client_socket, rxadc);
+    return;
+  }
+
+  schedule_receive_specific();
+}
+
+void radio_set_preamp(int id, int value) {
+  if (id >= receivers) { return; }
+  if (!have_preamp) { return; }
+
+  int rxadc = receiver[id]->adc;
+  adc[rxadc].preamp = value;
+
+  if (radio_is_remote) {
+    send_rxmenu(client_socket, id);
+    return;
+  }
+}
+
+void radio_set_attenuation(int id, int value) {
   if (id >= receivers) { return; }
   if (!have_rx_att) { return; }
 
-  adc[id].gain = rx_gain_calibration;
-  adc[id].attenuation = value;
+  int rxadc = receiver[id]->adc;
+
+  adc[rxadc].attenuation = value;
+  adc[rxadc].gain = 0.0;
+  sliders_attenuation(id);
 
   if (radio_is_remote) {
-    send_attenuation(client_socket, id, adc[id].attenuation);
-  } else {
-    schedule_high_priority();
+    send_attenuation(client_socket, id, value);
+    return;
   }
 
-  sliders_attenuation(id);
+  //
+  // If this is RX1, store value "by the band"
+  //
+  if (id == 0) {
+    BAND *band = band_get_band(vfo[id].band);
+    band->attenuation = value;
+  }
+  schedule_high_priority();
 }
 
 void radio_set_drive(double value) {
@@ -2841,32 +2894,40 @@ void radio_set_satmode(int mode) {
   sat_mode = mode;
 }
 
-void radio_set_alex_antennas() {
+void radio_apply_band_settings() {
   //
-  // Obtain band of VFO-A and transmitter, set ALEX RX/TX antennas
-  // and the step attenuator
-  // This function is a no-op when running SOAPY.
-  // This function also takes care of updating the PA dis/enable
-  // status for P2.
+  // This applies settings stored with the current BAND for VFO-A
+  // and for the transmitter. Settings include
   //
-  const BAND *band;
+  // RX Antenna and TX Antenna
+  // Attenuation, RF-Gain and ALEX attenuation
+  // preamp/dither
+  // PA dis/enable status
+  //
+  const BAND *band = band_get_band(vfo[VFO_A].band);
 
   if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
-    band = band_get_band(vfo[VFO_A].band);
-    adc[0].alex_antenna = band->alexRxAntenna;
+    adc[0].antenna = band->alexRxAntenna;
+    adc[0].preamp = band->preamp;
+    adc[0].dither = band->dither;
 
-    if (filter_board != CHARLY25) {
+    if (filter_board == ALEX) {
       adc[0].alex_attenuation = band->alexAttenuation;
     }
 
     if (can_transmit) {
       band = band_get_band(vfo[vfo_get_tx_vfo()].band);
-      transmitter->alex_antenna = band->alexTxAntenna;
+      transmitter->antenna = band->alexTxAntenna;
     }
+    schedule_high_priority();         // possibly update RX/TX antennas
+    schedule_general();               // possibly update PA disable
   }
 
-  schedule_high_priority();         // possibly update RX/TX antennas
-  schedule_general();               // possibly update PA disable
+  suppress_popup_sliders = 1;
+  radio_set_c25_att(0,-12*band->alexAttenuation + 18*(band->preamp + band->dither));
+  radio_set_attenuation(0, band->attenuation);
+  radio_set_rf_gain(0, band->gain);
+  suppress_popup_sliders = 0;
 }
 
 void radio_tx_vfo_changed() {
@@ -2877,7 +2938,7 @@ void radio_tx_vfo_changed() {
   // and re-calculate the drive level from the band-specific PA calibration
   // values. For SOAPY, the only thing to do is the update the TX mode.
   //
-  // Note each time radio_tx_vfo_changed() is called, calling radio_set_alex_antennas()
+  // Note each time radio_tx_vfo_changed() is called, calling radio_apply_band_settings()
   // is also due.
   //
   if (can_transmit) {
@@ -2891,6 +2952,7 @@ void radio_tx_vfo_changed() {
 }
 
 void radio_set_alex_attenuation(int v) {
+  if (!have_alex_att) { return; }
   //
   // Change the value of the ALEX attenuator. Store it
   // in the "band" data structure of the current band (this is obsolete)
@@ -2903,6 +2965,11 @@ void radio_set_alex_attenuation(int v) {
     BAND *band = band_get_band(vfo[VFO_A].band);
     band->alexAttenuation = v;
     adc[0].alex_attenuation = v;
+  }
+
+  if (radio_is_remote)  {
+    send_rxmenu(client_socket, 0);
+    return;
   }
 
   schedule_high_priority();
@@ -2924,7 +2991,7 @@ void radio_set_split(int val) {
   //
   // "split" *must only* be set through this interface,
   // since it may change the TX band and thus requires
-  // radio_tx_vfo_changed() and radio_set_alex_antennas().
+  // radio_tx_vfo_changed() and radio_apply_band_settings()
   //
   if (can_transmit) {
     split = val;
@@ -2933,7 +3000,7 @@ void radio_set_split(int val) {
       send_split(client_socket, val);
     } else {
       radio_tx_vfo_changed();
-      radio_set_alex_antennas();
+      radio_apply_band_settings();
     }
 
     g_idle_add(ext_vfo_update, NULL);
@@ -3049,13 +3116,11 @@ static void radio_restore_state() {
       GetPropI1("radio.adc[%d].random", i,                   adc[i].random);
       GetPropI1("radio.adc[%d].preamp", i,                   adc[i].preamp);
       GetPropI1("radio.adc[%d].alex_attenuation", i,         adc[i].alex_attenuation);
-      GetPropI1("radio.adc[%d].alex_antenna", i,             adc[i].alex_antenna);
+      GetPropI1("radio.adc[%d].alex_antenna", i,             adc[i].antenna);
       GetPropI1("radio.adc[%d].filter_bypass", i,            adc[i].filter_bypass);
     }
 
-    GetPropI1("radio.adc[%d].alex_antenna", 2,               adc[2].alex_antenna);  // for PS RX feedback
-    GetPropI0("radio.dac.antenna",                           dac.antenna);
-    GetPropF0("radio.dac.gain",                              dac.gain);
+    GetPropI1("radio.adc[%d].alex_antenna", 2,               adc[2].antenna);  // for PS RX feedback
     filterRestoreState();
     bandRestoreState();
     memRestoreState();
@@ -3141,7 +3206,7 @@ void radio_save_state() {
 
   if ((protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) && !radio_is_remote) {
     // The only variables of interest in this receiver are
-    // the alex_antenna an the adc
+    // the antenna an the adc
     rx_save_state(receiver[PS_RX_FEEDBACK]);
   }
 
@@ -3254,13 +3319,11 @@ void radio_save_state() {
       SetPropI1("radio.adc[%d].random", i,                   adc[i].random);
       SetPropI1("radio.adc[%d].preamp", i,                   adc[i].preamp);
       SetPropI1("radio.adc[%d].alex_attenuation", i,         adc[i].alex_attenuation);
-      SetPropI1("radio.adc[%d].alex_antenna", i,             adc[i].alex_antenna);
+      SetPropI1("radio.adc[%d].alex_antenna", i,             adc[i].antenna);
       SetPropI1("radio.adc[%d].filter_bypass", i,            adc[i].filter_bypass);
     }
 
-    SetPropI1("radio.adc[%d].alex_antenna", 2,               adc[2].alex_antenna);  // for PS RX feedback
-    SetPropI0("radio.dac.antenna",                           dac.antenna);
-    SetPropF0("radio.dac.gain",                              dac.gain);
+    SetPropI1("radio.adc[%d].alex_antenna", 2,               adc[2].antenna);  // for PS RX feedback
     filterSaveState();
     bandSaveState();
     memSaveState();

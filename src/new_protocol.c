@@ -903,7 +903,7 @@ static void new_protocol_high_priority() {
   // Orion2/G2 XVTR relay and audio disable
   //
   if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN) {
-    if (adc[0].alex_antenna == 5) {
+    if (adc[0].antenna == 5) {
       //
       //                  route TXout to XvtrOut out when using XVTR input
       //                  (this is the condition also implemented in old_protocol)
@@ -1122,7 +1122,7 @@ static void new_protocol_high_priority() {
     }
 
     // Bypass HPFs if using EXT1 for PureSignal feedback!
-    if (xmit && transmitter->puresignal && adc[2].alex_antenna == 6) { HPFfreq = 0LL; }
+    if (xmit && transmitter->puresignal && adc[2].antenna == 6) { HPFfreq = 0LL; }
 
     if (adc[0].filter_bypass) {
       HPFfreq = 0LL;
@@ -1156,7 +1156,7 @@ static void new_protocol_high_priority() {
   //
   LPFfreq = DUCfrequency;
 
-  if (!xmit && (device != NEW_DEVICE_ORION2 && device != NEW_DEVICE_SATURN) && adc[0].alex_antenna < 3) {
+  if (!xmit && (device != NEW_DEVICE_ORION2 && device != NEW_DEVICE_SATURN) && adc[0].antenna < 3) {
     LPFfreq = 40000000LL;  // disable the LPF
 
     if (receiver[0]->adc == 0) {
@@ -1212,16 +1212,16 @@ static void new_protocol_high_priority() {
   //
   //  Set bits that route Ext1/Ext2/XVRTin to the RX
   //
-  //  If transmitting with PureSignal, we must use the alex_antenna
+  //  If transmitting with PureSignal, we must use the antenna
   //  settings of the PS_RX_FEEDBACK receiver
   //
   //  ANAN-7000 routes signals differently (these bits have no function on ANAN-80000)
   //            and uses ALEX0(14) to connnect Ext/XvrtIn to the RX.
   //
-  rxant = adc[0].alex_antenna;                      // 0,1,2  or 3,4,5
+  rxant = adc[0].antenna;                      // 0,1,2  or 3,4,5
 
   if (xmit && transmitter->puresignal) {
-    rxant = adc[2].alex_antenna;     // 0, 6, or 7
+    rxant = adc[2].antenna;     // 0, 6, or 7
   }
 
   if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN) {
@@ -1291,19 +1291,19 @@ static void new_protocol_high_priority() {
   //  If receiving, let alex0 reflect the ANT1/2/3 setting for RX
   //  and alex1 that for TX. If transmitting, both reflect TX.
   //
-  txant = transmitter->alex_antenna;
-  rxant = adc[0].alex_antenna;
+  txant = transmitter->antenna;
+  rxant = adc[0].antenna;
 
   //
   // PARANOIA:
   // TX antenna outside allowed range: this cannot happen.
   // But we want to make *absolutely* sure that one of ANT1/2/2
   // is actually switched. So in the "impossible" case of an
-  // illegal value for transmitter->alex_antenna, set it to ANT1.
+  // illegal value for transmitter->antenna, set it to ANT1.
   //
   if (txant < 0 || txant > 2) {
     t_print("WARNING: illegal TX antenna chosen, using ANT1\n");
-    transmitter->alex_antenna = 0;
+    transmitter->antenna = 0;
     txant = 0;
   }
 

@@ -796,10 +796,10 @@ void soapy_protocol_set_rx_frequency(int id) {
       diff = fabs(fd - lo_freq);
       if (diff < 1.0E6 || diff > 5.0E6) { lo_ok = 0; }
       double fd2 = fd;
-      int sid = (id == 0 ? 1 : 0); // ID of the "other" receiver (if receivers > 1)
+      int sid = (id == 0) ? 1 : 0; // ID of the "other" receiver (2RX case)
 
       lime_mute_rx2 = 0;
-      if (receivers > 1) {
+      if (RECEIVERS > 1) {
         //
         // A further complication arises because RX1 and RX2 share the LO, so the LO freq must
         // be compatible with both RX. If this is not possible (RX1 and RX2 frequency more
@@ -827,13 +827,12 @@ void soapy_protocol_set_rx_frequency(int id) {
       }
 
       if (!lo_ok) {
-        //
-        // need new LO freq. If RX2 is not running or muted, LO will be 3 MHz below RX1
-        //
 
-        if (receivers < 2 || lime_mute_rx2) {
+        if (RECEIVERS < 2 || lime_mute_rx2) {
+          // 1RX case, or RX2 freq out of range
           lo_freq = fd - 3.0e6;
         } else {
+          // 2RX case
           lo_freq = 0.5*(fd + fd2);
           if (fabs(fd-fd2) < 2.0e6) {
             lo_freq -= 3.0e6;
@@ -863,9 +862,9 @@ void soapy_protocol_set_rx_frequency(int id) {
         t_print("%s: RX%d-BB failed: %s\n", __FUNCTION__, id + 1, SoapySDR_errToStr(rc));
       }
 
-      if (!lo_ok && receivers > 1 && !lime_mute_rx2) {
+      if (!lo_ok && RECEIVERS > 1 && !lime_mute_rx2) {
         //
-        // If 2 RX are running and the LO freq has been changed, we need to re-calculate the offset of
+        // For the 2RX case and the LO freq has been changed, we need to re-calculate the offset of
         // the "other" receiver
         //
         t_print("%s: New LIME RX%d offset=%f\n", __FUNCTION__, sid, fd2 - lo_freq);

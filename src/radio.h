@@ -21,7 +21,6 @@
 #define _RADIO_H_
 
 #include "adc.h"
-#include "dac.h"
 #include "discovered.h"
 #include "receiver.h"
 #include "transmitter.h"
@@ -163,7 +162,6 @@ extern int mic_input_xlr;
 extern int receivers;
 
 extern ADC adc[3];
-extern DAC dac;
 
 extern int locked;
 
@@ -300,7 +298,7 @@ extern void   radio_reconfigure_screen(void);
 extern void   radio_start_radio(void);
 extern void   radio_change_receivers(int r);
 extern void   radio_change_sample_rate(int rate);
-extern void   radio_set_alex_antennas(void);
+extern void   radio_apply_band_settings(void);
 extern void   radio_tx_vfo_changed(void);
 extern void   radio_split_toggle(void);
 extern void   radio_set_split(int v);
@@ -313,7 +311,10 @@ extern double radio_get_drive(void);
 extern void   radio_set_drive(double d);
 extern void   radio_calc_drive_level(void);
 extern void   radio_calc_tune_drive_level(void);
-extern void   radio_set_attenuation(int id, double value);
+extern void   radio_set_attenuation(int id, int value);
+extern void   radio_set_random(int id, int value);
+extern void   radio_set_dither(int id, int value);
+extern void   radio_set_preamp(int id, int value);
 extern void   radio_set_c25_att(int id, int value);
 extern void   radio_set_alex_attenuation(int v);
 extern int    radio_is_transmitting(void);

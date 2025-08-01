@@ -60,18 +60,29 @@ enum _band_enum {
 struct _BAND {
   char title[16];                 // band title
   BANDSTACK *bandstack;           // pointer to band stack
+//
+// Data that can be changed via menus etc.
+//
   unsigned char OCrx;             // OC bit pattern for RX
   unsigned char OCtx;             // OC bit pattern for TX
-  int gain;                       // band dependent RX gain offset
+  int gaincalib;                  // band dependent RX gain offset
   int alexRxAntenna;              // if ALEX: RX antenna
   int alexTxAntenna;              // if ALEX: TX antenna
-  int alexAttenuation;            // if ALEX: attenuator (0/1/2/3 for 0/10/20/30 dB)
   double pa_calibration;          // PA calibration value for this band
   long long frequencyMin;         // lower band edge
   long long frequencyMax;         // upper band edge
   long long frequencyLO;          // frequency offset
   long long errorLO;              // band dependent LO frequency correction
   int disablePA;                  // if 1, PA is disabled for this band
+//
+// Data that is automatically stored here, and applied whenever
+// a band change is done
+//
+  int preamp;                     // This is to support C25 attenuation storage
+  int dither;                     // This is to support C25 attenuation storage
+  double gain;                    // position of the RF gain slider
+  int attenuation;                // position of the ATT slider
+  int alexAttenuation;            // if ALEX: attenuator (0/1/2/3 for 0/10/20/30 dB)
 };
 
 //

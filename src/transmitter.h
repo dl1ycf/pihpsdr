@@ -57,7 +57,7 @@ typedef struct _transmitter {
   int filter_high;
   int use_rx_filter;
 
-  int alex_antenna;
+  int antenna;
 
   int width;
   int height;
@@ -118,7 +118,7 @@ typedef struct _transmitter {
 
   int attenuation;      // Attenuation in the RX ADC0 chain (!) if TX is active
 
-  int drive;            // value of the drive slider (should use dac.gain)
+  int drive;
   int tune_use_drive;
   int tune_drive;
 

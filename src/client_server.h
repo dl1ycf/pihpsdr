@@ -125,7 +125,6 @@ enum _header_type_enum {
   INFO_ADC,
   INFO_BAND,
   INFO_BANDSTACK,
-  INFO_DAC,
   INFO_DISPLAY,
   INFO_MEMORY,
   INFO_PS,
@@ -221,6 +220,7 @@ typedef struct __attribute__((__packed__)) _rxmenu_data {
   uint8_t dither;
   uint8_t random;
   uint8_t preamp;
+  uint8_t alex_attenuation;
   uint8_t adc0_filter_bypass;
   uint8_t adc1_filter_bypass;
 } RXMENU_DATA;
@@ -254,10 +254,9 @@ typedef struct __attribute__((__packed__)) _band_data {
   uint8_t  OCtx;
   uint8_t  alexRxAntenna;
   uint8_t  alexTxAntenna;
-  uint8_t  alexAttenuation;
   uint8_t  disablePA;
   uint8_t  current;
-  uint16_t gain;
+  uint16_t gaincalib;
   mydouble pa_calibration;
   uint64_t frequencyMin;
   uint64_t frequencyMax;
@@ -452,24 +451,17 @@ typedef struct __attribute__((__packed__)) _dexp_data {
   mydouble dexp_hyst;
 } DEXP_DATA;
 
-typedef struct __attribute__((__packed__)) _dac_data {
-  HEADER header;
-  uint8_t antenna;
-  mydouble gain;
-} DAC_DATA;
-
 typedef struct __attribute__((__packed__)) _adc_data {
   HEADER header;
   uint8_t adc;
   uint8_t random;
   uint8_t dither;
   uint8_t preamp;
-  uint8_t alex_antenna;
+  uint8_t antenna;
   uint8_t alex_attenuation;
   uint8_t overload;
   uint8_t filter_bypass;
   //
-  uint16_t antenna;
   uint16_t attenuation;
   //
   mydouble gain;
@@ -489,7 +481,7 @@ typedef struct __attribute__((__packed__)) _transmitter_data {
   uint8_t  display_detector_mode;
   uint8_t  display_average_mode;
   uint8_t  use_rx_filter;
-  uint8_t  alex_antenna;
+  uint8_t  antenna;
   uint8_t  puresignal;
   uint8_t  feedback;
   uint8_t  auto_on;

@@ -128,7 +128,7 @@ void rx_panadapter_update(RECEIVER *rx) {
   // switchable preamps.
   //
   const BAND *band = band_get_band(vfoband);
-  int calib = rx_gain_calibration - band->gain;
+  int calib = rx_gain_calibration - band->gaincalib;
   soffset = (double) calib + (double)adc[rx->adc].attenuation - adc[rx->adc].gain;
 
   if (filter_board == ALEX && rx->adc == 0) {

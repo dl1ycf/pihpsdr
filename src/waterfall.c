@@ -202,7 +202,7 @@ void waterfall_update(RECEIVER *rx) {
       int id = rx->id;
       int b = vfo[id].band;
       const BAND *band = band_get_band(b);
-      int calib = rx_gain_calibration - band->gain;
+      int calib = rx_gain_calibration - band->gaincalib;
       //
       // soffset contains all corrections due to attenuation, preamps, etc.
       //

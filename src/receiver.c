@@ -110,10 +110,11 @@ void rx_set_active(RECEIVER *rx) {
 
   //
   // Changing the active receiver flips the TX vfo
+  // and possibly the TX band
   //
   if (!radio_is_remote) {
     radio_tx_vfo_changed();
-    radio_set_alex_antennas();
+    radio_apply_band_settings();
   }
 }
 
@@ -491,7 +492,7 @@ static int rx_update_display(gpointer data) {
       int id = rx->id;
       int b  = vfo[id].band;
       const BAND *band = band_get_band(b);
-      int calib = rx_gain_calibration - band->gain;
+      int calib = rx_gain_calibration - band->gaincalib;
       double level = rx_get_smeter(rx);
       level += (double)calib + (double)adc[rx->adc].attenuation - adc[rx->adc].gain;
 
