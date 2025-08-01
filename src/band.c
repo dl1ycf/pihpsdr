@@ -457,8 +457,8 @@ void bandSaveState() {
       SetPropF1("band.%d.gain", b,               bands[b].gain);
     }
 
-    SetPropI1("band.%d.alexRxAntenna", b,      bands[b].alexRxAntenna);
-    SetPropI1("band.%d.alexTxAntenna", b,      bands[b].alexTxAntenna);
+    SetPropI1("band.%d.alexRxAntenna", b,      bands[b].RxAntenna);
+    SetPropI1("band.%d.alexTxAntenna", b,      bands[b].TxAntenna);
     SetPropI1("band.%d.alexAttenuation", b,    bands[b].alexAttenuation);
     SetPropF1("band.%d.pa_calibration", b,     bands[b].pa_calibration);
     SetPropI1("band.%d.OCrx", b,               bands[b].OCrx);
@@ -526,8 +526,8 @@ void bandRestoreState() {
       GetPropF1("band.%d.gain", b,               bands[b].gain);
     }
 
-    GetPropI1("band.%d.alexRxAntenna", b,      bands[b].alexRxAntenna);
-    GetPropI1("band.%d.alexTxAntenna", b,      bands[b].alexTxAntenna);
+    GetPropI1("band.%d.alexRxAntenna", b,      bands[b].RxAntenna);
+    GetPropI1("band.%d.alexTxAntenna", b,      bands[b].TxAntenna);
     GetPropI1("band.%d.alexAttenuation", b,    bands[b].alexAttenuation);
     GetPropF1("band.%d.pa_calibration", b,     bands[b].pa_calibration);
     GetPropI1("band.%d.OCrx", b,               bands[b].OCrx);
@@ -555,8 +555,8 @@ void bandRestoreState() {
       bands[b].bandstack->current_entry = 0;
     }
 
-    if (bands[b].alexTxAntenna > 2 || bands[b].alexTxAntenna < 0) {
-      bands[b].alexTxAntenna = 0;
+    if (bands[b].TxAntenna > 2 || bands[b].TxAntenna < 0) {
+      bands[b].TxAntenna = 0;
     }
 
     if (bands[b].pa_calibration < 38.8) {

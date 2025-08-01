@@ -781,8 +781,8 @@ void send_band_data(int sock, int b) {
   data.band = b;
   data.OCrx = band->OCrx;
   data.OCtx = band->OCtx;
-  data.alexRxAntenna = band->alexRxAntenna;
-  data.alexTxAntenna = band->alexTxAntenna;
+  data.RxAntenna = band->RxAntenna;
+  data.TxAntenna = band->TxAntenna;
   data.disablePA = band->disablePA;
   data.current = band->bandstack->current_entry;
   data.gaincalib = to_short(band->gaincalib);
@@ -2947,8 +2947,8 @@ static void *client_thread(void* arg) {
       snprintf(band->title, sizeof(band->title), "%s", data.title);
       band->OCrx = data.OCrx;
       band->OCtx = data.OCtx;
-      band->alexRxAntenna = data.alexRxAntenna;
-      band->alexTxAntenna = data.alexTxAntenna;
+      band->RxAntenna = data.RxAntenna;
+      band->TxAntenna = data.TxAntenna;
       band->disablePA = data.disablePA;
       band->bandstack->current_entry = data.current;
       band->gaincalib = from_short(data.gaincalib);
@@ -3781,8 +3781,8 @@ static int remote_command(void *data) {
     snprintf(band->title, sizeof(band->title), "%s", band_data->title);
     band->OCrx = band_data->OCrx;
     band->OCtx = band_data->OCtx;
-    band->alexRxAntenna = band_data->alexRxAntenna;
-    band->alexTxAntenna = band_data->alexTxAntenna;
+    band->RxAntenna = band_data->RxAntenna;
+    band->TxAntenna = band_data->TxAntenna;
     band->disablePA = band_data->disablePA;
     band->bandstack->current_entry = band_data->current;
     band->gaincalib = from_short(band_data->gaincalib);

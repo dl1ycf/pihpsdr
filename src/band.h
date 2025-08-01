@@ -66,8 +66,8 @@ struct _BAND {
   unsigned char OCrx;             // OC bit pattern for RX
   unsigned char OCtx;             // OC bit pattern for TX
   int gaincalib;                  // band dependent RX gain offset
-  int alexRxAntenna;              // if ALEX: RX antenna
-  int alexTxAntenna;              // if ALEX: TX antenna
+  int RxAntenna;                  // (ALEX) RX antenna
+  int TxAntenna;                  // (ALEX) TX antenna
   double pa_calibration;          // PA calibration value for this band
   long long frequencyMin;         // lower band edge
   long long frequencyMax;         // upper band edge

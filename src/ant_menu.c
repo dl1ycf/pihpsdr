@@ -60,7 +60,7 @@ static void rx_ant_cb(GtkToggleButton *widget, gpointer data) {
   int b = GPOINTER_TO_INT(data);
   int ant = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
   BAND *band = band_get_band(b);
-  band->alexRxAntenna = ant;
+  band->RxAntenna = ant;
 
   if (radio_is_remote) {
     send_band_data(client_socket, b);
@@ -73,7 +73,7 @@ static void tx_ant_cb(GtkToggleButton *widget, gpointer data) {
   int b = GPOINTER_TO_INT(data);
   int ant = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
   BAND *band = band_get_band(b);
-  band->alexTxAntenna = ant;
+  band->TxAntenna = ant;
 
   if (radio_is_remote) {
     send_band_data(client_socket, b);
@@ -182,7 +182,7 @@ static void show_hf() {
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rxcombo), NULL, "Ext1");
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rxcombo), NULL, "Ext2");
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rxcombo), NULL, "Xvtr");
-      gtk_combo_box_set_active(GTK_COMBO_BOX(rxcombo), band->alexRxAntenna);
+      gtk_combo_box_set_active(GTK_COMBO_BOX(rxcombo), band->RxAntenna);
       my_combo_attach(GTK_GRID(mygrid), rxcombo, col, row, 1, 1);
       g_signal_connect(rxcombo, "changed", G_CALLBACK(rx_ant_cb), GINT_TO_POINTER(b));
       col++;
@@ -190,7 +190,7 @@ static void show_hf() {
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(txcombo), NULL, "Ant1");
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(txcombo), NULL, "Ant2");
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(txcombo), NULL, "Ant3");
-      gtk_combo_box_set_active(GTK_COMBO_BOX(txcombo), band->alexTxAntenna);
+      gtk_combo_box_set_active(GTK_COMBO_BOX(txcombo), band->TxAntenna);
       my_combo_attach(GTK_GRID(mygrid), txcombo, col, row, 1, 1);
       g_signal_connect(txcombo, "changed", G_CALLBACK(tx_ant_cb), GINT_TO_POINTER(b));
       col++;
@@ -272,7 +272,7 @@ static void show_xvtr() {
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rxcombo), NULL, "Ext1");
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rxcombo), NULL, "Ext2");
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rxcombo), NULL, "Xvtr");
-      gtk_combo_box_set_active(GTK_COMBO_BOX(rxcombo), band->alexRxAntenna);
+      gtk_combo_box_set_active(GTK_COMBO_BOX(rxcombo), band->RxAntenna);
       my_combo_attach(GTK_GRID(mygrid), rxcombo, col, row, 1, 1);
       g_signal_connect(rxcombo, "changed", G_CALLBACK(rx_ant_cb), GINT_TO_POINTER(i));
       col++;
@@ -280,7 +280,7 @@ static void show_xvtr() {
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(txcombo), NULL, "Ant1");
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(txcombo), NULL, "Ant2");
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(txcombo), NULL, "Ant3");
-      gtk_combo_box_set_active(GTK_COMBO_BOX(txcombo), band->alexTxAntenna);
+      gtk_combo_box_set_active(GTK_COMBO_BOX(txcombo), band->TxAntenna);
       my_combo_attach(GTK_GRID(mygrid), txcombo, col, row, 1, 1);
       g_signal_connect(txcombo, "changed", G_CALLBACK(tx_ant_cb), GINT_TO_POINTER(i));
       col++;

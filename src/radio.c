@@ -2907,7 +2907,7 @@ void radio_apply_band_settings() {
   const BAND *band = band_get_band(vfo[VFO_A].band);
 
   if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
-    adc[0].antenna = band->alexRxAntenna;
+    adc[0].antenna = band->RxAntenna;
     adc[0].preamp = band->preamp;
     adc[0].dither = band->dither;
 
@@ -2917,7 +2917,7 @@ void radio_apply_band_settings() {
 
     if (can_transmit) {
       band = band_get_band(vfo[vfo_get_tx_vfo()].band);
-      transmitter->antenna = band->alexTxAntenna;
+      transmitter->antenna = band->TxAntenna;
     }
     schedule_high_priority();         // possibly update RX/TX antennas
     schedule_general();               // possibly update PA disable

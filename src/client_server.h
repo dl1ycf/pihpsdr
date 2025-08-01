@@ -252,8 +252,8 @@ typedef struct __attribute__((__packed__)) _band_data {
   uint8_t  band;
   uint8_t  OCrx;
   uint8_t  OCtx;
-  uint8_t  alexRxAntenna;
-  uint8_t  alexTxAntenna;
+  uint8_t  RxAntenna;
+  uint8_t  TxAntenna;
   uint8_t  disablePA;
   uint8_t  current;
   uint16_t gaincalib;
