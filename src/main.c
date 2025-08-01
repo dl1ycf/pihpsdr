@@ -159,6 +159,7 @@ static int init(void *data) {
 }
 
 static void activate_pihpsdr(GtkApplication *app, gpointer data) {
+  GtkWidget *label;
   char text[256];
   t_print("%s: Build: %s (Commit: %s, Date: %s)\n", __FUNCTION__, build_version, build_commit, build_date);
   t_print("%s: GTK+ version %u.%u.%u\n", __FUNCTION__, gtk_major_version, gtk_minor_version, gtk_micro_version);
@@ -259,23 +260,29 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   GtkWidget *image = hpsdr_logo();
 
   if (image) {
-    gtk_grid_attach(GTK_GRID(topgrid), image, 0, 0, 1, 2);
+    gtk_grid_attach(GTK_GRID(topgrid), image, 0, 0, 1, 3);
   }
 
-  GtkWidget *pi_label = gtk_label_new("piHPSDR by John Melton G0ORX/N6LYT");
-  gtk_widget_set_name(pi_label, "big_txt");
-  gtk_widget_set_halign(pi_label, GTK_ALIGN_START);
-  gtk_grid_attach(GTK_GRID(topgrid), pi_label, 1, 0, 3, 1);
-  snprintf(text, sizeof(text), "Built %s, Version %s\nOptions: %s\nAudio module: %s",
-           build_date, build_version, build_options, build_audio);
-  GtkWidget *build_date_label = gtk_label_new(text);
-  gtk_widget_set_name(build_date_label, "med_txt");
-  gtk_widget_set_halign(build_date_label, GTK_ALIGN_START);
-  gtk_grid_attach(GTK_GRID(topgrid), build_date_label, 1, 1, 3, 1);
+  label = gtk_label_new("piHPSDR");
+  gtk_widget_set_name(label, "big_txt");
+  gtk_widget_set_halign(label, GTK_ALIGN_START);
+  gtk_grid_attach(GTK_GRID(topgrid), label, 1, 0, 3, 1);
+  label = gtk_label_new("originally written by John Melton (G0ORX/N6LYT)\n"
+                        "extended and maintained by Christoph van Wüllen (DL1YCF)");
+  gtk_widget_set_name(label, "med_txt");
+  gtk_widget_set_halign(label, GTK_ALIGN_START);
+  gtk_widget_set_halign(label, GTK_ALIGN_START);
+  gtk_grid_attach(GTK_GRID(topgrid), label, 1, 1, 3, 1);
+  snprintf(text, sizeof(text), "Built %s, Version %s(%s)\nOptions: %s\nAudio module: %s",
+           build_date, build_version, build_commit, build_options, build_audio);
+  label = gtk_label_new(text);
+  gtk_widget_set_name(label, "med_txt");
+  gtk_widget_set_halign(label, GTK_ALIGN_START);
+  gtk_grid_attach(GTK_GRID(topgrid), label, 1, 2, 3, 1);
   status_label = gtk_label_new(NULL);
   gtk_widget_set_name(status_label, "med_txt");
   gtk_widget_set_halign(status_label, GTK_ALIGN_START);
-  gtk_grid_attach(GTK_GRID(topgrid), status_label, 1, 2, 3, 1);
+  gtk_grid_attach(GTK_GRID(topgrid), status_label, 1, 3, 3, 1);
   gtk_widget_show_all(top_window);
   g_idle_add(init, NULL);
 }
@@ -289,7 +296,7 @@ int main(int argc, char **argv) {
   // If invoked with -V, print version and FPGA firmware compatibility information
   //
   if (argc >= 2 && !strcmp("-V", argv[1])) {
-    fprintf(stderr, "piHPSDR version and commit: %s, %s; built %s\n", build_version, build_commit, build_date);
+    fprintf(stderr, "piHPSDR version %s(%s); built %s\n", build_version, build_commit, build_date);
     fprintf(stderr, "Compile-time options      : %sAudioModule=%s\n", build_options, build_audio);
 #ifdef SATURN
     fprintf(stderr, "SATURN min:max minor FPGA : %d:%d\n", saturn_minor_version_min(), saturn_minor_version_max());
