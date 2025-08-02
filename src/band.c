@@ -438,7 +438,7 @@ void bandSaveState() {
     if (b >= BANDS) {
       SetPropI1("band.%d.frequencyLO", b,        bands[b].frequencyLO);
       SetPropI1("band.%d.errorLO", b,            bands[b].errorLO);
-      SetPropI1("band.%d.gain", b,               bands[b].gaincalib);
+      SetPropI1("band.%d.gaincalib", b,          bands[b].gaincalib);
     }
 
     SetPropS1("band.%d.title", b,              bands[b].title);
@@ -508,7 +508,7 @@ void bandRestoreState() {
       GetPropS1("band.%d.title", b,              bands[b].title);
       GetPropI1("band.%d.frequencyLO", b,        bands[b].frequencyLO);
       GetPropI1("band.%d.errorLO", b,            bands[b].errorLO);
-      GetPropI1("band.%d.gain", b,               bands[b].gaincalib);
+      GetPropI1("band.%d.gaincalib", b,          bands[b].gaincalib);
     }
 
     GetPropI1("band.%d.frequencyMin", b,       bands[b].frequencyMin);
