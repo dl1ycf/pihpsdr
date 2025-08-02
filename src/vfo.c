@@ -527,7 +527,7 @@ static inline void vfo_id_adjust_band(int v, long long f) {
   vfo[v].band = get_band_from_frequency(f);
   bandstack = bandstack_get_bandstack(vfo[v].band);
   vfo[v].bandstack = bandstack->current_entry;
-  radio_apply_band_settings();
+  radio_apply_band_settings(1);
 }
 
 void vfo_xvtr_changed() {
@@ -933,7 +933,7 @@ void vfo_vfos_changed() {
   }
 
   radio_tx_vfo_changed();
-  radio_apply_band_settings();
+  radio_apply_band_settings(0);
   //
   // radio_set_alex_antennas already scheduled a HighPrio and General packet,
   // but if the mode changed to/from CW, we also need a DUCspecific packet

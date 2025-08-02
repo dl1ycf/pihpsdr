@@ -65,7 +65,7 @@ static void rx_ant_cb(GtkToggleButton *widget, gpointer data) {
   if (radio_is_remote) {
     send_band_data(client_socket, b);
   } else {
-    radio_apply_band_settings();
+    radio_apply_band_settings(0);
   }
 }
 
@@ -78,10 +78,14 @@ static void tx_ant_cb(GtkToggleButton *widget, gpointer data) {
   if (radio_is_remote) {
     send_band_data(client_socket, b);
   } else {
-    radio_apply_band_settings();
+    radio_apply_band_settings(0);
   }
 }
 
+//
+// Currently the SoapySDR antenna setting is global
+// (for all bands)
+//
 static void adc_antenna_cb(GtkComboBox *widget, gpointer data) {
   int id = GPOINTER_TO_INT(data);
   int ant = gtk_combo_box_get_active(widget);

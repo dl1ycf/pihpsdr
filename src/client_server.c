@@ -3794,7 +3794,7 @@ static int remote_command(void *data) {
     //
     // make some changes effective
     //
-    radio_apply_band_settings();
+    radio_apply_band_settings(0);
     radio_calc_drive_level();
     schedule_high_priority();
   }

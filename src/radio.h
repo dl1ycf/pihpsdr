@@ -298,7 +298,7 @@ extern void   radio_reconfigure_screen(void);
 extern void   radio_start_radio(void);
 extern void   radio_change_receivers(int r);
 extern void   radio_change_sample_rate(int rate);
-extern void   radio_apply_band_settings(void);
+extern void   radio_apply_band_settings(int flag);
 extern void   radio_tx_vfo_changed(void);
 extern void   radio_split_toggle(void);
 extern void   radio_set_split(int v);

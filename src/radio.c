@@ -2894,39 +2894,46 @@ void radio_set_satmode(int mode) {
   sat_mode = mode;
 }
 
-void radio_apply_band_settings() {
+void radio_apply_band_settings(int flag) {
   //
   // This applies settings stored with the current BAND for VFO-A
   // and for the transmitter. Settings include
   //
-  // RX Antenna and TX Antenna
-  // Attenuation, RF-Gain and ALEX attenuation
-  // preamp/dither
-  // PA dis/enable status
+  // flag == 0: RX Antenna, TX Antenna, PA dis/enable status
+  // flag == 1: in addition, preamp/dither/attenuation/gain status
+  //
+  // flag is nonzero if called from a "real" band change
   //
   const BAND *band = band_get_band(vfo[VFO_A].band);
 
+  suppress_popup_sliders = 1;
+
   if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
     adc[0].antenna = band->RxAntenna;
-    adc[0].preamp = band->preamp;
-    adc[0].dither = band->dither;
-
-    if (filter_board == ALEX) {
-      adc[0].alex_attenuation = band->alexAttenuation;
-    }
 
     if (can_transmit) {
       band = band_get_band(vfo[vfo_get_tx_vfo()].band);
       transmitter->antenna = band->TxAntenna;
     }
-    schedule_high_priority();         // possibly update RX/TX antennas
-    schedule_general();               // possibly update PA disable
+
+    if (flag) {
+      adc[0].preamp = band->preamp;
+      adc[0].dither = band->dither;
+
+      if (filter_board == ALEX) {
+        adc[0].alex_attenuation = band->alexAttenuation;
+      }
+    }
   }
 
-  suppress_popup_sliders = 1;
-  radio_set_c25_att(0,-12*band->alexAttenuation + 18*(band->preamp + band->dither));
-  radio_set_attenuation(0, band->attenuation);
-  radio_set_rf_gain(0, band->gain);
+  if (flag) {
+    radio_set_c25_att(0,-12*band->alexAttenuation + 18*(band->preamp + band->dither));
+    radio_set_attenuation(0, band->attenuation);
+    radio_set_rf_gain(0, band->gain);
+  }
+
+  schedule_high_priority();         // possibly update RX/TX antennas
+  schedule_general();               // possibly update PA disable
   suppress_popup_sliders = 0;
 }
 
@@ -2938,8 +2945,8 @@ void radio_tx_vfo_changed() {
   // and re-calculate the drive level from the band-specific PA calibration
   // values. For SOAPY, the only thing to do is the update the TX mode.
   //
-  // Note each time radio_tx_vfo_changed() is called, calling radio_apply_band_settings()
-  // is also due.
+  // Note each time radio_tx_vfo_changed() is called, band settings must
+  // be applied as well.
   //
   if (can_transmit) {
     tx_set_mode(transmitter, vfo_get_tx_mode());
@@ -2991,7 +2998,7 @@ void radio_set_split(int val) {
   //
   // "split" *must only* be set through this interface,
   // since it may change the TX band and thus requires
-  // radio_tx_vfo_changed() and radio_apply_band_settings()
+  // radio_tx_vfo_changed() and apply band settings.
   //
   if (can_transmit) {
     split = val;
@@ -3000,7 +3007,7 @@ void radio_set_split(int val) {
       send_split(client_socket, val);
     } else {
       radio_tx_vfo_changed();
-      radio_apply_band_settings();
+      radio_apply_band_settings(0);
     }
 
     g_idle_add(ext_vfo_update, NULL);

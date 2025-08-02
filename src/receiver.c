@@ -114,7 +114,7 @@ void rx_set_active(RECEIVER *rx) {
   //
   if (!radio_is_remote) {
     radio_tx_vfo_changed();
-    radio_apply_band_settings();
+    radio_apply_band_settings(0);
   }
 }
 

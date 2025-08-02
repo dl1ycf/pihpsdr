@@ -288,7 +288,7 @@ void load_filters() {
   case APOLLO:
   case CHARLY25:
     // This is most likely not necessary here, but can do no harm
-    radio_apply_band_settings();
+    radio_apply_band_settings(0);
     break;
 
   case NO_FILTER_BOARD:
