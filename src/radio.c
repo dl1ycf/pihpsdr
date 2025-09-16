@@ -3032,6 +3032,8 @@ void radio_set_panlow(int id, int value) {
     BAND *band = band_get_band(vfo[id].band);
     band->panlow = value;
   }
+
+  g_idle_add(sliders_panlow, NULL);
 }
 
 void radio_set_panstep(int id, int value) {

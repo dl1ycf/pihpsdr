@@ -64,3 +64,4 @@ extern int sliders_diversity_gain(gpointer data);
 extern int sliders_diversity_phase(gpointer data);
 extern int sliders_zoom(gpointer data);
 extern int sliders_pan(gpointer data);
+extern int sliders_panlow(gpointer data);

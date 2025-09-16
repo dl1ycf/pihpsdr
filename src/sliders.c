@@ -58,6 +58,9 @@ static gulong linein_signal_id = 0;
 static GtkWidget *speed_scale = NULL;
 static gulong speed_signal_id = 0;
 
+static GtkWidget *panlow_scale = NULL;
+static gulong panlow_signal_id = 0;
+
 static GtkWidget *af_gain_scale = NULL;
 static gulong af_signal_id = 0;
 
@@ -137,6 +140,11 @@ static void linein_value_changed_cb(GtkWidget *widget, gpointer data) {
   // Round to half-integers
   val = 0.5 * (int)(2.0 * val);
   radio_set_linein_gain(val);
+}
+
+static void panlow_value_changed_cb(GtkWidget *widget, gpointer data) {
+  int val = (int)(gtk_range_get_value(GTK_RANGE(widget)) + 0.5);
+  radio_set_panlow(active_receiver->id, val);
 }
 
 static void speed_value_changed_cb(GtkWidget *widget, gpointer data) {
@@ -754,6 +762,20 @@ int sliders_squelch(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
+int sliders_panlow(gpointer data) {
+  //
+  // This ONLY moves the slider
+  // No popup-slider since settings are displayed in VFO bar,
+  //
+  if (panlow_scale) {
+    g_signal_handler_block(G_OBJECT(panlow_scale), panlow_signal_id);
+    gtk_range_set_value (GTK_RANGE(panlow_scale), active_receiver->panadapter_low);
+    g_signal_handler_unblock(G_OBJECT(panlow_scale), panlow_signal_id);
+  }
+
+  return G_SOURCE_REMOVE;
+}
+
 int sliders_wpm(gpointer data) {
   //
   // This ONLY moves the slider
@@ -879,6 +901,7 @@ void sliders_destroy() {
   pan_scale = NULL;
   speed_scale = NULL;
   linein_scale = NULL;
+  panlow_scale = NULL;
 }
 
 void sliders_create(int width, int height, int rows) {
@@ -1191,7 +1214,25 @@ void sliders_create(int width, int height, int rows) {
 
         break;
 
-      case CW_SPEED:
+     case PANADAPTER_LOW:
+        if (panlow_scale == NULL) {
+          label = gtk_label_new("PLow");
+          gtk_widget_set_name(label, csslabel);
+          gtk_widget_set_halign(label, GTK_ALIGN_END);
+          gtk_grid_attach(GTK_GRID(sliders_grid), label, pos, i, twidth, 1);
+          panlow_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, -160.0, -80.0, 5.0);
+          gtk_widget_set_size_request(panlow_scale, 0, height);
+          gtk_widget_set_valign(panlow_scale, GTK_ALIGN_CENTER);
+          gtk_range_set_increments (GTK_RANGE(panlow_scale), 1.0, 1.0);
+          gtk_range_set_value (GTK_RANGE(panlow_scale), active_receiver->panadapter_low);
+          gtk_grid_attach(GTK_GRID(sliders_grid), panlow_scale, pos + twidth, i, swidth, 1);
+          panlow_signal_id = g_signal_connect(G_OBJECT(panlow_scale), "value_changed",
+                                             G_CALLBACK(panlow_value_changed_cb), NULL);
+        }
+
+        break;
+
+     case CW_SPEED:
         if (speed_scale == NULL) {
           label = gtk_label_new("WPM");
           gtk_widget_set_name(label, csslabel);

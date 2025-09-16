@@ -26,11 +26,11 @@
 //
 // List of functions that can be associated with sliders
 //
-#define NUM_FUNCS 14
+#define NUM_FUNCS 15
 static enum ACTION func_list[NUM_FUNCS] = {
   NO_ACTION, AF_GAIN,     AGC_GAIN, ATTENUATION, COMPRESSION,
-  CW_SPEED,  LINEIN_GAIN, MIC_GAIN, PAN,         RF_GAIN,
-  SQUELCH,   DRIVE,       VOXLEVEL, ZOOM
+  CW_SPEED,  LINEIN_GAIN, MIC_GAIN, PAN,         PANADAPTER_LOW,
+  RF_GAIN,   SQUELCH,     DRIVE,    VOXLEVEL,    ZOOM
 };
 
 static GtkWidget *dialog = NULL;
