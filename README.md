@@ -1,4 +1,7 @@
-# pihpsdr
+<p align="center">
+<img src="release/LatexManual/figures/piHPSDR_logo.png" width="300" height="300">
+</p>
+
 **SDR host program**,
 supporting both the old (P1) and new (P2) HPSDR protocols, as well as the SoapySDR framework.
 It runs on Linux (Raspberry Pi but also Desktop or Laptop computers running LINUX) and MacOS (Intel or AppleSilicon CPUs, using  "Homebrew" or "MacPorts").
