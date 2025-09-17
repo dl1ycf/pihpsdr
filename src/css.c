@@ -61,7 +61,7 @@
 // popup_scale         Used to define the slider that "pops up" when e.g. AF volume
 //                     is changed via GPIO/MIDI but no sliders are on display
 //
-// checkbutton         THe standard button is Very difficult to see on RaspPi with
+// checkbutton         The standard button is very difficult to see on RaspPi with
 //                     a light GTK theme. So we use our own, and draw a grey border
 //                     so this should be OK for both the light and dark theme.
 //

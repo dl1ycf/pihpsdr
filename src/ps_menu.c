@@ -148,12 +148,12 @@ static void clear_fields() {
 
   for (int i = 0; i < INFO_SIZE; i++) {
     if (entry[i] != NULL) {
-      gtk_entry_set_text(GTK_ENTRY(entry[i]), "");
+      gtk_label_set_text(GTK_LABEL(entry[i]), "");
     }
   }
 
-  gtk_entry_set_text(GTK_ENTRY(get_pk), "");
-  gtk_entry_set_text(GTK_ENTRY(tx_att), "");
+  gtk_label_set_text(GTK_LABEL(get_pk), "");
+  gtk_label_set_text(GTK_LABEL(tx_att), "");
 }
 
 //
@@ -390,14 +390,14 @@ static int info_thread(gpointer arg) {
         }
       }
 
-      gtk_entry_set_text(GTK_ENTRY(entry[i]), label);
+      gtk_label_set_text(GTK_LABEL(entry[i]), label);
     }
 
     snprintf(label, sizeof(label), "%d", transmitter->attenuation);
-    gtk_entry_set_text(GTK_ENTRY(tx_att), label);
+    gtk_label_set_text(GTK_LABEL(tx_att), label);
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_att_spin), (double) transmitter->attenuation);
     snprintf(label, sizeof(label), "%6.3f", transmitter->ps_getmx);
-    gtk_entry_set_text(GTK_ENTRY(get_pk), label);
+    gtk_label_set_text(GTK_LABEL(get_pk), label);
   }
 
   return G_SOURCE_CONTINUE;
@@ -440,7 +440,7 @@ static void enable_cb(GtkWidget *widget, gpointer data) {
       if ( transmitter->auto_on) {
         char label[16];
         snprintf(label, sizeof(label), "%d", transmitter->attenuation);
-        gtk_entry_set_text(GTK_ENTRY(tx_att), label);
+        gtk_label_set_text(GTK_LABEL(tx_att), label);
         gtk_widget_show(tx_att);
         gtk_widget_hide(tx_att_spin);
       } else {
@@ -451,7 +451,7 @@ static void enable_cb(GtkWidget *widget, gpointer data) {
     } else {
       gtk_widget_hide(tx_att_spin);
       gtk_widget_show(tx_att);
-      gtk_entry_set_text(GTK_ENTRY(tx_att), "");
+      gtk_label_set_text(GTK_LABEL(tx_att), "");
     }
   }
 }
@@ -505,7 +505,7 @@ static void auto_cb(GtkWidget *widget, gpointer data) {
       //
       char label[16];
       snprintf(label, sizeof(label), "%d", transmitter->attenuation);
-      gtk_entry_set_text(GTK_ENTRY(tx_att), label);
+      gtk_label_set_text(GTK_LABEL(tx_att), label);
       gtk_widget_show(tx_att);
       gtk_widget_hide(tx_att_spin);
     } else {
@@ -522,7 +522,7 @@ static void auto_cb(GtkWidget *widget, gpointer data) {
   } else {
     gtk_widget_show(tx_att);
     gtk_widget_hide(tx_att_spin);
-    gtk_entry_set_text(GTK_ENTRY(tx_att), "");
+    gtk_label_set_text(GTK_LABEL(tx_att), "");
   }
 }
 
@@ -705,7 +705,7 @@ void ps_menu(GtkWidget *parent) {
       break;
 
     case 5:
-      snprintf(text, sizeof(text), "cor.cnt");
+      snprintf(text, sizeof(text), "corr.cnt");
       break;
 
     case 6:
@@ -728,12 +728,11 @@ void ps_menu(GtkWidget *parent) {
     if (display) {
       GtkWidget *lbl = gtk_label_new(text);
       gtk_widget_set_name(lbl, "boldlabel");
-      entry[i] = gtk_entry_new();
-      gtk_entry_set_max_length(GTK_ENTRY(entry[i]), 10);
       gtk_grid_attach(GTK_GRID(grid), lbl, col, row, 1, 1);
       col++;
+      entry[i] = gtk_label_new("");
+      gtk_widget_set_name(entry[i], "small_button_with_border");
       gtk_grid_attach(GTK_GRID(grid), entry[i], col, row, 1, 1);
-      gtk_entry_set_width_chars(GTK_ENTRY(entry[i]), 10);
       col++;
 
       if (col >= 6) {
@@ -751,9 +750,9 @@ void ps_menu(GtkWidget *parent) {
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_grid_attach(GTK_GRID(grid), lbl, col, row, 1, 1);
   col++;
-  get_pk = gtk_entry_new();
+  get_pk = gtk_label_new("");
   gtk_grid_attach(GTK_GRID(grid), get_pk, col, row, 1, 1);
-  gtk_entry_set_width_chars(GTK_ENTRY(get_pk), 10);
+  gtk_widget_set_name(get_pk, "small_button_with_border");
   col++;
   lbl = gtk_label_new("SetPk");
   gtk_widget_set_name(lbl, "boldlabel");
@@ -770,11 +769,11 @@ void ps_menu(GtkWidget *parent) {
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_grid_attach(GTK_GRID(grid), lbl, col, row, 1, 1);
   col++;
-  tx_att = gtk_entry_new();
+  tx_att = gtk_label_new("");
+  gtk_widget_set_name(tx_att, "small_button_with_border");
   gtk_grid_attach(GTK_GRID(grid), tx_att, col, row, 1, 1);
   snprintf(text, sizeof(text), "%d", transmitter->attenuation);
-  gtk_entry_set_text(GTK_ENTRY(tx_att), text);
-  gtk_entry_set_width_chars(GTK_ENTRY(tx_att), 10);
+  gtk_label_set_text(GTK_LABEL(tx_att), text);
 
   if (device == DEVICE_HERMES_LITE2 || device == NEW_DEVICE_HERMES_LITE2) {
     tx_att_spin = gtk_spin_button_new_with_range(-29.0, 31.0, 1.0);
