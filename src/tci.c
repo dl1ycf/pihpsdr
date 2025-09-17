@@ -816,8 +816,8 @@ static gpointer tci_listener(gpointer data) {
   int offset = 0;
   unsigned char buff [MAXDATASIZE];
   char msg [MAXDATASIZE];
-  const int ARGLEN = 16;
   int argc;
+#define ARGLEN 16
   char *arg[ARGLEN];
   //
   // Send initial state info to client
