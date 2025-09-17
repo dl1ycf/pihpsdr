@@ -2999,15 +2999,13 @@ and 7101 kHz, are transmitted. If both carriers contain 25W power, this is
 a 100W PEP signal. Non-linearity of the PA first lead to the occurrence of harmonics
 (in this case around 14.2, 21.3, and 28.4 MHz). This is not a problem because
 such harmonics are  damped by the TX low-pass filters. Higher-order non-linear effects,
-however, lead to additional in-band signals, in our example they occur at
-7102/7099, 7103/7098 etc. kHz. The low-pass filters cannot eliminate these signals,
+however, lead to additional \textit{in-band} signals that cannot be filtered out.
+In our example they occur at
+7102/7099, 7103/7098 etc. kHz. Since these signals cannot be filtered out,
 they lead to unwanted signals (,,splatter'') that disturb QSOs on neighbouring
 frequencies. With PureSignal, you can greatly reduce these unwanted signals.
 If you open the \bltt{PS} menu for the first time it looks like shown in Fig.
 \ref{fig:PSMenu}.
-
-
-
 The elements have the following function:
 
 \rett{Enable PS}. With this check box, PS can be enabled/disabled.
@@ -3072,27 +3070,6 @@ However, if something changes (e.g. output power, or the finals get warm, etc.) 
 calibration is probably no longer valid but still kept. So unless you have good reason,
 do not use the \rett{OneShot} option.
 
-
-\rett{Feedback Lvl}. When doing a PS calibration through a two-tone experiment, this string
-turns red if the feedback level is good. It turns yellow if the feedback level is slightly
-to weak and read if it is too weak. A blue colour indicates a too string feedback level.
-The feedback level reported by the PS calibration algorithm is further reported in the
-,,feedbk'' field. The optimum value is about 154.
-
-\rett{Correcting}. When doing a PS calibration through a two-tone experiment, this string
-is green if calibration was successful and PS correction takes place, and the string is
-red if no good calibration could be made.
-
-\rett{TX ATT}. This element can occur both as a text field or as a spin button.
-If PURESIGNAL is enabled while \rett{Auto Attenuate} is not enabled, it is a spin button with which
-you can manually adjust the RF attenuation. For normal HPSDR radios, this is a value
-between 0 and 31, other radios such as the HermesLite have an extended range from
--29 to 31. If the feedback level is too strong, this value must be increased, if it
-is too strong, it must be decreased. It is, however, recommended to enable \rett{Auto Attenuate}.
-In this case, the \rett{TX ATT} just shows the current attenuation.
-Note that if \texttt{PURESIGNAL} is not enabled, the RF input attenuators
-will automatically be set to maximum attenuation while transmitting with the PA enabled.
-
 \rett{SetPk}. This field shows the currently assumed value of the peak value of the TX DAC
 feedback signal. \pH chooses is automatically, depending on the radio hardware.
 The standard value for Protocol-1 and Protocol-2 radios are 0.407 and 0.290. Notable exceptions are
@@ -3116,6 +3093,41 @@ or the correct value is again entered in the \rett{SetPk} field. This \textit{ca
 applies if you upgrade your radio firmware from protocol-1 to protocol-2, since then your props
 file still contains the correct protocol-1 value (0.4067) and you have
 to manually modify the \rett{SetPk} value (in this case, to 0.2899).
+
+\rett{TX ATT}. This element can occur both as a text field or as a spin button.
+If PURESIGNAL is enabled while \rett{Auto Attenuate} is \textit{not} enabled, it is a spin button with which
+you can manually adjust the RF attenuation. For normal HPSDR radios, this is a value
+between 0 and 31, other radios such as the HermesLite have an extended range from
+-29 to 31. If the feedback level is too strong, this value must be increased, if it
+is too strong, it must be decreased. It is, however, recommended to enable \rett{Auto Attenuate}.
+In this case, the \rett{TX ATT} field is a text field that shows the current attenuation.
+Note that if \texttt{PURESIGNAL} is not enabled, the RF input attenuators
+will automatically be set to maximum attenuation while transmitting with the PA enabled.
+
+All other fields are not meant for user input, they just give information on the status
+of the \texttt{PURESIGNAL} engine.
+
+\rett{Feedback Lvl}. When doing a PS calibration through a two-tone experiment, this string
+turns red if the feedback level is good. It turns yellow if the feedback level is slightly
+to weak and read if it is too weak. A blue colour indicates a too strong feedback level.
+The feedback level reported by the PS calibration algorithm is further reported in the
+\rett{feedbk} field. The optimum value is about 154.
+
+\rett{Correcting}. When doing a PS calibration through a two-tone experiment, this string
+is green if calibration was successful and PS correction takes place, and the string is
+red if no good calibration could be made.
+
+The other fields give more information on the \texttt{PURESIGNAL} engine, consult the
+WDSP manual. Noteworthy is the \rett{GetPk} field, that reports the maximum amplitude
+seen in the TX feedback samples. This value remains blank or zero until PS starts working.
+It should be close (ideally, slightly below) the value in the \texttt{SetPk} field.
+If not, then you either have non-standard hardware where \pH does not have a good
+default SetPK value, or the default value has been modified (probably upon startup
+when reading the props file). The field \rett{corr.cnt} shows a running count of corrections
+made during the two-tone experiment. When PS is working, this number should be constantly
+increasing. The \rett{status} field shows the current states of
+the PS engine, which is cycling during normal operation. If the PS engine is halted, 
+the status becomes \bltt{Reset}.
 
 \begin{figure}[t!]
 \center
@@ -3153,9 +3165,12 @@ two peaks on the TX pan-adapter during the two-tone experiment.
 \end{figure}
 
 To demonstrate how PURESIGNAL works, I show an example performed with a Hermes\-Lite-II
-radio running Protocol-1. The radio runs at a sample rate of 96 kHz, since it is my
+radio running Protocol-1. The radio runs at a sample rate of 192 kHz, since it is my
 experience that PURESIGNAL does not work too well in Protocol-1 when it is run
-at 48 kHz. I also activated the optional ``peak labelling''
+at 48 kHz (with 96 or 192 kHz I never see such problems). Note that for Protocol-2 radios
+the PURSESIGNAL engine runs at the fixed TX sample rate (192 kHz) and is completely independent
+on the sample rate of the receiver(s).
+I also activated the optional ``peak labelling''
 in the \bltt{TX Menu} such that the four main peaks heights are also printed
 (in dBm) on the screen. Checking both \rett{Enable PS} and
 \rett{Auto Attenuation}, and hitting the \rett{Two Tone} button, it needs only few
@@ -3163,8 +3178,8 @@ seconds to stabilise and then Fig. \ref{fig:PSnomon} results, where the TX
 spectrum scope and the PS menu window have been arranged such that they do
 not cover each other. Although both the PS menu and the spectrum scope state
 that PS is working and correcting, the signal does not look good: a two-tone
-signal should only have two peaks, but here one sees the two main peaks at $-7$ dBm
-and two IM3 satellites at about $-43$ dBm (this amounts to an IM3 value of only $-36$ dBc).
+signal should only have two peaks, but here one sees the two main peaks at $-6$ dBm
+and two IM3 satellites at about $-41$ dBm (this amounts to an IM3 value of only $-35$ dBc).
 The reason for this seemingly bad performance is of course, that the TX spectrum scope
 normally shows the signal that is \textit{sent} to the PA, so we see a signal that
 is distorted on purpose, and magically
@@ -3174,15 +3189,15 @@ is actually transmitting, one must
 activate the \rett{MON} button such that it is highlighted.
 This is shown in Fig. \ref{fig:PSmon}, where one sees the
 feedback signal, that is, what the PA sends to the antenna.
-This is a much cleaner two-tone signal (the IM3 value is about $-50$ dBc).
+This is a much cleaner two-tone signal (the IM3 value is about $-57$ dBc).
 To demonstrate how effective the PS algorithm is,
 I have pushed the \rett{OFF} button which stops the PureSignal correction, the result
 is shown in Fig. \ref{fig:PSoff}. After hitting that button, IM3 satellites immediately
 grow and IM3 decreases to
 about $-35$ dBc which reflects the intrinsic
 non-linearity of the PA.
-Note that this is still a quite acceptable value.
-Unless you have a class-A amplifier, your PA probably won't be much better.
+Note that this is still a quite acceptable value:
+unless you have a class-A amplifier, your PA probably won't be much better.
 This experiment demonstrates that adaptive pre-distortion is a mechanism that allows you to produce a clean
 signal with a quality that would be impossible (or \textit{very} difficult) to achieve
 with traditional hardware.
