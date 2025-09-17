@@ -2362,12 +2362,6 @@ void tx_ps_getmx(TRANSMITTER *tx) {
   GetPSMaxTX(tx->id, &tx->ps_getmx);
 }
 
-// cppcheck-suppress constParameterPointer
-void tx_ps_getpk(TRANSMITTER *tx) {
-  ASSERT_SERVER();
-  GetPSHWPeak(tx->id, &tx->ps_getpk);
-}
-
 void tx_ps_mox(const TRANSMITTER *tx, int state) {
   ASSERT_SERVER();
   SetPSMox(tx->id, state);

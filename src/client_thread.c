@@ -512,7 +512,6 @@ static void *client_thread(void* arg) {
 
         transmitter->attenuation = from_short(data.attenuation);
         transmitter->ps_getmx = from_double(data.ps_getmx);
-        transmitter->ps_getpk = from_double(data.ps_getpk);
       }
     }
     break;

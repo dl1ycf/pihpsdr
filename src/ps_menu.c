@@ -40,8 +40,6 @@ static GtkWidget *set_pk;
 static GtkWidget *tx_att;
 static GtkWidget *tx_att_spin;
 
-static char   pk_text[16];
-
 //
 // Todo: create buttons to change PS 2.0 values
 //
@@ -109,13 +107,11 @@ static void att_spin_cb(GtkWidget *widget, gpointer data) {
 
 static void setpk_cb(GtkWidget *widget, gpointer data) {
   double newpk = -1.0;
-  const gchar *text;
-  text = gtk_entry_get_text(GTK_ENTRY(widget));
-  sscanf(text, "%lf", &newpk);
+  char text[16];
+  sscanf(gtk_entry_get_text(GTK_ENTRY(widget)), "%lf", &newpk);
 
-  if (newpk > 0.01 && newpk < 1.01 && fabs(newpk - transmitter->ps_getpk) > 0.001) {
+  if (newpk > 0.01 && newpk < 1.01 && fabs(newpk - transmitter->ps_setpk) > 0.001) {
     transmitter->ps_setpk = newpk;
-    transmitter->ps_getpk = newpk;
 
     if (radio_is_remote) {
       send_psparams(client_socket, transmitter);
@@ -124,10 +120,12 @@ static void setpk_cb(GtkWidget *widget, gpointer data) {
       ps_off_on();
     }
   }
-
-  // Display new value
-  snprintf(pk_text, sizeof(pk_text), "%6.3f", transmitter->ps_getpk);
-  gtk_entry_set_text(GTK_ENTRY(set_pk), pk_text);
+  //
+  // If an illegal value has been typed in, ps_setpk remains unchanged
+  // so we have to update the value in the text field of the entry
+  //
+  snprintf(text, sizeof(text), "%6.3f", transmitter->ps_setpk);
+  gtk_entry_set_text(GTK_ENTRY(set_pk), text);
 }
 
 static void clear_fields() {
@@ -761,14 +759,9 @@ void ps_menu(GtkWidget *parent) {
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_grid_attach(GTK_GRID(grid), lbl, col, row, 1, 1);
   col++;
-
-  if (!radio_is_remote) {
-    tx_ps_getpk(transmitter);
-  }
-
-  snprintf(pk_text, sizeof(pk_text), "%6.3f", transmitter->ps_getpk);
   set_pk = gtk_entry_new();
-  gtk_entry_set_text(GTK_ENTRY(set_pk), pk_text);
+  snprintf(text, sizeof(text), "%6.3f", transmitter->ps_setpk);
+  gtk_entry_set_text(GTK_ENTRY(set_pk), text);
   gtk_grid_attach(GTK_GRID(grid), set_pk, col, row, 1, 1);
   gtk_entry_set_width_chars(GTK_ENTRY(set_pk), 10);
   g_signal_connect(set_pk, "activate", G_CALLBACK(setpk_cb), NULL);

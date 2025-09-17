@@ -96,7 +96,6 @@ typedef struct _transmitter {
 
   int psinfo[16];
   double ps_getmx;
-  double ps_getpk;
   double ps_setpk;
   // PS 2.0 parameters
   double ps_ampdelay;

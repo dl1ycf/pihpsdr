@@ -717,7 +717,6 @@ typedef struct __attribute__((__packed__)) _ps_data {
   HEADER header;
   uint16_t psinfo[16];
   uint16_t attenuation;
-  mydouble ps_getpk;
   mydouble ps_getmx;
 } PS_DATA;
 

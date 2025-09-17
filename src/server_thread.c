@@ -114,8 +114,6 @@ static int send_periodic_data(gpointer arg) {
       }
 
       ps_data.attenuation = to_short(transmitter->attenuation);
-      tx_ps_getpk(transmitter);
-      ps_data.ps_getpk = to_double(transmitter->ps_getpk);
       tx_ps_getmx(transmitter);
       ps_data.ps_getmx = to_double(transmitter->ps_getmx);
       send_bytes(remoteclient.socket, (char *)&ps_data, sizeof(PS_DATA));
