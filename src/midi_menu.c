@@ -49,7 +49,7 @@ static GtkWidget *dialog = NULL;
 
 static GtkListStore *store;
 static GtkWidget *view;
-static GtkWidget *scrolled_window = NULL;
+static GtkWidget *sw = NULL;
 static gulong selection_signal_id;
 static GtkTreeModel *model;
 static GtkTreeIter iter;
@@ -398,8 +398,8 @@ static void add_store(int key, const struct desc *cmd) {
                      BSTR_COLUMN, ActionTable[cmd->action].button_str,
                      -1);
 
-  if (scrolled_window != NULL) {
-    GtkAdjustment *adjustment = gtk_scrolled_window_get_vadjustment (GTK_SCROLLED_WINDOW(scrolled_window));
+  if (sw != NULL) {
+    GtkAdjustment *adjustment = gtk_scrolled_window_get_vadjustment (GTK_SCROLLED_WINDOW(sw));
 
     //t_print("%s: adjustment=%f lower=%f upper=%f\n",__FUNCTION__,gtk_adjustment_get_value(adjustment),gtk_adjustment_get_lower(adjustment),gtk_adjustment_get_upper(adjustment));
     if (gtk_adjustment_get_value(adjustment) != 0.0) {
@@ -679,13 +679,12 @@ void midi_menu(GtkWidget *parent) {
   g_signal_connect(ignore_b, "toggled", G_CALLBACK(ignore_cb), NULL);
   row++;
   col = 0;
-  scrolled_window = gtk_scrolled_window_new (NULL, NULL);
-  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_window), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-  height = display_height[display_size] - 180 -  15 * ((n_midi_devices + 1) / 3);
-
-  if (height > 400) { height = 400; }
-
-  gtk_widget_set_size_request(scrolled_window, 400, height);
+  sw= gtk_scrolled_window_new (NULL, NULL);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  //Set scrollbar to ALWAYS be displayed and not as temporary overlay
+  g_object_set(sw , "overlay-scrolling", FALSE , NULL);
+  height = 300 -  15 * ((n_midi_devices + 1) / 3);
+  gtk_widget_set_size_request(sw, 400, height);
   view = gtk_tree_view_new();
   renderer = gtk_cell_renderer_text_new();
   gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(view), -1, "Event", renderer, "text", EVENT_COLUMN, NULL);
@@ -701,8 +700,8 @@ void midi_menu(GtkWidget *parent) {
                              G_TYPE_STRING, G_TYPE_STRING);
   load_store();
   gtk_tree_view_set_model(GTK_TREE_VIEW(view), GTK_TREE_MODEL(store));
-  gtk_container_add(GTK_CONTAINER(scrolled_window), view);
-  gtk_grid_attach(GTK_GRID(grid), scrolled_window, col, row, 5, 10);
+  gtk_container_add(GTK_CONTAINER(sw), view);
+  gtk_grid_attach(GTK_GRID(grid), sw, col, row, 5, 10);
   model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
   g_signal_connect(model, "row-inserted", G_CALLBACK(row_inserted_cb), NULL);
   GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));

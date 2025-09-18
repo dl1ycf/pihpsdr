@@ -3126,7 +3126,7 @@ default SetPK value, or the default value has been modified (probably upon start
 when reading the props file). The field \rett{corr.cnt} shows a running count of corrections
 made during the two-tone experiment. When PS is working, this number should be constantly
 increasing. The \rett{status} field shows the current states of
-the PS engine, which is cycling during normal operation. If the PS engine is halted, 
+the PS engine, which is cycling during normal operation. If the PS engine is halted,
 the status becomes \bltt{Reset}.
 
 \begin{figure}[t!]
@@ -3560,7 +3560,9 @@ as long as you are TUNE-ing with \pH. Besides the \bltt{Tune} command,
 there are the \bltt{Tune Full} and \bltt{Tune Mem} commands which are
 functionally equivalent, except that the open collector tuning pattern
 is removed for \bltt{Tune Full} after the full tune delay, and for \bltt{Tune Mem}
-after the memory tune delay, which can also be specified in this menu.
+after the memory tune delay, which can also be specified in this menu
+(spin-buttons below \rett{Full Tune(ms)} and \rett{Memory Tune(ms)},
+the values are in milli-seconds).
 This can be used to send tuning pulsed of varying length to the
 external automatic tuner at the beginning of the tuning. If the open collector
 outputs are not used, or if the \rett{TuneBits}  are all unchecked, there is
@@ -3575,7 +3577,10 @@ case if you are working with a HermesLite-II radio). This means that
 you \textit{can} change the \bltt{OC} patterns when using the \texttt{N2ADR} filter board
 (e.g. for experimental purposes), but
 these changes are lost once you select another filter board and then select \texttt{N2ADR} again,
-and also upon the next program start.
+and also upon the next program start. At the right margin of the menu, you see a scroll bar
+and you usually need to scroll down to see/modify the OC settings for the upper bands:
+at the bottom of Fig. \ref{fig:OCMenu} you see the settings for the 12m band but when you
+scroll down, those for the 10m and 6m band (and possibly transverter bands) also appear.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -3606,8 +3611,8 @@ configured via the Toolbar menu.
 We start with the "Toolbar" menu, that can be found at the top of the rightmost
 column in the main menu. The toolbar consists of eight buttons that can be assigned
 to a set of eight functions. There are six such sets, and pressing the rightmost button
-of the toolbar cycles through these six sets. The text on the rightmost toolbar button, \rett{FNC(0)}, indicates which
-layer is currently active.
+of the toolbar cycles through these six sets. The text on the rightmost toolbar button, \rett{FNC(x)}, indicates which
+layer (x runs from 0 to 5)is currently active.
 
 \begin{figure}[ht!]
 \center
@@ -3618,29 +3623,19 @@ layer is currently active.
 
 If the \bltt{Toolbar} menu is opened, it looks like Fig. \ref{fig:ToolbarMenu1}.
 The rows correspond to the six different layers, and the rightmost button in each
-row indicates to which layer this row belongs.
-If one now clicks (just an example)
-the \texttt{CTUN} button (third button in the second row) a ,,command dialog'' pops up that looks as
+row indicates to which layer this row belongs. Now imagine we want to replace
+the \bltt{CTUN} command by \bltt{Duplex} in the row \rett{FNC(1)}. To this end
+we click the \bltt{CTUN} button (the third from the left in the row \rett{FNC(1)}) and
+a   ,,command dialog'' pops up that looks as
 in Fig. \ref{fig:ToolbarMenu2}.
 
 
 \begin{figure}[ht!]
 \center
 \includegraphics[scale=0.45]{ToolbarMenu3.png}
-\caption{Just selected \texttt{Band20}.}
+\caption{Just selected \texttt{Duplex}.}
 \label{fig:ToolbarMenu3}
 \end{figure}
-
-The current command selected (\texttt{CTUN}) is high-lighted. Lists of possible commands can be rather long,
-so it might be necessary that you have to scroll up or down in such an command dialog until you have
-found what you were looking for. Now (again just an example) the button \texttt{Band 20} has been clicked
-in the command dialog, such that it gets high-lighted (Fig. \ref{fig:ToolbarMenu3}).
-
-If one now closes the command dialog by clicking the \texttt{OK} button, the command select menu
-closes and on sees that in the toolbar menu now reappearing (Fig. \ref{fig:ToolbarMenu4}), the third button
-in the second
-line of the toolbar menu has changed, it now gives the short text (\texttt{20}) of the command, which will
-switch the active receiver to the 20m band (see the explanation of all the commands in Appendix A).
 
 \begin{figure}[ht!]
 \center
@@ -3649,27 +3644,20 @@ switch the active receiver to the 20m band (see the explanation of all the comma
 \label{fig:ToolbarMenu4}
 \end{figure}
 
-You also see that the toolbar itself has not changed, because we have just changed the \texttt{FNC(1)} set,
-while currently the \texttt{FNC(0)} set is active. If one now, however, clicks the rightmost
-toolbar button with the text \texttt{FNC(0)} one advances to the next set and the toolbar labels
-are updated (Fig. \ref{fig:ToolbarMenu5}).
+Note the scroll-bar at the right of this menu, since without scrolling it would be very tall.
+The current command selected (\texttt{CTUN}) is high-lighted (you may need to scroll down
+to see it). Then click the button labelled with \bltt{Duplex} (in this example you can
+already see it, but again it may be necessary to scroll down). After clicking the desired
+button, that one gets highlighted (Fig. \ref{fig:ToolbarMenu3}).
+If one now closes the command dialog by clicking the \texttt{OK} button, the command select menu
+closes and on sees that in the toolbar menu now reappearing (Fig. \ref{fig:ToolbarMenu4}), the third button
+in the line \rett{FNC(1)} has changed,
+it now gives the short text (\texttt{DUP}) of the \bltt{Duplex} command. You can also see
+that the \rett{FNC(1)} toolbar at the bottom of the screen has adopted the change, so
+after closing the toolbar menu you can enable/disable \bltt{Duplex} with just one mouse click,
+without first opening the \bltt{Radio} menu.
 
-\begin{figure}[ht!]
-\center
-\includegraphics[scale=0.45]{ToolbarMenu5.png}
-\caption{The new \texttt{F1} layer is operative.}
-\label{fig:ToolbarMenu5}
-\end{figure}
 
-It can be seen that the text of the first seven toolbar buttons has changed to reflect
-the functions of the \texttt{F1} set, and also the rightmost button (which is always mapped
-to \bltt{Function}) has changed to \texttt{FNC(1)} in order to indicate the \texttt{F1}
-layer is now active. For mouse users (only), a secondary click on the rightmost toolbar
-button cycles through the layers in in reverse order.
-
-Note that it is not possible to change the assignment of the  rightmost button of the toolbar,
-it will always be assigned to \bltt{Function}, since if one has no access to this
-function, one is stuck and can no longer cycle through the function layers.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{Sliders} Menu}
@@ -3685,6 +3673,16 @@ function, one is stuck and can no longer cycle through the function layers.
 The sliders lets you assign function to the nine sliders in the 3x3 Sliders area. It does not matter
 how many slider rows (0 to 3) are actually shown, you can assign a function to all nine sliders
 using the same type of dialog used for assigning functions to toolbar buttons (see previous section).
+
+For example, a CW operator usually does not need to adjust the Mic gain, the TX compressor, the Squelch
+level or the VOX threshold. But
+this operator may find it convenient to have a slider at hand that adjusts the CW speed. With an
+individually configured Slider area, it should be possible to have only two rows of sliders on display
+in most situations. It is possible to assign the same function to more than one slider, but a given
+function will only be assigned to one slider (the first one if going throught the sliders row-wise).
+So in case of a duplicate assignment, the second slider position will just be empty.
+Note that RF gain and Attenuation are mutually exclusive, since a given radio either has a programmable
+RF gain (HermesLite-II, RadioBerry, SoapySDR radios) or a programmable attenuator (most HPSDR radios).
 
 The functions, as all \pH functions, are described in Appendix \ref{sec:commandlist} but for
 the convenience of the reader, those functions which can be assigned to sliders in the Slider area
@@ -3715,15 +3713,7 @@ slider, there appears a check-box that enables or disables squelch.}
 \item[\rett{Zoom}]{(Zoom) The ZOOM value for the panadapter of the active receiver.}
 \end{itemize}
 
-For example, a CW operator usually does not need to adjust the Mic gain, the TX compressor, the Squelch
-level or the VOX threshold. But
-this operator may find it convenient to have a slider at hand that adjusts the CW speed. With an
-individually configured Slider area, it should be possible to have only two rows of sliders on display
-in most situations. It is possible to assign the same function to more than one slider, but a given
-function will only be assigned to one slider (the first one if going throught the sliders row-wise).
-So in case of a duplicate assignment, the second slider position will just be empty.
-Note that RF gain and Attenuation are mutually exclusive, since a given radio either has a programmable
-RF gain (HermesLite-II, RadioBerry, SoapySDR radios) or a programmable attenuator (most HPSDR radios).
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{CAT/TCI} Menu}
 
@@ -7028,7 +7018,7 @@ namely
 \end{itemize}
 
 Case a) requires that the check box \rett{CW handled in Radio} within the \bltt{CW} menu
-is active. On the other hand, cases b) and c) require that this box is inactive. 
+is active. On the other hand, cases b) and c) require that this box is inactive.
 Because it is very difficult to get a CW side tone with very small latency from
 within \pH, these to cases are not recommended.
 Cases
@@ -7104,7 +7094,7 @@ All lines are active-low lines with a pull-up, so the active state is reached
 by connecting the input line to ground. See Appendix \ref{sec:commandlist} for
 an explanation of the commands. Briefly, use \bltt{CW Left} and \bltt{CW Right}
 when using the \pH internal iambic keyer, and use \bltt{PTT (keyer)} and
-\bltt{CW Key (keyer)} when using an external keyer. 
+\bltt{CW Key (keyer)} when using an external keyer.
 The external keyer must generate both a key-down and a PTT signal, and it must be configured
 such that the PTT signal arrives earlier than the first key-down. The required time
 delay between PTT and the first key-down depends  on how fast \pH can do the

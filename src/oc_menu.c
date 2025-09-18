@@ -145,7 +145,12 @@ void oc_menu(GtkWidget *parent) {
   GtkWidget *sw = gtk_scrolled_window_new (NULL, NULL);
   //gtk_widget_set_size_request(sw, 600, 400);
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-  GtkWidget *viewport = gtk_viewport_new(NULL, NULL);
+  //
+  // For some reason, the get_preferred_size below does not work until
+  // setting propagation of natural widths to FALSE
+  //
+  gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(sw), TRUE);
+  gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(sw), TRUE);
   GtkWidget *grid = gtk_grid_new();
   gtk_grid_set_column_spacing (GTK_GRID(grid), 10);
   GtkWidget *close_b = gtk_button_new_with_label("Close");
@@ -157,16 +162,19 @@ void oc_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), lbl, 0, 1, 1, 1);
   lbl = gtk_label_new("Rx");
   gtk_widget_set_name(lbl, "boldlabel");
-  gtk_grid_attach(GTK_GRID(grid), lbl, 4, 1, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), lbl, 1, 1, 7, 1);
+  lbl = gtk_label_new(" ");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), lbl, 8, 1, 1, 1);
   lbl = gtk_label_new("Tx");
   gtk_widget_set_name(lbl, "boldlabel");
-  gtk_grid_attach(GTK_GRID(grid), lbl, 11, 1, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), lbl, 9, 1, 7, 1);
   lbl = gtk_label_new("TuneBits");
-  gtk_grid_attach(GTK_GRID(grid), lbl, 15, 1, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), lbl, 16, 1, 1, 1);
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_CENTER);
   lbl = gtk_label_new("(ORed with TX)");
-  gtk_grid_attach(GTK_GRID(grid), lbl, 15, 2, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), lbl, 16, 2, 1, 1);
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_CENTER);
 
@@ -178,7 +186,7 @@ void oc_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(grid), lbl, i, 2, 1, 1);
     lbl = gtk_label_new(oc_id);
     gtk_widget_set_name(lbl, "boldlabel");
-    gtk_grid_attach(GTK_GRID(grid), lbl, i + 7, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), lbl, i + 8, 2, 1, 1);
   }
 
   int bands = radio_max_band();
@@ -208,7 +216,7 @@ void oc_menu(GtkWidget *parent) {
         g_signal_connect(oc_rx_b, "toggled", G_CALLBACK(oc_rx_cb), GINT_TO_POINTER(j + (i << 4)));
         GtkWidget *oc_tx_b = gtk_check_button_new();
         gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (oc_tx_b), (band->OCtx & mask) == mask);
-        gtk_grid_attach(GTK_GRID(grid), oc_tx_b, j + 7, row, 1, 1);
+        gtk_grid_attach(GTK_GRID(grid), oc_tx_b, j + 8, row, 1, 1);
         g_signal_connect(oc_tx_b, "toggled", G_CALLBACK(oc_tx_cb), GINT_TO_POINTER(j + (i << 4)));
       }
 
@@ -236,50 +244,56 @@ void oc_menu(GtkWidget *parent) {
     GtkWidget *oc_tune_b = gtk_check_button_new_with_label(oc_id);
     gtk_widget_set_name(oc_tune_b, "boldlabel");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (oc_tune_b), (OCtune & mask) == mask);
-    gtk_grid_attach(GTK_GRID(grid), oc_tune_b, 15, j + 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), oc_tune_b, 16, j + 2, 1, 1);
     gtk_widget_set_halign(oc_tune_b, GTK_ALIGN_CENTER);
     g_signal_connect(oc_tune_b, "toggled", G_CALLBACK(oc_tune_cb), GINT_TO_POINTER(j));
   }
 
   j = 10;
-  lbl = gtk_label_new("Full Tune(ms):");
+  lbl = gtk_label_new("Full Tune (ms)");
   gtk_widget_set_name(lbl, "boldlabel");
-  gtk_grid_attach(GTK_GRID(grid), lbl, 15, j, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), lbl, 16, j, 1, 1);
   j++;
   GtkWidget *oc_full_tune_time_b = gtk_spin_button_new_with_range(750.0, 9950.0, 50.0);
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(oc_full_tune_time_b), (double)OCfull_tune_time);
-  gtk_grid_attach(GTK_GRID(grid), oc_full_tune_time_b, 15, j, 1, 2);
+  gtk_grid_attach(GTK_GRID(grid), oc_full_tune_time_b, 16, j, 1, 2);
   g_signal_connect(oc_full_tune_time_b, "value_changed", G_CALLBACK(oc_full_tune_time_cb), NULL);
   j++;
   j++;
-  lbl = gtk_label_new("Memory Tune(ms):");
+  lbl = gtk_label_new("Memory Tune (ms)");
   gtk_widget_set_name(lbl, "boldlabel");
-  gtk_grid_attach(GTK_GRID(grid), lbl, 15, j, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), lbl, 16, j, 1, 1);
   j++;
   GtkWidget *oc_memory_tune_time_b = gtk_spin_button_new_with_range(250.0, 9950.0, 50.0);
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(oc_memory_tune_time_b), (double)OCmemory_tune_time);
-  gtk_grid_attach(GTK_GRID(grid), oc_memory_tune_time_b, 15, j, 1, 2);
+  gtk_grid_attach(GTK_GRID(grid), oc_memory_tune_time_b, 16, j, 1, 2);
   g_signal_connect(oc_memory_tune_time_b, "value_changed", G_CALLBACK(oc_memory_tune_time_cb), NULL);
-  gtk_container_add(GTK_CONTAINER(viewport), grid);
-  gtk_container_add(GTK_CONTAINER(sw), viewport);
+  gtk_container_add(GTK_CONTAINER(sw), grid);
   gtk_container_add(GTK_CONTAINER(content), sw);
+  gtk_widget_show_all(content);
+  //
+  // Determine the size without scrolling.
+  // Add 25 pix for the scroll bar
+  //
+  gtk_widget_get_preferred_size(sw, &min, &nat);
+  width  = nat.width + 25;
+  height = nat.height;
+  //
+  // Limit the window to 750*430
+  //
+  if (width  > 750) { width = 750; }
+
+  if (height > 430) { height = 430; }
+
+  //
+  // For some reason, the set_size_request below doew not work until
+  // setting propagation of natural widths to FALSE
+  //
+  gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(sw), FALSE);
+  gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(sw), FALSE);
+  gtk_widget_set_size_request(sw, width, height);
+
   gtk_widget_show_all(dialog);
   sub_menu = dialog;
-  //
-  // Look how large the scrolled window is! If it is too large for the
-  // screen, shrink it. But for large screens we can avoid scrolling by
-  // making the dialog just large enough
-  //
-  gtk_widget_get_preferred_size(viewport, &min, &nat);
-  width  = nat.width;
-  height = nat.height;
-
-  if (nat.height > display_height[display_size]) {
-    height = display_height[display_size] - 50;
-    width += 25;  // This accounts for the scroll bar
-  }
-
-  gtk_widget_set_size_request(viewport, nat.width, height);
-  gtk_widget_set_size_request(sw, width, height);
 }
 

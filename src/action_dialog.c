@@ -21,6 +21,7 @@
 
 #include "actions.h"
 #include "main.h"
+#include "message.h"
 
 #define GRID_WIDTH 6
 
@@ -57,8 +58,16 @@ int action_dialog(GtkWidget *parent, int filter, enum ACTION currentAction) {
   dialog = gtk_dialog_new_with_buttons("Action", GTK_WINDOW(parent), GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
                                        ("_OK"), GTK_RESPONSE_ACCEPT, ("_Cancel"), GTK_RESPONSE_REJECT, NULL);
   GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-  GtkWidget *scrolled_window = gtk_scrolled_window_new(NULL, NULL);
-  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_window), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  GtkWidget *sw = gtk_scrolled_window_new(NULL, NULL);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  //Set scrollbar to ALWAYS be displayed and not as temporary overlay
+  g_object_set(sw , "overlay-scrolling", FALSE , NULL);
+  //
+  // For some reason, the get_preferred_size below does not work until
+  // setting propagation of natural widths to FALSE
+  //
+  gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(sw), TRUE);
+  gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(sw), TRUE);
   GtkWidget *grid = gtk_grid_new();
   gtk_grid_set_column_spacing(GTK_GRID(grid), 2);
   gtk_grid_set_row_spacing(GTK_GRID(grid), 2);
@@ -99,32 +108,31 @@ int action_dialog(GtkWidget *parent, int filter, enum ACTION currentAction) {
     }
   }
 
-  if (row > 3) {
-    gtk_widget_set_size_request(scrolled_window, 750, 400);
-  } else {
-    // This is for the Sliders menu
-    gtk_widget_set_size_request(scrolled_window, 750, 150);
-  }
-
-  gtk_container_add(GTK_CONTAINER(scrolled_window), grid);
-  gtk_container_add(GTK_CONTAINER(content), scrolled_window);
+  gtk_container_add(GTK_CONTAINER(sw), grid);
+  gtk_container_add(GTK_CONTAINER(content), sw);
   gtk_widget_show_all(content);
   //
-  // Look how large the scrolled window is! If it is too large for the
-  // screen, shrink it. But for large screens we can avoid scrolling by
-  // making the dialog just large enough
+  // Determine the size without scrolling. To avoid this looking
+  // over-crowded, increase horizontal width bxy 20 percent.
   //
-  gtk_widget_get_preferred_size(scrolled_window, &min, &nat);
-  width  = nat.width;
+  gtk_widget_get_preferred_size(sw, &min, &nat);
+  width  = (nat.width * 120) / 100;
   height = nat.height;
 
-  if (width < 750) { width = 750; }
+  //
+  // Limit the window to 750*430
+  //
+  if (width  > 750) { width = 750; }
 
-  if (nat.width  > display_width[display_size] -  50) { width  = display_width[display_size] -  50; }
+  if (height > 430) { height = 430; }
 
-  if (nat.height > display_height[display_size] - 50) { height = display_height[display_size] - 50; }
-
-  gtk_widget_set_size_request(scrolled_window, width, height);
+  //
+  // For some reason, the set_size_request below doew not work until
+  // setting propagation of natural widths to FALSE
+  //
+  gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(sw), FALSE);
+  gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(sw), FALSE);
+  gtk_widget_set_size_request(sw, width, height);
   //
   // Block the GUI  while this dialog is running, if it has completed
   // (Either OK or Cancel button pressed), destroy it.
