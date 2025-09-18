@@ -62,7 +62,7 @@ static gboolean close_cb () {
 
 static gboolean switch_cb(GtkWidget *widget, GdkEvent *event, gpointer data) {
   int sw = GPOINTER_TO_INT(data);
-  int action = action_dialog(dialog, CONTROLLER_SWITCH, switches[sw].switch_function);
+  int action = action_dialog(dialog, AT_BTN, switches[sw].switch_function);
   gtk_button_set_label(GTK_BUTTON(widget), ActionTable[action].str);
   switches[sw].switch_function = action;
   update_toolbar_labels();

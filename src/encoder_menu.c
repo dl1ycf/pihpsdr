@@ -61,7 +61,7 @@ static gboolean close_cb () {
 
 static gboolean encoder_bottom_cb(GtkWidget *widget, GdkEvent *event, gpointer data) {
   int en = GPOINTER_TO_INT(data);
-  int action = action_dialog(dialog, CONTROLLER_ENCODER, encoders[en].bottom_encoder_function);
+  int action = action_dialog(dialog, AT_ENC, encoders[en].bottom_encoder_function);
   gtk_button_set_label(GTK_BUTTON(widget), ActionTable[action].str);
   encoders[en].bottom_encoder_function = action;
   return TRUE;
@@ -69,7 +69,7 @@ static gboolean encoder_bottom_cb(GtkWidget *widget, GdkEvent *event, gpointer d
 
 static gboolean encoder_top_cb(GtkWidget *widget, GdkEvent *event, gpointer data) {
   int en = GPOINTER_TO_INT(data);
-  int action = action_dialog(dialog, CONTROLLER_ENCODER, encoders[en].top_encoder_function);
+  int action = action_dialog(dialog, AT_ENC, encoders[en].top_encoder_function);
   gtk_button_set_label(GTK_BUTTON(widget), ActionTable[action].str);
   encoders[en].top_encoder_function = action;
   return TRUE;
@@ -77,7 +77,7 @@ static gboolean encoder_top_cb(GtkWidget *widget, GdkEvent *event, gpointer data
 
 static gboolean encoder_switch_cb(GtkWidget *widget, GdkEvent *event, gpointer data) {
   int en = GPOINTER_TO_INT(data);
-  int action = action_dialog(dialog, CONTROLLER_SWITCH, encoders[en].switch_function);
+  int action = action_dialog(dialog, AT_BTN, encoders[en].switch_function);
   gtk_button_set_label(GTK_BUTTON(widget), ActionTable[action].str);
   encoders[en].switch_function = action;
   return TRUE;

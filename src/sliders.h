@@ -25,8 +25,9 @@
 #include "actions.h"
 
 #define MAX_ZOOM 32
+#define NUM_SLIDERS 9
 
-extern enum ACTION slider_functions[9];
+extern enum ACTION slider_functions[NUM_SLIDERS];
 
 extern void sliders_save_state();
 extern void sliders_restore_state();

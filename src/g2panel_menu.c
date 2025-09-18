@@ -30,7 +30,7 @@ int g2panel_menu_is_open = 0;
 static int *last_buttonvec = NULL;
 static int *last_encodervec = NULL;
 static int last_andromeda_type = 0;  // 4 or 5
-static int last_type = 0;            // CONTROLLER_SWITCH or CONTROLLER_ENCODER
+static int last_type = 0;            // AT_BTN or AT_ENC
 static int action_chosen = NO_ACTION;
 static int last_pos = 0;
 
@@ -61,13 +61,13 @@ static gboolean close_cb () {
 
 static gboolean action_cb(GtkWidget *widget, gpointer data) {
   switch (last_type) {
-  case CONTROLLER_SWITCH:
-    action_chosen = action_dialog(dialog, CONTROLLER_SWITCH, last_buttonvec[last_pos]);
+  case AT_BTN:
+    action_chosen = action_dialog(dialog, AT_BTN, last_buttonvec[last_pos]);
     last_buttonvec[last_pos] = action_chosen;
     break;
 
-  case CONTROLLER_ENCODER:
-    action_chosen = action_dialog(dialog, CONTROLLER_ENCODER, last_encodervec[last_pos]);
+  case AT_ENC:
+    action_chosen = action_dialog(dialog, AT_ENC, last_encodervec[last_pos]);
     last_encodervec[last_pos] = action_chosen;
     break;
   }
@@ -97,7 +97,7 @@ static gboolean restore_cb(GtkWidget *widget, gpointer data) {
   //
   // Update command button to reflect the new setting
   //
-  if (last_type == CONTROLLER_SWITCH) {
+  if (last_type == AT_BTN) {
     gtk_button_set_label(GTK_BUTTON(newAction), ActionTable[last_buttonvec[last_pos]].str);
   } else {
     gtk_button_set_label(GTK_BUTTON(newAction), ActionTable[last_encodervec[last_pos]].str);
@@ -167,12 +167,12 @@ void g2panel_change_command(int andromeda_type, int type, int *buttonvec, int *e
   last_encodervec = encodervec;
   last_andromeda_type = andromeda_type;
   last_pos = pos;
-  last_type = type; // CONTROLLER_SWITCH or CONTROLLER_ENCODER
+  last_type = type; // AT_BTN or AT_ENC
 
   if (last_pos < 0) { last_pos = 0; }
 
   switch (type) {
-  case CONTROLLER_SWITCH:
+  case AT_BTN:
     snprintf(str, sizeof(str), "Button #%d", last_pos);
 
     if (last_pos > 99) { last_pos = 0; }
@@ -180,7 +180,7 @@ void g2panel_change_command(int andromeda_type, int type, int *buttonvec, int *e
     gtk_button_set_label(GTK_BUTTON(newAction), ActionTable[buttonvec[last_pos]].str);
     break;
 
-  case CONTROLLER_ENCODER:
+  case AT_ENC:
     snprintf(str, sizeof(str), "Encoder #%d", last_pos);
 
     if (last_pos > 49) { last_pos = 0; }

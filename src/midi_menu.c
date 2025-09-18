@@ -152,7 +152,7 @@ static void update_wheelparams(gpointer user_data) {
   //       thre current type is a wheel. If it is a wheel,
   //       set spin buttons to current values.
   //
-  if (thisType == MIDI_WHEEL) {
+  if (thisType == AT_ENC) {
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(set_vfl1 ), (double) thisVfl1 );
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(set_vfl2 ), (double) thisVfl2 );
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(set_fl1  ), (double) thisFl1  );
@@ -197,7 +197,7 @@ static void type_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 static gboolean action_cb(GtkWidget *widget, gpointer data) {
-  if (thisType == TYPE_NONE) { return TRUE; }
+  if (thisType == AT_NONE) { return TRUE; }
 
   ignore_incoming_events = 1;
   thisAction = action_dialog(dialog, thisType, thisAction);
@@ -276,7 +276,7 @@ static void wheelparam_cb(GtkWidget *widget, gpointer user_data) {
   int val = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
   int newval = val;
 
-  if (thisType != MIDI_WHEEL) {
+  if (thisType != AT_ENC) {
     // we should never arrive here
     return;
   }
@@ -730,7 +730,7 @@ void midi_menu(GtkWidget *parent) {
   col = 0;
   row = 0;
   // the new-line in the label get some space between the text and the spin buttons
-  lbl = gtk_label_new("Configure WHEEL parameters");
+  lbl = gtk_label_new("Configure Encoder parameters");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_size_request(lbl, 300, 30);
   gtk_widget_set_halign(lbl, GTK_ALIGN_CENTER);
@@ -849,18 +849,18 @@ static int updatePanel(int state) {
 
     switch (thisEvent) {
     case MIDI_NOTE:
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "KEY");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "Button");
       gtk_widget_set_sensitive(newType, FALSE);
       break;
 
     case MIDI_CTRL:
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "WHEEL");
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "KNOB/SLIDER");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "Encoder");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "Knob/Slider");
       gtk_widget_set_sensitive(newType, TRUE);
       break;
 
     case MIDI_PITCH:
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "KNOB/SLIDER");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "Knob/Slider");
       gtk_widget_set_sensitive(newType, FALSE);
       break;
 
@@ -898,20 +898,20 @@ static int updatePanel(int state) {
 
     switch (thisEvent) {
     case MIDI_NOTE:
-      thisType = MIDI_KEY;
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "KEY");
+      thisType = AT_BTN;
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "Button");
       gtk_combo_box_set_active (GTK_COMBO_BOX(newType), 0);
       gtk_widget_set_sensitive(newType, FALSE);
       break;
 
     case MIDI_CTRL:
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "WHEEL");
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "KNOB/SLIDER");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "Encoder");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "Knob/Slider");
 
-      if (thisType == MIDI_KNOB) {
+      if (thisType == AT_BTN) {
         gtk_combo_box_set_active (GTK_COMBO_BOX(newType), 1);
       } else {
-        thisType = MIDI_WHEEL;
+        thisType = AT_ENC;
         gtk_combo_box_set_active (GTK_COMBO_BOX(newType), 0);
       }
 
@@ -919,8 +919,8 @@ static int updatePanel(int state) {
       break;
 
     case MIDI_PITCH:
-      thisType = MIDI_KNOB;
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "KNOB/SLIDER");
+      thisType = AT_BTN;
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "Knob/Slider");
       gtk_combo_box_set_active (GTK_COMBO_BOX(newType), 0);
       gtk_widget_set_sensitive(newType, FALSE);
       break;
@@ -1000,7 +1000,7 @@ static int ProcessNewMidiConfigureEvent(void * data) {
     thisVal = val;
     thisMin = val;
     thisMax = val;
-    thisType = TYPE_NONE;
+    thisType = AT_NONE;
     thisAction = NO_ACTION;
     //
     // set default values for wheel parameters

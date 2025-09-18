@@ -48,7 +48,7 @@ static gboolean close_cb () {
 
 static gboolean switch_cb(GtkWidget *widget, GdkEvent *event, gpointer data) {
   enum ACTION *action = (enum ACTION *) data;
-  int new = action_dialog(dialog, CONTROLLER_SWITCH, *action);
+  int new = action_dialog(dialog, AT_BTN, *action);
   gtk_button_set_label(GTK_BUTTON(widget), ActionTable[new].button_str);
   *action = new;
   update_toolbar_labels();

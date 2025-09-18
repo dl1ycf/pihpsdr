@@ -41,10 +41,10 @@
 #include "radio.h"
 #include "sliders.h"
 
-enum ACTION slider_functions[9] = { ZOOM,         AGC_GAIN, DRIVE,
-                                    ATTENUATION,  AF_GAIN,  MIC_GAIN,
-                                    PAN,    SQUELCH,  COMPRESSION
-                                  };
+enum ACTION slider_functions[NUM_SLIDERS] = {
+  ZOOM,         AGC_GAIN, DRIVE,
+  ATTENUATION,  AF_GAIN,  MIC_GAIN,
+  PAN,    SQUELCH,  COMPRESSION };
 
 static GtkWidget *sliders_grid = NULL;
 
@@ -111,13 +111,13 @@ static gulong pan_signal_id;
 // Store/Restore slider settings
 //
 void sliders_save_state() {
-  for (int i = 0; i < 9; i++) {
+  for (int i = 0; i < NUM_SLIDERS; i++) {
     SetPropA1("sliders[%d].funcion",  i,   slider_functions[i]);
   }
 }
 
 void sliders_restore_state() {
-  for (int i = 0; i < 9; i++) {
+  for (int i = 0; i < NUM_SLIDERS; i++) {
     GetPropA1("sliders[%d].funcion",  i,   slider_functions[i]);
   }
 }
@@ -178,11 +178,8 @@ static void squelch_value_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void vox_value_changed_cb(GtkWidget *widget, gpointer data) {
-  if (can_transmit) {
-    vox_threshold = gtk_range_get_value(GTK_RANGE(widget));
-  }
-
-  g_idle_add(ext_vfo_update, NULL);
+  double value = gtk_range_get_value(GTK_RANGE(widget));
+  radio_set_voxlevel(value);
 }
 
 static void cmpr_value_changed_cb(GtkWidget *widget, gpointer data) {
@@ -949,7 +946,6 @@ void sliders_create(int width, int height, int rows) {
   }
 
   sliders_destroy();
-  int cnt = 0;
   sliders_grid = gtk_grid_new();
   gtk_widget_set_size_request (sliders_grid, width, height);
   gtk_grid_set_row_homogeneous(GTK_GRID(sliders_grid), FALSE);
@@ -959,7 +955,7 @@ void sliders_create(int width, int height, int rows) {
     int pos = 0;
 
     for (int j = 0; j < 3; j++) {
-      switch (slider_functions[cnt++]) {
+      switch (slider_functions[3 * i + j]) {
       case ZOOM:
         if (zoom_scale == NULL) {
           label = gtk_label_new("Zoom");

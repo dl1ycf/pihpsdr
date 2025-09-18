@@ -21,9 +21,9 @@
  *
  * In most cases, a certain action only makes sense for a specific
  * type. For example, changing the VFO frequency will only be implemeted
- * for MIDI_WHEEL, and TUNE off/on only with MIDI_KNOB.
+ * for AT_ENC, and typical on/off events only with AT_BTN
  *
- * However, changing the volume makes sense both with MIDI_KNOB and MIDI_WHEEL.
+ * However, changing the volume makes sense both with AT_BTN and AT_ENC.
  */
 #include <gtk/gtk.h>
 
@@ -55,18 +55,18 @@ static int vfo_timeout_cb(gpointer data) {
 void DoTheMidi(int action, enum ACTIONtype type, int val) {
   //t_print("%s: action=%d val=%d\n", __FUNCTION__, action, val);
   switch (type) {
-  case MIDI_KEY:
+  case AT_BTN:
     schedule_action(action, val ? PRESSED : RELEASED, 0);
     break;
 
-  case MIDI_KNOB:
+  case AT_KNB:
     schedule_action(action, ABSOLUTE, val);
     break;
 
-  case MIDI_WHEEL:
+  case AT_ENC:
 
     //
-    // There are "big wheels" at various MIDI consoles that can produce MIDI events
+    // There are "big wheel" encoders at various MIDI consoles that can produce MIDI events
     // with rather high frequency, and these are usually used for VFO, VFOA, VFOB
     // Therefore, these events are filtererd out here in a way that several such events
     // lead to a single scheduled action with a "consolidated" value. The idea is, that

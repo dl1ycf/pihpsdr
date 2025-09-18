@@ -3385,7 +3385,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           andromeda_execute_encoder(p, v);
         } else {
           if (g2panel_menu_is_open) {
-            g2panel_change_command(client->andromeda_type, CONTROLLER_ENCODER,
+            g2panel_change_command(client->andromeda_type, AT_ENC,
                                    client->buttonvec, client->encodervec, p);
           } else {
             g2panel_execute_encoder(client->andromeda_type, client->encodervec, p, v);
@@ -3472,7 +3472,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
             // It is enough to "fire" this upon initial press
             //
             if (tr01) {
-              g2panel_change_command(client->andromeda_type, CONTROLLER_SWITCH,
+              g2panel_change_command(client->andromeda_type, AT_BTN,
                                      client->buttonvec, client->encodervec, p);
             }
           } else {

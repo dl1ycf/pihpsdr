@@ -217,12 +217,11 @@ enum ACTION {
 };
 
 enum ACTIONtype {
-  TYPE_NONE = 0,
-  MIDI_KEY = 1,         // MIDI Button (press event)
-  MIDI_KNOB = 2,        // MIDI Knob   (value between 0 and 100)
-  MIDI_WHEEL = 4,       // MIDI Wheel  (direction and speed)
-  CONTROLLER_SWITCH = 8, // Controller Button
-  CONTROLLER_ENCODER = 16 // Controller Encoder
+  AT_NONE = 0,
+  AT_BTN  = 1,     // push-button (press/release event)
+  AT_KNB  = 2,     // Knob "Potentiometer"  (value between 0 and 127)
+  AT_ENC  = 4,     // Encoder (increment)
+  AT_SLD  = 8,     // action that can be assigned to sliders in the Slider area
 };
 
 typedef struct _action_table {

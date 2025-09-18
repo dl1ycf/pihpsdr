@@ -2956,6 +2956,21 @@ void radio_set_c25_att(int id, int val) {
   g_idle_add(sliders_c25_att, GINT_TO_POINTER(100 + id));
 }
 
+void radio_set_voxenable(int state) {
+  if (can_transmit) {
+    vox_enabled = state;
+    g_idle_add(sliders_vox, NULL);
+    g_idle_add(ext_vfo_update, NULL);
+  }
+}
+
+void radio_set_voxlevel(double level) {
+  if (can_transmit) {
+    vox_threshold = level;
+    g_idle_add(sliders_vox, NULL);
+  }
+}
+
 void radio_set_dither(int id, int value) {
   if (id >= receivers) { return; }
 

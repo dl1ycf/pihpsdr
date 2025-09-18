@@ -18,20 +18,11 @@
 
 #include <gtk/gtk.h>
 
+#include "action_dialog.h"
 #include "actions.h"
 #include "new_menu.h"
 #include "radio.h"
 #include "sliders.h"
-
-//
-// List of functions that can be associated with sliders
-//
-#define NUM_FUNCS 15
-static enum ACTION func_list[NUM_FUNCS] = {
-  NO_ACTION, AF_GAIN,     AGC_GAIN, ATTENUATION, COMPRESSION,
-  CW_SPEED,  LINEIN_GAIN, MIC_GAIN, PAN,         PANADAPTER_LOW,
-  RF_GAIN,   SQUELCH,     DRIVE,    VOXLEVEL,    ZOOM
-};
 
 static GtkWidget *dialog = NULL;
 
@@ -51,11 +42,13 @@ static gboolean close_cb () {
   return TRUE;
 }
 
-static void combo_cb(GtkWidget *widget, gpointer data) {
-  int pos = GPOINTER_TO_INT(data);
-  int val = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
-  slider_functions[pos] = func_list[val];
+static gboolean slider_cb(GtkWidget *widget, GdkEvent *event, gpointer data) {
+  enum ACTION *action = (enum ACTION *) data;
+  int new = action_dialog(dialog, AT_SLD, *action);
+  gtk_button_set_label(GTK_BUTTON(widget), ActionTable[new].str);
+  *action = new;
   radio_reconfigure_screen();
+  return TRUE;
 }
 
 void sliders_menu(GtkWidget *parent) {
@@ -78,23 +71,12 @@ void sliders_menu(GtkWidget *parent) {
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 1, 1);
 
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      int pos = 3 * i + j;
-      GtkWidget *w = gtk_combo_box_text_new();
-      int val = 0;
-
-      for (int k = 0; k < NUM_FUNCS; k++) {
-        gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(w), NULL, ActionTable[func_list[k]].str);
-
-        if (slider_functions[pos] == func_list[k]) { val = k; }
-      }
-
-      gtk_combo_box_set_active(GTK_COMBO_BOX(w), val);
-      my_combo_attach(GTK_GRID(grid), w, j, i + 1, 1, 1);
-      g_signal_connect(w, "changed", G_CALLBACK(combo_cb),
-                       GINT_TO_POINTER(3 * i + j));
-    }
+  for (int pos = 0; pos < 9; pos++) {
+    int col = pos % 3;
+    int row = pos / 3 + 1;
+    GtkWidget *w = gtk_button_new_with_label(ActionTable[slider_functions[pos]].str);
+    gtk_grid_attach(GTK_GRID(grid), w, col, row, 1, 1);
+    g_signal_connect(w, "button-press-event", G_CALLBACK(slider_cb), (gpointer) &slider_functions[pos]);
   }
 
   gtk_container_add(GTK_CONTAINER(content), grid);

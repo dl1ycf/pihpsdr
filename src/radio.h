@@ -289,6 +289,8 @@ extern const int tx_dialog_height;
 extern gboolean radio_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data);
 extern void   radio_n2adr_oc_settings();
 extern void   radio_load_filters(int fb);
+extern void   radio_set_voxenable(int state);
+extern void   radio_set_voxlevel(double level);
 extern void   radio_set_mox(int state);
 extern void   radio_toggle_mox(void);
 extern void   radio_toggle_tune(void);

@@ -79,9 +79,10 @@ extern void get_midi_devices(void);
 
 //
 // MIDIevent encodes the actual MIDI event "seen" in Layer-1 and
-// passed to Layer-2. MIDI_NOTE events end up as MIDI_KEY and
-// MIDI_PITCH as MIDI_KNOB, while MIDI_CTRL can end up both as
-// MIDI_KNOB or MIDI_WHEEL, depending on the device description.
+// passed to Layer-2.
+// MIDI_NOTE  events always end up as AT_BTN
+// MIDI_PITCH events became AT_KNB
+// MIDI_CTRL can end up both as AT_KNB or AT_ENC, depending on the device description.
 //
 enum MIDIevent {
   EVENT_NONE = 0,
@@ -108,13 +109,13 @@ enum MIDIevent {
 struct desc {
   int               channel;     // -1 for ANY channel
   enum MIDIevent    event;       // type of event (NOTE on/off, Controller change, Pitch value)
-  enum ACTIONtype   type;        // Key, Knob, or Wheel
-  int               vfl1, vfl2;  // Wheel only: range of controller values for "very fast left"
-  int               fl1, fl2;    // Wheel only: range of controller values for "fast left"
-  int               lft1, lft2;  // Wheel only: range of controller values for "slow left"
-  int               vfr1, vfr2;  // Wheel only: range of controller values for "very fast right"
-  int               fr1, fr2;    // Wheel only: range of controller values for "fast right"
-  int               rgt1, rgt2;  // Wheel only: range of controller values for "slow right"
+  enum ACTIONtype   type;        // AT_BTN, AT_KNB, AT_ENC
+  int               vfl1, vfl2;  // encoder only: range of controller values for "very fast left"
+  int               fl1, fl2;    // encoder only: range of controller values for "fast left"
+  int               lft1, lft2;  // encoder only: range of controller values for "slow left"
+  int               vfr1, vfr2;  // encoder only: range of controller values for "very fast right"
+  int               fr1, fr2;    // encoder only: range of controller values for "fast right"
+  int               rgt1, rgt2;  // encoder only: range of controller values for "slow right"
   int               action;      // SDR "action" to generate
   struct desc       *next;       // Next defined action for a controller/key with that note value (NULL for end of list)
 };

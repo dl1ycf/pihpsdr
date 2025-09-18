@@ -77,10 +77,10 @@ void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
         break;
 
       case MIDI_CTRL:
-        if (desc->type == MIDI_KNOB) {
+        if (desc->type == AT_KNB) {
           // CHANGED Jan 2024: report the "raw" value (0-127) upstream
           DoTheMidi(desc->action, desc->type, val);
-        } else if (desc->type == MIDI_WHEEL) {
+        } else if (desc->type == AT_ENC) {
           // translate value to direction/speed
           new = 0;
 
@@ -96,7 +96,7 @@ void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
 
           if ((val >= desc->vfr1) && (val <= desc->vfr2)) { new = 16; }
 
-          //                      t_print("%s: WHEEL PARAMS: val=%d new=%d thrs=%d/%d, %d/%d, %d/%d, %d/%d, %d/%d, %d/%d\n",
+          //                      t_print("%s: ENCODER PARAMS: val=%d new=%d thrs=%d/%d, %d/%d, %d/%d, %d/%d, %d/%d, %d/%d\n",
           //                               __FUNCTION__,
           //                               val, new, desc->vfl1, desc->vfl2, desc->fl1, desc->fl2, desc->lft1, desc->lft2,
           //                               desc->rgt1, desc->rgt2, desc->fr1, desc->fr2, desc->vfr1, desc->vfr2);
@@ -106,7 +106,7 @@ void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
         break;
 
       case MIDI_PITCH:
-        if (desc->type == MIDI_KNOB) {
+        if (desc->type == AT_KNB) {
           // use upper 7  bits
           DoTheMidi(desc->action, desc->type, val >> 7);
         }
@@ -207,32 +207,32 @@ char *MidiEvent2String(enum MIDIevent event) {
 }
 
 enum ACTIONtype String2MidiType(const char *str) {
-  if (!strcmp(str, "KEY"        )) { return MIDI_KEY;   }
+  if (!strcmp(str, "Button"     )) { return AT_BTN;   }
 
-  if (!strcmp(str, "KNOB/SLIDER")) { return MIDI_KNOB;  }
+  if (!strcmp(str, "Knob/Slider")) { return AT_KNB;  }
 
-  if (!strcmp(str, "WHEEL"      )) { return MIDI_WHEEL; }
+  if (!strcmp(str, "Encoder"    )) { return AT_ENC; }
 
-  return TYPE_NONE;
+  return AT_NONE;
 }
 
 char *MidiType2String(enum ACTIONtype type) {
   switch (type) {
-  case TYPE_NONE:
+  case AT_NONE:
   default:
-    return "NONE";
+    return "None";
     break;
 
-  case MIDI_KEY:
-    return "KEY";
+  case AT_BTN:
+    return "Button";
     break;
 
-  case MIDI_KNOB:
-    return "KNOB/SLIDER";
+  case AT_KNB:
+    return "Knob/Slider";
     break;
 
-  case MIDI_WHEEL:
-    return "WHEEL";
+  case AT_ENC:
+    return "Encoder";
     break;
   }
 }
@@ -276,9 +276,9 @@ void midiSaveState() {
       SetPropA3("midi[%d].entry[%d].channel[%d].action", i, entry, channel,  cmd->action);
 
       //
-      // For wheels, also store the additional parameters,
+      // For encoders, also store the additional parameters,
       //
-      if (cmd->type == MIDI_WHEEL) {
+      if (cmd->type == AT_ENC) {
         SetPropI3("midi[%d].entry[%d].channel[%d].vfl1", i, entry, channel,       cmd->vfl1);
         SetPropI3("midi[%d].entry[%d].channel[%d].vfl2", i, entry, channel,       cmd->vfl2);
         SetPropI3("midi[%d].entry[%d].channel[%d].fl1", i, entry, channel,        cmd->fl1);
@@ -358,7 +358,7 @@ void midiRestoreState() {
       action = NO_ACTION;
       GetPropA3("midi[%d].entry[%d].channel[%d].action", i, entry, channel, action);
       //
-      // Look for "wheel" parameters. For those not found,
+      // Look for encoder parameters. For those not found,
       // use default value
       //
       vfl1 = -1;
@@ -374,7 +374,7 @@ void midiRestoreState() {
       vfr1 = -1;
       vfr2 = -1;
 
-      if (type == MIDI_WHEEL) {
+      if (type == AT_ENC) {
         GetPropI3("midi[%d].entry[%d].channel[%d].vfl1", i, entry, channel,  vfl1);
         GetPropI3("midi[%d].entry[%d].channel[%d].vfl2", i, entry, channel,  vfl2);
         GetPropI3("midi[%d].entry[%d].channel[%d].fl1", i, entry, channel,   fl1);
