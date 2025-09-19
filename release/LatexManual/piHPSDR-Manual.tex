@@ -636,7 +636,7 @@ to this natural width, such that the height of the peak (roughly) matches the si
 \label{fig:noisefloorzoom}
 \end{figure}
 
-To demonstrate this, I have moved the Zoom slider from 1 to 32, such that Fig. \ref{noisefloorzoom} results.
+To demonstrate this, I have moved the Zoom slider from 1 to 32, such that Fig. \ref{fig:noisefloorzoom} results.
 The noise floor has moved down to slightly less than --120 dBm as expected, since one pixel now only is 7.5 Hz wide.
 At the same time, the height of the signal peak remained at about --73 dBm. This demonstrates that
 the normalisation of the spectrum as chosen in \pH is such that the noise floor changes with screen width and/or
@@ -4871,11 +4871,12 @@ command in the following table, there is a long and a short string assigned. The
 when there is enough space, while the short string is used for small buttons and to store commands in
 preference files (therefore the short strings never contain a blank character or a line break). Then, for
 each command we give the type of control element allowed for this command as a combination of the letters B,
-P, E, which stand for
+P, S, E, which stand for
 
 \begin{itemize}[font=\texttt, left=0pt]
 \item[B] {"Button": A button in the toolbar, or a push-button or switch on a GPIO or MIDI connected console}
 \item[P] {"Potentiometer": A potentiometer or a slider on a MIDI connected console}
+\item[S] {"Slider": A slider in the Slider area}
 \item[E] {"Encoder": A rotary encoder on a GPIO or MIDI connected console}
 \end{itemize}
 
@@ -4894,11 +4895,11 @@ a slider/potentiometer, the values from min to max are simple mapped to the TX d
 the signals from an encoder will just increase or decrease the value until one of a limits has been reached.
 
 All ,,button'' commands can be assigned to toolbar buttons via the \bltt{TOOLBAR} menu
-(see Sec. \ref{sec:toolbarmenu}). Some of the ,,potentiometer'' commands are by default connected
-with sliders in the Zoom/Pan or the Slider area (see Sec. \ref{sec:ZoomPanArea} and \ref{sec:SliderArea}).
-This is then indicated in the following description in red colour. Note that some ,,button''commands
-can also be triggered through check-boxes in the menus, and some ,,potentiometer'' commands can be controlled
-by sliders in the menus. This is described in the preceding sections.
+(see Sec. \ref{sec:toolbarmenu}). Some (but not all) ,,potentiometer'' commands can
+be assigned to sliders in the Slider area.
+Note that some ,,button'' and some ,,potentiometer'' commands
+can also be triggered through check-boxes, sliders, or spin-buttons in the menus.
+This is described in the preceding sections.
 
 In the following, the commands are alphabetically sorted by their long name, with the "empty" command listed
 first.
@@ -4917,10 +4918,10 @@ first.
 }
 
 
-\phcommand{NONE}{NONE}{BPE}{This is a command which does nothing. It can be assigned to buttons or enco\-ders
+\phcommand{NONE}{NONE}{BPSE}{This is a command which does nothing. It can be assigned to buttons or enco\-ders
 that
 are often accidentally operated. Some MIDI consoles, for example, report a button press event if the VFO
-knob is touched, and this we want to ignore.}
+knob is touched, and this we want to be able to ignore.}
 
 \phcommand{A<>B}{A<>B}{B}{Swap VFOs A and B. This will not only swap the frequencies, but also all other
 settings
@@ -4931,7 +4932,6 @@ associated with that VFO, such as mode, filter, CTUN, and RIT settings.}
 \phcommand{A>B}{A>B}{B}{Copy VFO A to VFO B.}
 
 \phcommand{AF Gain}{AFGAIN}{PE}{
-{\color{red} This command is connected to the \texttt{AF Gain} slider in the slider area.}
 Change the AF gain (headphone volume, $-40\ldots 0$ dB) of the active receiver.}
 
 \phcommand{AF Gain RX1}{AFGAIN1}{PE}{Change the AF gain (headphone volume, $-40\ldots 0$ dB) of the RX1 receiver.}
@@ -4942,8 +4942,7 @@ a no-op if only one receiver is running.}
 \phcommand{AGC}{AGCT}{B}{
 Cycle through the AGC modes (slow, medium, fast, $\ldots$) of the current receiver.}
 
-\phcommand{AGC Gain}{AGCGain}{PE}{
-{\color{red} This command is connected to the \texttt{AGC} slider in the slider area.}
+\phcommand{AGC Gain}{AGCGain}{PSE}{
 Change AGC gain ($-20\ldots 120$ dB) of the active receiver. Changing the AGC gain moves the
 horizontal green line (doted by a green 'G') on the pan adapter. Its optimal position is
 at or slightly below the noise floor level.}
@@ -4957,8 +4956,7 @@ only one receiver is running.}
 
 \phcommand{ANF}{ANF}{B}{Toggles the state (on/off) of the automatic notch filter for the active receiver.}
 
-\phcommand{Atten}{ATTEN}{PE}{
-{\color{red} This command is connected to the \texttt{ATT} slider in the slider area.}
+\phcommand{Atten}{ATTEN}{PSE}{
 Changes the value (0-31 dB) of the step attenuator of the active receiver.
 This function is only available for radios that have such an attenuator. Increasing the attenuation
 is required if ADC overload occurs, otherwise there is little reason for having high attenuation.
@@ -5113,7 +5111,7 @@ in detail in chapter \ref{sec:capture}.}
 {Toggle the state (on/off) of the compressor used in the TX audio input. Note that the CESSB overshoot
 correction is automatically engaged when using compression.}
 
-\phcommand{Cmpr Level}{COMPVAL}{PE}
+\phcommand{Cmpr Level}{COMPVAL}{PSE}
 {Change the value of the compressor (0-20 dB) used in the TX audio input. The compressor is automatically
 switched on (off) if the "new" value of the compressor is larger then  (equal to) zero.}
 
@@ -5144,7 +5142,7 @@ controller to which a Morse paddle is attached, and works with the iambic keyer 
 This keyer
 is only active if CW is \textit{not} handled in the radio (see CW menu).}
 
-\phcommand{CW Speed}{CWSPD}{PE}
+\phcommand{CW Speed}{CWSPD}{PSE}
 {Change the CW side tone frequency in the range 1-60 wpm. This affect the built-in iambic keyer or the keyer
 inside the radio,
 depending on whether CW is handled in the radio or not (see CW menu).}
@@ -5253,7 +5251,7 @@ This change is temporary, see the remark in the \bltt{Filter Cut Low} command.}
 \phcommand{IF Width RX2}{IFWIDTH2}{E}{Change the width of the filter of the receiver RX2.
 This change is temporary, see the remark in the \bltt{Filter Cut Low} command.}
 
-\phcommand{Linein Gain}{LIGAIN}{PE}{Change the line-in gain of the radio. If the
+\phcommand{Linein Gain}{LIGAIN}{PSE}{Change the line-in gain of the radio. If the
 radio does not have a line-in input, this control has no effect.}
 
 \phcommand{Lock}{LOCK}{B}{Lock the VFOs. A locked VFO will not accept VFO frequency steps in either direction,
@@ -5264,8 +5262,7 @@ are still possible, though. The command is intended to guard against accidentall
 
 \phcommand{Memory Menu}{MEM}{B}{Open the \texttt{MEM} (Memory) menu (see Chapter \ref{sec:memmenu}).}
 
-\phcommand{Mic Gain}{MICGAIN}{PE}{
-{\color{red} This command is connected to the \texttt{Mic Gain} slider in the slider area.}
+\phcommand{Mic Gain}{MICGAIN}{PSE}{
 Change the mic gain (from -12 to 50 dB). The amplification of the microphone
 audio data is done in software, and applies to the TX audio
 input samples wherever they come from. (See the discussion of local microphones in the \texttt{TX} menu.}
@@ -5357,8 +5354,7 @@ For example, to go to 7.040 MHz, one can enter the
 sequence ,,7'',  ,,0'', ,,4'', ,,0'', ,,0'', ,,0'', ,,0''. This
 is rarely used but offers Hz-resolution for the direct frequency entry.}
 
-\phcommand{PanZoom}{PAN}{E}{
-{\color{red} This command is connected to the \texttt{Pan} slider in the Zoom/Pan area.}
+\phcommand{PanZoom}{PAN}{PSE}{
 Change the Pan value. Note the PAN value has no effect if Zoom equals unity. The PAN value
 goes from 0 (show leftmost part) and 100 (show rightmost part of the spectrum).}
 
@@ -5370,7 +5366,7 @@ goes from 0 (show leftmost part) and 100 (show rightmost part of the spectrum).}
 of the active receiver. Values outside
 this range can be set in the \texttt{DISPLAY} menu.}
 
-\phcommand{Panadapter Low}{PANL}{PE}{Change the dBm value (from -160 to -60) at the bottom of the spectrum
+\phcommand{Panadapter Low}{PANL}{PSE}{Change the dBm value (from -160 to -60) at the bottom of the spectrum
 scope of the active receiver.
 Values outside this range can be set in the \texttt{DISPLAY} menu.}
 
@@ -5399,8 +5395,7 @@ the press and release events are significant.}
 \phcommand{Rcl 1$\ldots$Rcl 9}{RCL1$\ldots$RCL9}{B}{The same as \bltt{Rcl 0}, except that memory slots 1 through 9
 are referred to.}
 
-\phcommand{RF Gain}{RFGAIN}{PE}{
-{\color{red} This command is connected to the \texttt{RF Gain} slider in the slider area.}
+\phcommand{RF Gain}{RFGAIN}{PSE}{
 Set the gain of the RF front end of the active receiver. Only effective for
 radios that have such a
 gain control. Most HPSDR radios do not have RF  gain, they have a step attenuator in the RF front end
@@ -5503,8 +5498,7 @@ transmitted when doing split and using the microphone. Normally one
 starts with the \bltt{A>B} command (that is, copy VFO-A to VFO-B), and
 then adjusts the transmit frequency.}
 
-\phcommand{Squelch}{SQUELCH}{PE}{
-{\color{red} This command is connected to the \texttt{Sqlch} slider in the slider area.}
+\phcommand{Squelch}{SQUELCH}{PSE}{
 Change the squelch threshold value of the active receiver. Squelch is
 automatically enabled (disabled) if
 the resulting value  is non-zero (zero).}
@@ -5558,9 +5552,8 @@ open collector bits which became active at the beginning of the TUNE cycle will 
 after the "memory tune" delay (to be specified in the \bltt{OC} menu). Note the TUNEing itself will continue
 after that.}
 
-\phcommand{TX Drive}{TXDRV}{PE}{
-{\color{red} This command is connected to the \texttt{TX Drv} slider in the slider area.}
-Set the TX drive level (0-100).}
+\phcommand{TX Drive}{TXDRV}{PSE}{
+Set the TX drive (RF output) level (0-100).}
 
 \phcommand{TX Menu}{TX}{B}{Opens the \texttt{TX} menu.}
 
@@ -5591,7 +5584,7 @@ jump to the smallest.}
 transmitter
 by talking into the microphone, without the need to press a PTT button. See the \texttt{VOX} menu.}
 
-\phcommand{VOX Level}{VOXLEV}{E}{Change the VOX level threshold. If  you operate VOX, and the radio does not go
+\phcommand{VOX Level}{VOXLEV}{PSE}{Change the VOX level threshold. If  you operate VOX, and the radio does not go
 TX
 while talking into the  microphone, decrease the VOX threshold. If the radio goes TX simply because the
 neighbour's
@@ -5641,8 +5634,7 @@ on the toolbar, or on a GPIO or MIDI console), there is an auto-repeat such that
 every 250 msec until
 the XIT+ button is released.}
 
-\phcommand{Zoom}{ZOOM}{PE}{
-{\color{red} This command is connected to the \texttt{Zoom} slider in the Zoom/Pan area.}
+\phcommand{Zoom}{ZOOM}{PSE}{
 Change the ZOOM value (1...32) of the active receiver.}
 
 \phcommand{Zoom -}{ZOOM-}{B}{Decrease the ZOOM value of the active receiver by one. If the ZOOM value was
