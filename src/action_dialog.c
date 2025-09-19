@@ -35,7 +35,28 @@ typedef struct _choice {
 static GtkWidget *dialog;
 static GtkWidget *previous_button;
 static gulong previous_signal_id;
-static enum ACTION action;
+static enum ACTION new_action;   // action currently chosen
+static enum ACTION ret_action;   // action to be returned
+
+static void destroy() {
+  if (dialog) {
+    gtk_widget_destroy(dialog);
+  }
+}
+
+static gboolean cancel_cb() {
+  destroy();
+  return TRUE;
+}
+
+static gboolean choose_cb() {
+  //
+  // Here we set ret_action
+  //
+  ret_action = new_action;
+  destroy();
+  return TRUE;
+}
 
 static void action_select_cb(GtkWidget *widget, gpointer data) {
   const CHOICE *choice = (CHOICE *)data;
@@ -44,20 +65,48 @@ static void action_select_cb(GtkWidget *widget, gpointer data) {
   g_signal_handler_unblock(G_OBJECT(previous_button), previous_signal_id);
   previous_button = widget;
   previous_signal_id = choice->signal_id;
-  action = choice->action;
+  new_action = choice->action;
 }
 
 int action_dialog(GtkWidget *parent, int filter, enum ACTION currentAction) {
   GtkRequisition min;
   GtkRequisition nat;
   int width, height;
+  GtkWidget *w;
   CHOICE *previous = NULL;
   CHOICE *choice = NULL;
-  action = currentAction;
+  new_action = currentAction;
+  ret_action = currentAction;
   previous_button = NULL;
-  dialog = gtk_dialog_new_with_buttons("Action", GTK_WINDOW(parent), GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-                                       ("_OK"), GTK_RESPONSE_ACCEPT, ("_Cancel"), GTK_RESPONSE_REJECT, NULL);
+  dialog = gtk_dialog_new();
+  gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
+  GtkWidget *headerbar = gtk_header_bar_new();
+  gtk_window_set_titlebar(GTK_WINDOW(dialog), headerbar);
+  gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(headerbar), TRUE);
+  gtk_header_bar_set_title(GTK_HEADER_BAR(headerbar), "Choose Function");
+  g_signal_connect (dialog, "delete_event", G_CALLBACK (cancel_cb), NULL);
+  g_signal_connect (dialog, "destroy", G_CALLBACK (cancel_cb), NULL);
+  gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
   GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  GtkWidget *grid = gtk_grid_new();
+  gtk_grid_set_column_spacing (GTK_GRID(grid), 5);
+  gtk_grid_set_row_spacing (GTK_GRID(grid), 5);
+  w = gtk_button_new_with_label("Choose");
+  gtk_widget_set_name(w, "close_button");
+  g_signal_connect (w, "button-press-event", G_CALLBACK(choose_cb), NULL);
+  gtk_grid_attach(GTK_GRID(grid), w, 0, 0, 1, 1);
+  w = gtk_button_new_with_label("Cancel");
+  gtk_widget_set_name(w, "close_button");
+  g_signal_connect (w, "button-press-event", G_CALLBACK(cancel_cb), NULL);
+  gtk_grid_attach(GTK_GRID(grid), w, 5, 0, 1, 1);
+  //
+  // The rest goes into a scrollable subgrid
+  //
+  GtkWidget *scrgrd = gtk_grid_new();
+  gtk_grid_set_column_spacing (GTK_GRID(scrgrd), 2);
+  gtk_grid_set_row_spacing (GTK_GRID(scrgrd), 2);
+  gtk_grid_set_column_homogeneous(GTK_GRID(scrgrd), TRUE);
+  gtk_grid_set_row_homogeneous(GTK_GRID(scrgrd), TRUE);
   GtkWidget *sw = gtk_scrolled_window_new(NULL, NULL);
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
   //Set scrollbar to ALWAYS be displayed and not as temporary overlay
@@ -68,11 +117,6 @@ int action_dialog(GtkWidget *parent, int filter, enum ACTION currentAction) {
   //
   gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(sw), TRUE);
   gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(sw), TRUE);
-  GtkWidget *grid = gtk_grid_new();
-  gtk_grid_set_column_spacing(GTK_GRID(grid), 2);
-  gtk_grid_set_row_spacing(GTK_GRID(grid), 2);
-  gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
-  gtk_grid_set_row_homogeneous(GTK_GRID(grid), TRUE);
 
   int col = 0;
   int row = 0;
@@ -81,7 +125,7 @@ int action_dialog(GtkWidget *parent, int filter, enum ACTION currentAction) {
     if ((ActionTable[i].type & filter) || (ActionTable[i].type == AT_NONE)) {
       GtkWidget *button = gtk_toggle_button_new_with_label(ActionTable[i].str);
       gtk_widget_set_name(button, "small_toggle_button");
-      gtk_grid_attach(GTK_GRID(grid), button, col, row, 1, 1);
+      gtk_grid_attach(GTK_GRID(scrgrd), button, col, row, 1, 1);
 
       if (ActionTable[i].action == currentAction) {
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(button), TRUE);
@@ -108,23 +152,32 @@ int action_dialog(GtkWidget *parent, int filter, enum ACTION currentAction) {
     }
   }
 
-  gtk_container_add(GTK_CONTAINER(sw), grid);
-  gtk_container_add(GTK_CONTAINER(content), sw);
-  gtk_widget_show_all(content);
+  gtk_container_add(GTK_CONTAINER(sw), scrgrd);
+  gtk_widget_show_all(sw);
   //
-  // Determine the size without scrolling. To avoid this looking
-  // over-crowded, increase horizontal width bxy 20 percent.
+  // Determine the size without scrolling.
   //
   gtk_widget_get_preferred_size(sw, &min, &nat);
-  width  = (nat.width * 120) / 100;
+  width  = nat.width;
   height = nat.height;
+  //
+  // Limit the window to display size
+  //
+  if (width > display_width[0] - 50) {
+    width  = display_width[0] - 50;
+  }
 
   //
-  // Limit the window to 750*430
+  // This dialog can become very tall, so restrict its height
+  // even if display size permits
   //
-  if (width  > 750) { width = 750; }
+  if (height > 500) {
+    height = 500;
+  }
 
-  if (height > 430) { height = 430; }
+  if (height > display_height[0] - 100) {
+    height = display_height[0] - 100;
+  }
 
   //
   // For some reason, the set_size_request below doew not work until
@@ -133,16 +186,16 @@ int action_dialog(GtkWidget *parent, int filter, enum ACTION currentAction) {
   gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(sw), FALSE);
   gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(sw), FALSE);
   gtk_widget_set_size_request(sw, width, height);
+
+  gtk_grid_attach(GTK_GRID(grid), sw, 0, 1, 6, 1);
+  gtk_container_add(GTK_CONTAINER(content), grid);
+
   //
   // Block the GUI  while this dialog is running, if it has completed
   // (Either OK or Cancel button pressed), destroy it.
   //
-  int result = gtk_dialog_run (GTK_DIALOG (dialog));
-  gtk_widget_destroy(dialog);
-
-  if (result != GTK_RESPONSE_ACCEPT) {
-    action = currentAction;
-  }
+  gtk_widget_show_all(dialog);
+  gtk_dialog_run(GTK_DIALOG(dialog));
 
   // free up choice structures
   while (previous != NULL) {
@@ -151,6 +204,6 @@ int action_dialog(GtkWidget *parent, int filter, enum ACTION currentAction) {
     g_free(choice);
   }
 
-  return action;
+  return ret_action;
 }
 
