@@ -3551,8 +3551,8 @@ bit pattern.
 
 For non-HPSDR radios, the \bltt{OC} menu does not appear in the main menu. Since
 transverter bands are also shown at the bottom of the list, the \bltt{OC}
-menu may become rather high, in this case its height is restricted to the
-screen size and a vertical scroll bar is added.
+menu may become rather tall, so a scroll bar may appear on at the right
+margin for small screens.
 
 To facilitate control of an automatic tuner, there are seven \rett{TuneBits}
 which are OR-ed with the bit pattern chosen for TX on the actual band,
@@ -3625,17 +3625,19 @@ If the \bltt{Toolbar} menu is opened, it looks like Fig. \ref{fig:ToolbarMenu1}.
 The rows correspond to the six different layers, and the rightmost button in each
 row indicates to which layer this row belongs. Now imagine we want to replace
 the \bltt{CTUN} command by \bltt{Duplex} in the row \rett{FNC(1)}. To this end
-we click the \bltt{CTUN} button (the third from the left in the row \rett{FNC(1)}) and
-a   ,,command dialog'' pops up that looks as
+we click the \bltt{CTUN} button (marked with a red circle) and
+a  ,,chooser dialog'' pops up that looks as
 in Fig. \ref{fig:ToolbarMenu2}.
 
 
-\begin{figure}[ht!]
-\center
-\includegraphics[scale=0.45]{ToolbarMenu3.png}
-\caption{Just selected \texttt{Duplex}.}
-\label{fig:ToolbarMenu3}
-\end{figure}
+Because the list of possible functions to choose from is so long, the height of the menu
+is restricted even if screen space permits, so it always contains a scrollbar at the right
+margin that you may need to use to scroll through the list of functions.
+The current command selected (\texttt{CTUN}) is high-lighted (you may need to scroll down
+to see it). Then click the button labelled with \bltt{Duplex} (in this example you can
+already see it, but again it may be necessary to scroll down). After clicking the desired
+button, that one gets highlighted.
+
 
 \begin{figure}[ht!]
 \center
@@ -3644,16 +3646,16 @@ in Fig. \ref{fig:ToolbarMenu2}.
 \label{fig:ToolbarMenu4}
 \end{figure}
 
-Note the scroll-bar at the right of this menu, since without scrolling it would be very tall.
-The current command selected (\texttt{CTUN}) is high-lighted (you may need to scroll down
-to see it). Then click the button labelled with \bltt{Duplex} (in this example you can
-already see it, but again it may be necessary to scroll down). After clicking the desired
-button, that one gets highlighted (Fig. \ref{fig:ToolbarMenu3}).
-If one now closes the command dialog by clicking the \texttt{OK} button, the command select menu
-closes and on sees that in the toolbar menu now reappearing (Fig. \ref{fig:ToolbarMenu4}), the third button
-in the line \rett{FNC(1)} has changed,
+In the top row of the chooser menu, you find two buttons. Pressing \rett{Cancel} closes it
+without any effect (your choice is not reported back), while pressing \rett{Choose} closes
+the menu and reports back your choice, that is, the function currently highlighted.
+So pressing \rett{Choose} after having chosen the \bltt{Duplex} function, the chooser
+menu closes
+and one sees that in the toolbar menu now reappearing (Fig. \ref{fig:ToolbarMenu4}), the third button
+in the line \rett{FNC(1)} (marked by a red circle) has changed,
 it now gives the short text (\texttt{DUP}) of the \bltt{Duplex} command. You can also see
-that the \rett{FNC(1)} toolbar at the bottom of the screen has adopted the change, so
+that the \rett{FNC(1)} toolbar at the bottom of the screen has adopted the change
+(also marked with a red circle), so
 after closing the toolbar menu you can enable/disable \bltt{Duplex} with just one mouse click,
 without first opening the \bltt{Radio} menu.
 
