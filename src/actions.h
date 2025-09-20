@@ -254,7 +254,9 @@ extern ACTION_TABLE ActionTable[ACTIONS + 1];
 extern int process_action(void *data);
 extern void schedule_action(enum ACTION action, enum ACTION_MODE mode, int val);
 extern void Action2String(const int id, char *str, size_t len);
-extern int  String2Action(const char *str);
+extern enum ACTION String2Action(const char *str);
+extern char *ActionType2String(enum ACTIONtype type);
+extern enum ACTIONtype String2ActionType(const char *str);
 extern void GetMultifunctionString(char* str, size_t len);
 extern int  GetMultifunctionStatus(void);
 #endif

@@ -1928,6 +1928,48 @@ int process_action(void *data) {
 }
 
 //
+// Function to convert an action type (described by a string)
+// to an enum ACTIONtype. This is needed e.g. to decode
+// MIDI settings from the props fil
+//
+enum ACTIONtype String2ActionType(const char *str) {
+  if (!strcmp(str, "Button"))  { return AT_BTN;   }
+
+  if (!strcmp(str, "Slider"))  { return AT_KNB;  }
+
+  if (!strcmp(str, "Encoder")) { return AT_ENC; }
+
+  return AT_NONE;
+}
+
+//
+// Function to convert an action type to a readable
+// string. This is needed e.g. to encode MIDI settings
+// for a props file. This is also used as descriptor
+// in the MIDI menu so it should be human readable.
+//
+char *ActionType2String(enum ACTIONtype type) {
+  switch (type) {
+  case AT_NONE:
+  default:
+    return "None";
+    break;
+
+  case AT_BTN:
+    return "Button";
+    break;
+
+  case AT_KNB:
+    return "Slider";
+    break;
+
+  case AT_ENC:
+    return "Encoder";
+    break;
+  }
+}
+
+//
 // Function to convert an internal action number to a unique string
 // This is used to specify actions in the props files.
 //
@@ -1943,10 +1985,9 @@ void Action2String(int id, char *str, size_t len) {
 // Function to convert a string to an action number
 // This is used to specify actions in the props files.
 //
-int String2Action(const char *str) {
-  int i;
+enum ACTION String2Action(const char *str) {
 
-  for (i = 0; i < ACTIONS; i++) {
+  for (enum ACTION i = 0; i < ACTIONS; i++) {
     if (!strcmp(str, ActionTable[i].button_str)) { return i; }
   }
 

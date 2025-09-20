@@ -50,6 +50,7 @@ static GtkWidget *dialog = NULL;
 static GtkListStore *store;
 static GtkWidget *view;
 static GtkWidget *sw = NULL;
+static GtkTreeSelection *selection = NULL;
 static gulong selection_signal_id;
 static GtkTreeModel *model;
 static GtkTreeIter iter;
@@ -66,6 +67,7 @@ static GtkWidget *newAction;
 static GtkWidget *delete_b;
 static GtkWidget *clear_b;
 static GtkWidget *device_b[MAX_MIDI_DEVICES];
+static gulong type_signal_id = 0;
 
 static enum MIDIevent thisEvent;
 static int thisChannel;
@@ -81,7 +83,7 @@ static int thisRgt1, thisRgt2;
 static int thisFr1,  thisFr2;
 static int thisVfr1, thisVfr2;
 
-static GtkWidget *WheelContainer;
+static GtkWidget *EncoderContainer;
 // *INDENT-OFF*
 static GtkWidget *set_vfl1, *set_vfl2;
 static GtkWidget *set_fl1,  *set_fl2;
@@ -146,10 +148,10 @@ static void device_cb(GtkWidget *widget, gpointer data) {
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), midi_devices[ind].active);
 }
 
-static void update_wheelparams(gpointer user_data) {
+static void updateEncoderParams() {
   //
-  // Task: show or hide WheelContainer depending on whether
-  //       thre current type is a wheel. If it is a wheel,
+  // Task: show or hide EncoderContainer depending on whether
+  //       thre current type is an encoder. If it is an encoder,
   //       set spin buttons to current values.
   //
   if (thisType == AT_ENC) {
@@ -165,9 +167,9 @@ static void update_wheelparams(gpointer user_data) {
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(set_fr2  ), (double) thisFr2  );
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(set_vfr1 ), (double) thisVfr1 );
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(set_vfr2 ), (double) thisVfr2 );
-    gtk_widget_show(WheelContainer);
+    gtk_widget_show(EncoderContainer);
   } else {
-    gtk_widget_hide(WheelContainer);
+    gtk_widget_hide(EncoderContainer);
   }
 }
 
@@ -175,30 +177,30 @@ static void type_changed_cb(GtkWidget *widget, gpointer data) {
   // update actions available for the type
   const gchar *type = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget));
 
-  if (type == NULL) {
-    //
-    // This happens if the combo-box is cleared in updatePanel()
-    //
-    return;
-  }
-
-  //t_print("%s: type=%s action=%d type=%d\n",__FUNCTION__,type,thisAction,thisType);
-  thisType = String2MidiType(type);
-
+  //
+  // This should no longer happen, since we block the signal in updatePanel
+  //
+  if (type == NULL) { return; }
   //
   // If the type changed, the current action may no longer be allowed
   //
-  if (ActionTable[thisAction].type && thisType == 0) {
+  thisType = String2ActionType(type);
+  if ((ActionTable[thisAction].type & thisType) == 0) {
     thisAction = NO_ACTION;
   }
 
   gtk_button_set_label(GTK_BUTTON(newAction), ActionTable[thisAction].str);
-  update_wheelparams(NULL);
+  updateEncoderParams();
+  updateDescription();
 }
 
 static gboolean action_cb(GtkWidget *widget, gpointer data) {
   if (thisType == AT_NONE) { return TRUE; }
 
+  //
+  // While we are choosing an action, incoming MIDI events may not
+  // change the internal data so need be blocked
+  //
   ignore_incoming_events = 1;
   thisAction = action_dialog(dialog, thisType, thisAction);
   gtk_button_set_label(GTK_BUTTON(newAction), ActionTable[thisAction].str);
@@ -212,7 +214,7 @@ static void row_inserted_cb(GtkTreeModel *tree_model, GtkTreePath *path, GtkTree
   gtk_tree_view_set_cursor(GTK_TREE_VIEW(view), path, NULL, FALSE);
 }
 
-static void tree_selection_changed_cb (GtkTreeSelection *selection, gpointer data) {
+static void tree_selection_changed_cb (GtkTreeSelection *sel, gpointer data) {
   char *str_event;
   char *str_channel;
   char *str_note;
@@ -221,7 +223,7 @@ static void tree_selection_changed_cb (GtkTreeSelection *selection, gpointer dat
   gtk_widget_set_sensitive(delete_b, FALSE);
   gtk_widget_set_sensitive(clear_b, FALSE);
 
-  if (gtk_tree_selection_get_selected (selection, &model, &iter)) {
+  if (gtk_tree_selection_get_selected (sel, &model, &iter)) {
     gtk_widget_set_sensitive(delete_b, TRUE);
     gtk_widget_set_sensitive(clear_b, TRUE);
     gtk_tree_model_get(model, &iter, EVENT_COLUMN, &str_event, -1);
@@ -237,7 +239,7 @@ static void tree_selection_changed_cb (GtkTreeSelection *selection, gpointer dat
       thisVal = 0;
       thisMin = 127;
       thisMax = 0;
-      thisType = String2MidiType(str_type);
+      thisType = String2ActionType(str_type);
       thisAction = NO_ACTION;
 
       for (int i = 0; i < ACTIONS; i++) {
@@ -246,7 +248,7 @@ static void tree_selection_changed_cb (GtkTreeSelection *selection, gpointer dat
           break;
         }
       }
-
+      gtk_button_set_label(GTK_BUTTON(newAction), ActionTable[thisAction].str);
       updatePanel(UPDATE_EXISTING);
     }
   }
@@ -257,8 +259,8 @@ static void find_current_cmd() {
   cmd = MidiCommandsTable[thisNote];
 
   //
-  // Find the first command in the MIDI table which has the same channel
-  // and the same type, but do not look at the action.
+  // Find the first command for thisNote in the MIDI table which has the same channel
+  // and the same event
   //
   while (cmd != NULL) {
     if ((cmd->channel == thisChannel) && cmd->event == thisEvent) {
@@ -271,7 +273,7 @@ static void find_current_cmd() {
   current_cmd = cmd;
 }
 
-static void wheelparam_cb(GtkWidget *widget, gpointer user_data) {
+static void encoderparam_cb(GtkWidget *widget, gpointer user_data) {
   int what = GPOINTER_TO_INT(user_data);
   int val = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
   int newval = val;
@@ -393,7 +395,7 @@ static void add_store(int key, const struct desc *cmd) {
                      EVENT_COLUMN, MidiEvent2String(cmd->event),
                      CHANNEL_COLUMN, str_channel,
                      NOTE_COLUMN, str_note,
-                     TYPE_COLUMN, MidiType2String(cmd->type),
+                     TYPE_COLUMN, ActionType2String(cmd->type),
                      ACTION_COLUMN, str_action,
                      BSTR_COLUMN, ActionTable[cmd->action].button_str,
                      -1);
@@ -401,7 +403,6 @@ static void add_store(int key, const struct desc *cmd) {
   if (sw != NULL) {
     GtkAdjustment *adjustment = gtk_scrolled_window_get_vadjustment (GTK_SCROLLED_WINDOW(sw));
 
-    //t_print("%s: adjustment=%f lower=%f upper=%f\n",__FUNCTION__,gtk_adjustment_get_value(adjustment),gtk_adjustment_get_lower(adjustment),gtk_adjustment_get_upper(adjustment));
     if (gtk_adjustment_get_value(adjustment) != 0.0) {
       gtk_adjustment_set_value(adjustment, 0.0);
     }
@@ -428,7 +429,7 @@ static void updateDescription() {
   int  addFlag = 0;
   //
   // Add or update a command, both in the MIDI data base and in the
-  // sub-window
+  // sub-window (the "tree")
   //
   find_current_cmd();
 
@@ -489,7 +490,7 @@ static void updateDescription() {
                        EVENT_COLUMN, MidiEvent2String(thisEvent),
                        CHANNEL_COLUMN, str_channel,
                        NOTE_COLUMN, str_note,
-                       TYPE_COLUMN, MidiType2String(thisType),
+                       TYPE_COLUMN, ActionType2String(thisType),
                        ACTION_COLUMN, str_action,
                        BSTR_COLUMN, ActionTable[thisAction].button_str,
                        -1);
@@ -500,7 +501,6 @@ static void delete_cb(GtkButton *widget, GdkEventButton *event, gpointer user_da
   struct desc *previous_cmd;
   struct desc *next_cmd;
 
-  //t_print("%s: thisNote=%d current_cmd=%p\n", __FUNCTION__, thisNote, current_cmd);
   if (current_cmd == NULL) {
     t_print("%s: current_cmd is NULL!\n", __FUNCTION__);
     return;
@@ -655,7 +655,7 @@ void midi_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), newNote, col++, row, 1, 1);
   newType = gtk_combo_box_text_new();
   my_combo_attach(GTK_GRID(grid), newType, col++, row, 1, 1);
-  g_signal_connect(newType, "changed", G_CALLBACK(type_changed_cb), NULL);
+  type_signal_id = g_signal_connect(newType, "changed", G_CALLBACK(type_changed_cb), NULL);
   newVal = gtk_label_new(NULL);
   gtk_grid_attach(GTK_GRID(grid), newVal, col++, row, 1, 1);
   newMin = gtk_label_new(NULL);
@@ -704,17 +704,17 @@ void midi_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), sw, col, row, 5, 10);
   model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
   g_signal_connect(model, "row-inserted", G_CALLBACK(row_inserted_cb), NULL);
-  GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
+  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
   gtk_tree_selection_set_mode(selection, GTK_SELECTION_SINGLE);
   selection_signal_id = g_signal_connect(G_OBJECT(selection), "changed", G_CALLBACK(tree_selection_changed_cb), NULL);
   //
-  // Place a fixed container to hold the wheel parameters
+  // Place a fixed container to hold the encoder parameters
   // and create sub-grid
   //
   col = 5;
-  WheelContainer = gtk_fixed_new();
-  gtk_widget_set_size_request(WheelContainer, 300, 300 - 15 * ((n_midi_devices + 1) / 3));
-  gtk_grid_attach(GTK_GRID(grid), WheelContainer, col, row, 6, 10);
+  EncoderContainer = gtk_fixed_new();
+  gtk_widget_set_size_request(EncoderContainer, 300, 300 - 15 * ((n_midi_devices + 1) / 3));
+  gtk_grid_attach(GTK_GRID(grid), EncoderContainer, col, row, 6, 10);
   //
   // Showing/hiding the container may resize-the columns of the main grid,
   // and causing other elements to move around. Therefore create a further
@@ -724,8 +724,8 @@ void midi_menu(GtkWidget *parent) {
   GtkWidget *DummyContainer = gtk_fixed_new();
   gtk_widget_set_size_request(DummyContainer, 300, 1);
   gtk_grid_attach(GTK_GRID(grid), DummyContainer, col, row, 6, 1);
-  GtkWidget *WheelGrid = gtk_grid_new();
-  gtk_grid_set_column_spacing (GTK_GRID(WheelGrid), 2);
+  GtkWidget *EncoderGrid = gtk_grid_new();
+  gtk_grid_set_column_spacing (GTK_GRID(EncoderGrid), 2);
   col = 0;
   row = 0;
   // the new-line in the label get some space between the text and the spin buttons
@@ -734,102 +734,100 @@ void midi_menu(GtkWidget *parent) {
   gtk_widget_set_size_request(lbl, 300, 30);
   gtk_widget_set_halign(lbl, GTK_ALIGN_CENTER);
   gtk_widget_set_valign(lbl, GTK_ALIGN_CENTER);
-  gtk_grid_attach(GTK_GRID(WheelGrid), lbl, col, row, 3, 1);
+  gtk_grid_attach(GTK_GRID(EncoderGrid), lbl, col, row, 3, 1);
   //
-  // Finally, put wheel config elements into the wheel grid
+  // Finally, put encoder config elements into the encoder grid
   //
   row++;
   col = 0;
   lbl = gtk_label_new("Left <<<");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_START);
-  gtk_grid_attach(GTK_GRID(WheelGrid), lbl, col, row, 1, 1);
+  gtk_grid_attach(GTK_GRID(EncoderGrid), lbl, col, row, 1, 1);
   col++;
   set_vfl1 = gtk_spin_button_new_with_range(-1.0, 127.0, 1.0);
-  gtk_grid_attach(GTK_GRID(WheelGrid), set_vfl1, col, row, 1, 1);
-  g_signal_connect(set_vfl1, "value-changed", G_CALLBACK(wheelparam_cb), GINT_TO_POINTER(2));
+  gtk_grid_attach(GTK_GRID(EncoderGrid), set_vfl1, col, row, 1, 1);
+  g_signal_connect(set_vfl1, "value-changed", G_CALLBACK(encoderparam_cb), GINT_TO_POINTER(2));
   col++;
   set_vfl2 = gtk_spin_button_new_with_range(-1.0, 127.0, 1.0);
-  gtk_grid_attach(GTK_GRID(WheelGrid), set_vfl2, col, row, 1, 1);
-  g_signal_connect(set_vfl2, "value-changed", G_CALLBACK(wheelparam_cb), GINT_TO_POINTER(3));
+  gtk_grid_attach(GTK_GRID(EncoderGrid), set_vfl2, col, row, 1, 1);
+  g_signal_connect(set_vfl2, "value-changed", G_CALLBACK(encoderparam_cb), GINT_TO_POINTER(3));
   row++;
   col = 0;
   lbl = gtk_label_new("Left <<");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_START);
-  gtk_grid_attach(GTK_GRID(WheelGrid), lbl, col, row, 1, 1);
+  gtk_grid_attach(GTK_GRID(EncoderGrid), lbl, col, row, 1, 1);
   col++;
   set_fl1 = gtk_spin_button_new_with_range(-1.0, 127.0, 1.0);
-  gtk_grid_attach(GTK_GRID(WheelGrid), set_fl1, col, row, 1, 1);
-  g_signal_connect(set_fl1, "value-changed", G_CALLBACK(wheelparam_cb), GINT_TO_POINTER(4));
+  gtk_grid_attach(GTK_GRID(EncoderGrid), set_fl1, col, row, 1, 1);
+  g_signal_connect(set_fl1, "value-changed", G_CALLBACK(encoderparam_cb), GINT_TO_POINTER(4));
   col++;
   set_fl2 = gtk_spin_button_new_with_range(-1.0, 127.0, 1.0);
-  gtk_grid_attach(GTK_GRID(WheelGrid), set_fl2, col, row, 1, 1);
-  g_signal_connect(set_fl2, "value-changed", G_CALLBACK(wheelparam_cb), GINT_TO_POINTER(5));
+  gtk_grid_attach(GTK_GRID(EncoderGrid), set_fl2, col, row, 1, 1);
+  g_signal_connect(set_fl2, "value-changed", G_CALLBACK(encoderparam_cb), GINT_TO_POINTER(5));
   row++;
   col = 0;
   lbl = gtk_label_new("Left <");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_START);
-  gtk_grid_attach(GTK_GRID(WheelGrid), lbl, col, row, 1, 1);
+  gtk_grid_attach(GTK_GRID(EncoderGrid), lbl, col, row, 1, 1);
   col++;
   set_lft1 = gtk_spin_button_new_with_range(-1.0, 127.0, 1.0);
-  gtk_grid_attach(GTK_GRID(WheelGrid), set_lft1, col, row, 1, 1);
-  g_signal_connect(set_lft1, "value-changed", G_CALLBACK(wheelparam_cb), GINT_TO_POINTER(6));
+  gtk_grid_attach(GTK_GRID(EncoderGrid), set_lft1, col, row, 1, 1);
+  g_signal_connect(set_lft1, "value-changed", G_CALLBACK(encoderparam_cb), GINT_TO_POINTER(6));
   col++;
   set_lft2 = gtk_spin_button_new_with_range(-1.0, 127.0, 1.0);
-  gtk_grid_attach(GTK_GRID(WheelGrid), set_lft2, col, row, 1, 1);
-  g_signal_connect(set_lft2, "value-changed", G_CALLBACK(wheelparam_cb), GINT_TO_POINTER(7));
+  gtk_grid_attach(GTK_GRID(EncoderGrid), set_lft2, col, row, 1, 1);
+  g_signal_connect(set_lft2, "value-changed", G_CALLBACK(encoderparam_cb), GINT_TO_POINTER(7));
   row++;
   col = 0;
   lbl = gtk_label_new("Right >");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_START);
-  gtk_grid_attach(GTK_GRID(WheelGrid), lbl, col, row, 1, 1);
+  gtk_grid_attach(GTK_GRID(EncoderGrid), lbl, col, row, 1, 1);
   col++;
   set_rgt1 = gtk_spin_button_new_with_range(-1.0, 127.0, 1.0);
-  gtk_grid_attach(GTK_GRID(WheelGrid), set_rgt1, col, row, 1, 1);
-  g_signal_connect(set_rgt1, "value-changed", G_CALLBACK(wheelparam_cb), GINT_TO_POINTER(8));
+  gtk_grid_attach(GTK_GRID(EncoderGrid), set_rgt1, col, row, 1, 1);
+  g_signal_connect(set_rgt1, "value-changed", G_CALLBACK(encoderparam_cb), GINT_TO_POINTER(8));
   col++;
   set_rgt2 = gtk_spin_button_new_with_range(-1.0, 127.0, 1.0);
-  gtk_grid_attach(GTK_GRID(WheelGrid), set_rgt2, col, row, 1, 1);
-  g_signal_connect(set_rgt2, "value-changed", G_CALLBACK(wheelparam_cb), GINT_TO_POINTER(9));
+  gtk_grid_attach(GTK_GRID(EncoderGrid), set_rgt2, col, row, 1, 1);
+  g_signal_connect(set_rgt2, "value-changed", G_CALLBACK(encoderparam_cb), GINT_TO_POINTER(9));
   row++;
   col = 0;
   lbl = gtk_label_new("Right >>");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_START);
-  gtk_grid_attach(GTK_GRID(WheelGrid), lbl, col, row, 1, 1);
+  gtk_grid_attach(GTK_GRID(EncoderGrid), lbl, col, row, 1, 1);
   col++;
   set_fr1 = gtk_spin_button_new_with_range(-1.0, 127.0, 1.0);
-  gtk_grid_attach(GTK_GRID(WheelGrid), set_fr1, col, row, 1, 1);
-  g_signal_connect(set_fr1, "value-changed", G_CALLBACK(wheelparam_cb), GINT_TO_POINTER(10));
+  gtk_grid_attach(GTK_GRID(EncoderGrid), set_fr1, col, row, 1, 1);
+  g_signal_connect(set_fr1, "value-changed", G_CALLBACK(encoderparam_cb), GINT_TO_POINTER(10));
   col++;
   set_fr2 = gtk_spin_button_new_with_range(-1.0, 127.0, 1.0);
-  gtk_grid_attach(GTK_GRID(WheelGrid), set_fr2, col, row, 1, 1);
-  g_signal_connect(set_fr2, "value-changed", G_CALLBACK(wheelparam_cb), GINT_TO_POINTER(11));
+  gtk_grid_attach(GTK_GRID(EncoderGrid), set_fr2, col, row, 1, 1);
+  g_signal_connect(set_fr2, "value-changed", G_CALLBACK(encoderparam_cb), GINT_TO_POINTER(11));
   row++;
   col = 0;
   lbl = gtk_label_new("Right >>>");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_START);
-  gtk_grid_attach(GTK_GRID(WheelGrid), lbl, col, row, 1, 1);
+  gtk_grid_attach(GTK_GRID(EncoderGrid), lbl, col, row, 1, 1);
   col++;
   set_vfr1 = gtk_spin_button_new_with_range(-1.0, 127.0, 1.0);
-  gtk_grid_attach(GTK_GRID(WheelGrid), set_vfr1, col, row, 1, 1);
-  g_signal_connect(set_vfr1, "value-changed", G_CALLBACK(wheelparam_cb), GINT_TO_POINTER(12));
+  gtk_grid_attach(GTK_GRID(EncoderGrid), set_vfr1, col, row, 1, 1);
+  g_signal_connect(set_vfr1, "value-changed", G_CALLBACK(encoderparam_cb), GINT_TO_POINTER(12));
   col++;
   set_vfr2 = gtk_spin_button_new_with_range(-1.0, 127.0, 1.0);
-  gtk_grid_attach(GTK_GRID(WheelGrid), set_vfr2, col, row, 1, 1);
-  g_signal_connect(set_vfr2, "value-changed", G_CALLBACK(wheelparam_cb), GINT_TO_POINTER(13));
+  gtk_grid_attach(GTK_GRID(EncoderGrid), set_vfr2, col, row, 1, 1);
+  g_signal_connect(set_vfr2, "value-changed", G_CALLBACK(encoderparam_cb), GINT_TO_POINTER(13));
   gtk_container_add(GTK_CONTAINER(content), grid);
-  gtk_container_add(GTK_CONTAINER(WheelContainer), WheelGrid);
+  gtk_container_add(GTK_CONTAINER(EncoderContainer), EncoderGrid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
   //
-  // Hide "accept from any source" checkbox
-  // (made visible only if config is checked)
-  gtk_widget_hide(WheelContainer);
+  gtk_widget_hide(EncoderContainer);
   gtk_widget_set_sensitive(delete_b, FALSE);
   gtk_widget_set_sensitive(clear_b, FALSE);
 }
@@ -837,6 +835,7 @@ void midi_menu(GtkWidget *parent) {
 static int updatePanel(int state) {
   gchar text[32];
 
+  g_signal_handler_block(G_OBJECT(newType), type_signal_id);
   switch (state) {
   case UPDATE_NEW:
     gtk_label_set_text(GTK_LABEL(newEvent), MidiEvent2String(thisEvent));
@@ -848,18 +847,21 @@ static int updatePanel(int state) {
 
     switch (thisEvent) {
     case MIDI_NOTE:
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "Button");
+      thisType = AT_BTN;
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, ActionType2String(AT_BTN));
       gtk_widget_set_sensitive(newType, FALSE);
       break;
 
     case MIDI_CTRL:
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "Encoder");
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "Knob/Slider");
+      thisType = AT_ENC;
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, ActionType2String(AT_ENC));
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, ActionType2String(AT_KNB));
       gtk_widget_set_sensitive(newType, TRUE);
       break;
 
     case MIDI_PITCH:
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "Knob/Slider");
+      thisType = AT_KNB;
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, ActionType2String(AT_KNB));
       gtk_widget_set_sensitive(newType, FALSE);
       break;
 
@@ -898,28 +900,28 @@ static int updatePanel(int state) {
     switch (thisEvent) {
     case MIDI_NOTE:
       thisType = AT_BTN;
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "Button");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, ActionType2String(AT_BTN));
       gtk_combo_box_set_active (GTK_COMBO_BOX(newType), 0);
       gtk_widget_set_sensitive(newType, FALSE);
       break;
 
     case MIDI_CTRL:
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "Encoder");
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "Knob/Slider");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, ActionType2String(AT_ENC));
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, ActionType2String(AT_KNB));
 
-      if (thisType == AT_BTN) {
-        gtk_combo_box_set_active (GTK_COMBO_BOX(newType), 1);
-      } else {
-        thisType = AT_ENC;
+      if (thisType == AT_ENC) {
         gtk_combo_box_set_active (GTK_COMBO_BOX(newType), 0);
+      } else {
+        thisType = AT_KNB;
+        gtk_combo_box_set_active (GTK_COMBO_BOX(newType), 1);
       }
 
       gtk_widget_set_sensitive(newType, TRUE);
       break;
 
     case MIDI_PITCH:
-      thisType = AT_BTN;
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, "Knob/Slider");
+      thisType = AT_KNB;
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, ActionType2String(AT_KNB));
       gtk_combo_box_set_active (GTK_COMBO_BOX(newType), 0);
       gtk_widget_set_sensitive(newType, FALSE);
       break;
@@ -954,10 +956,11 @@ static int updatePanel(int state) {
       thisVfr2  = current_cmd->vfr2;
     }
 
-    update_wheelparams(NULL);
+    updateEncoderParams();
     break;
   }
 
+  g_signal_handler_unblock(G_OBJECT(newType), type_signal_id);
   return 0;
 }
 
@@ -1002,7 +1005,7 @@ static int ProcessNewMidiConfigureEvent(void * data) {
     thisType = AT_NONE;
     thisAction = NO_ACTION;
     //
-    // set default values for wheel parameters
+    // set default values for encoder parameters
     //
     thisDelay =  0;
     thisVfl1  = -1;
@@ -1021,6 +1024,7 @@ static int ProcessNewMidiConfigureEvent(void * data) {
     // search tree to see if there is already an event in the list
     // which is the same (matching channel/event/note).
     //
+    gtk_tree_selection_unselect_all (selection);
     gboolean valid = gtk_tree_model_get_iter_first(model, &iter);
 
     while (valid) {
@@ -1042,7 +1046,7 @@ static int ProcessNewMidiConfigureEvent(void * data) {
           thisVal = 0;
           thisMin = 0;
           thisMax = 0;
-          thisType = String2MidiType(str_type);
+          thisType = String2ActionType(str_type);
           thisAction = NO_ACTION;
 
           for (int i = 0; i < ACTIONS; i++) {

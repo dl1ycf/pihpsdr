@@ -1543,9 +1543,7 @@ void rx_set_analyzer(RECEIVER *rx) {
     // For a screen width of 4k pixels, and zoom factor of 32,
     // this can go up to 128k. The program limits this to 256k
     //
-    if (rx->afft_size <= 8192) {
-      rx->afft_size = 8192;
-    } else if (rx->afft_size <= 16384) {
+    if (rx->afft_size <= 16384) {
       rx->afft_size = 16384;
     } else if (rx->afft_size <= 32768) {
       rx->afft_size = 32768;

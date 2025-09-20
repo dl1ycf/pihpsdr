@@ -158,9 +158,7 @@ void DoTheMidi(int code, enum ACTIONtype type, int val);
 //
 
 extern char *MidiEvent2String(enum MIDIevent event);
-extern char *MidiType2String(enum ACTIONtype type);
 extern enum MIDIevent String2MidiEvent(const char *s);
-extern enum ACTIONtype String2MidiType(const char *s);
 extern void midiSaveState(void);
 extern void midiRestoreState(void);
 #endif
