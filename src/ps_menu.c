@@ -120,6 +120,7 @@ static void setpk_cb(GtkWidget *widget, gpointer data) {
       ps_off_on();
     }
   }
+
   //
   // If an illegal value has been typed in, ps_setpk remains unchanged
   // so we have to update the value in the text field of the entry

@@ -1746,16 +1746,13 @@ void radio_start_radio() {
     test_menu(top_window);
   }
 
-  if (can_transmit) {
-    radio_calc_drive_level();  // This is probably not necessary
-  }
-
-  //
-  // Switching PureSignal on/off with P2 stops/restarts
-  // the protocol, so we do it here, after having
-  // completely started the ratdio
-  //
-  if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
+  if (can_transmit && (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL)) {
+    radio_calc_drive_level();
+    //
+    // Switching PureSignal on/off with P2 stops/restarts
+    // the protocol, so we do it here, after having
+    // completely started the ratdio
+    //
     tx_ps_onoff(transmitter, SET(transmitter->puresignal));
   }
 
@@ -1895,6 +1892,28 @@ static void rxtx(int state) {
   if (!can_transmit) {
     t_print("WARNING: rxtx called but no transmitter!");
     return;
+  }
+
+  if (!radio_is_remote) {
+    //
+    // Abort any running Capture, Transmit, Replay
+    //
+    switch (capture_state) {
+    case CAP_RECORDING:
+      capture_state = CAP_RECORD_DONE;
+      schedule_action(CAPTURE, PRESSED, 0);
+      break;
+
+    case CAP_XMIT:
+      capture_state = CAP_XMIT_DONE;
+      schedule_action(CAPTURE, PRESSED, 0);
+      break;
+
+    case CAP_REPLAY:
+      capture_state = CAP_REPLAY_DONE;
+      schedule_action(CAPTURE, PRESSED, 0);
+      break;
+    }
   }
 
   pre_mox = state && !duplex;
@@ -3710,7 +3729,6 @@ int radio_remote_start(void *data) {
 #endif
 
   for (int i = 0; i < receivers; i++) {
-    //(void) gdk_threads_add_timeout_full(G_PRIORITY_DEFAULT_IDLE, 100, start_spectrum, receiver[i], NULL);
     send_startstop_rxspectrum(client_socket, i, 1);
   }
 
@@ -3998,12 +4016,16 @@ void radio_end_capture() {
   }
 }
 
-void radio_start_playback() {
-  tx_playback_start(transmitter);
+void radio_start_xmit_captured_data() {
+  if (can_transmit) {
+    tx_xmit_captured_data_start(transmitter);
+  }
 }
 
-void radio_end_playback() {
-  tx_playback_end(transmitter);
+void radio_end_xmit_captured_data() {
+  if (can_transmit) {
+    tx_xmit_captured_data_end(transmitter);
+  }
 }
 
 //

@@ -181,10 +181,12 @@ static void type_changed_cb(GtkWidget *widget, gpointer data) {
   // This should no longer happen, since we block the signal in updatePanel
   //
   if (type == NULL) { return; }
+
   //
   // If the type changed, the current action may no longer be allowed
   //
   thisType = String2ActionType(type);
+
   if ((ActionTable[thisAction].type & thisType) == 0) {
     thisAction = NO_ACTION;
   }
@@ -248,6 +250,7 @@ static void tree_selection_changed_cb (GtkTreeSelection *sel, gpointer data) {
           break;
         }
       }
+
       gtk_button_set_label(GTK_BUTTON(newAction), ActionTable[thisAction].str);
       updatePanel(UPDATE_EXISTING);
     }
@@ -679,10 +682,10 @@ void midi_menu(GtkWidget *parent) {
   g_signal_connect(ignore_b, "toggled", G_CALLBACK(ignore_cb), NULL);
   row++;
   col = 0;
-  sw= gtk_scrolled_window_new (NULL, NULL);
+  sw = gtk_scrolled_window_new (NULL, NULL);
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
   //Set scrollbar to ALWAYS be displayed and not as temporary overlay
-  g_object_set(sw , "overlay-scrolling", FALSE , NULL);
+  g_object_set(sw, "overlay-scrolling", FALSE, NULL);
   height = 300 -  15 * ((n_midi_devices + 1) / 3);
   gtk_widget_set_size_request(sw, 400, height);
   view = gtk_tree_view_new();
@@ -834,8 +837,8 @@ void midi_menu(GtkWidget *parent) {
 
 static int updatePanel(int state) {
   gchar text[32];
-
   g_signal_handler_block(G_OBJECT(newType), type_signal_id);
+
   switch (state) {
   case UPDATE_NEW:
     gtk_label_set_text(GTK_LABEL(newEvent), MidiEvent2String(thisEvent));

@@ -929,6 +929,13 @@ void send_noise(int s, const RECEIVER *rx) {
   send_bytes(s, (char *)&command, sizeof(command));
 }
 
+void send_replay(int s) {
+  HEADER header;
+  SYNC(header.sync);
+  header.data_type = to_short(CMD_REPLAY);
+  send_bytes(s, (char *)&header, sizeof(header));
+}
+
 void send_capture(int s) {
   HEADER header;
   SYNC(header.sync);

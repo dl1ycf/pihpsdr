@@ -44,7 +44,8 @@
 enum ACTION slider_functions[NUM_SLIDERS] = {
   ZOOM,         AGC_GAIN, DRIVE,
   ATTENUATION,  AF_GAIN,  MIC_GAIN,
-  PAN,    SQUELCH,  COMPRESSION };
+  PAN,    SQUELCH,  COMPRESSION
+};
 
 static GtkWidget *sliders_grid = NULL;
 
@@ -1210,7 +1211,7 @@ void sliders_create(int width, int height, int rows) {
 
         break;
 
-     case PANADAPTER_LOW:
+      case PANADAPTER_LOW:
         if (panlow_scale == NULL) {
           label = gtk_label_new("PLow");
           gtk_widget_set_name(label, csslabel);
@@ -1223,12 +1224,12 @@ void sliders_create(int width, int height, int rows) {
           gtk_range_set_value (GTK_RANGE(panlow_scale), active_receiver->panadapter_low);
           gtk_grid_attach(GTK_GRID(sliders_grid), panlow_scale, pos + twidth, i, swidth, 1);
           panlow_signal_id = g_signal_connect(G_OBJECT(panlow_scale), "value_changed",
-                                             G_CALLBACK(panlow_value_changed_cb), NULL);
+                                              G_CALLBACK(panlow_value_changed_cb), NULL);
         }
 
         break;
 
-     case CW_SPEED:
+      case CW_SPEED:
         if (speed_scale == NULL) {
           label = gtk_label_new("WPM");
           gtk_widget_set_name(label, csslabel);

@@ -110,14 +110,13 @@ int action_dialog(GtkWidget *parent, int filter, enum ACTION currentAction) {
   GtkWidget *sw = gtk_scrolled_window_new(NULL, NULL);
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
   //Set scrollbar to ALWAYS be displayed and not as temporary overlay
-  g_object_set(sw , "overlay-scrolling", FALSE , NULL);
+  g_object_set(sw, "overlay-scrolling", FALSE, NULL);
   //
   // For some reason, the get_preferred_size below does not work until
   // setting propagation of natural widths to FALSE
   //
   gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(sw), TRUE);
   gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(sw), TRUE);
-
   int col = 0;
   int row = 0;
 
@@ -160,6 +159,7 @@ int action_dialog(GtkWidget *parent, int filter, enum ACTION currentAction) {
   gtk_widget_get_preferred_size(sw, &min, &nat);
   width  = nat.width;
   height = nat.height;
+
   //
   // Limit the window to display size
   //
@@ -186,10 +186,8 @@ int action_dialog(GtkWidget *parent, int filter, enum ACTION currentAction) {
   gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(sw), FALSE);
   gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(sw), FALSE);
   gtk_widget_set_size_request(sw, width, height);
-
   gtk_grid_attach(GTK_GRID(grid), sw, 0, 1, 6, 1);
   gtk_container_add(GTK_CONTAINER(content), grid);
-
   //
   // Block the GUI  while this dialog is running, if it has completed
   // (Either OK or Cancel button pressed), destroy it.

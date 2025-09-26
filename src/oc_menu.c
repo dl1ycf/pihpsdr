@@ -155,14 +155,13 @@ void oc_menu(GtkWidget *parent) {
   gtk_grid_set_column_spacing (GTK_GRID(scrgrd), 10);
   GtkWidget *sw = gtk_scrolled_window_new (NULL, NULL);
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-  g_object_set(sw , "overlay-scrolling", FALSE , NULL);
+  g_object_set(sw, "overlay-scrolling", FALSE, NULL);
   //
   // For some reason, the get_preferred_size below does not work until
   // setting propagation of natural widths to FALSE
   //
   gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(sw), TRUE);
   gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(sw), TRUE);
-
   lbl = gtk_label_new("Band");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_grid_attach(GTK_GRID(scrgrd), lbl, 0, 0, 1, 1);
@@ -284,6 +283,7 @@ void oc_menu(GtkWidget *parent) {
   gtk_widget_get_preferred_size(sw, &min, &nat);
   width  = nat.width + 25;
   height = nat.height;
+
   //
   // Limit the window to display size
   //
@@ -302,10 +302,8 @@ void oc_menu(GtkWidget *parent) {
   gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(sw), FALSE);
   gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(sw), FALSE);
   gtk_widget_set_size_request(sw, width, height);
-
   gtk_grid_attach(GTK_GRID(grid), sw, 0, 1, 8, 1);
   gtk_container_add(GTK_CONTAINER(content), grid);
-
   gtk_widget_show_all(dialog);
   sub_menu = dialog;
 }

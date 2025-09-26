@@ -1615,16 +1615,16 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
     mic_sample_double = remote_get_mic_sample() * 0.00003051;  // divide by 32768;
   }
 
-  // If there is captured data to re-play, replace incoming
+  // If there is captured data to transmit, replace incoming
   // mic samples by captured data.
   //
-  if (capture_state == CAP_REPLAY) {
+  if (capture_state == CAP_XMIT) {
     if (capture_replay_pointer < capture_record_pointer) {
       mic_sample_double = capture_data[capture_replay_pointer++];
     } else {
       // switching the state to REPLAY_DONE takes care that the
       // CAPTURE switch is "pressed" only once
-      capture_state = CAP_REPLAY_DONE;
+      capture_state = CAP_XMIT_DONE;
       schedule_action(CAPTURE, PRESSED, 0);
     }
   }
@@ -2687,7 +2687,7 @@ void tx_set_dexp(const TRANSMITTER *tx) {
   SetDEXPRun(0, tx->dexp);
 }
 
-void tx_playback_start(const TRANSMITTER *tx) {
+void tx_xmit_captured_data_start(const TRANSMITTER *tx) {
   ASSERT_SERVER();
   //
   // Turn OFF compression etc. without affecting the mode_settings
@@ -2703,7 +2703,7 @@ void tx_playback_start(const TRANSMITTER *tx) {
   SetDEXPRun(0, 0);
 }
 
-void tx_playback_end(const TRANSMITTER *tx) {
+void tx_xmit_captured_data_end(const TRANSMITTER *tx) {
   ASSERT_SERVER();
   //
   // Restore compression, mic gain etc. (without affecting the mode_settings)

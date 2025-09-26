@@ -184,6 +184,7 @@ ACTION_TABLE ActionTable[] = {
   {RCL7,                "Rcl 7",                "RCL7",         AT_BTN},
   {RCL8,                "Rcl 8",                "RCL8",         AT_BTN},
   {RCL9,                "Rcl 9",                "RCL9",         AT_BTN},
+  {REPLAY,              "Replay",               "REPLAY",       AT_BTN},
   {RF_GAIN,             "RF Gain",              "RFGAIN",       AT_KNB | AT_ENC | AT_SLD},
   {RF_GAIN_RX1,         "RF Gain\nRX1",         "RFGAIN1",      AT_KNB | AT_ENC},
   {RF_GAIN_RX2,         "RF Gain\nRX2",         "RFGAIN2",      AT_KNB | AT_ENC},
@@ -715,80 +716,110 @@ int process_action(void *data) {
 
     break;
 
+  case REPLAY:
   case CAPTURE:
 
     //
+    // Note CAPTURE and REPLAY are mostly the same. The only
+    // difference is that while RXing, REPLAY plays the recorded
+    // audio while CAPTURE starts a new recording
+    //
+    //
     // Audio capture and playback is handled on the server side only
     //
-    if (radio_is_remote && a->mode == PRESSED) {
-      send_capture(client_socket);
-    } else if (can_transmit && a->mode == PRESSED) {
-      switch (capture_state) {
-      case CAP_INIT:
+    if (a->mode == PRESSED) {
+      if (radio_is_remote) {
         //
-        // Hitting "capture" during TX when nothing has ever been
-        // recorded moves us to CAP_AVAIL with an empty buffer.
+        // Audio capture and playback is handled on the server side only
         //
-        capture_data = g_new(double, capture_max);
-        capture_record_pointer = 0;
-        capture_replay_pointer = 0;
-        capture_state = CAP_AVAIL;
-        break;
-
-      case CAP_AVAIL:
-
-        //
-        // In this state, a recording is already in memory, so we can
-        // either play-back (TX) or start a new recording (RX)
-        //
-        if (radio_is_transmitting()) {
-          radio_start_playback();
-          capture_replay_pointer = 0;
-          capture_state = CAP_REPLAY;
+        if (action == CAPTURE) {
+          send_capture(client_socket);
         } else {
-          radio_start_capture();
-          capture_record_pointer = 0;
-          capture_state = CAP_RECORDING;
+          send_replay(client_socket);
         }
+      } else {
+        switch (capture_state) {
+        case CAP_INIT:
+          //
+          // Hitting "Capture" or "Replay" when nothing has ever been
+          // recorded moves us to CAP_AVAIL with an empty buffer.
+          //
+          capture_data = g_new(double, capture_max);
+          capture_record_pointer = 0;
+          capture_replay_pointer = 0;
+          capture_state = CAP_AVAIL;
+          break;
 
-        break;
+        case CAP_AVAIL:
 
-      case CAP_RECORDING:
-      case CAP_RECORD_DONE:
-        //
-        // The two states only differ in whether recording stops due
-        // to user request (CAP_RECORDING) or because the audio
-        // buffer was full (CAP_RECORD_DONE)
-        //
-        radio_end_capture();
-        capture_state = CAP_AVAIL;
-        break;
+          //
+          // In this state, a (possibly empty) recording is already in memory
+          // TX: start transmitting
+          // RX: start recording (CAPTURE) or replaying (REPLAY)
+          //
+          if (radio_is_transmitting()) {
+            radio_start_xmit_captured_data();  // adjust Mic gain etc.
+            capture_replay_pointer = 0;
+            capture_state = CAP_XMIT;
+          } else {
+            if (action == CAPTURE) {
+              radio_start_capture();           // turn off equalizer etc.
+              capture_record_pointer = 0;
+              capture_state = CAP_RECORDING;
+            } else {
+              capture_replay_pointer = 0;
+              capture_state = CAP_REPLAY;
+            }
+          }
 
-      case CAP_REPLAY:
-      case CAP_REPLAY_DONE:
-        //
-        // The two states only differ in whether playback stops due
-        // to user request (CAP_REPLAY) or because the entire recording
-        // has been re-played.
-        //
-        radio_end_playback();
-        capture_state = CAP_AVAIL;
-        break;
+          break;
 
-      case CAP_GOTOSLEEP:
-        //
-        // Called after a timeout
-        //
-        capture_state = CAP_SLEEPING;
-        break;
+        case CAP_RECORDING:
+        case CAP_RECORD_DONE:
+          //
+          // The two states only differ in whether recording stops due
+          // to user request (CAP_RECORDING) or because the audio
+          // buffer was full (CAP_RECORD_DONE)
+          //
+          radio_end_capture();               // restore equalizer settings etc.
+          capture_state = CAP_AVAIL;
+          break;
 
-      case CAP_SLEEPING:
-        //
-        // Data is available but this is not displayed. Go back to
-        // CAP_AVAIL
-        //
-        capture_state = CAP_AVAIL;
-        break;
+        case CAP_XMIT:
+        case CAP_XMIT_DONE:
+          //
+          // The two states only differ in whether playback stops due
+          // to user request (CAP_XMIT) or because the entire recording
+          // has been re-played.
+          //
+          radio_end_xmit_captured_data();  // restore Mic gain etc.
+          capture_state = CAP_AVAIL;
+          break;
+
+        case CAP_REPLAY:
+        case CAP_REPLAY_DONE:
+          //
+          // Replay stops, either due to user request, or since
+          // all data has been replayed
+          //
+          capture_state = CAP_AVAIL;
+          break;
+
+        case CAP_GOTOSLEEP:
+          //
+          // Called after a timeout
+          //
+          capture_state = CAP_SLEEPING;
+          break;
+
+        case CAP_SLEEPING:
+          //
+          // Data is available but this is not displayed. Go back to
+          // CAP_AVAIL
+          //
+          capture_state = CAP_AVAIL;
+          break;
+        }
       }
     }
 
@@ -1986,7 +2017,6 @@ void Action2String(int id, char *str, size_t len) {
 // This is used to specify actions in the props files.
 //
 enum ACTION String2Action(const char *str) {
-
   for (enum ACTION i = 0; i < ACTIONS; i++) {
     if (!strcmp(str, ActionTable[i].button_str)) { return i; }
   }

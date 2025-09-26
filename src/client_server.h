@@ -78,6 +78,7 @@ enum _header_type_enum {
   CMD_RCL,
   CMD_RECEIVERS,
   CMD_REGION,
+  CMD_REPLAY,
   CMD_RESTART,
   CMD_RFGAIN,
   CMD_RIT,
@@ -140,7 +141,7 @@ enum _header_type_enum {
   CLIENT_SERVER_COMMANDS,
 };
 
-#define CLIENT_SERVER_VERSION 0x01250001 // 32-bit version number
+#define CLIENT_SERVER_VERSION 0x01250002 // 32-bit version number
 #define SPECTRUM_DATA_SIZE 4096          // Maximum width of a panadapter
 #define AUDIO_DATA_SIZE 512              // 512 stereo samples
 
@@ -854,6 +855,7 @@ extern void send_drive(int s, double value);
 extern void send_duplex(int s, int state);
 extern void send_eq(int s, int id);
 extern void send_filter_board(int s, int filter_board);
+extern void send_replay(int s);
 extern void send_rx_filter_cut(int s, int rx);
 extern void send_tx_filter_cut(int s);
 extern void send_filter_sel(int s, int vfo, int filter);

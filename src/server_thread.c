@@ -747,6 +747,7 @@ static void server_loop() {
     case CMD_RCL:
     case CMD_RECEIVERS:
     case CMD_REGION:
+    case CMD_REPLAY:
     case CMD_RESTART:
     case CMD_RIT:
     case CMD_RIT_STEP:
@@ -1160,19 +1161,18 @@ static int server_command(void *data) {
   }
   break;
 
-  case CMD_METER: {
+  case CMD_METER:
     active_receiver->smetermode = header->b1;
 
     if (can_transmit) {
       transmitter->alcmode = header->b2;
     }
-  }
-  break;
 
-  case CMD_XVTR: {
+    break;
+
+  case CMD_XVTR:
     vfo_xvtr_changed();
-  }
-  break;
+    break;
 
   case CMD_VFO_STEPSIZE: {
     const  U64_COMMAND *command = (U64_COMMAND *)data;
@@ -1190,10 +1190,9 @@ static int server_command(void *data) {
   }
   break;
 
-  case CMD_RESTART: {
+  case CMD_RESTART:
     radio_protocol_restart();
-  }
-  break;
+    break;
 
   case CMD_RCL: {
     int index = header->b1;
@@ -1205,13 +1204,12 @@ static int server_command(void *data) {
   }
   break;
 
-  case CMD_SCREEN: {
+  case CMD_SCREEN:
     rx_stack_horizontal = header->b1;
     display_size = 1;
     display_width[1] = from_short(header->s1);
     radio_reconfigure_screen();
-  }
-  break;
+    break;
 
   case CMD_PAN: {
     int id = header->b1;
@@ -1257,7 +1255,7 @@ static int server_command(void *data) {
   }
   break;
 
-  case CMD_TOGGLE_TUNE: {
+  case CMD_TOGGLE_TUNE:
     if (can_transmit) {
       full_tune = from_short(header->s1);
       memory_tune = from_short(header->s2);
@@ -1265,24 +1263,22 @@ static int server_command(void *data) {
       g_idle_add(ext_vfo_update, NULL);
       send_tune(remoteclient.socket, transmitter->tune);
     }
-  }
-  break;
 
-  case CMD_TOGGLE_MOX: {
+    break;
+
+  case CMD_TOGGLE_MOX:
     radio_toggle_mox();
     g_idle_add(ext_vfo_update, NULL);
     send_mox(remoteclient.socket, mox);
-  }
-  break;
+    break;
 
-  case CMD_MOX: {
+  case CMD_MOX:
     radio_set_mox(header->b1);
     g_idle_add(ext_vfo_update, NULL);
     send_mox(remoteclient.socket, mox);
-  }
-  break;
+    break;
 
-  case CMD_VOX: {
+  case CMD_VOX:
     //
     // Vox is handled in the client, so do a  mox update
     // but report back properly
@@ -1293,10 +1289,10 @@ static int server_command(void *data) {
     if (mox != header->b1) {
       send_vox(remoteclient.socket, mox);
     }
-  }
-  break;
 
-  case CMD_TUNE: {
+    break;
+
+  case CMD_TUNE:
     if (can_transmit) {
       full_tune = from_short(header->s1);
       memory_tune = from_short(header->s2);
@@ -1307,17 +1303,17 @@ static int server_command(void *data) {
         send_tune(remoteclient.socket, transmitter->tune);
       }
     }
-  }
-  break;
 
-  case CMD_TWOTONE: {
+    break;
+
+  case CMD_TWOTONE:
     if (can_transmit) {
       radio_set_twotone(transmitter, header->b1);
       g_idle_add(ext_vfo_update, NULL);
       send_twotone(remoteclient.socket, transmitter->twotone);
     }
-  }
-  break;
+
+    break;
 
   case CMD_AGC_GAIN: {
     //
@@ -1548,7 +1544,7 @@ static int server_command(void *data) {
   }
   break;
 
-  case CMD_SOAPY_RXANT: {
+  case CMD_SOAPY_RXANT:
     if (device == SOAPYSDR_USB_DEVICE) {
       int id = header->b1;
       int ant = header->b2;
@@ -1557,20 +1553,20 @@ static int server_command(void *data) {
       soapy_protocol_set_rx_antenna(id, ant);
 #endif
     }
-  }
-  break;
 
-  case CMD_SOAPY_TXANT: {
+    break;
+
+  case CMD_SOAPY_TXANT:
     if (device == SOAPYSDR_USB_DEVICE && can_transmit) {
       transmitter->antenna = header->b1;
 #ifdef SOAPYSDR
       soapy_protocol_set_tx_antenna(transmitter->antenna);
 #endif
     }
-  }
-  break;
 
-  case CMD_SOAPY_AGC: {
+    break;
+
+  case CMD_SOAPY_AGC:
     if (device == SOAPYSDR_USB_DEVICE) {
       int id = header->b1;
       int agc = header->b2;
@@ -1582,10 +1578,10 @@ static int server_command(void *data) {
 
 #endif
     }
-  }
-  break;
 
-  case CMD_SPLIT: {
+    break;
+
+  case CMD_SPLIT:
     if (can_transmit) {
       split = header->b1;
       tx_set_mode(transmitter, vfo_get_tx_mode());
@@ -1593,41 +1589,36 @@ static int server_command(void *data) {
       send_tx_data(remoteclient.socket);
       send_rx_data(remoteclient.socket, 0);
     }
-  }
-  break;
 
-  case CMD_SIDETONEFREQ: {
+    break;
+
+  case CMD_SIDETONEFREQ:
     cw_keyer_sidetone_frequency = from_short(header->s1);
     rx_filter_changed(active_receiver);
     schedule_high_priority();
     g_idle_add(ext_vfo_update, NULL);
-  }
-  break;
+    break;
 
-  case CMD_CW: {
+  case CMD_CW:
     tx_queue_cw_event(header->b1, (from_short(header->s1) << 12) | (from_short(header->s2) & 0xFFF));
-  }
-  break;
+    break;
 
-  case CMD_SAT: {
+  case CMD_SAT:
     sat_mode = header->b1;
     g_idle_add(ext_vfo_update, NULL);
     send_sat(remoteclient.socket, sat_mode);
-  }
-  break;
+    break;
 
-  case CMD_DUP: {
+  case CMD_DUP:
     radio_set_duplex(header->b1);
     g_idle_add(ext_vfo_update, NULL);
-  }
-  break;
+    break;
 
-  case CMD_LOCK: {
+  case CMD_LOCK:
     locked = header->b1;
     g_idle_add(ext_vfo_update, NULL);
     send_lock(remoteclient.socket, locked);
-  }
-  break;
+    break;
 
   case CMD_CTUN: {
     int v = header->b1;
@@ -1671,7 +1662,7 @@ static int server_command(void *data) {
   }
   break;
 
-  case CMD_VFO_A_TO_B: {
+  case CMD_VFO_A_TO_B:
     vfo_a_to_b();
     send_vfo_data(remoteclient.socket, VFO_B);
 
@@ -1682,10 +1673,10 @@ static int server_command(void *data) {
     if (can_transmit) {
       send_tx_data(remoteclient.socket);
     }
-  }
-  break;
 
-  case CMD_VFO_B_TO_A: {
+    break;
+
+  case CMD_VFO_B_TO_A:
     vfo_b_to_a();
     send_vfo_data(remoteclient.socket, VFO_A);
     send_rx_data(remoteclient.socket, 0);
@@ -1693,10 +1684,10 @@ static int server_command(void *data) {
     if (can_transmit) {
       send_tx_data(remoteclient.socket);
     }
-  }
-  break;
 
-  case CMD_VFO_SWAP: {
+    break;
+
+  case CMD_VFO_SWAP:
     vfo_a_swap_b();
     send_vfo_data(remoteclient.socket, VFO_A);
     send_vfo_data(remoteclient.socket, VFO_B);
@@ -1709,8 +1700,8 @@ static int server_command(void *data) {
     if (can_transmit) {
       send_tx_data(remoteclient.socket);
     }
-  }
-  break;
+
+    break;
 
   case CMD_RIT: {
     int id = header->b1;
@@ -1768,7 +1759,7 @@ static int server_command(void *data) {
   }
   break;
 
-  case CMD_FILTER_BOARD: {
+  case CMD_FILTER_BOARD:
     radio_load_filters(header->b1);
     send_radio_data(remoteclient.socket);
 
@@ -1778,10 +1769,10 @@ static int server_command(void *data) {
         send_band_data(remoteclient.socket, b);
       }
     }
-  }
-  break;
 
-  case CMD_REGION: {
+    break;
+
+  case CMD_REGION:
     region = header->b1;
     radio_change_region(region);
     const BAND *band = band_get_band(band60);
@@ -1789,19 +1780,17 @@ static int server_command(void *data) {
     for (int s = 0; s < band->bandstack->entries; s++) {
       send_bandstack_data(remoteclient.socket, band60, s);
     }
-  }
-  break;
 
-  case CMD_CWPEAK: {
+    break;
+
+  case CMD_CWPEAK:
     vfo_id_cwpeak_changed(header->b1, header->b2);
-  }
-  break;
+    break;
 
-  case CMD_ANAN10E: {
+  case CMD_ANAN10E:
     radio_set_anan10E(header->b1);
     send_radio_data(remoteclient.socket);
-  }
-  break;
+    break;
 
   case CMD_RX_EQ: {
     const EQUALIZER_COMMAND *command = (EQUALIZER_COMMAND *)data;
@@ -1932,25 +1921,25 @@ static int server_command(void *data) {
   }
   break;
 
-  case CMD_TXFILTER: {
+  case CMD_TXFILTER:
     if (can_transmit) {
       transmitter->use_rx_filter = header->b1;
       transmitter->default_filter_low = from_short(header->s1);
       transmitter->default_filter_high = from_short(header->s2);
       tx_set_filter(transmitter);
     }
-  }
-  break;
 
-  case CMD_PREEMP: {
+    break;
+
+  case CMD_PREEMP:
     if (can_transmit) {
       transmitter->pre_emphasize = header->b1;
       tx_set_pre_emphasize(transmitter);
     }
-  }
-  break;
 
-  case CMD_CTCSS: {
+    break;
+
+  case CMD_CTCSS:
     if (can_transmit) {
       transmitter->ctcss_enabled = header->b1;
       transmitter->ctcss = header->b2;
@@ -1958,18 +1947,18 @@ static int server_command(void *data) {
       send_tx_data(remoteclient.socket);
       g_idle_add(ext_vfo_update, NULL);
     }
-  }
-  break;
 
-  case CMD_AMCARRIER: {
+    break;
+
+  case CMD_AMCARRIER:
     if (can_transmit) {
       const DOUBLE_COMMAND *command = (DOUBLE_COMMAND *)data;
       transmitter->am_carrier_level = from_double(command->dbl);
       tx_set_am_carrier_level(transmitter);
       send_tx_data(remoteclient.socket);
     }
-  }
-  break;
+
+    break;
 
   case CMD_DIGIMAX: {
     const DOUBLE_COMMAND *command = (DOUBLE_COMMAND *)data;
@@ -1984,7 +1973,7 @@ static int server_command(void *data) {
   }
   break;
 
-  case CMD_TXMENU: {
+  case CMD_TXMENU:
     if (can_transmit) {
       const TXMENU_DATA *command = (TXMENU_DATA *)data;
       transmitter->tune_drive = command->tune_drive;
@@ -1997,10 +1986,10 @@ static int server_command(void *data) {
       schedule_transmit_specific();
       send_tx_data(remoteclient.socket);
     }
-  }
-  break;
 
-  case CMD_COMPRESSOR: {
+    break;
+
+  case CMD_COMPRESSOR:
     if (can_transmit) {
       const COMPRESSOR_DATA *command = (COMPRESSOR_DATA *)data;
       transmitter->compressor = command->compressor;
@@ -2017,10 +2006,10 @@ static int server_command(void *data) {
       tx_set_compressor(transmitter);
       g_idle_add(ext_vfo_update, NULL);
     }
-  }
-  break;
 
-  case CMD_DEXP: {
+    break;
+
+  case CMD_DEXP:
     if (can_transmit) {
       const DEXP_DATA  *command = (DEXP_DATA *)data;
       transmitter->dexp = command->dexp;
@@ -2037,36 +2026,39 @@ static int server_command(void *data) {
       tx_set_dexp(transmitter);
       g_idle_add(ext_vfo_update, NULL);
     }
-  }
-  break;
 
-  case CMD_CAPTURE: {
+    break;
+
+  case CMD_REPLAY:
+    schedule_action(REPLAY, PRESSED, 0);
+    break;
+
+  case CMD_CAPTURE:
     schedule_action(CAPTURE, PRESSED, 0);
-  }
-  break;
+    break;
 
-  case CMD_PSONOFF: {
+  case CMD_PSONOFF:
     if (can_transmit) {
       tx_ps_onoff(transmitter, header->b1);
     }
-  }
-  break;
 
-  case CMD_PSRESET: {
+    break;
+
+  case CMD_PSRESET:
     if (can_transmit) {
       tx_ps_reset(transmitter);
     }
-  }
-  break;
 
-  case CMD_PSRESUME: {
+    break;
+
+  case CMD_PSRESUME:
     if (can_transmit) {
       tx_ps_resume(transmitter);
     }
-  }
-  break;
 
-  case CMD_PSATT: {
+    break;
+
+  case CMD_PSATT:
     if (can_transmit) {
       transmitter->auto_on = header->b1;
       transmitter->feedback = header->b2;
@@ -2074,10 +2066,10 @@ static int server_command(void *data) {
       adc[2].antenna = from_short(header->s2);
       schedule_high_priority();
     }
-  }
-  break;
 
-  case CMD_PSPARAMS: {
+    break;
+
+  case CMD_PSPARAMS:
     if (can_transmit) {
       const PS_PARAMS  *command = (PS_PARAMS *)data;
       transmitter->ps_ptol = command->ps_ptol;
@@ -2086,8 +2078,8 @@ static int server_command(void *data) {
       transmitter->ps_setpk = from_double(command->ps_setpk);
       tx_ps_setparams(transmitter);
     }
-  }
-  break;
+
+    break;
 
   case CMD_BINAURAL: {
     RECEIVER *rx = receiver[header->b1];
@@ -2106,14 +2098,14 @@ static int server_command(void *data) {
   }
   break;
 
-  case CMD_TXFFT: {
+  case CMD_TXFFT:
     if (can_transmit) {
       const U64_COMMAND *command = (U64_COMMAND *)data;
       transmitter->fft_size = from_ll(command->u64);
       tx_set_fft_size(transmitter);
     }
-  }
-  break;
+
+    break;
 
   case CMD_PATRIM: {
     const PATRIM_DATA *command = (PATRIM_DATA *)data;

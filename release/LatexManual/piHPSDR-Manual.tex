@@ -1485,6 +1485,8 @@ clock output (also 10 MHz).
 the Anan-100B identify themselves as Hermes boards, they have a FPGA with limited
 resources and this affects the allocation of PureSignal feedback channels. To make
 PureSignal work on these machines, you have to check this box in the \bltt{Radio} menu.
+This also applies to the new, ,,revised'' version of the Anan-10E that came out
+in 2025.
 
 \rett{Swap IQ} This box only appears for radios connected via the SoapySDR library. If checked
 the I and Q samples are exchanged, both in the receivers and in the transmitter. An indication
@@ -3108,8 +3110,8 @@ All other fields are not meant for user input, they just give information on the
 of the \texttt{PURESIGNAL} engine.
 
 \rett{Feedback Lvl}. When doing a PS calibration through a two-tone experiment, this string
-turns red if the feedback level is good. It turns yellow if the feedback level is slightly
-to weak and read if it is too weak. A blue colour indicates a too strong feedback level.
+turns green if the feedback level is good. It turns yellow if the feedback level is slightly
+to weak and red if it is too weak. A blue colour indicates a too strong feedback level.
 The feedback level reported by the PS calibration algorithm is further reported in the
 \rett{feedbk} field. The optimum value is about 154.
 
@@ -4658,60 +4660,84 @@ amplitude, and therefore, the TX mic gain is set to 0 dB while replaying.
 
 The \pH recording and replay feature requires a single button triggering the \bltt{Capture} command,
 so this command must either be mapped to a MIDI/GPIO push-button or to one of the toolbar buttons.
+There is another command, \bltt{Replay} (see below), that is mostly equivalent to \bltt{Capture}
+except when RXing: here it does not start a new recording but plays the recorded audio in
+the audio output of the active receiver. If you do not need to check the recorded audio before
+you transmit it, you do not need the \bltt{Replay} command.
 To avoid blind flying, the status of the recording/playback is indicated in the top right corner of
-the pan adapter in the main window, thus a pan adapter is required (waterfall-only setups won't show the
-record/playback status).
+the pan adapter in the main window (waterfall-only setups won't show the record/playback status).
 
 In the normal ,,idle'' situation, nothing is shown on the pan adapter. This is the case if the \bltt{Capture}
-button has not yet been used since the start of the \pH program, or if the last recording/playback is
-more then 30 seconds ago. If noting is on the screen, one has to push the \bltt{Capture} button once and
-a string \rett{Recorded} string in yellow colour will appear in the top right corner of the pan adapter,
+or \bltt{Replay} buttons have not yet been used since the start of the \pH program,
+ or if the last recording, transmit or playback ended
+more then 30 seconds ago. If noting is on the screen, one has to push the \bltt{Capture} 
+or \bltt{Replay} button once and
+a string \rett{Available} string in yellow colour will appear in the top right corner of the pan adapter,
 and below a horizontal progress bar that indicates how long the actual recording is: a full bar corresponds
 to maximum filling which corresponds to 20 seconds, but this can easily be changed at compile time.
-Fig. \ref{fig:capture1} shows the status bar, as it has been brought up by hitting the \bltt{Capture} button.
+Fig. \ref{fig:capture1} shows the status bar, as it has been brought up by hitting the \bltt{Capture}
+or \bltt{Replay} button.
+It is important to note that when no status bar is on display, this first button press only brings
+the status bar back but does not start any action.
 
 \begin{figure}[ht]
 \center
 \includegraphics[scale=0.45]{Capture1.png}
-\caption{The Recording/Playback status bar.}
+\caption{The Capture status bar.}
 \label{fig:capture1}
 \end{figure}
 
 As can be seen, the length of the currently stored recording is about half of the maximum length. If hitting
-the \bltt{Capture} button for the very first time, the length of the stored recording is of course zero. If
-the \rett{Recorded} string is shown in the pan adapter, hitting the \bltt{Capture} button again will either
-start a new recording (while RXing) or start the replay (if hitting the button while TXing).
-If a new recording is done, the status string will change to \rett{Recording} and the yellow progress bar
+the \bltt{Capture} or \bltt{Replay} button for the very first time,
+ the length of the stored recording is of course zero. If
+the \rett{Available} string is shown in the pan adapter, hitting the \bltt{Capture} button again will either
+start a new recording (while RXing) or start transmitting the recorded audio (if hitting the button while TXing).
+If a new recording is done, the status string will change to \rett{Record} and the yellow progress bar
 will fill from the left to the right. Recording will stop at the latest if the bar hits the right end
 (that is, if the audio buffer is full), but can also by stopped before that if hitting the \bltt{Capture}
-button. During replay, the status string changes to \rett{Replay} (written in red colour), the progress bar
+or \bltt{Replay}
+button. During transmit, the status string changes to \rett{Transmit} (written in red colour), the progress bar
 turns read and starts from the left until (at the latest) all of the actual recording (marked by a small
-vertical yellow line) is completely replayed (Fig. \ref{fig:capture2}). Again, the replay can be stopped any time by hitting
-the \bltt{Capture} button.
+vertical yellow line) is completely replayed (Fig. \ref{fig:capture2}). Again, the transmit
+can be stopped any time by hitting the \bltt{Capture} or \bltt{Replay} button.
 
 \begin{figure}[ht]
 \center
 \includegraphics[scale=0.45]{Capture2.png}
-\caption{Replaying recorded audio data}
+\caption{Transmitting recorded audio data}
 \label{fig:capture2}
 \end{figure}
 
-After the replay is done, the status line again changes to \rett{Recorded} (see Fig. \ref{fig:capture1})
-and the recorded audio can, if one wants, be replayed again. If the status line has been shown for about
-30 seconds without any recording or replaying taking place, it is hidden and can be shown again by
-hitting the \bltt{Capture} button.
+After the transmit is done, the status line again changes to \rett{Available} (see Fig. \ref{fig:capture1})
+and the recorded audio can, if one wants, be transmitted again. If the status line has been shown for about
+30 seconds without any recording or transmitting taking place, it is hidden and can be brought up again by
+hitting the \bltt{Capture} or \bltt{Replay} button.
+
+The big advantage of this user interface is that only a single button (\bltt{Capture}) is needed. However,
+sometimes one wants to check what has actually been recorded, and then one needs the
+\bltt{Replay} button. While TXing, there is no difference between \bltt{Capture} and
+\bltt{Replay}, but while RXing, hitting the \bltt{Replay} button will replay the recorded audio
+in the audio stream of the active receiver. For Replay, the status bar looks similar to the transmit case except
+that it is labelled \rett{Replay}.
+
 
 So the things to remember are:
 \begin{itemize}
-\item{If no recording/playback status is shown in the top left of the pan adapter, hit the  \bltt{Capture} button
-to show it.}
-\item{If the status line reads \rett{Recorded}, then the bar indicates how much audio data has been recorded. Hitting
-\bltt{Capture} now deletes this audio and starts a new recording (if RXing) or replays the recorded audio
-(if TXing).}
-\item{If recording (status text = \rett{Recording}) or replaying (status text = \rett{Replay}, a moving progress
-bar shows how much has already been recorded/replayed.}
-\item{Recording automatically stops if the buffer is full, and replaying automatically stops is all recorded audio
-has been replayed. In both cases, hitting the \bltt{Capture} button ends recording/replay before the end has been reached.}
+\item{If no recording/transmit/replay status is shown in the top left of the pan adapter, pressing
+both the \bltt{Capture}
+or the \bltt{Replay} shows it. Note no playback, transmit, or replay process is started.}
+\item{If the status bar has a yellow label reading \rett{Available}, then the bar indicates how much
+audio data has been recorded. If RXing, hitting
+\bltt{Capture} deletes the recorded audio and starts a new recording, and hitting \bltt{Replay}
+replays the recorded audio in the audio output of the active receiver.
+If TXing, hitting either \bltt{Capture} or \bltt{Replay} starts transmitting the recorded audio.}
+\item{If recording (status text = \rett{Record}), transmitting (status text = \rett{Transmit})
+or replaying (status text = \rett{Replay}), a moving progress
+bar shows how much audio data has already been recorded, transmitted, or replayed.}
+\item{Recording automatically stops if the buffer is full, and transmitting and replaying
+ automatically stops if all recorded audio
+has been transmitted or replayed. In all cases, hitting either \bltt{Captur} or \bltt{Replay}
+immediately stops a running recording, transmit, or replay.}g
 \end{itemize}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{HermesLite-II support}

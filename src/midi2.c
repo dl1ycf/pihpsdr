@@ -323,34 +323,42 @@ void midiRestoreState() {
       //
       action = NO_ACTION;
       GetPropA3("midi[%d].entry[%d].channel[%d].action", i, entry, channel, action);
+
       //
       // execute fixed mapping MIDI_KEY-->AT_BTN and MIDI_PITCH-->AT_KNB
       //
       switch (event) {
-        case EVENT_NONE:
-        default:
-          type = AT_NONE;
-          break;
-        case MIDI_NOTE:
-          type = AT_BTN;
-          break;
-        case MIDI_PITCH:
-          type = AT_KNB;
-          break;
-        case MIDI_CTRL:
-          type = AT_ENC;
-          //
-          // If the stored action cannot be mapped to an encoder, choose AT_KNB
-          //
-          if ((ActionTable[action].type & AT_ENC) == 0) { type = AT_KNB; }
-          snprintf(str, sizeof(str), "None");
-          GetPropS3("midi[%d].entry[%d].channel[%d].type", i, entry, channel, str);
-          // this will become a "Slider" only when specifically told so
+      case EVENT_NONE:
+      default:
+        type = AT_NONE;
+        break;
 
-          if (String2ActionType(str) == AT_KNB) { type = AT_KNB; }
+      case MIDI_NOTE:
+        type = AT_BTN;
+        break;
 
-          break;
+      case MIDI_PITCH:
+        type = AT_KNB;
+        break;
+
+      case MIDI_CTRL:
+        type = AT_ENC;
+
+        //
+        // If the stored action cannot be mapped to an encoder, choose AT_KNB
+        //
+        if ((ActionTable[action].type & AT_ENC) == 0) { type = AT_KNB; }
+
+        snprintf(str, sizeof(str), "None");
+        GetPropS3("midi[%d].entry[%d].channel[%d].type", i, entry, channel, str);
+
+        // this will become a "Slider" only when specifically told so
+
+        if (String2ActionType(str) == AT_KNB) { type = AT_KNB; }
+
+        break;
       }
+
       //
       // Look for encoder parameters. For those not found,
       // use default values

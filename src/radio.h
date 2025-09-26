@@ -73,8 +73,10 @@ enum _capture_state {
   CAP_RECORDING,           // audio is being recorded
   CAP_RECORD_DONE,         // record buffer full
   CAP_AVAIL,               // audio recording finished
-  CAP_REPLAY,              // audio is being re-played
-  CAP_REPLAY_DONE,         // all audio has been sent
+  CAP_XMIT,                // captured audio is being transmitted
+  CAP_XMIT_DONE,           // captured audio data transmission ended
+  CAP_REPLAY,              // captured audio is replayed locally
+  CAP_REPLAY_DONE,         // captured audio replay ended
   CAP_GOTOSLEEP,           // hide capture state display
   CAP_SLEEPING             // capture state is hidden
 };
@@ -337,8 +339,8 @@ extern void   radio_set_alex_attenuation(int v);
 extern int    radio_is_transmitting(void);
 extern void   radio_set_satmode(int mode);
 extern int    radio_max_band(void);
-extern void   radio_start_playback(void);
-extern void   radio_end_playback(void);
+extern void   radio_start_xmit_captured_data(void);
+extern void   radio_end_xmit_captured_data(void);
 extern void   radio_start_capture(void);
 extern void   radio_end_capture(void);
 extern void   radio_protocol_run(void);

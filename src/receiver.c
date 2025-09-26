@@ -1076,23 +1076,41 @@ static void rx_process_buffer(RECEIVER *rx) {
     double left_sample = rx->audio_output_buffer[i * 2];
     double right_sample = rx->audio_output_buffer[(i * 2) + 1];
 
-    //
-    // If CAPTURing, record the audio samples *before*
-    // manipulating them
-    //
-    if (rx == active_receiver && capture_state == CAP_RECORDING) {
-      if (capture_record_pointer < capture_max) {
-        //
-        // normalise samples:
-        // when using AGC, the samples of strong s9 signals are about 0.8
-        //
-        double scale = 0.6 * pow(10.0, -0.05 * rx->volume);
-        capture_data[capture_record_pointer++] = scale * (left_sample + right_sample);
-      } else {
-        // switching the state to RECORD_DONE takes care that the
-        // CAPTURE switch is "pressed" only once
-        capture_state = CAP_RECORD_DONE;
-        schedule_action(CAPTURE, PRESSED, 0);
+    if (rx == active_receiver) {
+      //
+      // If re-playing captured data locally, replace incoming
+      // audio samples by captured data (active RX only)
+      //
+      if (capture_state == CAP_REPLAY) {
+        if (capture_replay_pointer < capture_record_pointer) {
+          left_sample = right_sample = capture_data[capture_replay_pointer++];
+        } else {
+          //
+          // switching the state to REPLAY_DONE takes care that the
+          // REPLAY switch is "pressed" only once
+          capture_state = CAP_REPLAY_DONE;
+          schedule_action(REPLAY, PRESSED, 0);
+        }
+      }
+
+      //
+      // If CAPTURing, record the audio samples *before*
+      // manipulating them
+      //
+      if (capture_state == CAP_RECORDING) {
+        if (capture_record_pointer < capture_max) {
+          //
+          // normalise samples:
+          // when using AGC, the samples of strong s9 signals are about 0.8
+          //
+          double scale = 0.6 * pow(10.0, -0.05 * rx->volume);
+          capture_data[capture_record_pointer++] = scale * (left_sample + right_sample);
+        } else {
+          // switching the state to RECORD_DONE takes care that the
+          // CAPTURE switch is "pressed" only once
+          capture_state = CAP_RECORD_DONE;
+          schedule_action(CAPTURE, PRESSED, 0);
+        }
       }
     }
 
