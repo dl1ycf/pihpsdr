@@ -37,7 +37,7 @@ email: \texttt{dl1ycf@darc.de}
 Copyright (C) 2023--2025 Christoph van W\"ullen, DL1YCF.
 
 This work is licensed under
-the Creative Commons licence CC BY-SA, version 4 or later, so it can be freely distributed.
+the Creative Commons license CC BY-SA, version 4 or later, so it can be freely distributed.
 This license also allows re-users to distribute, modify and build upon the material in any medium or format,
 as long as attribution is given to the creator. The license allows for commercial use.
 If you modify or build upon the material, you must license the modified material under identical terms.
@@ -169,6 +169,8 @@ capability if compiled on MacOS.}
 \item{Option to have an SWR-dependent side tone while TUNE-ing.}
 \item{ZOOM now up to 32x}
 \item{User-configurable Slider and Toolbar areas, with 0--3 slider rows and 0--3 toolbars.}
+\item{Added local replay of captured audio data (\bltt{Replay} command) -- useful to check
+captured audio data before transmitting it.}
 \end{itemize}
 
 \medskip
@@ -215,7 +217,8 @@ The last synchronisation with John Melton's (G0ORX) \pH version 2.0.8 took place
 \chapter{Starting \pH for the first time}
 \section{First invocation of \pH}
 Let us assume you have an SDR (say, an Anan-7000 or a HermesLite-II) powered up and connected to an antenna,
-and you have \pH installed on a computer (say, a Raspberry Pi or an Apple Macintosh), the first thing to
+and you have \pH installed on a computer (say, a Raspberry Pi or an Apple Macintosh).
+The first thing to
 do is to establish a proper connection between the computer and the radio. Although advocated at many
 places,
 I do highly recommend against a WiFi connection. WiFi routers often use optimisations where they hold
@@ -239,9 +242,10 @@ into the RJ45 jacks of the computer and of the radio (see Appendix
 If the \pH program is started for the first time, it opens a window that looks like Fig. \ref{fig:Planning}.
 Besides stating a version number and the date \pH was built, the list of optional features is
 documented (compile-time options,
-in this case  GPIO, MIDI, SATURN) as well as the audio module used (here: ALSA) for attaching headphones
-or microphones to the host computer running \pH. Information about compile-time options and the
-audio modules available are given in Appendix \ref{sec:compiletime}.
+in this case  GPIO, MIDI, SATURN) as well as the audio module used (here: PulseAudio) for attaching headphones
+or microphones to the host computer running \pH. Information about  compile-time options and how to add
+or remove them, and on the available audio modules,
+are given in Appendix \ref{sec:compiletime}.
 
 What is important here that you have to wait. This only applies to the very first time you start \pH.
 On CPUs with a rather simple instruction set (like the ARM processor in the Raspberry Pi, or the Apple
@@ -249,11 +253,11 @@ Silicon processor in recent Macintosh computers), this so-called  \textit{planni
 example, on my
 Apple M2 Mac mini, this step only takes 6 seconds, and you have to wait for 34 seconds on a RaspberryPi 4.
 On the contrary, on CPUs with
-complex instruction sets, more planning is necessary: on my other Mac mini with a 3 GHz x86 processor, it
+complex instruction sets, more planning is necessary: on a Mac mini with a 3 GHz x86 processor, it
 takes 16 minutes! But note
 this has only to be done once, in subsequent starts of \pH, the wisdom will simply be read from
 the file created during the \textit{planning}. These plans contain, for a large number of dimensions,
-the fastest way to perform FFTs (\textit{fast Fourier transformations}) on the given CPU.
+the fastest way to perform fast Fourier transformations (FFTs) on the given CPU.
 When this ,,wisdom'' is secured, \pH tries to detect a radio on the network. If everything went well with
 the network connection, you then see a screen with a discovery menu (Fig. \ref{fig:Start}).
 
@@ -4670,7 +4674,7 @@ the pan adapter in the main window (waterfall-only setups won't show the record/
 In the normal ,,idle'' situation, nothing is shown on the pan adapter. This is the case if the \bltt{Capture}
 or \bltt{Replay} buttons have not yet been used since the start of the \pH program,
  or if the last recording, transmit or playback ended
-more then 30 seconds ago. If noting is on the screen, one has to push the \bltt{Capture} 
+more then 30 seconds ago. If noting is on the screen, one has to push the \bltt{Capture}
 or \bltt{Replay} button once and
 a string \rett{Available} string in yellow colour will appear in the top right corner of the pan adapter,
 and below a horizontal progress bar that indicates how long the actual recording is: a full bar corresponds

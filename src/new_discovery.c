@@ -107,7 +107,6 @@ static void new_discover(struct ifaddrs* iface, int discflag) {
   struct sockaddr_in *mask;
   unsigned char buffer[60];
   struct sockaddr_in to_addr = {0};
-  int i;
 
   switch (discflag) {
   case 1:
@@ -197,7 +196,7 @@ static void new_discover(struct ifaddrs* iface, int discflag) {
   buffer[3] = 0x00;
   buffer[4] = 0x02;
 
-  for (i = 5; i < 60; i++) {
+  for (int i = 5; i < 60; i++) {
     buffer[i] = 0x00;
   }
 

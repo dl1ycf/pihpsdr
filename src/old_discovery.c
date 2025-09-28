@@ -66,7 +66,7 @@ static void discover(struct ifaddrs* iface, int discflag) {
   socklen_t optlen;
   fd_set fds;
   unsigned char buffer[1032];
-  int i, len;
+  int len;
 
   switch (discflag) {
   case 1:
@@ -254,7 +254,7 @@ static void discover(struct ifaddrs* iface, int discflag) {
   buffer[1] = 0xFE;
   buffer[2] = 0x02;
 
-  for (i = 3; i < len; i++) {
+  for (int i = 3; i < len; i++) {
     buffer[i] = 0x00;
   }
 

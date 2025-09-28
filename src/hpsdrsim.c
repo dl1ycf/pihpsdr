@@ -723,7 +723,9 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
-    if (bytes_read <= 0) { continue; }
+    if (bytes_read < 0) {
+      continue;
+    }
 
     count = 0;
     code = *code0;
@@ -871,6 +873,11 @@ int main(int argc, char *argv[]) {
 
     // respond to an incoming Metis detection request
     case 0x0002feef:
+      // processing an invalid packet is too dangerous -- skip it!
+      if (bytes_read != 63) {
+        t_print("InvalidLength: RvcMsg Code=0x%08x Len=%d\n", code, (int)bytes_read);
+        break;
+      }
       if (oldnew == 2) {
         t_print("OldProtocol detection request from %s IGNORED.\n", inet_ntoa(addr_from.sin_addr));
         break;  // Swallow P1 detection requests
@@ -878,12 +885,6 @@ int main(int argc, char *argv[]) {
 
       t_print( "Respond to an incoming Metis detection request from %s / code: 0x%08x\n", inet_ntoa(addr_from.sin_addr),
                code);
-
-      // processing an invalid packet is too dangerous -- skip it!
-      if (bytes_read != 63) {
-        t_print("InvalidLength: RvcMsg Code=0x%08x Len=%d\n", code, (int)bytes_read);
-        break;
-      }
 
       memset(buffer, 0, 60);
       buffer[0] = 0xEF;
@@ -933,13 +934,12 @@ int main(int argc, char *argv[]) {
 
     // stop the SDR to PC transmission via handler_ep6
     case 0x0004feef:
-      t_print( "STOP the transmission via handler_ep6 / code: 0x%08x\n", code);
-
       // processing an invalid packet is too dangerous -- skip it!
       if (bytes_read != 64) {
         t_print("InvalidLength: RvcMsg Code=0x%08x Len=%d\n", code, bytes_read);
         break;
       }
+      t_print( "STOP the transmission via handler_ep6 / code: 0x%08x\n", code);
 
       enable_thread = 0;
 
@@ -957,14 +957,14 @@ int main(int argc, char *argv[]) {
     case 0x0104feef:
     case 0x0204feef:
     case 0x0304feef:
-      if (new_protocol_running()) {
-        t_print("OldProtocol START command received but NewProtocol radio already running!\n");
-        break;
-      }
-
       // processing an invalid packet is too dangerous -- skip it!
       if (bytes_read != 64) {
         t_print("InvalidLength: RvcMsg Code=0x%08x Len=%d\n", code, bytes_read);
+        break;
+      }
+
+      if (new_protocol_running()) {
+        t_print("OldProtocol START command received but NewProtocol radio already running!\n");
         break;
       }
 
@@ -1054,7 +1054,10 @@ int main(int argc, char *argv[]) {
         break;
       }
 
-      if (code == 0 && buffer[4] == 0x02) {
+      //
+      // P2 discovery packet: 60 bytes starting with 00 00 00 00 02
+      //
+      if (bytes_read == 60 && code == 0 && buffer[4] == 0x02) {
         if (oldnew == 1) {
           t_print("NewProtocol discovery packet from %s IGNORED.\n", inet_ntoa(addr_from.sin_addr));
           break;
@@ -1086,7 +1089,7 @@ int main(int argc, char *argv[]) {
         break;
       }
 
-      if (code == 0 && buffer[4] == 0x04) {
+      if (bytes_read == 60 && code == 0 && buffer[4] == 0x04) {
         if (oldnew == 1) {
           t_print("NewProtocol erase packet IGNORED.\n");
           break;
@@ -1113,6 +1116,9 @@ int main(int argc, char *argv[]) {
         break;
       }
 
+      //
+      // P2 program packet: 265 bytes starting with xx xx xx xx 05
+      //
       if (bytes_read == 265 && buffer[4] == 0x05) {
         if (oldnew == 1) {
           t_print("NewProtocol program packet IGNORED.\n");
@@ -1147,6 +1153,9 @@ int main(int argc, char *argv[]) {
         break;
       }
 
+      //
+      // P2 SetIP packet: 60 bytes starting with 00 00 00 00 06
+      //
       if (bytes_read == 60 && code == 0 && buffer[4] == 0x06) {
         if (oldnew == 1) {
           t_print("NewProtocol SetIP packet IGNORED.\n");
@@ -1188,7 +1197,10 @@ int main(int argc, char *argv[]) {
         break;
       }
 
-      if (bytes_read == 60 && buffer[4] == 0x00) {
+      //
+      // P2 General packet: 60 bytes starting with 00 00 00 00 00
+      //
+      if (bytes_read == 60 && code == 0 && buffer[4] == 0x00) {
         if (oldnew == 1) {
           t_print("NewProtocol General packet IGNORED.\n");
           break;
@@ -1201,14 +1213,18 @@ int main(int argc, char *argv[]) {
         addr_new.sin_port = addr_from.sin_port;
         new_protocol_general_packet(buffer);
         break;
-      } else {
-        t_print("Invalid packet (len=%d) detected: ", bytes_read);
-
-        for (i = 0; i < 16; i++) { printf("%02x ", buffer[i]); }
-
-        printf("\n");
       }
 
+      //
+      // Packet form not known
+      //
+      t_print("Invalid packet (len=%d) detected: ", bytes_read);
+
+      if (bytes_read > 16) { bytes_read = 16; }
+      for (i = 0; i < bytes_read; i++) {
+        printf("%02x ", buffer[i]);
+      }
+      printf("\n");
       break;
     }
   }
