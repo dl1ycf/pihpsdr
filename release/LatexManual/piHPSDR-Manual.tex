@@ -261,7 +261,6 @@ the fastest way to perform fast Fourier transformations (FFTs) on the given CPU.
 When this ,,wisdom'' is secured, \pH tries to detect a radio on the network. If everything went well with
 the network connection, you then see a screen with a discovery menu (Fig. \ref{fig:Start}).
 
-\clearpage
 \textbf{The Start button}
 
 \begin{figure}
@@ -348,27 +347,20 @@ a \texttt{STEMlab} discovery as described above. But also if the radio and the c
 by directly querying the radio by its IP address. To use this feature,
 the IP address in numerical form (xxx.xxx.xxx.xxx) can be entered in the box
 with the label \rett{Radio IP Addr}. If a legal IP address is contained in this box, protocol-1 and
-protocol-2 discovery queries
-will  be sent to the IP address specified, in addition to the standard broadcast discovery packets which
-can only reach
-radios on the same network segment. With a known IP address (and if supported by the radio),  one can
+protocol-2 discovery queries start with sending a discovery packet to the specified IP
+address. With a known IP address (and if supported by the radio),  one can
 connect to radios which are not on the same sub-net as the computer, in principle you can connect to any
-radio on the world
-provided it is on the internet. My advice is to always use this possiblitiy if the radio and the host
-computer are not on the same network segment, for example if one connects to a distant radio via an
-unsecured internet connection of via a VPN (VPN stands for \textit{virtual private network}) tunnel.
-
-Note that if a radio IP address is specified, the discovery process skips sending broadcast discovery
-packets if a radio could be detected on the specified IP address. So if you specify a radio IP address
-and such a radio exists, \pH will not discover any other radio that might also be connected to the same
-network segment. The advantage is, that the start of the radio speeds up considerably.
+radio on the world (either directly or through a VPN tunnel)
+provided it is on the internet. My advice is to always use this possibility if the IP address of
+the radio is known: if a radio is discovered this way, further discovery with broadcast packets
+is not attempted, so you can simply connect faster specifying the IP address.
 
 In rare cases (the RedPitaya STEMlab and RadioBerry cases are the only one I know of)
 it is  possible to use the TCP protocol
-rather than the standard UDP one for communicating with the radio. A ``TCP discovery'' will wait for three
-seconds if there is no response (there will be no response unless a TCP-enabled radio is present).
-Therefore, trying to connect via TCP is only done if the \rett{Enable TCP} box is checked.
-
+rather than the standard UDP one for communicating with the radio. 
+If the \rett{Enable TCP} box is checked, a discovery packet will be sent via TCP to the specified
+IP address, and then \pH waits up to three seconds for a response. For radios that are not
+TCP-enabled, it is thus best \textit{not} to enable TCP, to avoid this three-second delay.
 
 
 The \rett{Discover} button re-starts the discovery process. This is useful if the radio has been powered up
@@ -376,7 +368,7 @@ too late and
 was not yet ready when \pH was started. Simply press \rett{Discover} to start another attempt. This is
 largely equivalent to quitting and restarting \pH but much more convenient.
 
-\textbf{Specifying a ,,piHPSDR controller'' or a ,,Anan G2 panel''}
+\textbf{Specifying a ,,piHPSDR controller'' or an ,,Anan G2 panel''}
 
 
 The combo-box (pop-down menu) to the left of the \rett{Discover} button lets you choose which type of GPIO
