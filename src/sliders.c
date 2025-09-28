@@ -225,7 +225,7 @@ static void zoom_value_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void pan_value_changed_cb(GtkWidget *widget, gpointer data) {
-  int pan = (int)(gtk_range_get_value(GTK_RANGE(widget)) + 0.5) - 100;
+  int pan = (int)(gtk_range_get_value(GTK_RANGE(widget)) + 100.5) - 100;
   radio_set_pan(active_receiver->id, pan);
 }
 
