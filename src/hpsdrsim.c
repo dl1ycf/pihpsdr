@@ -1001,7 +1001,7 @@ int main(int argc, char *argv[]) {
        * NewProtocol "program"   packet  265 bytes starting with xx xx xx xx 05  (XXXXXXXX = Seq. Number)
        * NewProtocol "erase"     packet   60 bytes starting with 00 00 00 00 04
        * NewProtocol "Set IP"    packet   60 bytes starting with 00 00 00 00 03
-       * NewProtocol "General"   packet   60 bytes starting with 00 00 00 00 00
+       * NewProtocol "General"   packet   60 bytes starting with xx xx xx xx 00 (XXXXXXXX = Seq. Number)
        *                                  ==> this starts NewProtocol radio
        */
       if (bytes_read == 264 && buffer[0] == 0xEF && buffer[1] == 0xFE && buffer[2] == 0x03 && buffer[3] == 0x01) {
@@ -1198,9 +1198,9 @@ int main(int argc, char *argv[]) {
       }
 
       //
-      // P2 General packet: 60 bytes starting with 00 00 00 00 00
+      // P2 General packet: 60 bytes starting with xx xx xx xx 00
       //
-      if (bytes_read == 60 && code == 0 && buffer[4] == 0x00) {
+      if (bytes_read == 60 && buffer[4] == 0x00) {
         if (oldnew == 1) {
           t_print("NewProtocol General packet IGNORED.\n");
           break;
