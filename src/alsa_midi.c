@@ -46,6 +46,7 @@
 
 #include <pthread.h>
 #include <alsa/asoundlib.h>
+#include <errno.h>
 
 MIDI_DEVICE midi_devices[MAX_MIDI_DEVICES];
 int n_midi_devices;

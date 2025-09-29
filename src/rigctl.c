@@ -5639,10 +5639,11 @@ static gpointer serial_server(gpointer data) {
 
     //
     // On my MacOS using a FIFO, I have seen that numbytes can be -1
-    // (with errno = EAGAIN) although the select() inidcated that data
+    // (with errno = EAGAIN) although the select() indicated that data
     // is available. Therefore the serial thread is not shut down if
     // the read() failed -- it will try again and again until it is
     // shut down by the rigctl menu.
+    //
     if (!client->running) { break; }
 
     if (numbytes > 0) {

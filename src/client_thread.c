@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <openssl/sha.h>
+#include <errno.h>
 
 #include "audio.h"
 #include "band.h"
