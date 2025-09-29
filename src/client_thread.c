@@ -58,7 +58,7 @@ static void *client_thread(void* arg);
 // take from monoxid.net
 //
 
-static int connect_wait (int sockno, struct sockaddr * addr, size_t addrlen, struct timeval * timeout) {
+static int connect_wait (int sockno, struct sockaddr *addr, size_t addrlen, struct timeval *timeout) {
   int res, opt;
 
   // get socket flags
@@ -152,7 +152,7 @@ int radio_connect_remote(char *host, int port, const char *pwd) {
   memset(&server_address, 0, sizeof(server_address));
   server_address.sin_family = AF_INET;
   bcopy((char *)server->h_addr, (char *)&server_address.sin_addr.s_addr, server->h_length);
-  server_address.sin_port = to_short(port);
+  server_address.sin_port = htons(port);
   timeout.tv_sec = 10;
   timeout.tv_usec = 0;
   rc = connect_wait(client_socket, (struct sockaddr *)&server_address, sizeof(server_address), &timeout);
@@ -192,7 +192,7 @@ int radio_connect_remote(char *host, int port, const char *pwd) {
   send_bytes(client_socket, (char *)sha, SHA512_DIGEST_LENGTH);
 
   if (recv_bytes(client_socket, (char *)s, 1) < 0) {
-    t_print("%s: Could not receive Pwd Receipt\n", __FUNCTION__);
+    t_print("%s: Could not receive pwd Receipt\n", __FUNCTION__);
     close(client_socket);
     return -1;
   }

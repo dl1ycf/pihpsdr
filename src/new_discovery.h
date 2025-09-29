@@ -17,4 +17,4 @@
 *
 */
 
-void new_discovery(void);
+void p2_discovery(void);

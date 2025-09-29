@@ -662,12 +662,12 @@ static void discovery() {
       status_text("Protocol 1 ... Discovering Devices");
     }
 
-    old_discovery();
+    p1_discovery();
   }
 
   if (enable_protocol_2 && !discover_only_stemlab) {
     status_text("Protocol 2 ... Discovering Devices");
-    new_discovery();
+    p2_discovery();
   }
 
 #ifdef SOAPYSDR
@@ -858,7 +858,7 @@ static void discovery() {
   //----------------------------------------------------+
   loadProperties("remote.props");
   GetPropS0("current_host", host_addr);
-  t_print("%s: current host %s\n", __FUNCTION__, host_addr);
+  t_print("%s: current server host %s\n", __FUNCTION__, host_addr);
   // Create a "Server" button
   GtkWidget *start_server_button = gtk_button_new_with_label("Use Server");
   g_signal_connect(start_server_button, "clicked", G_CALLBACK(connect_cb), grid);
@@ -876,7 +876,7 @@ static void discovery() {
   for (int i = 0; i < num_hosts; i++) {
     *str = 0;
     GetPropS1("host[%d]", i, str);
-    t_print("%s: HOST ENTRY #%d = %s\n", __FUNCTION__, i, str);
+    t_print("%s: server host entry #%d = %s\n", __FUNCTION__, i, str);
 
     if (strcmp(str, host_addr) && *str && strlen(str) > 0) {  // Avoid duplicate
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(host_combo), NULL, str);

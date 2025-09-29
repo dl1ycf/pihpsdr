@@ -821,7 +821,7 @@ static void *listen_thread(void *arg) {
     // bind to listening port
     memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_addr.s_addr = htonl(INADDR_ANY);
     address.sin_port = to_short(listen_port);
 
     if (bind(listen_socket, (struct sockaddr * )&address, sizeof(address)) < 0) {
