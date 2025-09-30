@@ -1,6 +1,6 @@
 # pihpsdr
 
-**Release 2.3 Manual:** https://github.com/dl1ycf/pihpsdr/releases/download/Manual/piHPSDR-Manual-v2.3.pdf
+**Release 2.3 Manual:** https://github.com/dl1ycf/pihpsdr/releases/download/v2.5/piHPSDR-Manual-v2.3.pdf
 
 Standalone code for HPSDR,
 supporting both the old (P1) and new (P2) HPSDR protocols, as well as the SoapySDR framework.
