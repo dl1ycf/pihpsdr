@@ -39,8 +39,8 @@
 // AUDIO_LAT_LOW          If latency is below this, audio output is resumed
 //
 
-#define AUDIO_LAT_HIGH    250000
-#define AUDIO_LAT_LOW     125000
+#define AUDIO_LAT_HIGH    500000
+#define AUDIO_LAT_LOW     250000
 
 static const int out_buffer_size = 256;
 static const int mic_buffer_size = 256;
@@ -403,22 +403,23 @@ int cw_audio_write(RECEIVER *rx, float sample) {
     if (rx->local_audio_buffer_offset >= out_buffer_size) {
       pa_usec_t latency = pa_simple_get_latency(rx->playstream, &err);
 
-      if (latency > AUDIO_LAT_HIGH) {
+      if (latency > AUDIO_LAT_HIGH && rx->cwcount == 0) {
         //
         // If the radio is running a a slightly too high clock rate, or if
         // the audio hardware clocks slightly below 48 kHz, then the PA audio
-        // buffer will fill up. We suppress further writing of audio data until
-        // the latency get below AUDIO_LAT_LOW.
+        // buffer will fill up. suppress audio data until the latency is below
+        // AUDIO_LAT_LOW, or until a pre-calculated maximum number of output
+        // buffers has been suppressed.
         //
-        rx->cwcount = 1;
-        t_print("%s: suppressing audio\n", __FUNCTION__);
+        rx->cwcount = (AUDIO_LAT_HIGH - AUDIO_LAT_LOW) / (20 * out_buffer_size);
+        t_print("%s: suppressing audio block\n", __FUNCTION__);
       }
 
-      if (latency < AUDIO_LAT_LOW) {
-        rx->cwcount = 0;
+      if (rx->cwcount > 0) {
+        rx->cwcount--;
       }
 
-      if (rx->cwcount == 0) {
+      if (latency > AUDIO_LAT_HIGH && rx->cwcount == 0) {
         int rc = pa_simple_write(rx->playstream,
                                  rx->local_audio_buffer,
                                  out_buffer_size * sizeof(float) * 2,
@@ -470,16 +471,16 @@ int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
         //
         // If the radio is running a a slightly too high clock rate, or if
         // the audio hardware clocks slightly below 48 kHz, then the PA audio
-        // buffer will fill up. We audio data until the latency is below
-        // AUDIO_LAT_LOW, but 24 blocks (128 msec) at maximum.
+        // buffer will fill up. suppress audio data until the latency is below
+        // AUDIO_LAT_LOW, or until a pre-calculated maximum number of output
+        // buffers has been suppressed.
         //
-        rx->cwcount = 25;
+        rx->cwcount = (AUDIO_LAT_HIGH - AUDIO_LAT_LOW) / (20 * out_buffer_size);
         t_print("%s: suppressing audio block\n", __FUNCTION__);
       }
 
       if (rx->cwcount > 0) {
         rx->cwcount--;
-        //t_print("LAT=%ld CNT=%d\n", (long) latency, rx->cwcount);
       }
 
       if (rx->cwcount == 0 || latency < AUDIO_LAT_LOW) {
