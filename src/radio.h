@@ -253,6 +253,7 @@ extern int have_preamp;          // switchable preamp
 extern int have_dither;          // Dither bit can be used
 extern int have_alex_att;        // ALEX board does have 0/10/20/30 dB attenuator
 extern int have_saturn_xdma;     // Saturn can use Network or XDMA interface
+extern int have_g2_v2;           // G2V2 ANDROMEDA message read
 extern int have_lime;            // The radio is a LIME-SDR
 extern int have_radioberry1;     // RadioBerry with first-generation  firmware
 extern int have_radioberry2;     // RadioBerry with second-generation firmware

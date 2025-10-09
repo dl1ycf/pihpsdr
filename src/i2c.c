@@ -141,7 +141,6 @@ void i2c_interrupt() {
 
 void i2c_init() {
   int flags;
-  t_print("%s: open i2c device %s\n", __FUNCTION__, i2c_device);
   i2cfd = open(i2c_device, O_RDWR);
 
   if (i2cfd < 0) {
@@ -149,7 +148,7 @@ void i2c_init() {
     return;
   }
 
-  t_print("%s: open i2c device %s fd=%d\n", __FUNCTION__, i2c_device, i2cfd);
+  t_print("%s: i2c device %s fd=%d\n", __FUNCTION__, i2c_device, i2cfd);
 
   if (ioctl(i2cfd, I2C_SLAVE, i2c_address_1) < 0) {
     t_print("%s: ioctl i2c slave %ud failed: %s\n", __FUNCTION__, i2c_address_1, g_strerror(errno));

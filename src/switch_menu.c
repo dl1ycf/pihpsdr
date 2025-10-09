@@ -17,6 +17,7 @@
 *
 */
 
+#ifdef GPIO
 #include <gtk/gtk.h>
 
 #include "action_dialog.h"
@@ -245,3 +246,4 @@ void switch_menu(GtkWidget *parent) {
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
 }
+#endif

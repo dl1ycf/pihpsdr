@@ -466,7 +466,6 @@ src/bandstack_menu.c \
 src/client_server.c \
 src/client_thread.c \
 src/css.c \
-src/configure.c \
 src/cw_menu.c \
 src/discovered.c \
 src/discovery.c \
@@ -559,7 +558,6 @@ src/bandstack_menu.h \
 src/bandstack.h \
 src/channel.h \
 src/client_server.h \
-src/configure.h \
 src/css.h \
 src/cw_menu.h \
 src/discovered.h \
@@ -648,7 +646,6 @@ src/band_menu.o \
 src/bandstack_menu.o \
 src/client_server.o \
 src/client_thread.o \
-src/configure.o \
 src/css.o \
 src/cw_menu.o \
 src/discovered.o \
@@ -933,9 +930,6 @@ src/client_thread.o: src/client_server.h src/mode.h src/transmitter.h
 src/client_thread.o: src/ext.h src/filter.h src/message.h src/radio.h
 src/client_thread.o: src/adc.h src/discovered.h src/sliders.h src/actions.h
 src/client_thread.o: src/store.h src/vfo.h src/vox.h
-src/configure.o: src/actions.h src/channel.h src/discovered.h src/gpio.h
-src/configure.o: src/i2c.h src/main.h src/message.h src/radio.h src/adc.h
-src/configure.o: src/receiver.h src/transmitter.h
 src/css.o: src/css.h src/message.h
 src/cw_menu.o: src/client_server.h src/mode.h src/receiver.h
 src/cw_menu.o: src/transmitter.h src/ext.h src/iambic.h src/new_menu.h
@@ -943,7 +937,7 @@ src/cw_menu.o: src/new_protocol.h src/MacOS.h src/radio.h src/adc.h
 src/cw_menu.o: src/discovered.h
 src/discovered.o: src/discovered.h
 src/discovery.o: src/actions.h src/client_server.h src/mode.h src/receiver.h
-src/discovery.o: src/transmitter.h src/configure.h src/discovered.h src/ext.h
+src/discovery.o: src/transmitter.h src/discovered.h src/ext.h
 src/discovery.o: src/gpio.h src/main.h src/message.h src/new_discovery.h
 src/discovery.o: src/old_discovery.h src/ozyio.h src/property.h
 src/discovery.o: src/protocols.h src/radio.h src/adc.h src/soapy_discovery.h
@@ -1000,7 +994,7 @@ src/iambic.o: src/adc.h src/discovered.h src/vfo.h
 src/led.o: src/message.h
 src/mac_midi.o: src/message.h src/midi.h src/actions.h src/midi_menu.h
 src/main.o: src/actions.h src/appearance.h src/css.h src/audio.h
-src/main.o: src/receiver.h src/band.h src/bandstack.h src/configure.h
+src/main.o: src/receiver.h src/band.h src/bandstack.h
 src/main.o: src/discovery.h src/discovered.h src/ext.h src/client_server.h
 src/main.o: src/mode.h src/transmitter.h src/gpio.h src/main.h src/message.h
 src/main.o: src/new_menu.h src/new_protocol.h src/MacOS.h src/old_protocol.h

@@ -20,6 +20,8 @@
 // Rewrite to use gpiod rather than wiringPi
 // Note that all pin numbers are now the Broadcom GPIO
 
+#ifdef GPIO
+
 #include <gtk/gtk.h>
 
 #include <stdio.h>
@@ -32,12 +34,10 @@
 #include <poll.h>
 #include <sched.h>
 
-#ifdef GPIO
-  #include <gpiod.h>
-  #include <linux/i2c-dev.h>
-  #include <i2c/smbus.h>
-  #include <sys/ioctl.h>
-#endif
+#include <gpiod.h>
+#include <linux/i2c-dev.h>
+#include <i2c/smbus.h>
+#include <sys/ioctl.h>
 
 #include "actions.h"
 #include "band.h"
@@ -226,7 +226,6 @@ guchar encoder_state_table[13][4] = {
   /* R_CCW_BEG0  */ {R_START0,           R_CCW_BEG0, R_CCW_BEG1, R_START1 | DIR_CCW},
 };
 
-#ifdef GPIO
   char *consumer = "pihpsdr";
 
   //
@@ -238,7 +237,6 @@ guchar encoder_state_table[13][4] = {
   static struct gpiod_chip *chip = NULL;
   static GMutex encoder_mutex;
   static GThread *monitor_thread_id;
-#endif
 
 //
 // The "static const" data is the DEFAULT assignment for encoders,
@@ -403,8 +401,6 @@ SWITCH  my_switches[MAX_SWITCHES];
 ENCODER *encoders = NULL;
 SWITCH *switches = NULL;
 
-#ifdef GPIO
-
 #define I2C_INTERRUPT  15
 #define MAX_LINES 32
 
@@ -434,7 +430,6 @@ static gpointer rotary_encoder_thread(gpointer data) {
   enum ACTION_MODE mode;
   int val;
   usleep(250000);
-  t_print("%s\n", __FUNCTION__);
 
   while (TRUE) {
     g_mutex_lock(&encoder_mutex);
@@ -578,8 +573,6 @@ static void process_encoder(int e, int l, int addr, int val) {
 static void process_edge(int offset, int value) {
   int i;
   unsigned int t;
-  gboolean found;
-  found = FALSE;
 
   //
   // Priority 1 (highst): check encoder
@@ -587,35 +580,27 @@ static void process_edge(int offset, int value) {
   for (i = 0; i < MAX_ENCODERS; i++) {
     if (encoders[i].bottom_encoder_enabled && encoders[i].bottom_encoder_address_a == offset) {
       process_encoder(i, BOTTOM_ENCODER, A, SET(value == PRESSED));
-      found = TRUE;
-      break;
+      return;
     } else if (encoders[i].bottom_encoder_enabled && encoders[i].bottom_encoder_address_b == offset) {
       process_encoder(i, BOTTOM_ENCODER, B, SET(value == PRESSED));
-      found = TRUE;
-      break;
+      return;
     } else if (encoders[i].top_encoder_enabled && encoders[i].top_encoder_address_a == offset) {
       process_encoder(i, TOP_ENCODER, A, SET(value == PRESSED));
-      found = TRUE;
-      break;
+      return;
     } else if (encoders[i].top_encoder_enabled && encoders[i].top_encoder_address_b == offset) {
       process_encoder(i, TOP_ENCODER, B, SET(value == PRESSED));
-      found = TRUE;
-      break;
+      return;
     } else if (encoders[i].switch_enabled && encoders[i].switch_address == offset) {
       t = millis();
 
-      if (t < encoders[i].switch_debounce) {
-        return;
+      if (t > encoders[i].switch_debounce) {
+        encoders[i].switch_debounce = t + settle_time;
+        schedule_action(encoders[i].switch_function, value, 0);
       }
 
-      encoders[i].switch_debounce = t + settle_time;
-      schedule_action(encoders[i].switch_function, value, 0);
-      found = TRUE;
-      break;
+      return;
     }
   }
-
-  if (found) { return; }
 
   //
   // Priority 2: check "non-controller" inputs
@@ -623,25 +608,23 @@ static void process_edge(int offset, int value) {
   //
   if (offset == CWL_LINE) {
     schedule_action(CW_LEFT, value, 0);
-    found = TRUE;
+    return;
   }
 
   if (offset == CWR_LINE) {
     schedule_action(CW_RIGHT, value, 0);
-    found = TRUE;
+    return;
   }
 
   if (offset == CWKEY_LINE) {
     schedule_action(CW_KEYER_KEYDOWN, value, 0);
-    found = TRUE;
+    return;
   }
 
   if (offset == PTTIN_LINE) {
     schedule_action(CW_KEYER_PTT, value, 0);
-    found = TRUE;
+    return;
   }
-
-  if (found) { return; }
 
   //
   // Priority 3: handle i2c interrupt and i2c switches
@@ -652,11 +635,9 @@ static void process_edge(int offset, int value) {
         i2c_interrupt();
       }
 
-      found = TRUE;
+      return;
     }
   }
-
-  if (found) { return; }
 
   //
   // Priority 4: handle "normal" (non-I2C) switches
@@ -664,23 +645,18 @@ static void process_edge(int offset, int value) {
   for (i = 0; i < MAX_SWITCHES; i++) {
     if (switches[i].switch_enabled && switches[i].switch_address == offset) {
       t = millis();
-      found = TRUE;
 
-      if (t < switches[i].switch_debounce) {
-        return;
+      if (t > switches[i].switch_debounce) {
+        switches[i].switch_debounce = t + settle_time;
+        schedule_action(switches[i].switch_function, value, 0);
       }
 
-      switches[i].switch_debounce = t + settle_time;
-      schedule_action(switches[i].switch_function, value, 0);
-      break;
+      return;
     }
   }
 
-  if (found) { return; }
-
-  t_print("%s: could not find %d\n", __FUNCTION__, offset);
+  t_print("%s: could not find offset=%d\n", __FUNCTION__, offset);
 }
-#endif
 
 #ifdef GPIOV1
 // cppcheck-suppress constParameterCallback
@@ -709,7 +685,6 @@ void gpio_default_encoder_actions(int ctrlr) {
 
   switch (ctrlr) {
   case NO_CONTROLLER:
-  case G2_V2:
   default:
     default_encoders = NULL;
     break;
@@ -749,7 +724,6 @@ void gpio_default_switch_actions(int ctrlr) {
   switch (ctrlr) {
   case NO_CONTROLLER:
   case CONTROLLER1:
-  case G2_V2:
   default:
     default_switches = NULL;
     break;
@@ -855,16 +829,6 @@ void gpio_set_defaults(int ctrlr) {
     switches = my_switches;
     break;
 
-  case G2_V2:
-    //
-    // There are no GPIO lines that the user can use
-    //
-    memcpy(my_encoders, encoders_no_controller, sizeof(my_encoders));
-    memcpy(my_switches, switches_no_controller, sizeof(my_switches));
-    encoders = my_encoders;
-    switches = my_switches;
-    break;
-
   case NO_CONTROLLER:
   default:
     //
@@ -878,45 +842,46 @@ void gpio_set_defaults(int ctrlr) {
     PTTOUT_LINE = 22;
     CWOUT_LINE = 23;
 
-    if (have_radioberry1) {
-      CWL_LINE = 14;
-      CWR_LINE = 15;
-      CWKEY_LINE = -1;
-      PTTIN_LINE = -1;
-      PTTOUT_LINE = -1;
-      CWOUT_LINE = -1;
-    }
-
-    if (have_radioberry2) {
-      CWL_LINE = 17;
-      CWR_LINE = 21;
-      CWKEY_LINE = -1;
-      PTTIN_LINE = -1;
-      PTTOUT_LINE = -1;
-      CWOUT_LINE = -1;
-    }
-
     memcpy(my_encoders, encoders_no_controller, sizeof(my_encoders));
     memcpy(my_switches, switches_no_controller, sizeof(my_switches));
     encoders = my_encoders;
     switches = my_switches;
     break;
   }
+  //
+  // On some specific hardware, we may not use any of the optional GPIO lines
+  //
+  if (have_radioberry1) {
+    CWL_LINE = 14;
+    CWR_LINE = 15;
+    CWKEY_LINE = -1;
+    PTTIN_LINE = -1;
+    PTTOUT_LINE = -1;
+    CWOUT_LINE = -1;
+  }
+
+  if (have_radioberry2) {
+    CWL_LINE = 17;
+    CWR_LINE = 21;
+    CWKEY_LINE = -1;
+    PTTIN_LINE = -1;
+    PTTOUT_LINE = -1;
+    CWOUT_LINE = -1;
+  }
+
+  if (have_saturn_xdma) {
+    CWL_LINE = -1;
+    CWR_LINE = -1;
+    CWKEY_LINE = -1;
+    PTTIN_LINE = -1;
+    PTTOUT_LINE = -1;
+    CWOUT_LINE = -1;
+  }
 }
 
 void gpioRestoreState() {
   loadProperties("gpio.props");
   GetPropI0("controller",                                         controller);
-#ifndef GPIO
-
-  //
-  // If not compiled for GPIO, we can only have the G2Mk2 or  none
-  //
-  if (controller != G2_V2) {
-    controller = NO_CONTROLLER;
-  }
-
-#endif
   gpio_set_defaults(controller);
 
   for (int i = 0; i < MAX_ENCODERS; i++) {
@@ -1038,19 +1003,18 @@ static gpointer monitor_thread(gpointer arg) {
   return NULL;
 }
 
-static int setup_input_line(struct gpiod_chip *chip, int offset, gboolean pullup) {
+static void setup_input_line(struct gpiod_chip *chip, int offset, gboolean pullup) {
   //
   // Set up an input line. If this succeeds, record offset in monitor[]
   // and release line (it will be requested again later in the monitor thread).
   //
   int ret;
   struct gpiod_line_request_config config;
-  t_print("%s: %d\n", __FUNCTION__, offset);
   struct gpiod_line *line = gpiod_chip_get_line(chip, offset);
 
   if (!line) {
     t_print("%s: get line %d failed: %s\n", __FUNCTION__, offset, g_strerror(errno));
-    return -1;
+    return;
   }
 
   config.consumer = consumer;
@@ -1064,13 +1028,13 @@ static int setup_input_line(struct gpiod_chip *chip, int offset, gboolean pullup
 
   if (ret < 0) {
     t_print("%s: line %d gpiod_line_request failed: %s\n", __FUNCTION__, offset, g_strerror(errno));
-    return ret;
+    return;
   }
 
   gpiod_line_release(line);  // release line since the event monitor will request it later
   monitor_lines[lines] = offset;
   lines++;
-  return 0;
+  return;
 }
 
 static struct gpiod_line *setup_output_line(struct gpiod_chip *chip, int offset, int initialValue)  {
@@ -1079,11 +1043,10 @@ static struct gpiod_line *setup_output_line(struct gpiod_chip *chip, int offset,
   // (in case of failure: NULL).
   //
   struct gpiod_line_request_config config;
-  t_print("%s: %d\n", __FUNCTION__, offset);
   struct gpiod_line *line = gpiod_chip_get_line(chip, offset);
 
   if (!line) {
-    t_print("%s: get_line failed for offset %d: %s\n", __FUNCTION__, offset, g_strerror(errno));
+    t_print("%s: Offset=%d failed: %s\n", __FUNCTION__, offset, g_strerror(errno));
     return NULL;
   }
 
@@ -1092,7 +1055,7 @@ static struct gpiod_line *setup_output_line(struct gpiod_chip *chip, int offset,
   config.flags = 0;  // active High
 
   if (gpiod_line_request(line, &config, initialValue) < 0) {
-    t_print("%s: line_request failed for offset %d: %s\n", __FUNCTION__, offset, g_strerror(errno));
+    t_print("%s: Offset=%d failed: %s\n", __FUNCTION__, offset, g_strerror(errno));
     gpiod_line_release(line);
     return NULL;
   }
@@ -1102,13 +1065,8 @@ static struct gpiod_line *setup_output_line(struct gpiod_chip *chip, int offset,
 
 #endif
 
-//
-// With a G2_V2 controller gpio_init() is essentially a no-op,
-// since no special lines are defined (have_button is not set)
-//
-int gpio_init() {
+void gpio_init() {
 #ifdef GPIOV1
-  int ret = 0;
   initialiseEpoch();
   g_mutex_init(&encoder_mutex);
   gpio_set_defaults(controller);
@@ -1133,64 +1091,43 @@ int gpio_init() {
   //
   if (chip == NULL) {
     t_print("%s: open chip failed: %s\n", __FUNCTION__, g_strerror(errno));
-    ret = -1;
     goto err;
   }
 
   t_print("%s: GPIO device=%s\n", __FUNCTION__, gpio_device);
 
-  if (controller == CONTROLLER1 || controller == CONTROLLER2_V1 || controller == CONTROLLER2_V2
-      || controller == G2_FRONTPANEL) {
+  lines = 0;
+  if (controller != NO_CONTROLLER) {
     // setup encoders
-    t_print("%s: setup encoders\n", __FUNCTION__);
 
     for (int i = 0; i < MAX_ENCODERS; i++) {
       if (encoders[i].bottom_encoder_enabled) {
-        if (setup_input_line(chip, encoders[i].bottom_encoder_address_a, encoders[i].bottom_encoder_pullup) < 0) {
-          continue;
-        }
-
-        if (setup_input_line(chip, encoders[i].bottom_encoder_address_b, encoders[i].bottom_encoder_pullup) < 0) {
-          continue;
-        }
+        setup_input_line(chip, encoders[i].bottom_encoder_address_a, encoders[i].bottom_encoder_pullup);
+        setup_input_line(chip, encoders[i].bottom_encoder_address_b, encoders[i].bottom_encoder_pullup);
       }
 
       if (encoders[i].top_encoder_enabled) {
-        if (setup_input_line(chip, encoders[i].top_encoder_address_a, encoders[i].top_encoder_pullup) < 0) {
-          continue;
-        }
-
-        if (setup_input_line(chip, encoders[i].top_encoder_address_b, encoders[i].top_encoder_pullup) < 0) {
-          continue;
-        }
+        setup_input_line(chip, encoders[i].top_encoder_address_a, encoders[i].top_encoder_pullup);
+        setup_input_line(chip, encoders[i].top_encoder_address_b, encoders[i].top_encoder_pullup);
       }
 
       if (encoders[i].switch_enabled) {
-        if (setup_input_line(chip, encoders[i].switch_address, encoders[i].switch_pullup) < 0) {
-          continue;
-        }
+        setup_input_line(chip, encoders[i].switch_address, encoders[i].switch_pullup);
       }
     }
 
     // setup switches
-    t_print("%s: setup switches\n", __FUNCTION__);
 
     for (int i = 0; i < MAX_SWITCHES; i++) {
       if (switches[i].switch_enabled) {
-        if (setup_input_line(chip, switches[i].switch_address, switches[i].switch_pullup) < 0) {
-          continue;
-        }
+        setup_input_line(chip, switches[i].switch_address, switches[i].switch_pullup);
       }
     }
   }
 
   if (controller == CONTROLLER2_V1 || controller == CONTROLLER2_V2 || controller == G2_FRONTPANEL) {
     i2c_init();
-    t_print("%s: setup i2c interrupt %d\n", __FUNCTION__, I2C_INTERRUPT);
-
-    if ((ret = setup_input_line(chip, I2C_INTERRUPT, TRUE)) < 0) {
-      goto err;
-    }
+    setup_input_line(chip, I2C_INTERRUPT, TRUE);
   }
 
   //
@@ -1198,38 +1135,21 @@ int gpio_init() {
   // but we simply continue without the functionality and can continue
   // to use the controller
   //
-  int have_button = 0;
 
   if (CWL_LINE >= 0) {
-    if (setup_input_line(chip, CWL_LINE, TRUE) < 0) {
-      t_print("%s: CWL line setup failed\n", __FUNCTION__);
-    } else {
-      have_button = 1;
-    }
+    setup_input_line(chip, CWL_LINE, TRUE);
   }
 
   if (CWR_LINE >= 0) {
-    if (setup_input_line(chip, CWR_LINE, TRUE) < 0) {
-      t_print("%s: CWR line setup failed\n", __FUNCTION__);
-    } else {
-      have_button = 1;
-    }
+    setup_input_line(chip, CWR_LINE, TRUE);
   }
 
   if (CWKEY_LINE >= 0) {
-    if (setup_input_line(chip, CWKEY_LINE, TRUE) < 0) {
-      t_print("%s: CWKEY line setup failed\n", __FUNCTION__);
-    } else {
-      have_button = 1;
-    }
+    setup_input_line(chip, CWKEY_LINE, TRUE);
   }
 
   if (PTTIN_LINE >= 0) {
-    if (setup_input_line(chip, PTTIN_LINE, TRUE) < 0) {
-      t_print("%s: CWKEY line setup failed\n", __FUNCTION__);
-    } else {
-      have_button = 1;
-    }
+    setup_input_line(chip, PTTIN_LINE, TRUE);
   }
 
   if (PTTOUT_LINE >= 0) {
@@ -1242,18 +1162,16 @@ int gpio_init() {
     cwout_line = setup_output_line(chip, CWOUT_LINE, 1);
   }
 
-  if (have_button || (controller != NO_CONTROLLER && controller != G2_V2)) {
+  if (lines > 0) {
     monitor_thread_id = g_thread_new( "gpiod monitor", monitor_thread, NULL);
-    t_print("%s: monitor_thread: id=%p\n", __FUNCTION__, monitor_thread_id);
   }
 
-  if (controller != NO_CONTROLLER && controller != G2_V2) {
+  if (controller != NO_CONTROLLER) {
     rotary_encoder_thread_id = g_thread_new( "encoders", rotary_encoder_thread, NULL);
-    t_print("%s: rotary_encoder_thread: id=%p\n", __FUNCTION__, rotary_encoder_thread_id);
   }
 
 #endif
-  return 0;
+  return;
 #ifdef GPIOV1
 err:
   t_print("%s: err\n", __FUNCTION__);
@@ -1264,7 +1182,7 @@ err:
 
   chip = NULL;
   gpio_device = NULL;
-  return ret;
+  return;
 #endif
 }
 
@@ -1275,3 +1193,5 @@ void gpio_close() {
 
 #endif
 }
+
+#endif

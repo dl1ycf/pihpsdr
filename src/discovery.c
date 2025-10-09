@@ -31,9 +31,6 @@
 
 #include "actions.h"
 #include "client_server.h"
-#ifdef GPIO
-  #include "configure.h"
-#endif
 #include "discovered.h"
 #include "ext.h"
 #include "gpio.h"
@@ -180,28 +177,12 @@ static gboolean protocols_cb (GtkWidget *widget, GdkEventButton *event, gpointer
 }
 
 #ifdef GPIO
-#ifdef GPIO_CONFIGURE_LINES
-static gboolean gpio_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  configure_gpio(discovery_dialog);
-  return TRUE;
-}
-
-#endif
-#endif
-
 static void gpio_changed_cb(GtkWidget *widget, gpointer data) {
   controller = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-#ifndef GPIO
-
-  if (controller != G2_V2) {
-    controller = NO_CONTROLLER;
-    gtk_combo_box_set_active(GTK_COMBO_BOX(widget), controller);
-  }
-
-#endif
   gpio_set_defaults(controller);
   gpioSaveState();
 }
+#endif
 
 static gboolean discover_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   gtk_widget_destroy(discovery_dialog);
@@ -921,6 +902,7 @@ static void discovery() {
   gtk_grid_attach(GTK_GRID(grid), toggle_button, 3, row, 1, 1);
   row++;
   controller = NO_CONTROLLER;
+#ifdef GPIO
   gpioRestoreState();
   gpio_set_defaults(controller);
   GtkWidget *gpio = gtk_combo_box_text_new();
@@ -929,10 +911,10 @@ static void discovery() {
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller2 V1");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller2 V2");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "G2 Front Panel");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "G2 Mk2 Panel");
   my_combo_attach(GTK_GRID(grid), gpio, 0, row, 1, 1);
   gtk_combo_box_set_active(GTK_COMBO_BOX(gpio), controller);
   g_signal_connect(gpio, "changed", G_CALLBACK(gpio_changed_cb), NULL);
+#endif
   GtkWidget *discover_b = gtk_button_new_with_label("Discover");
   g_signal_connect (discover_b, "button-press-event", G_CALLBACK(discover_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), discover_b, 1, row, 1, 1);

@@ -3528,7 +3528,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           //
           // This takes care the G2panel menu is shown in the main menu
           //
-          if (controller == NO_CONTROLLER) { controller = G2_V2; }
+          have_g2_v2 = 1;
         }
       }
 

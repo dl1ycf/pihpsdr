@@ -370,14 +370,12 @@ too late and
 was not yet ready when \pH was started. Simply press \rett{Discover} to start another attempt. This is
 largely equivalent to quitting and restarting \pH but much more convenient.
 
-\textbf{Specifying a ,,piHPSDR controller'' or an ,,Anan G2 panel''}
+\textbf{Specifying a ,,piHPSDR controller''}
 
-
-The combo-box (pop-down menu) to the left of the \rett{Discover} button lets you choose which type of GPIO
-controller you
-have attached to the computer.  If compiled with GPIO support (this can also be done for
-programs running on a Raspberry Pi or on an internal Raspberry module of first-generation (2023) Anan G2 radios),
-the menu lets you choose between
+If \pH is compiled with GPIO support, there is a
+combo-box (pop-down menu) to the left of the \rett{Discover} button lets you choose which type of GPIO
+based controller you
+have attached to the computer.  The possible choices are
 
 \begin{itemize}[font=\texttt, left=80pt]
 \item[No Controller]{Choose this if no GPIO controller is wired to your Raspberry Pi. This is the default
@@ -392,21 +390,27 @@ single encoders. This special case is not covered in this manual.}
 on a single shaft), or a clone thereof.
 This controller is denoted Controller2 in the rest of this manual.}
 \item[G2 Front Panel]{Choose this if you have an Anan G2 radio with a built-in controller.}
-\item[G2 Mk2 Panel]{Choose this if you have an Anan G2 Mk2 (also known as ,,G2 Ultra'')
-radio (with LEDs in the front panel).
-This tells \pH not to use any GPIO lines, if it is compiled with GPIO support. However, it is
-strongly recommended \textit{not} to enable GPIO for G2 Ultras. Previously, \pH required this choice
-to set up the serial line for the panel controller of the G2 Ultras, but this is now handled
-automatically.}
 \end{itemize}
+Note that the front panel of the second-generation Anan G2 radios is not controlled via GPIO. For these
+radios you should choose \rett{No Controller} or, even better, compile \pH without GPIO support.
 
-\textbf{Attention.} Be sure to choose a controller only if such a controller is actually connected to your
+\begin{center}
+\fbox{
+\parbox{\textwidth - 2cm}{
+\begin{center}
+\textbf{\color{red} ----- Attention -----}
+\end{center}
+Be sure to choose a controller only if such a controller is actually connected to your
 Raspberry Pi. Unexpected things can happen if you chose one type of controller here but have totally different
 hardware connected to the GPIO. For example, if you have a so-called ,,audio hat'' attached to the RaspPi
 GPIO, then it is safest to compile \pH without GPIO support.
 The same applies to G2 Ultras where GPIO lines may be used for serial connection
-to the panel. Note that even if you choose \texttt{No Controller}, some GPIO lines are still used
+to the panel. Note that even if you choose \rett{No Controller}, some GPIO lines may still be used
 e.g. for CW, as documented in Appendix \ref{sec:gpio}.
+}
+}
+\end{center}
+
 
 All settings (protocols, controller, IP address, Server address) made in this menu are stored in
 radio-independent) files ( \texttt{gpio.props}, \texttt{ipaddr.props}, \texttt{protocols.props},
@@ -7764,7 +7768,8 @@ other single-board computers with a GPIO.
 \center
 \includegraphics[scale=0.6]{GPIO.pdf}
 \caption{GPIO lines used with various controllers. Note that Controller2V2 and the G2 front panel
-share the used GPIO lines. The assignment is different for a RadioBerry, see chapter \ref{sec:radioberry}}
+share the used GPIO lines. The assignment is different for a RadioBerry, see chapter \ref{sec:radioberry}.
+None of the GPIO lines printed in blue are used on Anan-G2 radios.}
 \label{fig:GPIO}
 \end{figure}
 

@@ -32,7 +32,6 @@
 #include "audio.h"
 #include "band.h"
 #include "bandstack.h"
-#include "configure.h"
 #include "css.h"
 #include "discovery.h"
 #include "discovered.h"

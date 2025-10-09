@@ -382,7 +382,9 @@ void schedule_action(enum ACTION action, enum ACTION_MODE mode, int val) {
     last = now;
 
     if (mode == PRESSED && (!cw_keyer_internal || MIDI_cw_is_active)) {
+#ifdef GPIO
       gpio_set_cw(1);
+#endif
 
       if (wait > 48000) {
         //
@@ -401,7 +403,9 @@ void schedule_action(enum ACTION action, enum ACTION_MODE mode, int val) {
       tx_queue_cw_event(1, wait);
       cw_key_hit = 1;
     } else {
+#ifdef GPIO
       gpio_set_cw(0);
+#endif
       tx_queue_cw_event(0, wait);
     }
   }

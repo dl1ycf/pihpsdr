@@ -470,7 +470,9 @@ static void* keyer_thread(void *arg) {
           if (*kdash) {                  // send manual dashes
             tdown = loop_delay.tv_sec + 1.0E-9 * loop_delay.tv_nsec;
             tx_queue_cw_event(1, 0);
+#ifdef GPIO
             gpio_set_cw(1);
+#endif
             key_state = STRAIGHT;
           }
         } else {
@@ -497,7 +499,9 @@ static void* keyer_thread(void *arg) {
         //
         if (! *kdash) {
           tx_queue_cw_event(0, (int)((loop_delay.tv_sec + 1.0E-9 * loop_delay.tv_nsec - tdown) * 48000.0));
+#ifdef GPIO
           gpio_set_cw(0);
+#endif
           key_state = CHECK;
         } else {
           loop_delay.tv_nsec += 1000000;
@@ -511,7 +515,9 @@ static void* keyer_thread(void *arg) {
         //
         dash_memory = 0;
         dash_held = *kdash;
+#ifdef GPIO
         gpio_set_cw(1);
+#endif
         tx_queue_cw_event (1, 0);
         tx_queue_cw_event (0, dot_samples);
         tx_queue_cw_event (0, dot_samples);
@@ -568,7 +574,9 @@ static void* keyer_thread(void *arg) {
         //
         dot_memory =  0;
         dot_held = *kdot;  // remember if dot is still held at beginning of the dash
+#ifdef GPIO
         gpio_set_cw(1);
+#endif
         tx_queue_cw_event (1, 0);
         tx_queue_cw_event (0, dash_samples);
         tx_queue_cw_event (0, dot_samples);

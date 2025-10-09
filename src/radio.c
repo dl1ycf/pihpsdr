@@ -254,6 +254,7 @@ int have_alex_att = 0;
 int have_preamp = 0;
 int have_dither = 0;
 int have_saturn_xdma = 0;
+int have_g2_v2 = 0;
 int have_lime = 0;
 int have_radioberry1 = 0;
 int have_radioberry2 = 0;
@@ -1131,18 +1132,6 @@ void radio_start_radio() {
     }
   }
 
-#ifdef GPIO
-
-  //
-  // Post-pone GPIO initialization until here since
-  // we must first set the RadioBerry flags
-  //
-  if (gpio_init() < 0) {
-    t_print("GPIO failed to initialise\n");
-  }
-
-#endif
-
   if (device == SOAPYSDR_USB_DEVICE && !strcmp(radio->name, "lime")) {
     have_lime = 1;
   }
@@ -1150,6 +1139,14 @@ void radio_start_radio() {
   if (device == NEW_DEVICE_SATURN && (strcmp(radio->network.interface_name, "XDMA") == 0)) {
     have_saturn_xdma = 1;
   }
+
+#ifdef GPIO
+  //
+  // Post-pone GPIO initialization until here.
+  // We must first set the RadioBerry/XDMA flags from
+  // which gpio_init() deduces which GPIO lines NOT to use.
+  gpio_init();
+#endif
 
   for (int id = 0; id < MAX_SERIAL; id++) {
     //
@@ -2112,7 +2109,9 @@ static void rxtx(int state) {
     }
   }
 
+#ifdef GPIO
   gpio_set_ptt(state);
+#endif
 }
 
 void radio_toggle_mox() {
@@ -3426,7 +3425,9 @@ static void radio_restore_state() {
   ///
   toolbar_restore_state();
   sliders_restore_state();
+#ifdef GPIO
   gpioRestoreActions();
+#endif
   rigctlRestoreState();
 #ifdef MIDI
   midiRestoreState();
@@ -3639,7 +3640,9 @@ void radio_save_state() {
 
   toolbar_save_state();
   sliders_save_state();
+#ifdef GPIO
   gpioSaveActions();
+#endif
   rigctlSaveState();
 #ifdef MIDI
   midiSaveState();

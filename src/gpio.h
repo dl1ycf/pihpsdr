@@ -20,6 +20,7 @@
 #ifndef _GPIO_H_
 #define _GPIO_H_
 
+#ifdef GPIO
 #include <gtk/gtk.h>
 
 #define MAX_ENCODERS 5
@@ -70,9 +71,10 @@ extern void gpioRestoreActions(void);
 extern void gpioRestoreState(void);
 extern void gpioSaveState(void);
 extern void gpioSaveActions(void);
-extern int gpio_init(void);
+extern void gpio_init(void);
 extern void gpio_close(void);
 extern void gpio_set_ptt(int state);
 extern void gpio_set_cw(int state);
 
+#endif
 #endif
