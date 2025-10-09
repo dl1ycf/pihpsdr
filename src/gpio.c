@@ -17,8 +17,7 @@
 *
 */
 
-// Rewrite to use gpiod rather than wiringPi
-// Note that all pin numbers are now the Broadcom GPIO
+// Note that all pin numbers are now "GPIO numbers"
 
 #ifdef GPIO
 
@@ -100,28 +99,42 @@ static int CWOUT_LINE = -1;
   static struct gpiod_line *pttout_line = NULL;
   static struct gpiod_line *cwout_line = NULL;
 #endif
+#ifdef GPIOV2
+  static struct gpiod_line_request *output_request = NULL;
+  static struct gpiod_line_request *input_request = NULL;
+#endif
 
 void gpio_set_ptt(int state) {
 #ifdef GPIOV1
-
   if (pttout_line) {
     if (gpiod_line_set_value(pttout_line, NOT(state)) < 0) {
       t_print("%s failed: %s\n", __FUNCTION__, g_strerror(errno));
     }
   }
+#endif
 
+#ifdef GPIOV2
+  if (output_request && PTTOUT_LINE >= 0) {
+    gpiod_line_request_set_value(output_request, PTTOUT_LINE,
+              state ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE);
+  }
 #endif
 }
 
 void gpio_set_cw(int state) {
 #ifdef GPIOV1
-
   if (cwout_line) {
     if (gpiod_line_set_value(cwout_line, NOT(state)) < 0) {
       t_print("%s failed: %s\n", __FUNCTION__, g_strerror(errno));
     }
   }
+#endif
 
+#ifdef GPIOV2
+  if (output_request && CWOUT_LINE >= 0) {
+    gpiod_line_request_set_value(output_request, CWOUT_LINE,
+              state ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE);
+  }
 #endif
 }
 
@@ -226,17 +239,17 @@ guchar encoder_state_table[13][4] = {
   /* R_CCW_BEG0  */ {R_START0,           R_CCW_BEG0, R_CCW_BEG1, R_START1 | DIR_CCW},
 };
 
-  char *consumer = "pihpsdr";
+  const char *consumer = "pihpsdr";
 
   //
   // gpio_init() tries several chips, until success.
-  // gpio_device is then set to the first device sucessfully opened.
+  // gpio_device is then the path to the first device sucessfully opened.
   //
-  char *gpio_device            = NULL;
+  static char *gpio_device = NULL;
 
+#ifdef GPIOV1
   static struct gpiod_chip *chip = NULL;
-  static GMutex encoder_mutex;
-  static GThread *monitor_thread_id;
+#endif
 
 //
 // The "static const" data is the DEFAULT assignment for encoders,
@@ -404,6 +417,8 @@ SWITCH *switches = NULL;
 #define I2C_INTERRUPT  15
 #define MAX_LINES 32
 
+static GMutex encoder_mutex;
+static GThread *monitor_thread_id;
 static GThread *rotary_encoder_thread_id;
 static uint64_t epochMilli;
 static long settle_time = 50; // ms
@@ -417,6 +432,10 @@ static int num_output_lines = 0;
 static unsigned int output_lines[MAX_LINES];  // GPIO number (offset) of line
 static int output_initial_state[MAX_LINES];   // initial state (high = 1, low = 0)
 
+#ifdef GPIOV1
+//
+// All the timing is for the "pedestrian way" debouncing with libgpiod V1
+//
 static void initialiseEpoch() {
   struct timespec ts ;
   clock_gettime (CLOCK_MONOTONIC_RAW, &ts) ;
@@ -430,6 +449,7 @@ static unsigned int millis () {
   now  = (uint64_t)ts.tv_sec * (uint64_t)1000 + (uint64_t)(ts.tv_nsec / 1000000L) ;
   return (uint32_t)(now - epochMilli) ;
 }
+#endif
 
 static gpointer rotary_encoder_thread(gpointer data) {
   int i;
@@ -981,9 +1001,7 @@ void gpioSaveActions() {
   }
 }
 
-#ifdef GPIOV1
 static gpointer monitor_thread(gpointer arg) {
-  struct timespec t;
   // thread to monitor gpio events
   t_print("%s: monitoring %d lines.\n", __FUNCTION__, num_input_lines);
 
@@ -991,10 +1009,12 @@ static gpointer monitor_thread(gpointer arg) {
     return NULL;
   }
 
-  for (int i = 0; i < lines; i++) {
-    t_print("%s: ... monitoring line  %u\n", __FUNCTION__, input_lines[i]);
+  for (int i = 0; i < num_input_lines; i++) {
+    t_print("%s: Line=%u Pullup=%d Debounce=%d\n", __FUNCTION__, input_lines[i], input_pullup[i], input_debounce[i]);
   }
 
+#ifdef GPIOV1
+  struct timespec t;
   t.tv_sec = 60;
   t.tv_nsec = 0;
   int ret = gpiod_ctxless_event_monitor_multiple(
@@ -1005,6 +1025,49 @@ static gpointer monitor_thread(gpointer arg) {
   if (ret < 0) {
     t_print("%s: ctxless event monitor failed: %s\n", __FUNCTION__, g_strerror(errno));
   }
+#endif
+
+#ifdef GPIOV2
+  int event_buf_size = MAX_LINES;
+  struct gpiod_edge_event_buffer *event_buffer = gpiod_edge_event_buffer_new(event_buf_size);
+
+  if (!event_buffer) {
+    t_print("%s: No Event Buffer\n", __FUNCTION__);
+    return NULL;
+  }
+
+  for (;;) {
+
+    if (!input_lines) { break; }  // gpio_close occured
+
+    int ret = gpiod_line_request_read_edge_events(input_lines, event_buffer, event_buf_size);
+
+    if (ret < 0) {
+      t_print("%s: read edge returned %d\n", __FUNCTION__, ret);
+      continue;
+    }
+
+    for (int i = 0; i < ret; i++) {
+      struct gpiod_edge_event *event = gpiod_edge_event_buffer_get_event(event_buffer, i);
+      int offset = gpiod_edge_event_get_line_offset(event);
+
+      switch (gpiod_edge_event_get_event_type(event)) {
+      case GPIOD_EDGE_EVENT_RISING_EDGE:
+        process_edge(offset, PRESSED);
+        break;
+      case GPIOD_EDGE_EVENT_FALLING_EDGE:
+        process_edge(offset, RELEASED);
+        break;
+      default:
+        t_print("%s: Unknown Edge Event\n", __FUNCTION__);
+        break;
+      }
+    }
+  }
+
+  gpiod_edge_event_buffer_free(event_buffer);
+
+#endif
 
   t_print("%s: exit\n", __FUNCTION__);
   return NULL;
@@ -1046,42 +1109,112 @@ static void setup_input_lines() {
 #endif
 
 #ifdef GPIOV2
+  input_request = NULL;
+  struct gpiod_line_settings *settings = gpiod_line_settings_new();
+  struct gpiod_line_config *lineconfig = gpiod_line_config_new();
+  struct gpiod_request_config *reqcfg = gpiod_request_config_new();
+
+  if (settings && lineconfig && reqcfg) {
+    gpiod_request_config_set_consumer(reqcfg, consumer);
+    gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_INPUT);
+    gpiod_line_settings_set_edge_detection(settings, GPIOD_LINE_EDGE_BOTH);
+
+    for (int i=0; i < num_input_lines; i++) {
+      if (input_pullup[i]) {
+        gpiod_line_settings_set_bias(settings, GPIOD_LINE_BIAS_PULL_UP);
+      } else {
+        gpiod_line_settings_set_bias(settings, GPIOD_LINE_BIAS_DISABLED);
+      }
+
+      gpiod_line_settings_set_debounce_period_us(settings, input_debounce[i]*1000);  // in usec
+
+      if gpiod_line_config_add_line_settings(lineconfig, &input_lines[i], 1, settings) != 0) {
+        input_lines[i] = 0;
+      }
+    } 
+
+    input_request = gpiod_chip_request_lines(chip, reqcfg, lineconfig);
+  }
+
+  if (reqcfg) { gpiod_request_config_free(reqcfg); }
+  if (linconfig) { gpiod_line_config_free(lineconfig); }
+  if (settings) { gpiod_line_settings_free(setting); }
+
 #endif
 
   //
   // Remove any failed lines from input_lines[]
   //
+  for (int i = 0; i < num_input_lines, i++) {
+    if (input_lines[i] == 0) {
+      num_input_lines--;
+      input_lines[i] = input_lines[num_input_lines];
+    }
+  }
+
   return;
 }
 
 //static struct gpiod_line *setup_output_line(struct gpiod_chip *chip, int offset, int initialValue)  {
 static void setup_output_lines() {
   //
-  // Setup an active-high output line and return the "line"
-  // (in case of failure: NULL).
+  // Setup active-high output lines
   //
+#ifdef GPIOV1
   struct gpiod_line_request_config config;
-  struct gpiod_line *line = gpiod_chip_get_line(chip, offset);
-
-  if (!line) {
-    t_print("%s: Offset=%d failed: %s\n", __FUNCTION__, offset, g_strerror(errno));
-    return NULL;
-  }
-
   config.consumer = consumer;
   config.request_type = GPIOD_LINE_REQUEST_DIRECTION_OUTPUT;
   config.flags = 0;  // active High
 
-  if (gpiod_line_request(line, &config, initialValue) < 0) {
-    t_print("%s: Offset=%d failed: %s\n", __FUNCTION__, offset, g_strerror(errno));
-    gpiod_line_release(line);
-    return NULL;
+  for (int i = 0; i < num_output_lines; i++) {
+    struct gpiod_line *line = gpiod_chip_get_line(chip, output_lines[i]);
+
+    if (!line) {
+      t_print("%s: Offset=%d failed: %s\n", __FUNCTION__, output_lines[i], g_strerror(errno));
+      output_lines[i] = 0;
+    }
+ 
+    if (gpiod_line_request(line, &config, output_initial_initial_state[i]) < 0) {
+      t_print("%s: Offset=%d failed: %s\n", __FUNCTION__, output_lines[i], g_strerror(errno));
+      output_lines[i] = 0;
+    }
+
+    if (output_lines[i] == PTTOUT_LINE) { pttout_line = line; }
+    if (output_lines[i] == CWOUT_LINE ) { cwout_line = line; }
+  }
+#endif
+
+#ifdef GPIOV2
+  output_request = NULL;
+  struct gpiod_line_settings *settings = gpiod_line_settings_new();
+  struct gpiod_line_config *lineconfig = gpiod_line_config_new();
+  struct gpiod_request_config *reqcfg = gpiod_request_config_new();
+
+  if (settings && lineconfig && reqcfg) {
+    gpiod_request_config_set_consumer(reqcfg, consumer);
+    gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_OUTPUT);
+
+    for (int i = 0; i < num_output_lines; i++) {
+      if (output_initial_state[i]) {
+        gpiod_line_settings_set_output_value(settings, GPIOD_LINE_VALUE_INACTIVE);
+      } else {
+        gpiod_line_settings_set_output_value(settings, GPIOD_LINE_VALUE_INACTIVE);
+      }
+
+      if (gpiod_line_config_add_line_settings(lineconfig, &output_lines[i], 1, settings) != 0) {
+        t_print("%s: Offset=%d failed: %s\n", __FUNCTION__, output_lines[i], g_strerror(errno));
+        output_lines[i] = 0;
+      }
+    }
+
+    output_request = gpiod_chip_request_lines(chip, reqcfg, lineconfig);
   }
 
-  return line;
-}
-
+  if (reqcfg) { gpiod_request_config_free(reqcfg); }
+  if (linconfig) { gpiod_line_config_free(lineconfig); }
+  if (settings) { gpiod_line_settings_free(setting); }
 #endif
+}
 
 void gpio_init() {
 #ifdef GPIOV1
@@ -1129,23 +1262,18 @@ void gpio_init() {
         input_lines[num_input_lines] =  encoders[i].bottom_encoder_address_a;
         input_pullup[num_input_lines] = encoders[i].bottom_encoder_pullup;
         input_debounce[num_input_lines++] = 0;
-        //setup_input_line(chip, encoders[i].bottom_encoder_address_a, encoders[i].bottom_encoder_pullup);
-        //setup_input_line(chip, encoders[i].bottom_encoder_address_b, encoders[i].bottom_encoder_pullup);
       }
 
       if (encoders[i].top_encoder_enabled) {
         input_lines[num_input_lines] =  encoders[i].top_encoder_address_a;
         input_pullup[num_input_lines] = encoders[i].top_encoder_pullup;
         input_debounce[num_input_lines++] = 0;
-        //setup_input_line(chip, encoders[i].top_encoder_address_a, encoders[i].top_encoder_pullup);
-        //setup_input_line(chip, encoders[i].top_encoder_address_b, encoders[i].top_encoder_pullup);
       }
 
       if (encoders[i].switch_enabled) {
         input_lines[num_input_lines] =  encoders[i].switch_address;
         input_pullup[num_input_lines] = encoders[i].switch_pullup;
         input_debounce[num_input_lines++] = 25;
-        //setup_input_line(chip, encoders[i].switch_address, encoders[i].switch_pullup);
       }
     }
 
@@ -1156,7 +1284,6 @@ void gpio_init() {
         input_lines[num_input_lines] =  switches[i].switch_address;
         input_pullup[num_input_lines] = switches[i].switch_pullup;
         input_debounce[num_input_lines++] = 25;
-        //setup_input_line(chip, switches[i].switch_address, switches[i].switch_pullup);
       }
     }
   }
@@ -1166,7 +1293,6 @@ void gpio_init() {
     input_lines[num_input_lines] =  I2C_INTERRUPT;
     input_pullup[num_input_lines] = TRUE;
     input_debounce[num_input_lines++] = 0;
-    //setup_input_line(chip, I2C_INTERRUPT, TRUE);
   }
 
   //
@@ -1179,49 +1305,34 @@ void gpio_init() {
     input_lines[num_input_lines] =  CWL_LINE;
     input_pullup[num_input_lines] = TRUE;
     input_debounce[num_input_lines++] = 10;
-    //setup_input_line(chip, CWL_LINE, TRUE);
   }
 
   if (CWR_LINE >= 0) {
     input_lines[num_input_lines] =  CWR_LINE;
     input_pullup[num_input_lines] = TRUE;
     input_debounce[num_input_lines++] = 10;
-    //setup_input_line(chip, CWR_LINE, TRUE);
   }
 
   if (CWKEY_LINE >= 0) {
     input_lines[num_input_lines] =  CWKEY_LINE;
     input_pullup[num_input_lines] = TRUE;
     input_debounce[num_input_lines++] = 10;
-    //setup_input_line(chip, CWKEY_LINE, TRUE);
   }
 
   if (PTTIN_LINE >= 0) {
     input_lines[num_input_lines] =  PTTIN_LINE;
     input_pullup[num_input_lines] = TRUE;
     input_debounce[num_input_lines++] = 25;
-    //setup_input_line(chip, PTTIN_LINE, TRUE);
   }
 
   if (PTTOUT_LINE >= 0) {
-#ifdef GPIOV2
     output_lines[num_output_lines] = PTTOUT_LINE;
     output_initial_state[num_output_lines++] = 1;
-#endif
-#ifdef GPIOV1
-    //pttout_line = setup_output_line(chip, PTTOUT_LINE, 1);
-#endif
   }
 
   if (CWOUT_LINE >= 0) {
-#ifdef GPIOV2
     output_lines[num_output_lines] = CWOUT_LINE;
     output_initial_state[num_output_lines++] = 1;
-#endif
-#ifdef GPIOV1
-    // active-high output line with initial value 1
-    cwout_line = setup_output_line(chip, CWOUT_LINE, 1);
-#endif
   }
 
   if (num_output_lines > 0) {
@@ -1237,11 +1348,24 @@ void gpio_init() {
     }
   }
 
+#ifdef GPIOV2
+  //
+  // The chip can now be closed for libgpiod V2.
+  gpio_close_chip(chip);
+  chip = NULL;
+#endif
+
   return;
 }
 
 void gpio_close() {
-  if (chip != NULL) { gpiod_chip_close(chip); }
+#ifdef GPIOV2
+  if (input_request) { gpiod_line_request_release(input_request); }
+
+  if (output_request) { gpiod_line_request_release(output_request); }
+#endif
+
+  if (chip) { gpiod_chip_close(chip); }
 }
 
 #endif
