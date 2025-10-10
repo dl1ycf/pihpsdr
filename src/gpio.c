@@ -417,8 +417,6 @@ SWITCH *switches = NULL;
 static GMutex encoder_mutex;
 static GThread *monitor_thread_id;
 static GThread *rotary_encoder_thread_id;
-static uint64_t epochMilli;
-static long settle_time = 50; // ms
 
 static int num_input_lines = 0;
 static unsigned int input_lines[MAX_LINES];   // GPIO number (offset) of line
@@ -433,6 +431,9 @@ static int output_initial_state[MAX_LINES];   // initial state (high = 1, low = 
 //
 // All the timing is for the "pedestrian way" debouncing with libgpiod V1
 //
+static uint64_t epochMilli;
+static long settle_time = 50; // ms
+
 static void initialiseEpoch() {
   struct timespec ts ;
   clock_gettime (CLOCK_MONOTONIC_RAW, &ts) ;
@@ -1345,7 +1346,7 @@ void gpio_init() {
 #ifdef GPIOV2
   //
   // The chip can now be closed for libgpiod V2.
-  gpio_close_chip(chip);
+  gpiod_close_chip(chip);
   chip = NULL;
 #endif
 
