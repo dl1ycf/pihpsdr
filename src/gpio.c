@@ -1036,7 +1036,7 @@ static gpointer monitor_thread(gpointer arg) {
 
   for (;;) {
 
-    if (!input_request) { break; }  // gpio_close occured
+    if (!input_request) { break; }  // set to NULL in gpio_close
 
     int ret = gpiod_line_request_read_edge_events(input_request, event_buffer, event_buf_size);
 
@@ -1346,7 +1346,7 @@ void gpio_init() {
 #ifdef GPIOV2
   //
   // The chip can now be closed for libgpiod V2.
-  gpiod_close_chip(chip);
+  gpiod_chip_close(chip);
   chip = NULL;
 #endif
 
