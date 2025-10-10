@@ -1208,8 +1208,8 @@ static void setup_output_lines() {
   }
 
   if (reqcfg) { gpiod_request_config_free(reqcfg); }
-  if (linconfig) { gpiod_line_config_free(lineconfig); }
-  if (settings) { gpiod_line_settings_free(setting); }
+  if (lineconfig) { gpiod_line_config_free(lineconfig); }
+  if (settings) { gpiod_line_settings_free(settings); }
 #endif
 }
 
@@ -1247,10 +1247,7 @@ void gpio_init() {
 
   num_input_lines = 0;
   num_output_lines = 0;
-#ifdef GPIOV2
-  gpio_close_chip(chip);
-  chip = NULL;
-#endif
+
   if (controller != NO_CONTROLLER) {
     // setup encoders
 
