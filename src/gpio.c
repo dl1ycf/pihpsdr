@@ -246,10 +246,7 @@ guchar encoder_state_table[13][4] = {
   // gpio_device is then the path to the first device sucessfully opened.
   //
   static char *gpio_device = NULL;
-
-#ifdef GPIOV1
   static struct gpiod_chip *chip = NULL;
-#endif
 
 //
 // The "static const" data is the DEFAULT assignment for encoders,
@@ -1137,15 +1134,15 @@ static void setup_input_lines() {
   }
 
   if (reqcfg) { gpiod_request_config_free(reqcfg); }
-  if (linconfig) { gpiod_line_config_free(lineconfig); }
-  if (settings) { gpiod_line_settings_free(setting); }
+  if (lineconfig) { gpiod_line_config_free(lineconfig); }
+  if (settings) { gpiod_line_settings_free(settings); }
 
 #endif
 
   //
   // Remove any failed lines from input_lines[]
   //
-  for (int i = 0; i < num_input_lines, i++) {
+  for (int i = 0; i < num_input_lines; i++) {
     if (input_lines[i] == 0) {
       num_input_lines--;
       input_lines[i] = input_lines[num_input_lines];
