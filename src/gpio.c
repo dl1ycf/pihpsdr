@@ -669,6 +669,7 @@ static void process_edge(int offset, int value) {
   for (int i = 0; i < MAX_SWITCHES; i++) {
     if (switches[i].switch_enabled && switches[i].switch_address == offset) {
 #ifdef GPIOV1
+      unsigned int t;
       t = millis();
 
       if (t < switches[i].switch_debounce) { return; }
@@ -1097,7 +1098,7 @@ static void setup_input_lines() {
     config.flags = input_pullup[i] ? GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_UP : GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_DOWN;
 #endif
     if (gpiod_line_request(line, &config, 1) < 0) {
-      t_print("%s: line %d gpiod_line_request failed: %s\n", __FUNCTION__, offset, g_strerror(errno));
+      t_print("%s: line %d gpiod_line_request failed: %s\n", __FUNCTION__, input_lines[i], g_strerror(errno));
       input_lines[i] = 0;
       continue;
     }
@@ -1172,7 +1173,7 @@ static void setup_output_lines() {
       output_lines[i] = 0;
     }
  
-    if (gpiod_line_request(line, &config, output_initial_initial_state[i]) < 0) {
+    if (gpiod_line_request(line, &config, output_initial_state[i]) < 0) {
       t_print("%s: Offset=%d failed: %s\n", __FUNCTION__, output_lines[i], g_strerror(errno));
       output_lines[i] = 0;
     }
