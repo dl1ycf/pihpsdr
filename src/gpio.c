@@ -598,13 +598,10 @@ static void process_encoder(int e, int l, int addr, int val) {
 }
 
 static void process_edge(int offset, int value) {
-  int i;
-  unsigned int t;
-
   //
   // Priority 1 (highst): check encoder
   //
-  for (i = 0; i < MAX_ENCODERS; i++) {
+  for (int i = 0; i < MAX_ENCODERS; i++) {
     if (encoders[i].bottom_encoder_enabled && encoders[i].bottom_encoder_address_a == offset) {
       process_encoder(i, BOTTOM_ENCODER, A, SET(value == PRESSED));
       return;
@@ -619,6 +616,7 @@ static void process_edge(int offset, int value) {
       return;
     } else if (encoders[i].switch_enabled && encoders[i].switch_address == offset) {
 #ifdef GPIOV1
+      unsigned int t;
       t = millis();
 
       if (t < encoders[i].switch_debounce) { return; }
@@ -670,7 +668,7 @@ static void process_edge(int offset, int value) {
   //
   // Priority 4: handle "normal" (non-I2C) switches
   //
-  for (i = 0; i < MAX_SWITCHES; i++) {
+  for (int i = 0; i < MAX_SWITCHES; i++) {
     if (switches[i].switch_enabled && switches[i].switch_address == offset) {
 #ifdef GPIOV1
       t = millis();
@@ -1040,9 +1038,9 @@ static gpointer monitor_thread(gpointer arg) {
 
   for (;;) {
 
-    if (!input_lines) { break; }  // gpio_close occured
+    if (!input_request) { break; }  // gpio_close occured
 
-    int ret = gpiod_line_request_read_edge_events(input_lines, event_buffer, event_buf_size);
+    int ret = gpiod_line_request_read_edge_events(input_request, event_buffer, event_buf_size);
 
     if (ret < 0) {
       t_print("%s: read edge returned %d\n", __FUNCTION__, ret);
@@ -1130,7 +1128,7 @@ static void setup_input_lines() {
 
       gpiod_line_settings_set_debounce_period_us(settings, input_debounce[i]*1000);  // in usec
 
-      if gpiod_line_config_add_line_settings(lineconfig, &input_lines[i], 1, settings) != 0) {
+      if (gpiod_line_config_add_line_settings(lineconfig, &input_lines[i], 1, settings) != 0) {
         input_lines[i] = 0;
       }
     } 
