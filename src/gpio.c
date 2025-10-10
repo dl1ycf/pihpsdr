@@ -419,13 +419,13 @@ static GThread *monitor_thread_id;
 static GThread *rotary_encoder_thread_id;
 
 static int num_input_lines = 0;
-static unsigned int input_lines[MAX_LINES];   // GPIO number (offset) of line
-static int input_pullup[MAX_LINES];           // has pullup?
-static int input_debounce[MAX_LINES];         // debouncing time (msec)
+static int input_lines[MAX_LINES];    // GPIO number (offset) of line
+static int input_pullup[MAX_LINES];   // has pullup?
+static int input_debounce[MAX_LINES]; // debouncing time (msec)
 
 static int num_output_lines = 0;
-static unsigned int output_lines[MAX_LINES];  // GPIO number (offset) of line
-static int output_initial_state[MAX_LINES];   // initial state (high = 1, low = 0)
+static int output_lines[MAX_LINES];         // GPIO number (offset) of line
+static int output_initial_state[MAX_LINES]; // initial state (high = 1, low = 0)
 
 #ifdef GPIOV1
 //
@@ -1088,7 +1088,7 @@ static void setup_input_lines() {
 
     if (!line) {
       t_print("%s: get line %d failed: %s\n", __FUNCTION__, input_lines[i], g_strerror(errno));
-      input_lines[i] = 0;
+      input_lines[i] = -1;
       continue;
     }
 
@@ -1099,7 +1099,7 @@ static void setup_input_lines() {
 #endif
     if (gpiod_line_request(line, &config, 1) < 0) {
       t_print("%s: line %d gpiod_line_request failed: %s\n", __FUNCTION__, input_lines[i], g_strerror(errno));
-      input_lines[i] = 0;
+      input_lines[i] = -1;
       continue;
     }
 
@@ -1145,7 +1145,7 @@ static void setup_input_lines() {
   // Remove any failed lines from input_lines[]
   //
   for (int i = 0; i < num_input_lines; i++) {
-    if (input_lines[i] == 0) {
+    if (input_lines[i] < 0) {
       num_input_lines--;
       input_lines[i] = input_lines[num_input_lines];
     }
@@ -1154,7 +1154,6 @@ static void setup_input_lines() {
   return;
 }
 
-//static struct gpiod_line *setup_output_line(struct gpiod_chip *chip, int offset, int initialValue)  {
 static void setup_output_lines() {
   //
   // Setup active-high output lines
@@ -1170,12 +1169,14 @@ static void setup_output_lines() {
 
     if (!line) {
       t_print("%s: Offset=%d failed: %s\n", __FUNCTION__, output_lines[i], g_strerror(errno));
-      output_lines[i] = 0;
+      output_lines[i] = -1;
+      continue;
     }
- 
+
     if (gpiod_line_request(line, &config, output_initial_state[i]) < 0) {
       t_print("%s: Offset=%d failed: %s\n", __FUNCTION__, output_lines[i], g_strerror(errno));
-      output_lines[i] = 0;
+      output_lines[i] = -1;
+      continue;
     }
 
     if (output_lines[i] == PTTOUT_LINE) { pttout_line = line; }
@@ -1202,7 +1203,7 @@ static void setup_output_lines() {
 
       if (gpiod_line_config_add_line_settings(lineconfig, &output_lines[i], 1, settings) != 0) {
         t_print("%s: Offset=%d failed: %s\n", __FUNCTION__, output_lines[i], g_strerror(errno));
-        output_lines[i] = 0;
+        output_lines[i] = -1;
       }
     }
 
