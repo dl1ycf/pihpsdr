@@ -618,13 +618,14 @@ static void process_edge(int offset, int value) {
       process_encoder(i, TOP_ENCODER, B, SET(value == PRESSED));
       return;
     } else if (encoders[i].switch_enabled && encoders[i].switch_address == offset) {
+#ifdef GPIOV1
       t = millis();
 
-      if (t > encoders[i].switch_debounce) {
-        encoders[i].switch_debounce = t + settle_time;
-        schedule_action(encoders[i].switch_function, value, 0);
-      }
+      if (t < encoders[i].switch_debounce) { return; }
 
+      encoders[i].switch_debounce = t + settle_time;
+#endif
+      schedule_action(encoders[i].switch_function, value, 0);
       return;
     }
   }
@@ -671,13 +672,14 @@ static void process_edge(int offset, int value) {
   //
   for (i = 0; i < MAX_SWITCHES; i++) {
     if (switches[i].switch_enabled && switches[i].switch_address == offset) {
+#ifdef GPIOV1
       t = millis();
 
-      if (t > switches[i].switch_debounce) {
-        switches[i].switch_debounce = t + settle_time;
-        schedule_action(switches[i].switch_function, value, 0);
-      }
+      if (t < switches[i].switch_debounce) { return; }
 
+      switches[i].switch_debounce = t + settle_time;
+#endif
+      schedule_action(switches[i].switch_function, value, 0);
       return;
     }
   }
