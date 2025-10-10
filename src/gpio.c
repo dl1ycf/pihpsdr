@@ -1018,7 +1018,7 @@ static gpointer monitor_thread(gpointer arg) {
   t.tv_nsec = 0;
   int ret = gpiod_ctxless_event_monitor_multiple(
               gpio_device, GPIOD_CTXLESS_EVENT_BOTH_EDGES,
-              input_lines, num_input_lines, FALSE,
+              (unsigned int *)input_lines, num_input_lines, FALSE,
               consumer, &t, NULL, interrupt_cb, NULL);
 
   if (ret < 0) {
