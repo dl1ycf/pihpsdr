@@ -115,8 +115,8 @@ CPP_INCLUDE +=$(WDSP_INCLUDE)
 ##############################################################################
 
 ifeq ($(UNAME_S), Darwin)
-GPIO=
-SATURN=
+#GPIO=
+#SATURN=
 endif
 
 ##############################################################################
@@ -244,8 +244,8 @@ CPP_SOURCES += src/soapy_discovery.c src/soapy_protocol.c
 ##############################################################################
 #
 # Add libraries for GPIO support, if requested
-# use -DGPIOV1 for the V1 API (libgpiod version 1.x.y)
-# use -DGPIOV2 for the V2 API (libgpiod version 2.x.y)
+# use -DGPIOV1 for the V1 API (libgpiod version 1.x.y), else use -DPGIOV2
+# use -DGPIOV2 in
 #
 ##############################################################################
 
@@ -253,11 +253,9 @@ ifeq ($(GPIO),ON)
 GPIO_OPTIONS=-D GPIO
 GPIOD_VERSION:=$(shell $(PKG_CONFIG) --modversion libgpiod)
 GPIOV1=$(GPIOD_VERSION:1.%=YES)
-GPIOV2=$(GPIOD_VERSION:2.%=YES)
 ifeq ($(GPIOV1),YES)
 GPIO_OPTIONS += -D GPIOV1
-endif
-ifeq ($(GPIOV2),YES)
+else
 GPIO_OPTIONS += -D GPIOV2
 endif
 ifeq ($(GPIOD_VERSION),1.2)

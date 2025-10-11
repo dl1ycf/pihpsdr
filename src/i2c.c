@@ -131,7 +131,7 @@ void i2c_interrupt() {
         // The input line associated with switch #i has triggered an interrupt
         // clear *this* bit in flags
         flags &= ~i2c_sw[i];
-        schedule_action(switches[i].switch_function, (ints & i2c_sw[i]) ? PRESSED : RELEASED, 0);
+        schedule_action(switches[i].function, (ints & i2c_sw[i]) ? PRESSED : RELEASED, 0);
       }
     }
   }
