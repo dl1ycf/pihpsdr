@@ -244,26 +244,27 @@ CPP_SOURCES += src/soapy_discovery.c src/soapy_protocol.c
 ##############################################################################
 #
 # Add libraries for GPIO support, if requested
-# use -DGPIOV1 for the V1 API (libgpiod version 1.x.y), else use -DPGIOV2
-# use -DGPIOV2 in
+#
+# use -DGPIOV1 b default, but
+# use -DGPIOV2 if libgpiod with V2 API has been detected,
 #
 ##############################################################################
 
 ifeq ($(GPIO),ON)
 GPIO_OPTIONS=-D GPIO
 GPIOD_VERSION:=$(shell $(PKG_CONFIG) --modversion libgpiod)
-GPIOV1=$(GPIOD_VERSION:1.%=YES)
-ifeq ($(GPIOV1),YES)
-GPIO_OPTIONS += -D GPIOV1
-else
+GPIOV2=$(GPIOD_VERSION:2.%=YES)
+ifeq ($(GPIOV2),YES)
 GPIO_OPTIONS += -D GPIOV2
+else
+GPIO_OPTIONS += -D GPIOV1
 endif
 ifeq ($(GPIOD_VERSION),1.2)
 GPIO_OPTIONS += -D OLD_GPIOD
 endif
 GPIO_LIBS=-lgpiod -li2c
 endif
-CPP_DEFINES += -D GPIO -DGPIOV1
+CPP_DEFINES += -D GPIO -DGPIOV1 -DGPIOV2
 
 ##############################################################################
 #

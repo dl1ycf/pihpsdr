@@ -31,7 +31,7 @@ typedef struct _switch {
   int pullup;
   int address;
   int function;
-  int debounce;
+  uint32_t debounce;
 } SWITCH;
 
 typedef struct _singleencoder {

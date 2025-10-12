@@ -121,15 +121,15 @@ void i2c_interrupt() {
 
     unsigned int ints = read_word_data(0x10);
 
-    //t_print("%s: flags=%04X ints=%04X\n",__FUNCTION__,flags,ints);
     // only those bits in "ints" matter where the corresponding position
     // in "flags" is set. We have a PRESSED or RELEASED event depending on
     // whether the bit in "ints" is set or clear.
+
     for (i = 0; i < 16 && flags; i++) { // leave loop if no bits left in "flags"
       if (i2c_sw[i] & flags) {
         //t_print("%s: switches=%p sw=%d action=%d\n",__FUNCTION__,switches,i,switches[i].switch_function);
         // The input line associated with switch #i has triggered an interrupt
-        // clear *this* bit in flags
+        // clear *this* bit in flags to make it zero when all events have been processed
         flags &= ~i2c_sw[i];
         schedule_action(switches[i].function, (ints & i2c_sw[i]) ? PRESSED : RELEASED, 0);
       }
