@@ -1636,7 +1636,7 @@ void *handler_ep6(void *arg) {
     buffer[4] = (counter >> 24) & 0xFF;
     buffer[5] = (counter >> 16) & 0xFF;
     buffer[6] = (counter >>  8) & 0xFF;
-    buffer[7] = (counter >>   ) & 0xFF;
+    buffer[7] = (counter      ) & 0xFF;
     ++counter;
     //
     //              This defines the distortion as well as the amplification
