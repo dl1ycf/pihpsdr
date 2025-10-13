@@ -100,7 +100,8 @@ static int CWOUT_LINE = -1;
   static struct gpiod_line *cwout_line = NULL;
 #endif
 #ifdef GPIOV2
-  static struct gpiod_line_request *output_request = NULL;
+  static struct gpiod_line_request *pttout_request = NULL;
+  static struct gpiod_line_request *cwout_request = NULL;
   static struct gpiod_line_request *input_request = NULL;
 #endif
 
@@ -115,7 +116,7 @@ void gpio_set_ptt(int state) {
 
 #ifdef GPIOV2
   if (output_request && PTTOUT_LINE >= 0) {
-    gpiod_line_request_set_value(output_request, PTTOUT_LINE,
+    gpiod_line_request_set_value(pttout_request, PTTOUT_LINE,
               state ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE);
   }
 #endif
@@ -132,21 +133,11 @@ void gpio_set_cw(int state) {
 
 #ifdef GPIOV2
   if (output_request && CWOUT_LINE >= 0) {
-    gpiod_line_request_set_value(output_request, CWOUT_LINE,
+    gpiod_line_request_set_value(cwout_request, CWOUT_LINE,
               state ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE);
   }
 #endif
 }
-
-enum {
-  TOP_ENCODER,
-  BOTTOM_ENCODER
-};
-
-enum {
-  A,
-  B
-};
 
 #define DIR_NONE 0x0
 // Clockwise step.
@@ -177,8 +168,8 @@ enum {
 
 //
 // Few general remarks on the state machine:
-// - if the levels do not change, the machinestate does not change
-// - if there is bouncing on one input line, the machine oscillates
+// - if the levels do not change, the state does not change
+// - if there is bouncing on one input line, the state oscillates
 //   between two "adjacent" states but generates at most one tick
 // - if both input lines change level, move to a suitable new
 //   starting point but do not generate a tick
@@ -426,10 +417,7 @@ typedef enum _offset_action {
   OffEncSwitch,
   OffSwitch,
   OffI2CIRQ,
-  OffCWleft,
-  OffCWright,
-  OffCWkey,
-  OffPTTin,
+  OffSpecial
 } OFFSET_ACTION;
 
 //
@@ -437,7 +425,7 @@ typedef enum _offset_action {
 //
 struct _line_list {
  OFFSET_ACTION action;
- int           num;
+ int num;               // encoder number or OffSpecial action
 } LineList[MAX_LINES];
 
 static GMutex encoder_mutex;
@@ -448,10 +436,6 @@ static int num_input_lines = 0;
 static int input_lines[MAX_LINES];    // GPIO number (offset) of line
 static int input_pullup[MAX_LINES];   // has pullup?
 static int input_debounce[MAX_LINES]; // debouncing time (msec)
-
-static int num_output_lines = 0;
-static int output_lines[MAX_LINES];         // GPIO number (offset) of line
-static int output_initial_state[MAX_LINES]; // initial state (high = 1, low = 0)
 
 #ifdef GPIOV1
 //
@@ -565,64 +549,54 @@ static void process_edge(int offset, int value) {
   //
   // offset: GPIO number; value: ACTIVE = 1, INACTIVE = 0
   //
-  int i = LineList[offset].num;
+  int num = LineList[offset].num;
+  int action = LineList[offset].action;
 #ifdef GPIOV1
   uint32_t t;  // used for debouncing
 #endif
 
-  switch (LineList[offset].action) {
-  case OffTopEncA:
-    process_encoder_a(&encoders[i].top, value);
-    break;
-  case OffTopEncB:
-    process_encoder_b(&encoders[i].top, value);
-    break;
-  case OffBotEncA:
-    process_encoder_a(&encoders[i].bottom, value);
-    break;
-  case OffBotEncB:
-    process_encoder_b(&encoders[i].bottom, value);
-    break;
-  case OffEncSwitch:
+  //
+  // The idea of using a nested if (rather than a switch) is to
+  // guarantee that encoder events are handled as fast as possible
+  //
+  if (action == OffTopEncA) {
+    process_encoder_a(&encoders[num].top, value);
+  } else if (action == OffTopEncB) {
+    process_encoder_b(&encoders[num].top, value);
+  } else if (action == OffBotEncA) {
+    process_encoder_a(&encoders[num].bottom, value);
+  } else if (action == OffBotEncB) {
+    process_encoder_b(&encoders[num].bottom, value);
+  } else if (action == OffI2CIRQ) {
+    if (value) { i2c_interrupt(); }
+  } else if (action == OffSpecial) {
+    schedule_action(num, value ? PRESSED : RELEASED, 0);
+  } else if (action == OffEncSwitch) {
 #ifdef GPIOV1
     t = millis();
 
-    if (t < encoders[i].button.debounce) { break; }
-
-    encoders[i].button.debounce = t + 50; // 50 msec settle time
+    if (t > encoders[num].button.debounce) {
+      encoders[num].button.debounce = t + 50; // 50 msec settle time
+      schedule_action(encoders[num].button.function, value ? PRESSED : RELEASED, 0);
+    }
 #endif
-    schedule_action(encoders[i].button.function, value ? PRESSED : RELEASED, 0);
-    break;
-  case OffSwitch:
+#ifdef GPIOV2
+    schedule_action(encoders[num].button.function, value ? PRESSED : RELEASED, 0);
+#endif
+  } else if (action == OffSwitch) {
 #ifdef GPIOV1
     t = millis(); 
 
-    if (t < switches[i].debounce) { break; }
-
-    switches[i].debounce = t + 50; // 50 msec settle time
-#endif
-    schedule_action(switches[i].function, value ? PRESSED : RELEASED, 0);
-    break;
-  case OffI2CIRQ:
-    if (value) {
-      i2c_interrupt();
+    if (t > switches[num].debounce) {
+      switches[num].debounce = t + 50; // 50 msec settle time
+      schedule_action(switches[num].function, value ? PRESSED : RELEASED, 0);
     }
-    break;
-  case OffCWleft:
-    schedule_action(CW_LEFT, value ? PRESSED : RELEASED, 0);
-    break;
-  case OffCWright:
-    schedule_action(CW_RIGHT, value ? PRESSED : RELEASED, 0);
-    break;
-  case OffCWkey:
-    schedule_action(CW_KEYER_KEYDOWN, value ? PRESSED : RELEASED, 0);
-    break;
-  case OffPTTin:
-    schedule_action(CW_KEYER_PTT, value ? PRESSED : RELEASED, 0);
-    break;
-  default:
+#endif
+#ifdef GPIOV2
+    schedule_action(switches[num].function, value ? PRESSED : RELEASED, 0);
+#endif
+  } else {
     t_print("%s: No action defined for GPIO line %d\n", offset);
-    break;
   }
 }
 
@@ -947,10 +921,6 @@ static gpointer monitor_thread(gpointer arg) {
   int ret;
   t_print("%s: monitoring %d lines.\n", __FUNCTION__, num_input_lines);
 
-  if (gpio_device == NULL) {
-    return NULL;
-  }
-
   for (int i = 0; i < num_input_lines; i++) {
     t_print("%s: Line=%u Pullup=%d Debounce=%d\n", __FUNCTION__, input_lines[i], input_pullup[i], input_debounce[i]);
   }
@@ -959,11 +929,12 @@ static gpointer monitor_thread(gpointer arg) {
   struct timespec t;
   t.tv_sec = 60;
   t.tv_nsec = 0;
-  if (gpiod_ctxless_event_monitor_multiple(
+  ret = gpiod_ctxless_event_monitor_multiple(
               gpio_device, GPIOD_CTXLESS_EVENT_BOTH_EDGES,
               (unsigned int *)input_lines, num_input_lines, FALSE,
-              consumer, &t, NULL, interrupt_cb, NULL) < 0) {
+              consumer, &t, NULL, interrupt_cb, NULL);
 
+  if (ret < 0) {
     t_print("%s: ctxless event monitor failed: %s\n", __FUNCTION__, g_strerror(errno));
   }
 #endif
@@ -1067,10 +1038,12 @@ static void setup_input_lines() {
         gpiod_line_settings_set_bias(settings, GPIOD_LINE_BIAS_DISABLED);
       }
 
-      gpiod_line_settings_set_debounce_period_us(settings, input_debounce[i]*1000);  // in usec
+      if (input_debounce[i] > 0) {
+        gpiod_line_settings_set_debounce_period_us(settings, input_debounce[i]*1000);  // in usec
+      }
 
       if (gpiod_line_config_add_line_settings(lineconfig, (unsigned int *)&input_lines[i], 1, settings) != 0) {
-        input_lines[i] = 0;
+        input_lines[i] = -1;
       }
     } 
 
@@ -1096,67 +1069,70 @@ static void setup_input_lines() {
   return;
 }
 
-static void setup_output_lines() {
-  //
-  // Setup active-high output lines
-  //
 #ifdef GPIOV1
+static struct gpiod_line *setup_output_line(unsigned int offset, int initialValue) {
+  //
+  // Setup active-high output lines. libgpiod API V1
+  //
   struct gpiod_line_request_config config;
   config.consumer = consumer;
   config.request_type = GPIOD_LINE_REQUEST_DIRECTION_OUTPUT;
   config.flags = 0;  // active High
 
-  for (int i = 0; i < num_output_lines; i++) {
-    struct gpiod_line *line = gpiod_chip_get_line(chip, output_lines[i]);
+  struct gpiod_line *line = gpiod_chip_get_line(chip, offset);
 
-    if (!line) {
-      t_print("%s: Offset=%d failed: %s\n", __FUNCTION__, output_lines[i], g_strerror(errno));
-      output_lines[i] = -1;
-      continue;
-    }
-
-    if (gpiod_line_request(line, &config, output_initial_state[i]) < 0) {
-      t_print("%s: Offset=%d failed: %s\n", __FUNCTION__, output_lines[i], g_strerror(errno));
-      output_lines[i] = -1;
-      continue;
-    }
-
-    if (output_lines[i] == PTTOUT_LINE) { pttout_line = line; }
-    if (output_lines[i] == CWOUT_LINE ) { cwout_line = line; }
+  if (!line) {
+    t_print("%s: Offset=%u failed: %s\n", __FUNCTION__, offset, g_strerror(errno));
+    return NULL;
   }
+
+  if (gpiod_line_request(line, &config, initialValue) < 0) {
+    t_print("%s: Offset=%u failed: %s\n", __FUNCTION__, offset, g_strerror(errno));
+    gpiod_line_release(line);
+    return NULL;
+  }
+
+  return line;
+}
 #endif
 
 #ifdef GPIOV2
-  output_request = NULL;
+static struct gpio_line_request *setup_output_line_request(unsigned int offset, int initialValue) {
+  //
+  // Setup active-high output lines. libgpiod API V2
+  //
+  struct gpio_line_request *result;
   struct gpiod_line_settings *settings = gpiod_line_settings_new();
   struct gpiod_line_config *lineconfig = gpiod_line_config_new();
   struct gpiod_request_config *reqcfg = gpiod_request_config_new();
 
-  if (settings && lineconfig && reqcfg) {
-    gpiod_request_config_set_consumer(reqcfg, consumer);
-    gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_OUTPUT);
-
-    for (int i = 0; i < num_output_lines; i++) {
-      if (output_initial_state[i]) {
-        gpiod_line_settings_set_output_value(settings, GPIOD_LINE_VALUE_INACTIVE);
-      } else {
-        gpiod_line_settings_set_output_value(settings, GPIOD_LINE_VALUE_INACTIVE);
-      }
-
-      if (gpiod_line_config_add_line_settings(lineconfig, (unsigned int*)&output_lines[i], 1, settings) != 0) {
-        t_print("%s: Offset=%d failed: %s\n", __FUNCTION__, output_lines[i], g_strerror(errno));
-        output_lines[i] = -1;
-      }
-    }
-
-    output_request = gpiod_chip_request_lines(chip, reqcfg, lineconfig);
+  if (!settings  || !lineconfig  || !reqcfg) {
+    return NULL;
   }
 
+  gpiod_request_config_set_consumer(reqcfg, consumer);
+  gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_OUTPUT);
+
+  gpiod_line_settings_set_output_value(settings,
+            initialValue ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE);
+
+  if (gpiod_line_config_add_line_settings(lineconfig, &offset, 1, settings) == 0) {
+    result = gpiod_chip_request_lines(chip, reqcfg, lineconfig);
+  } else {
+      t_print("%s: Offset=%d failed: %s\n", __FUNCTION__, offset, g_strerror(errno));
+    result = NULL;
+  }
+
+  //
+  // Release everything that has been allocated
+  //
   if (reqcfg) { gpiod_request_config_free(reqcfg); }
   if (lineconfig) { gpiod_line_config_free(lineconfig); }
   if (settings) { gpiod_line_settings_free(settings); }
-#endif
+
+  return result;
 }
+#endif
 
 void gpio_init() {
 #ifdef GPIOV1
@@ -1185,13 +1161,13 @@ void gpio_init() {
   //
   if (chip == NULL) {
     t_print("%s: open chip failed: %s\n", __FUNCTION__, g_strerror(errno));
+    gpio_device = NULL;
     return;
   }
 
   t_print("%s: GPIO device=%s\n", __FUNCTION__, gpio_device);
 
   num_input_lines = 0;
-  num_output_lines = 0;
 
   for (int i = 0; i < MAX_LINES; i++) {
     LineList[i].action = OffNoAction;
@@ -1269,46 +1245,50 @@ void gpio_init() {
     input_lines[num_input_lines] =  CWL_LINE;
     input_pullup[num_input_lines] = TRUE;
     input_debounce[num_input_lines++] = 10;
-    LineList[CWL_LINE].action = OffCWleft;
-    LineList[CWL_LINE].num = 0;
+    LineList[CWL_LINE].action = OffSpecial;
+    LineList[CWL_LINE].num = CW_LEFT;
   }
 
   if (CWR_LINE >= 0) {
     input_lines[num_input_lines] =  CWR_LINE;
     input_pullup[num_input_lines] = TRUE;
     input_debounce[num_input_lines++] = 10;
-    LineList[CWR_LINE].action = OffCWright;
-    LineList[CWR_LINE].num = 0;
+    LineList[CWR_LINE].action = OffSpecial;
+    LineList[CWR_LINE].num = CW_RIGHT;
   }
 
   if (CWKEY_LINE >= 0) {
     input_lines[num_input_lines] =  CWKEY_LINE;
     input_pullup[num_input_lines] = TRUE;
     input_debounce[num_input_lines++] = 10;
-    LineList[CWKEY_LINE].action = OffCWkey;
-    LineList[CWKEY_LINE].num = 0;
+    LineList[CWKEY_LINE].action = OffSpecial;
+    LineList[CWKEY_LINE].num = CW_KEYER_KEYDOWN;
   }
 
   if (PTTIN_LINE >= 0) {
     input_lines[num_input_lines] =  PTTIN_LINE;
     input_pullup[num_input_lines] = TRUE;
-    LineList[PTTIN_LINE].action = OffPTTin;
-    LineList[PTTIN_LINE].num = 0;
     input_debounce[num_input_lines++] = 25;
+    LineList[PTTIN_LINE].action = OffSpecial;
+    LineList[PTTIN_LINE].num = CW_KEYER_PTT;
   }
 
   if (PTTOUT_LINE >= 0) {
-    output_lines[num_output_lines] = PTTOUT_LINE;
-    output_initial_state[num_output_lines++] = 1;
+#ifdef GPIOV1
+    pttout_line = setup_output_line(PTTOUT_LINE, 1);
+#endif
+#ifdef GPIOV2
+    pttout_request = setup_output_request(PTTOUT_LINE, 1);
+#endif
   }
 
   if (CWOUT_LINE >= 0) {
-    output_lines[num_output_lines] = CWOUT_LINE;
-    output_initial_state[num_output_lines++] = 1;
-  }
-
-  if (num_output_lines > 0) {
-    setup_output_lines();
+#ifdef GPIOV1
+    cwout_line = setup_output_line(CWOUT_LINE, 1);
+#endif
+#ifdef GPIOV2
+    cwout_request = setup_output_request(CWOUT_LINE, 1);
+#endif
   }
 
   if (num_input_lines > 0) {
