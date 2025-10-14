@@ -117,7 +117,7 @@ void gpio_set_ptt(int state) {
 #endif
 
 #ifdef GPIOV2
-  if (output_request && PTTOUT_LINE >= 0) {
+  if (pttout_request && PTTOUT_LINE >= 0) {
     gpiod_line_request_set_value(pttout_request, PTTOUT_LINE,
               state ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE);
   }
@@ -134,7 +134,7 @@ void gpio_set_cw(int state) {
 #endif
 
 #ifdef GPIOV2
-  if (output_request && CWOUT_LINE >= 0) {
+  if (cwout_request && CWOUT_LINE >= 0) {
     gpiod_line_request_set_value(cwout_request, CWOUT_LINE,
               state ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE);
   }
@@ -434,7 +434,7 @@ static GThread *rotary_encoder_thread_id;
 static int num_input_lines = 0;
 static int input_lines[MAX_LINES];    // GPIO number (offset) of line
 static int input_pullup[MAX_LINES];   // has pullup?
-static int input_debounce[MAX_LINES]; // debouncing time (msec)
+static int input_debounce[MAX_LINES]; // debouncing time (in microseconds!)
 
 #ifdef GPIOV1
 //
@@ -1052,9 +1052,10 @@ static void setup_input_lines() {
         gpiod_line_settings_set_bias(settings, GPIOD_LINE_BIAS_DISABLED);
       }
 
-      if (input_debounce[i] > 0) {
-        gpiod_line_settings_set_debounce_period_us(settings, input_debounce[i]*1000);  // in usec
-      }
+      //
+      // A debouncing time MUST be set. It may be zero (==> no debouncing)
+      //
+      gpiod_line_settings_set_debounce_period_us(settings, input_debounce[i]);  // in usec
 
       if (gpiod_line_config_add_line_settings(lineconfig, (unsigned int *)&input_lines[i], 1, settings) != 0) {
         input_lines[i] = -1;
@@ -1111,11 +1112,11 @@ static struct gpiod_line *setup_output_line(unsigned int offset, int initialValu
 #endif
 
 #ifdef GPIOV2
-static struct gpio_line_request *setup_output_line_request(unsigned int offset, int initialValue) {
+static struct gpiod_line_request *setup_output_request(unsigned int offset, int initialValue) {
   //
   // Setup active-high output lines. libgpiod API V2
   //
-  struct gpio_line_request *result;
+  struct gpiod_line_request *result;
   struct gpiod_line_settings *settings = gpiod_line_settings_new();
   struct gpiod_line_config *lineconfig = gpiod_line_config_new();
   struct gpiod_request_config *reqcfg = gpiod_request_config_new();
@@ -1188,16 +1189,21 @@ void gpio_init() {
   }
 
   if (controller != NO_CONTROLLER) {
-    // setup encoders
-
+    //
+    // setup encoders:
+    // Some encoders (VFO) may fire at a high rate, therefore
+    // use a minimal debouncing time (1 msec) here. For the
+    // encoder push-buttons, use 25 msec.
+    // NOTE input_debounce is in usec.
+    //
     for (int i = 0; i < MAX_ENCODERS; i++) {
       if (encoders[i].bottom.enabled) {
         input_lines[num_input_lines] =  encoders[i].bottom.address_a;
         input_pullup[num_input_lines] = encoders[i].bottom.pullup;
-        input_debounce[num_input_lines++] = 0;
+        input_debounce[num_input_lines++] = 1000;
         input_lines[num_input_lines] =  encoders[i].bottom.address_b;
         input_pullup[num_input_lines] = encoders[i].bottom.pullup;
-        input_debounce[num_input_lines++] = 0;
+        input_debounce[num_input_lines++] = 1000;
         LineList[encoders[i].bottom.address_a].action = OffBotEncA;
         LineList[encoders[i].bottom.address_a].num = i;
         LineList[encoders[i].bottom.address_b].action = OffBotEncB;
@@ -1207,10 +1213,10 @@ void gpio_init() {
       if (encoders[i].top.enabled) {
         input_lines[num_input_lines] =  encoders[i].top.address_a;
         input_pullup[num_input_lines] = encoders[i].top.pullup;
-        input_debounce[num_input_lines++] = 0;
+        input_debounce[num_input_lines++] = 1000;
         input_lines[num_input_lines] =  encoders[i].top.address_b;
         input_pullup[num_input_lines] = encoders[i].top.pullup;
-        input_debounce[num_input_lines++] = 0;
+        input_debounce[num_input_lines++] = 1000;
         LineList[encoders[i].top.address_a].action = OffTopEncA;
         LineList[encoders[i].top.address_a].num = i;
         LineList[encoders[i].top.address_b].action = OffTopEncB;
@@ -1220,19 +1226,21 @@ void gpio_init() {
       if (encoders[i].button.enabled) {
         input_lines[num_input_lines] =  encoders[i].button.address;
         input_pullup[num_input_lines] = encoders[i].button.pullup;
-        input_debounce[num_input_lines++] = 25;
+        input_debounce[num_input_lines++] = 25000;
         LineList[encoders[i].button.address].action = OffEncSwitch;
         LineList[encoders[i].button.address].num = i;
       }
     }
 
-    // setup switches
+    //
+    // setup switches: debouncing time is 25 msec
+    //
 
     for (int i = 0; i < MAX_SWITCHES; i++) {
       if (switches[i].enabled) {
         input_lines[num_input_lines] =  switches[i].address;
         input_pullup[num_input_lines] = switches[i].pullup;
-        input_debounce[num_input_lines++] = 25;
+        input_debounce[num_input_lines++] = 25000;
         LineList[switches[i].address].action = OffSwitch;
         LineList[switches[i].address].num = i;
       }
@@ -1240,24 +1248,26 @@ void gpio_init() {
   }
 
   if (controller == CONTROLLER2_V1 || controller == CONTROLLER2_V2 || controller == G2_FRONTPANEL) {
+    //
+    // Setup I2C interrupt line: debounce with 1 msec
+    //
     i2c_init();
     input_lines[num_input_lines] =  I2C_INTERRUPT;
     input_pullup[num_input_lines] = TRUE;
-    input_debounce[num_input_lines++] = 0;
+    input_debounce[num_input_lines++] = 1000;
     LineList[I2C_INTERRUPT].action = OffI2CIRQ;
     LineList[I2C_INTERRUPT].num = 0;
   }
 
   //
-  // A failure below this point should not close the GPIO chip
-  // but we simply continue without the functionality and can continue
-  // to use the controller
+  // Setup special input lines (CW, PTT)
+  // Debounce CW lines with 10 msec but use 50 msec for PTT
   //
 
   if (CWL_LINE >= 0) {
     input_lines[num_input_lines] =  CWL_LINE;
     input_pullup[num_input_lines] = TRUE;
-    input_debounce[num_input_lines++] = 10;
+    input_debounce[num_input_lines++] = 10000;
     LineList[CWL_LINE].action = OffSpecial;
     LineList[CWL_LINE].num = CW_LEFT;
   }
@@ -1265,7 +1275,7 @@ void gpio_init() {
   if (CWR_LINE >= 0) {
     input_lines[num_input_lines] =  CWR_LINE;
     input_pullup[num_input_lines] = TRUE;
-    input_debounce[num_input_lines++] = 10;
+    input_debounce[num_input_lines++] = 10000;
     LineList[CWR_LINE].action = OffSpecial;
     LineList[CWR_LINE].num = CW_RIGHT;
   }
@@ -1273,7 +1283,7 @@ void gpio_init() {
   if (CWKEY_LINE >= 0) {
     input_lines[num_input_lines] =  CWKEY_LINE;
     input_pullup[num_input_lines] = TRUE;
-    input_debounce[num_input_lines++] = 10;
+    input_debounce[num_input_lines++] = 10000;
     LineList[CWKEY_LINE].action = OffSpecial;
     LineList[CWKEY_LINE].num = CW_KEYER_KEYDOWN;
   }
@@ -1281,11 +1291,19 @@ void gpio_init() {
   if (PTTIN_LINE >= 0) {
     input_lines[num_input_lines] =  PTTIN_LINE;
     input_pullup[num_input_lines] = TRUE;
-    input_debounce[num_input_lines++] = 25;
+    input_debounce[num_input_lines++] = 50000;
     LineList[PTTIN_LINE].action = OffSpecial;
     LineList[PTTIN_LINE].num = CW_KEYER_PTT;
   }
 
+  //
+  // If there are spare GPIO lines: configure up to
+  // two output lines for signaling CW and PTT.
+  // - the CW-out line may be used for a hardware-
+  //   generated low-latency side tone
+  // - the PTT-out line may be useful for radios such
+  //   as the AdalmPluto
+  //
   if (PTTOUT_LINE >= 0) {
 #ifdef GPIOV1
     pttout_line = setup_output_line(PTTOUT_LINE, 1);
@@ -1327,7 +1345,9 @@ void gpio_close() {
 #ifdef GPIOV2
   if (input_request) { gpiod_line_request_release(input_request); }
 
-  if (output_request) { gpiod_line_request_release(output_request); }
+  if (pttout_request) { gpiod_line_request_release(pttout_request); }
+
+  if (cwout_request) { gpiod_line_request_release(cwout_request); }
 #endif
 
   if (chip) { gpiod_chip_close(chip); }
