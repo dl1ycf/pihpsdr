@@ -179,6 +179,11 @@ static gboolean protocols_cb (GtkWidget *widget, GdkEventButton *event, gpointer
 #ifdef GPIO
 static void gpio_changed_cb(GtkWidget *widget, gpointer data) {
   controller = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  //
+  // This will generate a new gpio.props from scratch,
+  // all existing entries there are lost when changing the
+  // controller.
+  //
   gpio_set_defaults(controller);
   gpioSaveState();
 }
@@ -901,10 +906,8 @@ static void discovery() {
   g_signal_connect(toggle_button, "toggled", G_CALLBACK(password_visibility_cb), host_pwd);
   gtk_grid_attach(GTK_GRID(grid), toggle_button, 3, row, 1, 1);
   row++;
-  controller = NO_CONTROLLER;
 #ifdef GPIO
   gpioRestoreState();
-  gpio_set_defaults(controller);
   GtkWidget *gpio = gtk_combo_box_text_new();
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "No Controller");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller1");

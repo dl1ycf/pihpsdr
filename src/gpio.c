@@ -88,6 +88,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
+int controller = NO_CONTROLLER;
+
 static int CWL_LINE = -1;
 static int CWR_LINE = -1;
 static int CWKEY_LINE = -1;
@@ -242,7 +244,7 @@ guchar encoder_state_table[13][4] = {
 //
 // The "static const" data is the DEFAULT assignment for encoders,
 // and for Controller2 and G2 front panel switches
-// These defaults are read-only and copied to my_encoders and my_switches
+// These defaults are read-only and copied to encoders and switches
 // when restoring default values
 //
 // Controller1 has 3 small encoders + VFO, and  8 switches in 6 layers
@@ -396,11 +398,8 @@ static const SWITCH switches_g2_frontpanel[MAX_SWITCHES] = {
   {FALSE, FALSE, 0, FILTER_MINUS,     0L}   //GPB0 SW15
 };
 
-ENCODER my_encoders[MAX_ENCODERS];
-SWITCH  my_switches[MAX_SWITCHES];
-
-ENCODER *encoders = NULL;
-SWITCH *switches = NULL;
+ENCODER encoders[MAX_ENCODERS];
+SWITCH  switches[MAX_SWITCHES];
 
 #define I2C_INTERRUPT  15
 #define MAX_LINES 32
@@ -653,9 +652,9 @@ void gpio_default_encoder_actions(int ctrlr) {
     // Copy (only) actions
     //
     for (int i = 0; i < MAX_ENCODERS; i++) {
-      my_encoders[i].bottom.function = default_encoders[i].bottom.function;
-      my_encoders[i].top.function    = default_encoders[i].top.function;
-      my_encoders[i].button.function = default_encoders[i].button.function;
+      encoders[i].bottom.function = default_encoders[i].bottom.function;
+      encoders[i].top.function    = default_encoders[i].top.function;
+      encoders[i].button.function = default_encoders[i].button.function;
     }
   }
 }
@@ -702,8 +701,8 @@ void gpio_default_switch_actions(int ctrlr) {
 // lines 9,10,11,14 are "free" and can be
 // used for CW and PTT.
 //
-//  At this place, copy complete data structures to my_encoders
-//  and my_switches, including GPIO lines etc.
+//  At this place, copy complete data structures encoders
+//  and witches, including GPIO lines etc.
 //
 void gpio_set_defaults(int ctrlr) {
   t_print("%s: Controller=%d\n", __FUNCTION__, ctrlr);
@@ -719,10 +718,8 @@ void gpio_set_defaults(int ctrlr) {
     PTTIN_LINE = 14;
     PTTOUT_LINE = 15;
     CWOUT_LINE = -1;
-    memcpy(my_encoders, encoders_controller1, sizeof(my_encoders));
-    memcpy(my_switches, switches_controller1, sizeof(my_switches));
-    encoders = my_encoders;
-    switches = my_switches;
+    memcpy(encoders, encoders_controller1, sizeof(my_encoders));
+    memcpy(switches, switches_controller1, sizeof(my_switches));
     break;
 
   case CONTROLLER2_V1:
@@ -735,10 +732,8 @@ void gpio_set_defaults(int ctrlr) {
     PTTIN_LINE = 14;
     PTTOUT_LINE = 13;
     CWOUT_LINE = 12;
-    memcpy(my_encoders, encoders_controller2_v1, sizeof(my_encoders));
-    memcpy(my_switches, switches_controller2_v1, sizeof(my_switches));
-    encoders = my_encoders;
-    switches = my_switches;
+    memcpy(encoders, encoders_controller2_v1, sizeof(my_encoders));
+    memcpy(switches, switches_controller2_v1, sizeof(my_switches));
     break;
 
   case CONTROLLER2_V2:
@@ -750,10 +745,8 @@ void gpio_set_defaults(int ctrlr) {
     PTTIN_LINE = 14;
     CWKEY_LINE = -1;
     PTTOUT_LINE = -1;
-    memcpy(my_encoders, encoders_controller2_v2, sizeof(my_encoders));
-    memcpy(my_switches, switches_controller2_v2, sizeof(my_switches));
-    encoders = my_encoders;
-    switches = my_switches;
+    memcpy(encoders, encoders_controller2_v2, sizeof(my_encoders));
+    memcpy(switches, switches_controller2_v2, sizeof(my_switches));
     break;
 
   case G2_FRONTPANEL:
@@ -765,10 +758,8 @@ void gpio_set_defaults(int ctrlr) {
     PTTIN_LINE = -1;
     CWKEY_LINE = -1;
     PTTOUT_LINE = -1;
-    memcpy(my_encoders, encoders_g2_frontpanel, sizeof(my_encoders));
-    memcpy(my_switches, switches_g2_frontpanel, sizeof(my_switches));
-    encoders = my_encoders;
-    switches = my_switches;
+    memcpy(encoders, encoders_g2_frontpanel, sizeof(my_encoders));
+    memcpy(switches, switches_g2_frontpanel, sizeof(my_switches));
     break;
 
   case NO_CONTROLLER:
@@ -784,10 +775,8 @@ void gpio_set_defaults(int ctrlr) {
     PTTOUT_LINE = 22;
     CWOUT_LINE = 23;
 
-    memcpy(my_encoders, encoders_no_controller, sizeof(my_encoders));
-    memcpy(my_switches, switches_no_controller, sizeof(my_switches));
-    encoders = my_encoders;
-    switches = my_switches;
+    memcpy(encoders, encoders_no_controller, sizeof(my_encoders));
+    memcpy(switches, switches_no_controller, sizeof(my_switches));
     break;
   }
   //
@@ -822,7 +811,11 @@ void gpio_set_defaults(int ctrlr) {
 }
 
 void gpioRestoreState() {
+  //
+  // This is ONLY called when the discovery screen initializes
+  //
   loadProperties("gpio.props");
+  controller = NO_CONTROLLER;
   GetPropI0("controller",                                         controller);
   gpio_set_defaults(controller);
 
@@ -848,6 +841,9 @@ void gpioRestoreState() {
 }
 
 void gpioSaveState() {
+  //
+  // This is ONLY called from the discovery "Controller" callback
+  //
   clearProperties();
   SetPropI0("controller",                                         controller);
 
@@ -875,14 +871,24 @@ void gpioSaveState() {
 }
 
 void gpioRestoreActions() {
+  //
+  // This is called when restoring the radio state. It does not *set* controller
+  // but simply checks whether the controller value in the radio props file
+  // matches the current one.
+  //
   int props_controller = NO_CONTROLLER;
-  gpio_set_defaults(controller);
   GetPropI0("controller",                                        props_controller);
 
   //
   // If the props file refers to another controller, skip props data
   //
   if (controller != props_controller) { return; }
+
+  //
+  // Init encoders/switches with default actions, then read modifications
+  // from (radio) props file
+  //
+  gpio_default_encoder_actions(controller);
 
   for (int i = 0; i < MAX_ENCODERS; i++) {
     GetPropA1("encoders[%d].bottom_encoder_function", i,         encoders[i].bottom.function);
@@ -898,6 +904,13 @@ void gpioRestoreActions() {
 }
 
 void gpioSaveActions() {
+  //
+  // This is called when saving the radio state.
+  //
+  // Put the actual controller into the radio props file as well,
+  // so we can check upon restore whether the controller chosen in the
+  // startup screen corresponds to the controller actions saved here
+  //
   SetPropI0("controller",                                        controller);
 
   //
@@ -1139,7 +1152,6 @@ void gpio_init() {
   initialiseEpoch();
 #endif
   g_mutex_init(&encoder_mutex);
-  gpio_set_defaults(controller);
   chip = NULL;
 
   //

@@ -22,16 +22,6 @@
 
 #include <gtk/gtk.h>
 
-enum _controller_enum {
-  NO_CONTROLLER = 0,
-  CONTROLLER1,
-  CONTROLLER2_V1,
-  CONTROLLER2_V2,
-  G2_FRONTPANEL
-};
-
-extern int controller;
-
 extern GdkScreen *screen;
 extern int display_size;       // pointer into display_width and display_height, 0 means FullScreen
 extern int display_width[6];

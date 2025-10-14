@@ -94,8 +94,6 @@ static int TOOLBAR_HEIGHT = 30;   // dynamically adjusted to the display height
 int rx_stack_horizontal = 0;
 int suppress_popup_sliders = 0;
 
-int controller = NO_CONTROLLER;
-
 GtkWidget *fixed;
 static GtkWidget *hide_b;
 static GtkWidget *menu_b;
@@ -1122,7 +1120,9 @@ void radio_start_radio() {
       //
       // This is a RadioBerry.
       //
+#ifdef GPIO
       controller = NO_CONTROLLER;
+#endif
 
       if (radio->software_version < 732) {
         have_radioberry1 = 1;

@@ -23,6 +23,16 @@
 #ifdef GPIO
 #include <gtk/gtk.h>
 
+enum _controller_enum {
+  NO_CONTROLLER = 0,
+  CONTROLLER1,
+  CONTROLLER2_V1,
+  CONTROLLER2_V2,
+  G2_FRONTPANEL
+};
+
+extern int controller;
+
 #define MAX_ENCODERS 5
 #define MAX_SWITCHES 16
 
@@ -52,8 +62,8 @@ typedef struct _encoder {
   SWITCH button;
 } ENCODER;
   
-extern ENCODER *encoders;
-extern SWITCH *switches;
+extern ENCODER encoders[MAX_ENCODERS];
+extern SWITCH switches[MAX_SWITCHES];
 
 extern void gpio_default_encoder_actions(int ctrlr);
 extern void gpio_default_switch_actions(int ctrlr);
