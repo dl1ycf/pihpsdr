@@ -687,7 +687,7 @@ void gpio_default_switch_actions(int ctrlr) {
     // Copy (only) actions
     //
     for (int i = 0; i < MAX_SWITCHES; i++) {
-      my_switches[i].function = default_switches[i].function;
+      switches[i].function = default_switches[i].function;
     }
   }
 }
@@ -889,6 +889,7 @@ void gpioRestoreActions() {
   // from (radio) props file
   //
   gpio_default_encoder_actions(controller);
+  gpio_default_switch_actions(controller);
 
   for (int i = 0; i < MAX_ENCODERS; i++) {
     GetPropA1("encoders[%d].bottom_encoder_function", i,         encoders[i].bottom.function);
