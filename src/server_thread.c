@@ -1285,11 +1285,7 @@ static int server_command(void *data) {
     //
     radio_set_mox(header->b1);
     g_idle_add(ext_vfo_update, NULL);
-
-    if (mox != header->b1) {
-      send_vox(remoteclient.socket, mox);
-    }
-
+    send_vox(remoteclient.socket, mox);
     break;
 
   case CMD_TUNE:
