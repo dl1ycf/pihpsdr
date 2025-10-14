@@ -1191,19 +1191,27 @@ void gpio_init() {
   if (controller != NO_CONTROLLER) {
     //
     // setup encoders:
-    // Some encoders (VFO) may fire at a high rate, therefore
-    // use a minimal debouncing time (1 msec) here. For the
-    // encoder push-buttons, use 25 msec.
+    // For the mechanical encoders, a debouncinc time of 2 msec is fine, but
+    // the opto-encoder used for the VFO knob debouncing must be zero.
+    // For the encoder push-buttons, use 25 msec.
     // NOTE input_debounce is in usec.
     //
     for (int i = 0; i < MAX_ENCODERS; i++) {
       if (encoders[i].bottom.enabled) {
         input_lines[num_input_lines] =  encoders[i].bottom.address_a;
         input_pullup[num_input_lines] = encoders[i].bottom.pullup;
-        input_debounce[num_input_lines++] = 1000;
+        if (encoders[i].bottom.function == VFO) {
+          input_debounce[num_input_lines++] = 0;
+        } else {
+          input_debounce[num_input_lines++] = 2000;
+        }
         input_lines[num_input_lines] =  encoders[i].bottom.address_b;
         input_pullup[num_input_lines] = encoders[i].bottom.pullup;
-        input_debounce[num_input_lines++] = 1000;
+        if (encoders[i].bottom.function == VFO) {
+          input_debounce[num_input_lines++] = 0;
+        } else {
+          input_debounce[num_input_lines++] = 2000;
+        }
         LineList[encoders[i].bottom.address_a].action = OffBotEncA;
         LineList[encoders[i].bottom.address_a].num = i;
         LineList[encoders[i].bottom.address_b].action = OffBotEncB;
@@ -1213,10 +1221,18 @@ void gpio_init() {
       if (encoders[i].top.enabled) {
         input_lines[num_input_lines] =  encoders[i].top.address_a;
         input_pullup[num_input_lines] = encoders[i].top.pullup;
-        input_debounce[num_input_lines++] = 1000;
+        if (encoders[i].top.function == VFO) {
+          input_debounce[num_input_lines++] = 0;
+        } else {
+          input_debounce[num_input_lines++] = 2000;
+        }
         input_lines[num_input_lines] =  encoders[i].top.address_b;
         input_pullup[num_input_lines] = encoders[i].top.pullup;
-        input_debounce[num_input_lines++] = 1000;
+        if (encoders[i].top.function == VFO) {
+          input_debounce[num_input_lines++] = 0;
+        } else {
+          input_debounce[num_input_lines++] = 2000;
+        }
         LineList[encoders[i].top.address_a].action = OffTopEncA;
         LineList[encoders[i].top.address_a].num = i;
         LineList[encoders[i].top.address_b].action = OffTopEncB;
