@@ -718,8 +718,8 @@ void gpio_set_defaults(int ctrlr) {
     PTTIN_LINE = 14;
     PTTOUT_LINE = 15;
     CWOUT_LINE = -1;
-    memcpy(encoders, encoders_controller1, sizeof(my_encoders));
-    memcpy(switches, switches_controller1, sizeof(my_switches));
+    memcpy(encoders, encoders_controller1, sizeof(encoders));
+    memcpy(switches, switches_controller1, sizeof(switches));
     break;
 
   case CONTROLLER2_V1:
@@ -732,8 +732,8 @@ void gpio_set_defaults(int ctrlr) {
     PTTIN_LINE = 14;
     PTTOUT_LINE = 13;
     CWOUT_LINE = 12;
-    memcpy(encoders, encoders_controller2_v1, sizeof(my_encoders));
-    memcpy(switches, switches_controller2_v1, sizeof(my_switches));
+    memcpy(encoders, encoders_controller2_v1, sizeof(encoders));
+    memcpy(switches, switches_controller2_v1, sizeof(switches));
     break;
 
   case CONTROLLER2_V2:
@@ -745,8 +745,8 @@ void gpio_set_defaults(int ctrlr) {
     PTTIN_LINE = 14;
     CWKEY_LINE = -1;
     PTTOUT_LINE = -1;
-    memcpy(encoders, encoders_controller2_v2, sizeof(my_encoders));
-    memcpy(switches, switches_controller2_v2, sizeof(my_switches));
+    memcpy(encoders, encoders_controller2_v2, sizeof(encoders));
+    memcpy(switches, switches_controller2_v2, sizeof(switches));
     break;
 
   case G2_FRONTPANEL:
@@ -758,8 +758,8 @@ void gpio_set_defaults(int ctrlr) {
     PTTIN_LINE = -1;
     CWKEY_LINE = -1;
     PTTOUT_LINE = -1;
-    memcpy(encoders, encoders_g2_frontpanel, sizeof(my_encoders));
-    memcpy(switches, switches_g2_frontpanel, sizeof(my_switches));
+    memcpy(encoders, encoders_g2_frontpanel, sizeof(encoders));
+    memcpy(switches, switches_g2_frontpanel, sizeof(switches));
     break;
 
   case NO_CONTROLLER:
@@ -775,8 +775,8 @@ void gpio_set_defaults(int ctrlr) {
     PTTOUT_LINE = 22;
     CWOUT_LINE = 23;
 
-    memcpy(encoders, encoders_no_controller, sizeof(my_encoders));
-    memcpy(switches, switches_no_controller, sizeof(my_switches));
+    memcpy(encoders, encoders_no_controller, sizeof(encoders));
+    memcpy(switches, switches_no_controller, sizeof(switches));
     break;
   }
   //
