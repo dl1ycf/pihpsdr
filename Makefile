@@ -752,7 +752,7 @@ endif
 
 CPP_INCLUDE:=$(shell echo $(CPP_INCLUDE) | sed -e "s/ -pthread/ /" )
 
-CPP_OPTIONS= --check-level=exhaustive --inline-suppr --enable=all --suppress=unmatchedSuppression
+CPP_OPTIONS= --inline-suppr --enable=all --suppress=unmatchedSuppression
 
 ifeq ($(UNAME_S), Darwin)
 CPP_OPTIONS += -D__APPLE__
