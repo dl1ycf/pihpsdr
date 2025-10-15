@@ -479,8 +479,8 @@ static gpointer rotary_encoder_thread(gpointer data) {
   //     50 -->   75
   //    100 -->  200
   //    200 -->  600
-  //    300 --> 1200
-  //    400 --> 2000
+  //    300 --> 1100
+  //    400 --> 1800
   //
   // and these data points are fairly well fitted by the following
   // function:
@@ -497,8 +497,8 @@ static gpointer rotary_encoder_thread(gpointer data) {
         val = encoders[i].bottom.pos;
         encoders[i].bottom.pos = 0;
         g_mutex_unlock(&encoder_mutex);
-        if (val > 20) { val = (val * val + 138 * val - 776 / 117); }
-        if (val < -20) { val = -(val * val - 138 * val - 776 / 117); }
+        if (val > 20) { val = (val * val + 138 * val - 776) / 117; }
+        if (val < -20) { val = -(val * val - 138 * val - 776) / 117; }
         schedule_action(action, mode, val);
       }
 
@@ -510,7 +510,7 @@ static gpointer rotary_encoder_thread(gpointer data) {
         encoders[i].top.pos = 0;
         g_mutex_unlock(&encoder_mutex);
         if (val > 20) { val = (val * val + 138 * val - 776) / 117; }
-        if (val < -20) { val = -(val * val - 138 * val - 776 / 117); }
+        if (val < -20) { val = -(val * val - 138 * val - 776) / 117; }
         schedule_action(action, mode, val);
       }
     }
