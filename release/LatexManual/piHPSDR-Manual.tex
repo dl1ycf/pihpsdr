@@ -172,10 +172,10 @@ capability if compiled on MacOS.}
 \item{Added local replay of captured audio data (\bltt{Replay} command) -- useful to check
 captured audio data before transmitting it.}
 \item{Added the NR2 noise reduction post processing introduced with WDSP 1.27 (\bltt{Noise} menu)}
-
+\item{GPIO code now works both with the V1 and V2 \texttt{libgpiod} API}
 \end{itemize}
 
-\medskip
+\clearpage
 \textbf{\pH Version 2.4, released January 2025}
 \begin{itemize}
 \item{Possibility to label peaks (with dBm values) in the RX/TX panadapters (contributed
@@ -185,7 +185,7 @@ by Lukasz).}
 \item{Stripped-down TCI server for use with logbook programs and linear amplifiers (\bltt{CAT/TCI} menu)}
 \end{itemize}
 
-\clearpage
+\medskip
 \textbf{\pH Version 2.3, released August 2024}
 \begin{itemize}
 \item{Preliminary ``accessibility'' support for the blind (see Appendix \ref{sec:accessibility})}
@@ -1352,7 +1352,8 @@ as the \texttt{N2ADR} filter board is chosen.
 or MIDI controllers. In some cases, these encoders generate too many ticks per revolution,
 such that it is difficult to fine tune on a signal.
 If the VFO Encoder Divisor, as shown in the example, has a value of
-15, only every 15$^\textrm{th}$ tick will we processed. For the default value of 1,
+15, only every 15$^\textrm{th}$ tick will we processed. This value is often used with
+optical encoders found in some of the GPIO controllers. For the default value of 1,
 the divisor has no effect.
 
 \rett{VFO snap} If this box is checked, VFO frequency changes by clicking or dragging in the
@@ -1487,7 +1488,7 @@ clock output (also 10 MHz).
 the Anan-100B identify themselves as Hermes boards, they have a FPGA with limited
 resources and this affects the allocation of PureSignal feedback channels. To make
 PureSignal work on these machines, you have to check this box in the \bltt{Radio} menu.
-This also applies to the new, ,,revised'' version of the Anan-10E that came out
+This also applies to the new ,,revised'' version of the Anan-10E that came out
 in 2025.
 
 \rett{Swap IQ} This box only appears for radios connected via the SoapySDR library. If checked
@@ -1739,8 +1740,8 @@ If the \rett{Waterfall Automatic:} box is checked
 
 \rett{Waterfall Automatic:} If this box is checked, the \rett{Waterfall High} and
 \rett{Waterfall Low} parameters are not used. Instead,
-the lowest and highest signal strength in the RX spectrum are automatically determined
-in each update of the waterfall, and these min/max values
+the waterfall high/low values are determined automatically in each update of 
+the waterfall, and these min/max values
 are then used instead of the waterfall High/Low control values to determine which
 colour belongs to which signal strength.
 
