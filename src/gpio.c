@@ -464,28 +464,57 @@ static gpointer rotary_encoder_thread(gpointer data) {
   int val;
   usleep(250000);
 
+  //
+  // Mechanical encoder will produce less than 10 ticks within 100 msec.
+  // The optical VFO encoder is at about 10 ticks in 100 msec if turned
+  // slow, but this can go up to 400 ticks if turned fast (measured with
+  // a V2.2 controller). This is why the vfo_encoder_divisor is needed
+  // downstream.
+  //
+  // We will modify the ticks reported by the following recipe:
+  // - no modification if there are less than 20 ticks
+  // - faster rotations should be mapped approximately as follows:
+  //
+  //     20 -->   20
+  //     50 -->   75
+  //    100 -->  200
+  //    200 -->  600
+  //    300 --> 1100
+  //    400 --> 1800
+  //
+  // and these data points are fairly well fitted by the following
+  // function:
+  //
+  // y = (x*x + 138*x - 776) / 117
+  //
   while (TRUE) {
-    g_mutex_lock(&encoder_mutex);
 
     for (i = 0; i < MAX_ENCODERS; i++) {
       if (encoders[i].bottom.enabled && encoders[i].bottom.pos != 0) {
         action = encoders[i].bottom.function;
         mode = RELATIVE;
+        g_mutex_lock(&encoder_mutex);
         val = encoders[i].bottom.pos;
         encoders[i].bottom.pos = 0;
+        g_mutex_unlock(&encoder_mutex);
+        if (val > 20) { val = (val * val + 138 * val - 776) / 117; }
+        if (val < -20) { val = -(val * val - 138 * val - 776) / 117; }
         schedule_action(action, mode, val);
       }
 
       if (encoders[i].top.enabled && encoders[i].top.pos != 0) {
         action = encoders[i].top.function;
         mode = RELATIVE;
+        g_mutex_lock(&encoder_mutex);
         val = encoders[i].top.pos;
         encoders[i].top.pos = 0;
+        g_mutex_unlock(&encoder_mutex);
+        if (val > 20) { val = (val * val + 138 * val - 776) / 117; }
+        if (val < -20) { val = -(val * val - 138 * val - 776) / 117; }
         schedule_action(action, mode, val);
       }
     }
 
-    g_mutex_unlock(&encoder_mutex);
     usleep(100000); // sleep for 100ms
   }
 
@@ -556,16 +585,19 @@ static void process_edge(int offset, int value) {
 
   //
   // The idea of using a nested if (rather than a switch) is to
-  // guarantee that encoder events are handled as fast as possible
+  // guarantee that encoder events are handled as fast as possible.
+  // The (optical) VFO encoders fire orders of magnitudes faster
+  // than all other encoders and switches. They are bottom encoders
+  // in all cases so bottom encoders will he handled first.
   //
-  if (action == OffTopEncA) {
-    process_encoder_a(&encoders[num].top, value);
-  } else if (action == OffTopEncB) {
-    process_encoder_b(&encoders[num].top, value);
-  } else if (action == OffBotEncA) {
+  if (action == OffBotEncA) {
     process_encoder_a(&encoders[num].bottom, value);
   } else if (action == OffBotEncB) {
     process_encoder_b(&encoders[num].bottom, value);
+  } else if (action == OffTopEncA) {
+    process_encoder_a(&encoders[num].top, value);
+  } else if (action == OffTopEncB) {
+    process_encoder_b(&encoders[num].top, value);
   } else if (action == OffI2CIRQ) {
     if (value) { i2c_interrupt(); }
   } else if (action == OffSpecial) {
