@@ -22,6 +22,7 @@
 
 #ifdef GPIO
 #include <gtk/gtk.h>
+#include <stdint.h>
 
 enum _controller_enum {
   NO_CONTROLLER = 0,
