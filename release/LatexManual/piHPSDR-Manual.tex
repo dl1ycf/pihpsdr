@@ -7865,7 +7865,7 @@ nearly indistinguishable from an output line with high level.
 If you want to use the Controller2 or the G2 front panel controller, the Raspberry Pi I2C interface
 must be enabled. This is done by opening \texttt{Menu}$\to$\texttt{Preferences}$\to$
 \texttt{Raspberry Pi Configuration} and moving to the \texttt{Interfaces} tab
-(shown in Fig. \ref{fig:piEnableI2C}. In the I2C line, move the button to the right
+(shown in Fig. \ref{fig:piEnableI2C}). In the I2C line, move the button to the right
 (marked by the red arrows).
 
 If you need the \pH built-in serial port, activate the \rett{Serial Port} button and deactivate
@@ -7874,7 +7874,7 @@ conflict with GPIO lines used for the controller, so
 you should only activate it when you a) need it and b) have checked \rett{No Controller} in the
 initial GPIO menu (or have not compiled the program with GPIO support).
 
-Restart the computer after making the changes..
+Restart the computer after making the changes.
 The other buttons (SSH, VNC, etc) need not be changed and can be set according to your needs. SSH allows
 you to log in into your RaspPi over a network, and VNC allows operating the Pi from another computer,
 using the screen and keyboard and mouse from that other computer to control the Pi.
@@ -7883,12 +7883,13 @@ using the screen and keyboard and mouse from that other computer to control the 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter[Linux: \pH install from sources]{Installation of \pH from the sources (Linux, RaspPi)}
 \label{sec:installsources}
-\textit{This procedure has been tested on a Pi 4B, with a fresh and plain vanilla operating
-system (32-bit ,,BullsEye'', released May 3rd 2023, Kernel version 6.1) obtained from} \\
+\textit{This procedure has been with current version of the RaspPi (Pi4B and Pi5) with various versions of a
+fresh and plain vanilla operating system (,,BullsEye'', ,,BookWorm'' and ,,Trixie''). Normally
+I use the 64-bit versions of the operating system since this is the standard option, but it
+should also work with 32-bit versions. The RaspPi operating system can be obtained from} \\
 \\
 \texttt{https://www.raspberrypi.com/software/operating-systems/} \\
 \\
-\textit{It has also been tested on a Pi 5B with the ,,BookWorm'' (64 bit version) operating system.}
 
 \textbf{General Remarks.}
 Installation from the sources has number of benefits compared to using binaries that have
@@ -7961,9 +7962,9 @@ The \pH repository is downloaded, and support libraries are installed, with the 
 \textbf{\color{red} ----- Release and Development version -----}
 \end{center}
 Proceeding as shown above will provide an up-to-date ,,snap shot'' of the \pH repository.
-This ensures that you have the latest (development) version which corresponds to the present
-version of the manual, but there is a chance that there is a recently introduced bug
-which has not yet been found and fixed. Currently, the development version has version number 2.6.
+This ensures that you have the latest (development) version,
+but there is a chance that there is a recently introduced bug
+which has not yet been found and fixed.
 
 There is also a ,,release'' version which is the previous version. The ,,release'' version lags
 behind the current development since new features are not included there. This means that any
@@ -8168,7 +8169,7 @@ stems from missing, corrupt, or outdated SoapySDR libraries which are not part o
 \section{Upgrading an installation}
 \pH is a ``living'' program, which means that regularly  error corrections are made, and new features are
 introduced. After the internet repository has been updated, your installation will (of course) not change
-until you perform specific actions as described in this section. But before documention how to do this,
+until you perform specific actions as described in this section. But before documenting how to do this,
 some general principles should be made clear:
 
 \begin{itemize}
@@ -8190,21 +8191,21 @@ The following commands simply show which branches do exist.
 On my computer the output is
 
 \begin{verbatim}
-  RELEASE-2.2-DL1YCF
   Rel-2.3
   Rel-2.4
+  Rel-2.5
 * master
   remotes/origin/HEAD -> origin/master
-  remotes/origin/RELEASE-2.2-DL1YCF
   remotes/origin/Rel-2.3
   remotes/origin/Rel-2.4
+  remotes/origin/Rel-2.5
   remotes/origin/master
 \end{verbatim}
 
 You can ignore the  lines starting with \texttt{remotes}. The other lines display the names of all
 existing branches, and the line starting with a star indicates the branch you are currently on.
-Older branches (\texttt{RELEASE-2.2-DL1YCF}, \texttt{Rel-2.3}) are meanwhile outdated, the previous
-release branch is names \texttt{Rel-2.4} and the current one, at the time of this writing, is \texttt{Rel-2.5}.
+Older branches such as \texttt{Rel-2.3} are meanwhile outdated, the previous
+release branch is named \texttt{Rel-2.4} and the current one, at the time of this writing, is \texttt{Rel-2.5}.
 
 \medskip
 \textbf{Which version do I have?}
@@ -8285,10 +8286,10 @@ commands will bring you to  the v2.5 release branch:
 
 \textit{This procedure has been tested on several Macintosh models, including a MacBook Air with an
 M1 Apple Silicon CPU, a MacMini with an M2 pro CPU, and a somewhat older MacMini with an Intel CPU.
-In the last years, MacOS operating systems from version 10.15 (,,Catalina'') through 15.3 (,,Sequoia'')
+In the last years, MacOS operating systems from version 10.15 (,,Catalina'') through 26.0 (,,Tahoe'')
 have been used. Very old MacOS systems (e.g. Catalina) are no longer supported by HomeBrew. Installing
-\pH on these is still possible but requires (really) advanced skills, so take care to use a Mac with an operating
-system still supported by HomeBrew.}
+\pH on these is still possible but requires (really) advanced skills, so take care to use a Mac with
+an operating system still supported by HomeBrew.}
 
 If you want to run \pH on an Apple Macintosh computer (iMac, Mac Mini, iBook Air, PowerBook), then
 you \textit{have to} compile \pH from the sources. Producing a pre-compiled binary that can be
@@ -8526,7 +8527,7 @@ stems from missing, corrupt, or outdated SoapySDR libraries which are not part o
 \section{Upgrading an installation}
 \pH is a ``living'' program, which means that regularly  error corrections are made, and new features are
 introduced. After the internet repository has been updated, your installation will (of course) not change
-until you perform specific actions as described in this section. But before documention how to do this,
+until you perform specific actions as described in this section. But before documenting how to do this,
 some general principles should be made clear:
 
 \begin{itemize}
@@ -8548,21 +8549,21 @@ The following commands simply show which branches do exist.
 On my computer the output is
 
 \begin{verbatim}
-  RELEASE-2.2-DL1YCF
   Rel-2.3
   Rel-2.4
+  Rel-2.5
 * master
   remotes/origin/HEAD -> origin/master
-  remotes/origin/RELEASE-2.2-DL1YCF
   remotes/origin/Rel-2.3
   remotes/origin/Rel-2.4
+  remotes/origin/Rel-2.5
   remotes/origin/master
 \end{verbatim}
 
 You can ignore the  lines starting with \texttt{remotes}. The other lines display the names of all
 existing branches, and the line starting with a star indicates the branch you are currently on.
-Older branches (\texttt{RELEASE-2.2-DL1YCF}, \texttt{Rel-2.3}) are meanwhile outdated, the previous
-release branch is names \texttt{Rel-2.4} and the current one, at the time of this writing, is \texttt{Rel-2.5}.
+Older branches such as \texttt{Rel-2.3} are meanwhile outdated, the previous
+release branch is named \texttt{Rel-2.4} and the current one, at the time of this writing, is \texttt{Rel-2.5}.
 
 \medskip
 \textbf{Which version do I have?}
@@ -8589,7 +8590,7 @@ On branch Rel-2.5
 Your branch is up to date with 'origin/Rel-2.5'.
 \end{verbatim}
 
-which tells you you are on the Rel-2.4 branch. Note that if you committed local modifications,
+which tells you you are on the Rel-2.5 branch. Note that if you committed local modifications,
 your branch will not be up to date with the repository as indicated in the outputs shown above,
 and in this case this whole section does  not apply  to you. But if you have committed  local
 modifications, this usually means you are an expert and know what to do.
@@ -8654,7 +8655,7 @@ cases they use an USB connection so you can just plug and play.}
 
 \textit{This section further does \textbf{not} apply to the new Saturn/G2 radios when running \pH on the
 internal RaspPi compute module. In this case, the internal RaspPi
-is directly connected to the radio via an XDMA interface.}
+is directly (and automatically) connected to the radio via an XDMA interface.}
 
 
 \textbf{The easiest way: DHCP-based connection.}\\
@@ -8662,53 +8663,50 @@ Every ethernet interface needs an IP address assigned to, otherwise it will not 
 both to computers and radios. The standard way of assigning an IP address to an interface is, that
 a so-called DHCP server is running ,,at the other side of the cable''. Then the computer or the radio
 requests an IP address and gets it from that server. For example, if you connect both the computer (RaspPi)
-and the radio to an internet router via a cable, then the router (assuming that it runs a DHCP server)
+and the radio to an internet router via cable, then the router (assuming that it runs a DHCP server)
 will provide an IP address to both devices and they can start to communicate. This is not only the
-easiest way to set up the communication between computer and radio, but also lets the radio connect
-to the internet. Alternatively, you simply use an Ethernet switch with a built-in DHCP server. This also
-lets computer and radio communicate but offers no internet connection.
+easiest way to set up the communication between computer and radio, but also lets the computer connect
+to the internet (if there is upstream internet connection ,,at the other side'' of the router).
+If you just want to connect computer and radio (e.g. because the computer has a separate WiFi connection
+to the internet), just get a WiFi router without using its antenna and its upstream port. These low-cost
+devices usually have four downstream ports, into two of which you plug the cable from the computer and
+the cable from the radio.
 
 \textbf{The most stable way: direct cable connection.}\\
-My recommended setup is to have a \textit{direct cable connection} between the RaspPi and the radio, that
-is, there is one cable where one end is plugged into the computer and the other into the radio. The computer
+A setup that works very well but is more difficult to set up,
+ is to have a \textit{direct cable connection} between the RaspPi and the radio. Then you
+ only need a single cable,  where one end is plugged into the computer and the other into the radio. The computer
 can then still be connected to the web via its WiFi interface. In this direct cable connection, neither
 the computer nor the radio gets an IP address for the wired interface simply because there is no DHCP server
 at either side of the cable.
 
-To make the communication work, the easiest work-around is probably to assign a fixed IP address both to
-the wired interface of the computer and to the radio. The convention is that such ,,local'' IP addresses have
-the form $192.168.xxx.yyy$, where $xxx$ and $yyy$ are numbers between 1 and 250. Furthermore, such
-local addresses are set up in "batches", where $xxx$ describes the sub-net and $yyy$ the address within the
-sub-net. That is, the so-called netmask is 255.255.255.0, alternatively, the addresses are given in the
-form $192.168.xxx.yyy/24$ where the number 24 encodes the netmask.
-
-Such local sub-nets with small numbers of $xxx$ (say, 1 through 4) are often created/used by routers etc.,
-so it is strongly recommended to use a higher number, e.g. $xxx=8$ for the sub-net used for connecting
-the computer and the radio.
+To make the communication work, both the computer and the radio must have a fixed IP address
+in the same subnet. Choose two different addresses for the computer and the radio.
+I usually use IP addresses of the
+form $192.168.8.xx$, where $xx$ is a number between 10 and 30. This choice avoids
+conflicts with automatic DHCP addresses e.g. used for the WiFi connection of the computer.
+The subnet mask for such addresses (in case you are asked) is 255.255.255.0.
 
 The bad news is that the procedure of assigning a fixed IP address differs greatly between different
-radios, and different operating systems (e.g. Linux and MacOS). For HPSDR radios, a fixed IP address
+radio, and different operating systems (e.g. Linux and MacOS). For HPSDR radios, a fixed IP address
 can most easily be set with a so-called bootloader program. For RedPitaya radios, this can often
-be done via the web interface of the RedPitaya. For the HermesLite-II radio, the Quisk software
-is recommended to set a fixed IP address.
+be done via the web interface of the RedPitaya. For the HermesLite-II radio, the SparkSDR software
+is recommended to set a fixed IP address. There is a chicken-and-egg problem here: some of these
+programs
+want to ,,discover'' the radio first before doing anything, and this means you are back to DCHP-
+supported connection at least for burning a fixed IP address into the radio.
 
 Information on how to assign a fixed IP address to a wired ethernet interface for Linux computers
 is relatively easy to locate on the internet. For MacOS it is even easier since it is an option that
 can be chosen in the network setup tool.
 
-\textbf{Raspberry Pi Note:} I have been informed that a direct cable connection between a RaspberryPi
-and an SDR may need to check the option \textit{Link-local only} in the ethernet IPV4 settings.
 
 \textbf{If you plan to run your own DHCP server.}\\
 In principle, one can have a DHCP server running on the computer that also runs \pH, and this
 will then assign an IP address to the wired interface of the computer and to the
-radio. Therefore, the problem of how to "burn" a fixed IP address into the radio does not arise. For MacOS, this
-is indeed relatively easy. For Linux computers, I experienced problems doing so because I ran into a
-,,chicken and egg'' problem: upon system start, the DHCP server could not be started since no cable was
-detected in the wired interface. On the other hand, the radio might activate its interface only after
-it gets an IP address via DHCP. Because of this problem, my personal recommendation is to use a fixed
-IP address in the radio whenever possible.
-
+radio. Information how to do this can relatively easy be found on the internet. For MacOS, this
+works very well for me, but for my RaspPi, it is somewhat involved (the DHCP server has to be run
+on a ,,bridge'' device) and this is beyond the scope of this manual.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
