@@ -498,6 +498,7 @@ static gpointer rotary_encoder_thread(gpointer data) {
         encoders[i].bottom.pos = 0;
         g_mutex_unlock(&encoder_mutex);
         if (val > 20) { val = (val * val + 138 * val - 776 / 117); }
+        if (val < -20) { val = -(val * val - 138 * val - 776 / 117); }
         schedule_action(action, mode, val);
       }
 
@@ -509,6 +510,7 @@ static gpointer rotary_encoder_thread(gpointer data) {
         encoders[i].top.pos = 0;
         g_mutex_unlock(&encoder_mutex);
         if (val > 20) { val = (val * val + 138 * val - 776) / 117; }
+        if (val < -20) { val = -(val * val - 138 * val - 776 / 117); }
         schedule_action(action, mode, val);
       }
     }
