@@ -216,7 +216,7 @@ void waterfall_update(RECEIVER *rx) {
         }
 
         wf_low = (average / (float)width) + soffset - 5.0F;
-        wf_high = wf_low + 50.0F;
+        wf_high = wf_low + 55.0F;
       } else {
         wf_low  = (float) rx->waterfall_low;
         wf_high = (float) rx->waterfall_high;
