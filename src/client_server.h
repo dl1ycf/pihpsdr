@@ -141,7 +141,7 @@ enum _header_type_enum {
   CLIENT_SERVER_COMMANDS,
 };
 
-#define CLIENT_SERVER_VERSION 0x01250003 // 32-bit version number
+#define CLIENT_SERVER_VERSION 0x01250004 // 32-bit version number
 #define SPECTRUM_DATA_SIZE 4096          // Maximum width of a panadapter
 #define AUDIO_DATA_SIZE 512              // 512 stereo samples
 
@@ -710,6 +710,7 @@ typedef struct __attribute__((__packed__)) _display_data {
   uint8_t TxInhibit;
   uint8_t txzero;
   uint8_t capture_state;
+  uint8_t tx_oob;
   uint16_t exciter_power;
   uint16_t ADC0;
   uint16_t ADC1;

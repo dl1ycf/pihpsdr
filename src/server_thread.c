@@ -136,6 +136,7 @@ static int send_periodic_data(gpointer arg) {
   disp_data.tx_fifo_underrun = tx_fifo_underrun;
   disp_data.TxInhibit = TxInhibit;
   disp_data.txzero = can_transmit ? (transmitter->drive < 0.5) : 0;
+  disp_data.tx_oob = can_transmit ? (transmitter->out_of_band) : 0;
   disp_data.capture_state = capture_state;
   disp_data.exciter_power = to_short(exciter_power);
   disp_data.ADC0 = to_short(ADC0);

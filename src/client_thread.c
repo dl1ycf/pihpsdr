@@ -490,6 +490,7 @@ static void *client_thread(void* arg) {
       // the server side
       //
       if (can_transmit) {
+        transmitter->out_of_band = data.tx_oob;
         if (data.txzero && transmitter->drive > 0.4) {
           radio_set_drive(0.0);
         }
