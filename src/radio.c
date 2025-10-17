@@ -2518,6 +2518,11 @@ void radio_set_tune(int state) {
 
   if (state && TxInhibit) { return; }
 
+  if (state && !TransmitAllowed()) {
+    state = 0;
+    tx_set_out_of_band(transmitter);
+  }
+
   // if state==tune, this function is a no-op
   if (transmitter->tune != state) {
     vox_cancel();
