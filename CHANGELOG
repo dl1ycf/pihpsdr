@@ -1,11 +1,55 @@
 LIST OF RECENT PIHPSDR CHANGES
 ==============================
+
+October 2025:
+-------------
+
+- New 2.5 Release created (the branch is Rel-2.5) and
+  master branch advanced to 2.6
+
+- use mono for RX audio transfer in client/server
+  since this halves the required band width
+
+- all client/server data structures now with proper
+  alignment
+
+- changed automatic "waterfall low" determination
+
+- overhauled GPIO code, such that it works with both
+  the V1 and V2 API of libgpild
+
+- made the GPIO VFO knob "progressive"
+
+- moved to WDSP version 1.27, added the "NR2 post-processing"
+  features introduced there
+
+September 2025:
+---------------
+ - added "Replay" action (local replay of captured data)
+
+ - panadapter high/low now also stored with the band
+
+ - pulseaudio: suppress some RX audio if too much
+   latency has been accumulated
+
+ - re-newed the piHPSDR logo
+
+ - slider and toolbar reworked, new "Sliders" menu
+
 August 2025:
 ------------
+
+- separated client/server stuff in several files
+
+- new "VFO snap" option to enable/disable rounding
+  of VFO updates to the nearest multiple of the
+  VFO step size
 
 - Re-wrote zoom/pan functionality. Now much larger zoom
   factors are possible. Currently we impose a max of 32
   but this could be even larger.
+
+- proper normalization for the RX spectrum
 
 - Modified the screen size menu to allow for fast switching
   between some "predefined" and a "custom" size
