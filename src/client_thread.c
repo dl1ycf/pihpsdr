@@ -870,6 +870,8 @@ static void *client_thread(void* arg) {
         g_idle_add(sliders_agc_gain, GINT_TO_POINTER(100 + id));
       }
     }
+
+    g_idle_add(ext_vfo_update, NULL);
     break;
 
     case INFO_TRANSMITTER: {
@@ -947,6 +949,7 @@ static void *client_thread(void* arg) {
       g_idle_add(sliders_drive, GINT_TO_POINTER(100));
       g_idle_add(sliders_mic_gain, GINT_TO_POINTER(100));
       g_idle_add(sliders_cmpr, GINT_TO_POINTER(100));
+      g_idle_add(ext_vfo_update, NULL);
     }
     break;
 
@@ -1164,6 +1167,7 @@ static void *client_thread(void* arg) {
       int f = header.b2;
       filters[m][f].low = from_short(header.s1);
       filters[m][f].high = from_short(header.s2);
+      g_idle_add(ext_vfo_update, NULL);
     }
     break;
 
@@ -1208,6 +1212,7 @@ static void *client_thread(void* arg) {
       int id = header.b1;
       receiver[id]->zoom = header.b2;
       g_idle_add(sliders_zoom, GINT_TO_POINTER(100 + id));
+      g_idle_add(ext_vfo_update, NULL);
     }
     break;
 
@@ -1269,6 +1274,7 @@ static void *client_thread(void* arg) {
       int v = header.b1;
       int step = from_short(header.s1);
       vfo_id_set_rit_step(v, step);
+      g_idle_add(ext_vfo_update, NULL);
     }
     break;
 
