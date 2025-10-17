@@ -48,6 +48,7 @@ TTS=ON
 
 # get the OS Name
 UNAME_S := $(shell uname -s)
+UNAME_R := $(shell uname -r)
 
 # Get git commit version and date
 GIT_DATE := $(firstword $(shell git --no-pager show --date=short --format="%ai" --name-only))
@@ -744,9 +745,10 @@ endif
 # On MacOS, cppcheck usually cannot find the system include files so we suppress any
 # warnings therefrom, as well as warnings for functions defined in some
 # library but never called.
-# Furthermore, we can use --check-level=exhaustive on MacOS
-# since there we have new newest version (>2.11), while on RaspPi we still have
-# older versions.
+#
+# We want to use the --check-level=exhaustive flag for cppcheck. A sufficiently
+# recent version of cppcheck if available on MacOS, and for Debian since
+# version 13 "Trixie" which introduced kernel version 6.12
 #
 ##############################################################################
 
@@ -754,16 +756,20 @@ CPP_INCLUDE:=$(shell echo $(CPP_INCLUDE) | sed -e "s/ -pthread/ /" )
 
 CPP_OPTIONS= --inline-suppr --enable=all --suppress=unmatchedSuppression
 
+TRIXIE=$(UNAME_R:6.12.%=YES)
+
 ifeq ($(UNAME_S), Darwin)
 CPP_OPTIONS += -D__APPLE__
 CPP_OPTIONS += --check-level=exhaustive
-CPP_OPTIONS += --suppress=missingIncludeSystem
-CPP_OPTIONS += --suppress=unusedFunction
 else
 CPP_OPTIONS += -D__linux__
+ifeq ($(TRIXIE), YES)
+CPP_OPTIONS += --check-level=exhaustive
+endif
+endif
+
 CPP_OPTIONS += --suppress=missingIncludeSystem
 CPP_OPTIONS += --suppress=unusedFunction
-endif
 
 .PHONY:	cppcheck
 cppcheck:
