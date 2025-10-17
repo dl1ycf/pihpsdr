@@ -1718,7 +1718,7 @@ void vfo_update() {
     cairo_show_text(cr, "B:");
     cairo_set_font_size(cr, vfl->size3);
 
-    if (txvfo == 0 && oob) {
+    if (txvfo == 1 && oob) {
       cairo_show_text(cr, "Out of band");
     } else if (vfo[1].entered_frequency[0]) {
       snprintf(temp_text, sizeof(temp_text), "%s", vfo[1].entered_frequency);

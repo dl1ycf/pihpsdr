@@ -485,13 +485,21 @@ static void *client_thread(void* arg) {
       capture_record_pointer = from_int(data.capture_record_pointer);
       capture_replay_pointer = from_int(data.capture_replay_pointer);
 
-      //
-      // This will only happen after a "SWR protection event" on
-      // the server side
-      //
       if (can_transmit) {
+        int old = transmitter->out_of_band;
         transmitter->out_of_band = data.tx_oob;
+
+        if (old != transmitter->out_of_band) {
+          //
+          // If oob flag has changed, we must do a VFO update
+          //
+          g_idle_add(ext_vfo_update, NULL);
+        }
+
         if (data.txzero && transmitter->drive > 0.4) {
+          //
+          // This happens after an "SWR alarm" event
+          //
           radio_set_drive(0.0);
         }
       }
