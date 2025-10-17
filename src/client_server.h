@@ -1020,6 +1020,15 @@ extern void generate_pwd_hash(unsigned char *s, unsigned char *hash, const char 
 //
 
 static inline uint64_t to_double(double x) {
+//
+// The uint64 range encompasses 0 ... 1.8E19
+//
+// With a resolution of 1E-10, we map doubles
+// in the range +/- 9E8 onto that range. For example,
+// 123456789.123456789 becomes 10234567891234567890 (1.02E19),
+// 0.0 becomes 9000000000000000000 (9E18),
+// and -123456789.123456789 becomes 7765432108765432110 (7.76E18)
+//
   uint64_t u64 = (x + 9.0E8) * 1.0E10;
 #ifdef __APPLE__
   uint64_t ret = htonll(u64);
@@ -1056,7 +1065,7 @@ static inline double from_double(uint64_t y) {
 #else
   uint64_t u64 = be64toh(y);
 #endif
-  return (1.0E-10 * u64 - 9.0E8);
+  return (1.0E-10 * (double) u64 - 9.0E8);
 }
 
 static inline long long from_64(uint64_t y) {
