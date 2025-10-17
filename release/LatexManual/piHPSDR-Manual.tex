@@ -4280,16 +4280,19 @@ in the vicinity of the radio. On the other hand, the ,,remote'' \pH program (cal
 on a computer quite far away from the radio. Both instances of \pH are connected via a network connection
 that may bridge a long distance. Wireless connection is perfectly possible between the client and the server.
 The connection of the two \pH instances need much lower bandwidth as e.g. the server/radio connection.
-The data stream from the server to the client is dominated by the RX audio samples,(48k 16-bit
-stereo samples per second, or  1.5 MBit/sec) while the data stream from the client to the server requires
-only half as much since the TX microphone samples are mono. Note the TX microphone samples are only sent
-while TXing in modes other than CW, so no heavy protection/encryption is necessary: the data flowing is
+To keep bandwidth low, the RX audio samples are transferred in mono, since
+the data stream from the server to the client is dominated by the audio samples (48000 16-bit
+mono samples per second, or  768 kBit/sec). The same bandwidth is used from the client to the server
+while TXing in modes other than CW (,,microphone'' samples). For those,
+no heavy protection/encryption is necessary: the data flowing is
 essentially that what can be heard on the air anyway. The method of generating CW inside \pH has been
-converted to a ,,time-stamped event model'', so sending CW is perfectly possible with remote operation.
+converted to a ,,time-stamped event model'', so sending CW is perfectly works smoothly with remote operation.
+Of course, server to client bandwidth is twice as large (1.5 MBit/sec) if two receivers are running, but still,
+this is perfectly possible even using WiFi.
 
 Since this is a legal requirement in many countries, access to the server is password protected to prevent
 illegal use of the transmitter. While the password is stored unencrypted on the server side, a challenge/response
-model ensures that a non-encrypted password is never contained in the data stream connection the client and
+model ensures that a non-encrypted password is never contained in the data stream between the client and
 the server.
 
 In the \pH ``server`` instance (connected directly to the radio), client/server operation must be enabled
@@ -4365,10 +4368,13 @@ an entry, click  into the text  field and clear it, then this entry is  removed 
 In this way, you can configure your client computer to use several different \pH server instances, but also
 to use a \pH server instance that has different IP addresses or host names depending from where you connect.
 
-The second text field in the server line must be used to enter a password. Normally, this password will not be
+The second text field in the server line must be used to enter a password. Hitting the \texttt{Return}
+key while typing in a password here is equivalent to pushing the \rett{Use Server} button (this saves
+you one mouse click after having entered the password).
+Normally, this password will not be
 stored in the preferences file so you have to enter it each time you connect. This seems to be the most
 secure setup. However, to support portable client operations where no keyboard is available, there is
-a hook to circumvent this restriction. To this end, a line for the form
+a hook to circumvent this restriction. To this end, a line of the form
 
 \texttt{host\_pwd=}$\langle$\texttt{pwd}$\rangle$
 
@@ -4387,6 +4393,9 @@ the server line reads \rett{Show} and the password is hidden (each character is 
 If clicking the \rett{Show} button, its label changes to \rett{Hide} and the password becomes visible. You
 might have guessed that clicking the \rett{Hide} button then conceals the password again and the button
 label reads \rett{Show} again.
+
+If all data has been entered, pushing the \rett{Use Server} button starts establishing a connection
+with the server. The same happens if hitting \texttt{Return} in the password field.
 
 \textbf{A note on network security}
 
@@ -4407,7 +4416,8 @@ passwords which also include upper-case letters are even better.
 Although this still  not  top-notch cyber security, it should be good enough
 to fulfil your  (legal) obligations as a radio amateur to prevent your gear from unlawful use.
 If you feel you must go beyond, one option is to set up a VPN \textit{virtual private network} in which
-you can have expert-level cyber security provided by your network infrastructure.
+you can have expert-level (professional) cyber security provided by your network infrastructure, which is
+far beyond the amateur-level security features that I can build into \pH.
 
 \textbf{Auto disconnect feature:}
 
@@ -4422,11 +4432,11 @@ next command from the client failed (the client will send a
  The user commands and even the spectrum
 data to be displayed in the panadapters and waterfalls are the smallest part of the data flowing between the client
 and the server. The (by far) largest part is the audio data. Audio data is transferred as signed 16-bit integers
-at a sample rate of 48 kHz, in stereo for the RX audio (Server $\to$ Client) and in mono for the TX
+at a sample rate of 48 kHz, in mono both for RX audio (Server $\to$ Client) and TX
 microphone data (Client $\to$ server). During RX, and also during TX when doing CW, no TX microphone data
 is transferred. If not using duplex, no RX audio data is transferred when TXing because the receivers are shut down.
 
-This means that during RX, about 192 kByte/s (1536 kbit/s) are transferred from the Server to the Client
+This means that during RX, about 96 kByte/s (768 kbit/s) are transferred from the Server to the Client
 (twice as much if running two receivers), while 96 kByte/s (768 kbit/s)  are transferred
 from the Client to the Server during
 TX if doing SSB. When TXing in CW, very little data (the CW key-down/up time stamps) is actually sent from the client
