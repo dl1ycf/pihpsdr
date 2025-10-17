@@ -3686,6 +3686,14 @@ int radio_remote_start(void *data) {
     launch_tcp_rigctl();
   }
 
+#ifdef GPIO
+  //
+  // Post-pone GPIO initialization until here.
+  // We must first set the RadioBerry/XDMA flags from
+  // which gpio_init() deduces which GPIO lines NOT to use.
+  gpio_init();
+#endif
+
   for (int id = 0; id < MAX_SERIAL; id++) {
     //
     // If serial port is enabled but no success, clear "enable" flag
