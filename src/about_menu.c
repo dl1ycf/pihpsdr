@@ -84,10 +84,13 @@ void about_menu(GtkWidget *parent) {
   gtk_widget_set_name(label, "small_button");
   gtk_grid_attach(GTK_GRID(grid), label, 1, row, 19, 1);
   row++;
-  snprintf(text, sizeof(text), "Build date: %s (commit %s)\n"
-                               "Build version: %s\n"
-                               "WDSP version: %d.%02d",
-           build_date, build_commit, build_version, GetWDSPVersion() / 100, GetWDSPVersion() % 100);
+  snprintf(text, sizeof(text), "Build Version: %s\n"
+                               "  (Commit %s, Date: %s)\n"
+                               "  WDSP Version: %d.%02d",
+                               build_version,
+                               build_commit,
+                               build_date,
+                               GetWDSPVersion() / 100, GetWDSPVersion() % 100);
   label = gtk_label_new(text);
   gtk_widget_set_halign(label, GTK_ALIGN_START);
   gtk_widget_set_name(label, "small_button");
@@ -115,8 +118,8 @@ void about_menu(GtkWidget *parent) {
                  radio->software_version / 10, radio->software_version % 10);
       } else {
         snprintf(text, sizeof(text), "Device: %s, Protocol %s, v%d.%d\n"
-                                     "Mac Address: %02X:%02X:%02X:%02X:%02X:%02X\n"
-                                     "IP Address: %s via %s%s",
+                                     "  Mac Address: %02X:%02X:%02X:%02X:%02X:%02X\n"
+                                     "  IP Address: %s via %s%s",
                  radio->name, radio->protocol == ORIGINAL_PROTOCOL ? "1" : "2",
                  radio->software_version / 10, radio->software_version % 10,
                  radio->network.mac_address[0],
@@ -136,7 +139,7 @@ void about_menu(GtkWidget *parent) {
 
   case SOAPYSDR_PROTOCOL:
     snprintf(text, sizeof(text), "Device: %s (via SoapySDR)\n"
-                                 "    %s (%s)",
+                                 "  %s (%s)",
              radio->name, radio->soapy.hardware_key, radio->soapy.driver_key);
     break;
 #endif
