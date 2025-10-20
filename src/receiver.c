@@ -1084,6 +1084,28 @@ void rx_vfo_changed(RECEIVER *rx) {
 static void rx_process_buffer(RECEIVER *rx) {
   ASSERT_SERVER();
 
+  //
+  // CAPTURE/REPLAY scaling and unscaling:
+  // -------------------------------------
+  // Calculate (once for the whole batch of audio samples) the
+  // factor necessary to scale and un-scale captured
+  // audio.
+  // The scaling factor assumes that the peak amplitude of
+  // strong signals is about 0.8 (when using AGC and RX volume is 0 dB),
+  // and scales then such that the peak amplitude is about 0.5.
+  //
+  // The factor "scale" is applied before storing captured data to make them good
+  // microphone samples. The factor "unscale" is applied to stored capture data
+  // to make them suitable for audio_write()
+  //
+  // As a result, the volume of "replayed" audio should match the volume
+  // when it was recorded, and when cranking up (or down) the RX volume
+  // slider during replay, the "replayed" audio becomes stronger
+  // (or weaker)
+  //
+  double scale = 0.6 * pow(10.0, -0.05 * rx->volume);
+  double unscale = 1.0 / scale;
+
   for (int i = 0; i < rx->output_samples; i++) {
     double left_sample = rx->audio_output_buffer[i * 2];
     double right_sample = rx->audio_output_buffer[(i * 2) + 1];
@@ -1095,7 +1117,7 @@ static void rx_process_buffer(RECEIVER *rx) {
       //
       if (capture_state == CAP_REPLAY) {
         if (capture_replay_pointer < capture_record_pointer) {
-          left_sample = right_sample = capture_data[capture_replay_pointer++];
+          left_sample = right_sample = unscale * capture_data[capture_replay_pointer++];
         } else {
           //
           // switching the state to REPLAY_DONE takes care that the
@@ -1111,11 +1133,6 @@ static void rx_process_buffer(RECEIVER *rx) {
       //
       if (capture_state == CAP_RECORDING) {
         if (capture_record_pointer < capture_max) {
-          //
-          // normalise samples:
-          // when using AGC, the samples of strong s9 signals are about 0.8
-          //
-          double scale = 0.6 * pow(10.0, -0.05 * rx->volume);
           capture_data[capture_record_pointer++] = scale * (left_sample + right_sample);
         } else {
           // switching the state to RECORD_DONE takes care that the
