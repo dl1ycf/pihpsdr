@@ -739,6 +739,17 @@ void gpio_default_switch_actions(int ctrlr) {
 void gpio_set_defaults(int ctrlr) {
   t_print("%s: Controller=%d\n", __FUNCTION__, ctrlr);
 
+  //
+  // When changing a controller, mark all "extra" lines
+  // as "do not use"
+  //
+  CWL_LINE = -1;
+  CWR_LINE = -1;
+  CWKEY_LINE = -1;
+  PTTIN_LINE = -1;
+  PTTOUT_LINE = -1;
+  CWOUT_LINE = -1;
+
   switch (ctrlr) {
   case CONTROLLER1:
     //
@@ -749,7 +760,6 @@ void gpio_set_defaults(int ctrlr) {
     CWKEY_LINE = 10;
     PTTIN_LINE = 14;
     PTTOUT_LINE = 15;
-    CWOUT_LINE = -1;
     memcpy(encoders, encoders_controller1, sizeof(encoders));
     memcpy(switches, switches_controller1, sizeof(switches));
     break;
@@ -772,24 +782,15 @@ void gpio_set_defaults(int ctrlr) {
     //
     // GPIO lines not used by controller: 14. Assigned to PTTIN by default
     //
-    CWL_LINE = -1;
-    CWR_LINE = -1;
     PTTIN_LINE = 14;
-    CWKEY_LINE = -1;
-    PTTOUT_LINE = -1;
     memcpy(encoders, encoders_controller2_v2, sizeof(encoders));
     memcpy(switches, switches_controller2_v2, sizeof(switches));
     break;
 
   case G2_FRONTPANEL:
     //
-    // Regard all GPIO lines as "used"
+    // Do not use any CPU lines
     //
-    CWL_LINE = -1;
-    CWR_LINE = -1;
-    PTTIN_LINE = -1;
-    CWKEY_LINE = -1;
-    PTTOUT_LINE = -1;
     memcpy(encoders, encoders_g2_frontpanel, sizeof(encoders));
     memcpy(switches, switches_g2_frontpanel, sizeof(switches));
     break;
@@ -812,24 +813,32 @@ void gpio_set_defaults(int ctrlr) {
     break;
   }
   //
-  // On some specific hardware, we may not use any of the optional GPIO lines
+  // GPIO line restrictions for specific hardware
   //
   if (have_radioberry1) {
-    CWL_LINE = 14;
-    CWR_LINE = 15;
+    CWL_LINE = -1;
+    CWR_LINE = -1;
     CWKEY_LINE = -1;
     PTTIN_LINE = -1;
     PTTOUT_LINE = -1;
     CWOUT_LINE = -1;
+    if (controller == NO_CONTROLLER) {
+      CWL_LINE = 14;
+      CWR_LINE = 15;
+    }
   }
 
   if (have_radioberry2) {
-    CWL_LINE = 17;
-    CWR_LINE = 21;
+    CWL_LINE = -1;
+    CWR_LINE = -1;
     CWKEY_LINE = -1;
     PTTIN_LINE = -1;
     PTTOUT_LINE = -1;
     CWOUT_LINE = -1;
+    if (controller == NO_CONTROLLER) {
+      CWL_LINE = 17;
+      CWR_LINE = 21;
+    }
   }
 
   if (have_saturn_xdma) {
