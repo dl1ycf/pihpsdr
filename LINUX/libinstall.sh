@@ -20,21 +20,11 @@ THISDIR=`dirname $SCRIPTFILE`
 TARGET=`dirname $THISDIR`
 PIHPSDR=$TARGET/release/pihpsdr
 
-RASPI=`cat /proc/cpuinfo | grep Model | grep -c Raspberry`
-
-if [ $RASPI -eq 0 ]; then
-RASPI=`uname -n |  grep -c saturn-radxa`
-fi
-
 echo
 echo "=============================================================="
 echo "Script file absolute position  is " $SCRIPTFILE
 echo "Pihpsdr target       directory is " $TARGET
 echo "Icons and Udev rules  copied from " $PIHPSDR
-
-if [ $RASPI -ne 0 ]; then
-echo "This computer is a Raspberry Pi!"
-fi
 echo "=============================================================="
 echo
 
@@ -165,31 +155,6 @@ mkdir -p $HOME/.local/share/applications
 cp $TARGET/pihpsdr.desktop $HOME/.local/share/applications
 
 cp $PIHPSDR/piHPSDR_logo.png $TARGET
-
-
-################################################################
-#
-# e) RaspPi only: copy udev rules for XDMA and serial lines
-#
-################################################################
-
-if [ $RASPI -ne 0 ]; then
-
-echo "=============================================================="
-echo
-echo "... Final RaspPi Setup."
-echo
-
-echo " ...copying SATURN udev rules"
-sudo cp $PIHPSDR/60-xdma.rules        /etc/udev/rules.d/
-sudo cp $PIHPSDR/xdma-udev-command.sh /etc/udev/rules.d/
-sudo cp $PIHPSDR/61-g2-serial.rules   /etc/udev/rules.d/
-#
-sudo udevadm control --reload-rules && sudo udevadm trigger
-
-echo
-echo "=============================================================="
-fi
 
 ################################################################
 #
