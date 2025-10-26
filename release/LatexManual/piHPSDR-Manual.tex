@@ -7894,7 +7894,9 @@ using the screen and keyboard and mouse from that other computer to control the 
 \chapter[Linux: \pH install from sources]{Installation of \pH from the sources (Linux, RaspPi)}
 \label{sec:installsources}
 \textit{This procedure has been with current version of the RaspPi (Pi4B and Pi5) with various versions of a
-fresh and plain vanilla operating system (,,BullsEye'', ,,BookWorm'' and ,,Trixie''). Normally
+fresh and plain vanilla operating system (,,BullsEye'', ,,BookWorm'' and ,,Trixie''). 
+It has also been tested with an Ubuntu (Version 25) LINUX installed on a RaspPi.
+Normally
 I use the 64-bit versions of the operating system since this is the standard option, but it
 should also work with 32-bit versions. The RaspPi operating system can be obtained from} \\
 \\
@@ -7936,7 +7938,8 @@ administrative task via the \grtt{sudo} program are listed.
 
 On a Raspberry Pi, the user account that you created during installation
 will have administrator privileges by default, so you can
-execute \grtt{sudo} commands without being asked a password.
+execute \grtt{sudo} commands without being asked a password. On Ubuntu, the situation
+is similar but you are asked for your password when executiong \grtt{sudo} commands.
 }
 }
 \end{center}
@@ -7958,7 +7961,14 @@ following instructions provided that you replace the commands \grtt{cd \$HOME} w
 \grtt{cd \$HOME/github}.
 
 \clearpage
-The \pH repository is downloaded, and support libraries are installed, with the commands
+I have seen some cases where even the \grtt{git} command is not installed in the base system.
+To this end, start with the command
+
+\grtt{sudo apt-get install git}
+
+In most cases, you will get a message stating that this packet is already downloaded, in
+this case an attempt to re-install it does no harm. The \grtt{git} command being secured,
+the \pH repository is downloaded, and support libraries are installed, with the commands
 
 \grtt{cd \$HOME} \\
 \grtt{git clone https://github.com/dl1ycf/pihpsdr} \\
@@ -8000,54 +8010,10 @@ last command my take some time. The first command loads the complete \pH reposit
 my GitHub account. The last command (\texttt{libinstall.sh}) contains all the magic,
 it not only loads all required RaspberryPi OS packages,
 but also loads and installs further libraries \pH depends on,
-including the core SoapySDR library. The libinstall procedure also does some other things for you, including creating a desktop icon
+including the core SoapySDR library. The libinstall procedure also does some other things for you,
+including creating a desktop icon
 for \pH. If you are on a Desktop PC running LINUX, you will get error messages about
 libraries such as libgpiod that are missing in the repository, which you can ignore.
-
-\textbf{\color{red}SoapySDR Note.} The SoapySDR library, and all SoapySDR modules, must be compiled from the sources
-(and the libinstall.sh script does so). The reason is, that SoapySDR in the standard repository
-is quite outdated (version 0.7) while \pH requires a more recent version (0.8) because the
-SoapySDR API has changed from 0.7 to 0.8. The necessity to compile SoapySDR from the sources
-may be dropped in the future, if the libraries in the standard repositories are all updated
-to the 0.8 API. Use the command
-
-\grtt{SoapySDRUtil -info}
-
-(see below for a sample output) to
-verify that the SoapySDR core has correctly been installed.
-
-\textbf{\color{red}Support for specific SoapySDR radios.} The script \texttt{libinstall.sh} only compiles
-and install the SoapySDR core library, since this is a prerequisite for compiling \pH with
-the SOAPYSDR compile-time option. Support for specific radios is available in the \texttt{LINUX}
-directory in form of installation scripts, these have the name \texttt{soapy.}\textit{your-radio}\texttt{.sh}.
-At the moment, there is support for the Adalm Pluto, for RTL sticks, for AirSpy radios, and
-for the SDRplay. I have put together and tested scripts for the Pluto and for RTL sticks,
-since I have the hardware and can test it. The other scripts that install support modules
-for SoapySDR radios have been contributed by \pH users who have those radios and managed
-to compose an automatic install script for the required SoapySDR modules. Use the command
-
-\grtt{SoapySDRUtil -find}
-
-(see below for a sample output) to verify that SoapySDR
-``finds'' your radio. If SoapySDR does not find it, then \pH also cannot detect it.
-To install the (radio specific) SoapySDR module for an Adalm Pluto (to give an example),
- you can type in at this place
-
-\grtt{cd \$HOME/pihpsdr}
-\grtt{LINUX/soapy.pluto.sh}
-
-\bigskip
-
-\textbf{\color{red} GPIO Note:} If you install on a Desktop PC running LINUX, or if you are on a RaspPi but use
-the GPIO I/O lines for some other purpose, you must de-activate the GPIO compile time option
-first, as described in Appendix \ref{sec:compiletime}.
-
-\textbf{\color{red}Anan G2-Ultra note:} For the Anan G2-Ultra radios (those with a dozen (or so) LEDs on
-the front panel and a 8-inch screen), as well as for original G2 radios (without LEDs and with a 7-inch screen)
-where the CPU board has been upgraded to a Radxa CM5 module, \pH should also be compiled \textit{without} (!) the
-GPIO compile time option.
-
-\bigskip
 
 It is clear that double-clicking the \pH desktop icon at this stage leads nowhere,
 since first you need to compile the program.
@@ -8073,15 +8039,17 @@ directory and recompile by executing ``make''.
 \end{figure}
 
 At this stage, double-clicking the \pH desktop icon should start the program.
-With the default settings of the RaspPi desktop, usually a window pops up that
+With the default settings of the RaspPi desktop, normally a window pops up that
 asks you whether you want to start the program directly (of course you want).
-To get rid of this question, open the file manager
+To get rid of this question once and forever, open the file manager
 and go to
 \texttt{Edit}$\to$\texttt{Preferences} (Fig. \ref{fig:piDontAsk}). Activate the check
 box where it is indicated by the red arrow and that's it.
 Immediately after running the install script, the \pH desktop icon
 looks quite generic and does not show the HPSDR logo. Log out and then log in again
-and the logo is there.
+and the logo is there. With the Ubuntu operating system, double-clicking the
+\pH Desktop icon also usually fails, and this can be cured by right-clicking the
+icon and selecting the \rett{Allow Launching} tab.
 
 Proceeding as described above,  you  just compiled the program with
 the default compile-time options (see Appendix \ref{sec:compiletime}), namely
@@ -8092,18 +8060,28 @@ Appendix \ref{sec:compiletime}.
 
 \bigskip
 
-\textbf{\color{red}Checking the SoapySDR installation.}
-If you do not plan to use radios connected via the SoapySDR library, you need not compile with \texttt{SOAPYSDR}
-enabled and can skip the rest of this section.
+\section{\pH and SoapySDR}
+This section is only relevant for those who want to use \pH with SoapySDR radios
+such as the AdalmPluto, the LIME-SDR, RTL sticks, etc. All others are already
+done at this point.
 
-To check the SoapySDR installation, open a new terminal
-window and just type the command (be careful to use the correct capitalisation!)
+The SoapySDR library, and all SoapySDR modules, must be compiled from the sources.
+The reason is, that SoapySDR in the standard repositories
+is quite outdated (version 0.7) while \pH requires a more recent version (0.8) because the
+SoapySDR API has changed from 0.7 to 0.8. The necessity to compile SoapySDR from the sources
+may be dropped in the future, if the libraries in all the standard repositories (Debian, Ubuntu,
+etc.) are all updated
+to the 0.8 API.
+
+The SoapySDR core library has already been downloaded, compiled, and installed with
+the \grtt{LINUX/libinstall.sh} command above. To verify correct installation of the
+SoapySDR core, use the command (note the capitalization!)
 
 \grtt{SoapySDRUtil -info}
 
 On my test system, this command produced the following output:
 
-\begin{tiny}
+\begin{scriptsize}
 \begin{verbatim}
 ######################################################
 ##     Soapy SDR -- the SDR abstraction library     ##
@@ -8114,8 +8092,7 @@ API Version: v0.8.200
 ABI Version: v0.8-3
 Install root: /usr/local
 Search path:  /usr/local/lib/arm-linux-gnueabihf/SoapySDR/modules0.8-3
-Module found: /usr/local/lib/arm-linux-gnueabihf/SoapySDR/modules0.8-3/libPlutoSDRSupport.so (0.2.1-b906b27)
-Module found: /usr/local/lib/arm-linux-gnueabihf/SoapySDR/modules0.8-3/librtlsdrSupport.so   (0.3.3-068aa77)
+
 Available factories... plutosdr, rtlsdr
 Available converters...
  -  CF32 -> [CF32, CS16, CS8, CU16, CU8]
@@ -8131,7 +8108,7 @@ Available converters...
  -   U16 -> [F32, S16, S8]
  -    U8 -> [F32, S16, S8]
 \end{verbatim}
-\end{tiny}
+\end{scriptsize}
 
 (Sorry for the tiny font, I did not want to wrap output lines.)
 Note the Lib/API/ABI version (0.8). If you see version 0.7 here
@@ -8142,21 +8119,40 @@ to work (and has been tested on) a plain vanilla operating system, not on a ``sp
 where the user has manually installed additional software packages that may induce incompatibilities.
 The best way out of such a problem is to re-install Linux (on a RaspPi, simply use a new SD card to do so).
 
-I expect that in the near not-too-distant future, the standard LINUX
-repositories will also advance to SoaySDR version 0.8, and then
-the installation procedure no longer needs to download and compile SoapySDR and all
-its modules, they can simply be taken from the ``official'' distribution.
+In addition to the SoapySDR core, you need a SoapySDR module for each specific radio
+you want to work with. 
+ Support for specific radios is available in the \texttt{LINUX}
+directory in form of installation scripts, these have the name
+ \texttt{soapy.}\textit{your-radio}\texttt{.sh}. To give an example, in order to install
+ the SoapySDR module for an AdalmPluto, you have to use the commands
+ 
+\grtt{cd \$HOME/pihpsdr} \\
+\grtt{LINUX/soapy.pluto.sh}
 
-\bigskip
+(you may be asked the administrator password at the end of the process, when it comes to
+actually install the SoapySDR module just compiled). To veryfy that this actually worked,
+repeat the command \grtt{SoapySDRUtil -info}, and in the output you should no see an additional
+line stating the new module, in my case this line read
 
-To verify that a given hardware (e.g. an RTL stick, or an Adalm Pluto) is properly detected by the
-SoapySDR library, connect the radio, possibly reboot the RaspPi, and type in the command
+\begin{scriptsize}
+\begin{verbatim}
+Module found: /usr/local/lib/SoapySDR/modules0.8-3/libPlutoSDRSupport.so (0.2.2-cdce239)
+\end{verbatim}
+\end{scriptsize}
+
+At the moment, there is support for the Adalm Pluto, for RTL sticks, for AirSpy radios, and
+for the SDRplay. I have put together and tested scripts for the Pluto and for RTL sticks,
+since I have the hardware and can test it. The other scripts that install support modules
+for SoapySDR radios have been contributed by \pH users who have those radios and managed
+to compose an automatic install script for the required SoapySDR modules.
+
+To verify that SoapySDR can actually "talk" with your radio, connect it to the computer,
+wait a few seconds, and use the command
 
 \grtt{SoapySDRUtil -find}
 
-On my test system (with an Adalm Pluto attached), the output is
-
-\begin{small}
+An sample output that I obtained on my system reads
+\begin{scriptsize}
 \begin{verbatim}
 ######################################################
 ##     Soapy SDR -- the SDR abstraction library     ##
@@ -8168,13 +8164,28 @@ Found device 0
   label = PlutoSDR #0 ip:pluto.local
   uri = ip:pluto.local
 \end{verbatim}
-\end{small}
+\end{scriptsize}
 
-and this shows that the SoapySDR library has recognised the Pluto. Note then name \texttt{pluto.local}
-is hard-wired into \pH, so if the Pluto shows up with some other name, it is possible that
-\pH must be updated accordingly. There is no way for \pH to connect
-to a SoapySDR device that has not been recognised by the SoapySDR library. If such a problem arises, this
+and this shows that the SoapySDR library has recognised the Pluto.
+There is no way for \pH to connect
+to a SoapySDR device that has not been recognised by  SoapySDR. If such a problem arises, this
 stems from missing, corrupt, or outdated SoapySDR libraries which are not part of \pH.
+I have seen several cases where people have installed SoapySDR stuff from the distro
+(via \grtt{apt-get install}) and then chaos must ensue. The best way to recover from such
+a situation is to burn a ,,virgin''
+OS onto the SD card and start from scratch.
+
+\clearpage
+If the SoapySDR library has been correctly installed, \pH has to be compiled with
+the SOAPYSDR compile-time option enabled (see Sec. \ref{sec:compiletime}). This can 
+easily be achieved with the commands
+
+\grtt{cd \$HOME/pihpsdr} \\
+\grtt{make clean} \\
+\grtt{echo "SOAPYSDR=ON" > make.config.pihpsdr} \\
+\grtt{make}
+
+If you want to know what's behind these commands, read Sec. \ref{sec:compiletime}.
 
 \section{Upgrading an installation}
 \pH is a ``living'' program, which means that regularly  error corrections are made, and new features are
@@ -8183,9 +8194,11 @@ until you perform specific actions as described in this section. But before docu
 some general principles should be made clear:
 
 \begin{itemize}
-\item{If an error is found, it will be corrected both in the master branch (the current version) and in the
+\item{If an error is reported to me and if I could correct this,
+this will be corrected both in the master branch (the current version) and in the
 most recent release branch.}
-\item{New features will only be included in the master branch, while the release branch is ``feature frozen''.}
+\item{New features will only be included in the master branch, while the release branch is ``feature frozen''.
+This means it should normally not be necessary to update the manual in the release branch.}
 \item{In the following, it will both be explained how to upgrade your current branch, or how to
 switch to the latest version of  another branch (e.g. to move from a release version to the current version).}
 \end{itemize}
@@ -8205,14 +8218,10 @@ On my computer the output is
   Rel-2.4
   Rel-2.5
 * master
-  remotes/origin/HEAD -> origin/master
-  remotes/origin/Rel-2.3
-  remotes/origin/Rel-2.4
-  remotes/origin/Rel-2.5
-  remotes/origin/master
+  ...
 \end{verbatim}
 
-You can ignore the  lines starting with \texttt{remotes}. The other lines display the names of all
+You can ignore lines starting with \texttt{remotes/}. The first lines display the names of all
 existing branches, and the line starting with a star indicates the branch you are currently on.
 Older branches such as \texttt{Rel-2.3} are meanwhile outdated, the previous
 release branch is named \texttt{Rel-2.4} and the current one, at the time of this writing, is \texttt{Rel-2.5}.
@@ -8247,11 +8256,11 @@ your branch will not be up to date with the repository as indicated in the outpu
 and in this case this whole section does  not apply  to you. But if you have committed  local
 modifications, this usually means you are an expert and know what to do.
 
-\medskip
+\clearpage
 \textbf{Standard update procedure}
 
 The standard update procedure will bring \pH on your computer to the latest version of
-that specific branch (either the master ``current'' branch or a release branch).
+that specific branch (either the master branch or a release branch).
 Just use the following commands in a terminal window
 
 \grtt{cd \$HOME/pihpsdr} \\
