@@ -90,6 +90,7 @@
 
 int controller = NO_CONTROLLER;
 
+static int I2C_INTERRUPT = 15;
 static int CWL_LINE = -1;
 static int CWR_LINE = -1;
 static int CWKEY_LINE = -1;
@@ -401,7 +402,6 @@ static const SWITCH switches_g2_frontpanel[MAX_SWITCHES] = {
 ENCODER encoders[MAX_ENCODERS];
 SWITCH  switches[MAX_SWITCHES];
 
-#define I2C_INTERRUPT  15
 #define MAX_LINES 32
 
 //
@@ -582,6 +582,10 @@ static void process_edge(int offset, int value) {
 #ifdef GPIOV1
   uint32_t t;  // used for debouncing
 #endif
+  //
+  // Check for the I2C IRQ coming up but then not coming down
+  //
+  static int last_irq_value = 0;
 
   //
   // The idea of using a nested if (rather than a switch) is to
@@ -599,6 +603,7 @@ static void process_edge(int offset, int value) {
   } else if (action == OffTopEncB) {
     process_encoder_b(&encoders[num].top, value);
   } else if (action == OffI2CIRQ) {
+    last_irq_value = value;
     if (value) { i2c_interrupt(); }
   } else if (action == OffSpecial) {
     schedule_action(num, value ? PRESSED : RELEASED, 0);
@@ -616,7 +621,7 @@ static void process_edge(int offset, int value) {
 #endif
   } else if (action == OffSwitch) {
 #ifdef GPIOV1
-    t = millis(); 
+    t = millis();
 
     if (t > switches[num].debounce) {
       switches[num].debounce = t + 50; // 50 msec settle time
@@ -628,6 +633,18 @@ static void process_edge(int offset, int value) {
 #endif
   } else {
     t_print("%s: No action defined for GPIO line %d\n", offset);
+  }
+  //
+  // Sometimes, an I2C irq is not processed (do not ask my why), and
+  // the I2C irq line stays active but generates no more edges.
+  // As a consequence, all I2C buttons are dead.
+  // The I2C irq can only be reset by processing the interrupt, so
+  // after an extra call to i2c_interrupt() the buttons become alive
+  // again. Note the extra call can do no harm because interrupt service
+  // routine is a no-op if there is nothing to do.
+  //
+  if ((action != OffI2CIRQ) && last_irq_value) {
+    i2c_interrupt();
   }
 }
 
@@ -816,32 +833,27 @@ void gpio_set_defaults(int ctrlr) {
   // GPIO line restrictions for specific hardware
   //
   if (have_radioberry1) {
-    CWL_LINE = -1;
-    CWR_LINE = -1;
+    CWL_LINE = 14;  // will not be used if a controller needs it
+    CWR_LINE = 15;  // will not be used if a controller needs it
     CWKEY_LINE = -1;
     PTTIN_LINE = -1;
     PTTOUT_LINE = -1;
     CWOUT_LINE = -1;
-    if (controller == NO_CONTROLLER) {
-      CWL_LINE = 14;
-      CWR_LINE = 15;
-    }
   }
 
   if (have_radioberry2) {
-    CWL_LINE = -1;
-    CWR_LINE = -1;
+    CWL_LINE = 17;  // will not be used if a controller needs it
+    CWR_LINE = 21;  // will not be used if a controller needs it
     CWKEY_LINE = -1;
     PTTIN_LINE = -1;
     PTTOUT_LINE = -1;
     CWOUT_LINE = -1;
-    if (controller == NO_CONTROLLER) {
-      CWL_LINE = 17;
-      CWR_LINE = 21;
-    }
   }
 
   if (have_saturn_xdma) {
+    //
+    // No "extra" GPIO lines for G2-internal CM cards
+    //
     CWL_LINE = -1;
     CWR_LINE = -1;
     CWKEY_LINE = -1;
@@ -879,6 +891,18 @@ void gpioRestoreState() {
     GetPropI1("switches[%d].switch_pullup", i,                    switches[i].pullup);
     GetPropI1("switches[%d].switch_address", i,                   switches[i].address);
   }
+
+  //
+  // These lines can now be altered via gpio.props,
+  // since the code now checks on duplicate GPIO line assignments
+  //
+  GetPropI0("cwl_line",                                           CWL_LINE);
+  GetPropI0("cwr_line",                                           CWR_LINE);
+  GetPropI0("cwkey_line",                                         CWKEY_LINE);
+  GetPropI0("pttin_line",                                         PTTIN_LINE);
+  GetPropI0("pttout_line",                                        PTTOUT_LINE);
+  GetPropI0("cwout_line",                                         CWOUT_LINE);
+  GetPropI0("i2c_irq_line",                                       I2C_INTERRUPT);
 }
 
 void gpioSaveState() {
@@ -907,6 +931,14 @@ void gpioSaveState() {
     SetPropI1("switches[%d].switch_pullup", i,                  switches[i].pullup);
     SetPropI1("switches[%d].switch_address", i,                 switches[i].address);
   }
+
+  SetPropI0("cwl_line",                                           CWL_LINE);
+  SetPropI0("cwr_line",                                           CWR_LINE);
+  SetPropI0("cwkey_line",                                         CWKEY_LINE);
+  SetPropI0("pttin_line",                                         PTTIN_LINE);
+  SetPropI0("pttout_line",                                        PTTOUT_LINE);
+  SetPropI0("cwout_line",                                         CWOUT_LINE);
+  SetPropI0("i2c_irq_line",                                       I2C_INTERRUPT);
 
   saveProperties("gpio.props");
 }
@@ -1101,7 +1133,7 @@ static void setup_input_lines() {
       if (gpiod_line_config_add_line_settings(lineconfig, (unsigned int *)&input_lines[i], 1, settings) != 0) {
         input_lines[i] = -1;
       }
-    } 
+    }
 
     input_request = gpiod_chip_request_lines(chip, reqcfg, lineconfig);
   }
@@ -1190,6 +1222,21 @@ static struct gpiod_line_request *setup_output_request(unsigned int offset, int 
 }
 #endif
 
+//
+// Utility function to send an error message to the log file
+// if input lines are used for more than one purpose.
+// Return value: 0 if already in use
+//
+int check_line(int line, int seq, char *text) {
+  for (int i = 0; i < num_input_lines; i++) {
+    if (input_lines[i] == line) {
+      t_print("WARNING: GPIO line %d (%s.%d) already in use\n", line, text, seq);
+      return 0;
+    }
+  }
+  return 1;
+}
+
 void gpio_init() {
 #ifdef GPIOV1
   initialiseEpoch();
@@ -1239,53 +1286,63 @@ void gpio_init() {
     //
     for (int i = 0; i < MAX_ENCODERS; i++) {
       if (encoders[i].bottom.enabled) {
-        input_lines[num_input_lines] =  encoders[i].bottom.address_a;
-        input_pullup[num_input_lines] = encoders[i].bottom.pullup;
-        if (encoders[i].bottom.function == VFO) {
-          input_debounce[num_input_lines++] = 0;
-        } else {
-          input_debounce[num_input_lines++] = 2000;
+        if (check_line(encoders[i].bottom.address_a, i, "EncoderBotA")) {
+          input_lines[num_input_lines] =  encoders[i].bottom.address_a;
+          input_pullup[num_input_lines] = encoders[i].bottom.pullup;
+          if (encoders[i].bottom.function == VFO) {
+            input_debounce[num_input_lines++] = 0;
+          } else {
+            input_debounce[num_input_lines++] = 2000;
+          }
+          LineList[encoders[i].bottom.address_a].action = OffBotEncA;
+          LineList[encoders[i].bottom.address_a].num = i;
         }
-        input_lines[num_input_lines] =  encoders[i].bottom.address_b;
-        input_pullup[num_input_lines] = encoders[i].bottom.pullup;
-        if (encoders[i].bottom.function == VFO) {
-          input_debounce[num_input_lines++] = 0;
-        } else {
-          input_debounce[num_input_lines++] = 2000;
+        if (check_line(encoders[i].bottom.address_b, i, "EncoderBotB")) {
+          input_lines[num_input_lines] =  encoders[i].bottom.address_b;
+          input_pullup[num_input_lines] = encoders[i].bottom.pullup;
+          if (encoders[i].bottom.function == VFO) {
+            input_debounce[num_input_lines++] = 0;
+          } else {
+            input_debounce[num_input_lines++] = 2000;
+          }
+          LineList[encoders[i].bottom.address_b].action = OffBotEncB;
+          LineList[encoders[i].bottom.address_b].num = i;
         }
-        LineList[encoders[i].bottom.address_a].action = OffBotEncA;
-        LineList[encoders[i].bottom.address_a].num = i;
-        LineList[encoders[i].bottom.address_b].action = OffBotEncB;
-        LineList[encoders[i].bottom.address_b].num = i;
       }
 
       if (encoders[i].top.enabled) {
-        input_lines[num_input_lines] =  encoders[i].top.address_a;
-        input_pullup[num_input_lines] = encoders[i].top.pullup;
-        if (encoders[i].top.function == VFO) {
-          input_debounce[num_input_lines++] = 0;
-        } else {
-          input_debounce[num_input_lines++] = 2000;
+        if (check_line(encoders[i].top.address_a, i, "EncoderTopA")) {
+          input_lines[num_input_lines] =  encoders[i].top.address_a;
+          input_pullup[num_input_lines] = encoders[i].top.pullup;
+          if (encoders[i].top.function == VFO) {
+            input_debounce[num_input_lines++] = 0;
+          } else {
+            input_debounce[num_input_lines++] = 2000;
+          }
+          LineList[encoders[i].top.address_a].action = OffTopEncA;
+          LineList[encoders[i].top.address_a].num = i;
         }
-        input_lines[num_input_lines] =  encoders[i].top.address_b;
-        input_pullup[num_input_lines] = encoders[i].top.pullup;
-        if (encoders[i].top.function == VFO) {
-          input_debounce[num_input_lines++] = 0;
-        } else {
-          input_debounce[num_input_lines++] = 2000;
+        if (check_line(encoders[i].top.address_b, i, "EncoderTopB")) {
+          input_lines[num_input_lines] =  encoders[i].top.address_b;
+          input_pullup[num_input_lines] = encoders[i].top.pullup;
+          if (encoders[i].top.function == VFO) {
+            input_debounce[num_input_lines++] = 0;
+          } else {
+            input_debounce[num_input_lines++] = 2000;
+          }
+          LineList[encoders[i].top.address_b].action = OffTopEncB;
+          LineList[encoders[i].top.address_b].num = i;
         }
-        LineList[encoders[i].top.address_a].action = OffTopEncA;
-        LineList[encoders[i].top.address_a].num = i;
-        LineList[encoders[i].top.address_b].action = OffTopEncB;
-        LineList[encoders[i].top.address_b].num = i;
       }
 
       if (encoders[i].button.enabled) {
-        input_lines[num_input_lines] =  encoders[i].button.address;
-        input_pullup[num_input_lines] = encoders[i].button.pullup;
-        input_debounce[num_input_lines++] = 25000;
-        LineList[encoders[i].button.address].action = OffEncSwitch;
-        LineList[encoders[i].button.address].num = i;
+        if (check_line(encoders[i].button.address, i, "EncoderBtn")) {
+          input_lines[num_input_lines] =  encoders[i].button.address;
+          input_pullup[num_input_lines] = encoders[i].button.pullup;
+          input_debounce[num_input_lines++] = 25000;
+          LineList[encoders[i].button.address].action = OffEncSwitch;
+          LineList[encoders[i].button.address].num = i;
+        }
       }
     }
 
@@ -1295,11 +1352,13 @@ void gpio_init() {
 
     for (int i = 0; i < MAX_SWITCHES; i++) {
       if (switches[i].enabled) {
-        input_lines[num_input_lines] =  switches[i].address;
-        input_pullup[num_input_lines] = switches[i].pullup;
-        input_debounce[num_input_lines++] = 25000;
-        LineList[switches[i].address].action = OffSwitch;
-        LineList[switches[i].address].num = i;
+        if (check_line(switches[i].address, i, "Switch")) {
+          input_lines[num_input_lines] =  switches[i].address;
+          input_pullup[num_input_lines] = switches[i].pullup;
+          input_debounce[num_input_lines++] = 25000;
+          LineList[switches[i].address].action = OffSwitch;
+          LineList[switches[i].address].num = i;
+        }
       }
     }
   }
@@ -1309,11 +1368,13 @@ void gpio_init() {
     // Setup I2C interrupt line: debounce with 1 msec
     //
     i2c_init();
-    input_lines[num_input_lines] =  I2C_INTERRUPT;
-    input_pullup[num_input_lines] = TRUE;
-    input_debounce[num_input_lines++] = 1000;
-    LineList[I2C_INTERRUPT].action = OffI2CIRQ;
-    LineList[I2C_INTERRUPT].num = 0;
+    if (check_line(I2C_INTERRUPT, 0, "I2CIRQ")) {
+      input_lines[num_input_lines] =  I2C_INTERRUPT;
+      input_pullup[num_input_lines] = TRUE;
+      input_debounce[num_input_lines++] = 1000;
+      LineList[I2C_INTERRUPT].action = OffI2CIRQ;
+      LineList[I2C_INTERRUPT].num = 0;
+    }
   }
 
   //
@@ -1322,35 +1383,43 @@ void gpio_init() {
   //
 
   if (CWL_LINE >= 0) {
-    input_lines[num_input_lines] =  CWL_LINE;
-    input_pullup[num_input_lines] = TRUE;
-    input_debounce[num_input_lines++] = 10000;
-    LineList[CWL_LINE].action = OffSpecial;
-    LineList[CWL_LINE].num = CW_LEFT;
+    if (check_line(CWL_LINE, 0, "CWL")) {
+      input_lines[num_input_lines] =  CWL_LINE;
+      input_pullup[num_input_lines] = TRUE;
+      input_debounce[num_input_lines++] = 10000;
+      LineList[CWL_LINE].action = OffSpecial;
+      LineList[CWL_LINE].num = CW_LEFT;
+    }
   }
 
   if (CWR_LINE >= 0) {
-    input_lines[num_input_lines] =  CWR_LINE;
-    input_pullup[num_input_lines] = TRUE;
-    input_debounce[num_input_lines++] = 10000;
-    LineList[CWR_LINE].action = OffSpecial;
-    LineList[CWR_LINE].num = CW_RIGHT;
+    if (check_line(CWR_LINE, 0, "CWR")) {
+      input_lines[num_input_lines] =  CWR_LINE;
+      input_pullup[num_input_lines] = TRUE;
+      input_debounce[num_input_lines++] = 10000;
+      LineList[CWR_LINE].action = OffSpecial;
+      LineList[CWR_LINE].num = CW_RIGHT;
+    }
   }
 
   if (CWKEY_LINE >= 0) {
-    input_lines[num_input_lines] =  CWKEY_LINE;
-    input_pullup[num_input_lines] = TRUE;
-    input_debounce[num_input_lines++] = 10000;
-    LineList[CWKEY_LINE].action = OffSpecial;
-    LineList[CWKEY_LINE].num = CW_KEYER_KEYDOWN;
+    if (check_line(CWKEY_LINE, 0, "CWKEY")) {
+      input_lines[num_input_lines] =  CWKEY_LINE;
+      input_pullup[num_input_lines] = TRUE;
+      input_debounce[num_input_lines++] = 10000;
+      LineList[CWKEY_LINE].action = OffSpecial;
+      LineList[CWKEY_LINE].num = CW_KEYER_KEYDOWN;
+    }
   }
 
   if (PTTIN_LINE >= 0) {
-    input_lines[num_input_lines] =  PTTIN_LINE;
-    input_pullup[num_input_lines] = TRUE;
-    input_debounce[num_input_lines++] = 50000;
-    LineList[PTTIN_LINE].action = OffSpecial;
-    LineList[PTTIN_LINE].num = CW_KEYER_PTT;
+    if (check_line(PTTIN_LINE, 0, "PTTIN")) {
+      input_lines[num_input_lines] =  PTTIN_LINE;
+      input_pullup[num_input_lines] = TRUE;
+      input_debounce[num_input_lines++] = 50000;
+      LineList[PTTIN_LINE].action = OffSpecial;
+      LineList[PTTIN_LINE].num = CW_KEYER_PTT;
+    }
   }
 
   //
@@ -1362,21 +1431,25 @@ void gpio_init() {
   //   as the AdalmPluto
   //
   if (PTTOUT_LINE >= 0) {
+    if (check_line(PTTOUT_LINE, 0, "PTTOUT")) {
 #ifdef GPIOV1
-    pttout_line = setup_output_line(PTTOUT_LINE, 1);
+      pttout_line = setup_output_line(PTTOUT_LINE, 1);
 #endif
 #ifdef GPIOV2
-    pttout_request = setup_output_request(PTTOUT_LINE, 1);
+      pttout_request = setup_output_request(PTTOUT_LINE, 1);
 #endif
+    }
   }
 
   if (CWOUT_LINE >= 0) {
+    if (check_line(CWOUT_LINE, 0, "CWOUT") && (CWOUT_LINE != PTTOUT_LINE)) {
 #ifdef GPIOV1
-    cwout_line = setup_output_line(CWOUT_LINE, 1);
+      cwout_line = setup_output_line(CWOUT_LINE, 1);
 #endif
 #ifdef GPIOV2
-    cwout_request = setup_output_request(CWOUT_LINE, 1);
+      cwout_request = setup_output_request(CWOUT_LINE, 1);
 #endif
+    }
   }
 
   if (num_input_lines > 0) {
