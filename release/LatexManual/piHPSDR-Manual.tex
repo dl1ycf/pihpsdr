@@ -242,7 +242,8 @@ into the RJ45 jacks of the computer and of the radio (see Appendix
 \end{figure}
 
 If the \pH program is started for the first time, it opens a window that looks like Fig. \ref{fig:Planning}.
-Besides stating a version number and the date \pH was built, the list of optional features is
+Besides stating a version number, and the ID string and the date of latest commit (change)
+applied to the repository from which \pH was built, the list of optional features is
 documented (compile-time options,
 in this case  GPIO, MIDI, SATURN) as well as the audio module used (here: PulseAudio) for attaching headphones
 or microphones to the host computer running \pH. Information about  compile-time options and how to add
@@ -1247,21 +1248,24 @@ The about menu gives you some information about \pH, first the original author,
 John Melton,
 and an (incomplete) list
 of persons who contributed to the code, and then a statement which version of \pH
-is working here, and when it has been compiled. Here you also find the version number of the WDSP
+is working here, and the ID string and the data of the latest commit (change)
+applied to the repository from which \pH was built.
+ Here you also find the version number of the WDSP
 library which is the ,,engine''
 running under the hood, and which does nearly all of the signal processing. If you file a bug report,
 this is very important information so you should always include a screen shot of the \bltt{About}
 menu when reporting problems. Of particular importance is the so-called \rett{commit},
-this hexadecimal number (here: a1bbb70) identifies the exact status of the source code files
+this hexadecimal number (here: b5e780d0) identifies the exact status of the source code repository
 when the program has been compiled. If a string \texttt{-dirty} is appended to the version number
-(here: v2.5, that is, \textit{not} dirty) this means that one or more files have been locally  modified
-and do not match the commit, and problem reports from a ,,dirty'' version are difficult to handle.
+(here: v2.6, that is, \textit{not} dirty) this means that one or more files have been locally  modified
+and do not match the commit, and problem reports from a ,,dirty'' version are difficult to handle
+since it is not documented what has been changed locally.
 
 Finally, there is
 some data on the radio, namely the device type and version numbers, and which protocol is running.
 For diagnostic purposes, you also see the MAC address of the radio, its IP address (in the
-example shown, 192.168.8.10) and the
-IP address of the computer running \pH (here 192.168.8.1, this is the IP address of the network
+example shown, 192.168.8.2) and the
+IP address of the computer running \pH (here 192.168.8.3, this is the IP address of the network
 interface that actually does the connection with the radio).
 The radio's IP and MAC address are also displayed in the \pH main window title bar,
 the MAC address is of interest since the radio-specific
