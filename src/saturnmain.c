@@ -503,7 +503,7 @@ static void saturn_init_duc_iq() {
 
 static int TXActive = 0;   // The client actively transmitting, 0-none, 1-xdma, 2-network
 
-void saturn_handle_duc_iq(bool FromNetwork, uint8_t *UDPInBuffer) {
+void saturn_handle_duc_iq(bool FromNetwork, unsigned char *UDPInBuffer) {
   uint32_t Cntr;                                          // sample counter
   uint8_t* SrcPtr;                                        // pointer to data from Thetis
   uint8_t* DestPtr;                                       // pointer to DMA buffer data
@@ -610,7 +610,7 @@ static void saturn_init_speaker_audio() {
   return;
 }
 
-void saturn_handle_speaker_audio(const uint8_t *UDPInBuffer) {
+void saturn_handle_speaker_audio(const unsigned char *UDPInBuffer) {
   //uint32_t RegVal = 0;    //debug
   bool FIFOSpkOverflow, FIFOSpkUnderflow, FIFOSpkOverThreshold;;
   uint32_t DepthSpk = 0;
@@ -758,7 +758,7 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
       UDPBuffer[56] = mybuf->buffer[56] = (Word     ) & 0xFF;
 
       if (TXActive != 2) {
-        mybuf->buffer[0] = (SequenceCounter >> 24) & 0xFF;
+        mybuf->buffer[0] = (SequenceCounter >> 24) & 0xFF;                            // add seq. count
         mybuf->buffer[1] = (SequenceCounter >> 16) & 0xFF;
         mybuf->buffer[2] = (SequenceCounter >>  8) & 0xFF;
         mybuf->buffer[3] = (SequenceCounter      ) & 0xFF;
@@ -770,7 +770,7 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
 
       if (ServerActive) {
         if (TXActive != 1) {
-          UDPBuffer[0] = (SequenceCounter2 >> 24) & 0xFF;
+          UDPBuffer[0] = (SequenceCounter2 >> 24) & 0xFF;                             // add seq. count
           UDPBuffer[1] = (SequenceCounter2 >> 16) & 0xFF;
           UDPBuffer[2] = (SequenceCounter2 >>  8) & 0xFF;
           UDPBuffer[3] = (SequenceCounter2      ) & 0xFF;
@@ -957,7 +957,7 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
       DMAReadFromFPGA(DMAReadfile_fd, MicBasePtr, VDMAMICTRANSFERSIZE, VADDRMICSTREAMREAD);
       // create the packet
       mybuffer *mybuf = get_my_buffer(MICMYBUF);
-      mybuf->buffer[0] = (SequenceCounter >> 24) & 0xFF;
+      mybuf->buffer[0] = (SequenceCounter >> 24) & 0xFF;           // add seq. count
       mybuf->buffer[1] = (SequenceCounter >> 16) & 0xFF;
       mybuf->buffer[2] = (SequenceCounter >>  8) & 0xFF;
       mybuf->buffer[3] = (SequenceCounter      ) & 0xFF;
@@ -975,7 +975,7 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
         iovecinst.iov_base = UDPBuffer;
         memcpy(&DestAddr, &reply_addr, sizeof(struct sockaddr_in)); // make local copy of dest. addr.
         // create the packet into UDPBuffer
-        UDPBuffer[0] = (SequenceCounter2 >> 24) & 0xFF;
+        UDPBuffer[0] = (SequenceCounter2 >> 24) & 0xFF;           // add seq. count
         UDPBuffer[1] = (SequenceCounter2 >> 16) & 0xFF;
         UDPBuffer[2] = (SequenceCounter2 >>  8) & 0xFF;
         UDPBuffer[3] = (SequenceCounter2      ) & 0xFF;
@@ -1129,14 +1129,14 @@ static gpointer saturn_rx_thread(gpointer arg) {
         while ((IQHeadPtr[DDC] - IQReadPtr[DDC]) > VIQBYTESPERFRAME) {
           //                    t_print("enough data for packet: DDC= %d\n", DDC);
           mybuffer *mybuf = get_my_buffer(DDCMYBUF);
-          mybuf->buffer[0] = (SequenceCounter[DDC] >> 24) & 0xFF;       // sequence count
+          mybuf->buffer[0] = (SequenceCounter[DDC] >> 24) & 0xFF;        // add seq. count
           mybuf->buffer[1] = (SequenceCounter[DDC] >> 16) & 0xFF;
           mybuf->buffer[2] = (SequenceCounter[DDC] >>  8) & 0xFF;
           mybuf->buffer[3] = (SequenceCounter[DDC]      ) & 0xFF;
           SequenceCounter[DDC]++;
           memset(mybuf->buffer + 4, 0, 8);                               // clear the timestamp data
           mybuf->buffer[12] = 0;                                         // bits per sample set to 24
-          mybuf->buffer[13] = 24;
+          mybuf->buffer[13] = 24;                                        // bits per sample set to 24
           mybuf->buffer[14] = (VIQSAMPLESPERFRAME >> 8) & 0xFF;          // IQ samples per frame
           mybuf->buffer[15] = (VIQSAMPLESPERFRAME     ) & 0xFF;          // IQ samples per frame
           //
@@ -1291,7 +1291,7 @@ static gpointer saturn_rx_thread(gpointer arg) {
           exit(1);
         } else {                                                                          // analyse word, then process
           // cppcheck-suppress constVariablePointer
-          uint32_t *LongWordPtr = (uint32_t*)DMAReadPtr;                                  // get 32 bit ptr, CAST-ALIGN IS OK
+          uint32_t *LongWordPtr = (uint32_t*)DMAReadPtr;                                  // get 32 bit ptr (CAST OK)
           RateWord = *LongWordPtr;                                                        // read rate word
 
           if (RateWord != PrevRateWord) {
@@ -1303,13 +1303,13 @@ static gpointer saturn_rx_thread(gpointer arg) {
           if (DecodeByteCount >= ((FrameLength + 1) * 8)) {                               // if bytes for header & frame
             //THEN COPY DMA DATA TO I / Q BUFFERS
             DMAReadPtr += 8;                                                              // point to 1st location past rate word
-            SrcWordPtr = (uint16_t*)DMAReadPtr;                                           // 16 bit chunks; CAST-ALIGN IS OK
+            SrcWordPtr = (uint16_t*)DMAReadPtr;                                           // 16-bit chunk (CAST OK)
 
             for (DDC = 0; DDC < VNUMDDC; DDC++) {
               HdrWord = DDCCounts[DDC];                                                   // number of words for this DDC. reuse variable
 
               if (HdrWord != 0) {
-                DestWordPtr = (uint16_t *)IQHeadPtr[DDC];                                 // CAST-ALIGN IS OK
+                DestWordPtr = (uint16_t *)IQHeadPtr[DDC];                                 // (CAST OK)
 
                 for (Cntr = 0; Cntr < HdrWord; Cntr++) {                                  // count 64 bit words
                   *DestWordPtr++ = *SrcWordPtr++;                                         // move 48 bits of sample data
@@ -1475,7 +1475,7 @@ void saturn_handle_high_priority(bool FromNetwork, const unsigned char *UDPInBuf
   // The word from 1398 is not yet used and overwritten here
   // cppcheck-suppress redundantAssignment
   //
-  Word =  UDPInBuffer[1428] & 0x07;                      // Alex0[26:24] TX data: ANT1/2/3 (if not set, old host program)
+  Word =  UDPInBuffer[1428] & 0x07;                      // Alex0[26:24] TX data: ANT1/2/3 (if zero: old host program)
 
   if ((FPGAVersion >= 12) && (Word != 0)) {             // if new firmware && client app supports it
     //t_print("new FPGA code, new client data\n");
@@ -1521,7 +1521,7 @@ void saturn_handle_high_priority(bool FromNetwork, const unsigned char *UDPInBuf
   return;
 }
 
-void saturn_handle_general_packet(bool FromNetwork, const uint8_t *PacketBuffer) {
+void saturn_handle_general_packet(bool FromNetwork, const unsigned char *PacketBuffer) {
   uint16_t Port;                                  // port number from table
   uint8_t Byte;
 
@@ -1532,16 +1532,16 @@ void saturn_handle_general_packet(bool FromNetwork, const uint8_t *PacketBuffer)
   // now set the other data carried by this packet
   // wideband capture data:
   //
-  Byte = PacketBuffer[23] & 0xFF;
+  Byte = PacketBuffer[23] & 0xFF;                     // get wide-band enable status
   SetWidebandEnable(eADC1, (bool)(Byte & 1));
   SetWidebandEnable(eADC2, (bool)(Byte & 2));
-  Port = ((PacketBuffer[24] & 0xFF) << 8) | (PacketBuffer[25] & 0xFF);
+  Port = ((PacketBuffer[24] & 0xFF) << 8) | (PacketBuffer[25] & 0xFF); // WB sample count
   SetWidebandSampleCount(Port);
-  Byte = PacketBuffer[26] & 0xFF;
+  Byte = PacketBuffer[26] & 0xFF;                     // WB sample size
   SetWidebandSampleSize(Byte);
-  Byte = PacketBuffer[27] & 0xFF;
+  Byte = PacketBuffer[27] & 0xFF;                     // WB update rate
   SetWidebandUpdateRate(Byte);
-  Byte = PacketBuffer[28] & 0xFF;
+  Byte = PacketBuffer[28] & 0xFF;                     // WB packets per frame
   SetWidebandPacketsPerFrame(Byte);
   //
   // envelope PWM data:
@@ -1553,16 +1553,16 @@ void saturn_handle_general_packet(bool FromNetwork, const uint8_t *PacketBuffer)
   //
   // various bits
   //
-  Byte = PacketBuffer[37] & 0xFF;
+  Byte = PacketBuffer[37] & 0xFF;                     // flag bits
   EnableTimeStamp((bool)(Byte & 1));
   EnableVITA49((bool)(Byte & 2));
   SetFreqPhaseWord((bool)(Byte & 8));
-  Byte = PacketBuffer[38] & 0xFF;
+  Byte = PacketBuffer[38] & 0xFF;                     // enable time-out
   HW_Timer_Enable = ((bool)(Byte & 1));
-  Byte = PacketBuffer[58] & 0xFF;
+  Byte = PacketBuffer[58] & 0xFF;                     // b0: PA-enable
   SetPAEnabled((bool)(Byte & 1));
   //SetApolloEnabled((bool)(Byte & 2));
-  Byte = PacketBuffer[59] & 0xFF;
+  Byte = PacketBuffer[59] & 0xFF;                     // Alex enable bits
   SetAlexEnabled(Byte);
   return;
 }
@@ -1695,7 +1695,7 @@ void saturn_handle_ddc_specific(bool FromNetwork, const unsigned char *UDPInBuff
       break;
 
     case 7:
-      Byte1 = UDPInBuffer[1369] & 0xFF;  // DDC6 synch
+      Byte1 = UDPInBuffer[1369] & 0xFF; // DDC6 synch
 
       if (Byte1 == 0b10000000) {                        // if synch to DDC7
         Enabled = true;  // enable DDC7
