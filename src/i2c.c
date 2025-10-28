@@ -50,9 +50,13 @@ static int i2cfd;
 //
 // When reading the flags and ints registers of the
 // MCP23017, it is important that no other thread
-// (e.g., another instance of the interrupt service
-// routine), does this concurrently.
-// i2c_mutex guarantees this.
+// does this concurrently.
+// For example, we now (asynchronously) call the
+// i2c interrupt service routine every 100 msec
+// to recover from "missed" interrupts.
+// With the libgpiod V1 API, it may also happen that
+// concurrent invocations of i2c_interrupt() may
+// occur.
 //
 static GMutex i2c_mutex;
 
@@ -111,12 +115,15 @@ void i2c_interrupt() {
 
   for (;;) {
     flags = read_word_data(0x0E);
-
+    //
     // bits in "flags" indicate which input lines triggered an interrupt
     // Two interrupts occuring at about the same time can lead to multiple bits
     // set in "flags" (or no bit set if interrupt has already been processed
     // by another interrupt service routine). If we enter here (protected by
-    // the mutex), we handle all interrupts until no one is left (flags==0)
+    // the mutex), we handle all interrupts until no one is left (flags==0).
+    // This also means that this routine can safely be called if there was
+    // no interrupt -- in this case we quickly return.
+    //
     if (flags == 0) { break; }
 
     unsigned int ints = read_word_data(0x10);
@@ -125,7 +132,10 @@ void i2c_interrupt() {
     // in "flags" is set. We have a PRESSED or RELEASED event depending on
     // whether the bit in "ints" is set or clear.
 
-    for (i = 0; i < 16 && flags; i++) { // leave loop if no bits left in "flags"
+    for (i = 0; i < 16; i++) {
+
+      if (flags == 0) { break; }  // leave loop if no bits left in "flags"
+
       if (i2c_sw[i] & flags) {
         //t_print("%s: switches=%p sw=%d action=%d\n",__FUNCTION__,switches,i,switches[i].switch_function);
         // The input line associated with switch #i has triggered an interrupt
