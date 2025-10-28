@@ -8091,13 +8091,13 @@ On my test system, this command produced the following output:
 ##     Soapy SDR -- the SDR abstraction library     ##
 ######################################################
 
-Lib Version: v0.8.1-gbb33b2d2
+Lib Version: v0.8.1-gc4340a2b
 API Version: v0.8.200
 ABI Version: v0.8-3
 Install root: /usr/local
-Search path:  /usr/local/lib/arm-linux-gnueabihf/SoapySDR/modules0.8-3
-
-Available factories... plutosdr, rtlsdr
+Search path:  /usr/local/lib/SoapySDR/modules0.8-3 (missing)
+No modules found!
+Available factories... No factories found!
 Available converters...
  -  CF32 -> [CF32, CS16, CS8, CU16, CU8]
  -  CS16 -> [CF32, CS16, CS8, CU16, CU8]
@@ -8124,7 +8124,7 @@ where the user has manually installed additional software packages that may indu
 The best way out of such a problem is to re-install Linux (on a RaspPi, simply use a new SD card to do so).
 
 In addition to the SoapySDR core, you need a SoapySDR module for each specific radio
-you want to work with. 
+you want to work with. The example just given clearly states that no such modules are yet installed.
  Support for specific radios is available in the \texttt{LINUX}
 directory in form of installation scripts, these have the name
  \texttt{soapy.}\textit{your-radio}\texttt{.sh}. To give an example, in order to install
@@ -8135,12 +8135,14 @@ directory in form of installation scripts, these have the name
 
 (you may be asked the administrator password at the end of the process, when it comes to
 actually install the SoapySDR module just compiled). To veryfy that this actually worked,
-repeat the command \grtt{SoapySDRUtil -info}, and in the output you should no see an additional
-line stating the new module, in my case this line read
+repeat the command \grtt{SoapySDRUtil -info}, and in the output you should see that module
+for the Pluto is now available
 
 \begin{scriptsize}
 \begin{verbatim}
+Search path:  /usr/local/lib/SoapySDR/modules0.8-3
 Module found: /usr/local/lib/SoapySDR/modules0.8-3/libPlutoSDRSupport.so (0.2.2-cdce239)
+Available factories... plutosdr
 \end{verbatim}
 \end{scriptsize}
 
@@ -8148,7 +8150,13 @@ At the moment, there is support for the Adalm Pluto, for RTL sticks, for AirSpy 
 for the SDRplay. I have put together and tested scripts for the Pluto and for RTL sticks,
 since I have the hardware and can test it. The other scripts that install support modules
 for SoapySDR radios have been contributed by \pH users who have those radios and managed
-to compose an automatic install script for the required SoapySDR modules.
+to compose an automatic install script for the required SoapySDR modules. Note that 
+I received a report that the SoapySDR module for SDRplay does not implement the Soapy API
+correctly,
+for example when setting the overall RF gain. I cannot confirm this
+since I do not own such hardware, but be warned
+and do not blame
+this on \pH if such problems are encountered.
 
 To verify that SoapySDR can actually "talk" with your radio, connect it to the computer,
 wait a few seconds, and use the command
