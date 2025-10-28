@@ -515,6 +515,19 @@ static gpointer rotary_encoder_thread(gpointer data) {
       }
     }
 
+    if (controller == CONTROLLER2_V1 || controller == CONTROLLER2_V2 || controller == G2_FRONTPANEL) {
+      //
+      // There are cases in which an I2C interrupt is lost. When using
+      // debouncing on the IRQ line, one even prompts this.
+      // No matter what is the reason, a pending un-served I2C interrupt
+      // (IRQ line is constantly active) will generate no further "edge" events
+      // so the I2C buttons are dead. This is most easily cured by calling
+      // the I2C interrupt service routine every 100 msec.
+      // Since all I2C controllers use encoders we can do this HERE.
+      //
+      i2c_interrupt();
+    }
+
     usleep(100000); // sleep for 100ms
   }
 
@@ -583,11 +596,6 @@ static void process_edge(int offset, int value) {
   uint32_t t;  // used for debouncing
 #endif
   //
-  // Check for the I2C IRQ coming up but then not coming down
-  //
-  static int last_irq_value = 0;
-
-  //
   // The idea of using a nested if (rather than a switch) is to
   // guarantee that encoder events are handled as fast as possible.
   // The (optical) VFO encoders fire orders of magnitudes faster
@@ -603,7 +611,6 @@ static void process_edge(int offset, int value) {
   } else if (action == OffTopEncB) {
     process_encoder_b(&encoders[num].top, value);
   } else if (action == OffI2CIRQ) {
-    last_irq_value = value;
     if (value) { i2c_interrupt(); }
   } else if (action == OffSpecial) {
     schedule_action(num, value ? PRESSED : RELEASED, 0);
@@ -633,18 +640,6 @@ static void process_edge(int offset, int value) {
 #endif
   } else {
     t_print("%s: No action defined for GPIO line %d\n", offset);
-  }
-  //
-  // Sometimes, an I2C irq is not processed (do not ask my why), and
-  // the I2C irq line stays active but generates no more edges.
-  // As a consequence, all I2C buttons are dead.
-  // The I2C irq can only be reset by processing the interrupt, so
-  // after an extra call to i2c_interrupt() the buttons become alive
-  // again. Note the extra call can do no harm because interrupt service
-  // routine is a no-op if there is nothing to do.
-  //
-  if ((action != OffI2CIRQ) && last_irq_value) {
-    i2c_interrupt();
   }
 }
 
