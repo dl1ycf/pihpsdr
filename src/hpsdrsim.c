@@ -62,6 +62,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <limits.h>
+#include <signal.h>
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
@@ -210,6 +211,49 @@ static double tonearg, tonearg2;
 static double tonedelta, tonedelta2;
 static int    do_tone, t3p, t3l;
 
+static  struct termios tios_old;
+
+static struct sigaction sigint_action;
+static struct sigaction sigterm_action;
+
+//
+// Call this when the program terminates, or when
+// a SIGINT or SIGTERM is received.
+// This restores terminal settings on stdin
+//
+void restore_terminal_attributes() {
+  tcsetattr(0, TCSANOW, &tios_old);
+}
+
+//
+// This signal handler does the following:
+// - restore terminal attributes (no matter which signal)
+// - if it is SIGINT or SIGTERM:
+//    --> reset signal handler and re-raise signal
+// - if it is an unknown signal (should not happen):
+//    --> terminate program.
+//
+void my_signal_handler(int sig) {
+  struct sigaction sa;
+  restore_terminal_attributes();
+  memset(&sa, 0, sizeof(sa));
+  switch (sig) {
+    case SIGINT:
+      sigaction(SIGINT, &sigint_action, NULL);
+      raise(SIGINT);
+      break;
+    case SIGTERM:
+      sigaction(SIGTERM, &sigterm_action, NULL);
+      raise(SIGTERM);
+      break;
+    default:
+      _exit(EXIT_FAILURE);
+      // NOTREACHED
+     break;
+  }
+}
+
+
 int main(int argc, char *argv[]) {
   int i, j, size;
   int count = 0;
@@ -234,7 +278,8 @@ int main(int argc, char *argv[]) {
   double run, off, off2, inc;
   struct timeval tvzero = {0, 0};
   fd_set fds;
-  struct termios tios;
+  struct sigaction sa;
+  struct termios tios_new;
   /*
    *      Examples for METIS:     ATLAS bus with Mercury/Penelope boards
    *      Examples for HERMES:    ANAN10, ANAN100 (Note ANAN-10E/100B behave like METIS)
@@ -244,13 +289,6 @@ int main(int argc, char *argv[]) {
    *
    *      Examples for C25:       RedPitaya based boards with fixed ADC connections
    */
-  //
-  // put stdin into raw mode
-  //
-  tcgetattr(0, &tios);
-  tios.c_lflag &= ~ICANON;
-  tios.c_lflag &= ~ECHO;
-  tcsetattr(0, TCSANOW, &tios);
   radio_digi_changed = 0; // used  to trigger a highprio packet
   radio_ptt = 0;
   radio_dash = 0;
@@ -339,6 +377,24 @@ int main(int argc, char *argv[]) {
     t_print("                   -nb <num> <width>\n");
     exit(8);
   }
+
+  //
+  // put stdin into raw mode
+  //
+  tcgetattr(0, &tios_old);
+  tios_new = tios_old;
+  tios_new.c_lflag &= ~ICANON;
+  tios_new.c_lflag &= ~ECHO;
+  tcsetattr(0, TCSANOW, &tios_new);
+
+  //
+  // Establish a new signal handler for SIGINT and SIGTERM,
+  // that takes care of the restoration of terminal attributes
+  //
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = my_signal_handler;
+  sigaction(SIGINT, &sa, &sigint_action);
+  sigaction(SIGTERM, &sa, &sigterm_action);
 
   switch (NEWDEVICE) {
   case   NDEV_ATLAS:
@@ -524,6 +580,7 @@ int main(int argc, char *argv[]) {
 
   if ((sock_udp = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
     t_perror("socket");
+    restore_terminal_attributes();
     return EXIT_FAILURE;
   }
 
@@ -539,11 +596,13 @@ int main(int argc, char *argv[]) {
 
   if (bind(sock_udp, (struct sockaddr *)&addr_udp, sizeof(addr_udp)) < 0) {
     t_perror("bind");
+    restore_terminal_attributes();
     return EXIT_FAILURE;
   }
 
   if ((sock_TCP_Server = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     t_perror("socket tcp");
+    restore_terminal_attributes();
     return EXIT_FAILURE;
   }
 
@@ -560,6 +619,7 @@ int main(int argc, char *argv[]) {
 
   if (bind(sock_TCP_Server, (struct sockaddr *)&addr_udp, sizeof(addr_udp)) < 0) {
     t_perror("bind tcp");
+    restore_terminal_attributes();
     return EXIT_FAILURE;
   }
 
@@ -693,6 +753,7 @@ int main(int argc, char *argv[]) {
 
     if (bytes_read < 0 && errno != EAGAIN) {
       t_perror("recvfrom");
+      restore_terminal_attributes();
       return EXIT_FAILURE;
     }
 
@@ -987,6 +1048,7 @@ int main(int argc, char *argv[]) {
 
       if (pthread_create(&thread, NULL, handler_ep6, NULL) < 0) {
         t_perror("create old protocol thread");
+        restore_terminal_attributes();
         return EXIT_FAILURE;
       }
 
@@ -1244,6 +1306,7 @@ int main(int argc, char *argv[]) {
     close(sock_TCP_Server);
   }
 
+  restore_terminal_attributes();
   return EXIT_SUCCESS;
 }
 
