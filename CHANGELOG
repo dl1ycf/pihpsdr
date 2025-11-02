@@ -7,6 +7,8 @@ October 2025:
 - New 2.5 Release created (the branch is Rel-2.5) and
   master branch advanced to 2.6
 
+- updated to WDSP version 1.28 (WDSP maintenance update)
+
 - use mono for RX audio transfer in client/server
   since this halves the required band width
 
