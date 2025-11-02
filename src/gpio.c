@@ -1222,7 +1222,7 @@ static struct gpiod_line_request *setup_output_request(unsigned int offset, int 
 // if input lines are used for more than one purpose.
 // Return value: 0 if already in use
 //
-int check_line(int line, int seq, char *text) {
+static int check_line(int line, int seq, char *text) {
   for (int i = 0; i < num_input_lines; i++) {
     if (input_lines[i] == line) {
       t_print("WARNING: GPIO line %d (%s.%d) already in use\n", line, text, seq);
