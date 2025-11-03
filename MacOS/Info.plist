@@ -2,8 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleIdentifier</key>
+	<key>CFBundleName</key>
 	<string>piHPSDR</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.dl1ycf.piHPSDR</string>
 	<key>CFBundleExecutable</key>
 	<string>pihpsdr</string>
 	<key>CFBundleIconFile</key>
@@ -14,8 +16,10 @@
 	<string>BNDL</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Allow for using Sound input devices</string>
+	<key>NSLocalNetworkUsageDescription</key>
+        <string>Allow for discovery on the network</string>
 	<key>NSHighResolutionCapable</key>
-	<string>YES</string>
+	<true/>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 </dict>
