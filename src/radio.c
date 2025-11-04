@@ -1120,10 +1120,6 @@ void radio_start_radio() {
       //
       // This is a RadioBerry.
       //
-#ifdef GPIO
-      controller = NO_CONTROLLER;
-#endif
-
       if (radio->software_version < 732) {
         have_radioberry1 = 1;
       } else {
