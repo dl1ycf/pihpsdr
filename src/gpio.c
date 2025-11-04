@@ -824,38 +824,6 @@ void gpio_set_defaults(int ctrlr) {
     memcpy(switches, switches_no_controller, sizeof(switches));
     break;
   }
-  //
-  // GPIO line restrictions for specific hardware
-  //
-  if (have_radioberry1) {
-    CWL_LINE = 14;  // will not be used if a controller needs it
-    CWR_LINE = 15;  // will not be used if a controller needs it
-    CWKEY_LINE = -1;
-    PTTIN_LINE = -1;
-    PTTOUT_LINE = -1;
-    CWOUT_LINE = -1;
-  }
-
-  if (have_radioberry2) {
-    CWL_LINE = 17;  // will not be used if a controller needs it
-    CWR_LINE = 21;  // will not be used if a controller needs it
-    CWKEY_LINE = -1;
-    PTTIN_LINE = -1;
-    PTTOUT_LINE = -1;
-    CWOUT_LINE = -1;
-  }
-
-  if (have_saturn_xdma) {
-    //
-    // No "extra" GPIO lines for G2-internal CM cards
-    //
-    CWL_LINE = -1;
-    CWR_LINE = -1;
-    CWKEY_LINE = -1;
-    PTTIN_LINE = -1;
-    PTTOUT_LINE = -1;
-    CWOUT_LINE = -1;
-  }
 }
 
 void gpioRestoreState() {
@@ -1233,6 +1201,52 @@ static int check_line(int line, int seq, char *text) {
 }
 
 void gpio_init() {
+  //
+  // GPIO line restrictions for specific hardware.
+  // We must do this HERE since the have_radioberry/have_saturn
+  // are not yet set when calling gpio_set_defaults()
+  // (Thanks Yado-San for nailing this down)
+  //
+  if (have_radioberry1 || have_radioberry2) {
+    //
+    // RadioBerry: force "No Controller" and allow for at most
+    // two 'extra' lines (used for CWL/CWR input)
+    //
+    controller = NO_CONTROLLER;
+    memcpy(encoders, encoders_no_controller, sizeof(encoders));
+    memcpy(switches, switches_no_controller, sizeof(switches));
+    CWL_LINE = -1;
+    CWR_LINE = -1;
+    CWKEY_LINE = -1;
+    PTTIN_LINE = -1;
+    PTTOUT_LINE = -1;
+    CWOUT_LINE = -1;
+
+    if (have_radioberry1) {
+      CWL_LINE = 14;
+      CWR_LINE = 15;
+      t_print("Forced RadioBerry1 GPIO settings\n");
+    }
+
+    if (have_radioberry2) {
+      CWL_LINE = 17;
+      CWR_LINE = 21;
+      t_print("Forced RadioBerry2 GPIO settings\n");
+    }
+  }
+
+  if (have_saturn_xdma) {
+    //
+    // No "extra" GPIO lines for G2-internal CM cards
+    //
+    CWL_LINE = -1;
+    CWR_LINE = -1;
+    CWKEY_LINE = -1;
+    PTTIN_LINE = -1;
+    PTTOUT_LINE = -1;
+    CWOUT_LINE = -1;
+  }
+
 #ifdef GPIOV1
   initialiseEpoch();
 #endif
