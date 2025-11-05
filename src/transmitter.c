@@ -325,8 +325,8 @@ void tx_save_state(const TRANSMITTER *tx) {
   SetPropI1("transmitter.%d.panadapter_ignore_noise_percentile",  tx->id,    tx->panadapter_ignore_noise_percentile);
   SetPropI1("transmitter.%d.panadapter_hide_noise_filled",        tx->id,    tx->panadapter_hide_noise_filled);
   SetPropI1("transmitter.%d.panadapter_peaks_in_passband_filled", tx->id,    tx->panadapter_peaks_in_passband_filled);
-  SetPropI1("transmitter.%d.local_microphone",                    tx->id,    tx->local_microphone);
-  SetPropS1("transmitter.%d.microphone_name",                     tx->id,    tx->microphone_name);
+  SetPropI1("transmitter.%d.local_audio",                         tx->id,    tx->local_audio);
+  SetPropS1("transmitter.%d.audio_name",                          tx->id,    tx->audio_name);
   SetPropI1("transmitter.%d.dialog_x",                            tx->id,    tx->dialog_x);
   SetPropI1("transmitter.%d.dialog_y",                            tx->id,    tx->dialog_y);
   SetPropI1("transmitter.%d.display_filled",                      tx->id,    tx->display_filled);
@@ -414,8 +414,11 @@ void tx_restore_state(TRANSMITTER *tx) {
   GetPropI1("transmitter.%d.panadapter_ignore_noise_percentile",  tx->id,    tx->panadapter_ignore_noise_percentile);
   GetPropI1("transmitter.%d.panadapter_hide_noise_filled",        tx->id,    tx->panadapter_hide_noise_filled);
   GetPropI1("transmitter.%d.panadapter_peaks_in_passband_filled", tx->id,    tx->panadapter_peaks_in_passband_filled);
-  GetPropI1("transmitter.%d.local_microphone",                    tx->id,    tx->local_microphone);
-  GetPropS1("transmitter.%d.microphone_name",                     tx->id,    tx->microphone_name);
+  // next two lines for backwards compatibility
+  GetPropI1("transmitter.%d.local_microphone",                    tx->id,    tx->local_audio);
+  GetPropS1("transmitter.%d.microphone_name",                     tx->id,    tx->audio_name);
+  GetPropI1("transmitter.%d.local_audio",                         tx->id,    tx->local_audio);
+  GetPropS1("transmitter.%d.audio_name",                          tx->id,    tx->audio_name);
   GetPropI1("transmitter.%d.dialog_x",                            tx->id,    tx->dialog_x);
   GetPropI1("transmitter.%d.dialog_y",                            tx->id,    tx->dialog_y);
   GetPropI1("transmitter.%d.display_filled",                      tx->id,    tx->display_filled);
@@ -1065,8 +1068,8 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->dexp_filter      =       0;
   tx->dexp_filter_low  =    1000;
   tx->dexp_filter_high =    2000;
-  tx->local_microphone = 0;
-  snprintf(tx->microphone_name, sizeof(tx->microphone_name), "%s", "NO MIC");
+  tx->local_audio = 0;
+  snprintf(tx->audio_name, sizeof(tx->audio_name), "%s", "NO AUDIO");
   tx->dialog_x = -1;
   tx->dialog_y = -1;
   tx->dialog = NULL;
@@ -1594,13 +1597,13 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
   mic_sample_double = (double)next_mic_sample * 0.00003051;  // divide by 32768
 
   //
-  // If we have local tx microphone, we normally *replace* the sample by data
+  // If we have local tx audio, we normally *replace* the sample by data
   // from the sound card. However, if PTT comes from  the radio, we  *add* both
   // radio and sound card samples.
   // This "trick" allows us to switch between SSB (with microphone attached to the
   // radio) and DIGI (using a virtual audio cable) without going to the TX  menu.
   //
-  if (tx->local_microphone) {
+  if (tx->local_audio) {
     if (radio_ptt) {
       mic_sample_double += audio_get_next_mic_sample();
     } else {
@@ -1609,7 +1612,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
   }
 
   //
-  // If we have a client, it overwrites 'local' microphone data.
+  // If we have a client, it overwrites 'local' audio data.
   //
   if (remoteclient.running) {
     mic_sample_double = remote_get_mic_sample() * 0.00003051;  // divide by 32768;

@@ -406,10 +406,10 @@ void old_protocol_init(int rate) {
   old_protocol_set_mic_sample_rate(rate);
   g_thread_new("P1 out", old_protocol_txiq_thread, NULL);
 
-  if (transmitter->local_microphone) {
+  if (transmitter->local_audio) {
     if (audio_open_input() != 0) {
       t_print("audio_open_input failed\n");
-      transmitter->local_microphone = 0;
+      transmitter->local_audio = 0;
     }
   }
 
@@ -469,7 +469,7 @@ static void start_usb_receive_threads() {
 // b) read Alex forward and reverse power
 // c) read overload condition from one or two Mercury boards
 // d) re-program the Penelope TVL320 if the choice for
-//    the microphone (LineIn, MicIn, MicIn+Bias) changes.
+//    the audio input (LineIn, MicIn, MicIn+Bias) changes.
 //
 static gpointer ozy_i2c_thread(gpointer arg) {
   ASSERT_SERVER(NULL);

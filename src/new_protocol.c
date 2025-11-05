@@ -475,10 +475,10 @@ void new_protocol_init() {
   TXIQRINGBUF = g_new(unsigned char, TXIQRINGBUFLEN);
   RXAUDIORINGBUF = g_new(unsigned char, RXAUDIORINGBUFLEN);
 
-  if (transmitter->local_microphone) {
+  if (transmitter->local_audio) {
     if (audio_open_input() != 0) {
       t_print("audio_open_input failed\n");
-      transmitter->local_microphone = 0;
+      transmitter->local_audio = 0;
     }
   }
 

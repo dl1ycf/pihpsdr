@@ -184,8 +184,7 @@ typedef struct _receiver {
   GdkPixbuf *pixbuf;
   int local_audio;
   int mute_when_not_active;
-  int audio_device;
-  gchar audio_name[128];
+  char audio_name[128];
 
 #if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA)
   // this is only possible for "cppcheck" runs

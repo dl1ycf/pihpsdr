@@ -51,7 +51,7 @@ int n_output_devices;
 AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
 
 //
-// Ring buffer for "local microphone" samples
+// Ring buffer for local audio samples
 // NOTE: need large buffer for some "loopback" devices which produce
 //       samples in large chunks if fed from digimode programs.
 //
@@ -64,9 +64,9 @@ static pa_glib_mainloop *main_loop;
 static pa_mainloop_api *main_loop_api;
 static pa_operation *op;
 static pa_context *pa_ctx;
-static pa_simple* microphone_stream;
-static int local_microphone_buffer_offset;
-static float *local_microphone_buffer = NULL;
+static pa_simple* audio_stream;
+static int local_audio_buffer_offset;
+static float *local_audio_buffer = NULL;
 static GThread *mic_read_thread_id = 0;
 static gboolean running;
 
@@ -206,11 +206,11 @@ static void *mic_read_thread(gpointer arg) {
 
   while (running) {
     //
-    // It is guaranteed that local_microphone_buffer, mic_ring_buffer, and microphone_stream
+    // It is guaranteed that local_audio_buffer, mic_ring_buffer, and audio_stream
     // will not be destroyed until this thread has terminated (and waited for via thread joining)
     //
-    int rc = pa_simple_read(microphone_stream,
-                            local_microphone_buffer,
+    int rc = pa_simple_read(audio_stream,
+                            local_audio_buffer,
                             mic_buffer_size * sizeof(float),
                             &err);
 
@@ -224,7 +224,7 @@ static void *mic_read_thread(gpointer arg) {
         // to the server without any buffering
         //
         if (radio_is_remote) {
-          short s = local_microphone_buffer[i] * 32767.0;
+          short s = local_audio_buffer[i] * 32767.0;
           server_tx_audio(s);
           continue;
         }
@@ -238,7 +238,7 @@ static void *mic_read_thread(gpointer arg) {
 
         if (newpt != mic_ring_read_pt) {
           // buffer space available, do the write
-          mic_ring_buffer[mic_ring_write_pt] = local_microphone_buffer[i];
+          mic_ring_buffer[mic_ring_write_pt] = local_audio_buffer[i];
           // atomic update of mic_ring_write_pt
           mic_ring_write_pt = newpt;
         }
@@ -268,20 +268,20 @@ int audio_open_input() {
   sample_spec.rate = 48000;
   sample_spec.channels = 1;
   sample_spec.format = PA_SAMPLE_FLOAT32NE;
-  microphone_stream = pa_simple_new(NULL,      // Use the default server.
-                                    "piHPSDR",                   // Our application's name.
-                                    PA_STREAM_RECORD,
-                                    transmitter->microphone_name,
-                                    "TX",                        // Description of our stream.
-                                    &sample_spec,                // Our sample format.
-                                    NULL,                        // Use default channel map
-                                    &attr,                       // Use default buffering attributes but set fragsize
-                                    NULL                         // Ignore error code.
-                                   );
+  audio_stream = pa_simple_new(NULL,      // Use the default server.
+                               "piHPSDR",                   // Our application's name.
+                               PA_STREAM_RECORD,
+                               transmitter->audio_name,
+                               "TX",                        // Description of our stream.
+                               &sample_spec,                // Our sample format.
+                               NULL,                        // Use default channel map
+                               &attr,                       // Use default buffering attributes but set fragsize
+                               NULL                         // Ignore error code.
+                              );
 
-  if (microphone_stream != NULL) {
-    local_microphone_buffer_offset = 0;
-    local_microphone_buffer = g_new0(float, mic_buffer_size);
+  if (audio_stream != NULL) {
+    local_audio_buffer_offset = 0;
+    local_audio_buffer = g_new0(float, mic_buffer_size);
     t_print("%s: allocating ring buffer\n", __FUNCTION__);
     mic_ring_buffer = (float *) g_new(float, MICRINGLEN);
     mic_ring_read_pt = mic_ring_write_pt = 0;
@@ -298,8 +298,8 @@ int audio_open_input() {
 
     if (!mic_read_thread_id ) {
       t_print("%s: g_thread_new failed on mic_read_thread\n", __FUNCTION__);
-      g_free(local_microphone_buffer);
-      local_microphone_buffer = NULL;
+      g_free(local_audio_buffer);
+      local_audio_buffer = NULL;
       running = FALSE;
       result = -1;
     }
@@ -342,14 +342,14 @@ void audio_close_input() {
     mic_read_thread_id = NULL;
   }
 
-  if (microphone_stream != NULL) {
-    pa_simple_free(microphone_stream);
-    microphone_stream = NULL;
+  if (audio_stream != NULL) {
+    pa_simple_free(audio_stream);
+    audio_stream = NULL;
   }
 
-  if (local_microphone_buffer != NULL) {
-    g_free(local_microphone_buffer);
-    local_microphone_buffer = NULL;
+  if (local_audio_buffer != NULL) {
+    g_free(local_audio_buffer);
+    local_audio_buffer = NULL;
   }
 
   if (mic_ring_buffer != NULL) {

@@ -157,6 +157,13 @@ struct _mode_settings {
   int tx_default_filter_low;
   int tx_default_filter_high;
   int use_rx_filter;
+  //
+  // Local audio settings
+  //
+  int rx_local_audio;               //  RX local audio output
+  int tx_local_audio;               //  TX local audio input
+  char rx_audio_name[128];          //  RX local audio device name
+  char tx_audio_name[128];          //  TX local audio device name
 };
 
 extern struct _mode_settings mode_settings[];

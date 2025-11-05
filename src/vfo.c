@@ -32,6 +32,7 @@
 #include <ifaddrs.h>
 
 #include "appearance.h"
+#include "audio.h"
 #include "discovered.h"
 #include "main.h"
 #include "agc.h"
@@ -167,6 +168,11 @@ static void modesettingsSaveState() {
       SetPropF2("modeset.%d.cfc_lvl.%d", i, j,        mode_settings[i].cfc_lvl[j]);
       SetPropF2("modeset.%d.cfc_post.%d", i, j,       mode_settings[i].cfc_post[j]);
     }
+
+    SetPropI1("modeset.%d.rx_local_audio", i,         mode_settings[i].rx_local_audio);
+    SetPropI1("modeset.%d.tx_local_audio", i,         mode_settings[i].tx_local_audio);
+    SetPropS1("modeset.%d.rx_audio_name", i,          mode_settings[i].rx_audio_name);
+    SetPropS1("modeset.%d.tx_audio_name", i,          mode_settings[i].tx_audio_name);
   }
 }
 
@@ -309,6 +315,11 @@ static void modesettingsRestoreState() {
     mode_settings[i].tx_eq_freq[10] =  5000.0;
     mode_settings[i].rx_eq_freq[10] =  5000.0;
     mode_settings[i].cfc_freq  [10] =  5000.0;
+    mode_settings[i].rx_local_audio =  0;
+    mode_settings[i].tx_local_audio =  0;
+    mode_settings[i].rx_audio_name[0] = 0;
+    mode_settings[i].tx_audio_name[0] = 0;
+
     GetPropI1("modeset.%d.filter", i,                 mode_settings[i].filter);
     GetPropI1("modeset.%d.cwPeak", i,                 mode_settings[i].cwPeak);
     GetPropI1("modeset.%d.step", i,                   mode_settings[i].step);
@@ -373,11 +384,18 @@ static void modesettingsRestoreState() {
       GetPropF2("modeset.%d.cfc_lvl.%d", i, j,        mode_settings[i].cfc_lvl[j]);
       GetPropF2("modeset.%d.cfc_post.%d", i, j,       mode_settings[i].cfc_post[j]);
     }
+
+    GetPropI1("modeset.%d.rx_local_audio", i,         mode_settings[i].rx_local_audio);
+    GetPropI1("modeset.%d.tx_local_audio", i,         mode_settings[i].tx_local_audio);
+    GetPropS1("modeset.%d.rx_audio_name", i,          mode_settings[i].rx_audio_name);
+    GetPropS1("modeset.%d.tx_audio_name", i,          mode_settings[i].tx_audio_name);
   }
 }
 
 void copy_mode_settings(int mode) {
-  ASSERT_SERVER();
+  //
+  // The client may call this, if local audio settings have been changed
+  //
 
   //
   // If mode is USB or LSB or DSB, copy settings of that mode to USB and LSB and DSB
@@ -650,6 +668,21 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
   radio_set_squelch       (rx->id, mode_settings[m].squelch);
   radio_set_squelch_enable(rx->id, mode_settings[m].squelch_enable);
 
+  if (rx->local_audio != mode_settings[m].rx_local_audio ||
+        strncmp(rx->audio_name, mode_settings[m].rx_audio_name, sizeof(rx->audio_name))) {
+
+    if (rx->local_audio) { audio_close_output(rx); }
+
+    rx->local_audio = mode_settings[m].rx_local_audio;
+
+    if (mode_settings[m].rx_local_audio) {
+      snprintf(rx->audio_name, sizeof(rx->audio_name), "%s", mode_settings[m].rx_audio_name);
+      if (audio_open_output(rx) < 0) {
+        rx->local_audio = 0;
+        t_print("%s: Open audio output failed\n", __FUNCTION__);
+      }
+    }
+  }
   //
   // Transmitter-specific settings: TXEQ, CMRP, DEXP, CFC
   // only changed if this VFO controls the TX
@@ -688,7 +721,24 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
     tx_set_dexp(transmitter);
     tx_set_equalizer(transmitter);
     radio_set_mic_gain(mode_settings[m].mic_gain);
+
+    if (transmitter->local_audio != mode_settings[m].tx_local_audio ||
+        strncmp(transmitter->audio_name, mode_settings[m].tx_audio_name, sizeof(transmitter->audio_name))) {
+    
+      if (transmitter->local_audio) { audio_close_input(); }
+    
+      transmitter->local_audio = mode_settings[m].tx_local_audio;
+    
+      if (mode_settings[m].tx_local_audio) {
+        snprintf(transmitter->audio_name, sizeof(transmitter->audio_name), "%s", mode_settings[m].tx_audio_name);
+        if (audio_open_input() < 0) {
+          transmitter->local_audio = 0;
+          t_print("%s: Open audio input failed\n", __FUNCTION__);
+        }
+      }
+    }
   }
+
 
   g_idle_add(ext_vfo_update, NULL);
   suppress_popup_sliders--;
@@ -837,12 +887,6 @@ void vfo_id_bandstack_changed(int id, int b) {
 
 void vfo_mode_changed(int m) {
   int id = active_receiver->id;
-
-  if (radio_is_remote) {
-    send_mode(client_socket, id, m);
-    return;
-  }
-
   vfo_id_mode_changed(id, m);
 }
 

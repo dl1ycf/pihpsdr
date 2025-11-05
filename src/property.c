@@ -147,8 +147,10 @@ void saveProperties(const char* filename) {
   property = properties;
 
   while (property) {
-    snprintf(line, sizeof(line), "%s=%s\n", property->name, property->value);
-    fwrite(line, 1, strlen(line), f);
+    if (*property->value) {
+      snprintf(line, sizeof(line), "%s=%s\n", property->name, property->value);
+      fwrite(line, 1, strlen(line), f);
+    }
     property = property->next_property;
   }
 

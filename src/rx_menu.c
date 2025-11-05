@@ -35,6 +35,7 @@
 #include "receiver.h"
 #include "rx_menu.h"
 #include "sliders.h"
+#include "vfo.h"
 
 static GtkWidget *dialog = NULL;
 static GtkWidget *local_audio_b = NULL;
@@ -138,6 +139,13 @@ static void local_audio_cb(GtkWidget *widget, gpointer data) {
     }
   }
 
+  //
+  // Update ModeSettings data base
+  //
+  int mode = vfo[myid].mode;
+  mode_settings[mode].rx_local_audio = myrx->local_audio;
+  copy_mode_settings(mode);
+
   t_print("local_audio_cb: local_audio=%d\n", myrx->local_audio);
 }
 
@@ -183,6 +191,16 @@ static void local_output_changed_cb(GtkWidget *widget, gpointer data) {
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (local_audio_b), FALSE);
     }
   }
+
+  //
+  // Update ModeSettings data base
+  //
+  int mode = vfo[myid].mode;
+  mode_settings[mode].rx_local_audio = myrx->local_audio;
+  if (myrx->local_audio) {
+    strncpy(mode_settings[mode].rx_audio_name, myrx->audio_name, sizeof(mode_settings[mode].rx_audio_name));
+  }
+  copy_mode_settings(mode);
 
   t_print("local_output_changed rx=%d local_audio=%d\n", myid, myrx->local_audio);
 }
@@ -405,8 +423,6 @@ void rx_menu(GtkWidget *parent) {
     gtk_widget_show(local_audio_b);
     gtk_grid_attach(GTK_GRID(grid), local_audio_b, 2, 1, 1, 1);
     g_signal_connect(local_audio_b, "toggled", G_CALLBACK(local_audio_cb), NULL);
-
-    if (myrx->audio_device == -1) { myrx->audio_device = 0; }
 
     output = gtk_combo_box_text_new();
 

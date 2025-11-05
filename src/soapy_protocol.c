@@ -550,10 +550,10 @@ void soapy_protocol_init(gboolean hf) {
   SoapySDRKwargs_clear(&args);
 
   if (can_transmit) {
-    if (transmitter->local_microphone) {
+    if (transmitter->local_audio) {
       if (audio_open_input() != 0) {
         t_print("%s: audio_open_input failed\n", __FUNCTION__);
-        transmitter->local_microphone = 0;
+        transmitter->local_audio = 0;
       }
     }
   }

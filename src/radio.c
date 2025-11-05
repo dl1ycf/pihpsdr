@@ -3702,10 +3702,10 @@ int radio_remote_start(void *data) {
   if (can_transmit) {
     tx_restore_state(transmitter);
 
-    if (transmitter->local_microphone) {
+    if (transmitter->local_audio) {
       if (audio_open_input() != 0) {
         t_print("audio_open_input failed\n");
-        transmitter->local_microphone = 0;
+        transmitter->local_audio = 0;
       }
     }
   }

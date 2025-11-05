@@ -392,7 +392,6 @@ static void *client_thread(void* arg) {
     rx->mute_when_not_active = 0;
     rx->mute_radio = 0;
     rx->audio_channel = STEREO;
-    rx->audio_device = -1;
   }
 
   active_receiver = receiver[0];

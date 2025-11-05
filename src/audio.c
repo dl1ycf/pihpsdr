@@ -92,7 +92,7 @@ int n_output_devices;
 AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
 
 //
-// Ring buffer for "local microphone" samples
+// Ring buffer for local audio samples
 // NOTE: lead large buffer for some "loopback" devices which produce
 //       samples in large chunks if fed from digimode programs.
 //
@@ -179,8 +179,6 @@ int audio_open_output(RECEIVER *rx) {
 
   rx->cwaudio = 0;
   rx->cwcount = 0;
-  t_print("%s: rx=%d audio_device=%d handle=%p buffer=%p size=%d\n", __FUNCTION__, rx->id, rx->audio_device,
-          rx->playback_handle, rx->local_audio_buffer, out_buffer_size);
   g_mutex_unlock(&rx->local_audio_mutex);
   return 0;
 }
@@ -197,12 +195,12 @@ int audio_open_input() {
     return -1;
   }
 
-  t_print("%s: %s\n", __FUNCTION__, transmitter->microphone_name);
+  t_print("%s: %s\n", __FUNCTION__, transmitter->audio_name);
   t_print("%s: mic_buffer_size=%d\n", __FUNCTION__, mic_buffer_size);
   i = 0;
 
-  while (i < 63 && transmitter->microphone_name[i] != ' ') {
-    hw[i] = transmitter->microphone_name[i];
+  while (i < 63 && transmitter->audio_name[i] != ' ') {
+    hw[i] = transmitter->audio_name[i];
     i++;
   }
 
@@ -285,7 +283,7 @@ int audio_open_input() {
 
   t_print("%s: creating mic_read_thread\n", __FUNCTION__);
   GError *error;
-  mic_read_thread_id = g_thread_try_new("microphone", mic_read_thread, NULL, &error);
+  mic_read_thread_id = g_thread_try_new("TxAudioIn", mic_read_thread, NULL, &error);
 
   if (!mic_read_thread_id ) {
     t_print("%s: g_thread_new failed on mic_read_thread: %s\n", __FUNCTION__, error->message);

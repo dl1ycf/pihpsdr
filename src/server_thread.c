@@ -300,7 +300,7 @@ void remote_rxaudio(const RECEIVER *rx, short left_sample, short right_sample) {
 
 short remote_get_mic_sample() {
   //
-  // return one sample from the  microphone audio ring buffer
+  // return one sample from the audio input ring buffer
   // If it is empty, return a zero, and continue to return
   // zero until it is at least filled with  MIC_RING_LOW samples
   //

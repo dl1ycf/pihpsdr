@@ -246,7 +246,6 @@ void rx_save_state(const RECEIVER *rx) {
   SetPropI1("receiver.%d.audio_channel", rx->id,                rx->audio_channel);
   SetPropI1("receiver.%d.local_audio", rx->id,                  rx->local_audio);
   SetPropS1("receiver.%d.audio_name", rx->id,                   rx->audio_name);
-  SetPropI1("receiver.%d.audio_device", rx->id,                 rx->audio_device);
   SetPropI1("receiver.%d.mute_when_not_active", rx->id,         rx->mute_when_not_active);
   SetPropI1("receiver.%d.mute_radio", rx->id,                   rx->mute_radio);
   SetPropI1("receiver.%d.panadapter_low", rx->id,               rx->panadapter_low);
@@ -340,7 +339,6 @@ void rx_restore_state(RECEIVER *rx) {
   GetPropI1("receiver.%d.audio_channel", rx->id,                rx->audio_channel);
   GetPropI1("receiver.%d.local_audio", rx->id,                  rx->local_audio);
   GetPropS1("receiver.%d.audio_name", rx->id,                   rx->audio_name);
-  GetPropI1("receiver.%d.audio_device", rx->id,                 rx->audio_device);
   GetPropI1("receiver.%d.mute_when_not_active", rx->id,         rx->mute_when_not_active);
   GetPropI1("receiver.%d.mute_radio", rx->id,                   rx->mute_radio);
   GetPropI1("receiver.%d.panadapter_low", rx->id,               rx->panadapter_low);
@@ -826,7 +824,6 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   snprintf(rx->audio_name, sizeof(rx->audio_name), "NO AUDIO");
   rx->mute_when_not_active = 0;
   rx->audio_channel = STEREO;
-  rx->audio_device = -1;
   rx->squelch_enable = 0;
   rx->squelch = 0;
   rx->binaural = 0;
