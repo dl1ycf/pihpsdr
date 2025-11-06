@@ -438,7 +438,7 @@ static void chkbtn_cb(GtkWidget *widget, gpointer data) {
       }
       int txmode = vfo_get_tx_mode();
       mode_settings[txmode].tx_local_audio = transmitter->local_audio;
-      snprintf(mode_settings[txmode].audio_name, sizeof(mode_settings[txmode].audio_name), "%s",
+      snprintf(mode_settings[txmode].tx_audio_name, sizeof(mode_settings[txmode].audio_name), "%s",
                transmitter->audio_name);
       copy_mode_settings(txmode);
       }
