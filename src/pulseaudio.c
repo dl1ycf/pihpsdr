@@ -161,6 +161,7 @@ int audio_open_output(RECEIVER *rx) {
   int result = 0;
   pa_sample_spec sample_spec;
   int err;
+  t_print("%s: RX%d:%s\n", __FUNCTION__, rx->id+1, rx->audio_name);
   g_mutex_lock(&rx->local_audio_mutex);
   sample_spec.rate = 48000;
   sample_spec.channels = 2;
@@ -189,8 +190,6 @@ int audio_open_output(RECEIVER *rx) {
     rx->cwcount = 0;
     rx->local_audio_buffer_offset = 0;
     rx->local_audio_buffer = g_new0(float, 2 * out_buffer_size);
-    t_print("%s: allocated local_audio_buffer %p size %ld bytes\n", __FUNCTION__, rx->local_audio_buffer,
-            (long)(2 * out_buffer_size * sizeof(float)));
   } else {
     result = -1;
     t_print("%s: ERROR pa_simple_new: %s\n", __FUNCTION__, pa_strerror(err));
@@ -259,6 +258,7 @@ int audio_open_input() {
     return -1;
   }
 
+  t_print("%s: TX:%s\n", transmitter->audio_name);
   g_mutex_lock(&audio_mutex);
   pa_buffer_attr attr;
   attr.maxlength = (uint32_t) -1;
@@ -331,10 +331,10 @@ void audio_close_output(RECEIVER *rx) {
 
 void audio_close_input() {
   running = FALSE;
+  t_print("%s: TX:%s\n", transmitter->audio_name);
   g_mutex_lock(&audio_mutex);
 
   if (mic_read_thread_id != NULL) {
-    t_print("%s: wait for mic thread to complete\n", __FUNCTION__);
     //
     // wait for the mic read thread to terminate,
     // then destroy the stream and the buffers
@@ -371,7 +371,6 @@ float audio_get_next_mic_sample() {
 
   if ((mic_ring_buffer == NULL) || (mic_ring_read_pt == mic_ring_write_pt)) {
     // no buffer, or nothing in buffer: insert silence
-    //t_print("%s: no samples\n",__FUNCTION__);
     sample = 0.0;
   } else {
     int newpt = mic_ring_read_pt + 1;

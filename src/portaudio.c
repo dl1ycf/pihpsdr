@@ -204,7 +204,7 @@ int audio_open_input() {
     }
   }
 
-  t_print("%s: name=%s PADEV=%d\n", __FUNCTION__, transmitter->audio_name, padev);
+  t_print("%s: TX:%s (dev=%d)\n", __FUNCTION__, transmitter->audio_name, padev);
 
   //
   // Device name possibly came from props file and device is no longer there
@@ -449,7 +449,7 @@ int audio_open_output(RECEIVER *rx) {
     }
   }
 
-  t_print("%s: name=%s PADEV=%d\n", __FUNCTION__, rx->audio_name, padev);
+  t_print("%s: RX%d:%s (dev=%d)\n", __FUNCTION__, rx->id + 1, rx->audio_name, padev);
 
   //
   // Device name possibly came from props file and device is no longer there
@@ -519,7 +519,7 @@ int audio_open_output(RECEIVER *rx) {
 // close a TX audio stream
 //
 void audio_close_input() {
-  t_print("%s: micname=%s\n", __FUNCTION__, transmitter->audio_name);
+  t_print("%s: TX:%s\n", transmitter->audio_name);
   g_mutex_lock(&audio_mutex);
 
   if (record_handle != NULL) {
@@ -551,7 +551,7 @@ void audio_close_input() {
 // shut down the stream connected with audio from one of the RX
 //
 void audio_close_output(RECEIVER *rx) {
-  t_print("%s: device=%s\n", __FUNCTION__, rx->audio_name);
+  t_print("%s: RX%d:%s\n", __FUNCTION__, rx->id+1, rx->audio_name);
   g_mutex_lock(&rx->local_audio_mutex);
 
   if (rx->local_audio_buffer != NULL) {
@@ -658,7 +658,7 @@ int audio_write (RECEIVER *rx, float left, float right) {
       if (oldpt < 0) { oldpt += MY_RING_BUFFER_SIZE; }
 
       rx->local_audio_buffer_inpt = oldpt;
-      t_print("%s: buffer was nearly full, deleted audio\n", __FUNCTION__);
+      //t_print("%s: buffer was nearly full, deleted audio\n", __FUNCTION__);
     }
 
     //

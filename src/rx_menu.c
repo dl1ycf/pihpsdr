@@ -144,6 +144,7 @@ static void local_audio_cb(GtkWidget *widget, gpointer data) {
   //
   int mode = vfo[myid].mode;
   mode_settings[mode].rx_local_audio = myrx->local_audio;
+  snprintf(mode_settings[mode].rx_audio_name, sizeof(mode_settings[mode].rx_audio_name), "%s", myrx->audio_name);
   copy_mode_settings(mode);
 
   t_print("local_audio_cb: local_audio=%d\n", myrx->local_audio);
@@ -197,9 +198,7 @@ static void local_output_changed_cb(GtkWidget *widget, gpointer data) {
   //
   int mode = vfo[myid].mode;
   mode_settings[mode].rx_local_audio = myrx->local_audio;
-  if (myrx->local_audio) {
-    strncpy(mode_settings[mode].rx_audio_name, myrx->audio_name, sizeof(mode_settings[mode].rx_audio_name));
-  }
+  snprintf(mode_settings[mode].rx_audio_name, sizeof(mode_settings[mode].rx_audio_name), "%s", myrx->audio_name);
   copy_mode_settings(mode);
 
   t_print("local_output_changed rx=%d local_audio=%d\n", myid, myrx->local_audio);
