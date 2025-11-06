@@ -193,7 +193,7 @@ int audio_open_output(RECEIVER *rx) {
             (long)(2 * out_buffer_size * sizeof(float)));
   } else {
     result = -1;
-    t_print("%s: pa-simple_new failed: err=%d\n", __FUNCTION__, err);
+    t_print("%s: ERROR pa_simple_new: %s\n", __FUNCTION__, pa_strerror(err));
   }
 
   g_mutex_unlock(&rx->local_audio_mutex);
@@ -216,7 +216,7 @@ static void *mic_read_thread(gpointer arg) {
 
     if (rc < 0) {
       running = FALSE;
-      t_print("%s: simple_read returned %d error=%d (%s)\n", __FUNCTION__, rc, err, pa_strerror(err));
+      t_print("%s: ERROR pa_simple_read: %s\n", __FUNCTION__, rc, pa_strerror(err));
     } else {
       for (int i = 0; i < mic_buffer_size; i++) {
         //
@@ -252,6 +252,7 @@ static void *mic_read_thread(gpointer arg) {
 
 int audio_open_input() {
   pa_sample_spec sample_spec;
+  int err;
   int result = 0;
 
   if (!can_transmit) {
@@ -276,7 +277,7 @@ int audio_open_input() {
                                &sample_spec,                // Our sample format.
                                NULL,                        // Use default channel map
                                &attr,                       // Use default buffering attributes but set fragsize
-                               NULL                         // Ignore error code.
+                               &err                         // Ignore error code.
                               );
 
   if (audio_stream != NULL) {
@@ -304,6 +305,7 @@ int audio_open_input() {
       result = -1;
     }
   } else {
+    t_print("%s: ERROR pa_simple_new: %s\n", __FUNCTION__, pa_strerror(err));
     result = -1;
   }
 
@@ -425,8 +427,8 @@ int cw_audio_write(RECEIVER *rx, float sample) {
                                  out_buffer_size * sizeof(float) * 2,
                                  &err);
 
-        if (rc != 0) {
-          t_print("%s: simple_write failed err=%d\n", __FUNCTION__, err);
+        if (rc < 0) {
+          t_print("%s: ERROR pa_simple_write: %s\n", __FUNCTION__, pa_strerror(err));
         }
       }
 
@@ -489,8 +491,8 @@ int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
                                  out_buffer_size * sizeof(float) * 2,
                                  &err);
 
-        if (rc != 0) {
-          t_print("%s: write failed err=%s\n", __FUNCTION__, pa_strerror(err));
+        if (rc < 0) {
+          t_print("%s: ERROR pa_simple_write: %s\n", __FUNCTION__, pa_strerror(err));
         }
       }
 
