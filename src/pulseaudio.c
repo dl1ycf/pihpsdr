@@ -110,31 +110,31 @@ static void state_cb(pa_context *c, void *userdata) {
   switch  (state) {
   // There are just here for reference
   case PA_CONTEXT_UNCONNECTED:
-    t_print("audio: state_cb: PA_CONTEXT_UNCONNECTED\n");
+    t_print("%s: PA_CONTEXT_UNCONNECTED\n", __FUNCTION__);
     break;
 
   case PA_CONTEXT_CONNECTING:
-    t_print("audio: state_cb: PA_CONTEXT_CONNECTING\n");
+    t_print("%s: PA_CONTEXT_CONNECTING\n", __FUNCTION__);
     break;
 
   case PA_CONTEXT_AUTHORIZING:
-    t_print("audio: state_cb: PA_CONTEXT_AUTHORIZING\n");
+    t_print("%s: PA_CONTEXT_AUTHORIZING\n", __FUNCTION__);
     break;
 
   case PA_CONTEXT_SETTING_NAME:
-    t_print("audio: state_cb: PA_CONTEXT_SETTING_NAME\n");
+    t_print("%s: PA_CONTEXT_SETTING_NAME\n", __FUNCTION__);
     break;
 
   case PA_CONTEXT_FAILED:
-    t_print("audio: state_cb: PA_CONTEXT_FAILED\n");
+    t_print("%s: PA_CONTEXT_FAILED\n", __FUNCTION__);
     break;
 
   case PA_CONTEXT_TERMINATED:
-    t_print("audio: state_cb: PA_CONTEXT_TERMINATED\n");
+    t_print("%s: PA_CONTEXT_TERMINATED\n", __FUNCTION__);
     break;
 
   case PA_CONTEXT_READY:
-    t_print("audio: state_cb: PA_CONTEXT_READY\n");
+    t_print("%s: PA_CONTEXT_READY\n", __FUNCTION__);
     // get a list of the output devices
     n_input_devices = 0;
     n_output_devices = 0;
@@ -142,7 +142,7 @@ static void state_cb(pa_context *c, void *userdata) {
     break;
 
   default:
-    t_print("audio: state_cb: unknown state %d\n", state);
+    t_print("%s: unknown state %d\n", __FUNCTION__, state);
     break;
   }
 }
@@ -258,7 +258,7 @@ int audio_open_input() {
     return -1;
   }
 
-  t_print("%s: TX:%s\n", transmitter->audio_name);
+  t_print("%s: TX:%s\n", __FUNCTION__, transmitter->audio_name);
   g_mutex_lock(&audio_mutex);
   pa_buffer_attr attr;
   attr.maxlength = (uint32_t) -1;
@@ -331,7 +331,7 @@ void audio_close_output(RECEIVER *rx) {
 
 void audio_close_input() {
   running = FALSE;
-  t_print("%s: TX:%s\n", transmitter->audio_name);
+  t_print("%s: TX:%s\n", __FUNCTION__, transmitter->audio_name);
   g_mutex_lock(&audio_mutex);
 
   if (mic_read_thread_id != NULL) {

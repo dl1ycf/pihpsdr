@@ -519,7 +519,7 @@ int audio_open_output(RECEIVER *rx) {
 // close a TX audio stream
 //
 void audio_close_input() {
-  t_print("%s: TX:%s\n", transmitter->audio_name);
+  t_print("%s: TX:%s\n", __FUNCTION__, transmitter->audio_name);
   g_mutex_lock(&audio_mutex);
 
   if (record_handle != NULL) {

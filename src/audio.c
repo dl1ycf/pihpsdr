@@ -191,7 +191,7 @@ int audio_open_input() {
     return -1;
   }
 
-  t_print("%s: TX:%s\n", transmitter->audio_name);
+  t_print("%s: TX:%s\n", __FUNCTION__, transmitter->audio_name);
   i = 0;
 
   while (i < 63 && transmitter->audio_name[i] != ' ') {
@@ -300,7 +300,7 @@ void audio_close_output(RECEIVER *rx) {
 }
 
 void audio_close_input() {
-  t_print("%s: TX:%s\n", transmitter->audio_name);
+  t_print("%s: TX:%s\n", __FUNCTION__, transmitter->audio_name);
   running = FALSE;
   g_mutex_lock(&audio_mutex);
 
@@ -612,8 +612,6 @@ static void *mic_read_thread(gpointer arg) {
   const int16_t *short_buffer;
   float sample;
   int i;
-  t_print("%s: mic_buffer_size=%d\n", __FUNCTION__, mic_buffer_size);
-  t_print("%s: snd_pcm_start\n", __FUNCTION__);
 
   if ((rc = snd_pcm_start (record_handle)) < 0) {
     t_print("%s: cannot start audio interface for use (%s)\n", __FUNCTION__,
@@ -730,7 +728,6 @@ void audio_get_cards() {
   snd_ctl_card_info_alloca(&info);
   snd_pcm_info_alloca(&pcminfo);
   int card = -1;
-  t_print("%s\n", __FUNCTION__);
   g_mutex_init(&audio_mutex);
   n_input_devices = 0;
   n_output_devices = 0;
