@@ -314,6 +314,7 @@ int audio_open_input() {
 }
 
 void audio_close_output(RECEIVER *rx) {
+  t_print("%s: RX%d:%s\n", __FUNCTION__, rx->id+1, rx->audio_name);
   g_mutex_lock(&rx->local_audio_mutex);
 
   if (rx->playstream != NULL) {

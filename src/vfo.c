@@ -317,8 +317,8 @@ static void modesettingsRestoreState() {
     mode_settings[i].cfc_freq  [10] =  5000.0;
     mode_settings[i].rx_local_audio =  0;
     mode_settings[i].tx_local_audio =  0;
-    mode_settings[i].rx_audio_name[0] = 0;
-    mode_settings[i].tx_audio_name[0] = 0;
+    snprintf(mode_settings[i].rx_audio_name, sizeof(mode_settings[i].rx_audio_name), "%s", "NO AUDIO");
+    snprintf(mode_settings[i].tx_audio_name, sizeof(mode_settings[i].tx_audio_name), "%s", "NO AUDIO");
 
     GetPropI1("modeset.%d.filter", i,                 mode_settings[i].filter);
     GetPropI1("modeset.%d.cwPeak", i,                 mode_settings[i].cwPeak);
