@@ -1207,7 +1207,7 @@ void gpio_init() {
   // are not yet set when calling gpio_set_defaults()
   // (Thanks Yado-San for nailing this down)
   //
-  if (have_radioberry1 || have_radioberry2) {
+  if (have_radioberry1 || have_radioberry2 || have_radioberry3) {
     //
     // RadioBerry: force "No Controller" and allow for at most
     // two 'extra' lines (used for CWL/CWR input)
@@ -1232,6 +1232,12 @@ void gpio_init() {
       CWL_LINE = 17;
       CWR_LINE = 21;
       t_print("Forced RadioBerry2 GPIO settings\n");
+    }
+
+    if (have_radioberry3) {
+      CWL_LINE = 17;
+      CWR_LINE = 13;
+      t_print("Forced RadioBerry3 GPIO settings\n");
     }
   }
 

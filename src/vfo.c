@@ -724,11 +724,11 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
 
     if (transmitter->local_audio != mode_settings[m].tx_local_audio ||
         strncmp(transmitter->audio_name, mode_settings[m].tx_audio_name, sizeof(transmitter->audio_name))) {
-    
+
       if (transmitter->local_audio) { audio_close_input(); }
-    
+
       transmitter->local_audio = mode_settings[m].tx_local_audio;
-    
+
       if (mode_settings[m].tx_local_audio) {
         snprintf(transmitter->audio_name, sizeof(transmitter->audio_name), "%s", mode_settings[m].tx_audio_name);
         if (audio_open_input() < 0) {

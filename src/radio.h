@@ -257,6 +257,7 @@ extern int have_g2_v2;           // G2V2 ANDROMEDA message read
 extern int have_lime;            // The radio is a LIME-SDR
 extern int have_radioberry1;     // RadioBerry with first-generation  firmware
 extern int have_radioberry2;     // RadioBerry with second-generation firmware
+extern int have_radioberry3;	 // RadioBerry with third-generation firmware (pio support)
 extern int rx_gain_calibration;  // used to calibrate the input signal
 
 extern double drive_min;         // minimum value of the drive slider
