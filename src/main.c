@@ -17,6 +17,7 @@
 *
 */
 #include <gtk/gtk.h>
+#include <locale.h>
 #include <math.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -109,6 +110,8 @@ static int init(void *data) {
   char wisdom_directory[1025];
   char text[1024];
   t_print("%s\n", __FUNCTION__);
+  t_print("LC_ALL=%s\n", setlocale(LC_ALL, NULL));
+  t_print("LC_NUMERIC=%s\n", setlocale(LC_NUMERIC, NULL));
   //
   // We want to intercept some key strokes
   //
@@ -323,13 +326,15 @@ int main(int argc, char **argv) {
   // privilege is there, it may help to run piHPSDR at a lower nice
   // value.
   //
+  startup(argv[0]);
+  setlocale(LC_ALL, "C");  // make a decimal point a decimal point
   rc = getpriority(PRIO_PROCESS, 0);
   t_print("%s: Base priority on startup: %d\n", __FUNCTION__, rc);
   setpriority(PRIO_PROCESS, 0, -10);
   rc = getpriority(PRIO_PROCESS, 0);
   t_print("%s: Base priority after adjustment: %d\n", __FUNCTION__, rc);
-  startup(argv[0]);
   snprintf(name, sizeof(name), "org.g0orx.pihpsdr.pid%d", getpid());
+  gtk_disable_setlocale();  // keep having a decimal point as a decimal point
   pihpsdr = gtk_application_new(name, G_APPLICATION_FLAGS_NONE);
   g_signal_connect(pihpsdr, "activate", G_CALLBACK(activate_pihpsdr), NULL);
   rc = g_application_run(G_APPLICATION(pihpsdr), argc, argv);
