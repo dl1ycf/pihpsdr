@@ -405,14 +405,6 @@ void old_protocol_init(int rate) {
   pthread_mutex_lock(&send_ozy_mutex);
   old_protocol_set_mic_sample_rate(rate);
   g_thread_new("P1 out", old_protocol_txiq_thread, NULL);
-
-  if (transmitter->local_audio) {
-    if (audio_open_input() != 0) {
-      t_print("audio_open_input failed\n");
-      transmitter->local_audio = 0;
-    }
-  }
-
   g_thread_new("P1 proc", process_ozy_input_buffer_thread, NULL);
 
   //

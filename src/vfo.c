@@ -668,18 +668,23 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
   radio_set_squelch       (rx->id, mode_settings[m].squelch);
   radio_set_squelch_enable(rx->id, mode_settings[m].squelch_enable);
 
-  if (rx->local_audio != mode_settings[m].rx_local_audio ||
-        strncmp(rx->audio_name, mode_settings[m].rx_audio_name, sizeof(rx->audio_name))) {
-
-    if (rx->local_audio) { audio_close_output(rx); }
-
-    rx->local_audio = mode_settings[m].rx_local_audio;
+  if (rx->id == 0 && (rx->local_audio != mode_settings[m].rx_local_audio
+                         || strncmp(rx->audio_name, mode_settings[m].rx_audio_name, sizeof(rx->audio_name)))) {
+    //
+    // This is RX1 and local audio settings in mode_settings differ from actual settings
+    //
+    if (rx->local_audio) {
+      rx->local_audio = 0;
+      audio_close_output(rx);
+    }
 
     if (mode_settings[m].rx_local_audio) {
       snprintf(rx->audio_name, sizeof(rx->audio_name), "%s", mode_settings[m].rx_audio_name);
       if (audio_open_output(rx) < 0) {
         rx->local_audio = 0;
         t_print("%s: Open audio output failed\n", __FUNCTION__);
+      } else {
+        rx->local_audio = 1;
       }
     }
   }
@@ -725,15 +730,22 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
     if (transmitter->local_audio != mode_settings[m].tx_local_audio ||
         strncmp(transmitter->audio_name, mode_settings[m].tx_audio_name, sizeof(transmitter->audio_name))) {
 
-      if (transmitter->local_audio) { audio_close_input(); }
+      //
+      // TX local audio settings in mode_settings differ from local settings:
+      //
 
-      transmitter->local_audio = mode_settings[m].tx_local_audio;
+      if (transmitter->local_audio) {
+        transmitter->local_audio = 0;
+        audio_close_input();
+      }
 
       if (mode_settings[m].tx_local_audio) {
         snprintf(transmitter->audio_name, sizeof(transmitter->audio_name), "%s", mode_settings[m].tx_audio_name);
         if (audio_open_input() < 0) {
           transmitter->local_audio = 0;
           t_print("%s: Open audio input failed\n", __FUNCTION__);
+        } else {
+          transmitter->local_audio = 1;
         }
       }
     }

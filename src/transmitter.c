@@ -1279,6 +1279,13 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
     tx_ps_setparams(tx);
   }
 
+  if (tx->local_audio) {
+    if (audio_open_input() < 0) {
+      t_print("%s: audio_open_input failed\n", __FUNCTION__);
+      tx->local_audio = 0;
+    }
+  }
+
   return tx;
 }
 
@@ -1597,18 +1604,13 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
   mic_sample_double = (double)next_mic_sample * 0.00003051;  // divide by 32768
 
   //
-  // If we have local tx audio, we normally *replace* the sample by data
-  // from the sound card. However, if PTT comes from  the radio, we  *add* both
-  // radio and sound card samples.
-  // This "trick" allows us to switch between SSB (with microphone attached to the
-  // radio) and DIGI (using a virtual audio cable) without going to the TX  menu.
+  // Since we now have mode-dependent audio settings, we no longer add
+  // local TX audio to the samples from the radio if PTT is pressed.
+  // local_audio now again means to *replace* the microphone samples from
+  // the radio by those from the local audio input device.
   //
   if (tx->local_audio) {
-    if (radio_ptt) {
-      mic_sample_double += audio_get_next_mic_sample();
-    } else {
-      mic_sample_double = audio_get_next_mic_sample();
-    }
+    mic_sample_double = audio_get_next_mic_sample();
   }
 
   //
