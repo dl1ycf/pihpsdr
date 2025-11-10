@@ -843,7 +843,12 @@ static gboolean menu_cb (GtkWidget *widget, GdkEventButton *event, gpointer data
 static void radio_create_visual() {
   int y = 0;
   fixed = gtk_fixed_new();
-  g_object_ref(topgrid);  // so it does not get deleted
+  //
+  // The next statement takes care topgrid does not get destroyed
+  // when removing it from top_window. It seems it is not used
+  // any longer but the statement can also not do any harm.
+  //
+  g_object_ref(topgrid);
   gtk_container_remove(GTK_CONTAINER(top_window), topgrid);
   gtk_container_add(GTK_CONTAINER(top_window), fixed);
   int my_height = display_height[display_size];

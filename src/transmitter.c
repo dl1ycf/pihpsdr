@@ -857,6 +857,11 @@ static void tx_create_visual(TRANSMITTER *tx) {
   }
 
   gtk_widget_show_all(tx->panel);
+  //
+  // Make a reference to tx->panel so we can  later
+  // remote it from "fixed" without getting destroyed
+  // and put/move it there later
+  //
   g_object_ref((gpointer)tx->panel);
 
   if (duplex) {

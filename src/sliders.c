@@ -881,7 +881,7 @@ void sliders_show_sliders(int ypos) {
 
 void sliders_destroy() {
   if (sliders_grid) {
-    gtk_container_remove(GTK_CONTAINER(fixed), sliders_grid);
+    gtk_widget_destroy(sliders_grid);
     sliders_grid = NULL;
   }
 

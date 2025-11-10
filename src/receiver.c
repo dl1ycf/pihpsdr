@@ -566,6 +566,13 @@ void rx_set_displaying(RECEIVER *rx) {
 }
 
 static void rx_create_visual(RECEIVER *rx) {
+  //
+  // TODO: I do not see why we are using g_object_weak_ref() here, and put
+  //       a strong reference in radio_create_visual() and in each RX/TX
+  //       transition (before removing the RX panel from FIXED)
+  //       One g_object_ref() here should be enough. This is
+  //       the way it is done for the transmitter panel.
+  //
   int y = 0;
   rx->panel = gtk_fixed_new();
   t_print("%s: RXid=%d width=%d height=%d %p\n", __FUNCTION__, rx->id, rx->width, rx->height, rx->panel);

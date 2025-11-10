@@ -141,7 +141,7 @@ void toolbar_show(int ypos) {
 
 void toolbar_destroy() {
   if (toolbar_grid) {
-    gtk_container_remove(GTK_CONTAINER(fixed), toolbar_grid);
+    gtk_widget_destroy(toolbar_grid);
     toolbar_grid = NULL;
 
     for (int i = 0; i < 3; i++) {
