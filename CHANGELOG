@@ -1,6 +1,21 @@
 LIST OF RECENT PIHPSDR CHANGES
 ==============================
 
+November 2025:
+--------------
+
+- store/restore local RX1 and TX audio settings
+  "with the mode". So once can automatically
+   switche between Headphone/Microphone and
+   virtual audio cables when switching from
+   USB to DIGU.
+
+- Reworked P1 start/restart procedure
+
+- fix the "locale" to "C", to avoid possible
+  non-printable or non-portable characters
+  in numbers
+
 October 2025:
 -------------
 
