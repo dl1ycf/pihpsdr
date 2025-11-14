@@ -365,10 +365,10 @@ static void *client_thread(void* arg) {
     memset(rx, 0, sizeof(RECEIVER));
     g_mutex_init(&rx->display_mutex);
     g_mutex_init(&rx->mutex);
-    g_mutex_init(&rx->local_audio_mutex);
+    g_mutex_init(&rx->audio_mutex);
     rx->id = i;
     rx->pixel_samples = NULL;
-    rx->local_audio_buffer = NULL;
+    rx->audio_buffer = NULL;
     rx->display_panadapter = 1;
     rx->display_waterfall = 1;
     rx->panadapter_high = -40;
@@ -386,7 +386,6 @@ static void *client_thread(void* arg) {
     rx->waterfall_percent = 25;
     rx->display_filled = 1;
     rx->display_gradient = 1;
-    rx->local_audio_buffer = NULL;
     rx->local_audio = 0;
     snprintf(rx->audio_name, sizeof(rx->audio_name), "NO AUDIO");
     rx->mute_when_not_active = 0;

@@ -182,42 +182,44 @@ typedef struct _receiver {
   int waterfall_percent;
   cairo_surface_t *panadapter_surface;
   GdkPixbuf *pixbuf;
-  int local_audio;
   int mute_when_not_active;
-  char audio_name[128];
 
+  //
+  // Everything related to "local" audio
+  //
+  int local_audio;
+  char audio_name[128];
 #if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA)
   // this is only possible for "cppcheck" runs
   // declare all data without conflicts
-  void *playstream;
-  int local_audio_buffer_inpt;
-  int local_audio_buffer_outpt;
-  int local_audio_buffer_offset;
-  void *local_audio_buffer;
-  snd_pcm_t *playback_handle;
-  snd_pcm_format_t local_audio_format;
+  void *audio_handle;
+  int audio_buffer_inpt;
+  int audio_buffer_outpt;
+  int audio_buffer_offset;
+  void *audio_buffer;
+  snd_pcm_format_t audio_format;
 #endif
 #if defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA)
-  PaStream *playstream;
-  volatile int local_audio_buffer_inpt;    // pointer in audio ring-buffer
-  volatile int local_audio_buffer_outpt;   // pointer in audio ring-buffer
-  float *local_audio_buffer;
+  PaStream *audio_handle;
+  volatile int audio_buffer_inpt;    // pointer in audio ring-buffer
+  volatile int audio_buffer_outpt;   // pointer in audio ring-buffer
+  float *audio_buffer;
 #endif
 #if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && defined(ALSA)
-  snd_pcm_t *playback_handle;
-  snd_pcm_format_t local_audio_format;
-  void *local_audio_buffer;        // different formats possible, so void*
-  int local_audio_buffer_offset;
+  snd_pcm_t *audio_handle;
+  snd_pcm_format_t audio_format;
+  void *audio_buffer;        // different formats possible, so void*
+  int audio_buffer_offset;
 #endif
 #if !defined(PORTAUDIO) && defined(PULSEAUDIO) && !defined(ALSA)
-  pa_simple *playstream;
-  float *local_audio_buffer;
-  int local_audio_buffer_offset;
+  pa_simple *audio_handle;
+  float *audio_buffer;
+  int audio_buffer_offset;
 #endif
   int cwaudio;   // detect RX/TX transitions in CW
   int cwcount;   // for sample insertion and deletion
 
-  GMutex local_audio_mutex;
+  GMutex audio_mutex;
 
   int squelch_enable;
   double squelch;
