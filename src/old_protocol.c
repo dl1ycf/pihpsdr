@@ -181,20 +181,25 @@ static int hl2_iob_present = 0;
   static sem_t rxring_sem;
 #endif
 //
-// probably not needed
+// TXIQ/audio data can be sent from two different threads, namely
+// from the RX thread (old_protocol_audio_samples(), when sending RX audio)
+// and from the TX thread (old_protocol_iq_samples(), when sending
+// TXIQ data and side tone). This is mutex protected to prevent
+// race conditions when updating TQIQ ring buffer pointers.
 //
-static pthread_mutex_t send_audio_mutex   = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t audio_mutex   = PTHREAD_MUTEX_INITIALIZER;
 
 //
 // These mutexes "protect" sending/receiving data via UDP or TCP.
-// These are necessary to synchronize things during protocol
-// restarts, and take care that in the TCP case (which is a byte
-// stream rather than a packet stream) packets are always
-// completely sent before another thread intervenes.
+// These are necessary to stop the background tasks from sending/
+// receiving data during protocol restarts, and take care that
+// in the OZY and TCP cases (where a "packet" can possibly sent
+// in several parts) the sender cannot be interrupted from the
+// start to the end of the packet sending.
 //
 //
-static pthread_mutex_t send_ozy_mutex   = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t recv_ozy_mutex   = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t send_mutex   = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t recv_mutex   = PTHREAD_MUTEX_INITIALIZER;
 
 //
 // Ring buffer for outgoing samples.
@@ -327,7 +332,7 @@ static gpointer old_protocol_txiq_thread(gpointer data) {
       clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
     }
 
-    if (pthread_mutex_trylock(&send_ozy_mutex) == 0) {
+    if (pthread_mutex_trylock(&send_mutex) == 0) {
       //
       // If we do not get a lock, this means a protocol restart is
       // attempted from "somewhere else", in this case do not
@@ -338,7 +343,7 @@ static gpointer old_protocol_txiq_thread(gpointer data) {
       ozy_send_buffer(ozy_buffer);
       memcpy(ozy_buffer + 8, &TXRINGBUF[txring_outptr + 504], 504);
       ozy_send_buffer(ozy_buffer);
-      pthread_mutex_unlock(&send_ozy_mutex);
+      pthread_mutex_unlock(&send_mutex);
     }
     MEMORY_BARRIER;
     txring_outptr = nptr;
@@ -354,9 +359,9 @@ void old_protocol_stop() {
   P1running = 0;
 
   if (device != DEVICE_OZY) {
-    pthread_mutex_lock(&send_ozy_mutex);
+    pthread_mutex_lock(&send_mutex);
     metis_start_stop(0);
-    pthread_mutex_unlock(&send_ozy_mutex);
+    pthread_mutex_unlock(&send_mutex);
   }
 }
 
@@ -866,9 +871,9 @@ static gpointer receive_thread(gpointer arg) {
     // This mutex blocks, if metis_read() is exectued from outside
     // this thread, e.g. when restarting the protocol
     //
-    if (pthread_mutex_trylock(&recv_ozy_mutex) == 0) {
+    if (pthread_mutex_trylock(&recv_mutex) == 0) {
       ret = P1running ? metis_read(buffer, 1032) : -1;
-      pthread_mutex_unlock(&recv_ozy_mutex);
+      pthread_mutex_unlock(&recv_mutex);
 
       if (ret >= 0) {
         queue_two_ozy_input_buffers(&buffer[8], &buffer[520]);
@@ -1578,11 +1583,11 @@ void old_protocol_audio_samples(short left_audio_sample, short right_audio_sampl
   ASSERT_SERVER();
 
   if (!radio_is_transmitting()) {
-    pthread_mutex_lock(&send_audio_mutex);
+    pthread_mutex_lock(&audio_mutex);
 
     if (txring_count < 0) {
       txring_count++;
-      pthread_mutex_unlock(&send_audio_mutex);
+      pthread_mutex_unlock(&audio_mutex);
       return;
     }
 
@@ -1643,7 +1648,7 @@ void old_protocol_audio_samples(short left_audio_sample, short right_audio_sampl
       }
     }
 
-    pthread_mutex_unlock(&send_audio_mutex);
+    pthread_mutex_unlock(&audio_mutex);
   }
 }
 
@@ -1651,11 +1656,11 @@ void old_protocol_iq_samples(int isample, int qsample, int side) {
   ASSERT_SERVER();
 
   if (radio_is_transmitting()) {
-    pthread_mutex_lock(&send_audio_mutex);
+    pthread_mutex_lock(&audio_mutex);
 
     if (txring_count < 0) {
       txring_count++;
-      pthread_mutex_unlock(&send_audio_mutex);
+      pthread_mutex_unlock(&audio_mutex);
       return;
     }
 
@@ -1733,7 +1738,7 @@ void old_protocol_iq_samples(int isample, int qsample, int side) {
       }
     }
 
-    pthread_mutex_unlock(&send_audio_mutex);
+    pthread_mutex_unlock(&audio_mutex);
   }
 }
 
@@ -2781,8 +2786,8 @@ void old_protocol_run() {
   //
   // Stop "other" METIS send/receive operations
   //
-  pthread_mutex_lock(&send_ozy_mutex);
-  pthread_mutex_lock(&recv_ozy_mutex);
+  pthread_mutex_lock(&send_mutex);
+  pthread_mutex_lock(&recv_mutex);
 
   //
   // Start sequence. This sequence includes
@@ -2808,14 +2813,17 @@ void old_protocol_run() {
     ozy_send_buffer(buffer);  // sends C1=0 packet
     ozy_send_buffer(buffer);  // sends C1=4 packet
     usleep(20000);
-    metis_start_stop(1);      // sends METIS start packet
     if (device == DEVICE_OZY) { break; }
+    //
+    // The next lines are never executed for OZY
+    //
+    metis_start_stop(1);      // sends METIS start packet
     if (metis_read(buffer, 1032)  ==  0) { break; }  // valid packet received
     usleep(20000);
   }
 
-  pthread_mutex_unlock(&send_ozy_mutex);
-  pthread_mutex_unlock(&recv_ozy_mutex);
+  pthread_mutex_unlock(&send_mutex);
+  pthread_mutex_unlock(&recv_mutex);
 
   P1running = 1;
 }
