@@ -584,9 +584,6 @@ int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
 static void *tx_audio_thread(gpointer arg) {
   int rc;
   
-  float sample;
-  int i;
-
   if ((rc = snd_pcm_start (tx_audio_handle)) < 0) {
     t_print("%s: cannot start audio interface for use (%s)\n", __FUNCTION__,
             snd_strerror (rc));
@@ -621,7 +618,9 @@ static void *tx_audio_thread(gpointer arg) {
       }
     } else {
       // process the mic input
-      for (i = 0; i < inp_buffer_size; i++) {
+      for (int i = 0; i < inp_buffer_size; i++) {
+        float sample;
+
         switch (tx_audio_format) {
         case SND_PCM_FORMAT_S16_LE:
           sample = (float)short_buffer[i] / 32767.0f;
@@ -667,7 +666,7 @@ static void *tx_audio_thread(gpointer arg) {
             // buffer space available, do the write
             tx_audio_buffer[tx_audio_buffer_inpt] = sample;
             // atomic update of tx_audio_buffer_outpt
-            tx_audio_buffer_outpt = newpt;
+            tx_audio_buffer_inpt = newpt;
           }
         }
       }
