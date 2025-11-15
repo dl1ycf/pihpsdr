@@ -424,7 +424,7 @@ static void chkbtn_cb(GtkWidget *widget, gpointer data) {
 
     case TX_LOCAL_AUDIO: {
       if (v) {
-        if (audio_open_input() == 0) {
+        if (audio_open_input(transmitter) == 0) {
           transmitter->local_audio = 1;
         } else {
           transmitter->local_audio = 0;
@@ -433,7 +433,7 @@ static void chkbtn_cb(GtkWidget *widget, gpointer data) {
       } else {
         if (transmitter->local_audio) {
           transmitter->local_audio = 0;
-          audio_close_input();
+          audio_close_input(transmitter);
         }
       }
       int txmode = vfo_get_tx_mode();
@@ -534,13 +534,13 @@ static void local_input_changed_cb(GtkWidget *widget, gpointer data) {
   int i = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
 
   if (transmitter->local_audio) {
-    audio_close_input();
+    audio_close_input(transmitter);
   }
 
   snprintf(transmitter->audio_name, sizeof(transmitter->audio_name), "%s", input_devices[i].name);
 
   if (transmitter->local_audio) {
-    if (audio_open_input() < 0) {
+    if (audio_open_input(transmitter) < 0) {
       transmitter->local_audio = 0;
     }
   }

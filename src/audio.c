@@ -66,19 +66,6 @@ static const int cw_mid_water  =  960;                     // target water mark 
 static const int cw_high_water = 1104;                     // high water mark for CW (23 msec)
 
 //
-// This data is to be integrated in the TRANSMITTER
-// data structure
-//
-static GMutex           tx_audio_mutex;
-static snd_pcm_t       *tx_audio_handle = NULL;
-static GThread         *tx_audio_thread_id = NULL;
-static int              tx_audio_running = 0;
-static float           *tx_audio_buffer = NULL;
-static int              tx_audio_buffer_inpt = 0;
-static int              tx_audio_buffer_outpt = 0;
-static snd_pcm_format_t tx_audio_format;
-
-//
 // TODO: include SND_PCM_FORMAT_IEC958_SUBFRAME_LE, such that ALSA
 //       can directly play on HDMI monitors. Implementation is not
 //       super-easy since this case must then also be considered in
@@ -118,38 +105,35 @@ int audio_open_output(RECEIVER *rx) {
   }
 
   rx->audio_format = SND_PCM_FORMAT_UNKNOWN;
+  g_mutex_lock(&rx->audio_mutex);
 
   for (int i = 0; i < FORMATS; i++) {
-    g_mutex_lock(&rx->audio_mutex);
-
     if ((err = snd_pcm_open (&rx->audio_handle, hw, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0) {
       t_print("%s: cannot open audio device %s (%s)\n", __FUNCTION__,
               hw,
               snd_strerror (err));
-      g_mutex_unlock(&rx->audio_mutex);
-      return err;
+      break;
     }
-
-    t_print("%s: trying format %s (%s)\n", __FUNCTION__, snd_pcm_format_name(formats[i]),
-            snd_pcm_format_description(formats[i]));
 
     if ((err = snd_pcm_set_params (rx->audio_handle, formats[i], SND_PCM_ACCESS_RW_INTERLEAVED, channels, rate,
                                    soft_resample, out_latency)) < 0) {
       t_print("%s: snd_pcm_set_params failed: %s\n", __FUNCTION__, snd_strerror(err));
-      g_mutex_unlock(&rx->audio_mutex);
-      audio_close_output(rx);
+      snd_pcm_close(rx->audio_handle);
       continue;
-    } else {
-      t_print("%s: using format %s (%s)\n", __FUNCTION__, snd_pcm_format_name(formats[i]),
-              snd_pcm_format_description(formats[i]));
-      rx->audio_format = formats[i];
-      break;
     }
+
+    t_print("%s: using format %s (%s)\n", __FUNCTION__, snd_pcm_format_name(formats[i]),
+            snd_pcm_format_description(formats[i]));
+    rx->audio_format = formats[i];
+    break;
   }
 
   if (rx->audio_format == SND_PCM_FORMAT_UNKNOWN) {
     t_print("%s: cannot find usable format\n", __FUNCTION__);
-    return err;
+    snd_pcm_close(rx->audio_handle);
+    rx->audio_handle = NULL;
+    g_mutex_unlock(&rx->audio_mutex);
+    return -1;
   }
 
   rx->audio_buffer_offset = 0;
@@ -168,9 +152,16 @@ int audio_open_output(RECEIVER *rx) {
     break;
 
   default:
-    t_print("%s: CATASTROPHIC ERROR: unknown sound format\n", __FUNCTION__);
+    t_print("%s: unknown sound format\n", __FUNCTION__);
     rx->audio_buffer = NULL;
     break;
+  }
+
+  if (rx->audio_buffer == NULL) {
+    snd_pcm_close(rx->audio_handle);
+    rx->audio_handle = NULL;
+    g_mutex_unlock(&rx->audio_mutex);
+    return -1;
   }
 
   rx->cwaudio = 0;
@@ -179,87 +170,83 @@ int audio_open_output(RECEIVER *rx) {
   return 0;
 }
 
-int audio_open_input() {
+int audio_open_input(TRANSMITTER *tx) {
   int err;
   unsigned int rate = 48000;
   unsigned int channels = 1;
   int soft_resample = 1;
-  char hw[64];
-  int i;
+  char hw[128];
 
-  if (!can_transmit) {
-    return -1;
+  t_print("%s: TX:%s\n", __FUNCTION__, tx->audio_name);
+
+  for (int i = 0; ; i++) {
+    if (i == 127 || tx->audio_name[i] == ' ') {
+      hw[i] = '\0';
+      break;
+    }
+    hw[i] = tx->audio_name[i];
   }
 
-  t_print("%s: TX:%s\n", __FUNCTION__, transmitter->audio_name);
-  i = 0;
+  tx->audio_format = SND_PCM_FORMAT_UNKNOWN;
 
-  while (i < 63 && transmitter->audio_name[i] != ' ') {
-    hw[i] = transmitter->audio_name[i];
-    i++;
-  }
+  g_mutex_lock(&tx->audio_mutex);
 
-  hw[i] = '\0';
-
-  for (i = 0; i < FORMATS; i++) {
-    g_mutex_lock(&tx_audio_mutex);
-
-    if ((err = snd_pcm_open (&tx_audio_handle, hw, SND_PCM_STREAM_CAPTURE, SND_PCM_ASYNC)) < 0) {
+  for (int i = 0; i < FORMATS; i++) {
+    if ((err = snd_pcm_open (&tx->audio_handle, hw, SND_PCM_STREAM_CAPTURE, SND_PCM_ASYNC)) < 0) {
       t_print("%s: cannot open audio device %s (%s)\n", __FUNCTION__,
               hw,
               snd_strerror (err));
-      tx_audio_handle = NULL;
-      g_mutex_unlock(&tx_audio_mutex);
-      return err;
-    }
-
-    t_print("%s: trying format %s (%s)\n", __FUNCTION__, snd_pcm_format_name(formats[i]),
-            snd_pcm_format_description(formats[i]));
-
-    if ((err = snd_pcm_set_params (tx_audio_handle, formats[i], SND_PCM_ACCESS_RW_INTERLEAVED, channels, rate, soft_resample,
-                                   inp_latency)) < 0) {
-      t_print("%s: snd_pcm_set_params failed: %s\n", __FUNCTION__, snd_strerror(err));
-      g_mutex_unlock(&tx_audio_mutex);
-      audio_close_input();
-      continue;
-    } else {
-      t_print("%s: using format %s (%s)\n", __FUNCTION__, snd_pcm_format_name(formats[i]),
-              snd_pcm_format_description(formats[i]));
-      tx_audio_format = formats[i];
       break;
     }
+
+    if ((err = snd_pcm_set_params (tx->audio_handle, formats[i], SND_PCM_ACCESS_RW_INTERLEAVED, channels, rate, soft_resample,
+                                   inp_latency)) < 0) {
+      t_print("%s: snd_pcm_set_params failed: %s\n", __FUNCTION__, snd_strerror(err));
+      snd_pcm_close(tx->audio_handle)
+      continue;
+    }
+
+    t_print("%s: using format %s (%s)\n", __FUNCTION__, snd_pcm_format_name(formats[i]),
+             snd_pcm_format_description(formats[i]));
+    tx->audio_format = formats[i];
+    break;
   }
 
-  if (i >= FORMATS) {
+  if (tx->audio_format == SND_PCM_FORMAT_UNKNOWN) {
     t_print("%s: cannot find usable format\n", __FUNCTION__);
-    g_mutex_unlock(&tx_audio_mutex);
-    audio_close_input();
-    return err;
+    snd_pcm_close(tx->audio_handle);
+    tx->audio_handle = NULL;
+    g_mutex_unlock(&tx->audio_mutex);
+    return -1;
   }
 
-  t_print("%s: format=%d\n", __FUNCTION__, tx_audio_format);
+  t_print("%s: format=%d\n", __FUNCTION__, tx->audio_format);
 
   t_print("%s: allocating ring buffer\n", __FUNCTION__);
-  tx_audio_buffer = (float *) g_new(float, MICRINGLEN);
-  tx_audio_buffer_outpt = tx_audio_buffer_inpt = 0;
+  tx->audio_buffer = (float *) g_new(float, MICRINGLEN);
+  tx->audio_buffer_outpt = tx->audio_buffer_inpt = 0;
 
-  if (tx_audio_buffer == NULL) {
-    g_mutex_unlock(&tx_audio_mutex);
-    audio_close_input();
+  if (tx->audio_buffer == NULL) {
+    snd_pcm_close(tx->audio_handle);
+    tx->audio_handle = NULL;
+    g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
 
   GError *error;
-  tx_audio_thread_id = g_thread_try_new("TxAudioIn", tx_audio_thread, NULL, &error);
+  tx->audio_thread_id = g_thread_try_new("TxAudioIn", tx_audio_thread, tx, &error);
 
-  if (!tx_audio_thread_id ) {
-    t_print("%s: g_thread_new failed on tx_audio_thread: %s\n", __FUNCTION__, error->message);
-    g_mutex_unlock(&tx_audio_mutex);
-    audio_close_input();
+  if (!tx->audio_thread_id ) {
+    t_print("%s: g_thread_new failed on TxAudioIn: %s\n", __FUNCTION__, error->message);
+    snd_pcm_close(tx->audio_handle);
+    tx->audio_handle = NULL;
+    g_free(tx->audio_buffer);
+    tx->audio_buffer = NULL;
+    g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
 
-  g_mutex_unlock(&tx_audio_mutex);
+  g_mutex_unlock(&tx->audio_mutex);
   return 0;
 }
 
@@ -280,26 +267,26 @@ void audio_close_output(RECEIVER *rx) {
   g_mutex_unlock(&rx->audio_mutex);
 }
 
-void audio_close_input() {
-  t_print("%s: TX:%s\n", __FUNCTION__, transmitter->audio_name);
-  tx_audio_running = FALSE;
-  g_mutex_lock(&tx_audio_mutex);
+void audio_close_input(TRANSMITTER *tx) {
+  t_print("%s: TX:%s\n", __FUNCTION__, tx->audio_name);
+  tx->audio_running = FALSE;
+  g_mutex_lock(&tx->audio_mutex);
 
-  if (tx_audio_thread_id != NULL) {
-    g_thread_join(tx_audio_thread_id);
-    tx_audio_thread_id = NULL;
+  if (tx->audio_thread_id != NULL) {
+    g_thread_join(tx->audio_thread_id);
+    tx->audio_thread_id = NULL;
   }
 
-  if (tx_audio_handle != NULL) {
-    snd_pcm_close (tx_audio_handle);
-    tx_audio_handle = NULL;
+  if (tx->audio_handle != NULL) {
+    snd_pcm_close (tx->audio_handle);
+    tx->audio_handle = NULL;
   }
 
-  if (tx_audio_buffer != NULL) {
-    g_free(tx_audio_buffer);
+  if (tx->audio_buffer != NULL) {
+    g_free(tx->audio_buffer);
   }
 
-  g_mutex_unlock(&tx_audio_mutex);
+  g_mutex_unlock(&tx->audio_mutex);
 }
 
 //
@@ -582,9 +569,10 @@ int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
 }
 
 static void *tx_audio_thread(gpointer arg) {
+  TRANSMITTER *tx = (TRANSMITTER *)arg;
   int rc;
   
-  if ((rc = snd_pcm_start (tx_audio_handle)) < 0) {
+  if ((rc = snd_pcm_start (tx->audio_handle)) < 0) {
     t_print("%s: cannot start audio interface for use (%s)\n", __FUNCTION__,
             snd_strerror (rc));
     return NULL;
@@ -604,11 +592,11 @@ static void *tx_audio_thread(gpointer arg) {
   const int32_t *long_buffer =  (int32_t *) buffer;
   const float *float_buffer =  (float *) buffer;
 
-  tx_audio_running = TRUE;
+  tx->audio_running = TRUE;
 
-  while (tx_audio_running) {
-    if ((rc = snd_pcm_readi (tx_audio_handle, buffer, inp_buffer_size)) != inp_buffer_size) {
-      if (tx_audio_running) {
+  while (tx->audio_running) {
+    if ((rc = snd_pcm_readi (tx->audio_handle, buffer, inp_buffer_size)) != inp_buffer_size) {
+      if (tx->audio_running) {
         if (rc < 0) {
           t_print("%s: read from audio interface failed (%s)\n", __FUNCTION__,
                   snd_strerror (rc));
@@ -621,7 +609,7 @@ static void *tx_audio_thread(gpointer arg) {
       for (int i = 0; i < inp_buffer_size; i++) {
         float sample;
 
-        switch (tx_audio_format) {
+        switch (tx->audio_format) {
         case SND_PCM_FORMAT_S16_LE:
           sample = (float)short_buffer[i] / 32767.0f;
           break;
@@ -655,18 +643,18 @@ static void *tx_audio_thread(gpointer arg) {
         // since audio_close_input() waits for this thread to
         // complete.
         //
-        if (tx_audio_buffer != NULL) {
-          // do not increase tx_audio_buffer_inpt *here* since it must
+        if (tx->audio_buffer != NULL) {
+          // do not increase tx->audio_buffer_inpt *here* since it must
           // assume an illegal value at any time
-          int newpt = tx_audio_buffer_inpt + 1;
+          int newpt = tx->audio_buffer_inpt + 1;
 
           if (newpt == MICRINGLEN) { newpt = 0; }
 
-          if (newpt != tx_audio_buffer_outpt) {
+          if (newpt != tx->audio_buffer_outpt) {
             // buffer space available, do the write
-            tx_audio_buffer[tx_audio_buffer_inpt] = sample;
-            // atomic update of tx_audio_buffer_outpt
-            tx_audio_buffer_inpt = newpt;
+            tx->audio_buffer[tx->audio_buffer_inpt] = sample;
+            // atomic update of tx->audio_buffer_outpt
+            tx->audio_buffer_inpt = newpt;
           }
         }
       }
@@ -682,24 +670,24 @@ static void *tx_audio_thread(gpointer arg) {
 // Utility function for retrieving mic samples
 // from ring buffer
 //
-float audio_get_next_mic_sample() {
+float audio_get_next_mic_sample(TRANSMITTER *tx) {
   float sample;
-  g_mutex_lock(&tx_audio_mutex);
+  g_mutex_lock(&tx->audio_mutex);
 
-  if ((tx_audio_buffer == NULL) || (tx_audio_buffer_inpt == tx_audio_buffer_outpt)) {
+  if ((tx->audio_buffer == NULL) || (tx->audio_buffer_inpt == tx->audio_buffer_outpt)) {
     // no buffer, or nothing in buffer: insert silence
     sample = 0.0;
   } else {
-    int newpt = tx_audio_buffer_outpt + 1;
+    int newpt = tx->audio_buffer_outpt + 1;
 
     if (newpt == MICRINGLEN) { newpt = 0; }
 
-    sample = tx_audio_buffer[tx_audio_buffer_outpt];
+    sample = tx->audio_buffer[tx->audio_buffer_outpt];
     // atomic update of read pointer
-    tx_audio_buffer_outpt = newpt;
+    tx->audio_buffer_outpt = newpt;
   }
 
-  g_mutex_unlock(&tx_audio_mutex);
+  g_mutex_unlock(&tx->audio_mutex);
   return sample;
 }
 
@@ -709,7 +697,6 @@ void audio_get_cards() {
   snd_ctl_card_info_alloca(&info);
   snd_pcm_info_alloca(&pcminfo);
   int card = -1;
-  g_mutex_init(&tx_audio_mutex);
   n_input_devices = 0;
   n_output_devices = 0;
   snd_ctl_card_info_alloca(&info);

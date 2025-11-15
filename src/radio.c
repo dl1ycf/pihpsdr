@@ -3711,7 +3711,7 @@ int radio_remote_start(void *data) {
     tx_restore_state(transmitter);
 
     if (transmitter->local_audio) {
-      if (audio_open_input() != 0) {
+      if (audio_open_input(transmitter) != 0) {
         t_print("audio_open_input failed\n");
         transmitter->local_audio = 0;
       }

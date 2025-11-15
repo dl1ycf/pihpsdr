@@ -1074,6 +1074,8 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->dexp_filter_low  =    1000;
   tx->dexp_filter_high =    2000;
   tx->local_audio = 0;
+  tx->audio_flag = 0;
+  g_mutex_init(&tx->audio_mutex);
   snprintf(tx->audio_name, sizeof(tx->audio_name), "%s", "NO AUDIO");
   tx->dialog_x = -1;
   tx->dialog_y = -1;
@@ -1285,7 +1287,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   }
 
   if (tx->local_audio) {
-    if (audio_open_input() < 0) {
+    if (audio_open_input(tx) < 0) {
       t_print("%s: audio_open_input failed\n", __FUNCTION__);
       tx->local_audio = 0;
     }
@@ -1615,7 +1617,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
   // the radio by those from the local audio input device.
   //
   if (tx->local_audio) {
-    mic_sample_double = audio_get_next_mic_sample();
+    mic_sample_double = audio_get_next_mic_sample(tx);
   }
 
   //

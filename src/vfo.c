@@ -736,12 +736,12 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
 
       if (transmitter->local_audio) {
         transmitter->local_audio = 0;
-        audio_close_input();
+        audio_close_input(transmitter);
       }
 
       if (mode_settings[m].tx_local_audio) {
         snprintf(transmitter->audio_name, sizeof(transmitter->audio_name), "%s", mode_settings[m].tx_audio_name);
-        if (audio_open_input() < 0) {
+        if (audio_open_input(transmitter) < 0) {
           transmitter->local_audio = 0;
           t_print("%s: Open audio input failed\n", __FUNCTION__);
         } else {
