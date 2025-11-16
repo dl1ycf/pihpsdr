@@ -101,7 +101,6 @@ static void vfo_save_bandstack() {
 }
 
 void modesettings_save_state() {
-  ASSERT_SERVER();
 
   for (int i = 0; i < MODES; i++) {
     SetPropI1("modeset.%d.filter", i,                 mode_settings[i].filter);
@@ -177,7 +176,6 @@ void modesettings_save_state() {
 }
 
 void modesettings_restore_state() {
-  ASSERT_SERVER();
 
   for (int i = 0; i < MODES; i++) {
     //

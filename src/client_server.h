@@ -958,7 +958,6 @@ extern void send_mox(int s, int state);
 extern void send_radio_data(int sock);
 extern void send_radiomenu(int s);
 extern void send_recall(int s, int index);
-extern void send_receiver_data(int sock, int rx);
 extern void send_receivers(int s, int receivers);
 extern void send_region(int s, int region);
 extern void send_restart(int s);

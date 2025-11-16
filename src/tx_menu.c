@@ -85,7 +85,6 @@ enum _tx_choices {
   TX_TUNE_USE_DRIVE,
   TX_SWR_PROTECTION,
   TX_USE_RX_FILTER,
-  TX_LOCAL_AUDIO,
   TX_FM_EMP,
   TX_SWRTUNE,
   TX_SWRTUNE_VOLUME
@@ -422,29 +421,6 @@ static void chkbtn_cb(GtkWidget *widget, gpointer data) {
       gtk_widget_set_sensitive (tx_spin_high, NOT(v));
       break;
 
-    case TX_LOCAL_AUDIO: {
-      if (v) {
-        if (audio_open_input(transmitter) == 0) {
-          transmitter->local_audio = 1;
-        } else {
-          transmitter->local_audio = 0;
-          gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (widget), FALSE);
-        }
-      } else {
-        if (transmitter->local_audio) {
-          transmitter->local_audio = 0;
-          audio_close_input(transmitter);
-        }
-      }
-      int txmode = vfo_get_tx_mode();
-      mode_settings[txmode].tx_local_audio = transmitter->local_audio;
-      snprintf(mode_settings[txmode].tx_audio_name, sizeof(mode_settings[txmode].tx_audio_name), "%s",
-               transmitter->audio_name);
-      copy_mode_settings(txmode);
-      }
-
-      break;
-
     case TX_FM_EMP:
       transmitter->pre_emphasize = !v;
 
@@ -533,13 +509,17 @@ static void ctcss_frequency_cb(GtkWidget *widget, gpointer data) {
 static void local_input_changed_cb(GtkWidget *widget, gpointer data) {
   int i = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
 
+  if (i < 0) { i = 0; }
+
   if (transmitter->local_audio) {
+    transmitter->local_audio = 0;
     audio_close_input(transmitter);
   }
 
-  snprintf(transmitter->audio_name, sizeof(transmitter->audio_name), "%s", input_devices[i].name);
+  if (i > 0) {
+    transmitter->local_audio = 1;
+    snprintf(transmitter->audio_name, sizeof(transmitter->audio_name), "%s", input_devices[i - 1].name);
 
-  if (transmitter->local_audio) {
     if (audio_open_input(transmitter) < 0) {
       transmitter->local_audio = 0;
     }
@@ -638,30 +618,23 @@ void tx_menu(GtkWidget *parent) {
   if (n_input_devices > 0) {
     row++;
     col = 0;
-    btn = gtk_check_button_new_with_label("Local Microphone");
-    gtk_widget_set_halign(btn, GTK_ALIGN_END);
-    gtk_widget_set_name(btn, "boldlabel");
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), transmitter->local_audio);
-    gtk_grid_attach(GTK_GRID(tx_grid), btn, col++, row, 1, 1);
-    g_signal_connect(btn, "toggled", G_CALLBACK(chkbtn_cb), GINT_TO_POINTER(TX_LOCAL_AUDIO));
+    label = gtk_label_new("TX Audio In");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_widget_set_name(label, "boldlabel");
+    gtk_grid_attach(GTK_GRID(tx_grid), label, col++, row, 1, 1);
     input = gtk_combo_box_text_new();
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(input), NULL, "From Radio");
 
     for (int i = 0; i < n_input_devices; i++) {
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(input), NULL, input_devices[i].description);
 
-      if (strcmp(transmitter->audio_name, input_devices[i].name) == 0) {
-        gtk_combo_box_set_active(GTK_COMBO_BOX(input), i);
+      if (transmitter->local_audio && strcmp(transmitter->audio_name, input_devices[i].name) == 0) {
+        gtk_combo_box_set_active(GTK_COMBO_BOX(input), i + 1);
       }
     }
 
-    // If the combo box shows no device, take the first one
-    // AND set the mic.name to that device name.
-    // This situation occurs if the local audio device in the props
-    // file is no longer present
-
-    if (gtk_combo_box_get_active(GTK_COMBO_BOX(input))  < 0) {
+    if (!transmitter->local_audio) {
       gtk_combo_box_set_active(GTK_COMBO_BOX(input), 0);
-      snprintf(transmitter->audio_name, sizeof(transmitter->audio_name), "%s", input_devices[0].name);
     }
 
     my_combo_attach(GTK_GRID(tx_grid), input, col, row, 4, 1);

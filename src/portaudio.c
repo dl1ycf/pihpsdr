@@ -515,6 +515,7 @@ void audio_close_input(TRANSMITTER *tx) {
 
   if (tx->audio_buffer != NULL) {
     g_free(tx->audio_buffer);
+    tx->audio_buffer = NULL;
   }
 
   g_mutex_unlock(&tx->audio_mutex);
