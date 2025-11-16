@@ -190,6 +190,8 @@ extern void       vfo_id_move_to(int id, long long hz, int round);
 extern void       vfo_update(void);
 extern void       vfo_save_state(void);
 extern void       vfo_restore_state(void);
+extern void       modesettings_save_state(void);
+extern void       modesettings_restore_state(void);
 extern void       vfo_id_band_changed(int id, int b);
 extern void       vfo_id_bandstack_changed(int id, int b);
 extern void       vfo_bandstack_changed(int b);

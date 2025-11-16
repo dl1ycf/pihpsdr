@@ -3523,7 +3523,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 
           client->buttonvec  = g2panel_default_buttons(client->andromeda_type);
           client->encodervec = g2panel_default_encoders(client->andromeda_type);
-          g2panelRestoreState(client->andromeda_type, client->buttonvec, client->encodervec);
+          g2panel_restore_state(client->andromeda_type, client->buttonvec, client->encodervec);
 
           //
           // This takes care the G2panel menu is shown in the main menu
@@ -5830,7 +5830,7 @@ void launch_tcp_rigctl () {
   rigctl_server_thread_id = g_thread_new( "rigctl server", rigctl_server, GINT_TO_POINTER(rigctl_tcp_port));
 }
 
-void rigctlRestoreState() {
+void rigctl_restore_state() {
   GetPropI0("rigctl_tcp_enable",                             rigctl_tcp_enable);
   GetPropI0("rigctl_tcp_andromeda",                          rigctl_tcp_andromeda);
   GetPropI0("rigctl_tcp_autoreporting",                      rigctl_tcp_autoreporting);
@@ -5858,7 +5858,7 @@ void rigctlRestoreState() {
   //
 }
 
-void rigctlSaveState() {
+void rigctl_save_state() {
   SetPropI0("rigctl_tcp_enable",                             rigctl_tcp_enable);
   SetPropI0("rigctl_tcp_andromeda",                          rigctl_tcp_andromeda);
   SetPropI0("rigctl_tcp_autoreporting",                      rigctl_tcp_autoreporting);
@@ -5883,7 +5883,7 @@ void rigctlSaveState() {
         (serial_client[id].andromeda_type == 4 || serial_client[id].andromeda_type == 5) &&
         serial_client[id].buttonvec != NULL &&
         serial_client[id].encodervec != NULL) {
-      g2panelSaveState(serial_client[id].andromeda_type,
+      g2panel_save_state(serial_client[id].andromeda_type,
                        serial_client[id].buttonvec,
                        serial_client[id].encodervec);
       return;
@@ -5895,7 +5895,7 @@ void rigctlSaveState() {
         (tcp_client[id].andromeda_type == 4 || tcp_client[id].andromeda_type == 5) &&
         tcp_client[id].buttonvec != NULL &&
         tcp_client[id].encodervec != NULL) {
-      g2panelSaveState(tcp_client[id].andromeda_type,
+      g2panel_save_state(tcp_client[id].andromeda_type,
                        tcp_client[id].buttonvec,
                        tcp_client[id].encodervec);
       return;

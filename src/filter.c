@@ -363,7 +363,7 @@ const int var2_default_high[MODES] = {
   DRM_VAR2_DEFAULT_HIGH
 };
 
-void filterSaveState() {
+void filter_save_state() {
   // save the Var1 and Var2 settings
   SetPropI0("filter.lsb.var1.low",            filterLSB[filterVar1].low);
   SetPropI0("filter.lsb.var1.high",           filterLSB[filterVar1].high);
@@ -403,7 +403,7 @@ void filterSaveState() {
   SetPropI0("filter.dsb.var2.high",           filterDSB[filterVar2].high);
 }
 
-void filterRestoreState() {
+void filter_restore_state() {
   GetPropI0("filter.lsb.var1.low",            filterLSB[filterVar1].low);
   GetPropI0("filter.lsb.var1.high",           filterLSB[filterVar1].high);
   GetPropI0("filter.lsb.var2.low",            filterLSB[filterVar2].low);

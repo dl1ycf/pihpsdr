@@ -123,8 +123,8 @@ extern BANDSTACK *bandstack_get_bandstack(int band);
 
 extern void radio_change_region(int region);
 
-extern void bandSaveState(void);
-extern void bandRestoreState(void);
+extern void band_save_state(void);
+extern void band_restore_state(void);
 
 char* getFrequencyInfo(long long frequency, int filter_low, int filter_high);
 int TransmitAllowed(void);

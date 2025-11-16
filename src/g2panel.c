@@ -336,7 +336,7 @@ void g2panel_execute_encoder(int type, const int *vec, int encoder, int val) {
 //
 // Save ANDROMEDA state to props data base
 //
-void g2panelSaveState(int andromeda_type, const int *buttonvec, const int *encodervec) {
+void g2panel_save_state(int andromeda_type, const int *buttonvec, const int *encodervec) {
   if (buttonvec != NULL) {
     for (int i = 0; i < 100; i++) {
       SetPropA2("andromeda[%d].button[%d].action", andromeda_type, i, buttonvec[i]);
@@ -353,7 +353,7 @@ void g2panelSaveState(int andromeda_type, const int *buttonvec, const int *encod
 //
 // Restore ANDROMEDA state from props database
 //
-void g2panelRestoreState(int andromeda_type, int *buttonvec, int *encodervec) {
+void g2panel_restore_state(int andromeda_type, int *buttonvec, int *encodervec) {
   if (buttonvec != NULL) {
     for (int i = 0; i < 100; i++) {
       GetPropA2("andromeda[%d].button[%d].action", andromeda_type, i, buttonvec[i]);

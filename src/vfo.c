@@ -100,7 +100,7 @@ static void vfo_save_bandstack() {
   }
 }
 
-static void modesettingsSaveState() {
+void modesettings_save_state() {
   ASSERT_SERVER();
 
   for (int i = 0; i < MODES; i++) {
@@ -176,7 +176,7 @@ static void modesettingsSaveState() {
   }
 }
 
-static void modesettingsRestoreState() {
+void modesettings_restore_state() {
   ASSERT_SERVER();
 
   for (int i = 0; i < MODES; i++) {
@@ -447,8 +447,6 @@ void vfo_save_state() {
     SetPropI1("vfo.%d.step", i,             vfo[i].step);
     SetPropI1("vfo.%d.rit_step", i,         vfo[i].rit_step);
   }
-
-  modesettingsSaveState();
 }
 
 void vfo_restore_state() {
@@ -508,8 +506,6 @@ void vfo_restore_state() {
       vfo[i].offset = 0;
     }
   }
-
-  modesettingsRestoreState();
 }
 
 static inline void vfo_id_adjust_band(int v, long long f) {

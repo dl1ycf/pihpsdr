@@ -394,7 +394,10 @@ static void *client_thread(void* arg) {
   }
 
   active_receiver = receiver[0];
+
   g_mutex_init(&transmitter->display_mutex);
+  transmitter->display_filled = 0;
+  transmitter->out_of_band_timer_id = 0;
   transmitter->display_panadapter = 1;
   transmitter->display_waterfall = 0;
   transmitter->panadapter_high = 0;
@@ -410,6 +413,10 @@ static void *client_thread(void* arg) {
   transmitter->dialog_x = -1;
   transmitter->dialog_y = -1;
   transmitter->dialog = NULL;
+  transmitter->local_audio = 0;
+  transmitter->audio_flag= 0;
+  g_mutex_init(&transmitter->audio_mutex);
+  snprintf(transmitter->audio_name, sizeof(transmitter->audio_name), "%s", "NO AUDIO");
 
   if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
     RECEIVER *rx = receiver[PS_RX_FEEDBACK] = g_new(RECEIVER, 1);

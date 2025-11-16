@@ -826,7 +826,7 @@ void gpio_set_defaults(int ctrlr) {
   }
 }
 
-void gpioRestoreState() {
+void gpio_restore_state() {
   //
   // This is ONLY called when the discovery screen initializes
   //
@@ -868,7 +868,7 @@ void gpioRestoreState() {
   GetPropI0("i2c_irq_line",                                       I2C_INTERRUPT);
 }
 
-void gpioSaveState() {
+void gpio_save_state() {
   //
   // This is ONLY called from the discovery "Controller" callback
   //
@@ -906,7 +906,7 @@ void gpioSaveState() {
   saveProperties("gpio.props");
 }
 
-void gpioRestoreActions() {
+void gpio_restore_actions() {
   //
   // This is called when restoring the radio state. It does not *set* controller
   // but simply checks whether the controller value in the radio props file
@@ -940,7 +940,7 @@ void gpioRestoreActions() {
   }
 }
 
-void gpioSaveActions() {
+void gpio_save_actions() {
   //
   // This is called when saving the radio state.
   //

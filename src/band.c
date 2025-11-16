@@ -429,7 +429,7 @@ void radio_change_region(int r) {
   }
 }
 
-void bandSaveState() {
+void band_save_state() {
   for (int b = 0; b < BANDS + XVTRS; b++) {
     //
     // Skip non-assigned transverter bands
@@ -483,7 +483,7 @@ void bandSaveState() {
   }
 }
 
-void bandRestoreState() {
+void band_restore_state() {
   for (int b = 0; b < BANDS + XVTRS; b++) {
     //
     // The No. 1 problem for new HermesLite users is "no RF output",

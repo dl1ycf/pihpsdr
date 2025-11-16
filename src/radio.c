@@ -3422,24 +3422,29 @@ static void radio_restore_state() {
     }
 
     GetPropI1("radio.adc[%d].alex_antenna", 2,               adc[2].antenna);  // for PS RX feedback
-    filterRestoreState();
-    bandRestoreState();
-    memRestoreState();
+    filter_restore_state();
+    band_restore_state();
+    mem_restore_state();
     vfo_restore_state();
   }
 
   //
+  // ModeSettings are needed on the client side as well,
+  // since we store mode-dependent audio settings there
+  //
+  modesettings_restore_state();
+  //
   // GPIO, rigctl and MIDI should be
   // read from the local file on the client side
-  ///
+  //
   toolbar_restore_state();
   sliders_restore_state();
 #ifdef GPIO
-  gpioRestoreActions();
+  gpio_restore_actions();
 #endif
-  rigctlRestoreState();
+  rigctl_restore_state();
 #ifdef MIDI
-  midiRestoreState();
+  midi_restore_state();
 #endif
   t_print("%s: radio state (except receiver/transmitter) restored.\n", __FUNCTION__);
 
@@ -3641,20 +3646,28 @@ void radio_save_state() {
     }
 
     SetPropI1("radio.adc[%d].alex_antenna", 2,               adc[2].antenna);  // for PS RX feedback
-    filterSaveState();
-    bandSaveState();
-    memSaveState();
+    filter_save_state();
+    band_save_state();
+    mem_save_state();
     vfo_save_state();
   }
-
+  //
+  // ModeSettings are needed on the client side as well,
+  // since we store mode-dependent audio settings there
+  //
+  modesettings_save_state();
+  //
+  // GPIO, rigctl and MIDI should be
+  // read from the local file on the client side
+  //
   toolbar_save_state();
   sliders_save_state();
 #ifdef GPIO
-  gpioSaveActions();
+  gpio_save_action();
 #endif
-  rigctlSaveState();
+  rigctl_save_state();
 #ifdef MIDI
-  midiSaveState();
+  midi_save_state();
 #endif
   saveProperties(property_path);
   g_mutex_unlock(&property_mutex);

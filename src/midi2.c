@@ -216,7 +216,7 @@ enum MIDIevent String2MidiEvent(const char *str) {
   return EVENT_NONE;
 }
 
-void midiSaveState() {
+void midi_save_state() {
   struct desc *cmd;
   int entry;
   int i;
@@ -270,7 +270,7 @@ void midiSaveState() {
   }
 }
 
-void midiRestoreState() {
+void midi_restore_state() {
   char str[128];
   int channel;
   int event;
