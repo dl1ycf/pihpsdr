@@ -629,6 +629,7 @@ void tx_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(tx_grid), label, col++, row, 1, 1);
   input = gtk_combo_box_text_new();
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(input), NULL, "From Radio");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(input), 0);
 
   for (int i = 0; i < n_input_devices; i++) {
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(input), NULL, input_devices[i].description);

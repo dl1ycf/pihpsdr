@@ -104,21 +104,28 @@ int audio_open_output(RECEIVER *rx) {
     hw[i] = rx->audio_name[i];
   }
 
-  rx->audio_format = SND_PCM_FORMAT_UNKNOWN;
   g_mutex_lock(&rx->audio_mutex);
+
+  rx->audio_format = SND_PCM_FORMAT_UNKNOWN;
+
+  //
+  // Upon unsuccessful return, these variables must be NULL
+  // such that audio_close_output() can safely be called
+  //
+  rx->audio_handle = NULL;
+  rx->audio_buffer = NULL;
 
   for (int i = 0; i < FORMATS; i++) {
     if ((err = snd_pcm_open (&rx->audio_handle, hw, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0) {
       t_print("%s: cannot open audio device %s (%s)\n", __FUNCTION__,
               hw,
               snd_strerror (err));
-      rx->audio_handle = NULL;
       break;
     }
 
     if ((err = snd_pcm_set_params (rx->audio_handle, formats[i], SND_PCM_ACCESS_RW_INTERLEAVED, channels, rate,
                                    soft_resample, out_latency)) < 0) {
-      t_print("%s: snd_pcm_set_params failed: %s\n", __FUNCTION__, snd_strerror(err));
+      t_print("%s: could not set params for %s\n", __FUNCTION__, snd_pcm_format_name(formats[i]));
       snd_pcm_close(rx->audio_handle);
       continue;
     }
@@ -130,10 +137,7 @@ int audio_open_output(RECEIVER *rx) {
   }
 
   if (rx->audio_format == SND_PCM_FORMAT_UNKNOWN) {
-    if (rx->audio_handle) {
-      t_print("%s: cannot find usable format\n", __FUNCTION__);
-      snd_pcm_close(rx->audio_handle);
-    }
+    t_print("%s: Device cannot be used\n", __FUNCTION__);
     rx->audio_handle = NULL;
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
@@ -192,6 +196,15 @@ int audio_open_input(TRANSMITTER *tx) {
 
   tx->audio_format = SND_PCM_FORMAT_UNKNOWN;
 
+  //
+  // It must be guaranteed that in case of failure, these three
+  // variables are NULL such that audio_close_input() can safely
+  // be called.
+  //
+  tx->audio_buffer = NULL;
+  tx->audio_thread_id = NULL;
+  tx->audio_handle = NULL;
+
   g_mutex_lock(&tx->audio_mutex);
 
   for (int i = 0; i < FORMATS; i++) {
@@ -204,7 +217,7 @@ int audio_open_input(TRANSMITTER *tx) {
 
     if ((err = snd_pcm_set_params (tx->audio_handle, formats[i], SND_PCM_ACCESS_RW_INTERLEAVED, channels, rate, soft_resample,
                                    inp_latency)) < 0) {
-      t_print("%s: snd_pcm_set_params failed: %s\n", __FUNCTION__, snd_strerror(err));
+      t_print("%s: could not set params for %s\n", __FUNCTION__, snd_pcm_format_name(formats[i]));
       snd_pcm_close(tx->audio_handle);
       continue;
     }
@@ -216,8 +229,7 @@ int audio_open_input(TRANSMITTER *tx) {
   }
 
   if (tx->audio_format == SND_PCM_FORMAT_UNKNOWN) {
-    t_print("%s: cannot find usable format\n", __FUNCTION__);
-    snd_pcm_close(tx->audio_handle);
+    t_print("%s: device cannot be used\n", __FUNCTION__);
     tx->audio_handle = NULL;
     g_mutex_unlock(&tx->audio_mutex);
     return -1;
@@ -574,7 +586,7 @@ int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
 static void *tx_audio_thread(gpointer arg) {
   TRANSMITTER *tx = (TRANSMITTER *)arg;
   int rc;
-  
+
   if ((rc = snd_pcm_start (tx->audio_handle)) < 0) {
     t_print("%s: cannot start audio interface for use (%s)\n", __FUNCTION__,
             snd_strerror (rc));
@@ -697,6 +709,7 @@ float audio_get_next_mic_sample(TRANSMITTER *tx) {
 void audio_get_cards() {
   snd_ctl_card_info_t *info;
   snd_pcm_info_t *pcminfo;
+  char text[256];
   snd_ctl_card_info_alloca(&info);
   snd_pcm_info_alloca(&pcminfo);
   int card = -1;
@@ -761,8 +774,12 @@ void audio_get_cards() {
 
     snd_ctl_close(handle);
   }
-
+  //
   // look for dmix and dsnoop
+  // We can get a very long list of names here, so only watch out
+  // for those starting with dmix: or dsnoop:
+  // Furthermore, truncate the description at the first newline
+  //
   void **hints, **n;
   char *name, *descr, *io;
 
@@ -780,40 +797,45 @@ void audio_get_cards() {
     if (strncmp("dmix:", name, 5) == 0) {
       if (n_output_devices < MAX_AUDIO_DEVICES) {
         output_devices[n_output_devices].name = g_strdup(name);
-        output_devices[n_output_devices].description = g_strdup(descr);
 
-        for (unsigned int i = 0; i < strlen(descr); i++) {
-          if (output_devices[n_output_devices].description[i] == '\n') {
-            output_devices[n_output_devices].description[i] = '\0';
+        snprintf(text, sizeof(text), "(MIX) %s", descr);
+        for (unsigned int i = 0; i < strlen(text); i++) {
+          if (text[i] == '\n') {
+            text[i]='\0';
             break;
           }
         }
 
+        output_devices[n_output_devices].description = g_strdup(text);
         output_devices[n_output_devices].index = 0; // not used
         n_output_devices++;
         t_print("%s: output_device: name=%s descr=%s\n", __FUNCTION__, name, descr);
       }
-
-#ifdef INCLUDE_SNOOP
-    } else if (strncmp("dsnoop:", name, 6) == 0) {
+    }
+#if 0
+    //
+    // (Temporarily) deactivated "dsnoop" devices. Opening them in MONO always
+    // fails on my RaspPi (channels == 1 not supported)
+    //
+    if (strncmp("dsnoop:", name, 6) == 0) {
       if (n_input_devices < MAX_AUDIO_DEVICES) {
         input_devices[n_input_devices].name = g_strdup(name);
 
-        for (i = 0; i < strlen(descr); i++) {
-          if (input_devices[n_input_devices].description[i] == '\n') {
-            input_devices[n_input_devices].description[i] = '\0';
+        snprintf(text, sizeof(text), "(SNOOP) %s", descr);
+        for (unsigned int i = 0; i < strlen(text); i++) {
+          if (text[i] == '\n') {
+            text[i]='\0';
             break;
           }
         }
 
+        input_devices[n_input_devices].description = g_strdup(text);
         input_devices[n_input_devices].index = 0; // not used
         n_input_devices++;
         t_print("%s: input_device: name=%s descr=%s\n", __FUNCTION__, name, descr);
       }
-
-#endif
     }
-
+#endif
     //
     //  For these three items, use free() instead of g_free(),
     //  since these have been allocated by ALSA via
