@@ -3663,7 +3663,7 @@ void radio_save_state() {
   toolbar_save_state();
   sliders_save_state();
 #ifdef GPIO
-  gpio_save_action();
+  gpio_save_actions();
 #endif
   rigctl_save_state();
 #ifdef MIDI

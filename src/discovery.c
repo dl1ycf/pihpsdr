@@ -185,7 +185,7 @@ static void gpio_changed_cb(GtkWidget *widget, gpointer data) {
   // controller.
   //
   gpio_set_defaults(controller);
-  gpioSaveState();
+  gpio_save_state();
 }
 #endif
 
@@ -581,7 +581,7 @@ static void discovery() {
   //
   discovery_state = DISCOVERY_RUNNING;
   optimize_for_touchscreen = 1;
-  protocolsRestoreState();
+  protocols_restore_state();
   selected_device = 0;
   devices = 0;
   loadProperties("ipaddr.props");
@@ -907,7 +907,7 @@ static void discovery() {
   gtk_grid_attach(GTK_GRID(grid), toggle_button, 3, row, 1, 1);
   row++;
 #ifdef GPIO
-  gpioRestoreState();
+  gpio_restore_state();
   GtkWidget *gpio = gtk_combo_box_text_new();
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "No Controller");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller1");

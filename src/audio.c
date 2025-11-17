@@ -112,6 +112,7 @@ int audio_open_output(RECEIVER *rx) {
       t_print("%s: cannot open audio device %s (%s)\n", __FUNCTION__,
               hw,
               snd_strerror (err));
+      rx->audio_handle = NULL;
       break;
     }
 
@@ -129,8 +130,10 @@ int audio_open_output(RECEIVER *rx) {
   }
 
   if (rx->audio_format == SND_PCM_FORMAT_UNKNOWN) {
-    t_print("%s: cannot find usable format\n", __FUNCTION__);
-    snd_pcm_close(rx->audio_handle);
+    if (rx->audio_handle) {
+      t_print("%s: cannot find usable format\n", __FUNCTION__);
+      snd_pcm_close(rx->audio_handle);
+    }
     rx->audio_handle = NULL;
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
@@ -202,7 +205,7 @@ int audio_open_input(TRANSMITTER *tx) {
     if ((err = snd_pcm_set_params (tx->audio_handle, formats[i], SND_PCM_ACCESS_RW_INTERLEAVED, channels, rate, soft_resample,
                                    inp_latency)) < 0) {
       t_print("%s: snd_pcm_set_params failed: %s\n", __FUNCTION__, snd_strerror(err));
-      snd_pcm_close(tx->audio_handle)
+      snd_pcm_close(tx->audio_handle);
       continue;
     }
 

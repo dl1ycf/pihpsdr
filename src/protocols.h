@@ -27,5 +27,5 @@ extern gboolean enable_stemlab;
 extern gboolean enable_usbozy;
 extern gboolean autostart;
 
-extern void protocolsRestoreState(void);
+extern void protocols_restore_state(void);
 extern void configure_protocols(GtkWidget *parent);

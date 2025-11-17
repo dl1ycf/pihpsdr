@@ -38,7 +38,6 @@
 #include "vfo.h"
 
 static GtkWidget *dialog = NULL;
-static GtkWidget *local_audio_b = NULL;
 static GtkWidget *output = NULL;
 static RECEIVER *myrx;
 static int myadc;
@@ -148,7 +147,10 @@ static void adc_filter_bypass_cb(GtkWidget *widget, gpointer data) {
 static void local_output_changed_cb(GtkWidget *widget, gpointer data) {
   int i = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
 
-  if (i < 0) { i = 0; }
+  if (i < 0) {
+    gtk_combo_box_set_active(GTK_COMBO_BOX(widget), 0);
+    i = 0;
+  }
 
   if (myrx->local_audio) {
     myrx->local_audio = 0;     // stop writing audio to OLD device
@@ -160,25 +162,25 @@ static void local_output_changed_cb(GtkWidget *widget, gpointer data) {
     snprintf(myrx->audio_name, sizeof(myrx->audio_name), "%s", output_devices[i-1].name);
     if (audio_open_output(myrx) < 0) {  // audio_open with NEW device...
       myrx->local_audio = 0;            // ... was not successful
-      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (local_audio_b), FALSE);
+      gtk_combo_box_set_active(GTK_COMBO_BOX(widget), 0);
     } else {
       myrx->local_audio = 1;  // NEW device successfully opened
     }
   }
 
   //
-  // Update ModeSettings data base if this is RX1
-  // If audio device could not be opened, disable audio also in modesettings database
-  // 
+  // Update ModeSettings data base if this is RX1:
+  // If local audio is turned off or audio_open_input() failed, do not
+  // overwrite the audio name
   //
   if (myid == 0) {
     int mode = vfo[myid].mode;
     mode_settings[mode].rx_local_audio = myrx->local_audio;
-    snprintf(mode_settings[mode].rx_audio_name, sizeof(mode_settings[mode].rx_audio_name), "%s", myrx->audio_name);
+    if (myrx->local_audio) {
+      snprintf(mode_settings[mode].rx_audio_name, sizeof(mode_settings[mode].rx_audio_name), "%s", myrx->audio_name);
+    }
     copy_mode_settings(mode);
   }
-
-  t_print("local_output_changed rx=%d local_audio=%d\n", myid, myrx->local_audio);
 }
 
 static void audio_channel_cb(GtkWidget *widget, gpointer data) {
@@ -205,18 +207,18 @@ void rx_menu(GtkWidget *parent) {
   GtkWidget *lbl;
   dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
-  char title[64];
+  char text[64];
   //
   // This guards against changing the active receivere while the menu is open
   //
   myrx = active_receiver;
   myadc = myrx->adc;
   myid = myrx->id;
-  snprintf(title, sizeof(title), "piHPSDR - Receive (RX%d VFO-%s)", myid + 1, myid == 0 ? "A" : "B");
+  snprintf(text, sizeof(text), "piHPSDR - Receive (RX%d VFO-%s)", myid + 1, myid == 0 ? "A" : "B");
   GtkWidget *headerbar = gtk_header_bar_new();
   gtk_window_set_titlebar(GTK_WINDOW(dialog), headerbar);
   gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(headerbar), TRUE);
-  gtk_header_bar_set_title(GTK_HEADER_BAR(headerbar), title);
+  gtk_header_bar_set_title(GTK_HEADER_BAR(headerbar), text);
   g_signal_connect (dialog, "delete_event", G_CALLBACK (close_cb), NULL);
   g_signal_connect (dialog, "destroy", G_CALLBACK (close_cb), NULL);
   GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
@@ -391,52 +393,51 @@ void rx_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), btn, 1, row, 3, 1);
   g_signal_connect(G_OBJECT(btn), "value_changed", G_CALLBACK(squelch_value_cb), NULL);
 
-  if (n_output_devices > 0) {
-    lbl = gtk_label_new("Local Audio Output");
-    gtk_widget_set_name(lbl, "boldlabel");
-    gtk_widget_set_halign(lbl, GTK_ALIGN_CENTER);
-    gtk_grid_attach(GTK_GRID(grid), lbl, 2, 1, 1, 1);
+  snprintf(text, sizeof(text), "RX%d Audio Out", myid+1);
+  lbl = gtk_label_new(text);
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_widget_set_halign(lbl, GTK_ALIGN_CENTER);
+  gtk_grid_attach(GTK_GRID(grid), lbl, 2, 1, 1, 1);
 
-    output = gtk_combo_box_text_new();
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(output), NULL, "No Local Audio");
-    gtk_combo_box_set_active(GTK_COMBO_BOX(output), 0);
+  output = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(output), NULL, "Only Audio to Radio");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(output), 0);
 
-    for (i = 0; i < n_output_devices; i++) {
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(output), NULL, output_devices[i].description);
+  for (i = 0; i < n_output_devices; i++) {
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(output), NULL, output_devices[i].description);
 
-      if (myrx->local_audio && strcmp(myrx->audio_name, output_devices[i].name) == 0) {
-        gtk_combo_box_set_active(GTK_COMBO_BOX(output), i + 1);
-      }
+    if (myrx->local_audio && strcmp(myrx->audio_name, output_devices[i].name) == 0) {
+      gtk_combo_box_set_active(GTK_COMBO_BOX(output), i + 1);
     }
-
-    if (!myrx->local_audio) {
-      gtk_combo_box_set_active(GTK_COMBO_BOX(output), 0);
-    }
-
-    my_combo_attach(GTK_GRID(grid), output, 2, 2, 1, 1);
-    g_signal_connect(output, "changed", G_CALLBACK(local_output_changed_cb), NULL);
-    GtkWidget *channel = gtk_combo_box_text_new();
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(channel), NULL, "Stereo");
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(channel), NULL, "Left");
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(channel), NULL, "Right");
-
-    switch (myrx->audio_channel) {
-    case STEREO:
-      gtk_combo_box_set_active(GTK_COMBO_BOX(channel), 0);
-      break;
-
-    case LEFT:
-      gtk_combo_box_set_active(GTK_COMBO_BOX(channel), 1);
-      break;
-
-    case RIGHT:
-      gtk_combo_box_set_active(GTK_COMBO_BOX(channel), 2);
-      break;
-    }
-
-    my_combo_attach(GTK_GRID(grid), channel, 2, 3, 1, 1);
-    g_signal_connect(channel, "changed", G_CALLBACK(audio_channel_cb), NULL);
   }
+
+  if (!myrx->local_audio) {
+    gtk_combo_box_set_active(GTK_COMBO_BOX(output), 0);
+  }
+
+  my_combo_attach(GTK_GRID(grid), output, 2, 2, 1, 1);
+  g_signal_connect(output, "changed", G_CALLBACK(local_output_changed_cb), NULL);
+  GtkWidget *channel = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(channel), NULL, "Stereo");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(channel), NULL, "Left");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(channel), NULL, "Right");
+
+  switch (myrx->audio_channel) {
+  case STEREO:
+    gtk_combo_box_set_active(GTK_COMBO_BOX(channel), 0);
+    break;
+
+  case LEFT:
+    gtk_combo_box_set_active(GTK_COMBO_BOX(channel), 1);
+    break;
+
+  case RIGHT:
+    gtk_combo_box_set_active(GTK_COMBO_BOX(channel), 2);
+    break;
+  }
+
+  my_combo_attach(GTK_GRID(grid), channel, 2, 3, 1, 1);
+  g_signal_connect(channel, "changed", G_CALLBACK(audio_channel_cb), NULL);
 
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;

@@ -509,7 +509,10 @@ static void ctcss_frequency_cb(GtkWidget *widget, gpointer data) {
 static void local_input_changed_cb(GtkWidget *widget, gpointer data) {
   int i = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
 
-  if (i < 0) { i = 0; }
+  if (i < 0) {
+    gtk_combo_box_set_active(GTK_COMBO_BOX(widget), 0);
+    i = 0;
+  }
 
   if (transmitter->local_audio) {
     transmitter->local_audio = 0;
@@ -521,14 +524,17 @@ static void local_input_changed_cb(GtkWidget *widget, gpointer data) {
     snprintf(transmitter->audio_name, sizeof(transmitter->audio_name), "%s", input_devices[i - 1].name);
 
     if (audio_open_input(transmitter) < 0) {
+      gtk_combo_box_set_active(GTK_COMBO_BOX(widget), 0);
       transmitter->local_audio = 0;
     }
   }
 
   int txmode = vfo_get_tx_mode();
   mode_settings[txmode].tx_local_audio = transmitter->local_audio;
-  snprintf(mode_settings[txmode].tx_audio_name, sizeof(mode_settings[txmode].tx_audio_name), "%s",
-           transmitter->audio_name);
+  if (transmitter->local_audio) {
+    snprintf(mode_settings[txmode].tx_audio_name, sizeof(mode_settings[txmode].tx_audio_name), "%s",
+             transmitter->audio_name);
+  }
   copy_mode_settings(txmode);
 
 }
@@ -615,31 +621,29 @@ void tx_menu(GtkWidget *parent) {
   gtk_container_add(GTK_CONTAINER(tx_container), tx_grid);
   row = 0;
 
-  if (n_input_devices > 0) {
-    row++;
-    col = 0;
-    label = gtk_label_new("TX Audio In");
-    gtk_widget_set_halign(label, GTK_ALIGN_END);
-    gtk_widget_set_name(label, "boldlabel");
-    gtk_grid_attach(GTK_GRID(tx_grid), label, col++, row, 1, 1);
-    input = gtk_combo_box_text_new();
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(input), NULL, "From Radio");
+  row++;
+  col = 0;
+  label = gtk_label_new("TX Audio In");
+  gtk_widget_set_halign(label, GTK_ALIGN_END);
+  gtk_widget_set_name(label, "boldlabel");
+  gtk_grid_attach(GTK_GRID(tx_grid), label, col++, row, 1, 1);
+  input = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(input), NULL, "From Radio");
 
-    for (int i = 0; i < n_input_devices; i++) {
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(input), NULL, input_devices[i].description);
+  for (int i = 0; i < n_input_devices; i++) {
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(input), NULL, input_devices[i].description);
 
-      if (transmitter->local_audio && strcmp(transmitter->audio_name, input_devices[i].name) == 0) {
-        gtk_combo_box_set_active(GTK_COMBO_BOX(input), i + 1);
-      }
+    if (transmitter->local_audio && strcmp(transmitter->audio_name, input_devices[i].name) == 0) {
+      gtk_combo_box_set_active(GTK_COMBO_BOX(input), i + 1);
     }
-
-    if (!transmitter->local_audio) {
-      gtk_combo_box_set_active(GTK_COMBO_BOX(input), 0);
-    }
-
-    my_combo_attach(GTK_GRID(tx_grid), input, col, row, 4, 1);
-    g_signal_connect(input, "changed", G_CALLBACK(local_input_changed_cb), NULL);
   }
+
+  if (!transmitter->local_audio) {
+    gtk_combo_box_set_active(GTK_COMBO_BOX(input), 0);
+  }
+
+  my_combo_attach(GTK_GRID(tx_grid), input, col, row, 4, 1);
+  g_signal_connect(input, "changed", G_CALLBACK(local_input_changed_cb), NULL);
 
   if (have_mic) {
     row++;
