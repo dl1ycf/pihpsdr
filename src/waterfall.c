@@ -46,11 +46,13 @@ waterfall_configure_event_cb (GtkWidget         *widget,
                               GdkEventConfigure *event,
                               gpointer           data) {
   RECEIVER *rx = (RECEIVER *)data;
+  g_mutex_lock(&rx->display_mutex);
   my_width = gtk_widget_get_allocated_width (widget);
   my_heigt = gtk_widget_get_allocated_height (widget);
   rx->pixbuf = gdk_pixbuf_new(GDK_COLORSPACE_RGB, FALSE, 8, my_width, my_heigt);
   unsigned char *pixels = gdk_pixbuf_get_pixels (rx->pixbuf);
   memset(pixels, 0, my_width * my_heigt * 3);
+  g_mutex_unlock(&rx->display_mutex);
   return TRUE;
 }
 
@@ -62,9 +64,13 @@ static gboolean
 waterfall_draw_cb (GtkWidget *widget,
                    cairo_t   *cr,
                    gpointer   data) {
-  const RECEIVER *rx = (RECEIVER *)data;
-  gdk_cairo_set_source_pixbuf (cr, rx->pixbuf, 0, 0);
-  cairo_paint (cr);
+  RECEIVER *rx = (RECEIVER *)data;
+  g_mutex_lock(&rx->display_mutex);
+  if (rx->pixbuf) {
+    gdk_cairo_set_source_pixbuf (cr, rx->pixbuf, 0, 0);
+    cairo_paint (cr);
+  }
+  g_mutex_unlock(&rx->display_mutex);
   return FALSE;
 }
 
@@ -290,10 +296,8 @@ void waterfall_init(RECEIVER *rx, int width, int height) {
   rx->waterfall = gtk_drawing_area_new ();
   gtk_widget_set_size_request (rx->waterfall, width, height);
   /* Signals used to handle the backing surface */
-  g_signal_connect (rx->waterfall, "draw",
-                    G_CALLBACK (waterfall_draw_cb), rx);
-  g_signal_connect (rx->waterfall, "configure-event",
-                    G_CALLBACK (waterfall_configure_event_cb), rx);
+  g_signal_connect (rx->waterfall, "draw", G_CALLBACK (waterfall_draw_cb), rx);
+  g_signal_connect (rx->waterfall, "configure-event", G_CALLBACK (waterfall_configure_event_cb), rx);
   /* Event signals */
   g_signal_connect (rx->waterfall, "motion-notify-event", G_CALLBACK (waterfall_motion_notify_event_cb), rx);
   g_signal_connect (rx->waterfall, "button-press-event", G_CALLBACK (waterfall_button_press_event_cb), rx);

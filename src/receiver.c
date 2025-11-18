@@ -1290,12 +1290,21 @@ void rx_update_width(RECEIVER *rx) {
   //
   rx->pixels = rx->width;
 
-  if (!radio_is_remote) {
-    if (rx->pixel_samples != NULL) {
-      g_free(rx->pixel_samples);
-    }
+  if (rx->pixbuf != NULL) {
+    GdkPixbuf *tmp = rx->pixbuf;
+    rx->pixbuf = NULL;
+    g_object_unref(tmp);
+    // A new pixbuf will be created upon the
+    // configure event for the panadapter
+  }
 
-    rx->pixel_samples = g_new(float, rx->pixels);
+  if (rx->pixel_samples != NULL) {
+    g_free(rx->pixel_samples);
+  }
+
+  rx->pixel_samples = g_new(float, rx->pixels);
+
+  if (!radio_is_remote) {
     rx_set_analyzer(rx);
   }
 }
