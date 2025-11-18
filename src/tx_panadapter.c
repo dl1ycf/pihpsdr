@@ -47,6 +47,7 @@ tx_panadapter_configure_event_cb (GtkWidget         *widget,
                                   GdkEventConfigure *event,
                                   gpointer           data) {
   TRANSMITTER *tx = (TRANSMITTER *)data;
+  g_mutex_lock(&tx->display_mutex);
   int mywidth = gtk_widget_get_allocated_width (tx->panadapter);
   int myheight = gtk_widget_get_allocated_height (tx->panadapter);
 
@@ -62,6 +63,7 @@ tx_panadapter_configure_event_cb (GtkWidget         *widget,
   cairo_set_source_rgba(cr, COLOUR_PAN_BACKGND);
   cairo_paint(cr);
   cairo_destroy(cr);
+  g_mutex_unlock(&tx->display_mutex);
   return TRUE;
 }
 
@@ -75,11 +77,14 @@ tx_panadapter_draw_cb (GtkWidget *widget,
                        gpointer   data) {
   TRANSMITTER *tx = (TRANSMITTER *)data;
 
+  g_mutex_unlock(&tx->display_mutex);
+
   if (tx->panadapter_surface) {
     cairo_set_source_surface (cr, tx->panadapter_surface, 0.0, 0.0);
     cairo_paint (cr);
   }
 
+  g_mutex_unlock(&tx->display_mutex);
   return FALSE;
 }
 

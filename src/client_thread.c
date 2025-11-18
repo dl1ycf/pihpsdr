@@ -1135,11 +1135,12 @@ static void *client_thread(void* arg) {
         tx->swr = from_double(spectrum_data.swr);
         int width = from_16(spectrum_data.width);
 
-        if (tx->pixel_samples == NULL) {
-          tx->pixel_samples = g_new(float, (int) tx->width);
-        }
-
         if (width == tx->width) {
+
+          if (tx->pixel_samples == NULL) {
+            tx->pixel_samples = g_new(float, (int) tx->width);
+          }
+
           g_mutex_lock(&tx->display_mutex);
 
           for (int i = 0; i < tx->width; i++) {
