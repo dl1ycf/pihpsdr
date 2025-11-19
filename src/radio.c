@@ -498,6 +498,14 @@ gboolean radio_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
     vfo_num_pad(-6, active_receiver->id);
     break;
 
+  case GDK_KEY_m:
+  case GDK_KEY_M:
+    // start the main menu
+    if (main_menu == NULL) {
+      new_menu();
+    }
+    break;
+
   default:
     // not intercepted, so handle downstream
     ret = FALSE;
