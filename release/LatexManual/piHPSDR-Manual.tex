@@ -7228,10 +7228,7 @@ In this section, we will cover four different scenarios, namely
 \item{\pH and digi mode program running on the same LINUX computer
 (including RaspPi) using ALSA.}
 \item{\pH and digi mode program running on the same LINUX computer
-(including RaspPi) using PulseAudio or PipeWire. {\color{red} In the most recent Linux distributions,
- PulseAudio has been abandoned and is replaced by
-PipeWire. From the user's perspective the difference is marginal.
-The manual covers both cases separately but they are essentially the same.}}
+(including RaspPi) using PipeWire.}
 \item{\pH and digi mode program running on the same MacOS computer.}
 \end{itemize}
 
@@ -7288,8 +7285,8 @@ flows through the RXcable upon RX and through the TXcable while transmitting. Ha
 it is clear that
 
 \begin{itemize}
-\item{In the \pH \bltt{RX} menu, chose the output device of RXcable for local audio output.}
-\item{In the \pH \bltt{TX} menu, chose the input device of TXcable for local microphone input.}
+\item{In the \pH \bltt{RX} menu, chose the output device of RXcable for audio output.}
+\item{In the \pH \bltt{TX} menu, chose the input device of TXcable for audio input.}
 \item{In the audio menu of the digi mode program, choose the input device of RXcable for audio input.}
 \item{In the audio menu of the digi mode program, choose the output device of TXcable for output output.}
 \end{itemize}
@@ -7298,28 +7295,32 @@ With this, the only question remaining is, how to create virtual audio cables, a
 This is not only different between Linux and MacOS, but also is different on Linux depending on
 whether the ALSA compile time option (see Appendix \ref{sec:compiletime}) was activated during
 compilation of \pH. If compiling from the sources you get the PulseAudio module if you
-do not change the Makefile (see Appendix \ref{sec:compiletime}).
+do not change the Makefile (see Appendix \ref{sec:compiletime}). Note that since some time,
+PulseAudio has been replaced by PipeWire in all relevant LINUX distributions. This does not matter
+to \pH since it makes little difference to the application program. The (user) commands for
+listing available devices, or for creating virtual audio cables, are slightly different between
+PulseAudio and PipeWire. This manual covers the PipeWire case.
 
 
 \subsection[ALSA: virtual audio cables]{Virtual audio cables in ALSA}
 Using the ALSA sound library,
 the command for creating the two virtual cables (put everything in one line) is
 
-\texttt{sudo modprobe snd-aloop index=5,6 id=RXcable,TXcable\\
+\grtt{sudo modprobe snd-aloop index=5,6 id=RXcable,TXcable\\
 enable=1,1 pcm\_substreams=2,2}
 
 For the convenience of the reader a shell script \texttt{LINUX/alsa.vac.sh} is
 provided which contains the command given above.
 The two indices chosen (5, 6) should leave enough head-room for sound devices
-already present. On a ,,naked'' Pi4, indices 0 and 1 refer to the HDMI
+already present. On a ,,naked'' RaspberryPi, indices 0 and 1 refer to the HDMI
 and headphone audio output devices, but more indices may already be assigned
 if you have plugged in additional sound cards (use two larger numbers in
 this case). You can verify the existence of
 the virtual audio cables using the command
 
-\texttt{aplay -l}
+\grtt{aplay -l}
 
-and part of the output, as obtained on my Pi4, is printed here:
+and part of the output, as obtained on my RaspberryPi, is printed here:
 
 \begin{small}
 \begin{verbatim}
@@ -7343,8 +7344,8 @@ card 6: TXcable [Loopback], device 1: Loopback PCM [Loopback PCM]
 \end{small}
 Remember that the device with index 5 is our RXcable and index 6 belongs to TXcable since
 not all programs (including \pH) report the names (RXcable, TXcable) assigned. It is
-important to realise that each ,,cable'' offers two devices: the first one (0) is
-the input device and the second one (1) is the output device.
+important to realise that each ,,cable'' offers two sub-devices: the first one (\#0) is
+the input device and the second one (\#1) is the output device.
 Note that
 the two devices created by ,,modprobe'' only exist until the next shut-down of the computer and
 you have to re-create them each time after booting. There are ways to make this permanent (search
@@ -7369,8 +7370,8 @@ We begin with the \pH settings in the \bltt{RX} (Fig. \ref{fig:rx_settings_alsa_
 \label{fig:tx_settings_alsa_audio}
 \end{figure}
 
-Is clearly seen that the output device of RXcable (5,1) is used for local RX audio, and the input
-device of TXcable (6,0) is used for local microphone input. The corresponding WSJTX settings audio
+Is clearly seen that the output subdevice of RXcable (5,1) is used RX audio output, and the input
+subdevice of TXcable (6,0) is used for TX audio input. The corresponding WSJTX settings audio
 tab looks similar (Fig. \ref{fig:wsjtx_settings_alsa_audio}, only the upper part of the
 window is shown):
 
@@ -7401,15 +7402,12 @@ the PTT method (TRX transition controlled by CAT commands). Checking \rett{Data/
 takes care WSJTX switches \pH to DIGU mode, and using \rett{Fake It} for the Split
 Operation method is just my personal preference.
 
-\subsection[PulseAudio: NullSink modules]{PulseAudio: Null-Sink modules as virtual audio cables}
+\subsection[PipeWire: NullSink modules]{PulseAudio: Null-Sink modules as virtual audio cables}
 
-\textbf{Important:}In nearly all latest LINUX releases, PulseAudio has been replaced by
-PipeWire, the difference is covered in the following section!
-
-There are no explicit loop-back devices with PulseAudio since they are not needed.
-For \textit{every} PulseAudio output device, there is a corresponding ,,Monitor'' device
+There are no explicit loop-back devices with PipeWire since they are not needed.
+For \textit{every} PipeWire output device, there is a corresponding ,,Monitor'' device
 which can be used for sound input, and where the data sent to the primary (output) device
-can be red. This means, you can send the RX audio to the headphone device as you would do
+can be read. This means, you can send the RX audio to the headphone device as you would do
 for normal SSB operation, and can then use the Monitor of the headphone device as audio
 input in WSJTX. We describe a different setup where we create two dummy
  ("null-sink") output devices. It should be clear how to change this procedure if
@@ -7418,77 +7416,71 @@ input in WSJTX. We describe a different setup where we create two dummy
  RXcable and TXcable just to demonstrate how it works.
  This is done by the two commands (do not enter the line breaks)
 
+\newpage
+{\color{magenta}
 \begin{verbatim}
-pacmd load-module module-null-sink sink_name=RXcable rate=48000
+pactl load-module module-null-sink sink_name=RXcable rate=48000
 sink_properties="device.description=RXcable"
 
-pacmd load-module module-null-sink sink_name=TXcable rate=48000
+pactl load-module module-null-sink sink_name=TXcable rate=48000
 sink_properties="device.description=TXcable"
 \end{verbatim}
+}
 
 One can likewise execute the script
-\texttt{LINUX/pulse.vac.sh} in which the two commands above are contained.
+\texttt{LINUX/pipewire.vac.sh} in which the two commands above are contained.
 
 To control whether the output devices have been created correctly, we use the command
-\texttt{pacmd list-sinks}, which produces
+\grtt{pactl list sinks}, which produces
 a very long output from which only the relevant parts are reported here:
 
 \begin{small}
 \begin{verbatim}
+...
+Sink #104
+	State: SUSPENDED
+	Name: RXcable
+	Description: RXcable Audio/Sink sink
+	Driver: PipeWire
+	Sample Specification: float32le 2ch 48000Hz
+...	
 
-...
-    index: 2
-	name: <RXcable>
-	driver: <module-null-sink.c>
-	flags: DECIBEL_VOLUME LATENCY DYNAMIC_LATENCY
-	state: IDLE
-...
-    index: 3
-	name: <TXcable>
-	driver: <module-null-sink.c>
-	flags: DECIBEL_VOLUME LATENCY DYNAMIC_LATENCY
-	state: IDLE
+Sink #111
+	State: SUSPENDED
+	Name: TXcable
+	Description: TXcable Audio/Sink sink
+	Driver: PipeWire
+	Sample Specification: float32le 2ch 48000Hz
 ...
 \end{verbatim}
 \end{small}
 
-Note the index numbers which are 2 for RXcable and 3 for TXcable, these index numbers my
-be different on your machine. The index number of TXcable (here: 3) is needed in the
-case of FLdigi and qSSTV (see note at the end of this section).
-The state may also be different from IDLE depending on whether
-you (already) make use of that device.
-
 Likewise, check the availability of the input devices using
-the command \texttt{pacmd list-sources}, from the output we quote
+the command \grtt{pactl list sources}, from the output we quote
 
 \begin{small}
 \begin{verbatim}
-
 ...
-    index: 2
-	name: <RXcable.monitor>
-	driver: <module-null-sink.c>
-	flags: DECIBEL_VOLUME LATENCY DYNAMIC_LATENCY
-	state: IDLE
+Source #104
+	State: SUSPENDED
+	Name: RXcable.monitor
+	Description: Monitor of RXcable Audio/Sink sink
+	Driver: PipeWire
+	Sample Specification: float32le 2ch 48000Hz
 ...
-    index: 3
-	name: <TXcable.monitor>
-	driver: <module-null-sink.c>
-	flags: DECIBEL_VOLUME LATENCY DYNAMIC_LATENCY
-	state: IDLE
+Source #111
+	State: SUSPENDED
+	Name: TXcable.monitor
+	Description: Monitor of TXcable Audio/Sink sink
+	Driver: PipeWire
+	Sample Specification: float32le 2ch 48000Hz
 ...
 \end{verbatim}
 \end{small}
 
-Again, note the index numbers, here they are 2 for the Monitor of RXcable and 3 for the Monitor
-of TXcable. The index number of RXcable.monitor (here: 2) is needed in the
-case of FLdigi and qSSTV (see note at the end of this section).
-The state may also be different from IDLE depending on whether
-you (already) make use of that device.
-
-Note that these devices only exist until the computer is shut down,
+These devices only exist until the computer is shut down,
 which means that the commands given above have to be repeated after rebooting
-the machine (or restarting PulseAudio). They can be made permanent (you will find
+the machine. They can be made permanent (you will find
 instructions in the internet), but my recommendation is to create a shell script that
 creates these devices and have this script automatically executed each time
 you start the computer.
@@ -7531,79 +7523,32 @@ the same as in the ALSA case.
 \begin{center}
 \textbf{\color{red} -------- Note on FLdigi and qSSTV --------}
 \end{center}
-Some popular programs, including FLdigi and qSSTV, can use PulseAudio but have
-not user interface to choose the PulseAudio device. This means, they will only
-use the default PulseAudio input and output device. So to use FLdigi and/or
+Some popular programs, including FLdigi and qSSTV, can use PipeWire but have
+no user interface to choose the PipeWire input and output devices.
+This means, they will only
+use the default PipeWire input and output device. So to use FLdigi and/or
 qSSTV, you have to make TXcable the default output device and the  monitor of
-RXcable the default input device. This means FLdigi/qSSTV will always read
+RXcable the default input device, so FLdigi/qSSTV will always read
 their audio input from the monitor of RXcable and put the audio they produce
 to TXcable. To achieve this, simply use the two commands
 
 \vspace{0.1cm}
-\grtt{pacmd set-default-sink <index of TXcable>}
+\grtt{pactl set-default-sink TXcable}
 
 \vspace{0.1cm}
-\grtt{pacmd set-default-source <index of RXcable.monitor>}
+\grtt{pactl set-default-source RXcable.monitor}
 
 \vspace{0.1cm}
+You can check which audio devices are used by default by PipeWire with the commands
 
-where the indices (small integer numbers) are those mentioned above, and are
-take from the output of the \texttt{pacmd list-sinks} and the \texttt{pacmd list-sources}
-commands.
+\vspace{0.1cm}
+\grtt{pactl get-default-sink}
+
+\vspace{0.1cm}
+\grtt{pactl get-default-source}
 }
 }
 \end{center}
-
-\subsection[PipeWire: NullSink modules]{PipeWire: Null-Sink modules as virtual audio cables}
-The PipeWire case is very similar to the PulseAudio case, so we concentrate
-on the differences only. Creating the null-sink modules (,,cables'') is
-done in the same way as described in the previous chapter, but using
- \texttt{pactl} command instead of \texttt{pacmd}.
-
-\begin{verbatim}
-pactl load-module module-null-sink sink_name=RXcable rate=48000
-sink_properties="device.description=RXcable"
-
-pactl load-module module-null-sink sink_name=TXcable rate=48000
-sink_properties="device.description=TXcable"
-
-\end{verbatim}
-
-A shell script \texttt{LINUX/pipewire.sh} is provided that contains these two commands.
-
-To check the available input (sources) and output (sinks) device, the command
-now reads \texttt{pactl list sources} or \texttt{pactl list sinks}. The numbering
-of the sinks and sources is now somewhat arbitrary, for example, when listing the
-sinks I get
-
-\begin{verbatim}
-Sink #65
-	State: SUSPENDED
-	Name: alsa_output.platform-107c706400.hdmi.hdmi-stereo
-	Description: Built-in Audio Digital Stereo (HDMI)
-	Driver: PipeWire
-
-...
-
-Sink #76
-	State: SUSPENDED
-	Name: RXcable
-	Description: RXcable
-...
-	Properties:
-		node.name = "RXcable"
-		device.description = "RXcable"
-		audio.rate = "48000"
-\end{verbatim}
-The configuration (see Figs. \ref{fig:rx_settings_pa_audio}--\ref{fig:wstx_settings_pa_audio}) is then the same
-as with PulseAudio. For {\color{red} \textbf{FLdigi}}, one has to specify a default PipeWire input and output device, which is
-then used by FLdigi (there is no device chooser in the GUI for PulseAudio). The commands to make TXcable the default output, and RXcable the default
-input device are, in the PipeWire case
-
-\begin{verbatim}
-pactl set-default-sink TXcable
-pactl set-default-source RXcable
-\end{verbatim}
 
 \subsection[MacOS: LoopBack]{Using the ,,loopback'' program with MacOS}
 The standard audio option for MacOS is PORTAUDIO which has no built-in virtual
