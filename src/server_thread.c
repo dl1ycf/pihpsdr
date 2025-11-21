@@ -809,7 +809,7 @@ static void *listen_thread(void *arg) {
   t_print("%s: listening on port %d\n", __FUNCTION__, listen_port);
 
   if (server_stops_protocol) {
-    g_idle_add(radio_remote_protocol_stop, NULL);
+    g_idle_add(radio_server_protocol_stop, NULL);
   }
 
   while (server_running) {
@@ -907,7 +907,7 @@ static void *listen_thread(void *arg) {
       // If the protocol is not running, start it!
       // A non-running protocol results when a client disconnects.
       //
-      g_idle_add(radio_remote_protocol_run, NULL);
+      g_idle_add(radio_server_protocol_run, NULL);
       // Setting this has to be post-poned until HERE, since now
       // the RX thread starts to send audio data. If we were TXing
       // when the client successfully connects, go RX.
@@ -963,7 +963,7 @@ static void *listen_thread(void *arg) {
       }
 
       if (server_stops_protocol) {
-        g_idle_add(radio_remote_protocol_stop, NULL);
+        g_idle_add(radio_server_protocol_stop, NULL);
       }
     }
 
@@ -978,7 +978,7 @@ static void *listen_thread(void *arg) {
   // restart it.
   //
   t_print("Terminating %s.\n", __FUNCTION__);
-  g_idle_add(radio_remote_protocol_run, NULL);
+  g_idle_add(radio_server_protocol_run, NULL);
   return NULL;
 }
 

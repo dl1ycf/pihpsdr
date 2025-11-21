@@ -1165,6 +1165,7 @@ that setting, the behaviour may be unexpected or even undetermined.
 There is one place from which \textit{all} \pH menus are at hand,
 and this is the "Main Menu". It can be opened by clicking into the \rett{Menu} button at the
 top right corner of the \pH window, the outcome is shown in Fig. \ref{fig:MainMenu}.
+It is also possible to open the main menu just by hitting 'm' or 'M' on the keyboard.
 In the Main menu, there are some commands available here that do not directly affect the radio operation,
 so these commands are found in the top and bottom line of the Main Menu. We first
 mention the \rett{Restart} button in the middle of the top line. This restarts the
@@ -1744,7 +1745,7 @@ If the \rett{Waterfall Automatic:} box is checked
 
 \rett{Waterfall Automatic:} If this box is checked, the \rett{Waterfall High} and
 \rett{Waterfall Low} parameters are not used. Instead,
-the waterfall high/low values are determined automatically in each update of 
+the waterfall high/low values are determined automatically in each update of
 the waterfall, and these min/max values
 are then used instead of the waterfall High/Low control values to determine which
 colour belongs to which signal strength.
@@ -2187,9 +2188,9 @@ receiver settings.
 
 \begin{figure}[ht!]
 \center
-\includegraphics[scale=0.45]{RXMenu.png}
+\includegraphics[scale=0.45]{RXmenu.png}
 \caption{The \bltt{RX} menu.}
-\label{fig:RXMenu}
+\label{fig:RXmenu}
 \end{figure}
 
 Invoking the \bltt{RX} menu through the main menu always implies that the settings
@@ -2198,7 +2199,7 @@ by a secondary click (using the right mouse button) into the receiver panel. Thi
 if \pH is running two receivers, you can open the \bltt{RX} menu for both receivers
 (the active receiver as well as the other one), depending on in which panel you have
 right-clicked. Note secondary clicks are usually not possible with a touch screen.
-The menu is shown in Fig. \ref{fig:RXMenu}.
+The menu is shown in Fig. \ref{fig:RXmenu}.
 
 \rett{Local Audio Output:} If checked, the audio from this radio is sent to a local
 sound card (or virtual audio cable). The sound card itself is selected in the
@@ -2249,7 +2250,7 @@ or the RadioBerry, or all radios connected through the SoapySDR
 library. For the HermesLite-II, there also is no such function, but these bits
 are hi-jacked for some custom functions, so they appear here in the menu.
 
-\rett{Preamp}. This checkbox is not shown in Fig. \ref{fig:RXMenu}, it only occurs
+\rett{Preamp}. This checkbox is not shown in Fig. \ref{fig:RXmenu}, it only occurs
 for some legacy HPSDR boards which had a switch-able RX preamp.
 
 \rett{Mute when not active}. If checked, local audio (e.g. to a sound card)
@@ -2549,7 +2550,7 @@ the RX ,,BFO frequency''.
 \section{The \texttt{TX} Menu}
 
 The \bltt{TX} menu can be opened from the main menu, or just by a secondary mouse click
-into the TX pan-adapter (while transmitting). The menu is shown in Fig. \ref{fig:TXMenu}.
+into the TX pan-adapter (while transmitting). The menu is shown in Fig. \ref{fig:TXmenu}.
 This menu has five sub-menus, called the \rett{TX Settings} for general transmitter settings,
 the \rett{CFC settings} for controlling the continuous frequency compressor (CFC),  the
 \rett{DExp Settings} for controlling the downward expander (DEXP),  the \rett{Peak Lables}
@@ -2567,9 +2568,9 @@ time.
 \label{sec:txmenu}
 \begin{figure}[ht!]
 \center
-\includegraphics[scale=0.45]{TXMenu.png}
+\includegraphics[scale=0.45]{TXmenu.png}
 \caption{The \bltt{TX} menu with the TX settings.}
-\label{fig:TXMenu}
+\label{fig:TXmenu}
 \end{figure}
 
 \rett{Local Microphone}. If this box is checked, the TX audio samples come from a sound card
@@ -5840,48 +5841,52 @@ end of the active receiver.}
 
 \section{Other keyboard shortcuts}
 
-\rett{space bar} Hitting the space bar will execute the \bltt{MOX} command, that is, a
+\begin{itemize}
+
+\item[\rett{space}]{ Hitting the space bar will execute the \bltt{MOX} command, that is, a
 transition from RX to TX or from TX to RX. Use this as the last resort for TRX switching
-if your microphone does not have PTT.
+if your microphone does not have PTT.}
 
-\rett{u} Hitting a lower-caps letter ,,u'' moves the VFO frequency up by the current VFO
-step size.
+\item[\rett{u}]{ Hitting a lower-caps letter ,,u'' moves the VFO frequency up by the current VFO
+step size.}
 
-\rett{d} Hitting a lower-caps letter ,,d'' moves the VFO frequency up by the current VFO
-step size.
+\item[\rett{d}]{ Hitting a lower-caps letter ,,d'' moves the VFO frequency up by the current VFO
+step size.}
 
-\rett{U} Hitting a upper-caps letter ,,U'' moves the VFO frequency of the ,,other'' VFO, that is,
-the VFO that is \textit{not} controlling the active receiver, up by 10 times the VFO step size.
+\item[\rett{U}]{ Hitting a upper-caps letter ,,U'' moves the VFO frequency of the ,,other'' VFO, that is,
+the VFO that is \textit{not} controlling the active receiver, up by 10 times the VFO step size.}
 
-\rett{D} Hitting a upper-caps letter ,,D'' moves the VFO frequency of the ,,other'' VFO, that is,
+\item[\rett{D}]{ Hitting a upper-caps letter ,,D'' moves the VFO frequency of the ,,other'' VFO, that is,
 the VFO that is \textit{not} controlling the active receiver, down by 10 times the VFO step size.
 
-This (U/D) is for stations chasing DX and using split mode. One can tune to the DX station,
+The keys \rett{U,D} are for stations chasing DX in split mode. One can tune to the DX station,
 then copy the VFO of the active receiver to the other one using \bltt{A>B} or \bltt{A<B}, then then
-one can  move the TX frequency (in split mode) using these keys in large steps.
+one can  move the TX frequency (in split mode) using \rett{U,D} in large steps.}
 
-\rett{Keypad 0} $\ldots$ \rett{Keypad 9} Hitting a digit on the numerical keypad executes one of the
+\item[\rett{m}, \rett{M}]{ opens the main menu.}
+
+\item[\rett{KP 0-9}]{ Hitting a digit on the numerical keypad executes one of the
 \bltt{NumPad 0} to \bltt{NumPad 9} commands. This can be used for direct frequency entry
-via the keyboard.
+via the keyboard.}
 
-\rett{Keypad Decimal} Hitting the decimal point on the keypad executes the \bltt{NumPad Dec}
-command which will enter a decimal point during direct frequency entry.
+\item[\rett{KP .}]{Hitting the decimal point on the keypad executes the \bltt{NumPad Dec}
+command which will enter a decimal point during direct frequency entry.}
 
-\rett{Keypad Subtract} Hitting the ,,subtract'' (minus) key on the numerical keypad executes the
-\bltt{NumPad BS} (back space) command.
+\item[\rett{KP -}]{ Hitting the ,,minus'' key on the numerical keypad executes the
+\bltt{NumPad BS} (back space) command.}
 
-\rett{Keypad Divide} Hitting the ,,divide'' key on the numerical keypad executes the \bltt{NumPad CL}
-command which will clear any frequency entered so far.
+\item[\rett{KP /}]{ Hitting the ,,divide'' key on the numerical keypad executes the \bltt{NumPad CL}
+command which will clear any frequency entered so far.}
 
-\rett{Keypad Multiply} Hitting the ,,multiply'' key on the numerical keypad executes the \bltt{NumPad Hz}
-command which will transfer the frequency entered (in Hz) to the VFO of the active receiver.
+\item[\rett{KP *}]{ Hitting the ,,multiply'' key on the numerical keypad executes the \bltt{NumPad Hz}
+command which will transfer the frequency entered (in Hz) to the VFO of the active receiver.}
 
-\rett{Keypad Add} Hitting the ,,add'' (plus) key on the numerical keypad executes the \bltt{NumPad kHz}
-command which will transfer the frequency entered (in kHz) to the VFO of the active receiver.
+\item[\rett{KP +}]{ Hitting the ,,plus'' key on the numerical keypad executes the \bltt{NumPad kHz}
+command which will transfer the frequency entered (in kHz) to the VFO of the active receiver.}
 
-\rett{Keypad Enter} Hitting the ,,enter'' key on the numerical keypad executes the \bltt{NumPad MHz}
-command which will enter the frequency entered (in MHz) to the VFO of the active receiver.
-
+\item[\rett{KP enter}]{ Hitting the ,,enter'' key on the numerical keypad executes the \bltt{NumPad MHz}
+command which will enter the frequency entered (in MHz) to the VFO of the active receiver.}
+\end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -7303,10 +7308,13 @@ the command for creating the two virtual cables (put everything in one line) is
 \texttt{sudo modprobe snd-aloop index=5,6 id=RXcable,TXcable\\
 enable=1,1 pcm\_substreams=2,2}
 
+For the convenience of the reader a shell script \texttt{LINUX/alsa.vac.sh} is
+provided which contains the command given above.
 The two indices chosen (5, 6) should leave enough head-room for sound devices
 already present. On a ,,naked'' Pi4, indices 0 and 1 refer to the HDMI
 and headphone audio output devices, but more indices may already be assigned
-if you have plugged in additional sound cards. You can verify the existence of
+if you have plugged in additional sound cards (use two larger numbers in
+this case). You can verify the existence of
 the virtual audio cables using the command
 
 \texttt{aplay -l}
@@ -7408,15 +7416,18 @@ input in WSJTX. We describe a different setup where we create two dummy
  you want to listen (with the headphone) to the digi mode RX signal while it is processed
  in the digi mode program.  We call the two dummy output devices
  RXcable and TXcable just to demonstrate how it works.
-  This is done by the commands (do not enter the line breaks)
+ This is done by the two commands (do not enter the line breaks)
 
-\texttt{pacmd load-module module-null-sink sink\_name=RXcable rate=48000 \\
-sink\_properties="device.description=RXcable"
-}
+\begin{verbatim}
+pacmd load-module module-null-sink sink_name=RXcable rate=48000
+sink_properties="device.description=RXcable"
 
-\texttt{pacmd load-module module-null-sink sink\_name=TXcable rate=48000 \\
-sink\_properties="device.description=TXcable"
-}
+pacmd load-module module-null-sink sink_name=TXcable rate=48000
+sink_properties="device.description=TXcable"
+\end{verbatim}
+
+One can likewise execute the script
+\texttt{LINUX/pulse.vac.sh} in which the two commands above are contained.
 
 To control whether the output devices have been created correctly, we use the command
 \texttt{pacmd list-sinks}, which produces
@@ -7475,10 +7486,12 @@ case of FLdigi and qSSTV (see note at the end of this section).
 The state may also be different from IDLE depending on whether
 you (already) make use of that device.
 
-Note that these devices are created once, the commands have to be repeated after rebooting
-the machine or restarting PulseAudio, the devices can be made permanent but you have to
-search the internet on how to do this. My recommendation is to include such command in a
-shell script that is automatically executed when you start the computer.
+Note that these devices only exist until the computer is shut down,
+which means that the commands given above have to be repeated after rebooting
+the machine (or restarting PulseAudio). They can be made permanent (you will find
+instructions in the internet), but my recommendation is to create a shell script that
+creates these devices and have this script automatically executed each time
+you start the computer.
 
 The necessary configuration for \pH and WSJTX is  almost evident. The
 \pH settings are shown in Fig. \ref{fig:rx_settings_pa_audio} (\bltt{RX} menu)
@@ -7512,8 +7525,6 @@ the same as in the ALSA case.
 \label{fig:wstx_settings_pa_audio}
 \end{figure}
 
-
-
 \begin{center}
 \fbox{
 \parbox{\textwidth - 1cm}{
@@ -7529,12 +7540,13 @@ their audio input from the monitor of RXcable and put the audio they produce
 to TXcable. To achieve this, simply use the two commands
 
 \vspace{0.1cm}
-\texttt{pacmd set-default-sink <index of TXcable>}
+\grtt{pacmd set-default-sink <index of TXcable>}
 
 \vspace{0.1cm}
-\texttt{pacmd set-default-source <index of RXcable.monitor>}
+\grtt{pacmd set-default-source <index of RXcable.monitor>}
 
 \vspace{0.1cm}
+
 where the indices (small integer numbers) are those mentioned above, and are
 take from the output of the \texttt{pacmd list-sinks} and the \texttt{pacmd list-sources}
 commands.
@@ -7545,29 +7557,25 @@ commands.
 \subsection[PipeWire: NullSink modules]{PipeWire: Null-Sink modules as virtual audio cables}
 The PipeWire case is very similar to the PulseAudio case, so we concentrate
 on the differences only. Creating the null-sink modules (,,cables'') is
-done in the same way as described in the previous chapter with very slight modifications:
-for example one can use \texttt{pactl} but not \texttt{pacmd}, and to give the sink name
-when loading the module the parameter reads \texttt{sink\_name} (with an underscore)
-instead of \texttt{sink name}.
+done in the same way as described in the previous chapter, but using
+ \texttt{pactl} command instead of \texttt{pacmd}.
 
-\texttt{pactl load-module module-null-sink sink\_name=RXcable rate=48000 \\
-sink\_properties="device.description=RXcable"
-}
+\begin{verbatim}
+pactl load-module module-null-sink sink_name=RXcable rate=48000
+sink_properties="device.description=RXcable"
 
-\texttt{pactl load-module module-null-sink sink\_name=TXcable rate=48000 \\
-sink\_properties="device.description=TXcable"
-}
+pactl load-module module-null-sink sink_name=TXcable rate=48000
+sink_properties="device.description=TXcable"
 
-\texttt{pactl set-sink-volume RXcable 89\%}
+\end{verbatim}
 
-\texttt{pactl set-sink-volume TXcable 89\%}
+A shell script \texttt{LINUX/pipewire.sh} is provided that contains these two commands.
 
-For some unknown reason, the volume of these devices is 3 dB too high on my
-RaspPi test system, so the last two commands adjust this.
 To check the available input (sources) and output (sinks) device, the command
 now reads \texttt{pactl list sources} or \texttt{pactl list sinks}. The numbering
 of the sinks and sources is now somewhat arbitrary, for example, when listing the
 sinks I get
+
 \begin{verbatim}
 Sink #65
 	State: SUSPENDED
@@ -7605,9 +7613,8 @@ to buy a third-party product,  ,,loopback'' from RogueAmoeba
 (\texttt{https://rogueamoeba.com/loopback/}).
 Note I have no connections with that company, I am just using this product and
 can recommend it. It can not only be used to create loop-back devices, but you get
-a patch panel so you can, for example, send the RX audio both to a headphone device
-and to a virtual cable, thus eliminating the need to change \pH menu settings
-when switching between SSB and digi. The following picture just shows my setup
+a patch panel so you can, for example, send the RX audio both to two different
+devices at the same time. The following picture just shows my setup
 (Figs. \ref{fig:loopback_rx} and \ref{fig:loopback_tx}).
 
 \begin{figure}[ht!]
@@ -7898,7 +7905,7 @@ using the screen and keyboard and mouse from that other computer to control the 
 \chapter[Linux: \pH install from sources]{Installation of \pH from the sources (Linux, RaspPi)}
 \label{sec:installsources}
 \textit{This procedure has been with current version of the RaspPi (Pi4B and Pi5) with various versions of a
-fresh and plain vanilla operating system (,,BullsEye'', ,,BookWorm'' and ,,Trixie''). 
+fresh and plain vanilla operating system (,,BullsEye'', ,,BookWorm'' and ,,Trixie'').
 It has also been tested with an Ubuntu (Version 25) LINUX installed on a RaspPi.
 Normally
 I use the 64-bit versions of the operating system since this is the standard option, but it
@@ -8129,7 +8136,7 @@ you want to work with. The example just given clearly states that no such module
 directory in form of installation scripts, these have the name
  \texttt{soapy.}\textit{your-radio}\texttt{.sh}. To give an example, in order to install
  the SoapySDR module for an AdalmPluto, you have to use the commands
- 
+
 \grtt{cd \$HOME/pihpsdr} \\
 \grtt{LINUX/soapy.pluto.sh}
 
@@ -8150,7 +8157,7 @@ At the moment, there is support for the Adalm Pluto, for RTL sticks, for AirSpy 
 for the SDRplay. I have put together and tested scripts for the Pluto and for RTL sticks,
 since I have the hardware and can test it. The other scripts that install support modules
 for SoapySDR radios have been contributed by \pH users who have those radios and managed
-to compose an automatic install script for the required SoapySDR modules. Note that 
+to compose an automatic install script for the required SoapySDR modules. Note that
 I received a report that the SoapySDR module for SDRplay does not implement the Soapy API
 correctly,
 for example when setting the overall RF gain. I cannot confirm this
@@ -8189,7 +8196,7 @@ OS onto the SD card and start from scratch.
 
 \clearpage
 If the SoapySDR library has been correctly installed, \pH has to be compiled with
-the SOAPYSDR compile-time option enabled (see Sec. \ref{sec:compiletime}). This can 
+the SOAPYSDR compile-time option enabled (see Sec. \ref{sec:compiletime}). This can
 easily be achieved with the commands
 
 \grtt{cd \$HOME/pihpsdr} \\

@@ -78,6 +78,9 @@ typedef struct _transmitter {
 
   cairo_surface_t *panadapter_surface;
 
+//
+// everything related to local (TX input) audio
+//
   int local_audio;
   char audio_name[128];
   GMutex audio_mutex;
@@ -272,7 +275,6 @@ extern void   tx_set_twotone(TRANSMITTER *tx, int state);
 extern void   tx_queue_cw_event(int state, int wait);
 
 extern void tx_create_remote(TRANSMITTER *rx);
-extern int  tx_remote_update_display(gpointer data);
 
 #endif
 

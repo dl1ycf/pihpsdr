@@ -190,6 +190,7 @@ typedef struct _receiver {
   int local_audio;
   char audio_name[128];
   GMutex audio_mutex;
+
 #if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA)
   // this is only possible for "cppcheck" runs
   // declare all data without conflicts
@@ -220,7 +221,6 @@ typedef struct _receiver {
 
   int cwaudio;   // detect RX/TX transitions in CW
   int cwcount;   // for sample insertion and deletion
-
 
   int squelch_enable;
   double squelch;
@@ -352,6 +352,5 @@ extern void   rx_update_width(RECEIVER *rx);
 extern void   rx_update_pan(RECEIVER *rx);
 
 extern void rx_create_remote(RECEIVER *rx);
-extern int  rx_remote_update_display(gpointer data);
 
 #endif

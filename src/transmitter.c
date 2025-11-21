@@ -2002,28 +2002,6 @@ void tx_add_ps_iq_samples(const TRANSMITTER *tx, double i_sample_tx, double q_sa
   }
 }
 
-int tx_remote_update_display(gpointer data) {
-  TRANSMITTER *tx = (TRANSMITTER *) data;
-
-  if (tx->displaying) {
-    if (tx->pixels > 0) {
-      g_mutex_lock(&tx->display_mutex);
-
-      if (tx->display_panadapter) {
-        tx_panadapter_update(tx);
-      }
-
-      g_mutex_unlock(&tx->display_mutex);
-
-      if (!duplex) {
-        meter_update(active_receiver, POWER, tx->fwd, tx->alc, tx->swr);
-      }
-    }
-  }
-
-  return G_SOURCE_REMOVE;
-}
-
 void tx_create_remote(TRANSMITTER *tx) {
   //
   // transmitter structure already setup via INFO_TRANSMITTER packet.

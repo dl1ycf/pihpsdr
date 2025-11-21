@@ -35,11 +35,15 @@
 #include "ext.h"
 #include "filter.h"
 #include "message.h"
+#include "meter.h"
 #include "radio.h"
+#include "rx_panadapter.h"
 #include "sliders.h"
 #include "store.h"
+#include "tx_panadapter.h"
 #include "vfo.h"
 #include "vox.h"
+#include "waterfall.h"
 
 int client_socket = -1;
 int remote_started = 0;
@@ -298,7 +302,7 @@ static void send_vfo_move(int s, int id, long long hz, int round) {
   command.header.b1 = id;
   command.header.b2 = round;
   command.u64 = to_64(hz);
-  send_bytes(s, (char *)&command, sizeof(command));
+  send_bytes(s, (char *)&command, sizeof(U64_COMMAND));
 }
 
 static int check_vfo(void *arg) {
@@ -338,6 +342,180 @@ void start_vfo_timer() {
   check_vfo_timer_id = gdk_threads_add_timeout_full(G_PRIORITY_HIGH_IDLE, 100, check_vfo, NULL, NULL);
 }
 
+////////////////////////////////////////////////////////////////////////////
+//
+// Functions to be run in the GTK idle queue. These functions have to
+// deallocate the data provided to them at the end
+//
+////////////////////////////////////////////////////////////////////////////
+
+static int client_info_display(gpointer ptr) {
+  DISPLAY_DATA *data  = (DISPLAY_DATA *)ptr;
+
+  adc[0].overload = data->adc0_overload;
+  adc[1].overload = data->adc1_overload;
+  high_swr_seen = data->high_swr_seen;
+  tx_fifo_overrun = data->tx_fifo_overrun;
+  tx_fifo_underrun = data->tx_fifo_underrun;
+  TxInhibit = data->TxInhibit;
+  capture_state = data->capture_state;
+  exciter_power = from_16(data->exciter_power);
+  ADC0 = from_16(data->ADC0);
+  ADC1 = from_16(data->ADC1);
+  sequence_errors = from_16(data->sequence_errors);
+  capture_record_pointer = from_32(data->capture_record_pointer);
+  capture_replay_pointer = from_32(data->capture_replay_pointer);
+
+  if (can_transmit) {
+    int old = transmitter->out_of_band;
+    transmitter->out_of_band = data->tx_oob;
+
+    if (old != transmitter->out_of_band) {
+      //
+      // If oob flag has changed, we must do a VFO update
+      //
+      g_idle_add(ext_vfo_update, NULL);
+    }
+
+    if (data->txzero && transmitter->drive > 0.4) {
+      //
+      // This happens after an "SWR alarm" event
+      //
+      radio_set_drive(0.0);
+    }
+  }
+
+  g_free(ptr);
+  return G_SOURCE_REMOVE;
+}
+
+static int client_rxaudio(gpointer ptr) {
+  RXAUDIO_DATA *data = (RXAUDIO_DATA *)ptr;
+
+  RECEIVER *rx = receiver[data->rx];
+  int numsamples = from_16(data->numsamples);
+
+  //
+  // Note CAPTURing is only done on the server side
+  //
+  for (int i = 0; i < numsamples; i++) {
+    short left_sample = from_16(data->samples[i]);
+    short right_sample = left_sample;
+
+    if (radio_is_transmitting() && (!duplex || mute_rx_while_transmitting)) {
+      left_sample = 0.0;
+      right_sample = 0.0;
+    }
+
+    if (rx->mute_radio || (rx != active_receiver && rx->mute_when_not_active)) {
+      left_sample = 0;
+      right_sample = 0;
+    }
+
+    if (rx->audio_channel == LEFT)  { right_sample = 0; }
+
+    if (rx->audio_channel == RIGHT) { left_sample  = 0; }
+
+    if (rx->local_audio) {
+      audio_write(rx, (float)left_sample / 32767.0, (float)right_sample / 32767.0);
+    }
+  }
+
+  g_free(ptr);
+  return G_SOURCE_REMOVE;
+}
+
+static int client_spectrum(gpointer ptr) {
+  SPECTRUM_DATA *data = (SPECTRUM_DATA *)ptr;
+  int type = from_16(data->header.data_type);
+
+  //
+  // We load the current VFO frequencies on top of the spectrum data packets,
+  // so we can apply this info *before* drawing the spectrum. Normally the
+  // data should not have changed.
+  //
+  long long frequency_a = from_64(data->vfo_a_freq);
+  long long frequency_b = from_64(data->vfo_b_freq);
+  long long ctun_frequency_a = from_64(data->vfo_a_ctun_freq);
+  long long ctun_frequency_b = from_64(data->vfo_b_ctun_freq);
+  long long offset_a = from_64(data->vfo_a_offset);
+  long long offset_b = from_64(data->vfo_b_offset);
+
+  if (vfo[VFO_A].frequency != frequency_a || vfo[VFO_B].frequency != frequency_b
+      || vfo[VFO_A].ctun_frequency != ctun_frequency_a || vfo[VFO_B].ctun_frequency != ctun_frequency_b
+      || vfo[VFO_A].offset != offset_a || vfo[VFO_B].offset != offset_b) {
+    vfo[VFO_A].frequency = frequency_a;
+    vfo[VFO_B].frequency = frequency_b;
+    vfo[VFO_A].ctun_frequency = ctun_frequency_a;
+    vfo[VFO_B].ctun_frequency = ctun_frequency_b;
+    vfo[VFO_A].offset = offset_a;
+    vfo[VFO_B].offset = offset_b;
+    g_idle_add(ext_vfo_update, NULL);
+  }
+
+  if (type == INFO_RX_SPECTRUM && data->id < receivers) {
+    RECEIVER *rx = receiver[data->id];
+    rx->cA = from_double(data->cA);
+    rx->cB = from_double(data->cB);
+    rx->cAp = from_double(data->cAp);
+    rx->cBp = from_double(data->cBp);
+    rx->meter = from_double(data->meter);
+    rx->pixels_available = data->avail;
+    int width = from_16(data->width);
+
+    g_mutex_lock(&rx->display_mutex);
+
+    if (width == rx->width && rx->pixel_samples != NULL && rx->pixels > 0 && rx->displaying) {
+
+      for (int i = 0; i < rx->width; i++) {
+        rx->pixel_samples[i] = (float)((int)data->sample[i] - 200);
+      }
+
+      if (rx->display_panadapter) {
+        rx_panadapter_update(rx);
+      }
+
+      if (rx->display_waterfall) {
+        waterfall_update(rx);
+      }
+
+    }
+
+    g_mutex_unlock(&rx->display_mutex);
+
+    if (rx == active_receiver) {
+      meter_update(rx, SMETER, rx->meter, 0.0, 0.0);
+    }
+  }
+
+  if (type == INFO_TX_SPECTRUM && can_transmit) {
+    TRANSMITTER *tx = transmitter;
+    tx->alc = from_double(data->alc);
+    tx->fwd = from_double(data->fwd);
+    tx->swr = from_double(data->swr);
+    int width = from_16(data->width);
+
+    g_mutex_lock(&tx->display_mutex);
+
+    if (width == tx->width && tx->pixel_samples != NULL && tx->displaying && tx->pixels > 0 && tx->display_panadapter) {
+
+      for (int i = 0; i < tx->width; i++) {
+        tx->pixel_samples[i] = (float)((int)data->sample[i] - 200);
+      }
+
+      tx_panadapter_update(tx);
+    }
+
+    g_mutex_unlock(&tx->display_mutex);
+
+    if (!duplex) {
+      meter_update(active_receiver, POWER, tx->fwd, tx->alc, tx->swr);
+    }
+  }
+
+  g_free(ptr);
+  return G_SOURCE_REMOVE;
+}
 ////////////////////////////////////////////////////////////////////////////
 //
 // client_thread is running on the "remote"  computer
@@ -404,7 +582,7 @@ static void *client_thread(void* arg) {
   active_receiver = receiver[0];
 
   g_mutex_init(&transmitter->display_mutex);
-  transmitter->display_filled = 0;
+  transmitter->display_filled = 1;
   transmitter->display_panadapter = 1;
   transmitter->display_waterfall = 0;
   transmitter->panadapter_high = 0;
@@ -433,7 +611,7 @@ static void *client_thread(void* arg) {
 
   while (client_running) {
     int type;
-    bytes_read = recv_bytes(client_socket, (char *)&header, sizeof(header));
+    bytes_read = recv_bytes(client_socket, (char *)&header, sizeof(HEADER));
 
     if (bytes_read <= 0) {
       t_print("%s: ReadErr for HEADER\n", __FUNCTION__);
@@ -464,7 +642,7 @@ static void *client_thread(void* arg) {
         }
       }
 
-      if (recv_bytes(client_socket, (char *)&header + sizeof(header.sync), sizeof(header) - sizeof(header.sync)) <= 0) {
+      if (recv_bytes(client_socket, (char *)&header + sizeof(header.sync), sizeof(HEADER) - sizeof(header.sync)) <= 0) {
         return NULL;
       }
 
@@ -473,48 +651,22 @@ static void *client_thread(void* arg) {
 
     type = from_16(header.data_type);
 
+    //
+    // In the following switch statement, process selected commands immediately
+    // but delegate others to functions executed in the GTK idle thread
+    //
+
     switch (type) {
     case INFO_DISPLAY: {
       //
       // This data is needed if one wants warnings, PA currents etc. to be on display
       // (it is transferred every 100 msec from send_periodic_data() in server_thread.c)
       //
-      DISPLAY_DATA data;
+      DISPLAY_DATA *data = g_new(DISPLAY_DATA, 1);
 
-      if (recv_bytes(client_socket, (char *)&data + sizeof(HEADER), sizeof(data) - sizeof(HEADER)) < 0) { return NULL; }
+      if (recv_bytes(client_socket, (char *)&data + sizeof(HEADER), sizeof(DISPLAY_DATA) - sizeof(HEADER)) < 0) { return NULL; }
 
-      adc[0].overload = data.adc0_overload;
-      adc[1].overload = data.adc1_overload;
-      high_swr_seen = data.high_swr_seen;
-      tx_fifo_overrun = data.tx_fifo_overrun;
-      tx_fifo_underrun = data.tx_fifo_underrun;
-      TxInhibit = data.TxInhibit;
-      capture_state = data.capture_state;
-      exciter_power = from_16(data.exciter_power);
-      ADC0 = from_16(data.ADC0);
-      ADC1 = from_16(data.ADC1);
-      sequence_errors = from_16(data.sequence_errors);
-      capture_record_pointer = from_32(data.capture_record_pointer);
-      capture_replay_pointer = from_32(data.capture_replay_pointer);
-
-      if (can_transmit) {
-        int old = transmitter->out_of_band;
-        transmitter->out_of_band = data.tx_oob;
-
-        if (old != transmitter->out_of_band) {
-          //
-          // If oob flag has changed, we must do a VFO update
-          //
-          g_idle_add(ext_vfo_update, NULL);
-        }
-
-        if (data.txzero && transmitter->drive > 0.4) {
-          //
-          // This happens after an "SWR alarm" event
-          //
-          radio_set_drive(0.0);
-        }
-      }
+      g_idle_add(client_info_display, data);
     }
     break;
 
@@ -526,7 +678,7 @@ static void *client_thread(void* arg) {
       if (can_transmit) {
         PS_DATA data;
 
-        if (recv_bytes(client_socket, (char *)&data + sizeof(HEADER), sizeof(data) - sizeof(HEADER)) < 0) { return NULL; }
+        if (recv_bytes(client_socket, (char *)&data + sizeof(HEADER), sizeof(PS_DATA) - sizeof(HEADER)) < 0) { return NULL; }
 
         for (int i = 0; i < 16; i++) {
           transmitter->psinfo[i] = from_16(data.psinfo[i]);
@@ -543,7 +695,7 @@ static void *client_thread(void* arg) {
       // executed from the client's MEMORY menu.
       MEMORY_DATA data;
 
-      if (recv_bytes(client_socket, (char *)&data + sizeof(HEADER), sizeof(data) - sizeof(HEADER)) < 0) { return NULL; }
+      if (recv_bytes(client_socket, (char *)&data + sizeof(HEADER), sizeof(MEMORY_DATA) - sizeof(HEADER)) < 0) { return NULL; }
 
       int index = data.index;
       mem[index].sat_mode           = data.sat_mode;
@@ -570,7 +722,7 @@ static void *client_thread(void* arg) {
       // send by the server upon initialization, and after changing the filter board
       BAND_DATA data;
 
-      if (recv_bytes(client_socket, (char *)&data + sizeof(HEADER), sizeof(data) - sizeof(HEADER)) < 0) { return NULL; }
+      if (recv_bytes(client_socket, (char *)&data + sizeof(HEADER), sizeof(BAND_DATA) - sizeof(HEADER)) < 0) { return NULL; }
 
       if (data.band > BANDS + XVTRS) {
         t_print("%s: WARNING: band data received for b=%d, too large.\n", __FUNCTION__, data.band);
@@ -604,7 +756,7 @@ static void *client_thread(void* arg) {
       // sent by the server upon initialisation, and as a response to changing the band, the bandstack, or the region
       BANDSTACK_DATA data;
 
-      if (recv_bytes(client_socket, (char *)&data + sizeof(HEADER), sizeof(data) - sizeof(HEADER)) < 0) { return NULL; }
+      if (recv_bytes(client_socket, (char *)&data + sizeof(HEADER), sizeof(BANDSTACK_DATA) - sizeof(HEADER)) < 0) { return NULL; }
 
       if (data.band > BANDS + XVTRS) {
         t_print("%s: WARNING: band data received for b=%d, too large.\n", __FUNCTION__, data.band);
@@ -635,7 +787,7 @@ static void *client_thread(void* arg) {
       // sent by the server upon initialisation, and as a response to changing the filter board or the ANAN10 button,
       RADIO_DATA data;
 
-      if (recv_bytes(client_socket, (char *)&data + sizeof(HEADER), sizeof(data) - sizeof(HEADER)) < 0) { return NULL; }
+      if (recv_bytes(client_socket, (char *)&data + sizeof(HEADER), sizeof(RADIO_DATA) - sizeof(HEADER)) < 0) { return NULL; }
 
       snprintf(radio->name, sizeof(radio->name), "%s", data.name);
       locked = data.locked;
@@ -1069,136 +1221,40 @@ static void *client_thread(void* arg) {
       //
       // Sent periodically by the server (send_rxspectrum and send_txspectrum)
       //
-      SPECTRUM_DATA spectrum_data;
+      SPECTRUM_DATA *data = g_new(SPECTRUM_DATA, 1);
       //
       // The length of the payload is included in the header, only
       // read the number of bytes specified there.
       //
       size_t payload = from_16(header.s1);
 
-      if (recv_bytes(client_socket, (char *)&spectrum_data + sizeof(HEADER), payload) < 0) { return NULL; }
+      if (recv_bytes(client_socket, (char *)data + sizeof(HEADER), payload) < 0) { return NULL; }
 
-      //
-      // We load the current VFO frequencies on top of the spectrum data packets,
-      // so we can apply this info *before* drawing the spectrum. Normally the
-      // data should not have changed.
-      //
-      long long frequency_a = from_64(spectrum_data.vfo_a_freq);
-      long long frequency_b = from_64(spectrum_data.vfo_b_freq);
-      long long ctun_frequency_a = from_64(spectrum_data.vfo_a_ctun_freq);
-      long long ctun_frequency_b = from_64(spectrum_data.vfo_b_ctun_freq);
-      long long offset_a = from_64(spectrum_data.vfo_a_offset);
-      long long offset_b = from_64(spectrum_data.vfo_b_offset);
-
-      if (vfo[VFO_A].frequency != frequency_a || vfo[VFO_B].frequency != frequency_b
-          || vfo[VFO_A].ctun_frequency != ctun_frequency_a || vfo[VFO_B].ctun_frequency != ctun_frequency_b
-          || vfo[VFO_A].offset != offset_a || vfo[VFO_B].offset != offset_b) {
-        vfo[VFO_A].frequency = frequency_a;
-        vfo[VFO_B].frequency = frequency_b;
-        vfo[VFO_A].ctun_frequency = ctun_frequency_a;
-        vfo[VFO_B].ctun_frequency = ctun_frequency_b;
-        vfo[VFO_A].offset = offset_a;
-        vfo[VFO_B].offset = offset_b;
-        g_idle_add(ext_vfo_update, NULL);
-      }
-
-      if (type == INFO_RX_SPECTRUM && spectrum_data.id < receivers) {
-        RECEIVER *rx = receiver[spectrum_data.id];
-        rx->cA = from_double(spectrum_data.cA);
-        rx->cB = from_double(spectrum_data.cB);
-        rx->cAp = from_double(spectrum_data.cAp);
-        rx->cBp = from_double(spectrum_data.cBp);
-        rx->meter = from_double(spectrum_data.meter);
-        rx->pixels_available = spectrum_data.avail;
-        int width = from_16(spectrum_data.width);
-
-        if (width == rx->width) {
-          g_mutex_lock(&rx->display_mutex);
-
-          if (rx->pixel_samples == NULL) {
-            rx->pixel_samples = g_new(float, (int) rx->width);
-          }
-
-          for (int i = 0; i < rx->width; i++) {
-            rx->pixel_samples[i] = (float)((int)spectrum_data.sample[i] - 200);
-          }
-
-          g_mutex_unlock(&rx->display_mutex);
-          g_idle_add(rx_remote_update_display, rx);
-        }
-      }
-
-      if (type == INFO_TX_SPECTRUM && can_transmit) {
-        TRANSMITTER *tx = transmitter;
-        tx->alc = from_double(spectrum_data.alc);
-        tx->fwd = from_double(spectrum_data.fwd);
-        tx->swr = from_double(spectrum_data.swr);
-        int width = from_16(spectrum_data.width);
-
-        if (width == tx->width) {
-
-          if (tx->pixel_samples == NULL) {
-            tx->pixel_samples = g_new(float, (int) tx->width);
-          }
-
-          g_mutex_lock(&tx->display_mutex);
-
-          for (int i = 0; i < tx->width; i++) {
-            tx->pixel_samples[i] = (float)((int)spectrum_data.sample[i] - 200);
-          }
-
-          g_mutex_unlock(&tx->display_mutex);
-          g_idle_add(tx_remote_update_display, tx);
-        }
-      }
+      data->header.data_type = header.data_type;
+      g_idle_add(client_spectrum, data);
     }
     break;
 
     case INFO_RXAUDIO: {
       // sent periodically from the server
-      RXAUDIO_DATA rxaudio_data;
+      RXAUDIO_DATA *data = g_new(RXAUDIO_DATA, 1);
 
-      if (recv_bytes(client_socket, (char *)&rxaudio_data + sizeof(HEADER), sizeof(RXAUDIO_DATA) - sizeof(HEADER)) < 0) { return NULL; }
+      if (recv_bytes(client_socket, (char *)data + sizeof(HEADER), sizeof(RXAUDIO_DATA) - sizeof(HEADER)) < 0) { return NULL; }
 
-      RECEIVER *rx = receiver[rxaudio_data.rx];
-      int numsamples = from_16(rxaudio_data.numsamples);
-
-      //
-      // Note CAPTURing is only done on the server side
-      //
-      for (int i = 0; i < numsamples; i++) {
-        short left_sample = from_16(rxaudio_data.samples[i]);
-        short right_sample = left_sample;
-
-        if (radio_is_transmitting() && (!duplex || mute_rx_while_transmitting)) {
-          left_sample = 0.0;
-          right_sample = 0.0;
-        }
-
-        if (rx->mute_radio || (rx != active_receiver && rx->mute_when_not_active)) {
-          left_sample = 0;
-          right_sample = 0;
-        }
-
-        if (rx->audio_channel == LEFT)  { right_sample = 0; }
-
-        if (rx->audio_channel == RIGHT) { left_sample  = 0; }
-
-        if (rx->local_audio) {
-          audio_write(rx, (float)left_sample / 32767.0, (float)right_sample / 32767.0);
-        }
-      }
+      g_idle_add(client_rxaudio, data);
     }
     break;
 
     case CMD_START_RADIO: {
       // sent by the server once upon initialisation
       if (!remote_started) {
+        //
+        // Init the "old" modes used to detect mode changes
+        //
         old_rx1mode = vfo[0].mode;
         old_txmode = vfo_get_tx_mode();
-        g_idle_add(radio_remote_start, (gpointer)server);
+        g_idle_add(radio_client_start, (gpointer)server);
       }
-
       g_idle_add(ext_vfo_update, NULL);
     }
     break;
@@ -1243,7 +1299,7 @@ static void *client_thread(void* arg) {
     case CMD_RECEIVERS: {
       // sent by the server as a response to a CMD_RECEIVERS
       int r = header.b1;
-      g_idle_add(radio_remote_change_receivers, GINT_TO_POINTER(r));
+      g_idle_add(radio_client_change_receivers, GINT_TO_POINTER(r));
     }
     break;
 
@@ -1313,6 +1369,7 @@ static void *client_thread(void* arg) {
     case CMD_PAN: {
       //
       // Sent by the server as a response to CMD_FREQ, CMD_MOVE, CMD_MOVETO, CMD_ZOOM
+      // (since these may change the PAN value)
       //
       int id = header.b1;
       receiver[id]->pan = header.b2;
@@ -1380,7 +1437,7 @@ static void *client_thread(void* arg) {
       //
       // Sent by the server as a response to a CMD_TOGGLE_MOX, CMD_MOX
       //
-      g_idle_add(radio_remote_set_mox, GINT_TO_POINTER(header.b1));
+      g_idle_add(radio_client_set_mox, GINT_TO_POINTER(header.b1));
     }
     break;
 
@@ -1388,7 +1445,7 @@ static void *client_thread(void* arg) {
       //
       // Sent by the server as a response to a CMD_VOX
       //
-      g_idle_add(radio_remote_set_vox, GINT_TO_POINTER(header.b1));
+      g_idle_add(radio_client_set_vox, GINT_TO_POINTER(header.b1));
     }
     break;
 
@@ -1396,7 +1453,7 @@ static void *client_thread(void* arg) {
       //
       // Sent by the server as a response to a CMD_TOGGLE_TUNE, CMD_TUNE
       //
-      g_idle_add(radio_remote_set_tune, GINT_TO_POINTER(header.b1));
+      g_idle_add(radio_client_set_tune, GINT_TO_POINTER(header.b1));
     }
     break;
 
@@ -1404,8 +1461,8 @@ static void *client_thread(void* arg) {
       //
       // Sent by the server as a response to a CMD_TWOTONE
       //
-      g_idle_add(radio_remote_set_twotone, GINT_TO_POINTER(header.b1));
-      g_idle_add(radio_remote_set_mox, GINT_TO_POINTER(header.b1));
+      g_idle_add(radio_client_set_twotone, GINT_TO_POINTER(header.b1));
+      g_idle_add(radio_client_set_mox, GINT_TO_POINTER(header.b1));
     }
     break;
 

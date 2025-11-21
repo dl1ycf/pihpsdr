@@ -424,6 +424,20 @@ gboolean radio_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
     break;
 
   //
+  // pressing 'm' or 'M' can now be used to open the main menu.
+  // this was necessary since on some systems, going full-screen
+  // makes the HIDE and MENU buttons in the top right corner
+  // deaf.
+  //
+  case GDK_KEY_m:
+  case GDK_KEY_M:
+    // start the main menu
+    if (main_menu == NULL) {
+      new_menu();
+    }
+    break;
+
+  //
   // This is a contribution of Ron, it uses a keypad for
   // entering a frequency
   //
@@ -496,14 +510,6 @@ gboolean radio_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
 
   case GDK_KEY_KP_Subtract:
     vfo_num_pad(-6, active_receiver->id);
-    break;
-
-  case GDK_KEY_m:
-  case GDK_KEY_M:
-    // start the main menu
-    if (main_menu == NULL) {
-      new_menu();
-    }
     break;
 
   default:
@@ -1032,7 +1038,7 @@ static void radio_create_visual() {
     receivers = RECEIVERS;
 
     if (radio_is_remote) {
-      radio_remote_change_receivers(GINT_TO_POINTER(r));
+      radio_client_change_receivers(GINT_TO_POINTER(r));
     } else {
       radio_change_receivers(r);
     }
@@ -1778,9 +1784,9 @@ void radio_start_radio() {
   radio_protocol_running = 1;
 }
 
-int radio_remote_change_receivers(gpointer data) {
+int radio_client_change_receivers(gpointer data) {
   int r = GPOINTER_TO_INT(data);
-  t_print("radio_remote_change_receivers: from %d to %d\n", receivers, r);
+  t_print("%s: from %d to %d\n", __FUNCTION__, receivers, r);
 
   if (receivers == r) { return G_SOURCE_REMOVE; }
 
@@ -2135,7 +2141,7 @@ void radio_toggle_mox() {
   radio_set_mox(!mox);
 }
 
-int radio_remote_set_vox(gpointer data) {
+int radio_client_set_vox(gpointer data) {
   int state = GPOINTER_TO_INT(data);
 
   if (can_transmit) {
@@ -2152,7 +2158,7 @@ int radio_remote_set_vox(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
-int radio_remote_set_mox(gpointer data) {
+int radio_client_set_mox(gpointer data) {
   int state = GPOINTER_TO_INT(data);
 
   if (can_transmit) {
@@ -2170,7 +2176,7 @@ int radio_remote_set_mox(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
-int radio_remote_set_twotone(gpointer data) {
+int radio_client_set_twotone(gpointer data) {
   if (can_transmit) {
     transmitter->twotone = GPOINTER_TO_INT(data);
   }
@@ -2179,7 +2185,7 @@ int radio_remote_set_twotone(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
-int radio_remote_set_tune(gpointer data) {
+int radio_client_set_tune(gpointer data) {
   int state = GPOINTER_TO_INT(data);
 
   if (can_transmit) {
@@ -3660,14 +3666,11 @@ void radio_save_state() {
     vfo_save_state();
   }
   //
-  // ModeSettings are needed on the client side as well,
-  // since we store mode-dependent audio settings there
+  // Toolbar, Sliders, Mode settings (RX/TX local audio settings),
+  // GPIO, TCI/CAT, MIDI
+  // are handled on the client side in client/server operation
   //
   modesettings_save_state();
-  //
-  // GPIO, rigctl and MIDI should be
-  // read from the local file on the client side
-  //
   toolbar_save_state();
   sliders_save_state();
 #ifdef GPIO
@@ -3682,7 +3685,7 @@ void radio_save_state() {
 }
 
 // cppcheck-suppress constParameterPointer
-int radio_remote_start(void *data) {
+int radio_client_start(void *data) {
   const char *server = (const char *)data;
   snprintf(property_path, sizeof(property_path), "%s@%s.props", radio->name, server);
 
@@ -3868,7 +3871,7 @@ int radio_max_band() {
   return max;
 }
 
-int radio_remote_protocol_stop(gpointer data) {
+int radio_server_protocol_stop(gpointer data) {
   //
   // stop protocol via GTK queue
   //
@@ -3904,7 +3907,7 @@ void radio_protocol_stop() {
   radio_protocol_running = 0;
 }
 
-int radio_remote_protocol_run(gpointer data) {
+int radio_server_protocol_run(gpointer data) {
   //
   // start protocol via GTK queue
   //

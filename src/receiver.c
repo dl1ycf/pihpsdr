@@ -1290,14 +1290,6 @@ void rx_update_width(RECEIVER *rx) {
   //
   rx->pixels = rx->width;
 
-  if (rx->pixbuf != NULL) {
-    GdkPixbuf *tmp = rx->pixbuf;
-    rx->pixbuf = NULL;
-    g_object_unref(tmp);
-    // A new pixbuf will be created upon the
-    // configure event for the panadapter
-  }
-
   if (rx->pixel_samples != NULL) {
     g_free(rx->pixel_samples);
   }
