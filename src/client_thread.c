@@ -664,7 +664,7 @@ static void *client_thread(void* arg) {
       //
       DISPLAY_DATA *data = g_new(DISPLAY_DATA, 1);
 
-      if (recv_bytes(client_socket, (char *)&data + sizeof(HEADER), sizeof(DISPLAY_DATA) - sizeof(HEADER)) < 0) { return NULL; }
+      if (recv_bytes(client_socket, (char *)data + sizeof(HEADER), sizeof(DISPLAY_DATA) - sizeof(HEADER)) < 0) { return NULL; }
 
       g_idle_add(client_info_display, data);
     }
