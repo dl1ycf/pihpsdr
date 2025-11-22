@@ -24,6 +24,7 @@
 #include "discovered.h"
 #include "ext.h"
 #include "main.h"
+#include "message.h"
 #include "new_menu.h"
 #include "new_protocol.h"
 #include "radio.h"
@@ -113,7 +114,12 @@ static void agc_changed_cb(GtkWidget *widget, gpointer data) {
 
 static void calibration_value_changed_cb(GtkWidget *widget, gpointer data) {
   double f = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  frequency_calibration = (int) (10.0 * f + 0.5);
+  if (f >= 0) {
+    frequency_calibration = (int) (10.0 * f + 0.5);
+  } else {
+    frequency_calibration = (int) (10.0 * f - 0.5);
+  }
+  t_print("F=%f C=%d\n", f, frequency_calibration);
 
   if (radio_is_remote) {
     send_radiomenu(client_socket);
@@ -881,7 +887,7 @@ void radio_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), label, col, row, 1, 1);
   col++;
   GtkWidget *calibration_b = gtk_spin_button_new_with_range(-2500.0, 2500.0, 0.1);
-  gtk_spin_button_set_value(GTK_SPIN_BUTTON(calibration_b), (double)(10*frequency_calibration));
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(calibration_b), 0.1*(double)frequency_calibration);
   gtk_grid_attach(GTK_GRID(grid), calibration_b, col, row, 1, 1);
   g_signal_connect(calibration_b, "value_changed", G_CALLBACK(calibration_value_changed_cb), NULL);
   //
