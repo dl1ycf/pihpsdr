@@ -882,7 +882,7 @@ void radio_menu(GtkWidget *parent) {
   row++;
   // cppcheck-suppress redundantAssignment
   col = 0;
-  label = gtk_label_new("Frequency\nCalibration (ppm):");
+  label = gtk_label_new("Frequency\nCalibr. (ppm):");
   gtk_widget_set_name(label, "boldlabel");
   gtk_grid_attach(GTK_GRID(grid), label, col, row, 1, 1);
   col++;
