@@ -916,7 +916,7 @@ static void *client_thread(void* arg) {
       }
 
       //
-      frequency_calibration = from_64(data.frequency_calibration);
+      frequency_calibration = from_16(data.frequency_calibration);
       soapy_radio_sample_rate = from_32(data.soapy_radio_sample_rate);
       radio->frequency_min = from_64(data.radio_frequency_min);
       radio->frequency_max = from_64(data.radio_frequency_max);

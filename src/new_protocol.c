@@ -706,6 +706,7 @@ static void new_protocol_high_priority() {
   long long HPFfreq;          // frequency determining the HPF filters
   long long LPFfreq;          // frequency determining the LPF filters
   long long BPFfreq;          // frequency determining the BPF filters
+  long long freq;
   unsigned long phase;
 
   if (data_socket == -1 && !have_saturn_xdma) {
@@ -760,7 +761,9 @@ static void new_protocol_high_priority() {
   //  Set DDC frequencies for RX1 and RX2
   //
   for (int id = 0; id < 2; id++) {
-    DDCfrequency[id] = vfo[id].frequency + frequency_calibration -  vfo[id].lo;
+    // apply *relative* frequency calibration to the DDC frequency
+    freq = vfo[id].frequency - vfo[id].lo;  // uncorrected DDC freq
+    DDCfrequency[id] = (freq * (10000000LL + frequency_calibration)) / 10000000LL;
   }
 
   // CW mode from the Host; disabled since pihpsdr does not use this CW option.
@@ -817,7 +820,9 @@ static void new_protocol_high_priority() {
     txfreq += vfo[txvfo].xit;
   }
 
-  DUCfrequency = txfreq - vfo[txvfo].lo + frequency_calibration;
+  // apply *relative* frequency calibration to the DUC frequency
+  freq = txfreq - vfo[txvfo].lo;  // uncorrected DUC freq
+  DUCfrequency = (freq * (10000000LL + frequency_calibration)) / 10000000LL;
   phase = (unsigned long)(((double)DUCfrequency) * 34.952533333333333333333333333333);
 
   if (xmit && transmitter->puresignal) {

@@ -1884,7 +1884,7 @@ static int server_command(void *data) {
     OCfull_tune_time = from_16(command->OCfull_tune_time);
     OCmemory_tune_time = from_16(command->OCmemory_tune_time);
     //
-    frequency_calibration = from_64(command->frequency_calibration);
+    frequency_calibration = from_16(command->frequency_calibration);
     //
     schedule_transmit_specific();
     schedule_general();

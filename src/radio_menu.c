@@ -112,7 +112,8 @@ static void agc_changed_cb(GtkWidget *widget, gpointer data) {
 
 
 static void calibration_value_changed_cb(GtkWidget *widget, gpointer data) {
-  frequency_calibration = (long long)gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
+  double f = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+  frequency_calibration = (int) (10.0 * f + 0.5);
 
   if (radio_is_remote) {
     send_radiomenu(client_socket);
@@ -875,12 +876,12 @@ void radio_menu(GtkWidget *parent) {
   row++;
   // cppcheck-suppress redundantAssignment
   col = 0;
-  label = gtk_label_new("Frequency\nCalibration (Hz):");
+  label = gtk_label_new("Frequency\nCalibration (ppm):");
   gtk_widget_set_name(label, "boldlabel");
   gtk_grid_attach(GTK_GRID(grid), label, col, row, 1, 1);
   col++;
-  GtkWidget *calibration_b = gtk_spin_button_new_with_range(-9999.0, 9999.0, 1.0);
-  gtk_spin_button_set_value(GTK_SPIN_BUTTON(calibration_b), (double)frequency_calibration);
+  GtkWidget *calibration_b = gtk_spin_button_new_with_range(-2500.0, 2500.0, 0.1);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(calibration_b), (double)(10*frequency_calibration));
   gtk_grid_attach(GTK_GRID(grid), calibration_b, col, row, 1, 1);
   g_signal_connect(calibration_b, "value_changed", G_CALLBACK(calibration_value_changed_cb), NULL);
   //

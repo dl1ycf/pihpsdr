@@ -239,7 +239,7 @@ void send_radiomenu(int sock) {
   data.OCfull_tune_time = to_16(OCfull_tune_time);
   data.OCmemory_tune_time = to_16(OCmemory_tune_time);
   //
-  data.frequency_calibration = to_64(frequency_calibration);
+  data.frequency_calibration = to_16(frequency_calibration);
   send_bytes(sock, (char *)&data, sizeof(RADIOMENU_DATA));
 }
 
@@ -449,7 +449,7 @@ void send_radio_data(int sock) {
   }
 
   //
-  data.frequency_calibration = to_64(frequency_calibration);
+  data.frequency_calibration = to_16(frequency_calibration);
   data.soapy_radio_sample_rate = to_32(soapy_radio_sample_rate);
   data.radio_frequency_min = to_64(radio->frequency_min);
   data.radio_frequency_max = to_64(radio->frequency_max);

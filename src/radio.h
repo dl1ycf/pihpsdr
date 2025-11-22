@@ -101,7 +101,8 @@ enum _display_enum {
   AVG_TIMEWINDOW
 };
 
-extern long long frequency_calibration;
+// RX and TX frequency calibration (relative, in Hz per 10 MHz)
+extern int frequency_calibration;
 extern int region;
 
 extern int RECEIVERS;

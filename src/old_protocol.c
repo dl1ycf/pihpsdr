@@ -1026,15 +1026,19 @@ static long long channel_freq(int chan) {
       freq += vfo[vfonum].xit;
     }
 
-    freq += frequency_calibration - vfo[vfonum].lo;
+    freq -= vfo[vfonum].lo;
   } else {
     //
     // determine RX frequency associated with VFO #vfonum
     // This is the center freq in CTUN mode.
     //
-    freq = vfo[vfonum].frequency + frequency_calibration - vfo[vfonum].lo;
+    freq = vfo[vfonum].frequency - vfo[vfonum].lo;
   }
 
+  //
+  // Apply *relative* frequency calibration
+  //
+  freq = (freq * (10000000LL + frequency_calibration)) / 10000000LL;
   return freq;
 }
 
@@ -2091,11 +2095,19 @@ static void ozy_send_buffer(unsigned char *buffer) {
     case 3: { // TX drive level, filters, etc.
       int power = 0;
       //
-      //  Set DUC frequency.
-      //  txfreq is the "on the air" frequency (for out-of-band checking)
+      //  Determine HPSDR (nominal DUC) and TX (on the air) frequency.
+      //  TX frequency is used for out-of-band checkint
+      //  HPSDR frequency is used so switch band filters
+      //  Do not apply frequency calibration here!
       //
-      long long DUCfrequency = channel_freq(-1);
-      long long txfreq = DUCfrequency + vfo[txvfo].lo - frequency_calibration;
+      int v = vfo_get_tx_vfo();
+      long long TXfreq = vfo[v].ctun ? vfo[v].ctun_frequency : vfo[v].frequency;
+
+      if (vfo[v].xit_enabled) {
+        TXfreq += vfo[v].xit;
+      }
+
+      long long HPSDRfrequency = TXfreq - vfo[v].lo;
 
       //
       // Fast "out-of-band" check. If out-of-band, set TX drive to zero.
@@ -2103,7 +2115,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
       // radio firmware makes a RX->TX transition (e.g. because a
       // Morse key has been hit).
       //
-      if ((txfreq >= txband->frequencyMin && txfreq <= txband->frequencyMax) || tx_out_of_band_allowed) {
+      if ((TXfreq >= txband->frequencyMin && TXfreq <= txband->frequencyMax) || tx_out_of_band_allowed) {
         power = transmitter->drive_level;
       }
 
@@ -2154,17 +2166,17 @@ static void ozy_send_buffer(unsigned char *buffer) {
         // Even more odd, the Hermes firmware routes 15m through the 10/12 LPF, while
         // the Angelia firmware routes 12m through the 17/15m LPF.
         //
-        if (DUCfrequency > 35600000L) {            // > 10m so use 6m LPF
+        if (HPSDRfrequency > 35600000L) {            // > 10m so use 6m LPF
           buffer[C4] = 0x10;
-        } else if (DUCfrequency > 24000000L)  {    // > 15m so use 10/12m LPF
+        } else if (HPSDRfrequency > 24000000L)  {    // > 15m so use 10/12m LPF
           buffer[C4] = 0x20;
-        } else if (DUCfrequency > 16500000L) {     // > 20m so use 17/15m LPF
+        } else if (HPSDRfrequency > 16500000L) {     // > 20m so use 17/15m LPF
           buffer[C4] = 0x40;
-        } else if (DUCfrequency >  8000000L) {     // > 40m so use 30/20m LPF
+        } else if (HPSDRfrequency >  8000000L) {     // > 40m so use 30/20m LPF
           buffer[C4] = 0x01;
-        } else if (DUCfrequency >  5000000L) {     // > 80m so use 60/40m LPF
+        } else if (HPSDRfrequency >  5000000L) {     // > 80m so use 60/40m LPF
           buffer[C4] = 0x02;
-        } else if (DUCfrequency >  2500000L) {     // > 160m so use 80m LPF
+        } else if (HPSDRfrequency >  2500000L) {     // > 160m so use 80m LPF
           buffer[C4] = 0x04;
         } else {                                   // < 2.5 MHz use 160m LPF
           buffer[C4] = 0x08;

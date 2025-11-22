@@ -191,7 +191,7 @@ typedef struct __attribute__((__packed__)) _header {
 typedef struct __attribute__((__packed__)) _radiomenu_data {
   HEADER header;
   //
-  uint64_t frequency_calibration;
+  uint16_t frequency_calibration;
   //
   uint16_t rx_gain_calibration;
   uint16_t OCfull_tune_time;
@@ -364,12 +364,12 @@ typedef struct __attribute__((__packed__)) _radio_data {
   mydouble soapy_tx_gain_elem_min[8];
   mydouble soapy_tx_gain_elem_max[8];
   //
-  uint64_t frequency_calibration;
   uint64_t radio_frequency_min;
   uint64_t radio_frequency_max;
   //
   uint32_t soapy_radio_sample_rate;
   //
+  uint16_t frequency_calibration;
   uint16_t pa_power;
   uint16_t OCfull_tune_time;
   uint16_t OCmemory_tune_time;

@@ -100,8 +100,8 @@ static GtkWidget *menu_b;
 static GtkWidget *vfo_panel;
 static GtkWidget *meter;
 
-// RX and TX calibration
-long long frequency_calibration = 0LL;
+// RX and TX frequency calibration (relative, in Hz per 10 MHz)
+int frequency_calibration = 0;
 
 int sat_mode = SAT_NONE;
 
