@@ -544,6 +544,7 @@ void send_tx_data(int sock) {
     data.ps_ampdelay =  to_double(tx->ps_ampdelay);
     data.ps_moxdelay =  to_double(tx->ps_moxdelay);
     data.ps_loopdelay =  to_double(tx->ps_loopdelay);
+    data.ps_setpk = to_double(tx->ps_setpk);
     send_bytes(sock, (char *)&data, sizeof(TRANSMITTER_DATA));
   }
 }

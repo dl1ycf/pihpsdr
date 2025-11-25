@@ -526,6 +526,7 @@ typedef struct __attribute__((__packed__)) _transmitter_data {
   mydouble ps_ampdelay;
   mydouble ps_moxdelay;
   mydouble ps_loopdelay;
+  mydouble ps_setpk;
   //
   uint32_t fft_size;
   //

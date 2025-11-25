@@ -936,6 +936,7 @@ static void *client_thread(void* arg) {
       transmitter->ps_ampdelay               = from_double(data.ps_ampdelay);
       transmitter->ps_moxdelay               = from_double(data.ps_moxdelay);
       transmitter->ps_loopdelay              = from_double(data.ps_loopdelay);
+      transmitter->ps_setpk                  = from_double(data.ps_setpk);
 
       for (int i = 0; i < 11; i++) {
         transmitter->eq_freq[i]                = from_double(data.eq_freq[i]);
