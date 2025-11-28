@@ -55,6 +55,7 @@
 #include <arpa/inet.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
+#include <errno.h>
 
 #include "actions.h"
 #include "band.h"
