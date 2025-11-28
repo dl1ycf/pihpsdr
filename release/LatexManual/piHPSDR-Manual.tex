@@ -4840,13 +4840,14 @@ Some have also included the so-called AK4951 companion board (internet link C) t
 
 The default value for the PA calibration value (see the \bltt{PA} menu) is 53.0 dB. The (by far) most
 prominent  problem for beginners with the HL2 and \pH is, that it seemingly produces no RF output. The reason for this
-is, that well-adjusted PA calibration values for a HL2 are rather small (about 40.5 dB) so much below the default
+is, that well-adjusted PA calibration values for a HL2 are rather small (about 40.5 dB) which is
+so much below the default
 value that this leads to essentially no RF output. While this would not be a problem if  users read the manual
 carefully and went to the PA menu first, this is obviously not the case. Therefore, as a bonus to HL2 users,
 the default PA calibration value (for all bands) is
 reduced to 40.5 dB for HermesLite-II (and RadioBerry) radios. This only applies at the very first start
-of \pH, since in later runs the default value will be overwritten anyway when reading the settings (the props
-file).
+of \pH, since in later runs the default value will be overwritten anyway when reading the settings from
+the props file.
 
 
 
@@ -4869,35 +4870,62 @@ file).
  using the \texttt{N2ADR} filter board, you should  change  settings in the open collector (\bltt{OC})
  menu for transverter bands only!
 
- \rett{HL2 audio codec} Check this box if you have the AK4951 companion board installed. \pH then activates
- (and used) the audio codec on that board.
+ \rett{HL2 audio codec}. Check this box if you have the AK4951 companion board installed. \pH then activates
+ the audio codec on that board and includes RX audio samples in the data stream to the HL2.
 
- \rett{HL2 CL1/2} The HL2 has two SMA jacks denoted CL1 and CL2 in the front panel. When checking this box,
+ \rett{HL2 CL1/2}. The HL2 has two SMA jacks denoted CL1 and CL2 in the front panel. When checking this box,
  you can feed a 10 MHz reference clock to the (input) CL1 jack, and the (output) Cl2 jack then
  has an internally re-generated 10 Mhz output signal with about 3.3 V$_{pp}$.
 
 \subsection{Support for the HL2 I/O board}
 
+The HL2 I/O board (internet link D) is a very versatile add-on to the HL2. It is so versatile
+because it contains a  microcontroller (a Raspberry Pico) with a lot
+of I/O lines. Depending on which program it runs,
+the Pico can switch antennas, transverters, or external filter boards
+(based on the RX and TX frequencies),
+deliver a band voltage to the PA (based on the TX frequency), control an
+automatic antenna tuner, and so forth. All this is \textit{not} done within \pH, but of
+course the Pico needs some information from \pH to work.
 If the presence of an HL2 I/O board has been detected,
-\pH transfers in regular intervals and in round-robin fashion
-the current TX frequency and the RX1/RX2 band codes. Note that the dial (!) frequencies are sent.
-When using a 2m transverter the TX frequency and the RX frequency codes are for the
-144 MHz band although the HL2 transmits and receives at frequencies < 38 Mhz.
- While the TX frequency is sent as a 40-bit word (covering frequencies up to 100 GHz),
-the RX frequencies are sent as 8-bit  ``band codes'' $C$ calculated from the frequency $f$ (in Hz) as
+\pH transfers data in regular intervals and in round-robin fashion to the I/O board. Note that
+such a round trip can take about half a second, so it may happen that the I/O board
+shows some delay when switching PA band filters or engaging an auto tuner. This data is simply
+written into some internal registers of the IO-Board, and it is up to the Pico to make
+good use of it.
 
-\begin{align}
+The IO-Board registers updated by \pH are:
+
+\begin{itemize}
+\item{TX Frequency (registers 0 to 4)}
+\item{Antenna Tuner (register 7)}
+\item{RF input path (register 11)}
+\item{RX1 frequency code (register 13)}
+\item{RX2 frequency code (register 14)}
+\end{itemize}
+
+\textbf{TX frequency.} The TX frequency is a 40-bit word that contains the (dial) TX frequency in Hz. When using
+a transverter, this it \textit{not} the frequency at which the HL2 operates.
+
+\textbf{Antenna Tuner.} When starting TUNE-ing, a '1' is written into register 7, and when ending TUNE-ing, a '0'
+is written to that register. The Pico then must take care to start/stop a TUNE-ing sequence.
+Writing a '0' at the end of TUNE is not necessary when everything went OK, but may be needed
+to stop the auto-tuner from searching a match when the user decided to end the TUNE-ing.
+
+\textbf{PURE feedback input.} The RF input path determines how the RF input jacks are connected to the RF front-end.
+This is automatically done depending on whether PURESIGNAL is used and whether we are
+transmitting or receiving. When using PURESIGNAL, connect the RF feedback signal to
+the input jack named PURE.
+
+\textbf{RX frequencies.} The RX1/RX2 frequency codes encode the  RX1/RX2 dial (!) frequency $f$ in a one-byte
+value (''band code'') $C$ that is defined as
+
+\begin{align*}
 C = \textrm{Floor}\left( 0.5 + 15.47 * \ln(f / 18748.1)\right)
-\end{align}
+\end{align*}
 
 so frequencies in the 80m band generated code 81 or 82, frequencies in the 2m band code 138 or 139,
 and the 3cm (10 GHz) band generates a band code that is 204.
-
-What the HL2 I/O board actually does with this information is up to the firmware of the board, in the
-easiest case it generates a band voltage for an external PA, but it also has enough I/O lines
-to switch transverters, external filter boards etc. This all need be implemented in the board firmware
-on the built-in RaspberryPico micro controller,
-\pH just passed the information needed.
 
 \subsection{``TX latency'' and ``PTT hang time''}
 
@@ -7432,7 +7460,7 @@ Operation method is just my personal preference.
 
 \subsection[PipeWire: NullSink modules]{PipeWire: Null-Sink modules as virtual audio cables}
 
-\textbf{Note:} This section is relevant if the PulseAudio audio module has been 
+\textbf{Note:} This section is relevant if the PulseAudio audio module has been
 selected at compile time. Meanwhile PulseAudio has been replaced by PipeWire in
 most recent LINUX distributions. Fortunately, there is a module called
 \texttt{pipewire-pulseaudio} which ensures that programs (such as \pH) using the
