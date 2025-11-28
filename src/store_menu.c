@@ -54,9 +54,9 @@ static gboolean close_cb () {
 
 static gboolean store_select_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   int ind = GPOINTER_TO_INT(data);
-  char label_str[40];
+  char label_str[50];
   char fw[16];
-  char sm[16];
+  char sm[8];
   store_memory_slot(ind);
   int mode = mem[ind].mode;
 
@@ -119,7 +119,7 @@ void store_menu(GtkWidget *parent) {
   for (int ind = 0; ind < NUM_MEMORIES; ind++) {
     char label_str[50];
     char fw[16];
-    char sm[16];
+    char sm[8];
     snprintf(label_str, sizeof(label_str), "Store M%d", ind);
     int mode = mem[ind].mode;
     b = gtk_button_new_with_label(label_str);
