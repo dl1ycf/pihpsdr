@@ -3,6 +3,11 @@ LIST OF RECENT PIHPSDR CHANGES
 
 November 2025:
 --------------
+- client/server: send periodic data (Audio,
+  Pandapter data) via UDP and reserve the
+  TCP channel for "mission critical" data.
+  This should increase the tolerance w.r.t.
+  short-time internet connection dropouts
 
 - store/restore local RX1 and TX audio settings
   "with the mode". So once can automatically
