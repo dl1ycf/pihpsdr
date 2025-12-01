@@ -976,6 +976,10 @@ static void *listen_thread(void *arg) {
       continue;
     }
 
+    timeout.tv_sec =  3;
+    timeout.tv_usec = 0;
+    setsockopt(remoteclient.sock_udp, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
     memset(&addr, 0, addrlen);
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
