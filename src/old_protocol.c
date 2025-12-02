@@ -157,6 +157,9 @@ static int hl2_iob_present = 0;
 #define COMMON_MERCURY_FREQUENCY 0x80
 #define PENELOPE_MIC 0x80
 
+static int mercury_software_version[2] = { 0, 0 };
+static int penelope_software_version = 0;
+
 #ifdef USBOZY
   //
   // additional defines if we include USB Ozy support
@@ -1222,7 +1225,12 @@ static void process_control_bytes() {
       auto_tune_end = 1;
     }
 
-    if (device != DEVICE_HERMES_LITE2) {
+    if (device == DEVICE_METIS || device == DEVICE_OZY) {
+      //
+      // These software versions are zero for HERMES and beyond
+      //
+      static int penelope_software_version = 0;
+
       if (mercury_software_version[0] != control_in[2]) {
         mercury_software_version[0] = control_in[2];
         t_print("  Mercury Software version: %d (0x%0X)\n", mercury_software_version[0], mercury_software_version[0]);
@@ -1232,7 +1240,7 @@ static void process_control_bytes() {
         penelope_software_version = control_in[3];
         t_print("  Penelope Software version: %d (0x%0X)\n", penelope_software_version, penelope_software_version);
       }
-    } else {
+    } else if (device == DEVICE_HERMES_LITE2) {
       //
       // HermesLite-II TX-FIFO overflow/underrun detection.
       // C2/C3 contains underflow/overflow and TX FIFO count
@@ -1266,9 +1274,10 @@ static void process_control_bytes() {
       }
     }
 
-    if (ozy_software_version != control_in[4]) {
-      ozy_software_version = control_in[4];
-      t_print("FPGA firmware version: %d.%d\n", ozy_software_version / 10, ozy_software_version % 10);
+    static int metis_software_version = -1;
+    if (metis_software_version != control_in[4]) {
+      metis_software_version = control_in[4];
+      t_print("FPGA firmware version: %d.%d\n", metis_software_version / 10, metis_software_version % 10);
     }
 
     break;
@@ -2434,6 +2443,10 @@ static void ozy_send_buffer(unsigned char *buffer) {
       break;
 
     case 11: {
+      //
+      // HermesLite-II stuff
+      //
+      static int       hl2_last_tune = 0;       // Detect start-of-tune
       static int       hl2_command_loop = 0;    // Round-Robin counter
       static int       hl2_query_count = 0;
       static long long hl2_iob_tx_freq = 0;     // TX dial frequency
@@ -2486,9 +2499,30 @@ static void ozy_send_buffer(unsigned char *buffer) {
       buffer[C3] = 20; // 20 msec PTT hang time, only bits 4:0
       buffer[C4] = 40; // 40 msec TX latency,    only bits 6:0
 
+      if (!transmitter->tune) { hl2_last_tune = 0; }
+
+      //
+      // When start TUNEing and an IO-board is detected,
+      // write '1' into the tuner register as fast as possible
+      //
+      if (hl2_iob_present && transmitter->tune && !hl2_last_tune) {
+        buffer[C0] = 0x7A;                         // I2C-2 without ACK
+        buffer[C1] = 0x06;                         // write
+        buffer[C2] = 0x80 | 0x1d;                  // i2c addr
+        buffer[C3] = 7;                            // REG_ANTENNA_TUNER
+        buffer[C4] = 1;                            // fire-and-forget
+        //t_print("HL2IOB: StartTuner\n");
+        hl2_last_tune = 1;
+        break;  // do not execute the next tick of HL2IOB state machine
+      }
+
       //
       switch (hl2_command_loop) {
       case 0:
+        //
+        // The default PTThang/TXlatency packet will be sent
+        // each time the command loop state is zero
+        //
         if (hl2_old_cl1_setting != hl2_cl1_input) {
           hl2_old_cl1_setting = hl2_cl1_input,
           hl2_new_cl1_setting = hl2_cl1_input;
@@ -2503,7 +2537,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
         break;
 
       case 1:
-
         //
         // If there is no HL2 IO board presend, do not query
         // at high rate. We arrive here every 75 msec,
@@ -2665,9 +2698,13 @@ static void ozy_send_buffer(unsigned char *buffer) {
           buffer[C4] =  HL2CL1off[hl2_cl1_loop++];
         }
 
-        if (hl2_cl1_loop > 47) { hl2_command_loop = 0; }
+        if (hl2_cl1_loop > 47) {
+          t_print("HL2: reprogrammed CL1/CL2 (%d)\n", hl2_new_cl1_setting);
+          hl2_command_loop = 0;
+        }
 
         break;
+
       }
 
       //

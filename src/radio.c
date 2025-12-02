@@ -208,9 +208,6 @@ int vfo_snap = 0;
 int protocol;
 int device;
 int new_pa_board = 0; // Indicates Rev.24 PA board for HERMES/ANGELIA/ORION
-int ozy_software_version;
-int mercury_software_version[2] = {0, 0};
-int penelope_software_version;
 
 int tx_fifo_underrun = 0;
 int tx_fifo_overrun = 0;
