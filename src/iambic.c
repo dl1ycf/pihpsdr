@@ -469,7 +469,7 @@ static void* keyer_thread(void *arg) {
           // the dash paddle wins.
           if (*kdash) {                  // send manual dashes
             tdown = loop_delay.tv_sec + 1.0E-9 * loop_delay.tv_nsec;
-            tx_queue_cw_event(1, 0);
+            tx_queue_cw_event(1, 0);  // immediate key-down
 #ifdef GPIO
             gpio_set_cw(1);
 #endif
@@ -498,6 +498,8 @@ static void* keyer_thread(void *arg) {
         // Wait for dash paddle being released in "straight key" mode.
         //
         if (! *kdash) {
+          // this does an "almost immediate" key-up. But it is ensured that the key-down lasts as long
+          // as it has really been down
           tx_queue_cw_event(0, (int)((loop_delay.tv_sec + 1.0E-9 * loop_delay.tv_nsec - tdown) * 48000.0));
 #ifdef GPIO
           gpio_set_cw(0);
@@ -518,9 +520,9 @@ static void* keyer_thread(void *arg) {
 #ifdef GPIO
         gpio_set_cw(1);
 #endif
-        tx_queue_cw_event (1, 0);
-        tx_queue_cw_event (0, dot_samples);
-        tx_queue_cw_event (0, dot_samples);
+        tx_queue_cw_event (1, 0);            // immediate key-down
+        tx_queue_cw_event (0, dot_samples);  // wait dot length, then key-up
+        tx_queue_cw_event (0, dot_samples);  // wait dot length, then key-up
         //
         // wait for end of inter-element pause
         //
@@ -577,9 +579,9 @@ static void* keyer_thread(void *arg) {
 #ifdef GPIO
         gpio_set_cw(1);
 #endif
-        tx_queue_cw_event (1, 0);
-        tx_queue_cw_event (0, dash_samples);
-        tx_queue_cw_event (0, dot_samples);
+        tx_queue_cw_event (1, 0);              // immediate key-down
+        tx_queue_cw_event (0, dash_samples);   // wait dash length, then key-up
+        tx_queue_cw_event (0, dot_samples);    // wait dash length, then key-up
         loop_delay.tv_nsec += (dash_samples + dot_samples) * 20833;
         key_state = AFTERDASH;
         break;

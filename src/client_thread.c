@@ -1297,12 +1297,6 @@ static void *client_tcp_thread(void* arg) {
     }
     break;
 
-    //    case CMD_SPLIT: {
-    //      split = header.b1;
-    //      g_idle_add(ext_vfo_update, NULL);
-    //    }
-    //    break;
-
     case CMD_SAT: {
       // sent as a response to a CMD_SAT
       sat_mode = header.b1;
@@ -1310,26 +1304,12 @@ static void *client_tcp_thread(void* arg) {
     }
     break;
 
-    //    case CMD_DUP: {
-    //      duplex = header.b1;
-    //      g_idle_add(ext_vfo_update, NULL);
-    //    }
-    //    break;
-
     case CMD_RECEIVERS: {
       // sent by the server as a response to a CMD_RECEIVERS
       int r = header.b1;
       g_idle_add(radio_client_change_receivers, GINT_TO_POINTER(r));
     }
     break;
-
-    //    case CMD_MODE: {
-    //      int id = header.b1;
-    //      int m = header.b2;
-    //      vfo[id].mode = m;
-    //      g_idle_add(ext_vfo_update, NULL);
-    //    }
-    //    break;
 
     case CMD_FILTER_VAR: {
       // sent by the server upon initialisation
@@ -1371,21 +1351,6 @@ static void *client_tcp_thread(void* arg) {
     }
     break;
 
-    //    case CMD_AGC: {
-    //      int id = header.b1;
-    //      receiver[id]->agc = header.b2;
-    //      g_idle_add(ext_vfo_update, NULL);
-    //    }
-    //    break;
-
-    //    case CMD_ZOOM: {
-    //      int id = header.b1;
-    //      receiver[id]->zoom = header.b2;
-    //      g_idle_add(sliders_zoom, GINT_TO_POINTER(100 + id));
-    //      g_idle_add(ext_vfo_update, NULL);
-    //    }
-    //    break;
-
     case CMD_PAN: {
       //
       // Sent by the server as a response to CMD_FREQ, CMD_MOVE, CMD_MOVETO, CMD_ZOOM
@@ -1396,17 +1361,6 @@ static void *client_tcp_thread(void* arg) {
       g_idle_add(sliders_pan, GINT_TO_POINTER(100 + id));
     }
     break;
-
-    //    case CMD_VOLUME: {
-    //      DOUBLE_COMMAND cmd;
-    //
-    //      if (recv_tcp(cl_sock_tcp, (char *)&cmd + sizeof(HEADER), sizeof(DOUBLE_COMMAND) - sizeof(HEADER)) < 0) { return NULL; }
-    //
-    //      int id = cmd.header.b1;
-    //      double volume = from_double(cmd.dbl);
-    //      receiver[id]->volume = volume;
-    //    }
-    //    break;
 
     case CMD_AGC_GAIN: {
       //
@@ -1426,32 +1380,6 @@ static void *client_tcp_thread(void* arg) {
       receiver[id]->agc_hang_threshold = from_double(agc_gain_cmd.hang_thresh);
     }
     break;
-
-    //    case CMD_ATTENUATION: {
-    //      int id = header.b1;
-    //      int att = from_16(header.s1);
-    //      radio_set_attenuation(id, att);
-    //    }
-    //    break;
-
-    //    case CMD_RFGAIN: {
-    //      DOUBLE_COMMAND command;
-    //
-    //      if (recv_tcp(cl_sock_tcp, (char *)&command + sizeof(HEADER), sizeof(DOUBLE_COMMAND) - sizeof(HEADER)) < 0) { return NULL; }
-    //
-    //      int id = command.header.b1;
-    //      double gain = from_double(command.dbl);
-    //      adc[receiver[id]->adc].gain = gain;
-    //    }
-    //    break;
-
-    //    case CMD_RIT_STEP: {
-    //      int v = header.b1;
-    //      int step = from_16(header.s1);
-    //      vfo_id_set_rit_step(v, step);
-    //      g_idle_add(ext_vfo_update, NULL);
-    //    }
-    //    break;
 
     case CMD_MOX: {
       //

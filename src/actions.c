@@ -393,14 +393,14 @@ void schedule_action(enum ACTION action, enum ACTION_MODE mode, int val) {
         // to get some "buffering" on the other side
         //
         if (radio_is_remote) {
-          tx_queue_cw_event(0, 0);
+          tx_queue_cw_event(0, 0);  // immeadiate key-up
           wait = 4800;
         } else {
           wait = 0;
         }
       }
 
-      tx_queue_cw_event(1, wait);
+      tx_queue_cw_event(1, wait);  // key-down after specified wait time
       cw_key_hit = 1;
     } else {
 #ifdef GPIO

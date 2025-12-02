@@ -1655,14 +1655,14 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
   //
   //  CW events are obtained from a ring buffer. The variable
   //  cw_delay_time measures the time since the last CW event
-  //  (key-up or key-down). For QRS, it is increased up to
-  //  a maximum value of It is increased up do a maximum value
-  //  of 99999 (21 seconds). To protect the hardware, a
-  //  key-down is canceled at 960000 (20 seconds) anyway.
+  //  (key-up or key-down). To support  QRS, it is increased
+  //  up to a maximum value of 999999 (21 seconds).
+  //  To protect the hardware, a key-down is canceled after
+  //  960000 (20 seconds) anyway.
   //
   static int cw_delay_time = 0;
 
-  if (cw_delay_time < 9999999) {
+  if (cw_delay_time < 999999) {
     cw_delay_time++;
   }
 
@@ -1774,7 +1774,10 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
 
     if (cw_ring_inpt != cw_ring_outpt) {
       //
-      // There is data in the ring buffer
+      // There is data in the ring buffer. An "event" is a pair
+      // (wait, state) of values, where wait indicates the time
+      // (in 1/48000 sec) one has to wait since the previous
+      // event, and state indicated key-down/up
       //
       if (cw_delay_time >= cw_ring_wait[cw_ring_outpt]) {
         //

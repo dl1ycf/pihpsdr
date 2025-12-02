@@ -224,9 +224,9 @@ static void send_dash() {
   if (cw_key_hit) { return; }
 
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  tx_queue_cw_event(1, 0);
-  tx_queue_cw_event(0, dashsamples);
-  tx_queue_cw_event(0, dotsamples);
+  tx_queue_cw_event(1, 0);             // immediate key-down
+  tx_queue_cw_event(0, dashsamples);   // wait a dash length, then key-up
+  tx_queue_cw_event(0, dotsamples);    // wait a dot length, then key-up
   ts.tv_nsec += (dashsamples + dotsamples) * 20833;
 
   while (ts.tv_nsec > NSEC_PER_SEC) {
@@ -243,9 +243,9 @@ static void send_dot() {
   if (cw_key_hit) { return; }
 
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  tx_queue_cw_event(1, 0);
-  tx_queue_cw_event(0, dotsamples);
-  tx_queue_cw_event(0, dotsamples);
+  tx_queue_cw_event(1, 0);            // immediate key-down
+  tx_queue_cw_event(0, dotsamples);   // wait dot length, then key-up
+  tx_queue_cw_event(0, dotsamples);   // wait dash length, then key-up
   ts.tv_nsec += (2 * dotsamples) * 20833;
 
   while (ts.tv_nsec > NSEC_PER_SEC) {
@@ -262,7 +262,7 @@ static void send_space(int len) {
   if (cw_key_hit) { return; }
 
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  tx_queue_cw_event(0, len * dotsamples);
+  tx_queue_cw_event(0, len * dotsamples);  // wait, then key-up
   ts.tv_nsec += (len * dotsamples) * 20833;
 
   while (ts.tv_nsec > NSEC_PER_SEC) {
