@@ -2604,7 +2604,7 @@ a sound device of the computer running \pH (usually, a USB sound card or head-se
 names of audio input devices can be quite long, therefore much horizontal space has been
 allocated to the drop-down menu.
 
-This setting is part of the RX/TX profile (see Sec. \ref{sec:rxtxprofiles}). Most users
+This setting is part of the RX/TX profile (see Chapter \ref{sec:rxtxprofiles}). Most users
 will choose a device connected to a microphone for SSB, while choosing a virtual audio
 cable or a sound card connected to another computer running the digi mode program when doing
 digi. \pH then automatically switches the audio input device when switching modes.
@@ -2621,6 +2621,7 @@ condenser (electret) microphone, or a dynamic microphone with built-in preamp.
 
 \rett{LineIn Lvl (dB)}. Here you can adjust the line-in level of the radio, if it
 has one and if \rett{LineIn} is selected with the \rett{Radio Mic} check box.
+
 \textbf{Note:} The controls in the second line (\rett{Radio Mic} and \rett{LineIn Lvl}) only
 apply to (and are only
 shown for) HPSDR (Protocol-1 and Protocol-2) radios. If such a radio does not have an audio codec,
@@ -2647,7 +2648,8 @@ Setting TX compression on/off automatically engages/disengages the auto leveller
 level $> 5$  automatically activates the CESSB overshoot control.
 
 \textbf{Note:} The compressor on/off flag, as well as the compression level, is
-,,stored with the mode''. So it is possible to have the compressor enabled for SSB
+part of the RX/TX profile (see Chapter \ref{sec:rxtxprofiles}).
+ So it is possible to have the compressor enabled for SSB
 (LSB/USB)
 and disabled for digi modes (DIGL/DIGU), and when switching modes, the compressor
 settings for the new mode are automatically restored. The compressor can be used (although
@@ -2665,11 +2667,12 @@ The frequency list includes 38 standard TIA/EIA-603-D CTCSS frequencies between 
 
 \rett{FM PreEmp/ALC}. When transmitting FM, the audio input signals are ,,emphasised''.
 This means that from 300 to 3000 Hz (the usual range of audio frequencies in amateur
-radio FM), there is a 6 dB per octave (20 dB per decade) that leads to a 20 dB damping
-of an input signal at 300 Hz (8 dB damping at 1200 Hz, and no damping ad 3000 Hz).
+radio FM), there is a frequency-dependent (6 dB per octave  or 20 dB per decade)
+attenuation that leads to a 20 dB damping
+of an input signal at 300 Hz (8 dB damping at 1200 Hz, and no damping at 3000 Hz).
 This of course distorts the audio, but the reverse process is built into FM demodulators
 to correct for this. Because there is a lot of damping of the audio signal, \pH
-applies a 15 dB boost to the TX audio input samples when the mode is FMN.
+automatically applies a 15 dB boost to the TX audio input samples when the mode is FMN.
 
 This boost is nearly ineffective if the FM pre-emphasis takes place \textit{after}
 the TX ALC stage, since the ALC will cancel most of the extra boost and the FM
@@ -2868,7 +2871,9 @@ and to 500 msec (with a pitch of 1400 Hz) for an SWR of 1:3. The idea of
 this feature is that one can operate a manual antenna tuner without looking at the screen.
 
 \rett{TUNE Sidetone Volume}. With this spin-button, one can adjust the volume of the SWR-dependent TUNE side tone
-(allowed range: $0 \ldots 0.5$). \textbf{Attention!} Always start with small values to protect your ears.
+(allowed range: $0 \ldots 0.5$).
+
+\textbf{Attention!} Always start with small values to protect your ears.
 This spin-box is inactive is the \rett{SWR-dependent Sidetone with TUNE} is not active.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2898,7 +2903,8 @@ to go TX if you are outside of the amateur radio bands.
 
 
 
-\textbf{PA calibration.} If the \rett{Calibrate} sub-menu is active
+\subsection{PA calibration.}
+If the \rett{Calibrate} sub-menu is active
 (as shown in Fig. \ref{fig:PAMenuCalibrate}) you can adjust your
 HPSDR board to your PA. This has to be done for each band separately,
 and you need a dummy load and a watt meter to do so. Most watt meters
@@ -2909,7 +2915,10 @@ amplification of the PA. If the value is \textit{increased},
 the output power of the HPSDR board. Thus, \textit{increasing} the
 PA calibration value will \textit{decrease} the output power. A calibration
 value of 38.8 dB corresponds to the maximum RF output of the HPSDR board,
-so the allowed range of values starts at 38.8.
+so the allowed range of values starts at 38.8. The default is a calibration
+value of 53.0 dB, which usually leads to a low-power RF output. The \#1
+problem of new \pH users is that they do not do the PA calibration as described
+below and therefore get too low or even almost no RF output power.
 
 To start calibration, go to the \bltt{TX} menu and check the
 box \rett{Tune use Drive}. Then, hit the rightmost toolbar button
@@ -2926,14 +2935,25 @@ adjust the PA calibration value until your Watt meter shows the
 nominal output  power. The calibration values will  (slightly)
 differ from band to band, often one needs smaller values for the
 higher bands since the amplification of the PA is smaller there.
-If transverter bands have been defined via the \bltt{XVTR} menu,
-they will also show up in this menu. Note that the PA calibration
-value affects the level of the low-power TX output of the HPSDR board
-an thus affects both the PA output (if the PA is enabled) as well
-as the low-power TX output (if the Xvtr port is active as RX antenna).
 
-\textbf{Watt meter calibration.} When PA calibration is complete,
-you can calibrate the power reading within the meter section of
+Of course, what you do here is not to change the amplification of
+your PA, but to change the level of the low-power SDR board RF
+output that goes into the PA. Therefore, PA calibration is also
+effective for the
+transverter bands have been defined in the \bltt{XVTR} menu
+(Chapter \ref{sec:xvtrmenu}), and
+which also show up in the PA menu. This is especially useful if
+the transverter is driven directly from the low-power RF output
+from the Xvtr port (in this case, you should disable the PA
+anyway, see the \bltt{XVTR} menu.
+
+\subsection{Watt meter calibration.}
+Note first that not all radios sense the RF output power and report
+it in the HPSDR data stream. I this case, RF output power in \pH
+will be displayed constantly as zero, and also the SWR sticks at 1:1.
+In this case, you can skip this section.
+
+Now you can calibrate the power reading within the meter section of
 the \pH window. If you open the \bltt{PA} menu and click
 on the text \rett{Watt Meter Calibrate}, the menu changes
 and looks like in Fig. \ref{fig:PAMenuWatt}.
@@ -3313,40 +3333,6 @@ the builtin keyer), this value (0-100) determines the dash/dot ratio.
 The normal value is 50, which means that a dash is three times longer
 than a dot. The dash length is proportional to this value, so it can
 be from zero to six times the dot length.
-
-%\rett{CW ramp width (ms)}. This spin-box lets you choose the
-%width of the ,,ramp'' used for RF CW pulses.
-%At the beginning of a dot or dash, the
-%amplitude of  the RF pulse is slowly
-%increased from zero to full amplitude at the beginning,
-%and at the end the amplitudes slowly fall down to zero.
-%This avoids harsh clicks in the RF signal
-%(which could possibly been heard all over the band for
-%hard keying). An optimised ramp function has been implemented
-%that gives good click suppression both at small and large
-%offsets from the carrier frequency. The
-%width is the rise/fall time of the pulse envelope, using the default value
-%(9 msec) you will meet ARRL's CSI (clean signal initiative) specification
-%for all CW speeds up to 40 wpm. Ramp widths can be chosen from
-%5 to 16 msec (\pH does not allow values smaller than 5 msec
-%to ensure that your CW signal does not produce overly strong clicks).
-%If the RF pulse is shaped
-%by \pH (\rett{CW handled in Radio} \textit{not} checked),
-%you will get
-%the optimised ramp function an the chosen ramp width.
-%A very recent Protocol-2 update
-%(March 2024) allows to send the ramp width to the radio as well.
-%However, the FPGA firmware in the radio will ignore that value
-%unless you run a very recent model, so with
-%\rett{CW handled in Radio} checked, changing the ramp width in this menu
-%has possibly no effect.
-%
-%The CW side tone needs pulse shaping as well to become pleasant.
-%To make sure that the delay of the CW side tone is
-%as small as possible, a ramp with a raised cosine shape
-%and a constant width of 5 msec (independent of the ramp width
-%used for RF) is used when \rett{CW handled in Radio} \textit{not} checked
-%such that \pH shapes the side tone.
 
 \rett{Paddle Mode}. Here the choice is Iambic Mode A, Iambic Mode B,
 and  Straight Key. In Straight Key mode, the key has to be connected
@@ -7359,12 +7345,15 @@ whether the ALSA compile time option (see Appendix \ref{sec:compiletime}) was ac
 compilation of \pH. If compiling from the sources you get the PulseAudio module if you
 do not change the Makefile (see Appendix \ref{sec:compiletime}). Note that since some time,
 PulseAudio has been replaced by PipeWire in all relevant LINUX distributions. This does not matter
-to \pH since it makes little difference to the application program. The (user) commands for
+to \pH since normally also the \texttt{pipewire-pulse} module is installed which
+lets applications using the PulseAudio API (such as \pH using the PulseAudio audio module)
+run under PipeWire.
+ The (user) commands for
 listing available devices, or for creating virtual audio cables, are slightly different between
 PulseAudio and PipeWire. This manual covers the PipeWire case.
 
 
-\subsection[ALSA: virtual audio cables]{Virtual audio cables in ALSA}
+\subsection[ALSA: Virtual Audio Cables]{Virtual Audio Cables in ALSA}
 Using the ALSA sound library,
 the command for creating the two virtual cables (put everything in one line) is
 
@@ -7464,13 +7453,14 @@ the PTT method (TRX transition controlled by CAT commands). Checking \rett{Data/
 takes care WSJTX switches \pH to DIGU mode, and using \rett{Fake It} for the Split
 Operation method is just my personal preference.
 
-\subsection[PipeWire: NullSink modules]{PipeWire: Null-Sink modules as virtual audio cables}
+\subsection[PipeWire: NullSink Modules]{PipeWire: Null-Sink Modules as Virtual Audio Cables}
 
 \textbf{Note:} This section is relevant if the PulseAudio audio module has been
 selected at compile time. Meanwhile PulseAudio has been replaced by PipeWire in
 most recent LINUX distributions. Fortunately, there is a module called
-\texttt{pipewire-pulseaudio} which ensures that programs (such as \pH) using the
-PulseAudio API can run with PipeWire. There are some subtle differences at command
+\texttt{pipewire-pulseaudio} which  which
+lets applications using the PulseAudio API (such as \pH using the PulseAudio audio module)
+run under PipeWire. There are some subtle differences at command
 line level when it comes to creating virtual devices or adjusting volumes. This
 section always discusses the Pipewire variants.
 
@@ -7564,7 +7554,7 @@ microphone.
 \begin{figure}[ht]
 \center
 \includegraphics[scale=0.45]{rx_settings_pa_audio.png}
-\caption{RX menu settings with PulseAudio}
+\caption{RX menu settings with PulseAudio/PipeWire}
 \label{fig:rx_settings_pa_audio}
 \end{figure}
 
@@ -7572,7 +7562,7 @@ microphone.
 \label{fig:pa2}
 \center
 \includegraphics[scale=0.45]{tx_settings_pa_audio.png}
-\caption{TX menu settings with PulseAudio}
+\caption{TX menu settings with PulseAudio/PipeWire}
 \label{fig:tx_settings_pa_audio}
 \end{figure}
 
@@ -7583,7 +7573,7 @@ the same as in the ALSA case.
 \begin{figure}[ht]
 \center
 \includegraphics[scale=0.45]{wsjtx_settings_pa_audio.png}
-\caption{WSJTX audio settings with PulseAudio}
+\caption{WSJTX audio settings with PulseAudio/PipeWire}
 \label{fig:wstx_settings_pa_audio}
 \end{figure}
 
