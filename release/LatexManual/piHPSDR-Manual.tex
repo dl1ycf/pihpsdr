@@ -2687,6 +2687,16 @@ carrier and the
 signal is a DSB signal. A reasonable value is 0.5 which leads to 100\% modulation. Values larger than
 0.5 have less than 100\% modulation. This means too much power goes into the carrier.
 
+\rett{TX Audio Monitor}. When this box is checked, the TX audio input (e.g. from the microphone)
+is mirrored on the audio output
+of the active receiver. The volume setting of the active receiver is applied. This does not work
+in CW (where the audio output is reserved for the side tone) or during TUNE-ing when the SWR dependent
+TUNE side tone is activated. Note that this only monitors the TX audio at the beginning of the
+TX audio chain (see Chapter \ref{sec:txchain}).
+
+\textbf{Note:} The TX audio monitoring does not work when operating \bltt{DUPLEX}, in this case the
+active receiver is running during TX and feeds the audio output.
+
 \rett{Max Digi Drv}. This spin button restricts the range of the drive slider from 0 to the
 chosen value
 for the DIGU and DIGL modes. If the value is 100, this has no effect. The primary use of this menu point is
@@ -4600,6 +4610,25 @@ On the other hand,
 for digital modes when using a virtual audio cable, the peak level is about 100\% almost constantly
 and here it is no reason to worry if the \texttt{Mic Lvl} bar is constantly red.
 
+\subsection{Monitoring the TX signal}
+
+The TX audio signal, as it comes from the microphone or from
+a digi program, can be mirrored to the audio output of the active receiver if not running \bltt{DUPLEX}.
+To this end, check the \rett{TX Audio Monitor} box in the \bltt{TX} menu (see Chapter \ref{sec:txmenu}).
+With this you can check whether the microphone preamplifier is too weak or too strong, or whether 
+transmitted RF finds back its way to your microphone cable and leads to RFI distortions. This does
+\textit{not} check the audio you are actually transmitting.
+
+It is (in principle) possible to monitor the audio signal downstream in the TX chain, that is, after
+applying compression, equaliser, etc. But this then comes with a large delay so this is not implemented.
+But it is possible to monitor the TX signal even without using a second receiver or a web SDR:
+just have the \pH receiver
+tuned to the TX frequency and mode while using \bltt{DUPLEX}: in most cases, the crosstalk at the T/R relay is
+by far strong enough such that you can hear your transmitted signal in the receiver. This signal then went from
+the \pH transmitter through the FPGA, the DAC converter and the PA to the T/R relay,
+and then back through the RF front end,
+the RX ADC and the FPGA to the \pH receiver.
+
 \subsection{The downward expander (DEXP), a flexible noise gate}
 
 The first processor in the TX chain is the downward expander (DEXP). This is best simply viewed as
@@ -4899,15 +4928,16 @@ The IO-Board registers updated by \pH are:
 \textbf{TX frequency.} The TX frequency is a 40-bit word that contains the (dial) TX frequency in Hz. When using
 a transverter, this it \textit{not} the frequency at which the HL2 operates.
 
-\textbf{Antenna Tuner.} When starting TUNE-ing, a '1' is written into register 7, and when ending TUNE-ing, a '0'
-is written to that register. The Pico then must take care to start/stop a TUNE-ing sequence.
-Writing a '0' at the end of TUNE is not necessary when everything went OK, but may be needed
-to stop the auto-tuner from searching a match when the user decided to end the TUNE-ing.
+\textbf{Antenna Tuner.} When starting TUNE-ing, a '1' is written into register 7.
+It is up to the HL2 IOB firmware in the Pico to take care that an external automatic
+antenna tuner starts its tuning sequence. For \pH, it is simply ,,fire and forget''.
 
-\textbf{PURE feedback input.} The RF input path determines how the RF input jacks are connected to the RF front-end.
-This is automatically done depending on whether PURESIGNAL is used and whether we are
-transmitting or receiving. When using PURESIGNAL, connect the RF feedback signal to
-the input jack named PURE.
+\textbf{RF input path.} If for the current band, anything different from
+\texttt{Ant1} has been chosen as the current RX antenna, then
+ the \texttt{Alt RX} (alternate RX antenna) input jack is used to feed the HL2 receiver.
+If using PURESIGNAL, the PS feedback signal can be connected to the \texttt{PURE} input jack
+in either case.
+
 
 \textbf{RX frequencies.} The RX1/RX2 frequency codes encode the  RX1/RX2 dial (!) frequency $f$ in a one-byte
 value (''band code'') $C$ that is defined as
