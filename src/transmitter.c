@@ -325,6 +325,7 @@ void tx_save_state(const TRANSMITTER *tx) {
   SetPropI1("transmitter.%d.panadapter_ignore_noise_percentile",  tx->id,    tx->panadapter_ignore_noise_percentile);
   SetPropI1("transmitter.%d.panadapter_hide_noise_filled",        tx->id,    tx->panadapter_hide_noise_filled);
   SetPropI1("transmitter.%d.panadapter_peaks_in_passband_filled", tx->id,    tx->panadapter_peaks_in_passband_filled);
+  SetPropI1("transmitter.%d.audiomonitor",                        tx->id,    tx->audiomonitor);
   SetPropI1("transmitter.%d.local_audio",                         tx->id,    tx->local_audio);
   SetPropS1("transmitter.%d.audio_name",                          tx->id,    tx->audio_name);
   SetPropI1("transmitter.%d.dialog_x",                            tx->id,    tx->dialog_x);
@@ -417,6 +418,7 @@ void tx_restore_state(TRANSMITTER *tx) {
   // next two lines for backwards compatibility
   GetPropI1("transmitter.%d.local_microphone",                    tx->id,    tx->local_audio);
   GetPropS1("transmitter.%d.microphone_name",                     tx->id,    tx->audio_name);
+  GetPropI1("transmitter.%d.audiomonitor",                        tx->id,    tx->audiomonitor);
   GetPropI1("transmitter.%d.local_audio",                         tx->id,    tx->local_audio);
   GetPropS1("transmitter.%d.audio_name",                          tx->id,    tx->audio_name);
   GetPropI1("transmitter.%d.dialog_x",                            tx->id,    tx->dialog_x);
@@ -1074,6 +1076,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->dexp_filter_low  =    1000;
   tx->dexp_filter_high =    2000;
   tx->local_audio = 0;
+  tx->audiomonitor = 0;
   tx->audio_flag = 0;
   g_mutex_init(&tx->audio_mutex);
   snprintf(tx->audio_name, sizeof(tx->audio_name), "%s", "NO AUDIO");
@@ -1666,14 +1669,34 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
     cw_delay_time++;
   }
 
-  int xmit = radio_is_transmitting();
+  j = tx->ratio * tx->samples; // pointer into cw_rf_sig
 
-  if (xmit && tx->tune && tx->swrtune && g_mutex_trylock(&tx->cw_ramp_mutex)) {
+  for (i = 0; i < tx->ratio; i++) {
+    tx->cw_sig_rf[j+i] = 0.0;
+  }
+
+  if (protocol == ORIGINAL_PROTOCOL) {
+    tx->p1stone[j] = 0;
+  }
+
+  int xmit = radio_is_transmitting();
+  int do_tx_audio = xmit && !duplex;
+  float tx_audio_sample = 0.0F;
+
+  if (do_tx_audio && transmitter->audiomonitor ) {
+    //
+    // Apply volume setting of active receiver
+    // 
+    double vol = pow(10.0, 0.05*active_receiver -> volume);
+    if (vol > 0.25) vol = 0.25;
+    tx_audio_sample = mic_sample_double * vol;
+  }
+
+  if (do_tx_audio && tx->tune && tx->swrtune && g_mutex_trylock(&tx->cw_ramp_mutex)) {
     //
     // produce a string of tones whose pitch and speed indicates the SWR
     //
     static int c1 = 0;
-    float swrsample;
     double val;
     int swrfreq = 500 + (int) (tx->swr * tx->swr * 100.0);
 
@@ -1700,7 +1723,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
       c1 += 30;
     }
 
-    swrsample = tx->swrtune_volume * sine_generator(&p1local, &p2local, swrfreq);
+    tx_audio_sample = tx->swrtune_volume * sine_generator(&p1local, &p2local, swrfreq);
 
     if (c1 < 72000) {
       // "keydown"
@@ -1723,32 +1746,12 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
       if (c2 >= 2400) { c1 = c2 = 0; }
     }
 
-    swrsample *= val;
+    tx_audio_sample *= val;
     g_mutex_unlock(&tx->cw_ramp_mutex);
-    int s = (int) (swrsample * 32767.0);
-
-    switch (protocol) {
-    case ORIGINAL_PROTOCOL:
-      tx->p1stone[tx->samples] = s;
-      break;
-
-    case NEW_PROTOCOL:
-      new_protocol_cw_audio_samples(s, s);
-      break;
-
-    default:
-      // do nothing
-      break;
-    }
-
-    if (active_receiver->local_audio) {
-      cw_audio_write(active_receiver, swrsample);
-    }
-  } else if ((txmode == modeCWL || txmode == modeCWU) && xmit) {
+  } else if (xmit && (txmode == modeCWL || txmode == modeCWU)) {
     //
     // shape CW pulses when doing CW and transmitting, else nullify them
     //
-    float cwsample;
 
     //
     //  We HAVE TO shape the signal to avoid hard clicks to be
@@ -1797,7 +1800,6 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
     //
     // Shape RF pulse and side tone.
     //
-    j = tx->ratio * tx->samples; // pointer into cw_rf_sig
 
     if (g_mutex_trylock(&tx->cw_ramp_mutex)) {
       double val;
@@ -1831,103 +1833,59 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
           tx->cw_sig_rf[j++] = tx->cw_ramp_rf[tx->cw_ramp_rf_ptr];
         }
       }
+      g_mutex_unlock(&tx->cw_ramp_mutex);
 
-      // Apply a minimum side tone volume for CAT CW messages.
       int vol = cw_keyer_sidetone_volume;
 
+      // Apply a minimum side tone volume for CAT CW messages.
       if (vol == 0 && CAT_cw_is_active) { vol = 12; }
 
-      cwsample = 0.00196 * vol * val * sine_generator(&p1local, &p2local, cw_keyer_sidetone_frequency);
-      g_mutex_unlock(&tx->cw_ramp_mutex);
-    } else {
       //
-      // We did not get the "Ramp Lock".
-      // This can only happen if the CW ramp width is changed while transmitting
-      // (if changing the ramp width is enabled in the CW menu).
-      // Simply insert a "hard zero".
-      //
-      cwsample = 0.0;
-
-      for (i = 0; i < tx->ratio; i++) {
-        tx->cw_sig_rf[j++] = 0.0;
-      }
-    }
-
-    //
-    // cw_keyer_sidetone_volume is in the range 0...127 so cwsample is 0.00 ... 0.25
-    //
-    if (active_receiver->local_audio) {
-      cw_audio_write(active_receiver, cwsample);
-    }
-
-    //
-    // In the new protocol, we MUST maintain a constant flow of audio samples to the radio
-    // (at least for ANAN-200D and ANAN-7000 internal side tone generation)
-    // So we send a sidetone which is "silence" when doing "internal" CW.
-    //
-    // Note the cwsample amplitude is in the range 0 ... 0.25 for
-    // a "side tone level" between 0 and 127
-    //
-
-    if (cw_keyer_internal &&  !CAT_cw_is_active) {
-      cwsample = 0.0;  // Is this needed?
-    }
-
-    switch (protocol) {
-    case NEW_PROTOCOL: {
-      int s;
-
-      //
-      // The scaling should ensure that a piHPSDR-generated side tone
-      // has the same volume than a FGPA-generated one.
+      // The built-in CW side tone of the ANAN-7000 corresponds to an amplitude of 0.25
+      // when cw_keyer_sidetone_volume is at its maximum value (127). On the G2, the
+      // amplitude can go up to full scale.
+      // Here we take care that in the headphone connected to the radio, the CW side tone
+      // generated by piHPSDR has the same volume as when producing the side tone in the
+      // radio FPGA, for a given setting of the side tone volume.
       //
       if (device == NEW_DEVICE_SATURN) {
-        //
-        // This comes from an analysis of the G2 sidetone
-        // data path:
-        // level 0...127 ==> amplitude 0...32767
-        //
-        s = (int) (cwsample * 131000.0);
+        // max amplitude 0.249
+        tx_audio_sample = 0.00196 * vol * val * sine_generator(&p1local, &p2local, cw_keyer_sidetone_frequency);
       } else {
-        //
-        // This factor has been measured on my ANAN-7000 and implies
-        // level 0...127 ==> amplitude 0...8191
-        //
-        s = (int) (cwsample * 32767.0);
-      }
-
-      new_protocol_cw_audio_samples(s, s);
-      break;
-
-      case ORIGINAL_PROTOCOL:
-        //
-        // For P1, we must store the side tone samples since they
-        // are tied in the protocol to the TXIQ samples.
-        // The scaling is valid for my RedPitaya-based HAMlab,
-        // I do not know which one is best for other P1 radios.
-        //
-        tx->p1stone[tx->samples] = (int) (cwsample * 32767.0);
-        break;
+        // max amplitude 0.998
+        tx_audio_sample = 0.00786 * vol * val * sine_generator(&p1local, &p2local, cw_keyer_sidetone_frequency);
       }
     }
   } else {
-    //
-    //  If no longer transmitting, or no longer doing CW: reset pulse shaper.
-    //  This will also swallow any pending CW and wipe out the buffers
-    //
-    keydown = 0;
-    cw_ring_inpt = cw_ring_outpt = 0;
-    tx->cw_ramp_audio_ptr = 0;
-    tx->cw_ramp_rf_ptr = 0;
-    // insert "silence" in CW audio and TX IQ buffers
-    j = tx->ratio * tx->samples;
+   //
+   //  If no longer tuning or transmitting in CW: reset pulse shaper
+   //
+   keydown = 0;
+   cw_ring_inpt = cw_ring_outpt = 0;
+   tx->cw_ramp_audio_ptr = 0;
+   tx->cw_ramp_rf_ptr = 0;
+  }
 
-    if (protocol == ORIGINAL_PROTOCOL) {
-      tx->p1stone[j] = 0;
+  if (do_tx_audio) {
+    int s = (int) (tx_audio_sample * 32767.0F);
+
+    if (active_receiver->local_audio) {
+      tx_audio_write(active_receiver, tx_audio_sample);
     }
 
-    for (i = 0; i < tx->ratio; i++) {
-      tx->cw_sig_rf[j++] = 0.0;
+
+    switch (protocol) {
+    case NEW_PROTOCOL:
+      new_protocol_cw_audio_samples(s, s);
+      break;
+
+    case ORIGINAL_PROTOCOL:
+      //
+      // For P1, we must store the side tone samples since they
+      // are tied in the protocol to the TXIQ samples.
+      //
+      tx->p1stone[tx->samples] = s;
+      break;
     }
   }
 

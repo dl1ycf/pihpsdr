@@ -303,14 +303,16 @@ void audio_close_input(TRANSMITTER *tx) {
 }
 
 //
-// This is for writing a CW side tone.
-// To keep sidetone latencies low, we keep the ALSA buffer
+// tx_audio_write() is called from the transmitter thread
+// when transmitting and not doing duplex.
+// Its main use is the CW side tone, so to minimize
+// sidetone latency, hold the ALSA buffer
 // at low filling, between cw_low_water and cw_high_water.
 //
 // Note that when sending the buffer, delay "jumps" by the buffer size
 //
 
-int cw_audio_write(RECEIVER *rx, float sample) {
+int tx_audio_write(RECEIVER *rx, float sample) {
   snd_pcm_sframes_t delay;
   g_mutex_lock(&rx->audio_mutex);
 
@@ -318,7 +320,7 @@ int cw_audio_write(RECEIVER *rx, float sample) {
     if (rx->cwaudio == 0) {
       //
       // This happens when we come here for the first time after a
-      // CW RX/TX transision. Rewind output buffer
+      // RX/TX transision. Rewind output buffer
       //
       if (snd_pcm_delay(rx->audio_handle, &delay) == 0) {
         snd_pcm_rewind(rx->audio_handle, delay - cw_mid_water);
@@ -452,13 +454,9 @@ int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
   int txmode = vfo_get_tx_mode();
 
   //
-  // If a CW/TUNE side tone may occur, quickly return
+  // When transmitting while not doing duplex, quickly return
   //
-  if (rx == active_receiver && radio_is_transmitting()) {
-    if (txmode == modeCWU || txmode == modeCWL) { return 0; }
-
-    if (can_transmit && transmitter->tune && transmitter->swrtune) { return 0; }
-  }
+  if (rx == active_receiver && radio_is_transmitting() && !duplex) { return 0; }
 
   // lock AFTER checking the "quick return" condition but BEFORE checking the pointers
   g_mutex_lock(&rx->audio_mutex);

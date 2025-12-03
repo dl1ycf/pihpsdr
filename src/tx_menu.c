@@ -86,6 +86,7 @@ enum _tx_choices {
   TX_SWR_PROTECTION,
   TX_USE_RX_FILTER,
   TX_FM_EMP,
+  TX_AUDIO_MON,
   TX_SWRTUNE,
   TX_SWRTUNE_VOLUME
 };
@@ -419,6 +420,10 @@ static void chkbtn_cb(GtkWidget *widget, gpointer data) {
       tx_set_filter(transmitter);
       gtk_widget_set_sensitive (tx_spin_low, NOT(v));
       gtk_widget_set_sensitive (tx_spin_high, NOT(v));
+      break;
+
+    case TX_AUDIO_MON:
+      transmitter->audiomonitor = v;
       break;
 
     case TX_FM_EMP:
@@ -788,6 +793,11 @@ void tx_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(tx_grid), btn, col, row, 1, 1);
   g_signal_connect(btn, "value_changed", G_CALLBACK(spinbtn_cb), GINT_TO_POINTER(TX_PAN_LOW));
   col++;
+  btn = gtk_check_button_new_with_label("TX Audio Monitor");
+  gtk_widget_set_name(btn, "boldlabel");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), transmitter->audiomonitor);
+  gtk_grid_attach(GTK_GRID(tx_grid), btn, col, row, 1, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(chkbtn_cb), GINT_TO_POINTER(TX_AUDIO_MON));
   col++;
   label = gtk_label_new("Max Digi Drv");
   gtk_widget_set_name(label, "boldlabel");

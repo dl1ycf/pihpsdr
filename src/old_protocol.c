@@ -158,7 +158,6 @@ static int hl2_iob_present = 0;
 #define PENELOPE_MIC 0x80
 
 static int mercury_software_version[2] = { 0, 0 };
-static int penelope_software_version = 0;
 
 #ifdef USBOZY
   //
