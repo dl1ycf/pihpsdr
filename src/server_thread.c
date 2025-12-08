@@ -843,8 +843,12 @@ static void *listen_thread(void *arg) {
   struct sockaddr_in addr;
   socklen_t addrlen = sizeof(addr);
   struct timeval timeout;
+  struct linger linger = { 0 };
   int on = 1;
   int rc;
+
+  linger.l_onoff = 1;
+  linger.l_linger = 0;
 
   if (server_stops_protocol) {
     g_idle_add(radio_server_protocol_stop, NULL);
@@ -886,6 +890,8 @@ static void *listen_thread(void *arg) {
 
     setsockopt(listen_socket, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
     setsockopt(listen_socket, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
+    setsockopt(listen_socket, SOL_SOCKET, SO_LINGER, (const char *)&linger, sizeof(linger));
+
     // bind to listening port
     memset(&addr, 0, addrlen);
     addr.sin_family = AF_INET;
