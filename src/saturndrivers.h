@@ -47,25 +47,13 @@ typedef enum {
 } EDMAStreamSelect;
 
 //
-// define types for product responses
+// enum for the different types of codecs we can have on the G2 board
 //
-typedef enum {
-  eInvalidProduct,                // productid = 1
-  eSaturn                         // productid=Saturn
-} EProductId;
-
-typedef enum {
-  ePrototype1,                // productid = 1
-  eProductionV1                         // productid=Saturn
-} EProductVersion;
-
-typedef enum {
-  eInvalidSWID,
-  e1stProtoFirmware,
-  e2ndProtofirmware,
-  eFallback,
-  eFullFunction
-} ESoftwareID;
+typedef enum
+{
+    e23b,                               // TLV320AIC23B (now end-of-life)
+    e3204                               // TLV320AIC3204 (replacement in newer boards)
+} ECodecType;
 
 //
 // void SetupFIFOMonitorChannel(EDMAStreamSelect Channel, bool EnableInterrupt);
@@ -114,8 +102,9 @@ void SetTXAmplitudeEER(bool EEREnabled);
 uint32_t AnalyseDDCHeader(uint32_t Header, uint32_t* DDCCounts);
 
 //
-// function call to get firmware ID and version
+// Global "version" variables, determined upon startup
 //
-unsigned int GetFirmwareVersion(ESoftwareID* ID);
+extern uint32_t FPGA_MinorVersion;
+extern uint32_t Saturn_PCB_Version;
 
 #endif

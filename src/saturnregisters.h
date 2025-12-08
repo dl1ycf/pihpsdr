@@ -37,10 +37,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define VNUMDDC 10                                  // downconverters available
-
-//START OutDDCIQ.h
-#define VDDCPACKETSIZE 1444             // each DDC I/Qpacket
+#define VNUMDDC 10                      // # DDCs (downconverters) available
+#define VDDCPACKETSIZE 1444             // DDC I/Q packet length (in Bytes)
 
 //
 // protocol 2 handler for outgoing DDC I/Q data Packet from SDR
@@ -51,28 +49,18 @@ void *OutgoingDDCIQ(void *arg);
 // interface calls to get commands from PC settings
 //
 
-//END OutDDCIQ.h
 
-//START codecwrite.h
 //
-// 8 bit Codec register write over the AXILite bus via SPI
-// // using simple SPI writer IP
-// given 7 bit register address and 9 bit data
+// 8 bit Codec register read/write over the AXILite bus via SPI
 //
 void CodecRegisterWrite(uint32_t Address, uint32_t Data);
-//END codecwrite.h
-
-//START hwaccess.h
+uint8_t CodecRegisterRead(uint32_t Address);
 
 //
-// open connection to the XDMA device driver for register and DMA access
+// open/close connection to the XDMA device driver for register and DMA access
 //
 int OpenXDMADriver(void);
-
-//
-// close connection to the XDMA device driver for register and DMA access
-//
-int CloseXDMADriver(void);
+void CloseXDMADriver(void);
 
 //
 // initiate a DMA to the FPGA with specified parameters
@@ -95,16 +83,10 @@ int DMAWriteToFPGA(int fd, unsigned char*SrcData, uint32_t Length, uint32_t AXIA
 int DMAReadFromFPGA(int fd, unsigned char*DestData, uint32_t Length, uint32_t AXIAddr);
 
 //
-// single 32 bit register read, from AXI-Lite bus
+// single 32 bit register read/write, from/to AXI-Lite bus
 //
 uint32_t RegisterRead(uint32_t Address);
-
-//
-// single 32 bit register write, to AXI-Lite bus
-//
 void RegisterWrite(uint32_t Address, uint32_t Data);
-
-//END hwaccess.h
 
 //
 // enum type for sample rate. only 48-384KHz allowed for protocol 1
@@ -151,74 +133,55 @@ typedef enum {
 //
 // FPGA register map
 //
-#define VADDRDDC0REG 0x0
-#define VADDRDDC1REG 0x4
-#define VADDRDDC2REG 0x8
-#define VADDRDDC3REG 0xC
-#define VADDRDDC4REG 0x10
-#define VADDRDDC5REG 0x14
-#define VADDRDDC6REG 0x18
-#define VADDRDDC7REG 0x1C
-#define VADDRDDC8REG 0x1000
-#define VADDRDDC9REG 0x1004
-#define VADDRRXTESTDDSREG 0x1008
-#define VADDRDDCRATES 0x100C
-#define VADDRDDCINSEL 0x1010
-#define VADDRKEYERCONFIGREG 0x2000
-#define VADDRCODECCONFIGREG 0x2004
-#define VADDRTXCONFIGREG 0x2008
-#define VADDRTXDUCREG 0x200C
-#define VADDRTXMODTESTREG 0x2010
-#define VADDRRFGPIOREG 0x2014
-#define VADDRADCCTRLREG 0x2018
-#define VADDRDACCTRLREG 0x201C
-#define VADDRDEBUGLEDREG 0x3000
-#define VADDRSTATUSREG 0x4000
-#define VADDRDATECODE 0x4004
-#define VADDRADCOVERFLOWBASE 0x5000
-#define VADDRFIFOOVERFLOWBASE 0x6000
-#define VADDRFIFORESET 0x7000
-#define VADDRIAMBICCONFIG 0X7004
-#define VADDRFIFOMONBASE 0x9000
-#define VADDRALEXADCBASE 0xA000
-#define VADDRALEXSPIREG 0x0B000
-#define VADDRBOARDID1 0xC000
-#define VADDRBOARDID2 0xC004
-#define VADDRCONFIGSPIREG 0x10000
-#define VADDRCODECSPIREG 0x14000
-#define VADDRXADCREG 0x18000                    // on-chip XADC (temp, VCC...)
-#define VADDRCWKEYERRAM 0x1C000                 // keyer RAM mapped here
+#define VADDRDDC0REG          0x00000
+#define VADDRDDC1REG          0x00004
+#define VADDRDDC2REG          0x00008
+#define VADDRDDC3REG          0x0000C
+#define VADDRDDC4REG          0x00010
+#define VADDRDDC5REG          0x00014
+#define VADDRDDC6REG          0x00018
+#define VADDRDDC7REG          0x0001C
+#define VADDRDDC8REG          0x01000
+#define VADDRDDC9REG          0x01004
+#define VADDRRXTESTDDSREG     0x01008
+#define VADDRDDCRATES         0x0100C
+#define VADDRDDCINSEL         0x01010
+#define VADDRKEYERCONFIGREG   0x02000
+#define VADDRCODECCONFIGREG   0x02004
+#define VADDRTXCONFIGREG      0x02008
+#define VADDRTXDUCREG         0x0200C
+#define VADDRTXMODTESTREG     0x02010
+#define VADDRRFGPIOREG        0x02014
+#define VADDRADCCTRLREG       0x02018
+#define VADDRDACCTRLREG       0x0201C
+#define VADDRDEBUGLEDREG      0x03000
+#define VADDRSTATUSREG        0x04000
+#define VADDRDATECODE         0x04004
+#define VADDRADCOVERFLOWBASE  0x05000
+#define VADDRFIFOOVERFLOWBASE 0x06000
+#define VADDRFIFORESET        0x07000
+#define VADDRIAMBICCONFIG     0X07004
+#define VADDRFIFOMONBASE      0x09000
+#define VADDRALEXADCBASE      0x0A000
+#define VADDRALEXSPIREG       0x0B000
+#define VADDRBOARDID1         0x0C000
+#define VADDRBOARDID2         0x0C004
+#define VADDRCONFIGSPIREG     0x10000
+#define VADDRCODECSPIWRITEREG 0x14000            // Write to Codec
+#define VADDRCODECSPIREADREG  0x14004            // Read from Codec
+#define VADDRXADCREG          0x18000            // on-chip XADC (temp, VCC...)
+#define VADDRCWKEYERRAM       0x1C000            // keyer RAM mapped here
 
-#define VNUMDMAFIFO 4             // DMA streams available
-#define VADDRDDCSTREAMREAD 0x0L         // stream reader/writer on AXI-4 bus
-#define VADDRDUCSTREAMWRITE 0x0L        // stream reader/writer on AXI-4 bus
-#define VADDRMICSTREAMREAD 0x40000L       // stream reader/writer on AXI-4 bus
-#define VADDRSPKRSTREAMWRITE 0x40000L     // stream reader/writer on AXI-4 bus
+#define VNUMDMAFIFO           4                  // DMA streams available
+#define VADDRDDCSTREAMREAD    0x0L               // stream reader/writer on AXI-4 bus
+#define VADDRDUCSTREAMWRITE   0x0L               // stream reader/writer on AXI-4 bus
+#define VADDRMICSTREAMREAD    0x40000L           // stream reader/writer on AXI-4 bus
+#define VADDRSPKRSTREAMWRITE  0x40000L           // stream reader/writer on AXI-4 bus
 
-#define VBITDDCFIFORESET 2            // reset bit in register
-#define VBITDUCFIFORESET 3            // reset bit in register
 #define VBITCODECMICFIFORESET 0         // reset bit in register
 #define VBITCODECSPKFIFORESET 1         // reset bit in register
-
-#define VADDRSWVERSIONREG 0XC000                // user defined s/w version register
-#define VADDRUSERVERSIONREG 0x4004
-
-//
-// MOX register
-//
-//extern bool MOXAsserted;                                   // true if MOX as asserted
-
-//
-// addresses of the DDC frequency registers
-//
-//extern uint32_t DDCRegisters[VNUMDDC];
-
-//
-// addresses of the DDC config registers
-//
-//extern uint32_t DDCConfigRegs[VNUMDDC];
-
-//extern bool GEEREnabled;                                   // P2. true if EER is enabled
+#define VBITDDCFIFORESET      2         // reset bit in register
+#define VBITDUCFIFORESET      3         // reset bit in register
 
 // InitialiseCWKeyerRamp(bool Protocol2, uint32_t Length_us)
 // calculates an "S" shape ramp curve and loads into RAM
@@ -233,12 +196,6 @@ void InitialiseCWKeyerRamp(bool Protocol2, uint32_t Length_us);
 // for "attenuation intent" values from 0 to 255
 //
 void InitialiseDACAttenROMs(void);
-
-//
-// InitialiseFIFOSizes(void)
-// initialise the FIFO size table, which is FPGA version dependent
-//
-void InitialiseFIFOSizes(void);
 
 //
 // SetByteSwap(bool)
@@ -258,20 +215,6 @@ void SetMOX(bool Mox);
 // set or clear the relevant bit in GPIO
 //
 void SetTXEnable(bool Enabled);
-
-//
-// SetATUTune(bool TuneEnabled)
-// drives the ATU tune output to selected state.
-//
-//void SetATUTune(bool TuneEnabled);
-
-//
-// SetP1SampleRate(ESampleRate Rate, unsigned int Count)
-// sets the sample rate for all DDC used in protocol 1.
-// allowed rates are 48KHz to 384KHz.
-// also sets the number of enabled DDCs, 1-8. Count = #DDC reqd
-//
-//void SetP1SampleRate(ESampleRate Rate, unsigned int Count);
 
 //
 // SetP2SampleRate(unsigned int DDC, bool Enabled, unsigned int SampleRate, bool InterleaveWithNext)
@@ -297,12 +240,6 @@ bool WriteP2DDCRateRegister(void);
 // this is needed to set timings and sizes for DMA transfers
 //
 uint32_t GetDDCEnables(void);
-
-//
-// SetClassEPA(bool IsClassE)
-// enables non linear PA mode
-//
-//void SetClassEPA(bool IsClassE);
 
 //
 // SetOpenCollectorOutputs(unsigned int bits)
@@ -333,16 +270,6 @@ void SetADCOptions(EADCSelect ADC, bool PGA, bool Dither, bool Random);
 void SetDDCFrequency(uint32_t DDC, uint32_t Value, bool IsDeltaPhase);
 
 //
-// SetTestDDSFrequency(uint32_t Value, bool IsDeltaPhase)
-// sets a test source frequency.
-// Value: 32 bit phase word or frequency word (1Hz resolution)
-// IsDeltaPhase: true if a delta phase value, false if a frequency value (P1)
-// calculate delta phase if required. Delta=2^32 * (F/Fs)
-// store delta phase; write to FPGA register.
-//
-void SetTestDDSFrequency(uint32_t Value, bool IsDeltaPhase);
-
-//
 // SetDUCFrequency(unsigned int Value, bool IsDeltaPhase)
 // sets a DUC frequency. (Currently only 1 DUC, therefore DUC must be 0)
 // Value: 32 bit phase word or frequency word (1Hz resolution)
@@ -351,72 +278,12 @@ void SetTestDDSFrequency(uint32_t Value, bool IsDeltaPhase);
 void SetDUCFrequency(unsigned int Value, bool IsDeltaPhase);    // only accepts DUC=0
 
 //
-// SetAlexRXAnt(unsigned int Bits)
-// P1: set the Alex RX antenna bits.
-// bits=00: none; 01: RX1; 02: RX2; 03: transverter
-//
-//void SetAlexRXAnt(unsigned int Bits);
-
-//
-// SetAlexRXOut(bool Enable)
-// P1: sets the Alex RX output relay
-//
-//void SetAlexRXOut(bool Enable);
-
-//
-// SetAlexTXAnt(unsigned int Bits)
-// P1: set the Alex TX antenna bits.
-// bits=00: ant1; 01: ant2; 10: ant3; other: chooses ant1
-//
-//void SetAlexTXAnt(unsigned int Bits);
-
-//
-// SetAlexCoarseAttenuator(unsigned int Bits)
-// P1: set the 0/10/20/30dB attenuator bits. NOT used for for 7000RF board.
-// bits: 00=0dB, 01=10dB, 10=20dB, 11=30dB
-//
-//void SetAlexCoarseAttenuator(unsigned int Bits);
-
-//
-// SetAlexRXFilters(bool IsRX1, unsigned int Bits)
-// P1: set the Alex bits for RX BPF filter selection
-// IsRX1 true for RX1, false for RX2
-// Bits follows the P1 protocol format
-//
-//void SetAlexRXFilters(bool IsRX1, unsigned int Bits);
-
-//
-// SetAlexTXFilters(unsigned int Bits)
-// P1: set the Alex bits for TX LPF filter selection
-// Bits follows the P1 protocol format
-//
-//void SetAlexTXFilters(unsigned int Bits);
-
-//
-// EnableAlexManualFilterSelect(bool IsManual)
-// used to select between automatic selection of filters, and remotely commanded settings.
-// if Auto, the RX and TX filters are calculated when a frequency change occurs
-//
-void EnableAlexManualFilterSelect(bool IsManual);
-
-//
 // AlexManualRXFilters(unsigned int Bits, int RX)
 // P2: provides a 16 bit word with all of the Alex settings for a single RX
 // must be formatted according to the Alex specification
 // RX=0 or 1: RX1; RX=2: RX2
 //
 void AlexManualRXFilters(unsigned int Bits, int RX);
-
-//
-// SetRX2GroundDuringTX(bool IsGrounded)
-//
-//void SetRX2GroundDuringTX(bool IsGrounded);
-
-//
-// DisableAlexTRRelay(bool IsDisabled)
-// if parameter true, the TX RX relay is disabled and left in RX
-//
-//void DisableAlexTRRelay(bool IsDisabled);
 
 //
 // AlexManualTXFilters(unsigned int Bits)
@@ -428,30 +295,6 @@ void AlexManualRXFilters(unsigned int Bits, int RX);
 void AlexManualTXFilters(unsigned int Bits, bool HasTXAntExplicitly);
 
 //
-// SetApolloBits(bool EnableFilter, bool EnableATU, bool StartAutoTune)
-// sets the control bits for Apollo. No support for these in Saturn at present.
-//
-//void SetApolloBits(bool EnableFilter, bool EnableATU, bool StartAutoTune);
-
-//
-// SetApolloEnabled(bool EnableFilter)
-// sets the enabled bit for Apollo. No support for these in Saturn at present.
-//
-void SetApolloEnabled(bool EnableFilter);
-
-//
-// SelectFilterBoard(bool IsApollo)
-// Selects between Apollo and Alex controls. Currently ignored & hw supports only Alex.
-//
-//void SelectFilterBoard(bool IsApollo);
-
-//
-// EnablePPSStamp(bool Enabled)
-// enables a "pulse per second" timestamp
-//
-//void EnablePPSStamp(bool Enabled);
-
-//
 // SetTXDriveLevel(unsigned int Level)
 // sets the TX DAC current via a PWM DAC output
 // level: 0 to 255 drive level value (255 = max current)
@@ -459,16 +302,14 @@ void SetApolloEnabled(bool EnableFilter);
 void SetTXDriveLevel(unsigned int Level);
 
 //
-// SetMicBoost(bool EnableBoost)
-//  enables 20dB mic boost amplifier in the CODEC
+// SetCodecInputParams((bool MicLine, bool EnableBoost, int LineInGain)
+// configures audio codec input characteristics:
+// MicLine: if true, use LineIn, else use MicIn
+// EnableBoost:  when using MicIn, enable extra 20dB amplification
+// LineInGain:   when using LineIn, apply gain
+//               LineInGain 0...31 maps to -12...34.5 dB in 1.5-db-steps
 //
-void SetMicBoost(bool EnableBoost);
-
-//
-// SetMicLineInput(bool IsLineIn)
-// chooses between microphone and Line input to Codec
-//
-void SetMicLineInput(bool IsLineIn);
+void SetCodecInputParams(bool MicLine, bool EnableBoost, int LineInGain);
 
 //
 // SetOrionMicOptions(bool MicRing, bool EnableBias, bool EnablePTT)
@@ -481,18 +322,6 @@ void SetOrionMicOptions(bool MicRing, bool EnableBias, bool EnablePTT);
 // selects the balanced microphone input, not supported by current protocol code.
 //
 void SetBalancedMicInput(bool Balanced);
-
-//
-// SetCodecLineInGain(unsigned int Gain)
-// sets the line input level register in the Codec (4 bits)
-//
-void SetCodecLineInGain(unsigned int Gain);
-
-//
-// EnablePureSignal(bool Enabled)
-// enables PureSignal operation. Enables DDC5 to be feedback (P1)
-//
-//void EnablePureSignal(bool Enabled);
 
 //
 // SetADCAttenuator(EADCSelect ADC, unsigned int Atten, bool Enabled, bool RXAtten)
@@ -529,16 +358,6 @@ void SetCWXBits(bool CWXEnabled, bool CWXDash, bool CWXDot);
 // DDC = 0 to 9
 //
 void SetDDCADC(int DDC, EADCSelect ADC);
-
-//
-// void SetDDCInterleaved(uint32_t DDCNum, bool Interleaved)
-//
-// Enable or disable interleaving for a DDC pair.
-// // this should only be called for odd numbered DDC
-// If interleaved, the DDC LO is set to the same as the paired DDC
-// // this doesn't affect the sample data stream generation!
-//
-//void SetDDCInterleaved(uint32_t DDCNum, bool Interleaved);
 
 //
 // void SetRXDDCEnabled(bool IsEnabled);
@@ -771,10 +590,10 @@ unsigned int GetAnalogueIn(unsigned int AnalogueSelect);
 //
 
 //
-// CodecInitialise(void)
+// CodecInitialise()
 // initialise the CODEC, with the register values that don't normally change
 //
-void CodecInitialise(void);
+void CodecInitialise();
 
 //
 // SetTXAmplitudeScaling (unsigned int Amplitude)
@@ -827,39 +646,5 @@ void SetTXIQDeinterleaved(bool Interleaved);
 // // needs to be stoppable if there is an error condition
 //
 void EnableDUCMux(bool Enabled);
-
-//////////////////////////////////////////////////////////////////////////////////
-// control the data transfer app
-//
-
-//
-// SetDuplex(bool Enabled)
-// if Enabled, the RX signal is transferred back during TX; else TX drive signal
-//
-void SetDuplex(bool Enabled);
-
-//
-// SetOperateMode(bool IsRunMode)
-// enables or disables operation & data transfer.
-//
-void SetOperateMode(bool IsRunMode);
-
-//
-// SetFreqPhaseWord(bool IsPhase)
-// for protocol 2, sets whether DDC/DUC frequency is phase word or frequency in Hz.
-//
-void SetFreqPhaseWord(bool IsPhase);
-
-//
-// SetDDCSampleSize(unsigned int DDC, unsgned int Size)
-// set sample resolution for DDC (only 24 bits supported)
-//
-void SetDDCSampleSize(unsigned int DDC, unsigned int Size);
-
-//
-// UseTestDDSSource(void)
-// override ADC1 and ADC2 selection; use test source instead.
-//
-void UseTestDDSSource(void);
 
 #endif
