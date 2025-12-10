@@ -383,7 +383,7 @@ void start_vfo_timer() {
 ////////////////////////////////////////////////////////////////////////////
 
 static int client_info_display(gpointer ptr) {
-  DISPLAY_DATA *data  = (DISPLAY_DATA *)ptr;
+  const DISPLAY_DATA *data  = (DISPLAY_DATA *)ptr;
   adc[0].overload = data->adc0_overload;
   adc[1].overload = data->adc1_overload;
   high_swr_seen = data->high_swr_seen;
@@ -551,7 +551,7 @@ static void *client_udp_thread(void* arg) {
 
     case INFO_PS:
       if (can_transmit) {
-        PS_DATA *psdata = (PS_DATA *)buffer;
+        const PS_DATA *psdata = (PS_DATA *)buffer;
 
         for (int i = 0; i < 16; i++) {
           transmitter->psinfo[i] = from_16(psdata->psinfo[i]);
@@ -564,7 +564,7 @@ static void *client_udp_thread(void* arg) {
       break;
 
     case INFO_RXAUDIO: {
-      RXAUDIO_DATA *rxdata = (RXAUDIO_DATA *)buffer;
+      const RXAUDIO_DATA *rxdata = (RXAUDIO_DATA *)buffer;
       RECEIVER *rx = receiver[rxdata->rx];
       int numsamples = from_16(rxdata->numsamples);
 

@@ -678,7 +678,7 @@ static void new_protocol_general() {
   //t_print("new_protocol_general: %s:%d\n",inet_ntoa(base_addr.sin_addr),ntohs(base_addr.sin_port));
   if (have_saturn_xdma) {
 #ifdef SATURN
-    saturn_handle_general_packet(false, general_buffer);
+    saturn_handle_general_packet(general_buffer);
 #endif
   } else {
     if ((rc = sendto(data_socket, general_buffer, sizeof(general_buffer), 0, (struct sockaddr * )&base_addr,
@@ -1381,7 +1381,7 @@ static void new_protocol_high_priority() {
   //t_print("new_protocol_high_priority: %s:%d\n",inet_ntoa(high_priority_addr.sin_addr),ntohs(high_priority_addr.sin_port));
   if (have_saturn_xdma) {
 #ifdef SATURN
-    saturn_handle_high_priority(false, high_priority_buffer_to_radio);
+    saturn_handle_high_priority(high_priority_buffer_to_radio);
 #endif
   } else {
     int rc;
@@ -1516,7 +1516,7 @@ static void new_protocol_transmit_specific() {
   //t_print("new_protocol_transmit_specific: %s:%d\n",inet_ntoa(transmitter_addr.sin_addr),ntohs(transmitter_addr.sin_port));
   if (have_saturn_xdma) {
 #ifdef SATURN
-    saturn_handle_duc_specific(false, transmit_specific_buffer);
+    saturn_handle_duc_specific(transmit_specific_buffer);
 #endif
   } else {
     int rc;
@@ -1620,7 +1620,7 @@ static void new_protocol_receive_specific() {
   //t_print("new_protocol_receive_specific: %s:%d enable=%02X\n",inet_ntoa(receiver_addr.sin_addr),ntohs(receiver_addr.sin_port),receive_specific_buffer[7]);
   if (have_saturn_xdma) {
 #ifdef SATURN
-    saturn_handle_ddc_specific(false, receive_specific_buffer);
+    saturn_handle_ddc_specific(receive_specific_buffer);
 #endif
   } else {
     int rc;
@@ -1910,7 +1910,7 @@ static gpointer new_protocol_txiq_thread(gpointer data) {
 
     if (have_saturn_xdma) {
 #ifdef SATURN
-      saturn_handle_duc_iq(false, iqbuffer);
+      saturn_handle_duc_iq(iqbuffer);
 #endif
     } else {
       //

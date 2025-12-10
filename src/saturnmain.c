@@ -60,11 +60,9 @@
 #include "saturnregisters.h"
 #include "saturnserver.h"
 
-bool IsTXMode;                                   // true if in TX
-bool SDRActive;                                  // true if this SDR is running at the moment
-bool Exiting = false;
-extern bool ServerActive;
-extern bool MOXAsserted;
+static bool HaveMOX;                                   // true if in TX
+static bool SDRActive;                                  // true if this SDR is running at the moment
+static bool Exiting = false;
 
 //
 // For "minor" versions up to 17, there is no "major" one.
@@ -112,16 +110,16 @@ static GThread *saturn_high_priority_thread_id;
 // code to allocate and free dynamic allocated memory
 // first the memory buffers:
 //
-uint8_t* DMAReadBuffer = NULL;                   // data for DMA read from DDC
-uint32_t DMABufferSize = VDMABUFFERSIZE;
-unsigned char* DMAReadPtr;                       // pointer for 1st available location in DMA memory
-unsigned char* DMAHeadPtr;                       // ptr to 1st free location in DMA memory
-unsigned char* DMABasePtr;                       // ptr to target DMA location in DMA memory
+static uint8_t* DMAReadBuffer = NULL;                   // data for DMA read from DDC
+static uint32_t DMABufferSize = VDMABUFFERSIZE;
+static unsigned char* DMAReadPtr;                       // pointer for 1st available location in DMA memory
+static unsigned char* DMAHeadPtr;                       // ptr to 1st free location in DMA memory
+static unsigned char* DMABasePtr;                       // ptr to target DMA location in DMA memory
 
-uint8_t* DDCSampleBuffer[VNUMDDC];               // buffer per DDC
-unsigned char* IQReadPtr[VNUMDDC];               // pointer for reading out an I or Q sample
-unsigned char* IQHeadPtr[VNUMDDC];               // ptr to 1st free location in I/Q memory
-unsigned char* IQBasePtr[VNUMDDC];               // ptr to DMA location in I/Q memory
+static uint8_t* DDCSampleBuffer[VNUMDDC];               // buffer per DDC
+static unsigned char* IQReadPtr[VNUMDDC];               // pointer for reading out an I or Q sample
+static unsigned char* IQHeadPtr[VNUMDDC];               // ptr to 1st free location in I/Q memory
+static unsigned char* IQBasePtr[VNUMDDC];               // ptr to DMA location in I/Q memory
 
 // Memory buffers to be exchanged with PiHPSDR APIs
 #define DDCMYBUF 0
@@ -233,9 +231,6 @@ static bool CreateDynamicMemory(void) {                     // return true if er
   // first create the buffer for DMA, and initialise its pointers
   //
   posix_memalign((void**)&DMAReadBuffer, VALIGNMENT, DMABufferSize);
-  DMAReadPtr = DMAReadBuffer + VBASE;  // at offset "VBASE" in the buffer
-  DMAHeadPtr = DMAReadBuffer + VBASE;
-  DMABasePtr = DMAReadBuffer + VBASE;
 
   if (!DMAReadBuffer) {
     t_print("DMA read buffer allocation failed\n");
@@ -243,6 +238,9 @@ static bool CreateDynamicMemory(void) {                     // return true if er
   }
 
   memset(DMAReadBuffer, 0, DMABufferSize);
+  DMAReadPtr = DMAReadBuffer + VBASE;  // at offset "VBASE" in the buffer
+  DMAHeadPtr = DMAReadBuffer + VBASE;
+  DMABasePtr = DMAReadBuffer + VBASE;
 
   //
   // set up per-DDC data structures
@@ -272,7 +270,7 @@ static bool CreateDynamicMemory(void) {                     // return true if er
 //
 /////////////////////////////////////////////////////////////////////
 
-void saturn_register_init() {
+static void saturn_register_init() {
   //
   // setup Saturn hardware
   //
@@ -280,10 +278,10 @@ void saturn_register_init() {
   usleep(10000);
   CodecInitialise();
   InitialiseDACAttenROMs();
-  InitialiseCWKeyerRamp(true, 9000);
-  SetCWSidetoneEnabled(true);
-  SetTXProtocol(true);                                              // set to protocol 2
-  SetTXModulationSource(eIQData);                                   // disable debug options
+  SetKeyerParams(30, 500, 9);                                       // RFdelay=30ms, HangTime=500ms, RampLength=9ms
+  SetCWSideTone(true, 50, 800);                                     // enable side tone, Volume=50, 800 Hz
+  SetTXProtocol2();                                                 // set to protocol 2
+  EnableCW(false, false);
   SetByteSwapping(true);                                            // h/w to generate NOT network byte order
   SetSpkrMute(false);
 
@@ -545,17 +543,13 @@ static void saturn_init_duc_iq() {
 //
 // Code from P2_app/InDUCIQ.c, IncomingDUCIQ() receive loop
 //
-void saturn_handle_duc_iq(bool FromNetwork, unsigned char *UDPInBuffer) {
-  uint8_t* SrcPtr;                                        // pointer to data from Thetis
+void saturn_handle_duc_iq(const unsigned char *UDPInBuffer) {
+
+  const uint8_t* SrcPtr;                                  // pointer to data from Host
   uint8_t* DestPtr;                                       // pointer to DMA buffer data
   uint32_t DepthDUC = 0;
   unsigned int Current;                                   // current occupied locations in FIFO
   bool FIFODUCOverflow, FIFODUCUnderflow, FIFODUCOverThreshold;
-
-  //
-  // Quick return if we receive DUC data from a source that is not actively transmitting
-  //
-  if (FromNetwork) { return; }
 
   DepthDUC = ReadFIFOMonitorChannel(eTXDUCDMA, &FIFODUCOverflow, &FIFODUCOverThreshold, &FIFODUCUnderflow,
                                     &Current);  // read the FIFO free locations
@@ -789,7 +783,7 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
       // - if any of the PTT or key inputs change, send a message immediately
       // - if a new ADC overload is detected, send after 50 ms at the latest
       //
-      SleepCount = (MOXAsserted) ? 2 : 400;
+      SleepCount = HaveMOX ? 2 : 400;
 
       while (SleepCount-- > 0) {
         ReadStatusRegister();
@@ -812,7 +806,7 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
           SleepCount = 100;
         }
 
-        if (MOXAsserted && SleepCount > 1) {
+        if (HaveMOX && SleepCount > 1) {
           // RXTX transition while "sleeping"
           SleepCount = 1;
         }
@@ -827,9 +821,10 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
 }
 
 //
-// Periodically send HighPrio data. Although the client is RX only,
-// send zero samples to the client since this may be used as a
-// heart beat
+// Periodically send MicSamples. Although the client is RX only,
+// send zero samples to the client in the pace of incoming
+// samples from XDMA, since this may be used as a
+// heart beat or clock source.
 //
 static gpointer saturn_micaudio_thread(gpointer arg) {
   //
@@ -852,6 +847,10 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
   struct iovec iovecinst;
   struct msghdr datagram;
 
+  //
+  // The UDP buffer is cleared. Only the sequence number will be
+  // updated each time a packet is sent via ethernet
+  //
   memset(UDPBuffer, 0, sizeof(UDPBuffer));
 
   //
@@ -901,7 +900,7 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
       usleep(10000);
     }
 
-    memcpy(&DestAddr, &reply_addr, sizeof(struct sockaddr_in)); // make local copy of dest. addr.
+    memcpy(&DestAddr, &server_reply_addr, sizeof(struct sockaddr_in)); // make local copy of dest. addr.
     memset(&iovecinst, 0, sizeof(struct iovec));
     memset(&datagram, 0, sizeof(struct msghdr));
     iovecinst.iov_len = VMICPACKETSIZE;
@@ -960,7 +959,7 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
 
       if (ServerActive) {
         iovecinst.iov_base = UDPBuffer;
-        memcpy(&DestAddr, &reply_addr, sizeof(struct sockaddr_in)); // make local copy of dest. addr.
+        memcpy(&DestAddr, &server_reply_addr, sizeof(struct sockaddr_in)); // make local copy of dest. addr.
         UDPBuffer[0] = (SequenceCounter2 >> 24) & 0xFF;           // add seq. count
         UDPBuffer[1] = (SequenceCounter2 >> 16) & 0xFF;
         UDPBuffer[2] = (SequenceCounter2 >>  8) & 0xFF;
@@ -981,9 +980,6 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
   t_print("ending: %s\n", __FUNCTION__);
   return NULL;
 }
-
-extern struct ThreadSocketData SocketData[VPORTTABLESIZE];
-extern struct sockaddr_in reply_addr;
 
 static gpointer saturn_rx_thread(gpointer arg) {
   t_print( "%s\n", __FUNCTION__);
@@ -1070,7 +1066,7 @@ static gpointer saturn_rx_thread(gpointer arg) {
 
     for (int DDC = 0; DDC < VNUMDDC; DDC++) {
       SequenceCounter[DDC] = 0;
-      memcpy(&DestAddr[DDC], &reply_addr, sizeof(struct sockaddr_in)); // make local copy of dest. addr.
+      memcpy(&DestAddr[DDC], &server_reply_addr, sizeof(struct sockaddr_in)); // make local copy of dest. addr.
       memset(&iovecinst[DDC], 0, sizeof(struct iovec));
       memset(&datagram[DDC], 0, sizeof(struct msghdr));
       iovecinst[DDC].iov_len = VDDCPACKETSIZE;
@@ -1089,8 +1085,10 @@ static gpointer saturn_rx_thread(gpointer arg) {
       // then put any residues at the heads of the buffer, ready for new data to come in
       //
       for (int DDC = 0; DDC < VNUMDDC; DDC++) {
+        //
+        // Ship out DDC packets as long as there is enough data
+        //
         while ((IQHeadPtr[DDC] - IQReadPtr[DDC]) > VIQBYTESPERFRAME) {
-          //                    t_print("enough data for packet: DDC= %d\n", DDC);
           mybuffer *mybuf = get_my_buffer(DDCMYBUF);
           mybuf->buffer[0] = (SequenceCounter[DDC] >> 24) & 0xFF;        // add seq. count
           mybuf->buffer[1] = (SequenceCounter[DDC] >> 16) & 0xFF;
@@ -1111,7 +1109,7 @@ static gpointer saturn_rx_thread(gpointer arg) {
           if (DDC < 6) {
             if (ServerActive) {
               iovecinst[DDC].iov_base = mybuf->buffer;
-              memcpy(&DestAddr[DDC], &reply_addr, sizeof(struct sockaddr_in)); // make local copy of dest. addr.
+              memcpy(&DestAddr[DDC], &server_reply_addr, sizeof(struct sockaddr_in)); // make local copy of dest. addr.
               Error = sendmsg(SocketData[VPORTDDCIQ0 + DDC].Socketid, &datagram[DDC], 0);
 
               if (Error == -1) {
@@ -1150,7 +1148,7 @@ static gpointer saturn_rx_thread(gpointer arg) {
       }
 
       //
-      // P2 packet sending complete.There are no DDC buffers with enough data to send out.
+      // Packet sending complete for all DDCs: there are no DDC buffers with enough data to send out.
       // bring in more data by DMA if there is some, else sleep for a while and try again
       // we have the same issue with DMA: a transfer isn't exactly aligned to the amount we can read out
       // according to the DDC settings. So we either need to have the part-used DDC transfer variables
@@ -1330,68 +1328,79 @@ void saturn_init() {
   saturn_high_priority_thread_id = g_thread_new( "SATURN HP OUT", saturn_high_priority_thread, NULL);
 }
 
-void saturn_handle_high_priority(bool FromNetwork, const unsigned char *UDPInBuffer) {
+void saturn_handle_high_priority_server(const unsigned char *UDPInBuffer) {
+  //
+  // HighPrio Packet that came via ethernet:
+  // only handle start/stop and DDC frequencies
+  // map DDC0:5 to DDC0:5
+  //
+  for (int i = 0; i < 6; i++) {
+    uint32_t LongWord = ((UDPInBuffer[4 * i +  9] & 0xFF) << 24) |
+                        ((UDPInBuffer[4 * i + 10] & 0xFF) << 16) |
+                        ((UDPInBuffer[4 * i + 11] & 0xFF) <<  8) |
+                        ((UDPInBuffer[4 * i + 12] & 0xFF)      );
+    SetDDCFrequency(i, LongWord, true);
+  }
+
+  int RunBit = UDPInBuffer[4] & 0x01;
+
+  if (RunBit) {
+    StartBitReceived = true;
+
+    if (ReplyAddressSet) {
+      ServerActive = true;  // only set active if we have replay address too
+    }
+  } else {
+    ServerActive = false;
+
+    // disable DDC0:6
+    for (int i = 0; i < 6; i++) {
+      SetP2SampleRate(i, false, 48, false);
+    }
+
+    WriteP2DDCRateRegister();
+    t_print("Server set to inactive by client app\n");
+    StartBitReceived = false;
+  }
+}
+
+void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
+  //
+  // HighPrio Packet that came via XDMA
+  //
   bool RunBit;                                          // true if "run" bit set
   uint8_t Byte, Byte2;                                  // received dat being decoded
   uint32_t LongWord;
   uint16_t Word;
-  int i;                                                // counter
   bool PAEnable;
-  int DDCLoop = (FromNetwork) ? 6 : 4;
-  int DDCOffset = (FromNetwork) ? 0 : 6;
 
-  //t_print("high priority %sbuffer received\n", (FromNetwork)?"network ":"");
   //
-  // now properly decode DDC frequencies
+  // map DDC0:3 in packet to DDC6:9
   //
-  for (i = 0; i < DDCLoop; i++) {
+  for (int i = 0; i < 4; i++) {
     LongWord = ((UDPInBuffer[4 * i +  9] & 0xFF) << 24) |
                ((UDPInBuffer[4 * i + 10] & 0xFF) << 16) |
                ((UDPInBuffer[4 * i + 11] & 0xFF) <<  8) |
                ((UDPInBuffer[4 * i + 12] & 0xFF)      );
-    SetDDCFrequency(i + DDCOffset, LongWord, true);                 // temporarily set above
+    SetDDCFrequency(i + 6, LongWord, true);
   }
 
   Byte = UDPInBuffer[4] & 0xFF;
   RunBit = (bool)(Byte & 1);
-  IsTXMode = (bool)(Byte & 2);
+  HaveMOX = (bool)(Byte & 2);
 
-  if (FromNetwork) {
-    if (RunBit) {
-      StartBitReceived = true;
-
-      if (ReplyAddressSet) {
-        ServerActive = true;  // only set active if we have replay address too
-      }
-    } else {
-      ServerActive = false;                                       // set state of whole app
-
-      for (i = 4; i < VNUMDDC; i++) {        // disable upper bank of DDCs
-        SetP2SampleRate(i, false, 48, false);
-      }
-
-      WriteP2DDCRateRegister();
-      t_print("Server set to inactive by client app\n");
-      StartBitReceived = false;
-    }
-
-    // If from (RX-only) client, ignore all other data
-    return;
-
+  if (RunBit) {
+    SDRActive = true;
+    SetTXEnable(true);
   } else {
-    if (RunBit) {
-      SDRActive = true;
-      SetTXEnable(true);
-    } else {
-      SDRActive = false;
-      SetTXEnable(false);
-      IsTXMode = false;
-      SetMOX(false);
-      EnableCW(false, false);
-    }
+    SDRActive = false;
+    SetTXEnable(false);
+    HaveMOX = false;
+    SetMOX(false);
+    EnableCW(false, false);
   }
 
-  SetMOX((bool)IsTXMode);
+  SetMOX(HaveMOX);
   //
   // DUC frequency & drive level
   //
@@ -1400,24 +1409,25 @@ void saturn_handle_high_priority(bool FromNetwork, const unsigned char *UDPInBuf
              ((UDPInBuffer[331] & 0xFF) <<  8) |
              ((UDPInBuffer[332] & 0xFF)      );
   SetDUCFrequency(LongWord, true);
+
   Byte = UDPInBuffer[345] & 0xFF;
   SetTXDriveLevel(Byte);
+
   //
-  // CAT port (not used with XDMA)
-  // Word = ((UDPInBuffer[1398] & 0xFF) << 8) | (UDPInBuffer[1399] & 0xFF);
-  //t_print("CAT over TCP port = %x\n", Word);
+  // Byte 1398:1399 (CAT port) not used
   //
+
   // transverter, speaker mute, open collector, user outputs
   // open collector data is in bits 7:1; move to 6:0
   //
   Byte = UDPInBuffer[1400] & 0xFF;
   SetXvtrEnable((bool)(Byte & 1));
-  SetSpkrMute((bool)((Byte >> 1) & 1));
+  SetSpkrMute((bool)(Byte & 2));
+
   Byte = UDPInBuffer[1401] & 0xFF;
   // According to  P2, the seven OC bits are b1:7
   SetOpenCollectorOutputs(Byte >> 1);
-  Byte = UDPInBuffer[1402] & 0xFF;
-  SetUserOutputBits(Byte);
+
   //
   // Alex
   // behaviour needs to be FPGA version specific: at V12, separate register added for Alex TX antennas
@@ -1426,8 +1436,6 @@ void saturn_handle_high_priority(bool FromNetwork, const unsigned char *UDPInBuf
   // this is to allow safe operation with legacy client apps
   // 1st read bytes and see if a TX ant bit is set
   //
-  // The word from 1398 is not yet used and overwritten here
-  // cppcheck-suppress redundantAssignment
   //
   Word =  UDPInBuffer[1428] & 0x07;                      // Alex0[26:24] TX data: ANT1/2/3 (if zero: old host program)
 
@@ -1455,109 +1463,64 @@ void saturn_handle_high_priority(bool FromNetwork, const unsigned char *UDPInBuf
   }
 
   SetPAEnabled(PAEnable); // activate PA if client app wants it
+
+  //
   // RX filters
+  //
   Word = ((UDPInBuffer[1430] & 0xFF) << 8 ) | (UDPInBuffer[1431] & 0xFF);  // Alex1 RX settings
   AlexManualRXFilters(Word, 2);
   Word = ((UDPInBuffer[1434] & 0xFF) << 8 ) | (UDPInBuffer[1435] & 0xFF);  // Alex0 RX settings
   AlexManualRXFilters(Word, 0);
+
   //
   // RX atten during TX and RX
   //
-  Byte2 = UDPInBuffer[1442] & 0xFF;     // RX2 atten
+  Byte2 = UDPInBuffer[1442] & 0xFF;      // RX2 atten
   Byte =  UDPInBuffer[1443] & 0xFF;      // RX1 atten
-  SetADCAttenuator(eADC1, Byte, true, false);
-  SetADCAttenuator(eADC2, Byte2, true, false);
+  SetADCAttenuator(Byte, true, false, Byte2, true, false);
+
   //
-  // CWX bits
+  // CWX bits - currently not used by piHPSDR
   //
-  Byte = UDPInBuffer[5] & 0xFF;      // CWX
-  SetCWXBits((bool)(Byte & 1), (bool)((Byte >> 2) & 1), (bool)((Byte >> 1) & 1)); // enabled, dash, dot
+  //Byte = UDPInBuffer[5] & 0xFF;
+  //bool CWXEnabled = (bool) (Byte & 0x01);
+  //bool CWXDot     = (bool) (Byte & 0x02);
+  //bool CWXDash    = (bool) (Byte & 0x04);
+  //SetCWXBits(CWXEnabled, CWXDot, CWXDash);
+
   return;
 }
 
-void saturn_handle_general_packet(bool FromNetwork, const unsigned char *PacketBuffer) {
-  uint16_t Port;                                  // port number from table
+void saturn_handle_general_packet(const unsigned char *PacketBuffer) {
   uint8_t Byte;
 
-  //t_print("general %sbuffer received\n", (FromNetwork)?"network ":"");
-  if (FromNetwork) { return; } //RRK
-
   //
-  // now set the other data carried by this packet
-  // wideband capture data:
+  // ALEX is enabled by default, so *only* the "PA enable" bit is processed.
   //
-  Byte = PacketBuffer[23] & 0xFF;                     // get wide-band enable status
-  SetWidebandEnable(eADC1, (bool)(Byte & 1));
-  SetWidebandEnable(eADC2, (bool)(Byte & 2));
-  Port = ((PacketBuffer[24] & 0xFF) << 8) | (PacketBuffer[25] & 0xFF); // WB sample count
-  SetWidebandSampleCount(Port);
-  Byte = PacketBuffer[26] & 0xFF;                     // WB sample size
-  SetWidebandSampleSize(Byte);
-  Byte = PacketBuffer[27] & 0xFF;                     // WB update rate
-  SetWidebandUpdateRate(Byte);
-  Byte = PacketBuffer[28] & 0xFF;                     // WB packets per frame
-  SetWidebandPacketsPerFrame(Byte);
-  //
-  // envelope PWM data:
-  //
-  Port = ((PacketBuffer[33] & 0xFF) << 8) | (PacketBuffer[34] & 0xFF); // PWM min
-  SetMinPWMWidth(Port);
-  Port = ((PacketBuffer[35] & 0xFF) << 8) | (PacketBuffer[36] & 0xFF); // PWM max
-  SetMaxPWMWidth(Port);
-  //
-  // various bits
-  //
-  Byte = PacketBuffer[37] & 0xFF;                     // flag bits
-  EnableTimeStamp((bool)(Byte & 1));
-  EnableVITA49((bool)(Byte & 2));
-  Byte = PacketBuffer[38] & 0xFF;                     // enable time-out
-  HW_Timer_Enable = ((bool)(Byte & 1));
   Byte = PacketBuffer[58] & 0xFF;                     // b0: PA-enable
   SetPAEnabled((bool)(Byte & 1));
-  Byte = PacketBuffer[59] & 0xFF;                     // Alex enable bits
-  SetAlexEnabled(Byte);
   return;
 }
 
-void saturn_handle_ddc_specific(bool FromNetwork, const unsigned char *UDPInBuffer) {
-  uint8_t Byte1, Byte2;                                 // received data
-  uint16_t Word;                                        // 16 bit read value
-  EADCSelect ADC = eADC1;                               // ADC to use for a DDC
-  int DDCLoop = (FromNetwork) ? 6 : 4;
-  int DDCOffset = (FromNetwork) ? 0 : 6;
-
-  //t_print("DDC specific %sbuffer received\n", (FromNetwork)?"network ":"");
-  if (!FromNetwork) {
-    bool Dither, Random;                                  // ADC bits
-    // get ADC details:
-    Byte1 = UDPInBuffer[4] & 0xFF;                        // ADC count
-    SetADCCount(Byte1);
-    Byte1 = UDPInBuffer[5] & 0xFF;                        // ADC Dither bits
-    Byte2 = UDPInBuffer[6] & 0xFF;                        // ADC Random bits
-    Dither  = (bool)(Byte1 & 1);
-    Random  = (bool)(Byte2 & 1);
-    SetADCOptions(eADC1, false, Dither, Random);          // ADC1 settings
-    Byte1 = Byte1 >> 1;                                   // move onto ADC bits
-    Byte2 = Byte2 >> 1;
-    Dither  = (bool)(Byte1 & 1);
-    Random  = (bool)(Byte2 & 1);
-    SetADCOptions(eADC2, false, Dither, Random);          // ADC2 settings
-  }
-
+void saturn_handle_ddc_specific_server(const unsigned char *UDPInBuffer) {
+  //
+  // Handle DDC-specific packet from the Ethernet. DO NOT apply any
+  // changes to the ADCs, but apply ADC mappings for DDC0:6
+  //
   //
   // main settings for each DDC
   // reuse "dither" for interleaved with next;
   // reuse "random" for DDC enabled.
   // be aware an interleaved "odd" DDC will usually be set to disabled, and we need to revert this!
   //
-  Word = ((UDPInBuffer[8] & 0xFF) << 8) | (UDPInBuffer[7] & 0xFF); // DDC enabled[15:0] (low byte first!)
+  uint16_t Word = ((UDPInBuffer[8] & 0xFF) << 8) | (UDPInBuffer[7] & 0xFF); // DDC enabled[15:0] (low byte first!)
 
-  for (int i = 0; i < DDCLoop; i++) {
-    uint16_t Word2;                                   // 16 bit read value
+  for (int i = 0; i < 6; i++) {
     bool Enabled, Interleaved;                        // DDC settings
     Enabled = (bool)(Word & 1);                       // get enable state
-    Byte1 = UDPInBuffer[6 * i + 17] & 0xFF;           // ADC for this DDC
-    Word2 = ((UDPInBuffer[6 * i + 18] & 0xFF) << 8) | (UDPInBuffer[6 * i + 19] & 0xFF); // sample rate
+    uint8_t Byte1 = UDPInBuffer[6 * i + 17] & 0xFF;           // ADC for this DDC
+    uint16_t Word2 = ((UDPInBuffer[6 * i + 18] & 0xFF) << 8) | (UDPInBuffer[6 * i + 19] & 0xFF); // sample rate
+    EADCSelect ADC = eADC1;                               // ADC to use for a DDC
 
     if (Byte1 == 0) {
       ADC = eADC1;
@@ -1567,19 +1530,16 @@ void saturn_handle_ddc_specific(bool FromNetwork, const unsigned char *UDPInBuff
       ADC = eTXSamples;
     }
 
-    SetDDCADC(i + DDCOffset, ADC);
+    SetDDCADC(i, ADC);
     Interleaved = false;                                 // assume no synch
 
-    // finally DDC synchronisation: my implementation it seems isn't what the spec intended!
-    // check: is DDC1 programmed to sync with DDC0;
-    // check: is DDC3 programmed to sync with DDC2;
-    // check: is DDC5 programmed to sync with DDC4;
-    // check: is DDC7 programmed to sync with DDC6;
-    // check: if DDC1 synch to DDC0, enable it;
-    // check: if DDC3 synch to DDC2, enable it;
-    // check: if DDC5 synch to DDC4, enable it;
-    // check: if DDC7 synch to DDC6, enable it;
-    // (reuse the Dither variable)
+    //
+    // Synchronised DDC pairs:
+    // If DDC0/1 are synchronized, set "Interleaved" for DDC0 and "Enabled" for DDC1
+    // If DDC2/3 are synchronized, set "Interleaved" for DDC2 and "Enabled" for DDC3
+    // If DDC4/5 are synchronized, set "Interleaved" for DDC4 and "Enabled" for DDC5
+    //
+
     switch (i) {
     case 0:
       Byte1 = UDPInBuffer[1363] & 0xFF;  // DDC0 synch
@@ -1589,7 +1549,6 @@ void saturn_handle_ddc_specific(bool FromNetwork, const unsigned char *UDPInBuff
       }
 
       break;
-
     case 1:
       Byte1 = UDPInBuffer[1363] & 0xFF; // DDC0 synch
 
@@ -1634,27 +1593,9 @@ void saturn_handle_ddc_specific(bool FromNetwork, const unsigned char *UDPInBuff
       }
 
       break;
-
-    case 6:
-      Byte1 = UDPInBuffer[1369] & 0xFF; // DDC6 synch
-
-      if (Byte1 == 0b10000000) {
-        Interleaved = true;  // set interleave
-      }
-
-      break;
-
-    case 7:
-      Byte1 = UDPInBuffer[1369] & 0xFF; // DDC6 synch
-
-      if (Byte1 == 0b10000000) {                        // if synch to DDC7
-        Enabled = true;  // enable DDC7
-      }
-
-      break;
     }
 
-    SetP2SampleRate(i + DDCOffset, Enabled, Word2, Interleaved);
+    SetP2SampleRate(i, Enabled, Word2, Interleaved);
     Word = Word >> 1;                                 // move onto next DDC enabled bit
   }
 
@@ -1662,41 +1603,139 @@ void saturn_handle_ddc_specific(bool FromNetwork, const unsigned char *UDPInBuff
   return;
 }
 
-void saturn_handle_duc_specific(bool FromNetwork, const unsigned char *UDPInBuffer) {
-  uint8_t Byte;
-  uint16_t SidetoneFreq;                                // freq for audio sidetone
-  uint8_t IambicSpeed;                                  // WPM
-  uint8_t IambicWeight;                                 //
-  uint8_t SidetoneVolume;
-  uint8_t CWRFDelay;
-  uint16_t CWHangDelay;
-  uint8_t CWRampTime;
+void saturn_handle_ddc_specific(const unsigned char *UDPInBuffer) {
+  //
+  // Handle DDC-specific packet from XDMA
+  //
+  uint8_t Byte1, Byte2;                                 // received data
 
-  if (FromNetwork) { return; }
+  bool Dither1, Random1;                                // ADC1 bits
+  bool Dither2, Random2;                                // ADC1 bits
+  Byte1 = UDPInBuffer[5] & 0xFF;                        // Dither bits
+  Byte2 = UDPInBuffer[6] & 0xFF;                        // Random bits
+  Dither1  = (bool)(Byte1 & 1);
+  Random1  = (bool)(Byte2 & 1);
+  Dither2  = (bool)(Byte1 & 2);
+  Random2  = (bool)(Byte2 & 2);
+  SetADCOptions(false, Dither1, Random1, false, Dither2, Random2);
 
-  // iambic settings
-  IambicSpeed = UDPInBuffer[9] & 0xFF;
-  IambicWeight = UDPInBuffer[10] & 0xFF;
-  Byte = UDPInBuffer[5] & 0xFF;  // keyer bool bits
-  SetCWIambicKeyer(IambicSpeed, IambicWeight, (bool)((Byte >> 2) & 1), (bool)((Byte >> 5) & 1),
-                   (bool)((Byte >> 6) & 1), (bool)((Byte >> 3) & 1), (bool)((Byte >> 7) & 1));
-  // general CW settings
-  SetCWSidetoneEnabled((bool)((Byte >> 4) & 1));
-  EnableCW((bool)((Byte >> 1) & 1), (bool)((Byte >> 7) & 1)); // CW enabled bit, breakin bit
-  SidetoneVolume = UDPInBuffer[6] & 0xFF;
-  SidetoneFreq = ((UDPInBuffer[7] & 0xFF) << 8) | (UDPInBuffer[8] & 0xFF);
-  SetCWSidetoneVol(SidetoneVolume);
-  SetCWSidetoneFrequency(SidetoneFreq);
-  CWRFDelay = UDPInBuffer[13] & 0xFF;              // delay before CW on
-  CWHangDelay = ((UDPInBuffer[11] & 0xFF) << 8) | (UDPInBuffer[12] & 0xFF);
-  SetCWPTTDelay(CWRFDelay);
-  SetCWHangTime(CWHangDelay);
-  CWRampTime = UDPInBuffer[17] & 0xFF;             // ramp transition time
+  //
+  // main settings for each DDC
+  // reuse "dither" for interleaved with next;
+  // reuse "random" for DDC enabled.
+  // be aware an interleaved "odd" DDC will usually be set to disabled, and we need to revert this!
+  //
+  uint16_t Word = ((UDPInBuffer[8] & 0xFF) << 8) | (UDPInBuffer[7] & 0xFF); // DDC enabled[15:0] (low byte first!)
 
-  if (CWRampTime != 0) {                                  // if ramp period supported by client app
-    uint32_t CWRampTime_us = 1000 * CWRampTime;
-    InitialiseCWKeyerRamp(true, CWRampTime_us);         // create required ramp, P2
+  for (int i = 0; i < 4; i++) {
+    //
+    // ATTENTION: i=0:3 is mapped to DDC6:9
+    //
+    EADCSelect ADC = eADC1;                            // ADC to use for a DDC
+    uint16_t Word2;                                   // 16 bit read value
+    bool Enabled, Interleaved;                        // DDC settings
+    Enabled = (bool)(Word & 1);                       // get enable state
+    Byte1 = UDPInBuffer[6 * i + 17] & 0xFF;           // ADC for this DDC
+    Word2 = ((UDPInBuffer[6 * i + 18] & 0xFF) << 8) | (UDPInBuffer[6 * i + 19] & 0xFF); // sample rate
+
+    if (Byte1 == 0) {
+      ADC = eADC1;
+    } else if (Byte1 == 1) {
+      ADC = eADC2;
+    } else if (Byte1 == 2) {
+      ADC = eTXSamples;
+    }
+
+    SetDDCADC(i + 6, ADC);
+    Interleaved = false;                                 // assume no synch
+
+    //
+    // Synchronised DDC pairs:
+    // If DDC0/1 are synchronized, set "Interleaved" for DDC0 and "Enabled" for DDC1
+    // If DDC2/3 are synchronized, set "Interleaved" for DDC0 and "Enabled" for DDC1
+    //
+    switch (i) {
+    case 0:
+      Byte1 = UDPInBuffer[1363] & 0xFF;  // DDC0 synch
+
+      if (Byte1 == 0b00000010) {
+        Interleaved = true;  // set interleave
+      }
+
+      break;
+
+    case 1:
+      Byte1 = UDPInBuffer[1363] & 0xFF; // DDC0 synch
+
+      if (Byte1 == 0b00000010) {                        // if synch to DDC1
+        Enabled = true;  // enable DDC1
+      }
+
+      break;
+
+    case 2:
+      Byte1 = UDPInBuffer[1365] & 0xFF; // DDC2 synch
+
+      if (Byte1 == 0b00001000) {
+        Interleaved = true;  // set interleave
+      }
+
+      break;
+
+    case 3:
+      Byte1 = UDPInBuffer[1365] & 0xFF; // DDC2 synch
+
+      if (Byte1 == 0b00001000) {                        // if synch to DDC3
+        Enabled = true;  // enable DDC3
+      }
+
+      break;
+    }
+
+    SetP2SampleRate(i + 6, Enabled, Word2, Interleaved);
+    Word = Word >> 1;
   }
+
+  WriteP2DDCRateRegister();
+  return;
+}
+
+void saturn_handle_duc_specific(const unsigned char *UDPInBuffer) {
+  uint8_t Byte, Byte2;
+
+  //
+  // CW settings
+  //
+  uint8_t IambicSpeed = UDPInBuffer[9] & 0xFF;
+  uint8_t IambicWeight = UDPInBuffer[10] & 0xFF;
+
+  Byte = UDPInBuffer[5] & 0xFF;  // keyer bool bits
+  bool CWEnabled       = (bool) (Byte & 0x02);
+  bool ReverseKeys     = (bool) (Byte & 0x04);
+  bool CWIambic        = (bool) (Byte & 0x08);
+  bool CWSideEnabled   = (bool) (Byte & 0x10);
+  bool IambicModeB     = (bool) (Byte & 0x20);
+  bool CWStrictSpacing = (bool) (Byte & 0x40);
+  bool CWBreakIn       = (bool) (Byte & 0x80);
+
+  uint8_t SideToneVolume = UDPInBuffer[6] & 0xFF;
+  uint8_t CWRFDelay      = UDPInBuffer[13] & 0xFF;
+  uint8_t CWRampTime     = UDPInBuffer[17] & 0xFF;
+  uint16_t CWHangTime    = ((UDPInBuffer[11] & 0xFF) << 8) | (UDPInBuffer[12] & 0xFF);
+  uint16_t SideToneFreq  = ((UDPInBuffer[7] & 0xFF) << 8) | (UDPInBuffer[8] & 0xFF);
+
+  // This goes to VADDRIAMBICCONFIG
+  SetCWIambicKeyer(IambicSpeed, IambicWeight, ReverseKeys, IambicModeB, CWStrictSpacing, CWIambic, CWBreakIn);
+
+  // This goes to VADDRSIDETONECONFIGREG
+  SetCWSideTone(CWSideEnabled, SideToneVolume, SideToneFreq);
+
+  // This sets the modulation source (VADDRTXCONFIGREG)
+  // and activates the keyer (VADDRKEYERCONFIGREG)
+  EnableCW(CWEnabled, CWBreakIn);
+
+  // This goes to VADDRKEYERCONFIGREG
+  SetKeyerParams(CWRFDelay, CWHangTime, CWRampTime);
 
   //
   // Codec Input and Orion Mic options
@@ -1722,10 +1761,9 @@ void saturn_handle_duc_specific(bool FromNetwork, const unsigned char *UDPInBuff
   SetOrionMicOptions(OrionBiasRing, OrionBiasEnable, OrionMicPTT);
   SetBalancedMicInput(SaturnXLRInput);
 
-  Byte = UDPInBuffer[58] & 0xFF;                   // ADC1 att on TX
-  SetADCAttenuator(eADC2, Byte, false, true);
-  Byte = UDPInBuffer[59] & 0xFF;                   // ADC2 att on TX
-  SetADCAttenuator(eADC1, Byte, false, true);
+  Byte = UDPInBuffer[58] & 0xFF;                    // ADC1 att on TX
+  Byte2 = UDPInBuffer[59] & 0xFF;                   // ADC2 att on TX
+  SetADCAttenuator(Byte, false, true, Byte2, false, true);
   return;
 }
 

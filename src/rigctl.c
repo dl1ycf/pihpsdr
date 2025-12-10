@@ -145,9 +145,6 @@ int rigctl_tcp_running() {
 }
 
 void shutdown_tcp_rigctl() {
-  struct linger linger = { 0 };
-  linger.l_onoff = 1;
-  linger.l_linger = 0;
   t_print("%s: server_socket=%d\n", __FUNCTION__, server_socket);
   tcp_running = 0;
 
@@ -155,6 +152,8 @@ void shutdown_tcp_rigctl() {
   // Gracefully terminate all active TCP connections
   //
   for (int id = 0; id < MAX_TCP_CLIENTS; id++) {
+    tcp_client[id].running = 0;
+
     if (tcp_client[id].andromeda_timer != 0) {
       g_source_remove(tcp_client[id].andromeda_timer);
       tcp_client[id].andromeda_timer = 0;
@@ -165,14 +164,9 @@ void shutdown_tcp_rigctl() {
       tcp_client[id].auto_timer = 0;
     }
 
-    tcp_client[id].running = 0;
-
     if (tcp_client[id].fd != -1) {
-      if (setsockopt(tcp_client[id].fd, SOL_SOCKET, SO_LINGER, (const char *)&linger, sizeof(linger)) == -1) {
-        t_perror("setsockopt(...,SO_LINGER,...) failed for client");
-      }
-
       t_print("%s: closing client socket: %d\n", __FUNCTION__, tcp_client[id].fd);
+      shutdown(tcp_client[id].fd, SHUT_RDWR);
       close(tcp_client[id].fd);
       tcp_client[id].fd = -1;
     }
@@ -187,17 +181,17 @@ void shutdown_tcp_rigctl() {
   // Close server socket
   //
   if (server_socket >= 0) {
-    if (setsockopt(server_socket, SOL_SOCKET, SO_LINGER, (const char *)&linger, sizeof(linger)) == -1) {
-      t_perror("setsockopt(...,SO_LINGER,...) failed for server");
-    }
-
     t_print("%s: closing server_socket: %d\n", __FUNCTION__, server_socket);
+    shutdown(server_socket, SHUT_RDWR);
     close(server_socket);
     server_socket = -1;
   }
 
-  // TODO: join with the server thread, but this requires to make the accept() there
-  //       non-blocking (use select())
+  if (rigctl_server_thread_id != NULL) {
+    g_thread_join(rigctl_server_thread_id);
+    rigctl_server_thread_id = NULL;
+  }
+
 }
 
 //
@@ -1265,14 +1259,9 @@ static gpointer rigctl_client (gpointer data) {
   // If rigctl is disabled via the GUI, the connections are closed by shutdown_rigctl_ports()
   // but even the we should decrement cat_control
   //
-  if (client->fd != -1) {
-    struct linger linger = { 0 };
-    linger.l_onoff = 1;
-    linger.l_linger = 0;
+  client->running = 0;
 
-    if (setsockopt(client->fd, SOL_SOCKET, SO_LINGER, (const char *)&linger, sizeof(linger)) == -1) {
-      t_perror("setsockopt(...,SO_LINGER,...) failed for client");
-    }
+  if (client->fd != -1) {
 
     if (client->andromeda_timer != 0) {
       g_source_remove(client->andromeda_timer);
@@ -1284,7 +1273,7 @@ static gpointer rigctl_client (gpointer data) {
       client->auto_timer = 0;
     }
 
-    client->running = 0;
+    shutdown(client->fd, SHUT_RDWR);
     close(client->fd);
     client->fd = -1;
   }

@@ -41,22 +41,6 @@
 #define VDDCPACKETSIZE 1444             // DDC I/Q packet length (in Bytes)
 
 //
-// protocol 2 handler for outgoing DDC I/Q data Packet from SDR
-//
-void *OutgoingDDCIQ(void *arg);
-
-//
-// interface calls to get commands from PC settings
-//
-
-
-//
-// 8 bit Codec register read/write over the AXILite bus via SPI
-//
-void CodecRegisterWrite(uint32_t Address, uint32_t Data);
-uint8_t CodecRegisterRead(uint32_t Address);
-
-//
 // open/close connection to the XDMA device driver for register and DMA access
 //
 int OpenXDMADriver(void);
@@ -89,20 +73,6 @@ uint32_t RegisterRead(uint32_t Address);
 void RegisterWrite(uint32_t Address, uint32_t Data);
 
 //
-// enum type for sample rate. only 48-384KHz allowed for protocol 1
-//
-typedef enum {
-  eDisabled,
-  e48KHz,
-  e96KHz,
-  e192KHz,
-  e384KHz,
-  e768KHz,
-  e1536KHz,
-  eInterleaveWithNext
-} ESampleRate;
-
-//
 // enum type for ADC selection
 //
 typedef enum {
@@ -133,44 +103,44 @@ typedef enum {
 //
 // FPGA register map
 //
-#define VADDRDDC0REG          0x00000
-#define VADDRDDC1REG          0x00004
-#define VADDRDDC2REG          0x00008
-#define VADDRDDC3REG          0x0000C
-#define VADDRDDC4REG          0x00010
-#define VADDRDDC5REG          0x00014
-#define VADDRDDC6REG          0x00018
-#define VADDRDDC7REG          0x0001C
-#define VADDRDDC8REG          0x01000
-#define VADDRDDC9REG          0x01004
-#define VADDRRXTESTDDSREG     0x01008
-#define VADDRDDCRATES         0x0100C
-#define VADDRDDCINSEL         0x01010
-#define VADDRKEYERCONFIGREG   0x02000
-#define VADDRCODECCONFIGREG   0x02004
-#define VADDRTXCONFIGREG      0x02008
-#define VADDRTXDUCREG         0x0200C
-#define VADDRTXMODTESTREG     0x02010
-#define VADDRRFGPIOREG        0x02014
-#define VADDRADCCTRLREG       0x02018
-#define VADDRDACCTRLREG       0x0201C
-#define VADDRDEBUGLEDREG      0x03000
-#define VADDRSTATUSREG        0x04000
-#define VADDRDATECODE         0x04004
-#define VADDRADCOVERFLOWBASE  0x05000
-#define VADDRFIFOOVERFLOWBASE 0x06000
-#define VADDRFIFORESET        0x07000
-#define VADDRIAMBICCONFIG     0X07004
-#define VADDRFIFOMONBASE      0x09000
-#define VADDRALEXADCBASE      0x0A000
-#define VADDRALEXSPIREG       0x0B000
-#define VADDRBOARDID1         0x0C000
-#define VADDRBOARDID2         0x0C004
-#define VADDRCONFIGSPIREG     0x10000
-#define VADDRCODECSPIWRITEREG 0x14000            // Write to Codec
-#define VADDRCODECSPIREADREG  0x14004            // Read from Codec
-#define VADDRXADCREG          0x18000            // on-chip XADC (temp, VCC...)
-#define VADDRCWKEYERRAM       0x1C000            // keyer RAM mapped here
+#define VADDRDDC0REG             0x00000
+#define VADDRDDC1REG             0x00004
+#define VADDRDDC2REG             0x00008
+#define VADDRDDC3REG             0x0000C
+#define VADDRDDC4REG             0x00010
+#define VADDRDDC5REG             0x00014
+#define VADDRDDC6REG             0x00018
+#define VADDRDDC7REG             0x0001C
+#define VADDRDDC8REG             0x01000
+#define VADDRDDC9REG             0x01004
+#define VADDRRXTESTDDSREG        0x01008
+#define VADDRDDCRATES            0x0100C
+#define VADDRDDCINSEL            0x01010
+#define VADDRKEYERCONFIGREG      0x02000
+#define VADDRSIDETONECONFIGREG   0x02004
+#define VADDRTXCONFIGREG         0x02008
+#define VADDRTXDUCREG            0x0200C
+#define VADDRTXMODTESTREG        0x02010
+#define VADDRRFGPIOREG           0x02014
+#define VADDRADCCTRLREG          0x02018
+#define VADDRDACCTRLREG          0x0201C
+#define VADDRDEBUGLEDREG         0x03000
+#define VADDRSTATUSREG           0x04000
+#define VADDRDATECODE            0x04004
+#define VADDRADCOVERFLOWBASE     0x05000
+#define VADDRFIFOOVERFLOWBASE    0x06000
+#define VADDRFIFORESET           0x07000
+#define VADDRIAMBICCONFIG        0X07004
+#define VADDRFIFOMONBASE         0x09000
+#define VADDRALEXADCBASE         0x0A000
+#define VADDRALEXSPIREG          0x0B000
+#define VADDRBOARDID1            0x0C000
+#define VADDRBOARDID2            0x0C004
+#define VADDRCONFIGSPIREG        0x10000
+#define VADDRCODECSPIWRITEREG    0x14000            // Write to Codec
+#define VADDRCODECSPIREADREG     0x14004            // Read from Codec
+#define VADDRXADCREG             0x18000            // on-chip XADC (temp, VCC...)
+#define VADDRCWKEYERRAM          0x1C000            // keyer RAM mapped here
 
 #define VNUMDMAFIFO           4                  // DMA streams available
 #define VADDRDDCSTREAMREAD    0x0L               // stream reader/writer on AXI-4 bus
@@ -182,13 +152,6 @@ typedef enum {
 #define VBITCODECSPKFIFORESET 1         // reset bit in register
 #define VBITDDCFIFORESET      2         // reset bit in register
 #define VBITDUCFIFORESET      3         // reset bit in register
-
-// InitialiseCWKeyerRamp(bool Protocol2, uint32_t Length_us)
-// calculates an "S" shape ramp curve and loads into RAM
-// needs to be called before keyer enabled!
-// parameter is length in microseconds; typically 1000-5000
-//
-void InitialiseCWKeyerRamp(bool Protocol2, uint32_t Length_us);
 
 //
 // initialise the DAC Atten ROMs
@@ -226,13 +189,12 @@ void SetTXEnable(bool Enabled);
 void SetP2SampleRate(unsigned int DDC, bool Enabled, unsigned int SampleRate, bool InterleaveWithNext);
 
 //
-// bool WriteP2DDCRateRegister(void)
+// void WriteP2DDCRateRegister(void)
 // writes the DDCRateRegister, once all settings have been made
 // this is done so the number of changes to the DDC rates are minimised
 // and the information all comes form one P2 message anyway.
-// returns true if changes were made to the hardware register
 //
-bool WriteP2DDCRateRegister(void);
+void WriteP2DDCRateRegister(void);
 
 //
 // uint32_t GetDDCEnables(void)
@@ -249,16 +211,10 @@ uint32_t GetDDCEnables(void);
 void SetOpenCollectorOutputs(unsigned int bits);
 
 //
-// SetADCCount(unsigned int ADCCount)
-// sets the number of ADCs available in the hardware.
-//
-void SetADCCount(unsigned int ADCCount);
-
-//
-// SetADCOptions(EADCSelect ADC, bool Dither, bool Random);
+// SetADCOptions
 // sets the ADC contol bits for one ADC
 //
-void SetADCOptions(EADCSelect ADC, bool PGA, bool Dither, bool Random);
+void SetADCOptions(bool PGA1, bool Dither1, bool Random1, bool PGA2, bool Dither2, bool Random2);
 
 //
 // SetDDCFrequency(unsigned int DDC, unsigned int Value, bool IsDeltaPhase)
@@ -302,14 +258,15 @@ void AlexManualTXFilters(unsigned int Bits, bool HasTXAntExplicitly);
 void SetTXDriveLevel(unsigned int Level);
 
 //
-// SetCodecInputParams((bool MicLine, bool EnableBoost, int LineInGain)
-// configures audio codec input characteristics:
-// MicLine: if true, use LineIn, else use MicIn
-// EnableBoost:  when using MicIn, enable extra 20dB amplification
-// LineInGain:   when using LineIn, apply gain
-//               LineInGain 0...31 maps to -12...34.5 dB in 1.5-db-steps
+// EnableLine: true: enable Line input, false: enable Mic input
+// MicBoost:   true: use 20dB mic boost, false: no boost
+// LineInGain: LineIn gain vaule
 //
-void SetCodecInputParams(bool MicLine, bool EnableBoost, int LineInGain);
+// MicBoost has no effect if EnableLine is true
+// LineInGain has no effect if MicLine is true
+//
+void SetCodecInputParams(bool EnableLine, bool EnableBoost, int LineInGain);
+
 
 //
 // SetOrionMicOptions(bool MicRing, bool EnableBias, bool EnablePTT)
@@ -324,14 +281,13 @@ void SetOrionMicOptions(bool MicRing, bool EnableBias, bool EnablePTT);
 void SetBalancedMicInput(bool Balanced);
 
 //
-// SetADCAttenuator(EADCSelect ADC, unsigned int Atten, bool Enabled, bool RXAtten)
-// sets the  stepped attenuator on the ADC input
-// Atten provides a 5 bit atten value
-// RXAtten: if true, sets atten to be used during RX
-// TXAtten: if true, sets atten to be used during TX
+// sets the  stepped attenuator on the ADC input of ADC1 and ADC2
+// Atten1/2:   a 5 bit atten value
+// RXAtten1/2: if true, sets atten to be used during RX
+// TXAtten1/2: if true, sets atten to be used during TX
 // (it can be both!)
 //
-void SetADCAttenuator(EADCSelect ADC, unsigned int Atten, bool RXAtten, bool TXAtten);
+void SetADCAttenuator(unsigned int Atten1, bool RXAtten1, bool TXAtten1, unsigned int Atten2, bool RXAtten2, bool TXAtten2);
 
 //
 //void SetCWIambicKeyer(...)
@@ -373,49 +329,18 @@ void SetRXDDCEnabled(bool IsEnabled);
 //
 void EnableCW (bool Enabled, bool Breakin);
 
-//
-// SetCWSidetoneVol(uint8_t Volume)
-// sets the sidetone volume level (7 bits, unsigned)
-//
-void SetCWSidetoneVol(uint8_t Volume);
 
 //
-// SetCWPTTDelay(unsigned int Delay)
-//  sets the delay (ms) before TX commences (8 bit delay value)
+// void SetCWSideTone(bool Enabled, uint8_t Volume, uint16_t Frequency)
+// enables/disables the side tone and sets volume and frequency
 //
-void SetCWPTTDelay(unsigned int Delay);
+void SetCWSideTone(bool Enabled, uint8_t Volume, uint16_t Frequency);
 
 //
-// SetCWHangTime(unsigned int HangTime)
-// sets the delay (ms) after CW key released before TX removed
-// (10 bit hang time value)
+// void  SetKeyerParams(uint8_t Delay, uint16_t HangTime, uint8_t Ramp)
+// sets RF delay, Hang time, and CW pulse ramp length
 //
-void SetCWHangTime(unsigned int HangTime);
-
-//
-// SetCWSidetoneFrequency(unsigned int Frequency)
-// sets the CW audio sidetone frequency, in Hz
-// (12 bit value)
-//
-void SetCWSidetoneFrequency(unsigned int Frequency);
-
-//
-// SetCWSidetoneEnabled(bool Enabled)
-// enables or disables sidetone. If disabled, the volume is set to zero
-//
-void SetCWSidetoneEnabled(bool Enabled);
-
-//
-// SetMinPWMWidth(unsigned int Width)
-// set class E min PWM width (not yet implemented)
-//
-void SetMinPWMWidth(unsigned int Width);
-
-//
-// SetMaxPWMWidth(unsigned int Width)
-// set class E min PWM width (not yet implemented)
-//
-void SetMaxPWMWidth(unsigned int Width);
+void SetKeyerParams(uint8_t Delay, uint16_t HangTime, uint8_t Ramp);
 
 //
 // SetXvtrEnable(bool Enabled)
@@ -424,85 +349,10 @@ void SetMaxPWMWidth(unsigned int Width);
 void SetXvtrEnable(bool Enabled);
 
 //
-// SetWidebandEnable(EADCSelect ADC, bool Enabled)
-// enables wideband sample collection from an ADC.
-//
-void SetWidebandEnable(EADCSelect ADC, bool Enabled);
-
-//
-// SetWidebandSampleCount(unsigned int Samples)
-// sets the wideband data collected count
-//
-void SetWidebandSampleCount(unsigned int Samples);
-
-//
-// SetWidebandSampleSize(unsigned int Bits)
-// sets the sample size per packet used for wideband data transfers
-//
-void SetWidebandSampleSize(unsigned int Bits);
-
-//
-// SetWidebandUpdateRate(unsigned int Period_ms)
-// sets the period (ms) between collections of wideband data
-//
-void SetWidebandUpdateRate(unsigned int Period_ms);
-
-//
-// SetWidebandPacketsPerFrame(unsigned int Count)
-// sets the number of packets to be transferred per wideband data frame
-//
-void SetWidebandPacketsPerFrame(unsigned int Count);
-
-//
-// EnableTimeStamp(bool Enabled)
-// enables a timestamp for RX packets
-//
-void EnableTimeStamp(bool Enabled);
-
-//
-// EnableVITA49(bool Enabled)
-// enables VITA49 mode
-//
-void EnableVITA49(bool Enabled);
-
-//
-// SetAlexEnabled(unsigned int Alex)
-// 8 bit parameter enables up to 8 Alex units.
-// numbered 0 to 7
-//
-void SetAlexEnabled(unsigned int Alex);
-
-//
 // SetPAEnabled(bool Enabled)
 // true if PA is enabled.
 //
 void SetPAEnabled(bool Enabled);
-
-//
-// SetTXDACCount(unsigned int Count)
-// sets the number of TX DACs, Currently unused.
-//
-void SetTXDACCount(unsigned int Count);
-
-//
-// SetDUCSampleRate(ESampleRate Rate)
-// sets the DUC sample rate.
-// current Saturn h/w supports 48KHz for protocol 1 and 192KHz for protocol 2
-//
-void SetDUCSampleRate(ESampleRate Rate);
-
-//
-// SetDUCSampleSize(unsigned int Bits)
-// sets the number of bits per sample.
-// currently unimplemented, and protocol 2 always uses 24 bits per sample.
-//
-void SetDUCSampleSize(unsigned int Bits);
-
-//
-// SetDUCPhaseShift(unsigned int Value)
-// sets a phase shift onto the TX output. Currently unimplemented.
-//
-void SetDUCPhaseShift(unsigned int Value);
 
 //
 // SetSpkrMute(bool IsMuted)
@@ -511,47 +361,12 @@ void SetDUCPhaseShift(unsigned int Value);
 void SetSpkrMute(bool IsMuted);
 
 //
-// SetUserOutputBits(unsigned int Bits)
-// sets the user I/O bits
-//
-void SetUserOutputBits(unsigned int Bits);
-
-/////////////////////////////////////////////////////////////////////////////////
-// read settings from FPGA
-//
-
-//
 // ReadStatusRegister(void)
 // this is a precursor to getting any of the data itself; simply reads the register to a local variable
 // probably call every time an outgoig packet is put together initially
 // but possibly do this one a timed basis.
 //
 void ReadStatusRegister(void);
-
-//
-// GetPTTInput(void)
-// return true if PTT input is pressed.
-//
-bool GetPTTInput(void);
-
-//
-// GetKeyerDashInput(void)
-// return true if keyer dash input is pressed.
-//
-bool GetKeyerDashInput(void);
-
-//
-// GetKeyerDotInput(void)
-// return true if keyer dot input is pressed.
-//
-bool GetKeyerDotInput(void);
-
-//
-// GetCWKeyDown(void)
-// return true if keyer has initiated TX.
-// depends on the status register having been read before this is called!
-//
-bool GetCWKeyDown(void);
 
 //
 // GetP2PTTKeyInputs(void)
@@ -584,11 +399,6 @@ unsigned int GetUserIOBits(void);
 //
 unsigned int GetAnalogueIn(unsigned int AnalogueSelect);
 
-//////////////////////////////////////////////////////////////////////////////////
-// internal App register settings
-// these are things not accessible from external SDR applications, including debug
-//
-
 //
 // CodecInitialise()
 // initialise the CODEC, with the register values that don't normally change
@@ -602,35 +412,15 @@ void CodecInitialise();
 void SetTXAmplitudeScaling (unsigned int Amplitude);
 
 //
-// SetTXModulationTestSourceFrequency (unsigned int Freq)
-// sets the TX modulation DDS source frequency. Only used for development.
+// SetTXProtocol2 (void)
+// configure TX for P2 (192 kHz)
 //
-void SetTXModulationTestSourceFrequency (unsigned int Freq);
-
-//
-// SetTXModulationSource(ETXModulationSource Source)
-// selects the modulation source for the TX chain.
-// this will need to be called operationally to change over between CW & I/Q
-//
-void SetTXModulationSource(ETXModulationSource Source);
-
-//
-// SetTXProtocol (bool Protocol)
-// sets whether TX configured for P1 (48KHz) or P2 (192KHz)
-//
-void SetTXProtocol (bool Protocol);
+void SetTXProtocol2 (void);
 
 //
 // void ResetDUCMux(void)
 //
 void ResetDUCMux(void);
-
-//
-// void SetTXOutputGate(bool AlwaysOn)
-// sets the sample output gater. If false, samples gated by TX strobe.
-// if true, samples are alweays enabled.
-//
-void SetTXOutputGate(bool AlwaysOn);
 
 //
 // void SetTXIQDeinterleaved(bool Interleaved)

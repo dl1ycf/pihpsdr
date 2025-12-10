@@ -867,6 +867,7 @@ static void *listen_thread(void *arg) {
     }
 
     if (listen_socket >= 0) {
+      shutdown(listen_socket, SHUT_RDWR);
       close(listen_socket);
       listen_socket = -1;
     }
@@ -1095,6 +1096,7 @@ int destroy_hpsdr_server() {
   remoteclient.running = FALSE;
 
   if (listen_socket >= 0) {
+    shutdown(listen_socket, SHUT_RDWR);
     close(listen_socket);
     listen_socket = -1;
   }

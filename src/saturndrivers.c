@@ -218,13 +218,13 @@ void SetupFIFOMonitorChannel(EDMAStreamSelect Channel, bool EnableInterrupt) {
       DMAFIFODepths[1] = 1024;        //  eTXDUCDMA (TX)
       DMAFIFODepths[2] = 256;         //  eMicCodecDMA (Mic)
       DMAFIFODepths[3] = 256;         //  eSpkCodecDMA (Headphone)
-    } else if ((FPGA_MinorVersion >= 10) && (FPGA_MinorVersion <= 12)) {
+    } else if (FPGA_MinorVersion <= 12) {
       t_print("loading new FIFO sizes for 1.0, 1.1, 1.2 firmware\n");
       DMAFIFODepths[0] = 16384;       //  eRXDDCDMA (RX)
       DMAFIFODepths[1] = 2048;        //  eTXDUCDMA (TX)
       DMAFIFODepths[2] = 256;         //  eMicCodecDMA (Mic)
       DMAFIFODepths[3] = 1024;        //  eSpkCodecDMA (Headphone)
-    } else if (FPGA_MinorVersion >= 13) {
+    } else {
       t_print("loading new FIFO sizes for firmware version 1.3 and newer\n");
       DMAFIFODepths[0] = 16384;       //  eRXDDCDMA (RX)
       DMAFIFODepths[1] = 4096;        //  eTXDUCDMA (TX)

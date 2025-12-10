@@ -56,6 +56,20 @@ typedef enum
 } ECodecType;
 
 //
+// enum type for sample rate. only 48-384KHz allowed for protocol 1
+//
+typedef enum {
+  eDisabled = 0,
+  e48KHz,
+  e96KHz,
+  e192KHz,
+  e384KHz,
+  e768KHz,
+  e1536KHz,
+  eInterleaveWithNext
+} ESampleRate;
+
+//
 // void SetupFIFOMonitorChannel(EDMAStreamSelect Channel, bool EnableInterrupt);
 //
 // Setup a single FIFO monitor channel.

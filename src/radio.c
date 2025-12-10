@@ -3404,7 +3404,6 @@ static void radio_restore_state() {
     GetPropI0("mute_spkr_amp",                               mute_spkr_amp);
     GetPropI0("mute_spkr_xmit",                              mute_spkr_xmit);
 #ifdef SATURN
-    GetPropI0("client_enable_tx",                            client_enable_tx);
     GetPropI0("saturn_server_en",                            saturn_server_en);
 #endif
 
@@ -3628,7 +3627,6 @@ void radio_save_state() {
     SetPropI0("mute_spkr_amp",                               mute_spkr_amp);
     SetPropI0("mute_spkr_xmit",                              mute_spkr_xmit);
 #ifdef SATURN
-    SetPropI0("client_enable_tx",                            client_enable_tx);
     SetPropI0("saturn_server_en",                            saturn_server_en);
 #endif
 

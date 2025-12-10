@@ -451,7 +451,6 @@ int tx_audio_write(RECEIVER *rx, float sample) {
 
 int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
   snd_pcm_sframes_t delay;
-  int txmode = vfo_get_tx_mode();
 
   //
   // When transmitting while not doing duplex, quickly return

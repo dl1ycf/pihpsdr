@@ -423,7 +423,6 @@ int tx_audio_write(RECEIVER *rx, float sample) {
 int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
   int result = 0;
   int err;
-  int txmode = vfo_get_tx_mode();
 
   //
   // If transmitting without duplex, quickly return
