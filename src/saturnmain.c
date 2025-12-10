@@ -1372,7 +1372,6 @@ void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
   uint8_t Byte, Byte2;                                  // received dat being decoded
   uint32_t LongWord;
   uint16_t Word;
-  bool PAEnable;
 
   //
   // map DDC0:3 in packet to DDC6:9
@@ -1386,8 +1385,8 @@ void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
   }
 
   Byte = UDPInBuffer[4] & 0xFF;
-  RunBit = (bool)(Byte & 1);
-  HaveMOX = (bool)(Byte & 2);
+  RunBit  = (bool)(Byte & 0x01);
+  HaveMOX = (bool)(Byte & 0x02);
 
   if (RunBit) {
     SDRActive = true;
@@ -1421,28 +1420,33 @@ void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
   // open collector data is in bits 7:1; move to 6:0
   //
   Byte = UDPInBuffer[1400] & 0xFF;
-  SetXvtrEnable((bool)(Byte & 1));
-  SetSpkrMute((bool)(Byte & 2));
+  bool XvtEn = Byte & 0x01;
+  bool SpkMt = Byte & 0x02;
+ 
+  SetXvtrEnable(XvtEn);
+  SetSpkrMute(SpkMt);
 
-  Byte = UDPInBuffer[1401] & 0xFF;
   // According to  P2, the seven OC bits are b1:7
-  SetOpenCollectorOutputs(Byte >> 1);
+  Byte = (UDPInBuffer[1401] >> 1) & 0x7F;
+  SetOpenCollectorOutputs(Byte);
 
   //
-  // Alex
-  // behaviour needs to be FPGA version specific: at V12, separate register added for Alex TX antennas
-  // if new FPGA version: we write the word with TX ANT (byte 1428) to a new register, and the "old" word to original register
-  // if we don't have a new TX ant bit set, just write "old" word data (byte 1432) to both registers
-  // this is to allow safe operation with legacy client apps
-  // 1st read bytes and see if a TX ant bit is set
+  // Alex behaviour needs to be FPGA version specific: at V12, separate register added for Alex TX antennas
+  // - if new FPGA version: we write the word with TX ANT (byte 1428) to a new register,
+  //   and the "old" word to original register
+  // - if we don't have a new TX ant bit set, just write "old" word data (byte 1432) to both registers
+  //   this is to allow safe operation with legacy client apps
   //
+  // This is not part of the protocol, but adds to safety:
+  // - if AlexTX bit27 is not set, disable PA
   //
-  Word =  UDPInBuffer[1428] & 0x07;                      // Alex0[26:24] TX data: ANT1/2/3 (if zero: old host program)
+  Byte =  UDPInBuffer[1428] & 0x07;                      // Alex0[26:24] TX data: ANT1/2/3 (if zero: old host program)
+  bool PAEnable;
 
-  if ((FPGA_MinorVersion >= 12) && (Word != 0)) {             // if new firmware && client app supports it
+  if ((FPGA_MinorVersion >= 12) && (Byte != 0)) {             // if new firmware && client app supports it
     //t_print("new FPGA code, new client data\n");
     Word = ((UDPInBuffer[1428] & 0xFF) << 8 ) | (UDPInBuffer[1429] & 0xFF);  // "Backup" Alex0 TX settings
-    PAEnable = (bool)((Word >> 11) & 1);
+    PAEnable = Word & 0x0800;  // bit11 in Word, bit27 in AlexWord
     //t_print("new FPGA code, legacy client data, PA enable = %d\n", (int)PAEnable);
     AlexManualTXFilters(Word, true);
     Word = ((UDPInBuffer[1432] & 0xFF) << 8 ) | (UDPInBuffer[1433] & 0xFF); // "Current" Alex0 TX settings
@@ -1450,14 +1454,14 @@ void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
   } else if (FPGA_MinorVersion >= 12) {                       // new hardware but no client app support
     //t_print("new FPGA code, new client data\n");
     Word = ((UDPInBuffer[1432] & 0xFF) << 8 ) | (UDPInBuffer[1433] & 0xFF);  // "Current" Alex0 TX settings
-    PAEnable = (bool)((Word >> 11) & 1);
+    PAEnable = Word & 0x0800;
     //t_print("new FPGA code, legacy client data, PA enable = %d\n", (int)PAEnable);
     AlexManualTXFilters(Word, true);
     AlexManualTXFilters(Word, false);
   } else {                                              // old FPGA hardware
     //t_print("old FPGA code\n");
     Word = ((UDPInBuffer[1432] & 0xFF) << 8 ) | (UDPInBuffer[1433] & 0xFF);  // "Current" Alex0 TX settings
-    PAEnable = (bool)((Word >> 11) & 1);
+    PAEnable = Word & 0x0800;
     //t_print("new FPGA code, legacy client data, PA enable = %d\n", (int)PAEnable);
     AlexManualTXFilters(Word, false);
   }
@@ -1498,7 +1502,8 @@ void saturn_handle_general_packet(const unsigned char *PacketBuffer) {
   // ALEX is enabled by default, so *only* the "PA enable" bit is processed.
   //
   Byte = PacketBuffer[58] & 0xFF;                     // b0: PA-enable
-  SetPAEnabled((bool)(Byte & 1));
+  bool PaEn = Byte & 0x01;
+  SetPAEnabled(PaEn);
   return;
 }
 
@@ -1629,7 +1634,7 @@ void saturn_handle_ddc_specific(const unsigned char *UDPInBuffer) {
 
   for (int i = 0; i < 4; i++) {
     //
-    // ATTENTION: i=0:3 is mapped to DDC6:9
+    // ATTENTION: DDC0:3 from packet is mapped to DDC6:9 for XDMA
     //
     EADCSelect ADC = eADC1;                            // ADC to use for a DDC
     uint16_t Word2;                                   // 16 bit read value
@@ -1701,7 +1706,7 @@ void saturn_handle_ddc_specific(const unsigned char *UDPInBuffer) {
 }
 
 void saturn_handle_duc_specific(const unsigned char *UDPInBuffer) {
-  uint8_t Byte, Byte2;
+  uint8_t Byte1, Byte2;
 
   //
   // CW settings
@@ -1709,14 +1714,14 @@ void saturn_handle_duc_specific(const unsigned char *UDPInBuffer) {
   uint8_t IambicSpeed = UDPInBuffer[9] & 0xFF;
   uint8_t IambicWeight = UDPInBuffer[10] & 0xFF;
 
-  Byte = UDPInBuffer[5] & 0xFF;  // keyer bool bits
-  bool CWEnabled       = (bool) (Byte & 0x02);
-  bool ReverseKeys     = (bool) (Byte & 0x04);
-  bool CWIambic        = (bool) (Byte & 0x08);
-  bool CWSideEnabled   = (bool) (Byte & 0x10);
-  bool IambicModeB     = (bool) (Byte & 0x20);
-  bool CWStrictSpacing = (bool) (Byte & 0x40);
-  bool CWBreakIn       = (bool) (Byte & 0x80);
+  Byte1 = UDPInBuffer[5] & 0xFF;  // keyer bool bits (bit0 EER not used)
+  bool CWEnabled       = Byte1 & 0x02;
+  bool ReverseKeys     = Byte1 & 0x04;
+  bool CWIambic        = Byte1 & 0x08;
+  bool CWSideEnabled   = Byte1 & 0x10;
+  bool IambicModeB     = Byte1 & 0x20;
+  bool CWStrictSpacing = Byte1 & 0x40;
+  bool CWBreakIn       = Byte1 & 0x80;
 
   uint8_t SideToneVolume = UDPInBuffer[6] & 0xFF;
   uint8_t CWRFDelay      = UDPInBuffer[13] & 0xFF;
@@ -1740,7 +1745,7 @@ void saturn_handle_duc_specific(const unsigned char *UDPInBuffer) {
   //
   // Codec Input and Orion Mic options
   //
-  bool MicLine;
+  bool LineIn;
   bool MicBoost;
   bool OrionMicPTT;
   bool OrionBiasRing;
@@ -1748,33 +1753,21 @@ void saturn_handle_duc_specific(const unsigned char *UDPInBuffer) {
   bool SaturnXLRInput;
   int  LineInGain;
 
-  LineInGain = UDPInBuffer[51] & 0x1F;
-  Byte = UDPInBuffer[50] & 0xFF;
-  MicLine         = (bool) (Byte & 0x01);
-  MicBoost        = (bool) (Byte & 0x02);
-  OrionMicPTT     = ! ((bool) (Byte & 0x04));
-  OrionBiasRing   = (bool) (Byte & 0x08);
-  OrionBiasEnable = (bool) (Byte & 0x10);
-  SaturnXLRInput  = (bool) (Byte & 0x20);
+  Byte1           = UDPInBuffer[50] & 0xFF;
+  LineIn          = Byte1 & 0x01;
+  MicBoost        = Byte1 & 0x02;
+  OrionMicPTT     = ~Byte1 & 0x04;  // zero bit means PTT enabled
+  OrionBiasRing   = Byte1 & 0x08;
+  OrionBiasEnable = Byte1 & 0x10;
+  SaturnXLRInput  = Byte1 & 0x20;
+  LineInGain      = UDPInBuffer[51] & 0x1F; // restrict to 0-31
 
-  SetCodecInputParams(MicLine, MicBoost, LineInGain);
+  SetCodecInputParams(LineIn, MicBoost, LineInGain);
   SetOrionMicOptions(OrionBiasRing, OrionBiasEnable, OrionMicPTT);
   SetBalancedMicInput(SaturnXLRInput);
 
-  Byte = UDPInBuffer[58] & 0xFF;                    // ADC1 att on TX
+  Byte1 = UDPInBuffer[58] & 0xFF;                   // ADC1 att on TX
   Byte2 = UDPInBuffer[59] & 0xFF;                   // ADC2 att on TX
-  SetADCAttenuator(Byte, false, true, Byte2, false, true);
+  SetADCAttenuator(Byte1, false, true, Byte2, false, true);
   return;
 }
-
-//
-// the Discovery module needs these functions to report
-// reasons for incompatibility.
-//
-int saturn_minor_version_min() { return FIRMWARE_MIN_MINOR; }
-
-int saturn_minor_version_max() { return FIRMWARE_MAX_MINOR; }
-
-int saturn_major_version_min() { return FIRMWARE_MIN_MAJOR; }
-
-int saturn_major_version_max() { return FIRMWARE_MAX_MAJOR; }

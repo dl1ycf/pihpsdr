@@ -296,10 +296,6 @@ int main(int argc, char **argv) {
   if (argc >= 2 && !strcmp("-V", argv[1])) {
     fprintf(stderr, "piHPSDR version %s(%s); built %s\n", build_version, build_commit, build_date);
     fprintf(stderr, "Compile-time options      : %sAudioModule=%s\n", build_options, build_audio);
-#ifdef SATURN
-    fprintf(stderr, "SATURN min:max minor FPGA : %d:%d\n", saturn_minor_version_min(), saturn_minor_version_max());
-    fprintf(stderr, "SATURN min:max major FPGA : %d:%d\n", saturn_major_version_min(), saturn_major_version_max());
-#endif
     exit(0);
   }
 
