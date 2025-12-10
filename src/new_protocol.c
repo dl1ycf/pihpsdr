@@ -2618,79 +2618,73 @@ static void process_mic_data(const unsigned char *buffer) {
   }
 }
 
-void new_protocol_cw_audio_samples(short left_audio_sample, short right_audio_sample) {
+//
+// This is only called if transmitting without DUPLEX
+//
+void new_protocol_tx_audio_samples(short left_audio_sample, short right_audio_sample) {
   ASSERT_SERVER();
-  int txmode = vfo_get_tx_mode();
 
-  if (radio_is_transmitting() &&
-      (txmode == modeCWU || txmode == modeCWL || (transmitter->tune && transmitter->swrtune))) {
-    //
-    // Only process samples if there can be a sidetone
-    //
-    pthread_mutex_lock(&send_rxaudio_mutex);
+  pthread_mutex_lock(&send_rxaudio_mutex);
 
-    if (rxaudio_count < 0) {
-      rxaudio_count++;
-      pthread_mutex_unlock(&send_rxaudio_mutex);
-      return;
-    }
-
-    if (!rxaudio_flag) {
-      //
-      // First time we arrive here after a RX->TX(CW) transition:
-      // set the "drain" flag, wait until buffer is drained,
-      // then clear the flag.
-      // This is done to start CW TX with an "empty" buffer in order
-      // to minimize CW side tone latency (17 msec measured on my ANAN-7000).
-      //
-      rxaudio_drain = 1;
-
-      while (rxaudio_inptr != rxaudio_outptr) { usleep(1000); }
-
-      rxaudio_drain = 0;
-      rxaudio_flag = 1;
-    }
-
-    int iptr = rxaudio_inptr + 4 * rxaudio_count;
-    RXAUDIORINGBUF[iptr++] = (left_audio_sample  >> 8) & 0xFF;
-    RXAUDIORINGBUF[iptr++] = (left_audio_sample      ) & 0xFF;
-    RXAUDIORINGBUF[iptr++] = (right_audio_sample >> 8) & 0xFF;
-    RXAUDIORINGBUF[iptr++] = (right_audio_sample     ) & 0xFF;
+  if (rxaudio_count < 0) {
     rxaudio_count++;
-
-    if (rxaudio_count >= 64) {
-      int nptr = rxaudio_inptr + 256;
-
-      if (nptr >= RXAUDIORINGBUFLEN) { nptr = 0; }
-
-      if (nptr != rxaudio_outptr) {
-        rxaudio_inptr = nptr;
-#ifdef __APPLE__
-        sem_post(rxaudio_sem);
-#else
-        sem_post(&rxaudio_sem);
-#endif
-        rxaudio_count = 0;
-      } else {
-        t_print("%s: buffer overflow\n", __FUNCTION__);
-        // skip some audio samples
-        rxaudio_count = -4096;
-      }
-    }
-
     pthread_mutex_unlock(&send_rxaudio_mutex);
+    return;
   }
+
+  if (!rxaudio_flag) {
+    //
+    // First time we arrive here after a RX->TX(CW) transition:
+    // set the "drain" flag, wait until buffer is drained,
+    // then clear the flag.
+    // This is done to start CW TX with an "empty" buffer in order
+    // to minimize CW side tone latency (17 msec measured on my ANAN-7000).
+    //
+    rxaudio_drain = 1;
+
+    while (rxaudio_inptr != rxaudio_outptr) { usleep(1000); }
+
+    rxaudio_drain = 0;
+    rxaudio_flag = 1;
+  }
+
+  int iptr = rxaudio_inptr + 4 * rxaudio_count;
+  RXAUDIORINGBUF[iptr++] = (left_audio_sample  >> 8) & 0xFF;
+  RXAUDIORINGBUF[iptr++] = (left_audio_sample      ) & 0xFF;
+  RXAUDIORINGBUF[iptr++] = (right_audio_sample >> 8) & 0xFF;
+  RXAUDIORINGBUF[iptr++] = (right_audio_sample     ) & 0xFF;
+  rxaudio_count++;
+
+  if (rxaudio_count >= 64) {
+    int nptr = rxaudio_inptr + 256;
+
+    if (nptr >= RXAUDIORINGBUFLEN) { nptr = 0; }
+
+    if (nptr != rxaudio_outptr) {
+      rxaudio_inptr = nptr;
+#ifdef __APPLE__
+      sem_post(rxaudio_sem);
+#else
+      sem_post(&rxaudio_sem);
+#endif
+      rxaudio_count = 0;
+    } else {
+      t_print("%s: buffer overflow\n", __FUNCTION__);
+      // skip some audio samples
+      rxaudio_count = -4096;
+    }
+  }
+
+  pthread_mutex_unlock(&send_rxaudio_mutex);
 }
 
+//
+// This is only called from the RX thread
+//
 void new_protocol_audio_samples(short left_audio_sample, short right_audio_sample) {
   ASSERT_SERVER();
-  int txmode = vfo_get_tx_mode();
 
-  //
-  // Only process samples if there can be no sidetone
-  //
-  if (radio_is_transmitting() &&
-      (txmode == modeCWU || txmode == modeCWL || (transmitter->tune && transmitter->swrtune))) { return; }
+  if (radio_is_transmitting() && !duplex) { return; }
 
   pthread_mutex_lock(&send_rxaudio_mutex);
 

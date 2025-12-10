@@ -87,10 +87,10 @@ extern void filter_board_changed(void);
 extern void pa_changed(void);
 extern void tuner_changed(void);
 
-extern void new_protocol_audio_samples(short left_audio_sample, short right_audio_sample);
+extern void new_protocol_audio_samples(short left, short right);
 extern void new_protocol_iq_samples(int isample, int qsample);
 extern void new_protocol_flush_iq_samples(void);
-extern void new_protocol_cw_audio_samples(short l, short r);
+extern void new_protocol_tx_audio_samples(short left, short right);
 
 extern void new_protocol_menu_start(void);
 extern void new_protocol_menu_stop(void);

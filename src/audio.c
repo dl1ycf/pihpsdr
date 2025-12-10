@@ -446,7 +446,7 @@ int tx_audio_write(RECEIVER *rx, float sample) {
 
 //
 // if rx == active_receiver and while transmitting, DO NOTHING
-// since cw_audio_write may be active
+// since tx_audio_write may be active
 //
 
 int audio_write(RECEIVER *rx, float left_sample, float right_sample) {

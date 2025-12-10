@@ -1849,11 +1849,13 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
       // radio FPGA, for a given setting of the side tone volume.
       //
       if (device == NEW_DEVICE_SATURN) {
+        // max amplitude 0.998
+        tx_audio_sample = 0.00786 * vol * val * sine_generator(&p1local, &p2local, cw_keyer_sidetone_frequency);
         // max amplitude 0.249
         tx_audio_sample = 0.00196 * vol * val * sine_generator(&p1local, &p2local, cw_keyer_sidetone_frequency);
       } else {
-        // max amplitude 0.998
-        tx_audio_sample = 0.00786 * vol * val * sine_generator(&p1local, &p2local, cw_keyer_sidetone_frequency);
+        // max amplitude 0.249
+        tx_audio_sample = 0.00196 * vol * val * sine_generator(&p1local, &p2local, cw_keyer_sidetone_frequency);
       }
     }
   } else {
@@ -1876,7 +1878,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
 
     switch (protocol) {
     case NEW_PROTOCOL:
-      new_protocol_cw_audio_samples(s, s);
+      new_protocol_tx_audio_samples(s, s);
       break;
 
     case ORIGINAL_PROTOCOL:
