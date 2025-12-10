@@ -1143,7 +1143,7 @@ static gpointer rigctl_server(gpointer data) {
                                   &tcp_client[spare].address_length);
 
     if (tcp_client[spare].fd < 0) {
-      t_perror("rigctl_server: client accept failed");
+      // no error reporting, this could be because rigtcl is being shut down
       tcp_client[spare].fd = -1;
       continue;
     }

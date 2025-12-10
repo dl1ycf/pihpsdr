@@ -912,9 +912,8 @@ static void *listen_thread(void *arg) {
                                         &remoteclient.address_length)) < 0) {
       //
       // We arrive here if either the internet connection failed, or destroy_hpsdr_server()
-      // has been invoked which closes the listen socket
+      // has been invoked which does shutdown/close on the listen socket
       //
-      t_print("%s: accept() failed\n", __FUNCTION__);
       break;
     }
 
