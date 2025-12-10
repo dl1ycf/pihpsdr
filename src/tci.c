@@ -719,7 +719,7 @@ static gpointer tci_server(gpointer data) {
   }
 
   close(server_socket);
-  t_print("%s: terminating\n");
+  t_print("%s: terminating\n", __FUNCTION__);
   return NULL;
 }
 
