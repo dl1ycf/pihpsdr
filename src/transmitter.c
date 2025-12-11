@@ -1680,19 +1680,21 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
   }
 
   int xmit = radio_is_transmitting();
-  int do_tx_audio = xmit && !duplex;
+  int can_tx_audio = xmit && !duplex;
+  int did_tx_audio = 0;
   float tx_audio_sample = 0.0F;
 
-  if (do_tx_audio && transmitter->audiomonitor ) {
+  if (can_tx_audio && transmitter->audiomonitor ) {
     //
     // Apply volume setting of active receiver
     // 
     double vol = pow(10.0, 0.05*active_receiver -> volume);
     if (vol > 0.25) vol = 0.25;
     tx_audio_sample = mic_sample_double * vol;
+    did_tx_audio = 1;
   }
 
-  if (do_tx_audio && tx->tune && tx->swrtune && g_mutex_trylock(&tx->cw_ramp_mutex)) {
+  if (can_tx_audio && tx->tune && tx->swrtune && g_mutex_trylock(&tx->cw_ramp_mutex)) {
     //
     // produce a string of tones whose pitch and speed indicates the SWR
     //
@@ -1748,6 +1750,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
 
     tx_audio_sample *= val;
     g_mutex_unlock(&tx->cw_ramp_mutex);
+    did_tx_audio = 1;
   } else if (xmit && (txmode == modeCWL || txmode == modeCWU)) {
     //
     // shape CW pulses when doing CW and transmitting, else nullify them
@@ -1858,6 +1861,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
         tx_audio_sample = 0.00196 * vol * val * sine_generator(&p1local, &p2local, cw_keyer_sidetone_frequency);
       }
     }
+    did_tx_audio = 1;
   } else {
    //
    //  If no longer tuning or transmitting in CW: reset pulse shaper
@@ -1868,7 +1872,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
    tx->cw_ramp_rf_ptr = 0;
   }
 
-  if (do_tx_audio) {
+  if (did_tx_audio) {
     int s = (int) (tx_audio_sample * 32767.0F);
 
     if (active_receiver->local_audio) {

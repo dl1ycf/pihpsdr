@@ -364,8 +364,16 @@ float audio_get_next_mic_sample(TRANSMITTER *tx) {
 
 //
 // In the PulseAudio module, tx_audio_write() is essentially a copy
-// of audio_write(), since active latency management turned out to
-// be very difficult with PulseAudio
+// of audio_write(). Normally we would try here to "rewind" the output
+// buffer and keep it a lower filling while transmitting, but I do now
+// know whether this is possible with the "simple" API.
+//
+// In principle one can use pa_simple_flush() to flush the entire
+// output buffer, but keeping the buffer at low filling might not
+// be compatible with the buffer attributs set when creating the stream.
+//
+// So for the time being, using the internal keyer might not be
+// reasonable when running the PulseAudio module.
 //
 int tx_audio_write(RECEIVER *rx, float sample) {
   int result = 0;

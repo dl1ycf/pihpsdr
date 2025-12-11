@@ -1108,6 +1108,8 @@ static void rx_process_buffer(RECEIVER *rx) {
   //
   double scale = 0.6 * pow(10.0, -0.05 * rx->volume);
   double unscale = 1.0 / scale;
+  // Without DUPLEX; xmit will always be false.
+  int xmit = radio_is_transmitting();
 
   for (int i = 0; i < rx->output_samples; i++) {
     double left_sample = rx->audio_output_buffer[i * 2];
@@ -1146,7 +1148,7 @@ static void rx_process_buffer(RECEIVER *rx) {
       }
     }
 
-    if (radio_is_transmitting() && (!duplex || mute_rx_while_transmitting)) {
+    if (xmit && mute_rx_while_transmitting) {
       left_sample = 0.0;
       right_sample = 0.0;
     }
@@ -1180,7 +1182,7 @@ static void rx_process_buffer(RECEIVER *rx) {
       remote_rxaudio(rx, left_audio_sample, right_audio_sample);
     }
 
-    if (rx == active_receiver && !pre_mox) {
+    if (rx == active_receiver) {
       switch (protocol) {
       case ORIGINAL_PROTOCOL:
         old_protocol_audio_samples(left_audio_sample, right_audio_sample);

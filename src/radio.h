@@ -199,7 +199,6 @@ extern int device;
 extern int new_pa_board;
 extern int ptt;
 extern int mox;
-extern int pre_mox;
 extern int memory_tune;
 extern int full_tune;
 

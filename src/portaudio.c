@@ -675,14 +675,28 @@ int tx_audio_write(RECEIVER *rx, float sample) {
     if (rx->cwaudio == 0) {
       //
       // First time producing CW audio after RX/TX transition:
-      // discard audio buffer and insert *a little bit of* silence
-      // (currently, 128 samples = 2.6 msec)
+      // keep the oldest samples (until MY_CW_LOW_WATER) in the audio buffer
+      // and discard the rest. Apply a down-slew on the samples
+      // kept.
       //
-      bzero(rx->audio_buffer, 2 * MY_CW_LOW_WATER * sizeof(float));
+      double damp = 1.000;
+      newpt = rx->audio_buffer_outpt;
+      for (int i = 0; i < MY_CW_LOW_WATER; i++) {
+        if (i >= avail) {
+          rx->audio_buffer[2 * newpt] = 0;
+          rx->audio_buffer[2 * newpt + 1] = 0;
+        } else {
+          rx->audio_buffer[2 * newpt] *= damp;
+          rx->audio_buffer[2 * newpt + 1] *= damp;
+          damp = damp * 0.975;
+        }
+        newpt++;
+
+        MEMORY_BARRIER;
+        if (newpt >= MY_RING_BUFFER_SIZE) { newpt = 0; }
+      }
+      rx->audio_buffer_inpt = newpt;
       MEMORY_BARRIER;
-      rx->audio_buffer_inpt = MY_CW_LOW_WATER;
-      MEMORY_BARRIER;
-      rx->audio_buffer_outpt = 0;
       avail = MY_CW_LOW_WATER;
       rx->cwcount = 0;
       rx->cwaudio = 1;

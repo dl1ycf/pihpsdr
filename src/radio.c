@@ -226,21 +226,6 @@ unsigned int alex_reverse_power = 0;
 unsigned int ADC1 = 0;
 unsigned int ADC0 = 0;
 
-//
-// At the moment we have "late mox update", this means:
-// in a RX/TX or TX/RX transition, mox is updated after
-// rxtx has completed (which may take a while during
-// down- and up-slew).
-// Sometimes one wants to know before, that a RX/TX
-// change is being initiated. So rxtx() sets the pre_mox
-// variable immediatedly after it has been called to the new
-// state.
-// This variable is used to suppress audio samples being
-// sent to the radio while shutting down the receivers,
-// so it shall not be used in DUPLEX mode.
-//
-int pre_mox = 0;
-
 int ptt = 0;
 int mox = 0;
 int have_rx_gain = 0;
@@ -1929,8 +1914,6 @@ static void rxtx(int state) {
       break;
     }
   }
-
-  pre_mox = state && !duplex;
 
   if (state) {
     //

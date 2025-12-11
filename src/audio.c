@@ -320,7 +320,20 @@ int tx_audio_write(RECEIVER *rx, float sample) {
     if (rx->cwaudio == 0) {
       //
       // This happens when we come here for the first time after a
-      // RX/TX transision. Rewind output buffer
+      // RX/TX transision. Rewind output buffer, that is, discard
+      // the most recent output samples.
+      // In principle, we should apply a fade-out on the samples
+      // still remaining in the output buffer. In the portaudio
+      // module this is easy because we do the buffering and
+      // use callbacks to actually deliver the audio data.
+      // Callbacks with ALSA are not considered "Safe" so
+      // we use snd_pcm_writei() and (AFAIK) after that we
+      // cannot modify the audio samples already sent.
+      //
+      // Bottom line: this snd_pcm_rewind() most likely leads
+      // to a small audio crack upon each RX/TX transition, since
+      // the pending RX audio samples come to a sudden end
+      // without any down-slew.
       //
       if (snd_pcm_delay(rx->audio_handle, &delay) == 0) {
         snd_pcm_rewind(rx->audio_handle, delay - cw_mid_water);
