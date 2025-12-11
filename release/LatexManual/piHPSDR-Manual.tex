@@ -4476,6 +4476,112 @@ involves WiFi. I mention this because my attempts using WiFi for connection to t
 There are several topics that are not best explained in the course of the \textit{tour de force} through
 the menus. These will be handled in this section.
 
+\section{Latencies}
+\label{sec:latencies}
+In traditional (analog) radios, latencies are usually so short that they are not problematic. With
+SDRs, latencies are usually larger, mostly for a good reason (see below). So let us first describe which
+types of latencies we are talking about:
+
+\begin{itemize}
+\item[RX latency]
+{This is the time difference between a signal arriving at the antenna input, and the (demodulated) audio
+playing in the headphone. It could be measured by connecting the (strongly attenuated) output of a
+second transmitter to the antenna input, sending a stream of CW dahes, and monitoring both the output
+of the second transmitter and the headphone of the first radio on a two-channel oscilloscope}
+\item[TX latency]
+{This is the time difference between a signal arriving at the microphone input, and the (modulated)
+RF output at the antenna output of the transmitter. It could be measured by monitoring the microphone
+input and the RF output on a two-channel oscilloscope, and feeding the side tone of a string of dashes
+to the microphone input.}
+\item[RX/TX turnover]
+{This measures how fast the radio can switch from RX to TX. One way to measure is to feed the side tone
+of a CW keyer producing three dashes and three dots to the microphone input while using VOX, and
+measuring the microphone input and the RF output on a two-channel oscilloscope. Here not only the
+delay (latency) is of interest but also to which extent the RX/TX transition "swallos" parts of the
+first dahes sent.}
+\item[TX/RX turnover]
+{This measures how fast the radio can switch from TX to RX. It can be measured by turning the radio
+into TX by shorting the PTT input to ground, and then releasing the PTT button. On a two-channel
+oscilloscope one can measure the PTT and headphone output and see how long it takes to produce
+a stable audio signal.}
+\item[Audio latency]
+{The delays mentioned above are only in part caused by the signal processing within \pH.
+There is also a delay between \pH actually sending audio to the radio or to a soundcard,
+and the signal appearing in the headphone. The reverse holds for the microphone input signals.}
+\end{itemize}
+
+The notion of what is an acceptable RF delay very much depends on the kind of operation. In a
+rag-chew QSO, large delays (several hundred milliseconds) are not really harmful, but in a
+contest or DX pileup situation, it may be detrimental if your RF signal comes late. But is makes
+not much sense to try reducing the delay to, say, below 10 ms simply because the travel time
+of the RF signal between you and your QSO partner is already
+about 33 ms if the distance is 10 thousand kilometers.
+
+To understand the source of the RF delay, we have to look at the fate of an RF signal pulse after
+it arrives at the antenna. The RF signal goes through the RF front end and eventually arrives
+at a ADC (analog to digital converter). The digitised signal is then processed by the FPGA in the
+radio and the baseband data is sent in packets to the host computer running \pH over the ethernet.
+I have no solid numbers on the delay from the antenna input to when the signal arrives in \pH,
+but I guess this is shorter than what follows.
+
+\pH typically collects 1024 such samples before dispatching them for processing, this amounts
+to a minimum delay of 11 ms at a RX sample rate of 96 kHz. Of course, one could collect
+samples in smaller numbers, but then the overhead associated with ,,dispatching'' data grows.
+
+When baseband data is fed to the input side of the
+digital signal processing (DSP) engine, it takes some time before the
+audio data appears at the output side. How long this is, is not primarily determined by
+how fast the CPU is, but by how many ,,taps'' the signal processing chain contains. The number
+of taps required, for example, in filtering depends on the shape factor of the filter.
+The minimum value for the filters used in \pH is 2048 taps (this can be increases in the \bltt{Filter}
+menu) which corresponds to 43 ms at 48 kHz which is the (fixed) DSP rate in the RX engine. If
+using additional processing (equalisers, noise reduction, etc.) the number of taps will be longer.
+
+After having retrieved the audio signal from the DSP processing, it can be sent to the audio hardware.
+For radios having a built-on codec (that is, radios with a headphone jack), the audio data is sent
+from \pH to the radio over the ethernet cable. How long it takes before you hear it in the headphone
+depends on the processing within the radio. If you connect a sound card to the computer running \pH,
+the audio data is sent to the sound card  and will eventually be heard in a headphone connected
+to that sound card. Again, this delay very much depends on the audio system of the computer, and
+audio delays will be discussed below.
+
+Having said this, it might come as a surprise that there is an addition delay of about 100 ms
+built in by design. Basically, \pH will not start producing audio on the sound card until it has
+collected (and buffered) about 100 msec of audio. The reason is, that the world is not ideal and
+the audio data is not produced at a constant pace. For example, the operating system of the computer
+may, for a moment, give too little CPU time to the DSP engine such that its output lags behind.
+Subsequently, all the pending data is processed, such that the audio data stream may be interrupted
+for a small period, and then a burst of audio samples arrives. Therefore, \pH manages and audio
+buffer that can hold about 200 ms of audio data and try to keep it at half filling. This way,
+a period of up to 100 ms where no audio data arrives, and also a burst of 100 ms of audio data,
+can be tolerated without producing audio cracks. This part of the latency is actually a feature and
+not a bug: of course one can make the latency smaller, but at the expense of making audio cracks
+more likely.
+
+The same holds for the reverse (TX) path. Here, the audio input (microphone) signal is fed to
+the input side of the DSP processor, and filtering/processing takes some time (the DSP sample
+rate in the TX chain is usually 96 kHz in Protocol 2). But again, the data that comes out of
+the DSP processor may not arrive at a constant pace. Therefore, a certain amount of ,,RF silence''
+is sent to the radio upon a RX/TX transition to pre-fill its TX data buffer. While not necessary
+for many radios (they do not start transmitting before the TX data buffer is sufficiently filled),
+this should make underruns of the TX data buffer in the FPGA less likely.
+
+The audio latency is of utmost importance when doing CW, especially
+if the iambic keyer built into \pH is used: imagine you want to sent a letter 'V' in CW,
+using a paddle. If the side tone arrives a little bit late at your ear, then the keyer
+may have advanced to the point where it sends the fourth dot before you have heard
+the third dot. Such a delay then leads to keying errors, e.g. sending a number '4' where
+one wants to send a letter 'V'. Since the length of a dot is 50 ms at a CW speed of 24 wpm,
+an audio delay of more than 100 ms is certainly not acceptable when doing CW. On the other hand,
+the side tone audio data can be produced at a much more predictable pace than the RX audio, since
+it involves no DSP processing. Therefore, it is safe to reduce the audio latency drastically when
+transmitting in CW. \pH does this on MacOS, and on LINUX when using the ALSA audio module. In these
+cases, a ,,rewind'' operation is made on the audio output stream, that is, a lot of audio samples
+from the output buffer are discarded such that the buffer is at a rather low filling. By making the
+pauses between dots and dashes very slighly larger or smaller, depending on the buffer filling,
+\pH manages to keep the buffer filling constant at a rather low level, this minimising the
+audio delay.
+
 \section{RX/TX profiles}
 \label{sec:rxtxprofiles}
 Many settings such as VFO step sizes, filter choices, noise reduction
@@ -4615,7 +4721,7 @@ and here it is no reason to worry if the \texttt{Mic Lvl} bar is constantly red.
 The TX audio signal, as it comes from the microphone or from
 a digi program, can be mirrored to the audio output of the active receiver if not running \bltt{DUPLEX}.
 To this end, check the \rett{TX Audio Monitor} box in the \bltt{TX} menu (see Chapter \ref{sec:txmenu}).
-With this you can check whether the microphone preamplifier is too weak or too strong, or whether 
+With this you can check whether the microphone preamplifier is too weak or too strong, or whether
 transmitted RF finds back its way to your microphone cable and leads to RFI distortions. This does
 \textit{not} check the audio you are actually transmitting.
 
