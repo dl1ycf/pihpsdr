@@ -1687,7 +1687,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
   if (can_tx_audio && transmitter->audiomonitor ) {
     //
     // Apply volume setting of active receiver
-    // 
+    //
     double vol = pow(10.0, 0.05*active_receiver -> volume);
     if (vol > 0.25) vol = 0.25;
     tx_audio_sample = mic_sample_double * vol;
