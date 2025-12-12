@@ -166,7 +166,7 @@ int audio_open_output(RECEIVER *rx) {
   err = 1;
 
   for (int i = 0; i < n_output_devices; i++) {
-    if (!strcmp(tx->audio_name, input_devices[i].name)) {
+    if (!strcmp(rx->audio_name, input_devices[i].name)) {
       err = 0;
       break;
     }
