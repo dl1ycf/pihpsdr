@@ -4472,11 +4472,7 @@ involves WiFi. I mention this because my attempts using WiFi for connection to t
 (that is, for the base band IQ data) were not entirely satisfactory.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Miscellaneous Topics}
-There are several topics that are not best explained in the course of the \textit{tour de force} through
-the menus. These will be handled in this section.
-
-\section{Latencies}
+\chapter{Latencies}
 \label{sec:latencies}
 In traditional (analog) radios, latencies are usually so short that they are not problematic. With
 SDRs, latencies are usually larger, mostly for a good reason (see below). So let us first describe which
@@ -4510,6 +4506,7 @@ There is also a delay between \pH actually sending audio to the radio or to a so
 and the signal appearing in the headphone. The reverse holds for the microphone input signals.}
 \end{itemize}
 
+\section{RF (base band) latencies}
 The notion of what is an acceptable RF delay very much depends on the kind of operation. In a
 rag-chew QSO, large delays (several hundred milliseconds) are not really harmful, but in a
 contest or DX pileup situation, it may be detrimental if your RF signal comes late. But is makes
@@ -4562,15 +4559,21 @@ The same holds for the reverse (TX) path. Here, the audio input (microphone) sig
 the input side of the DSP processor, and filtering/processing takes some time (the DSP sample
 rate in the TX chain is usually 96 kHz in Protocol 2). But again, the data that comes out of
 the DSP processor may not arrive at a constant pace. Therefore, a certain amount of ,,RF silence''
-is sent to the radio upon a RX/TX transition to pre-fill its TX data buffer. While not necessary
+is sent to the radio upon a RX/TX transition to pre-fill the outgoing TX data buffer. While not necessary
 for many radios (they do not start transmitting before the TX data buffer is sufficiently filled),
 this should make underruns of the TX data buffer in the FPGA less likely.
 
-\subsection{CW side tone latency}
+The bottom line of this section is, that a certain amount of latency cannot be avoided
+because it is inherent in the digital signal processing, but that this latency is further
+increased on purpose to establish a resilience against small ,,hangs'' in the data flow,
+that may e.g. be caused by the signal processing thread getting no CPU cycles for a small
+amount of time etc.
+
+\section{CW side tone latency}
 The audio latency is of utmost importance when doing CW, no matter whether you use
 the iambic keyer built into \pH is used, or whether you use an external keyer which
-sends key-up and key-down events via MIDI to the computer running \pH. The audio latency
-becomes an issue if \pH generates the side tone for you:
+sends key-up and key-down events via MIDI to the computer running \pH. Having low
+latency in the \pH generated side tone is really important:
 Imagine you want to sent a letter 'V' in CW,
 using a paddle. If the side tone arrives a little bit late at your ear, then the keyer
 may have advanced to the point where it sends the fourth dot before you have heard
@@ -4585,32 +4588,79 @@ stream. Upon a RX/TX transition, most pending audio samples in the audio output 
 are discarded such that the latency is small again. Furthermore, \pH very slighly
 increases or decreases the pauses between the dots or dashes to keep the audio output
 buffer at the desired filling level. This way, a \pH generated side tone can be used for
-CW speeds up to 25 wpm. Unfortunately, this does not apply to the PULSEAUDIO module.
+CW speeds up to 25 wpm. Unfortunately, this only applies to the ALSA and PORTAUDIO
+audio module but not to PULSEAUDIO.
 
-\subsection{External solution to CW side tone latency}
-The author of this manual does a lot of CW, and therefore has thought a lot about the CW
-side tone latency problem over the years. The most stringent solution to this problem is
+\begin{figure}[h!]
+\center
+\includegraphics[scale=0.35]{SideToneAlsa.png}
+\caption{Side Tone Latency with ALSA. Blue trace (bottom): CW key (active low);
+Yellow trace (top): signal at the headphone.}
+\label{fig:SideToneALSA}
+\end{figure}
+
+To demonstrate this, the side tone latence has been measured with a two-channel oscilloscope,
+see Fig. \ref{fig:SideToneALSA}.
+An external keyer was used that both sends MIDI key-up/down events to \pH and has a 
+hardware output (active low) 
+that was connected to channel 2 (blue trace)
+of the oscilloscope and was used for triggering.
+Channel 1 (yellow trace) then displays the signal at the headphone. Hitting the dot paddle then
+produces a string of dots, a CW speed of 24 wpm (dot length 50 ms) was used.
+For PulseAudio, the observed latency
+was about 200 ms which makes this completely unusable for CW: when you hear the first dot,
+the third dot is already being sent. For ALSA (see Fig. \ref{fig:SideToneALSA})
+the measured delay is 30 ms, slightly more than half the dot length. This is not optimal
+but still usable for doing CW at 24 wpm. On a Macintosh (using the PortAudio module), the
+delay was even slightly smaller (20 ms). For 24 wpm, this is usable but not optimal, and
+high-speed CW operators certainly want delays smaller than 10 ms.
+
+
+\section{External solution to CW side tone latency}
+Reducing the delay below 20 ms is certainly possible with dedicated low-latency audio
+hardware and specialised audio drivers, but this is beyond the scope of \pH.
+The most stringent solution to the low side tone latency problem is
 to generate the side tone externally, thus \textit{not} using the side tone generated by
 \pH. In my preferred setup, I use an external keyer built around a microcontroller, which
 sends the key-up and key-down events via MIDI to the computer running \pH. You will find
 lots of examples for microcontroller (uC) codes implementing a keyer on the internet, and for
 these codes, you can usually enable the generation of a square wave zero-latency side
-tone at one of the uC output pins. This side tone is really ugly: not only the harmonics
-contained in the square wave do not sound nice, the biggest problem is the audio clicks
+tone at one of the uC output pins. This square wave side tone is not pleasant to listen to:
+the harmonics
+contained in the square wave do not sound nice to operators expecting a clean sine-shaped
+signal, but the real problem is the audio clicks
 that result from the sharp rise and fall of the side tone pulses. Both problems are eliminated
-if one mangles the side tone through a narrow audio filter, that is easily realised with
-a single OP amp. The only drawback is that the side tone then must have a fixed frequency.
+if one routes the side tone through a narrow audio band pass filter, that is easily realised with
+a single OP amp. 
+
+\begin{figure}[ht!]
+\center
+\includegraphics[scale=0.35]{SideToneExternal.png}
+\caption{Zero Latency from an ,,external'' side tone.Blue trace (bottom): CW key (active low);
+Yellow trace (top): signal at the headphone.}
+\label{fig:SideToneExternal}
+\end{figure}
+
+Using two simple AF transformers, the side tone can then be mixed with the (stereo)
+RX audio: the audio from the sound card goes into the keyer an the headphone is then
+also plugged into the keyer.
+Fig. \ref{fig:SideToneExternal} shows the measured result of such a setup. One immeadiately
+sees that the side tone latency is virtually zero. The pulse envelope of the signal measured
+at the headphone is characteristic for audio filters realised with OP amps, the envelope
+depends on the chosen bandwidth that can be adjusted: the band width has to bee increased
+(decreased) if the side tone sounds too sloppy (harsh).
+The only drawback is that the side tone then must have a fixed frequency that matches the
+center frequency of the audio band pass filter.
 However, most CW operators have their preferred side tone frequency which does not change
 from one day to the other.
-Using a simple AF transformer, the side tone can then be mixed with the RX audio. Simply
-imagine that the AF transformer is inserted into the headphone cable.
 
-The distinct advantage of this setup is, that your side tone follows, virtually without
-latency, the state of the keyer. Of course, this setup implies that you set the side
-tone volume to zero in the \bltt{CW} menu. However, you still want to have a side tone for
-CAT-generated CW messages where latency is not an issue. To address this, \pH will use
+Of course, this setup implies that you set the side
+tone volume to zero in the \bltt{CW} menu, such that the side tone generated by \pH
+does not interfere. You may still want to have a \pH generated side tone for
+CAT-generated CW messages. To address this, \pH will use
 a low default volume for those messages if the side tone volume has been set to zero
-in the \bltt{CW} menu.
+in the \bltt{CW} menu. Note that side tone latency is not important for CAT generated
+CW messages.
 
 There is another, more sophisticated, ,,external'' solution to the side tone latency
 problem which is built around the powerful Teensy4 uC. It is described in
@@ -4620,9 +4670,10 @@ problem which is built around the powerful Teensy4 uC. It is described in
 (the author of this manual took part in this development). Briefly, the uC is so powerful
 that it can run both a CW keyer software, and act as an external sound card to the
 computer running \pH. If one chooses this device for RX audio output, the CW side tone
-from the keyer will be mixed into the RX audio stream in software.
+from the keyer will be mixed by the keyer software into the RX audio stream in software.
+The side tone latency obtained this way is not zero but very small (about 5 ms).
 
-\section{RX/TX profiles}
+\chapter{RX/TX profiles}
 \label{sec:rxtxprofiles}
 Many settings such as VFO step sizes, filter choices, noise reduction
 settings, equaliser settings, and TX compressor settings
@@ -4687,7 +4738,7 @@ $\bullet$ TX audio input device\cr
 \end{center}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \clearpage
-\section{The TX audio chain}
+\chapter{The TX audio chain}
 \label{sec:txchain}
 It seems that how the TX audio chain works is a field where myths and facts are equally dominant, therefore
 this section tries to shed some light on this. We will discuss the most relevant parts of the TX
@@ -4716,7 +4767,7 @@ that comes from a microphone. Note that for FM mode, things are slightly more co
 because of the FM pre-emphasis, this is explained in chapter \ref{sec:txmenu}, see the
 explanation of the \rett{FM PreEmp/ALC} button.
 
-\subsection{Start of the TX chain: The MicLvl indicator}
+\section{Start of the TX chain: The MicLvl indicator}
 
 At the beginning of the signal chain, there invariably is an analog-to-digital converter (ADC)
 in the sound card (or the codec) the microphone is connected to via an analog wire (the ADC may
@@ -4756,7 +4807,7 @@ On the other hand,
 for digital modes when using a virtual audio cable, the peak level is about 100\% almost constantly
 and here it is no reason to worry if the \texttt{Mic Lvl} bar is constantly red.
 
-\subsection{Monitoring the TX signal}
+\section{Monitoring the TX signal}
 
 The TX audio signal, as it comes from the microphone or from
 a digi program, can be mirrored to the audio output of the active receiver if not running \bltt{DUPLEX}.
@@ -4775,7 +4826,7 @@ the \pH transmitter through the FPGA, the DAC converter and the PA to the T/R re
 and then back through the RF front end,
 the RX ADC and the FPGA to the \pH receiver.
 
-\subsection{The downward expander (DEXP), a flexible noise gate}
+\section{The downward expander (DEXP), a flexible noise gate}
 
 The first processor in the TX chain is the downward expander (DEXP). This is best simply viewed as
 a noise gate. Well, it is a fancy noise gate. It only opens if there is input signal of sufficient
@@ -4785,7 +4836,7 @@ through the desktop) won't open it. Furthermore, when the gate is closed, it doe
 signal but applies a non-linear amplification. Usually you will have the DEXP activated with default
 settings for phone operation and it is not discussed further here.
 
-\subsection{MicGain and peak TX ALC value}
+\section{MicGain and peak TX ALC value}
 
 The problem is now that the TX chain needs data that is about 0 dBFS. If it is below, you have not only
 low output power (in SSB) or thin modulation (AM, FM) but also parts of the machine, e.g. the speech
@@ -4807,7 +4858,7 @@ is important. So in the simplest case, the recipe for adjusting the TX input cha
 {\color{red} Slowly adjust MicGain until the TX ALC peak is about zero when applying normal speech to the
 microphone.}
 
-\subsection{The TX equaliser}
+\section{The TX equaliser}
 
 Then comes the TX equaliser, which is described in chapter \ref{sec:eqmenu} and I guess any reader knows what
 an equaliser is. What is relevant here is, that the filtering
@@ -4815,7 +4866,7 @@ involved in the equaliser changes the peak signal amplitude. This could be compe
 by changing the MicGain slider, but the preferred way is to adjust the frequency independent gain
 of the equaliser such that the peak amplitude remains unchanged when switching on/off the equaliser.
 
-\subsection{The auto leveller}
+\section{The auto leveller}
 
 The next important part is the auto leveller (AUTOLVL). It solves the problem that the input
 signal may vary in amplitude, for example because the distance between your mouth and the microphone is
@@ -4825,13 +4876,13 @@ In \pH, there is no user-accessible control for the auto leveller, it is automat
 use the speech processor (CMPR) or the continuous frequency compressor (CFC).  So if you want the auto
 leveller but no compression just activate CMPR with a compression value of 0 dB.
 
-\subsection{The continuous frequency compressor (CFC)}
+\section{The speech processor (CMPR, CRC)}
 
-This is again a part that is not of prime importance. It is a generalised version of the speech processor
+The continuous frequency compressor (CFC) need not be discussed in detail here.
+It is a generalised version of the speech processor
 that applies a frequency-dependent compression value. The CFC settings are part of the \bltt{TX} menu
-and are described in chapter \ref{sec:cfc}.
-
-\subsection{The speech processor (CMPR)}
+and are described in chapter \ref{sec:cfc}. Here we discusse the ,,normal'' speech processor,
+also termed compressor (CMPR).
 
 Normal speech is very different from a constant sine signal. The amplitudes are greatly varying, and
 the average power emitted by your transmitter will be considerably below its PEP rating even if the
@@ -4859,7 +4910,7 @@ that the signal after filtering exceeds FS. This overshooting can be eliminated 
 \textit{controlled envelope SSB} (CESSB) correction, and \pH automatically activates CESSB if the
 speech processor is on and the compression level larger than 5 dB.
 
-\subsection{The automatic level control (ALC)}
+\section{The automatic level control (ALC)}
 
 At the very end of the TX audio signal chain, it has to be \textit{guaranteed} that the base-band
 signal does not exceed FS. The ALC does nothing if the signal at the end of the chain stays below FS,
@@ -4877,7 +4928,7 @@ what the speech processor is supposed to do. Note that the average TX ALC value 
 than zero.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \clearpage
-\section{Audio recording and replay}
+\chapter{Audio recording and replay}
 \label{sec:capture}
 Audio recording and replay is typically used in QSOs to let your QSO partner listen to its own transmission,
 and how it arrived at your site. It is not meant to do automatic SSB CQ calls etc., here a dedicated
@@ -4973,7 +5024,7 @@ has been transmitted or replayed. In all cases, hitting either \bltt{Captur} or 
 immediately stops a running recording, transmit, or replay.}g
 \end{itemize}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{HermesLite-II support}
+\chapter{HermesLite-II and RadioBerry support}
 \label{sec:hl2support}
 
 A. \texttt{https://github.com/softerhardware/Hermes-Lite2/wiki/Releases} \\
@@ -4981,7 +5032,9 @@ B. \texttt{https://james.ahlstrom.name/hl2filter/}  \\
 C. \texttt{https://www.hermeslite2plus.com/}\\
 D. \texttt{https://github.com/jimahlstrom/HL2IOBoard}
 
-
+\textbf{Note.} \pH mostly does not distinguish between the HermesLite-II and the RadioBerry.
+The only difference is the automatic disabling of most of the GPIO lines for the RadioBerry,
+see the last section in this chapter.
 
 The HermesLite-II (HL2 for  short, see internet link A above) is an open software / open hardware project,
 a small SDR radio with a QRP (5 watts) PA
@@ -5003,7 +5056,7 @@ Some have also included the so-called AK4951 companion board (internet link C) t
  an audio codec so you can connect a headphone and a microphone. There is also a more recent HL2 I/O-board
  (internet link D) that offers a variety of I/O resources. All these boards are supported by \pH.
 
-\subsection{Default PA calibration values}
+\section{Default PA calibration values}
 
 The default value for the PA calibration value (see the \bltt{PA} menu) is 53.0 dB. The (by far) most
 prominent  problem for beginners with the HL2 and \pH is, that it seemingly produces no RF output. The reason for this
@@ -5018,7 +5071,7 @@ the props file.
 
 
 
-\subsection{Additional controls in the \bltt{Radio} menu}
+\section{Additional controls in the \bltt{Radio} menu}
 
 \begin{figure}[ht]
 \center
@@ -5044,7 +5097,7 @@ the props file.
  you can feed a 10 MHz reference clock to the (input) CL1 jack, and the (output) Cl2 jack then
  has an internally re-generated 10 Mhz output signal with about 3.3 V$_{pp}$.
 
-\subsection{Support for the HL2 I/O board}
+\section{Support for the HL2 I/O board}
 
 The HL2 I/O board (internet link D) is a very versatile add-on to the HL2. It is so versatile
 because it contains a  microcontroller (a Raspberry Pico) with a lot
@@ -5095,7 +5148,7 @@ C = \textrm{Floor}\left( 0.5 + 15.47 * \ln(f / 18748.1)\right)
 so frequencies in the 80m band generated code 81 or 82, frequencies in the 2m band code 138 or 139,
 and the 3cm (10 GHz) band generates a band code that is 204.
 
-\subsection{``TX latency'' and ``PTT hang time''}
+\section{``TX latency'' and ``PTT hang time''}
 
 There has been much discussion about which are the optimal values for these parameters. \pH has no
 user interface to change these values but rather sets the TX-latency to 40 msec and the PTT hang time to 20 msec,
@@ -5114,7 +5167,7 @@ amount of time. Together with a too small TX latency value this leads to ``relay
 if the network connection is sloppy because the T/R relay is frequently switched. With a decently chosen
 value of the TX latency, the PTT hang time is not very critical so I set it to 20 msec.
 
-\subsection{HL2 parameters displayed in the panadapter}
+\section{HL2 parameters displayed in the panadapter}
 
 The HL2 transfers some non-standard information about its state to the host program (\pH) that can be displayed.
 If the box \rett{Display PA current} is checked in the \bltt{Screen} menu (see Fig. \ref{fig:ScreenMenu}),
@@ -5136,19 +5189,21 @@ Normally the RadioBerry hardware is a ``hat'' that is mounted on a RaspberryPi c
 the drivers for the RadioBerry but which also can run the SDR software. The communication between
  \pH and the RadioBerry driver is via the local loop-back internet
 interface. Normally \pH does not query loop-back devices when discovering radios, but to support
-the RadioBerry, local loop-back devices are queried for protocol-2.
+the RadioBerry, local loop-back devices are queried for protocol-2. It is even easier (and faster)
+just to insert the IP address 127.0.0.1 in the \rett{Radio IP addr} field in the discovery menu.
 
 The communication between the RaspberryPi and the RadioBerry uses nearly all GPIO lines of the
 RaspPi, so the general recommendation is to compile \pH without GPIO support. However, two GPIO lines
-are actually available, namely GPIO14/15for first-generation RadioBerries
- (with firmware versions smaller than 73.2),
-and GPIO17/18 for second-generation ones (with firmware versions 73.2 and larger).
+are actually available, namely GPIO14/15for RadioBerries
+ with firmware versions smaller than 73.2,
+and GPIO17/18 for those with firmware versions 73.2 to 74.9, and GPIO 17/13 from firmware version 75.0 on.
 Therefore, if \pH is compiled with GPIO support and detects a RadioBerry ``hat''
 from the presence of the special device file  \texttt{/dev/radioberry},
 then it enforces
 the \texttt{No Controller} GPIO choice and only uses the two available lines for
 \texttt{CWL}/\texttt{CWR}, so one can attach a paddle to the two lines and use the iambic
-keyer built into \pH.
+keyer built into \pH. For non-portable use my suggestion is to use an external MIDI keyer 
+and compile \pH without GPIO.
 
 
 \appendix
