@@ -1233,7 +1233,7 @@ void SetXvtrEnable(bool Enabled) {
     Register &= ~(1 << VXVTRENABLEBIT);
   }
 
-  if (Register != GPIORegValue) {  
+  if (Register != GPIORegValue) {
     GPIORegValue = Register;                    // store it back
     RegisterWrite(VADDRRFGPIOREG, Register);      // and write to it
   }

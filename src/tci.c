@@ -127,15 +127,15 @@ void shutdown_tci() {
       g_source_remove(client->tci_timer);
       client->tci_timer = 0;
     }
-        
-    if (client->fd  != -1) { 
+
+    if (client->fd  != -1) {
       shutdown(client->fd, SHUT_RDWR);
       // Give client change to send TCI "Close" message
       usleep(100000);
       close(client->fd);
       client->fd = -1;
     }
-    
+
     if (tci_client[id].thread_id) {
       g_thread_join(tci_client[id].thread_id);
       tci_client[id].thread_id = NULL;
@@ -965,13 +965,13 @@ static gpointer tci_listener(gpointer data) {
   // it is necessary to release the resources HERE although
   // this duplicates the code in the shutdown function
   //
-        
+
   if (client->tci_timer != 0) {
     g_source_remove(client->tci_timer);
     client->tci_timer = 0;
   }
 
-  if (client->fd  != -1) { 
+  if (client->fd  != -1) {
     t_print("%s: close fd=%d\n", __FUNCTION__, client->fd);
     close(client->fd);
     client->fd = -1;

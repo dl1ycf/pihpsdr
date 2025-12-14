@@ -156,7 +156,7 @@ static int MakeSocket(struct ThreadSocketData* Ptr, int DDCid) {
 }
 
 //
-// Watchdog thread. 
+// Watchdog thread.
 // if no messages in a second, goes back to "inactive" state.
 //
 // cppcheck-suppress constParameterCallback

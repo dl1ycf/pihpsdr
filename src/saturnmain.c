@@ -1422,7 +1422,7 @@ void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
   Byte = UDPInBuffer[1400] & 0xFF;
   bool XvtEn = Byte & 0x01;
   bool SpkMt = Byte & 0x02;
- 
+
   SetXvtrEnable(XvtEn);
   SetSpkrMute(SpkMt);
 
