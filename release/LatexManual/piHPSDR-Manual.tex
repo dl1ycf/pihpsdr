@@ -4601,8 +4601,8 @@ Yellow trace (top): signal at the headphone.}
 
 To demonstrate this, the side tone latence has been measured with a two-channel oscilloscope,
 see Fig. \ref{fig:SideToneALSA}.
-An external keyer was used that both sends MIDI key-up/down events to \pH and has a 
-hardware output (active low) 
+An external keyer was used that both sends MIDI key-up/down events to \pH and has a
+hardware output (active low)
 that was connected to channel 2 (blue trace)
 of the oscilloscope and was used for triggering.
 Channel 1 (yellow trace) then displays the signal at the headphone. Hitting the dot paddle then
@@ -4631,7 +4631,7 @@ contained in the square wave do not sound nice to operators expecting a clean si
 signal, but the real problem is the audio clicks
 that result from the sharp rise and fall of the side tone pulses. Both problems are eliminated
 if one routes the side tone through a narrow audio band pass filter, that is easily realised with
-a single OP amp. 
+a single OP amp.
 
 \begin{figure}[ht!]
 \center
@@ -5202,7 +5202,7 @@ from the presence of the special device file  \texttt{/dev/radioberry},
 then it enforces
 the \texttt{No Controller} GPIO choice and only uses the two available lines for
 \texttt{CWL}/\texttt{CWR}, so one can attach a paddle to the two lines and use the iambic
-keyer built into \pH. For non-portable use my suggestion is to use an external MIDI keyer 
+keyer built into \pH. For non-portable use my suggestion is to use an external MIDI keyer
 and compile \pH without GPIO.
 
 
