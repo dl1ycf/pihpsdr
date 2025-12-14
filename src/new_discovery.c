@@ -306,7 +306,7 @@ static gpointer p2_discover_receive_thread(gpointer data) {
               break;
 
             case NEW_DEVICE_HERMES:
-              snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Atlas");
+              snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Hermes");
               frequency_min = 0.0;
               frequency_max = 61440000.0;
               break;
