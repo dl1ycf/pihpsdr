@@ -775,7 +775,7 @@ void audio_get_cards() {
           input_devices[n_input_devices].description = g_strdup(device_desc);
           input_devices[n_input_devices].index = 0; // not used
           n_input_devices++;
-          t_print("%s: input_device: %s\n", device_name, __FUNCTION__);
+          t_print("%s: input_device: %s\n", device_desc, __FUNCTION__);
         }
       }
 
@@ -785,8 +785,8 @@ void audio_get_cards() {
       if (snd_ctl_pcm_info(handle, pcminfo) == 0) {
         char device_name[256];
         char device_desc[256];
-        snprintf(device_desc, sizeof(device_desc), "plughw:%d,%d", card, dev);
-        snprintf(device_name, sizeof(device_name), "plughw:%d,%d %s", card, dev, snd_ctl_card_info_get_name(info));
+        snprintf(device_name, sizeof(device_name), "plughw:%d,%d", card, dev);
+        snprintf(device_desc, sizeof(device_desc), "plughw:%d,%d %s", card, dev, snd_ctl_card_info_get_name(info));
 
         if (n_output_devices < MAX_AUDIO_DEVICES) {
           // the two allocated strings will never be free'd
