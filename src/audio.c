@@ -791,10 +791,10 @@ void audio_get_cards() {
         if (n_output_devices < MAX_AUDIO_DEVICES) {
           // the two allocated strings will never be free'd
           output_devices[n_output_devices].name = g_strdup(device_name);
-          output_devices[n_output_devices].description = g_strdup(device_descr);
+          output_devices[n_output_devices].description = g_strdup(device_desc);
           output_devices[n_output_devices].index = 0; // not used
           n_output_devices++;
-          t_print("%s: output_device: %s\n", __FUNCTION__, device_descr);
+          t_print("%s: output_device: %s\n", __FUNCTION__, device_desc);
         }
       }
     }
