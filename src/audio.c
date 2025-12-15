@@ -91,17 +91,22 @@ int audio_open_output(RECEIVER *rx) {
   unsigned int rate = 48000;
   unsigned int channels = 2;
   int soft_resample = 1;
-  char hw[128];
   t_print("%s: RX%d:%s\n", __FUNCTION__, rx->id + 1, rx->audio_name);
+  int err;
 
-  for (int i = 0; ; i++) {
-    if (i == 127 || rx->audio_name[i] == ' ') {
-      hw[i] = '\0';
+  //
+  // Do not try top open if name has not been recorded during startup
+  //
+  err = 1;
+
+  for (int i = 0; i < n_output_devices; i++) {
+    if (!strcmp(rx->audio_name, output_devices[i].name)) {
+      err = 0;
       break;
     }
-
-    hw[i] = rx->audio_name[i];
   }
+
+  if (err) { return -1; }
 
   g_mutex_lock(&rx->audio_mutex);
   rx->audio_format = SND_PCM_FORMAT_UNKNOWN;
@@ -113,11 +118,10 @@ int audio_open_output(RECEIVER *rx) {
   rx->audio_buffer = NULL;
 
   for (int i = 0; i < FORMATS; i++) {
-    int err;
 
-    if ((err = snd_pcm_open (&rx->audio_handle, hw, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0) {
+    if ((err = snd_pcm_open (&rx->audio_handle, rx->audio_name, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0) {
       t_print("%s: cannot open audio device %s (%s)\n", __FUNCTION__,
-              hw,
+              rx->audio_name,
               snd_strerror (err));
       break;
     }
@@ -180,17 +184,23 @@ int audio_open_input(TRANSMITTER *tx) {
   unsigned int rate = 48000;
   unsigned int channels = 1;
   int soft_resample = 1;
-  char hw[128];
+  int err;
   t_print("%s: TX:%s\n", __FUNCTION__, tx->audio_name);
 
-  for (int i = 0; ; i++) {
-    if (i == 127 || tx->audio_name[i] == ' ') {
-      hw[i] = '\0';
+  //
+  // Do not try top open if name has not been recorded during startup
+  //
+  err = 1;
+
+  for (int i = 0; i < n_input_devices; i++) {
+    if (!strcmp(tx->audio_name, input_devices[i].name)) {
+      err = 0;
       break;
     }
-
-    hw[i] = tx->audio_name[i];
   }
+
+  if (err) { return -1; }
+
 
   tx->audio_format = SND_PCM_FORMAT_UNKNOWN;
   //
@@ -204,11 +214,10 @@ int audio_open_input(TRANSMITTER *tx) {
   g_mutex_lock(&tx->audio_mutex);
 
   for (int i = 0; i < FORMATS; i++) {
-    int err;
 
-    if ((err = snd_pcm_open (&tx->audio_handle, hw, SND_PCM_STREAM_CAPTURE, SND_PCM_ASYNC)) < 0) {
+    if ((err = snd_pcm_open (&tx->audio_handle, tx->audio_name, SND_PCM_STREAM_CAPTURE, SND_PCM_ASYNC)) < 0) {
       t_print("%s: cannot open audio device %s (%s)\n", __FUNCTION__,
-              hw,
+              tx->audio_name,
               snd_strerror (err));
       break;
     }
@@ -725,6 +734,10 @@ void audio_get_cards() {
   snd_ctl_card_info_alloca(&info);
   snd_pcm_info_alloca(&pcminfo);
 
+  //
+  // First, loop through the cards
+  // (these include the virtual audio cables)
+  //
   while (snd_card_next(&card) >= 0 && card >= 0) {
     snd_ctl_t *handle;
     char name[20];
@@ -748,16 +761,22 @@ void audio_get_cards() {
       snd_pcm_info_set_stream(pcminfo, SND_PCM_STREAM_CAPTURE);
 
       if (snd_ctl_pcm_info(handle, pcminfo) == 0) {
-        char device_id[128];
-        snprintf(device_id, sizeof(device_id), "plughw:%d,%d %s", card, dev, snd_ctl_card_info_get_name(info));
+        char device_name[256];
+        char device_desc[256];
+        //
+        // name is plughw:x,y and can be used for opening the device
+        // desc contains human-readable description and will be used in the GUI
+        //
+        snprintf(device_name, sizeof(device_name), "plughw:%d,%d", card, dev);
+        snprintf(device_desc, sizeof(device_desc), "(%d,%d):%s", card, dev, snd_ctl_card_info_get_name(info));
 
         if (n_input_devices < MAX_AUDIO_DEVICES) {
           // the two allocated strings will never be free'd
-          input_devices[n_input_devices].name = strdup(device_id);
-          input_devices[n_input_devices].description = strdup(device_id);
+          input_devices[n_input_devices].name = g_strdup(device_name);
+          input_devices[n_input_devices].description = g_strdup(device_desc);
           input_devices[n_input_devices].index = 0; // not used
           n_input_devices++;
-          t_print("%s: input_device: %s\n", device_id, __FUNCTION__);
+          t_print("%s: input_device: %s\n", device_desc, __FUNCTION__);
         }
       }
 
@@ -765,16 +784,18 @@ void audio_get_cards() {
       snd_pcm_info_set_stream(pcminfo, SND_PCM_STREAM_PLAYBACK);
 
       if (snd_ctl_pcm_info(handle, pcminfo) == 0) {
-        char device_id[128];
-        snprintf(device_id, sizeof(device_id), "plughw:%d,%d %s", card, dev, snd_ctl_card_info_get_name(info));
+        char device_name[256];
+        char device_desc[256];
+        snprintf(device_name, sizeof(device_name), "plughw:%d,%d", card, dev);
+        snprintf(device_desc, sizeof(device_desc), "(%d,%d):%s", card, dev, snd_ctl_card_info_get_name(info));
 
         if (n_output_devices < MAX_AUDIO_DEVICES) {
           // the two allocated strings will never be free'd
-          output_devices[n_output_devices].name = strdup(device_id);
-          output_devices[n_output_devices].description = strdup(device_id);
+          output_devices[n_output_devices].name = g_strdup(device_name);
+          output_devices[n_output_devices].description = g_strdup(device_desc);
           output_devices[n_output_devices].index = 0; // not used
           n_output_devices++;
-          t_print("%s: output_device: %s\n", __FUNCTION__, device_id);
+          t_print("%s: output_device: %s\n", __FUNCTION__, device_desc);
         }
       }
     }
@@ -789,23 +810,36 @@ void audio_get_cards() {
   // Furthermore, truncate the description at the first newline
   //
   void **hints, **n;
-  char *name, *descr, *io;
+  char *name, *descr;
 
   if (snd_device_name_hint(-1, "pcm", &hints) < 0) {
     return;
   }
 
-  n = hints;
+  n = hints;  // must not touch "hints" since it will be freed
 
   while (*n != NULL) {
     name = snd_device_name_get_hint(*n, "NAME");
     descr = snd_device_name_get_hint(*n, "DESC");
-    io = snd_device_name_get_hint(*n, "IOID");
 
     if (strncmp("dmix:", name, 5) == 0) {
       if (n_output_devices < MAX_AUDIO_DEVICES) {
-        output_devices[n_output_devices].name = g_strdup(name);
-        snprintf(text, sizeof(text), "(MIX) %s", descr);
+        //
+        // copy name and truncate at first space
+        //
+        snprintf(text, sizeof(text), "%s", name);
+
+        for (unsigned int i = 0; i < strlen(text); i++) {
+          if (text[i] == ' ') {
+            text[i] = '\0';
+            break;
+          }
+        }
+        output_devices[n_output_devices].name = g_strdup(text);
+        //
+        // Copy description and truncate at first newline
+        //
+        snprintf(text, sizeof(text), "dmix:%s", descr);
 
         for (unsigned int i = 0; i < strlen(text); i++) {
           if (text[i] == '\n') {
@@ -822,15 +856,29 @@ void audio_get_cards() {
     }
 
 #if 0
-
     //
-    // (Temporarily) deactivated "dsnoop" devices. Opening them in MONO always
-    // fails on my RaspPi (channels == 1 not supported)
+    // (Temporarily) deactivated "dsnoop" devices. Opening them in MONO  (as
+    // done by piHPSDR for "microphone" devices) fails on my RaspPi
+    // (channels == 1 not supported)
     //
     if (strncmp("dsnoop:", name, 6) == 0) {
       if (n_input_devices < MAX_AUDIO_DEVICES) {
-        input_devices[n_input_devices].name = g_strdup(name);
-        snprintf(text, sizeof(text), "(SNOOP) %s", descr);
+        //
+        // copy name and truncate at first space
+        //
+        snprintf(text, sizeof(text), "%s", name);
+
+        for (unsigned int i = 0; i < strlen(text); i++) {
+          if (text[i] == ' ') {
+            text[i] = '\0';
+            break;
+          }
+        }
+        input_devices[n_input_devices].name = g_strdup(text);
+        //
+        // Copy description and truncate at first newline
+        //
+        snprintf(text, sizeof(text), "snoop:%s", descr);
 
         for (unsigned int i = 0; i < strlen(text); i++) {
           if (text[i] == '\n') {
@@ -859,10 +907,6 @@ void audio_get_cards() {
 
     if (descr != NULL) {
       free(descr);
-    }
-
-    if (io != NULL) {
-      free(io);
     }
 
     n++;

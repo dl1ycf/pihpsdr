@@ -228,7 +228,7 @@ void setProperty(const char* name, const char* value) {
 // decimal points and then this is fed to atof()
 //
 double myatof(const char* string) {
-  char *lstr = strdup(string);
+  char *lstr = g_strdup(string);
   double ret;
 
   //

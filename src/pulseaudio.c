@@ -147,13 +147,33 @@ int audio_open_output(RECEIVER *rx) {
   pa_sample_spec sample_spec;
   int err;
   t_print("%s: RX%d:%s\n", __FUNCTION__, rx->id + 1, rx->audio_name);
-  g_mutex_lock(&rx->audio_mutex);
   sample_spec.rate = 48000;
   sample_spec.channels = 2;
   sample_spec.format = PA_SAMPLE_FLOAT32NE;
   char stream_id[16];
   snprintf(stream_id, sizeof(stream_id), "RX-%d", rx->id);
   pa_buffer_attr attr;
+
+  //
+  // PulseAudio/Pipewire accept ALSA device names as well. So when changing
+  // from ALSA to pulseaudio, a device may be successfully opened although
+  // its device name is not contained in our device list. This can lead to
+  // inconsistencies. Therefore, return with error if the name is not
+  // registered.
+  //
+
+  err = 1;
+
+  for (int i = 0; i < n_output_devices; i++) {
+    if (!strcmp(rx->audio_name, output_devices[i].name)) {
+      err = 0;
+      break;
+    }
+  }
+
+  if (err) { return -1; }
+
+  g_mutex_lock(&rx->audio_mutex);
   attr.maxlength = (uint32_t) -1;
   attr.tlength   = (uint32_t) -1;
   attr.prebuf    = (uint32_t) -1;
@@ -242,8 +262,28 @@ int audio_open_input(TRANSMITTER *tx) {
   pa_sample_spec sample_spec;
   int err;
   t_print("%s: TX:%s\n", __FUNCTION__, tx->audio_name);
-  g_mutex_lock(&tx->audio_mutex);
   pa_buffer_attr attr;
+
+  //
+  // PulseAudio/Pipewire accept ALSA device names as well. So when changing
+  // from ALSA to pulseaudio, a device may be successfully opened although
+  // its device name is not contained in our device list. This can lead to
+  // inconsistencies. Therefore, return with error if the name is not
+  // registered.
+  //
+
+  err = 1;
+
+  for (int i = 0; i < n_input_devices; i++) {
+    if (!strcmp(tx->audio_name, input_devices[i].name)) {
+      err = 0;
+      break;
+    }
+  }
+
+  if (err) { return -1; }
+
+  g_mutex_lock(&tx->audio_mutex);
   attr.maxlength = (uint32_t) -1;
   attr.tlength = (uint32_t) -1;
   attr.prebuf = (uint32_t) -1;

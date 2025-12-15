@@ -399,12 +399,12 @@ void get_midi_devices() {
         }
 
         if (midi_port[n_midi_devices] == NULL) {
-          midi_port[n_midi_devices] = strdup(portname);
+          midi_port[n_midi_devices] = g_strdup(portname);
           match = 0;
         } else {
           if (strcmp(midi_port[n_midi_devices], portname)) {
             g_free(midi_port[n_midi_devices]);
-            midi_port[n_midi_devices] = strdup(portname);
+            midi_port[n_midi_devices] = g_strdup(portname);
             match = 0;
           }
         }
