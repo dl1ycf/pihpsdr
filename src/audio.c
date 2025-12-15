@@ -794,7 +794,7 @@ void audio_get_cards() {
           output_devices[n_output_devices].description = g_strdup(device_descr);
           output_devices[n_output_devices].index = 0; // not used
           n_output_devices++;
-          t_print("%s: output_device: %s\n", __FUNCTION__, device_id);
+          t_print("%s: output_device: %s\n", __FUNCTION__, device_descr);
         }
       }
     }
