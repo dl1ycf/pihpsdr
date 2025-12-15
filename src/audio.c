@@ -765,9 +765,10 @@ void audio_get_cards() {
         char device_desc[256];
         //
         // name is plughw:x,y and can be used for opening the device
-        // desc adds description and will be used in the GUI
+        // desc contains human-readable description and will be used in the GUI
+        //
         snprintf(device_name, sizeof(device_name), "plughw:%d,%d", card, dev);
-        snprintf(device_desc, sizeof(device_desc), "plughw:%d,%d %s", card, dev, snd_ctl_card_info_get_name(info));
+        snprintf(device_desc, sizeof(device_desc), "(%d,%d):%s", card, dev, snd_ctl_card_info_get_name(info));
 
         if (n_input_devices < MAX_AUDIO_DEVICES) {
           // the two allocated strings will never be free'd
@@ -786,7 +787,7 @@ void audio_get_cards() {
         char device_name[256];
         char device_desc[256];
         snprintf(device_name, sizeof(device_name), "plughw:%d,%d", card, dev);
-        snprintf(device_desc, sizeof(device_desc), "plughw:%d,%d %s", card, dev, snd_ctl_card_info_get_name(info));
+        snprintf(device_desc, sizeof(device_desc), "(%d,%d):%s", card, dev, snd_ctl_card_info_get_name(info));
 
         if (n_output_devices < MAX_AUDIO_DEVICES) {
           // the two allocated strings will never be free'd
