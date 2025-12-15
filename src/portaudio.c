@@ -57,18 +57,23 @@ AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
 // RX audio samples are put into a ring buffer and "fetched" therefreom
 // by the portaudio "headphone" callback.
 //
-// We choose a ring buffer of 9600 (stereo) samples that is kept about half-full
-// during RX (latency: 0.1 sec) which should be more than enough.
-// If the buffer falls below 1800, half a buffer length of silence is
-// inserted. This usually only happens after TX/RX transitions
+// We choose a ring buffer of MY_RING_BUFFER_SIZE (stereo) samples that is kept
+// about half-full during RX (target latency: about 0.1 sec) which should be more
+// than enough.
+// If the buffer falls below MY_RING_LOW_WATER, "silence" is inserted until the
+// buffer is again half full. This usually only happens after TX/RX transitions
 //
 // During TX (no duplex), tx_audio_write() is called. If it is called for
-// the first time with a non-zero sidetone volume,
-// the ring buffer is cleared and only few (stereo) samples of silence
-// are put into it. This is probably the minimum amount necessary to avoid
+// the first time after a RX/TX transition, most of the pending contents in
+// the ring buffer is cleared and only MY_CW_LOW_WATER (stereo) samples
+// are kept. This is probably the minimum amount necessary to avoid
 // audio underruns which manifest themselves as ugly cracks in the side ton.
-// During the TX phase, the buffer filling is kept between two rather low
-// water marks to ensure the small CW sidetone latency is kept.
+// During the TX phase, each time 16 subsequent zero samples are detected,
+// one of these is deleted or an additional one inserted to keep the output
+// buffer filling between MY_CW_LOW_WATER and MY_CW_HIGH_WATER. This is (only)
+// important for the CW side tone and here we have "real silence" between the
+// dots/dashes. This keeps the CW sidetone latency near the target value.
+//
 // If we then go to RX again a "low water mark" condition is detected in the
 // first call to audio_write() and half a buffer length of silence is inserted
 // again.
@@ -77,9 +82,6 @@ AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
 // I have achieved a latency of about 15 msec on a Macintosh.
 // One can go smaller but this increases the probabilities of audio cracks
 // from buffer underruns.
-//
-// Experiments indicate that we can indeed keep the ring buffer about half filling
-// during RX and quite empty during CW-TX.
 //
 //
 
@@ -186,7 +188,7 @@ int audio_open_input(TRANSMITTER *tx) {
   t_print("%s: TX:%s (dev=%d)\n", __FUNCTION__, tx->audio_name, padev);
 
   //
-  // Device name possibly came from props file and device is no longer there
+  // Device name not registered upon startup
   //
   if (padev < 0) {
     return -1;
@@ -425,7 +427,7 @@ int audio_open_output(RECEIVER *rx) {
   t_print("%s: RX%d:%s (dev=%d)\n", __FUNCTION__, rx->id + 1, rx->audio_name, padev);
 
   //
-  // Device name possibly came from props file and device is no longer there
+  // Device name not registered upon startup
   //
   if (padev < 0) {
     return -1;
