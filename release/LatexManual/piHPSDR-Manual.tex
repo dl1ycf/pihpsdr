@@ -4759,7 +4759,7 @@ In \pH, there are no user-accessible controls for AUTOLVL and CESSB as they are 
 automatically when appropriate (see below).
 
 For digital modes, the input audio level is fairly constant and can be set to be just below full scale
-clipping. In this case, the Mic gain slider can stay at 0 dB and CMPR, CRC, DEXP, and TXEQ should
+clipping. In this case, the Mic gain slider can stay at 0 dB and CMPR, CFC, DEXP, and TXEQ should
 all be switched off. If the audio level is constant but below full scale, the input signal can be
 amplified via MicGain until the TX ALC value is just below or at 0 dB.
 All what follows is concerned with the potential problems of human speech
@@ -4876,7 +4876,7 @@ In \pH, there is no user-accessible control for the auto leveller, it is automat
 use the speech processor (CMPR) or the continuous frequency compressor (CFC).  So if you want the auto
 leveller but no compression just activate CMPR with a compression value of 0 dB.
 
-\section{The speech processor (CMPR, CRC)}
+\section{The speech processor (CMPR, CFC)}
 
 The continuous frequency compressor (CFC) need not be discussed in detail here.
 It is a generalised version of the speech processor
@@ -4905,10 +4905,27 @@ Since the speech processor implicitly assumes that the input signal peaks at FS,
 always used if the speech processor is activated. It therefore seems a good idea to always use the
 compressor when operating phone, but to select 0 dB compression level when you do not want compression.
 
-The additional filtering that has to be applied after clipping may introduce some artefacts, namely
-that the signal after filtering exceeds FS. This overshooting can be eliminated by the
-\textit{controlled envelope SSB} (CESSB) correction, and \pH automatically activates CESSB if the
-speech processor is on and the compression level larger than 5 dB.
+\section{The controlled envelope SSB overshoot control (CESSB)}
+Ideally, the compressor produces an output signal that peaks at FS. This effect can nicely be seen
+when the TX ALC meter is set to display the peak ALC value. If one cranks up the Mic gain without
+using compression, then the peak ALC value will assume large positive values, indicating the the
+ALC at the end of the chain has reduced the signal amplitude. When using a compressor and increasing
+the mic gain, the peak ALC value will reach zero but ideally not go beyond. However,
+the additional filtering that has to be applied after clipping in the compressor may
+introduce some artefacts, namely that the signal after filtering exceeds FS. In an experiment where
+I temporarily deactivated CESSB the peak TX ALC value went up to 5 dB when using a large mic gain,
+a compressor level of 20 dB, and speaking violently into the microphone. This means that at the
+end of the TX chain, the compressed signal was attenuated by 5 dB and this is not what one wants.
+
+This is where CESSB sets in: it removes any overshooting after the post-compressor filtering,
+such that the peak ALC value is again close to zero. 
+ \pH automatically activates CESSB if the
+speech processor is enabled and the compression level larger than 5 dB. This border line has been chosen
+to keep speech as natural as possible for small compression levels, while preventing the ALC to
+reduce the output RF power at large compression levels.
+
+Not that \pH does not auto-engage CESSB when using the CFC. The idea here is that those who want
+to use the fancy CFC do not want their settings to be affected by auto-engaging CESSB.
 
 \section{The automatic level control (ALC)}
 
