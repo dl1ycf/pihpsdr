@@ -616,7 +616,7 @@ static void *tx_audio_thread(gpointer arg) {
   void *buffer = malloc(inp_buffer_size * sizeof(float));
 
   if (!buffer) {
-    t_print("%s: unknown sound format or malloc error\n");
+    t_print("%s: unknown sound format or malloc error\n", __FUNCTION__);
     return NULL;
   }
 
