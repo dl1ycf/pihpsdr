@@ -597,7 +597,7 @@ static void *client_udp_thread(void* arg) {
     break;
 
     default:
-      t_print("%s: unkown command\n");
+      t_print("%s: unkown command\n", __FUNCTION__);
       break;
     }
   }

@@ -223,7 +223,7 @@ static void *tx_audio_thread(gpointer arg) {
 
     if (rc < 0) {
       tx->audio_running = FALSE;
-      t_print("%s: ERROR pa_simple_read: %s\n", __FUNCTION__, rc, pa_strerror(err));
+      t_print("%s: ERROR pa_simple_read: %s\n", __FUNCTION__, pa_strerror(err));
     } else {
       for (int i = 0; i < inp_buffer_size; i++) {
         //

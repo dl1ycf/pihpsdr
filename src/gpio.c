@@ -653,7 +653,7 @@ static void process_edge(int offset, int value) {
     schedule_action(switches[num].function, value ? PRESSED : RELEASED, 0);
 #endif
   } else {
-    t_print("%s: No action defined for GPIO line %d\n", offset);
+    t_print("%s: No action defined for GPIO line %d\n", __FUNCTION__, offset);
   }
 }
 

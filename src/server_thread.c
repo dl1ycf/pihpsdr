@@ -1004,7 +1004,7 @@ static void *listen_thread(void *arg) {
     }
 
     if (memcmp(sha, s, SHA512_DIGEST_LENGTH)  != 0) {
-      t_print("Server: wrong UDP test packet\n", rc);
+      t_print("Server: wrong UDP test packet\n");
       continue;
     }
 
