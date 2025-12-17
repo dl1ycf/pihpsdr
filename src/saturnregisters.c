@@ -578,7 +578,7 @@ void SetDUCFrequency(unsigned int Value, bool IsDeltaPhase) { // only accepts DU
     RegisterWrite(VADDRTXDUCREG, DeltaPhase);  // and write to it
   }
 
-  pthread_mutex_lock(&DUCregMutex);
+  pthread_mutex_unlock(&DUCregMutex);
 
   //
   // PCB V3+: now enable high pass filter if above 49MHz
@@ -691,7 +691,7 @@ void AlexManualRXFilters(unsigned int Bits, int RX) {
     RegisterWrite(VADDRALEXSPIREG + VOFFSETALEXRXREG, Register); // and write to it
   }
 
-  pthread_mutex_lock(&AlexRXMutex);
+  pthread_mutex_unlock(&AlexRXMutex);
 }
 
 //
@@ -714,7 +714,7 @@ void AlexManualTXFilters(unsigned int Bits, bool HasTXAntExplicitly) {
     RegisterWrite(VADDRALEXSPIREG + VOFFSETALEXTXFILTREG, Register); // and write to it
   }
 
-  pthread_mutex_lock(&AlexTXMutex);
+  pthread_mutex_unlock(&AlexTXMutex);
 }
 
 //
