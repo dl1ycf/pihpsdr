@@ -396,9 +396,11 @@ single encoders. This special case is not covered in this manual.}
 \item[Controller2 V2]{Choose this if you have a "version 2" \pH controller from ApacheLabs (with double encoders
 on a single shaft), or a clone thereof.
 This controller is denoted Controller2 in the rest of this manual.}
-\item[G2 Front Panel]{Choose this if you have an Anan G2 radio with a built-in controller.}
+\item[G2V1 Front Panel]{Choose this if you have a first-generation (7-inch screen) Anan G2
+ radio with a built-in controller.}
 \end{itemize}
-Note that the front panel of the second-generation Anan G2 radios is not controlled via GPIO. For these
+Note that the front panel of the second-generation (8-inch screen with LEDs)
+Anan G2 radios is not controlled via GPIO. For these
 radios you should choose \rett{No Controller} or, even better, compile \pH without GPIO support.
 
 \begin{center}
@@ -758,7 +760,7 @@ a small check-box to enable or disable that function.
 
 \textbf{Pop-up sliders}
 
-If using an external controller (GPIO, MIDI, G2 front panel, ANDROMEDA), one can
+If using an external controller (GPIO, MIDI, G2 V1 or V2 front panel, ANDROMEDA), one can
 assign \pH functions to knobs (rotary encoders) of that controller. Just to give
 an example, suppose you can change the RF front end attenuation with such a knob.
 If you have a slider executing that function on-screen, it will auto-magically
@@ -1428,7 +1430,7 @@ at the headphone jack.
 If checked, it mutes the audio amplifier driving the speakers upon transmit only.
 Note that this box has no effect if TXing in CW mode or TUNE-ing such that a side tone
 is not muted. It is generally \textit{not recommended} to use this option, because the
-speakers emit an audible ``pop'' each time the speaker amplifier is muted or un-muted.
+speakers emit an audible ``plop'' each time the speaker amplifier is muted or un-muted.
 Some users have reported RFI problems with the speakers and this option has been added
 to make it possible to mute the speakers during transmit only.
 
@@ -4225,7 +4227,7 @@ shown in Fig. \ref{fig:SwitchMenuV2} which match the functions printed on the en
 \begin{figure}[ht]
 \center
 \includegraphics[scale=0.25]{g2ultra.png}
-\caption{The front panel of a second-generation G2 radio(image courtesy of Apache Labs).}
+\caption{The front panel of a second-generation G2 radio (image courtesy of Apache Labs).}
 \label{fig:g2ultrapanel}
 \end{figure}
 
