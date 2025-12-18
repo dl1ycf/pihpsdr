@@ -101,7 +101,7 @@ void switch_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(grid), default_b, 7, 0, 2, 1);
     break;
 
-  case G2_FRONTPANEL:
+  case G2V1_PANEL:
     gtk_grid_attach(GTK_GRID(grid), default_b, 6, 0, 3, 1);
     break;
   }
@@ -167,7 +167,7 @@ void switch_menu(GtkWidget *parent) {
     gtk_container_add(GTK_CONTAINER(content), grid);
   }
 
-  if (controller == G2_FRONTPANEL) {
+  if (controller == G2V1_PANEL) {
     // vertical padding in row 1 and 6
     widget = gtk_label_new("  ");
     gtk_widget_set_size_request(widget, 0, 10);

@@ -250,7 +250,7 @@ static struct gpiod_chip *chip = NULL;
 
 //
 // The "static const" data is the DEFAULT assignment for encoders,
-// and for Controller2 and G2 front panel switches
+// and for Controller2 and G2V1 front panel switches
 // These defaults are read-only and copied to encoders and switches
 // when restoring default values
 //
@@ -297,7 +297,7 @@ static const ENCODER encoders_controller2_v2[MAX_ENCODERS] = {
   {{TRUE, TRUE, 18, 1, 17, 1, 0, VFO,          R_START},  {FALSE, TRUE,  0, 0,  0, 0, 0, NO_ACTION,   R_START},  {FALSE, TRUE,  0, NO_ACTION,      0L}}, //ENC1/VFO
 };
 
-static const ENCODER encoders_g2_frontpanel[MAX_ENCODERS] = {
+static const ENCODER encoders_g2v1_panel[MAX_ENCODERS] = {
   {{TRUE, TRUE,  5, 1,  6, 1, 0, DRIVE,    R_START1}, {TRUE,  TRUE, 26, 1, 20, 1, 0, MIC_GAIN,  R_START1}, {TRUE,  TRUE, 22, PS,             0L}}, //ENC1
   {{TRUE, TRUE,  9, 1,  7, 1, 0, AGC_GAIN, R_START1}, {TRUE,  TRUE, 21, 1,  4, 1, 0, AF_GAIN,   R_START1}, {TRUE,  TRUE, 27, MUTE,           0L}}, //ENC3
   {{TRUE, TRUE, 11, 1, 10, 1, 0, DIV_GAIN, R_START1}, {TRUE,  TRUE, 19, 1, 16, 1, 0, DIV_PHASE, R_START1}, {TRUE,  TRUE, 23, DIV,            0L}}, //ENC7
@@ -386,7 +386,7 @@ static const SWITCH switches_controller2_v2[MAX_SWITCHES] = {
   {FALSE, FALSE, 0, CTUN,             0L}   //GPB0 SW17
 };
 
-static const SWITCH switches_g2_frontpanel[MAX_SWITCHES] = {
+static const SWITCH switches_g2v1_panel[MAX_SWITCHES] = {
   {FALSE, FALSE, 0, XIT_ENABLE,       0L},  //GPB7 SW22
   {FALSE, FALSE, 0, RIT_ENABLE,       0L},  //GPB6 SW21
   {FALSE, FALSE, 0, FUNCTION,         0L},  //GPB5 SW20
@@ -526,7 +526,7 @@ static gpointer rotary_encoder_thread(gpointer data) {
       }
     }
 
-    if (controller == CONTROLLER2_V1 || controller == CONTROLLER2_V2 || controller == G2_FRONTPANEL) {
+    if (controller == CONTROLLER2_V1 || controller == CONTROLLER2_V2 || controller == G2V1_PANEL) {
       //
       // There are cases in which an I2C interrupt is lost. When using
       // debouncing on the IRQ line, one even prompts this.
@@ -700,8 +700,8 @@ void gpio_default_encoder_actions(int ctrlr) {
     default_encoders = encoders_controller2_v2;
     break;
 
-  case G2_FRONTPANEL:
-    default_encoders = encoders_g2_frontpanel;
+  case G2V1_PANEL:
+    default_encoders = encoders_g2v1_panel;
     break;
   }
 
@@ -735,8 +735,8 @@ void gpio_default_switch_actions(int ctrlr) {
     default_switches = switches_controller2_v2;
     break;
 
-  case G2_FRONTPANEL:
-    default_switches = switches_g2_frontpanel;
+  case G2V1_PANEL:
+    default_switches = switches_g2v1_panel;
     break;
   }
 
@@ -812,12 +812,12 @@ void gpio_set_defaults(int ctrlr) {
     memcpy(switches, switches_controller2_v2, sizeof(switches));
     break;
 
-  case G2_FRONTPANEL:
+  case G2V1_PANEL:
     //
     // Do not use any CPU lines
     //
-    memcpy(encoders, encoders_g2_frontpanel, sizeof(encoders));
-    memcpy(switches, switches_g2_frontpanel, sizeof(switches));
+    memcpy(encoders, encoders_g2v1_panel, sizeof(encoders));
+    memcpy(switches, switches_g2v1_panel, sizeof(switches));
     break;
 
   case NO_CONTROLLER:
@@ -1401,7 +1401,7 @@ void gpio_init() {
     }
   }
 
-  if (controller == CONTROLLER2_V1 || controller == CONTROLLER2_V2 || controller == G2_FRONTPANEL) {
+  if (controller == CONTROLLER2_V1 || controller == CONTROLLER2_V2 || controller == G2V1_PANEL) {
     //
     // Setup I2C interrupt line: debounce with 1 msec
     //

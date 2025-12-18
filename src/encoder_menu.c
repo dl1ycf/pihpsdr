@@ -109,8 +109,8 @@ void encoder_menu(GtkWidget *parent) {
     snprintf(title, sizeof(title), "piHPSDR - Controller 2 V2 Encoder Actions");
     break;
 
-  case G2_FRONTPANEL:
-    snprintf(title, sizeof(title), "piHPSDR - G2 FrontPanel Encoder Actions");
+  case G2V1_PANEL:
+    snprintf(title, sizeof(title), "piHPSDR - G2V1 FrontPanel Encoder Actions");
     break;
   }
 
@@ -143,7 +143,7 @@ void encoder_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(grid), default_b, 6, 0, 2, 1);
     break;
 
-  case G2_FRONTPANEL:
+  case G2V1_PANEL:
     gtk_grid_attach(GTK_GRID(grid), default_b, 3, 0, 2, 1);
     break;
   }
@@ -329,7 +329,7 @@ void encoder_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(grid), widget, col, row, 1, 1);
     break;
 
-  case G2_FRONTPANEL:
+  case G2V1_PANEL:
     // 2 vertical double encoders with switch, both on the left and on the right side
     // variable i = 0,1 for left, right
     widget = gtk_label_new("Left edge Encoders");

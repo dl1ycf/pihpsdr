@@ -396,9 +396,11 @@ single encoders. This special case is not covered in this manual.}
 \item[Controller2 V2]{Choose this if you have a "version 2" \pH controller from ApacheLabs (with double encoders
 on a single shaft), or a clone thereof.
 This controller is denoted Controller2 in the rest of this manual.}
-\item[G2 Front Panel]{Choose this if you have an Anan G2 radio with a built-in controller.}
+\item[G2V1 Front Panel]{Choose this if you have a first-generation (7-inch screen) Anan G2
+ radio with a built-in controller.}
 \end{itemize}
-Note that the front panel of the second-generation Anan G2 radios is not controlled via GPIO. For these
+Note that the front panel of the second-generation (8-inch screen with LEDs)
+Anan G2 radios is not controlled via GPIO. For these
 radios you should choose \rett{No Controller} or, even better, compile \pH without GPIO support.
 
 \begin{center}
@@ -621,7 +623,7 @@ with 240 then gives -106 dBm, and this is indeed the position of the noise floor
 
 An immediate consequence of this is, that the
 noise floor moves down when increasing the ZOOM value, since the frequency width of one pixel gets
-smaller. So the noise floor reading on the displays varies with display width and Zooom factor.
+smaller. So the noise floor reading on the displays varies with display width and Zoom factor.
 The S-meter reading, on the other hand, integrates the spectral energy density over the filter
 passband. If you want to measure and compare the noise floor, the best you can do is to get an S-meter reading (in dBm) with
 a filter that is 1000 Hz wide, and then subtract 30 from the S-meter value to
@@ -719,16 +721,16 @@ Using a Zoom factor of 12, the width of the spectrum is only
 16 kHz which makes it easy to spot the RX signal on the
 waterfall and set the RX frequency accordingly. Note the
 dial frequency (marked by a thin red line in the panadapter)
-is at the center of the screen, the signal is to the left
+is at the centre of the screen, the signal is to the left
 of that line because the lower side band is used on the
 40m band.
 
 If only a small fraction of the whole spectrum is actually shown, this
 leads to the question \textit{which} part is shown. In normal operation,
-the dial frequency is always at the center of the screen so then one
+the dial frequency is always at the centre of the screen so then one
 normally wants to see the central part of the spectrum. In \bltt{CTUN}
 mode on the other hand, one can receive signals from anywhere in the spectrum:
-the center frequency is fixed and one moves the ,,RX window'' around. In
+the centre frequency is fixed and one moves the ,,RX window'' around. In
 this case one may want to see a non-central part of a zoomed spectrum.
 This is where the \bltt{Pan} slider comes in. The Pan value
 (between $-100$ and 100) determines which part of a zoomed spectrum
@@ -737,7 +739,7 @@ on display, and the rightmost part is displayed if the Pan value is 100.
 A Pan value of zero shows the central part of the spectrum. Note that the
 Pan value has no effect if there is no zoom, and that the Pan value is
 automatically adjusted when changing the Zoom value such that the RX
-frequency is at the center of the display after changing Zoom.
+frequency is at the centre of the display after changing Zoom.
 Normally you should not need the \bltt{Pan} slider if you are not using
 \bltt{CTUN}.
 
@@ -758,7 +760,7 @@ a small check-box to enable or disable that function.
 
 \textbf{Pop-up sliders}
 
-If using an external controller (GPIO, MIDI, G2 front panel, ANDROMEDA), one can
+If using an external controller (GPIO, MIDI, G2 V1 or V2 front panel, ANDROMEDA), one can
 assign \pH functions to knobs (rotary encoders) of that controller. Just to give
 an example, suppose you can change the RF front end attenuation with such a knob.
 If you have a slider executing that function on-screen, it will auto-magically
@@ -1428,7 +1430,7 @@ at the headphone jack.
 If checked, it mutes the audio amplifier driving the speakers upon transmit only.
 Note that this box has no effect if TXing in CW mode or TUNE-ing such that a side tone
 is not muted. It is generally \textit{not recommended} to use this option, because the
-speakers emit an audible ``pop'' each time the speaker amplifier is muted or un-muted.
+speakers emit an audible ``plop'' each time the speaker amplifier is muted or un-muted.
 Some users have reported RFI problems with the speakers and this option has been added
 to make it possible to mute the speakers during transmit only.
 
@@ -3676,7 +3678,7 @@ in Fig. \ref{fig:ToolbarMenu2}.
 
 
 Because the list of possible functions to choose from is so long, the height of the menu
-is restricted even if screen space permits, so it always contains a scrollbar at the right
+is restricted even if screen space permits, so it always contains a scroll bar at the right
 margin that you may need to use to scroll through the list of functions.
 The current command selected (\texttt{CTUN}) is high-lighted (you may need to scroll down
 to see it). Then click the button labelled with \bltt{Duplex} (in this example you can
@@ -3726,7 +3728,7 @@ level or the VOX threshold. But
 this operator may find it convenient to have a slider at hand that adjusts the CW speed. With an
 individually configured Slider area, it should be possible to have only two rows of sliders on display
 in most situations. It is possible to assign the same function to more than one slider, but a given
-function will only be assigned to one slider (the first one if going throught the sliders row-wise).
+function will only be assigned to one slider (the first one if going through the sliders row-wise).
 So in case of a duplicate assignment, the second slider position will just be empty.
 Note that RF gain and Attenuation are mutually exclusive, since a given radio either has a programmable
 RF gain (HermesLite-II, RadioBerry, SoapySDR radios) or a programmable attenuator (most HPSDR radios).
@@ -3751,7 +3753,7 @@ check-box that enables or disables the TX compressor.}
 \item[\rett{PanZoom}]{(Pan) The PAN value of the ZOOM function. This slider has no effect when ZOOM=1.}
 \item[\rett{Panadapter Low}]{(PLow) The lower-cut of the RX panadapter.}
 \item[\rett{RF Gain}]{(RF) RF front-end gain for the ADC feeding the active receiver. Note if the ,,other''
-receiver gets the signal from the same ADC, it is also affected. If the radio does not have a programmeable
+receiver gets the signal from the same ADC, it is also affected. If the radio does not have a programmable
 gain in the RF front end, the slider is not shown.}
 \item[\rett{Squelch}]{(Sqlch) The squelch level applied to the audio from the active receiver. Together with this
 slider, there appears a check-box that enables or disables squelch.}
@@ -4225,7 +4227,7 @@ shown in Fig. \ref{fig:SwitchMenuV2} which match the functions printed on the en
 \begin{figure}[ht]
 \center
 \includegraphics[scale=0.25]{g2ultra.png}
-\caption{The front panel of a second-generation G2 radio(image courtesy of Apache Labs).}
+\caption{The front panel of a second-generation G2 radio (image courtesy of Apache Labs).}
 \label{fig:g2ultrapanel}
 \end{figure}
 
@@ -4482,7 +4484,7 @@ types of latencies we are talking about:
 \item[RX latency]
 {This is the time difference between a signal arriving at the antenna input, and the (demodulated) audio
 playing in the headphone. It could be measured by connecting the (strongly attenuated) output of a
-second transmitter to the antenna input, sending a stream of CW dahes, and monitoring both the output
+second transmitter to the antenna input, sending a stream of CW dashes, and monitoring both the output
 of the second transmitter and the headphone of the first radio on a two-channel oscilloscope}
 \item[TX latency]
 {This is the time difference between a signal arriving at the microphone input, and the (modulated)
@@ -4493,8 +4495,8 @@ to the microphone input.}
 {This measures how fast the radio can switch from RX to TX. One way to measure is to feed the side tone
 of a CW keyer producing three dashes and three dots to the microphone input while using VOX, and
 measuring the microphone input and the RF output on a two-channel oscilloscope. Here not only the
-delay (latency) is of interest but also to which extent the RX/TX transition "swallos" parts of the
-first dahes sent.}
+delay (latency) is of interest but also to which extent the RX/TX transition "swallows" parts of the
+first dashes sent.}
 \item[TX/RX turnover]
 {This measures how fast the radio can switch from TX to RX. It can be measured by turning the radio
 into TX by shorting the PTT input to ground, and then releasing the PTT button. On a two-channel
@@ -4502,7 +4504,7 @@ oscilloscope one can measure the PTT and headphone output and see how long it ta
 a stable audio signal.}
 \item[Audio latency]
 {The delays mentioned above are only in part caused by the signal processing within \pH.
-There is also a delay between \pH actually sending audio to the radio or to a soundcard,
+There is also a delay between \pH actually sending audio to the radio or to a sound card,
 and the signal appearing in the headphone. The reverse holds for the microphone input signals.}
 \end{itemize}
 
@@ -4512,7 +4514,7 @@ rag-chew QSO, large delays (several hundred milliseconds) are not really harmful
 contest or DX pileup situation, it may be detrimental if your RF signal comes late. But is makes
 not much sense to try reducing the delay to, say, below 10 ms simply because the travel time
 of the RF signal between you and your QSO partner is already
-about 33 ms if the distance is 10 thousand kilometers.
+about 33 ms if the distance is 10 thousand kilometres.
 
 To understand the source of the RF delay, we have to look at the fate of an RF signal pulse after
 it arrives at the antenna. The RF signal goes through the RF front end and eventually arrives
@@ -4585,7 +4587,7 @@ PORTAUDIO and ALSA audio modules, \pH has a built-in mechanism to remedy this si
 This is possible since when generating the CW side tone, audio samples come at a regular
 and predictable pace, such that we do not need latency to cope with jitters in the audio
 stream. Upon a RX/TX transition, most pending audio samples in the audio output buffer
-are discarded such that the latency is small again. Furthermore, \pH very slighly
+are discarded such that the latency is small again. Furthermore, \pH very slightly
 increases or decreases the pauses between the dots or dashes to keep the audio output
 buffer at the desired filling level. This way, a \pH generated side tone can be used for
 CW speeds up to 25 wpm. Unfortunately, this only applies to the ALSA and PORTAUDIO
@@ -4599,7 +4601,7 @@ Yellow trace (top): signal at the headphone.}
 \label{fig:SideToneALSA}
 \end{figure}
 
-To demonstrate this, the side tone latence has been measured with a two-channel oscilloscope,
+To demonstrate this, the side tone latency has been measured with a two-channel oscilloscope,
 see Fig. \ref{fig:SideToneALSA}.
 An external keyer was used that both sends MIDI key-up/down events to \pH and has a
 hardware output (active low)
@@ -4621,9 +4623,9 @@ Reducing the delay below 20 ms is certainly possible with dedicated low-latency 
 hardware and specialised audio drivers, but this is beyond the scope of \pH.
 The most stringent solution to the low side tone latency problem is
 to generate the side tone externally, thus \textit{not} using the side tone generated by
-\pH. In my preferred setup, I use an external keyer built around a microcontroller, which
+\pH. In my preferred setup, I use an external keyer built around a micro-controller, which
 sends the key-up and key-down events via MIDI to the computer running \pH. You will find
-lots of examples for microcontroller (uC) codes implementing a keyer on the internet, and for
+lots of examples for micro-controller (uC) codes implementing a keyer on the internet, and for
 these codes, you can usually enable the generation of a square wave zero-latency side
 tone at one of the uC output pins. This square wave side tone is not pleasant to listen to:
 the harmonics
@@ -4644,13 +4646,13 @@ Yellow trace (top): signal at the headphone.}
 Using two simple AF transformers, the side tone can then be mixed with the (stereo)
 RX audio: the audio from the sound card goes into the keyer an the headphone is then
 also plugged into the keyer.
-Fig. \ref{fig:SideToneExternal} shows the measured result of such a setup. One immeadiately
+Fig. \ref{fig:SideToneExternal} shows the measured result of such a setup. One immediately
 sees that the side tone latency is virtually zero. The pulse envelope of the signal measured
 at the headphone is characteristic for audio filters realised with OP amps, the envelope
 depends on the chosen bandwidth that can be adjusted: the band width has to bee increased
 (decreased) if the side tone sounds too sloppy (harsh).
 The only drawback is that the side tone then must have a fixed frequency that matches the
-center frequency of the audio band pass filter.
+centre frequency of the audio band pass filter.
 However, most CW operators have their preferred side tone frequency which does not change
 from one day to the other.
 
@@ -4759,7 +4761,7 @@ In \pH, there are no user-accessible controls for AUTOLVL and CESSB as they are 
 automatically when appropriate (see below).
 
 For digital modes, the input audio level is fairly constant and can be set to be just below full scale
-clipping. In this case, the Mic gain slider can stay at 0 dB and CMPR, CRC, DEXP, and TXEQ should
+clipping. In this case, the Mic gain slider can stay at 0 dB and CMPR, CFC, DEXP, and TXEQ should
 all be switched off. If the audio level is constant but below full scale, the input signal can be
 amplified via MicGain until the TX ALC value is just below or at 0 dB.
 All what follows is concerned with the potential problems of human speech
@@ -4820,7 +4822,7 @@ It is (in principle) possible to monitor the audio signal downstream in the TX c
 applying compression, equaliser, etc. But this then comes with a large delay so this is not implemented.
 But it is possible to monitor the TX signal even without using a second receiver or a web SDR:
 just have the \pH receiver
-tuned to the TX frequency and mode while using \bltt{DUPLEX}: in most cases, the crosstalk at the T/R relay is
+tuned to the TX frequency and mode while using \bltt{DUPLEX}: in most cases, the cross talk at the T/R relay is
 by far strong enough such that you can hear your transmitted signal in the receiver. This signal then went from
 the \pH transmitter through the FPGA, the DAC converter and the PA to the T/R relay,
 and then back through the RF front end,
@@ -4876,12 +4878,12 @@ In \pH, there is no user-accessible control for the auto leveller, it is automat
 use the speech processor (CMPR) or the continuous frequency compressor (CFC).  So if you want the auto
 leveller but no compression just activate CMPR with a compression value of 0 dB.
 
-\section{The speech processor (CMPR, CRC)}
+\section{The speech processor (CMPR, CFC)}
 
 The continuous frequency compressor (CFC) need not be discussed in detail here.
 It is a generalised version of the speech processor
 that applies a frequency-dependent compression value. The CFC settings are part of the \bltt{TX} menu
-and are described in chapter \ref{sec:cfc}. Here we discusse the ,,normal'' speech processor,
+and are described in chapter \ref{sec:cfc}. Here we discuss the ,,normal'' speech processor,
 also termed compressor (CMPR).
 
 Normal speech is very different from a constant sine signal. The amplitudes are greatly varying, and
@@ -4905,10 +4907,27 @@ Since the speech processor implicitly assumes that the input signal peaks at FS,
 always used if the speech processor is activated. It therefore seems a good idea to always use the
 compressor when operating phone, but to select 0 dB compression level when you do not want compression.
 
-The additional filtering that has to be applied after clipping may introduce some artefacts, namely
-that the signal after filtering exceeds FS. This overshooting can be eliminated by the
-\textit{controlled envelope SSB} (CESSB) correction, and \pH automatically activates CESSB if the
-speech processor is on and the compression level larger than 5 dB.
+\section{The controlled envelope SSB overshoot control (CESSB)}
+Ideally, the compressor produces an output signal that peaks at FS. This effect can nicely be seen
+when the TX ALC meter is set to display the peak ALC value. If one cranks up the Mic gain without
+using compression, then the peak ALC value will assume large positive values, indicating the the
+ALC at the end of the chain has reduced the signal amplitude. When using a compressor and increasing
+the mic gain, the peak ALC value will reach zero but ideally not go beyond. However,
+the additional filtering that has to be applied after clipping in the compressor may
+introduce some artefacts, namely that the signal after filtering exceeds FS. In an experiment where
+I temporarily deactivated CESSB the peak TX ALC value went up to 5 dB when using a large mic gain,
+a compressor level of 20 dB, and speaking violently into the microphone. This means that at the
+end of the TX chain, the compressed signal was attenuated by 5 dB and this is not what one wants.
+
+This is where CESSB sets in: it removes any overshooting after the post-compressor filtering,
+such that the peak ALC value is again close to zero.
+ \pH automatically activates CESSB if the
+speech processor is enabled and the compression level larger than 5 dB. This border line has been chosen
+to keep speech as natural as possible for small compression levels, while preventing the ALC to
+reduce the output RF power at large compression levels.
+
+Not that \pH does not auto-engage CESSB when using the CFC. The idea here is that those who want
+to use the fancy CFC do not want their settings to be affected by auto-engaging CESSB.
 
 \section{The automatic level control (ALC)}
 
@@ -5100,7 +5119,7 @@ the props file.
 \section{Support for the HL2 I/O board}
 
 The HL2 I/O board (internet link D) is a very versatile add-on to the HL2. It is so versatile
-because it contains a  microcontroller (a Raspberry Pico) with a lot
+because it contains a  micro-controller (a Raspberry Pico) with a lot
 of I/O lines. Depending on which program it runs,
 the Pico can switch antennas, transverters, or external filter boards
 (based on the RX and TX frequencies),
@@ -5736,7 +5755,7 @@ this has no effect in current radio models since the preamp is hard-wired ,,on''
 button is released. This is
 one of the few commands where a button release event is significant. When attaching, say, the PTT contact of
 a microphone to
-a GPIO line for this purpose, take care of proper debouncing, since \pH is not good at debouncing
+a GPIO line for this purpose, take care of proper denouncing, since \pH is not good at denouncing
 switches where both
 the press and release events are significant.}
 
@@ -5886,7 +5905,7 @@ enabled (disabled) if the resulting value  is non-zero (zero).}
 
 \phcommand{Tune}{TUNE}{B}{Toggle (on/off) TUNE. If \texttt{TuneBits} are checked in the \bltt{OC} menu,
 the corresponding open collector outputs will become active
-(low) during TUNEing. This can then be used to start an external automatic tuner.}
+(low) during TUNE-ing. This can then be used to start an external automatic tuner.}
 
 \phcommand{Tune Drv}{TUNDRV}{E}{Change the drive  level (0-100) used for TUNE-ing. This is equivalent to
 changing the "Tune drive level"
@@ -5894,12 +5913,12 @@ spin button in the \texttt{TX} menu \textbf{and} to check the "Tune use drive" b
 
 \phcommand{Tune Full}{TUNF}{B}{This command is largely equivalent to the \bltt{Tune} command, except that
 open collector bits which became active at the beginning of the TUNE cycle will become inactive again
-after the "full tune delay" (to be specified in the \bltt{OC} menu). Note the TUNEing itself will continue
+after the "full tune delay" (to be specified in the \bltt{OC} menu). Note the TUNE-ing itself will continue
 after that.}
 
 \phcommand{Tune Mem}{TUNM}{B}{This command is largely equivalent to the \bltt{Tune} command, except that
 open collector bits which became active at the beginning of the TUNE cycle will become inactive again
-after the "memory tune" delay (to be specified in the \bltt{OC} menu). Note the TUNEing itself will continue
+after the "memory tune" delay (to be specified in the \bltt{OC} menu). Note the TUNE-ing itself will continue
 after that.}
 
 \phcommand{TX Drive}{TXDRV}{PSE}{
