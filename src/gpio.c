@@ -700,7 +700,7 @@ void gpio_default_encoder_actions(int ctrlr) {
     default_encoders = encoders_controller2_v2;
     break;
 
-  case G2_PANEL:
+  case G2V1_PANEL:
     default_encoders = encoders_g2v1_panel;
     break;
   }
@@ -735,7 +735,7 @@ void gpio_default_switch_actions(int ctrlr) {
     default_switches = switches_controller2_v2;
     break;
 
-  case G2_PANEL:
+  case G2V1_PANEL:
     default_switches = switches_g2v1_panel;
     break;
   }
@@ -812,7 +812,7 @@ void gpio_set_defaults(int ctrlr) {
     memcpy(switches, switches_controller2_v2, sizeof(switches));
     break;
 
-  case G2_PANEL:
+  case G2V1_PANEL:
     //
     // Do not use any CPU lines
     //
@@ -1401,7 +1401,7 @@ void gpio_init() {
     }
   }
 
-  if (controller == CONTROLLER2_V1 || controller == CONTROLLER2_V2 || controller == G2_PANEL) {
+  if (controller == CONTROLLER2_V1 || controller == CONTROLLER2_V2 || controller == G2V1_PANEL) {
     //
     // Setup I2C interrupt line: debounce with 1 msec
     //
