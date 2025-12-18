@@ -4,8 +4,8 @@ LIST OF RECENT PIHPSDR CHANGES
 December 2025:
 ______________
 
-- added "TX monitor" option: TX input audio
-  samples are re-playes "as is" on the RX
+- added "TX monitor" option: TX *input* audio
+  samples are re-played "as is" on the RX
   output channel if this option is enabled
   in the TX menu.
 
