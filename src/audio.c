@@ -91,7 +91,6 @@ int audio_open_output(RECEIVER *rx) {
   unsigned int rate = 48000;
   unsigned int channels = 2;
   int soft_resample = 1;
-  t_print("%s: RX%d:%s\n", __FUNCTION__, rx->id + 1, rx->audio_name);
   int err;
 
   //
@@ -108,7 +107,7 @@ int audio_open_output(RECEIVER *rx) {
   }
 
   if (err) {
-    t_print("%s: not registered: %s\n", rx->audio_name);
+    t_print("%s: not registered: %s\n", __FUNCTION__, rx->audio_name);
     return -1;
   }
 
@@ -204,7 +203,7 @@ int audio_open_input(TRANSMITTER *tx) {
   }
 
   if (err) {
-    t_print("%s: not registered: %s\n", tx->audio_name);
+    t_print("%s: not registered: %s\n", __FUNCTION__, tx->audio_name);
     return -1;
   }
 
