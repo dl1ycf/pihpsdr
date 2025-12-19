@@ -526,6 +526,7 @@ static void local_input_changed_cb(GtkWidget *widget, gpointer data) {
 
   if (i > 0) {
     transmitter->local_audio = 1;
+    t_print("TX audio input changed to %s\n", input_devices[i - 1].description);
     snprintf(transmitter->audio_name, sizeof(transmitter->audio_name), "%s", input_devices[i - 1].name);
 
     if (audio_open_input(transmitter) < 0) {

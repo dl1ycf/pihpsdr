@@ -56,18 +56,14 @@ int n_output_devices;
 AUDIO_DEVICE input_devices[MAX_AUDIO_DEVICES];
 AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
 
-static pa_glib_mainloop *main_loop;
-static pa_mainloop_api *main_loop_api;
-static pa_operation *op;
-static pa_context *pa_ctx;
+// Flag that indicates PA context has been established
+static int pa_ready = 0;
 
 
 static void source_list_cb(pa_context *context, const pa_source_info *s, int eol, void *data) {
-  if (eol > 0) {
-    for (int i = 0; i < n_input_devices; i++) {
-      t_print("Input: %d: %s (%s)\n", input_devices[i].index, input_devices[i].name, input_devices[i].description);
-    }
-  } else if (n_input_devices < MAX_AUDIO_DEVICES) {
+  if (eol > 0) { return; }
+
+  if (n_input_devices < MAX_AUDIO_DEVICES) {
     input_devices[n_input_devices].name = g_strdup(s->name);
     input_devices[n_input_devices].description = g_strdup(s->description);
     input_devices[n_input_devices].index = s->index;
@@ -76,13 +72,9 @@ static void source_list_cb(pa_context *context, const pa_source_info *s, int eol
 }
 
 static void sink_list_cb(pa_context *context, const pa_sink_info *s, int eol, void *data) {
-  if (eol > 0) {
-    for (int i = 0; i < n_output_devices; i++) {
-      t_print("Output: %d: %s (%s)\n", output_devices[i].index, output_devices[i].name, output_devices[i].description);
-    }
+  if (eol > 0) { return; }
 
-    op = pa_context_get_source_info_list(pa_ctx, source_list_cb, NULL);
-  } else if (n_output_devices < MAX_AUDIO_DEVICES) {
+  if (n_output_devices < MAX_AUDIO_DEVICES) {
     output_devices[n_output_devices].name = g_strdup(s->name);
     output_devices[n_output_devices].description = g_strdup(s->description);
     output_devices[n_output_devices].index = s->index;
@@ -93,60 +85,81 @@ static void sink_list_cb(pa_context *context, const pa_sink_info *s, int eol, vo
 static void state_cb(pa_context *c, void *userdata) {
   pa_context_state_t state;
   state = pa_context_get_state(c);
-  t_print("%s: %d\n", __FUNCTION__, state);
 
   switch  (state) {
-  // There are just here for reference
-  case PA_CONTEXT_UNCONNECTED:
-    t_print("%s: PA_CONTEXT_UNCONNECTED\n", __FUNCTION__);
-    break;
-
-  case PA_CONTEXT_CONNECTING:
-    t_print("%s: PA_CONTEXT_CONNECTING\n", __FUNCTION__);
-    break;
-
-  case PA_CONTEXT_AUTHORIZING:
-    t_print("%s: PA_CONTEXT_AUTHORIZING\n", __FUNCTION__);
-    break;
-
-  case PA_CONTEXT_SETTING_NAME:
-    t_print("%s: PA_CONTEXT_SETTING_NAME\n", __FUNCTION__);
-    break;
-
   case PA_CONTEXT_FAILED:
-    t_print("%s: PA_CONTEXT_FAILED\n", __FUNCTION__);
-    break;
-
   case PA_CONTEXT_TERMINATED:
-    t_print("%s: PA_CONTEXT_TERMINATED\n", __FUNCTION__);
+    pa_ready = 2;
     break;
 
   case PA_CONTEXT_READY:
-    t_print("%s: PA_CONTEXT_READY\n", __FUNCTION__);
-    // get a list of the output devices
-    n_input_devices = 0;
-    n_output_devices = 0;
-    op = pa_context_get_sink_info_list(pa_ctx, sink_list_cb, NULL);
+    pa_ready = 1;
     break;
 
   default:
-    t_print("%s: unknown state %d\n", __FUNCTION__, state);
     break;
   }
 }
 
+//
+// Enumeration of Devices. This thread is spawned off by audio_get_cards
+// (which quickly returns) and the enumeration is done in the background.
+// If it fails, piHPDSR may run normally for radios with codecs.
+//
+void *enumerate_thread(gpointer arg) {
+  pa_context *context = (pa_context *) arg;
+  pa_operation *op;
+
+  // wait for context change
+  while (pa_ready == 0) { usleep(100000); }
+
+  if (pa_ready == 2) { return NULL; }
+
+  // get input devices
+  op = pa_context_get_sink_info_list(context, sink_list_cb, NULL);
+
+  while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) { usleep(100000); }
+
+  pa_operation_unref(op);
+  op = pa_context_get_source_info_list(context, source_list_cb, NULL);
+
+  while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) { usleep(100000); }
+  pa_operation_unref(op);
+
+  for (int i = 0; i < n_input_devices; i++) {
+    t_print("Input: %d: %s\n", input_devices[i].index, input_devices[i].description);
+  }
+
+  for (int i = 0; i < n_output_devices; i++) {
+    t_print("Output: %d: %s\n", output_devices[i].index, output_devices[i].description);
+  }
+
+  return NULL;
+}
+
 void audio_get_cards() {
-  main_loop = pa_glib_mainloop_new(NULL);
-  main_loop_api = pa_glib_mainloop_get_api(main_loop);
-  pa_ctx = pa_context_new(main_loop_api, "piHPSDR");
+  //
+  // If the radio has its own codec, we may not need the audio module at all.
+  // So do all the enumeration in the background and quickly return from
+  // audio_get_cards. We now span a background thread that does this.
+  //
+  // Since audio_get_cards() is called before the discovery process, there
+  // should be enough time for the enumeration thread to complete before
+  // the radio is started.
+  //
+  n_input_devices = 0;
+  n_output_devices = 0;
+  pa_glib_mainloop *main_loop = pa_glib_mainloop_new(NULL);
+  pa_mainloop_api *main_loop_api = pa_glib_mainloop_get_api(main_loop);
+  pa_context *pa_ctx = pa_context_new(main_loop_api, "piHPSDR");
   pa_context_connect(pa_ctx, NULL, 0, NULL);
   pa_context_set_state_callback(pa_ctx, state_cb, NULL);
+  g_thread_new("PAenum", enumerate_thread, (gpointer)pa_ctx);
 }
 
 int audio_open_output(RECEIVER *rx) {
   pa_sample_spec sample_spec;
   int err;
-  t_print("%s: RX%d:%s\n", __FUNCTION__, rx->id + 1, rx->audio_name);
   sample_spec.rate = 48000;
   sample_spec.channels = 2;
   sample_spec.format = PA_SAMPLE_FLOAT32NE;
@@ -167,11 +180,15 @@ int audio_open_output(RECEIVER *rx) {
   for (int i = 0; i < n_output_devices; i++) {
     if (!strcmp(rx->audio_name, output_devices[i].name)) {
       err = 0;
+      t_print("%s RX%d:%s\n", __FUNCTION__, rx->id + 1, output_devices[i].description);
       break;
     }
   }
 
-  if (err) { return -1; }
+  if (err) {
+    t_print("%s: not registered: %s\n", __FUNCTION__, rx->audio_name);
+    return -1;
+  }
 
   g_mutex_lock(&rx->audio_mutex);
   attr.maxlength = (uint32_t) -1;
@@ -261,7 +278,6 @@ static void *tx_audio_thread(gpointer arg) {
 int audio_open_input(TRANSMITTER *tx) {
   pa_sample_spec sample_spec;
   int err;
-  t_print("%s: TX:%s\n", __FUNCTION__, tx->audio_name);
   pa_buffer_attr attr;
 
   //
@@ -276,12 +292,16 @@ int audio_open_input(TRANSMITTER *tx) {
 
   for (int i = 0; i < n_input_devices; i++) {
     if (!strcmp(tx->audio_name, input_devices[i].name)) {
+      t_print("%s TX:%s\n", __FUNCTION__, input_devices[i].description);
       err = 0;
       break;
     }
   }
 
-  if (err) { return -1; }
+  if (err) {
+    t_print("%s: not registered: %s\n", __FUNCTION__, tx->audio_name);
+    return -1;
+  }
 
   g_mutex_lock(&tx->audio_mutex);
   attr.maxlength = (uint32_t) -1;
