@@ -180,17 +180,17 @@ int audio_open_input(TRANSMITTER *tx) {
 
   for (i = 0; i < n_input_devices; i++) {
     if (!strcmp(tx->audio_name, input_devices[i].name)) {
+      t_print("%s TX:%s\n", __FUNCTION__, input_devices[i].description);
       padev = input_devices[i].index;
       break;
     }
   }
 
-  t_print("%s: TX:%s (dev=%d)\n", __FUNCTION__, tx->audio_name, padev);
-
   //
   // Device name not registered upon startup
   //
   if (padev < 0) {
+    t_print("%s: not registered: %s\n", __FUNCTION__, tx->audio_name);
     return -1;
   }
 
@@ -419,17 +419,17 @@ int audio_open_output(RECEIVER *rx) {
 
   for (i = 0; i < n_output_devices; i++) {
     if (!strcmp(rx->audio_name, output_devices[i].name)) {
+      t_print("%s RX%d:%s\n", __FUNCTION__, rx->id + 1, output_devices[i].description);
       padev = output_devices[i].index;
       break;
     }
   }
 
-  t_print("%s: RX%d:%s (dev=%d)\n", __FUNCTION__, rx->id + 1, rx->audio_name, padev);
-
   //
   // Device name not registered upon startup
   //
   if (padev < 0) {
+    t_print("%s: not registered: %s\n", __FUNCTION__, rx->audio_name);
     return -1;
   }
 

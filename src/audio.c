@@ -91,7 +91,6 @@ int audio_open_output(RECEIVER *rx) {
   unsigned int rate = 48000;
   unsigned int channels = 2;
   int soft_resample = 1;
-  t_print("%s: RX%d:%s\n", __FUNCTION__, rx->id + 1, rx->audio_name);
   int err;
 
   //
@@ -101,12 +100,16 @@ int audio_open_output(RECEIVER *rx) {
 
   for (int i = 0; i < n_output_devices; i++) {
     if (!strcmp(rx->audio_name, output_devices[i].name)) {
+      t_print("%s RX%d:%s\n", __FUNCTION__, rx->id + 1, output_devices[i].description);
       err = 0;
       break;
     }
   }
 
-  if (err) { return -1; }
+  if (err) {
+    t_print("%s: not registered: %s\n", __FUNCTION__, rx->audio_name);
+    return -1;
+  }
 
   g_mutex_lock(&rx->audio_mutex);
   rx->audio_format = SND_PCM_FORMAT_UNKNOWN;
@@ -185,7 +188,6 @@ int audio_open_input(TRANSMITTER *tx) {
   unsigned int channels = 1;
   int soft_resample = 1;
   int err;
-  t_print("%s: TX:%s\n", __FUNCTION__, tx->audio_name);
 
   //
   // Do not try top open if name has not been recorded during startup
@@ -194,12 +196,16 @@ int audio_open_input(TRANSMITTER *tx) {
 
   for (int i = 0; i < n_input_devices; i++) {
     if (!strcmp(tx->audio_name, input_devices[i].name)) {
+      t_print("%s TX:%s\n", __FUNCTION__, input_devices[i].description);
       err = 0;
       break;
     }
   }
 
-  if (err) { return -1; }
+  if (err) {
+    t_print("%s: not registered: %s\n", __FUNCTION__, tx->audio_name);
+    return -1;
+  }
 
 
   tx->audio_format = SND_PCM_FORMAT_UNKNOWN;

@@ -158,7 +158,6 @@ static void local_output_changed_cb(GtkWidget *widget, gpointer data) {
   }
 
   if (i > 0) {
-    t_print("local_output_changed rx=%d %s\n", myid, output_devices[i - 1].name);
     snprintf(myrx->audio_name, sizeof(myrx->audio_name), "%s", output_devices[i - 1].name);
 
     if (audio_open_output(myrx) < 0) {  // audio_open with NEW device...
