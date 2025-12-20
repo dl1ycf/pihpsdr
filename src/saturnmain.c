@@ -1479,8 +1479,8 @@ void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
   //
   // RX atten during TX and RX
   //
-  Byte2 = UDPInBuffer[1442] & 0xFF;      // RX2 atten
-  Byte =  UDPInBuffer[1443] & 0xFF;      // RX1 atten
+  Byte  = UDPInBuffer[1442] & 0xFF;      // RX1 atten
+  Byte2=  UDPInBuffer[1443] & 0xFF;      // RX2 atten
   SetADCAttenuator(Byte, true, false, Byte2, true, false);
 
   //
