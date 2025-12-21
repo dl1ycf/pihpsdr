@@ -1479,9 +1479,9 @@ void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
   //
   // RX atten during TX and RX
   //
-  Byte  = UDPInBuffer[1442] & 0xFF;      // RX1 atten
-  Byte2=  UDPInBuffer[1443] & 0xFF;      // RX2 atten
-  SetADCAttenuator(Byte, true, false, Byte2, true, false);
+  Byte  = UDPInBuffer[1442] & 0x1F;      // ADC1 atten
+  Byte2=  UDPInBuffer[1443] & 0x1F;      // ADC0 atten
+  SetADCAttenuator(Byte2, true, false, Byte, true, false);
 
   //
   // CWX bits - currently not used by piHPSDR
@@ -1766,8 +1766,8 @@ void saturn_handle_duc_specific(const unsigned char *UDPInBuffer) {
   SetOrionMicOptions(OrionBiasRing, OrionBiasEnable, OrionMicPTT);
   SetBalancedMicInput(SaturnXLRInput);
 
-  Byte1 = UDPInBuffer[58] & 0xFF;                   // ADC1 att on TX
-  Byte2 = UDPInBuffer[59] & 0xFF;                   // ADC2 att on TX
-  SetADCAttenuator(Byte1, false, true, Byte2, false, true);
+  Byte1 = UDPInBuffer[58] & 0x1F;                   // ADC1 att on TX
+  Byte2 = UDPInBuffer[59] & 0x1F;                   // ADC0 att on TX
+  SetADCAttenuator(Byte2, false, true, Byte1, false, true);
   return;
 }
