@@ -24,7 +24,8 @@ piHPSDR should be compiled from the sources, consult the Manual (**link given ab
 
 Latest features:
 
-- **client/server model for remote operation** (including transmitting in phone and CW)
+- NR3/NR4 noise reduction models (RNNnoise and libspecbleach) fully integrated
+- client/server model for remote operation (including transmitting in phone and CW)
 - fully configurable Slider and Toolbar area
 - full support for Anan G2-Ultra radios, including customizable panel button/encoder functions
 - added continuous frequency compressor (**CFC**) and downward expander (**DEXP**) to the TX chain
