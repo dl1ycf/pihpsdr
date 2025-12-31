@@ -40,9 +40,6 @@ char build_options[] =
 #ifdef STEMLAB_DISCOVERY
   "STEMLAB "
 #endif
-#ifdef EXTNR
-  "EXTNR "
-#endif
   "";
 
 char build_audio[] =

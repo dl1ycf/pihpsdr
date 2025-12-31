@@ -1,4 +1,4 @@
-/*  analyzer.c
+/*	analyzer.c
 
 This file is part of a program that implements a Spectrum Analyzer
 used in conjunction with software-defined-radio hardware.
@@ -20,7 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -280,7 +280,7 @@ void Celiminate(int disp, int ss, int LO)
 	a->ss_bins[ss] = k;
 }
 
-void detector (	int det_type,			// detector type
+void detector ( int det_type,			// detector type
 				int m,					// number of bins
 				int num_pixels,			// number of output pixels
 				double pix_per_bin,		// pixels per bin
@@ -308,7 +308,7 @@ void detector (	int det_type,			// detector type
 
 		case 0:		// positive peak
 			for (i = 0; i < num_pixels; i++)
-				pixels[i]   = - 1.0e300;
+				pixels[i]	= - 1.0e300;
 
 			for (i = imin; i < ilim; i++)
 			{
@@ -320,11 +320,11 @@ void detector (	int det_type,			// detector type
 			break;
 
 		case 1:		// rosenfell
-			rose         = 0;
-			fell         = 0;
-			mini         = + 1.0e300;
-			maxi         = - 1.0e300;
-			prev_maxi    = - 1.0e300;
+			rose		 = 0;
+			fell		 = 0;
+			mini		 = + 1.0e300;
+			maxi		 = - 1.0e300;
+			prev_maxi	 = - 1.0e300;
 
 			for (i = imin; i < ilim; i++)		// for each FFT bin
 			{
@@ -334,19 +334,19 @@ void detector (	int det_type,			// detector type
 				// determine the pixel number for the NEXT FFT bin
 				next_pix_count = (int)((double)(i + 1) * pix_per_bin);
 				// update the minimum and maximum of the set of bins within the pixel
-				if (bins[i] <   mini)     mini = bins[i];
-				if (bins[i] >   maxi)     maxi = bins[i];
+				if (bins[i] <	mini)	  mini = bins[i];
+				if (bins[i] >	maxi)	  maxi = bins[i];
 				// if the next bin is also within the pixel && there is a next bin,
-				//    compare its value with the current bin and update rose and fell
+				//	  compare its value with the current bin and update rose and fell
 				if (next_pix_count == pix_count && i < ilim - 1)
 				{
 					// NOTE:  when next_pix_count != pix_count, rose and fell do not get updated;
-					//    that's OK because we do NOT need to know if there's a rise or fall across bins
-					if (bins[i + 1] > bins[i]) rose    = 1;
-					if (bins[i + 1] < bins[i]) fell    = 1;
+					//	  that's OK because we do NOT need to know if there's a rise or fall across bins
+					if (bins[i + 1] > bins[i]) rose	   = 1;
+					if (bins[i + 1] < bins[i]) fell	   = 1;
 				}
-				// if the next bin is NOT within the pixel || there is no next bin, finalize the pixel 
-				//    value and reset parameters
+				// if the next bin is NOT within the pixel || there is no next bin, finalize the pixel
+				//	  value and reset parameters
 				else
 				{
 					if (rose && fell)
@@ -451,7 +451,7 @@ void detector (	int det_type,			// detector type
 			while (pix_pos < ((double)i + 1.0e-06) && pix_count < num_pixels)
 			{
 				frac = pix_pos - (double)(i - 1);
-				pixels[pix_count]   = bins[i - 1] * (1.0 - frac) + bins[i] * frac;
+				pixels[pix_count]	= bins[i - 1] * (1.0 - frac) + bins[i] * frac;
 				if (ampl_comp) pixels[pix_count] *= inv_enb;
 				pix_count++;
 				pix_pos += bin_per_pix;
@@ -461,7 +461,7 @@ void detector (	int det_type,			// detector type
 	
 }
 
-void avenger (  int av_mode,				// averaging mode
+void avenger (	int av_mode,				// averaging mode
 				int num_pixels,				// number of pixels
 				int* avail_frames,			// number of available frames for window averaging
 				int num_average,			// number of frames to average within a window
@@ -568,7 +568,7 @@ void stitch(int disp)
 		ptr += a->ss_bins[n];
 		m += a->ss_bins[n];
 	}
-	for (i = 0; i < a->num_pixout; i++)	// for each output
+	for (i = 0; i < a->num_pixout; i++) // for each output
 	{
 		EnterCriticalSection(&a->ResampleSection);
 		// if a detection of the same 'det_type' has already been done, use that result
@@ -582,7 +582,7 @@ void stitch(int disp)
 		}
 		if (k == i)
 			// detect
-			detector (a->det_type[i], m, a->num_pixels, a->pix_per_bin, a->bin_per_pix, a->pre_av_out, 
+			detector (a->det_type[i], m, a->num_pixels, a->pix_per_bin, a->bin_per_pix, a->pre_av_out,
 				a->t_pixels[i], a->inv_enb, a->fsclipL, a->fsclipH, a->det_offset);
 		else
 			memcpy (a->t_pixels[i], a->t_pixels[k], a->num_pixels * sizeof (double));
@@ -593,7 +593,7 @@ void stitch(int disp)
 		LeaveCriticalSection(&a->ResampleSection);
 
 		EnterCriticalSection(&a->PB_ControlsSection[i]);
-			a->last_pix_buff[i] = a->w_pix_buff[i];	
+			a->last_pix_buff[i] = a->w_pix_buff[i];
 			while ((a->w_pix_buff[i] = (a->w_pix_buff[i] + 1) % dNUM_PIXEL_BUFFS) == a->r_pix_buff[i]);
 		LeaveCriticalSection(&a->PB_ControlsSection[i]);
 		InterlockedBitTestAndSet(&(a->pb_ready[i][a->last_pix_buff[i]]), 0);
@@ -717,21 +717,21 @@ void calc_dmb(int disp, int size)
 	if (a->dmb_fLow < 0.0 && a->dmb_fHigh < 0.0)
 	{
 		a->dmb_begin0 = size - (int)ceil(-a->dmb_fLow / bin_spacing);
-		// Example:  1024, 48K, -2700 => 966
-		// Example:  1024, 48K, -23953.125==min_freq => 513
+		// Example:	 1024, 48K, -2700 => 966
+		// Example:	 1024, 48K, -23953.125==min_freq => 513
 		// NOTE:  since dmb_fLow < 0.0, begin0 will never be greater than a->size - 1
 		a->dmb_end0 = size - (int)ceil(-a->dmb_fHigh / bin_spacing);
-		// Example:  1024, 48K, -300  => 1017
+		// Example:	 1024, 48K, -300  => 1017
 		a->dmb_begin1 = 0;
 		a->dmb_end1 = -1;
 	}
 	else if (a->dmb_fLow >= 0.0 && a->dmb_fHigh >= 0.0)
 	{
 		a->dmb_begin0 = (int)round(a->dmb_fLow / bin_spacing);
-		// Example:  1024, 48K, +300  => 6
+		// Example:	 1024, 48K, +300  => 6
 		a->dmb_end0 = (int)round(a->dmb_fHigh / bin_spacing);
-		// Example:  1024, 48K, +2700 => 58
-		// Example:  1024, 48K, 23953.125==max_freq => 511
+		// Example:	 1024, 48K, +2700 => 58
+		// Example:	 1024, 48K, 23953.125==max_freq => 511
 		a->dmb_begin1 = 0;
 		a->dmb_end1 = -1;
 	}
@@ -756,14 +756,14 @@ void calc_dmb(int disp, int size)
 // LO:			Set to '0' for Thetis use.
 // rate:		Sample_rate of display data, e.g., '192000.0'.
 // fLow:		Lowest frequency of frequency range to evaluate, referenced to center_frequency
-//				to which DDC is tuned.  For example, for LSB, not using CTUN, this might be
+//				to which DDC is tuned.	For example, for LSB, not using CTUN, this might be
 //				'-3000.0'.
 // fHigh:		Highest frequency of frequency range to evaluate, referenced to center_frequency
-//				to which DDC is tuned.  Example, LSB:  '-300.0'.
-// tau:			Metering time constant in seconds.  E.g., '0.5'.
+//				to which DDC is tuned.	Example, LSB:  '-300.0'.
+// tau:			Metering time constant in seconds.	E.g., '0.5'.
 // frame_rate:	Display frame_rate currently in use.  E.g., '60'.
 PORT
-void SetupDetectMaxBin(int run, int disp, int ss, int LO, double rate, 
+void SetupDetectMaxBin(int run, int disp, int ss, int LO, double rate,
 	double fLow, double fHigh, double tau, int frame_rate)
 {
 	// We only allow setup for one (ss,LO) pair at a time for each 'disp'.
@@ -868,10 +868,9 @@ DWORD WINAPI Cspectra (void *pargs)
 
 		// Detect value of Max FFT Bin in a freq range
 		DetectMaxBin(disp, ss, LO);
-		// 
+		//
 
 	}
-
 	if (a->stop)
 	{
 		InterlockedDecrement(a->pnum_threads);
@@ -920,7 +919,7 @@ DWORD WINAPI Cspectra (void *pargs)
 void interpolate(int disp, int set, double fmin, double fmax, int num_pixels)
 {
 	DP a = pdisp[disp];
-	int i; 
+	int i;
 	double f;
 	int n = a->n_freqs[set];
 	int k;
@@ -931,14 +930,14 @@ void interpolate(int disp, int set, double fmin, double fmax, int num_pixels)
 	double mag;
 
 	for (i = 0; i < num_pixels; i++)
-    {
+	{
 		f = fmin + (double)i * (fmax - fmin) / (double)(num_pixels - 1);
 		
 		if (f < (a->freqs[set])[0])
-            k = 0;
-        else if (f > (a->freqs[set])[n - 1])
-            k = n - 2;
-        else
+			k = 0;
+		else if (f > (a->freqs[set])[n - 1])
+			k = n - 2;
+		else
 		{
 			kdelta = 1;
 
@@ -963,9 +962,9 @@ void interpolate(int disp, int set, double fmin, double fmax, int num_pixels)
 			}
 		}
 
-        dx = f - (a->freqs[set])[k];
+		dx = f - (a->freqs[set])[k];
 
-        mag = (((a->ac3[set][0])[k] * dx + (a->ac2[set][0])[k]) * dx + (a->ac1[set][0])[k]) * dx + (a->ac0[set][0])[k];
+		mag = (((a->ac3[set][0])[k] * dx + (a->ac2[set][0])[k]) * dx + (a->ac1[set][0])[k]) * dx + (a->ac0[set][0])[k];
 		a->cd[i] = mag * mag;
 	}
 	return;
@@ -986,73 +985,73 @@ int build_interpolants(int disp, int set, int n, int m, double *x, double (*y)[d
 	double tmp;
 	int i, j;
 	if (n < 3) return -1;
-    for (i = 0; i < n - 1; i++)
-    {
-        dx[i] = x[i + 1] - x[i];
+	for (i = 0; i < n - 1; i++)
+	{
+		dx[i] = x[i + 1] - x[i];
 
-        if (dx[i] < 1e-30)
-            return -1;
-        idx[i] = 1.0 / dx[i];
-    }
+		if (dx[i] < 1e-30)
+			return -1;
+		idx[i] = 1.0 / dx[i];
+	}
 
-    for (i = 1; i <= n - 2; i++)
-    {
-        if (i == 1)
-        {
-            dsub[i] = 0.0;
-            dmain[i] = 3.0 * dx[i - 1] + 2.0 * dx[i];
-            dsup[i] = dx[i];
-        }
-        else if (i == (n - 2))
-        {
-            dsub[i] = dx[i - 1];
-            dmain[i] = 2.0 * dx[i - 1] + 3.0 * dx[i];
-            dsup[i] = 0.0;
-        }
-        else
-        {
-            dsub[i] = dx[i - 1];
-            dmain[i] = 2.0 * (dx[i - 1] + dx[i]);
-            dsup[i] = dx[i];
-        }
+	for (i = 1; i <= n - 2; i++)
+	{
+		if (i == 1)
+		{
+			dsub[i] = 0.0;
+			dmain[i] = 3.0 * dx[i - 1] + 2.0 * dx[i];
+			dsup[i] = dx[i];
+		}
+		else if (i == (n - 2))
+		{
+			dsub[i] = dx[i - 1];
+			dmain[i] = 2.0 * dx[i - 1] + 3.0 * dx[i];
+			dsup[i] = 0.0;
+		}
+		else
+		{
+			dsub[i] = dx[i - 1];
+			dmain[i] = 2.0 * (dx[i - 1] + dx[i]);
+			dsup[i] = dx[i];
+		}
 		for (j = 0; j < m; j++)
-            d[i][j] = 6.0 * ((y[i + 1][j] - y[i][j]) * idx[i] - (y[i][j] - y[i - 1][j]) * idx[i - 1]);
-    }
+			d[i][j] = 6.0 * ((y[i + 1][j] - y[i][j]) * idx[i] - (y[i][j] - y[i - 1][j]) * idx[i - 1]);
+	}
 
-    b[1] = dmain[1];
-    for (j = 0; j < m; j++)
-        v[1][j] = d[1][j];
+	b[1] = dmain[1];
+	for (j = 0; j < m; j++)
+		v[1][j] = d[1][j];
 
-    for (i = 2; i <= n - 2; i++)
-    {
-        tmp = dsub[i] / b[i - 1];
-        b[i] = dmain[i] - tmp * dsup[i - 1];
-        for (j = 0; j < m; j++)
-            v[i][j] = d[i][j] - tmp * v[i - 1][j];
-    }
+	for (i = 2; i <= n - 2; i++)
+	{
+		tmp = dsub[i] / b[i - 1];
+		b[i] = dmain[i] - tmp * dsup[i - 1];
+		for (j = 0; j < m; j++)
+			v[i][j] = d[i][j] - tmp * v[i - 1][j];
+	}
 
-    for (j = 0; j < m; j++)
-        S[n - 2][j] = v[n - 2][j] / b[n - 2];
+	for (j = 0; j < m; j++)
+		S[n - 2][j] = v[n - 2][j] / b[n - 2];
 
-    for (i = n - 3; i >= 1; i--)
-        for (j = 0; j < m; j++)
-            S[i][j] = (v[i][j] - dsup[i] * S[i + 1][j]) / b[i];
+	for (i = n - 3; i >= 1; i--)
+		for (j = 0; j < m; j++)
+			S[i][j] = (v[i][j] - dsup[i] * S[i + 1][j]) / b[i];
 
-    for (j = 0; j < m; j++)
-    {
-        S[0][j] = S[1][j];
-        S[n - 1][j] = S[n - 2][j];
-    }
+	for (j = 0; j < m; j++)
+	{
+		S[0][j] = S[1][j];
+		S[n - 1][j] = S[n - 2][j];
+	}
 
-    for (i = 0; i < n - 1; i++)
-        for (j = 0; j < m; j++)
-        {
-            (a->ac3[set][j])[i] = (S[i + 1][j] - S[i][j]) / (6.0 * dx[i]);
-            (a->ac2[set][j])[i] = 0.5 * S[i][j];
-            (a->ac1[set][j])[i] = (y[i + 1][j] - y[i][j]) * idx[i] - (2.0 * dx[i] * S[i][j] + dx[i] * S[i + 1][j]) / 6.0;
-            (a->ac0[set][j])[i] = y[i][j];
-        }
-    return 0;
+	for (i = 0; i < n - 1; i++)
+		for (j = 0; j < m; j++)
+		{
+			(a->ac3[set][j])[i] = (S[i + 1][j] - S[i][j]) / (6.0 * dx[i]);
+			(a->ac2[set][j])[i] = 0.5 * S[i][j];
+			(a->ac1[set][j])[i] = (y[i + 1][j] - y[i][j]) * idx[i] - (2.0 * dx[i] * S[i][j] + dx[i] * S[i + 1][j]) / 6.0;
+			(a->ac0[set][j])[i] = y[i][j];
+		}
+	return 0;
 }
 
 void __cdecl sendbuf(void *arg)
@@ -1169,24 +1168,24 @@ void ResetPixelBuffers(int disp)
 	LeaveCriticalSection(&a->SetAnalyzerSection);
 }
 
-PORT    
+PORT	
 void SetAnalyzer (	int disp,			// display identifier
 					int n_pixout,		// pixel output identifier
 					int n_fft,			// number of LO frequencies = number of ffts used in elimination
 					int typ,			// 0 for real input data (I only); 1 for complex input data (I & Q)
-					int *flp,			// vector with one elt for each LO frequency, 1 if high-side LO, 0 otherwise 
+					int *flp,			// vector with one elt for each LO frequency, 1 if high-side LO, 0 otherwise
 					int sz,				// size of the fft, i.e., number of input samples
 					int bf_sz,			// number of samples transferred for each OpenBuffer()/CloseBuffer()
 					int win_type,		// integer specifying which window function to use
 					double pi,			// PiAlpha parameter for Kaiser window
-					int ovrlp,			// number of samples each fft (other than the first) is to re-use from the previous 
+					int ovrlp,			// number of samples each fft (other than the first) is to re-use from the previous
 					int clp,			// number of fft output bins to be clipped from EACH side of each sub-span
 					double fscLin,		// number of bins to clip from low end of entire span
 					double fscHin,		// number of bins to clip from high end of entire span
-					int n_pix,			// number of pixel values to return.  may be either <= or > number of bins 
-					int n_stch,			// number of sub-spans to concatenate to form a complete span 
-					int calset,			// identifier of which set of calibration data to use 
-					double fmin,		// frequency at first pixel value 
+					int n_pix,			// number of pixel values to return.  may be either <= or > number of bins
+					int n_stch,			// number of sub-spans to concatenate to form a complete span
+					int calset,			// identifier of which set of calibration data to use
+					double fmin,		// frequency at first pixel value
 					double fmax,		// frequency at last pixel value
 					int max_w
 				 )
@@ -1365,7 +1364,7 @@ void XCreateAnalyzer(	int disp,
 		{
 			a->plan[i][j] = 0;
 			a->Cplan[i][j] = 0;
-			a->fft_in[i][j]   = (double*) malloc0 (sizeof(double) * a->max_size);
+			a->fft_in[i][j]	  = (double*) malloc0 (sizeof(double) * a->max_size);
 			a->Cfft_in[i][j]  = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * a->max_size);
 			a->fft_out[i][j]  = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * a->max_size);
 		}
@@ -1421,7 +1420,7 @@ void XCreateAnalyzer(	int disp,
 	*success = 0;
 }
 
-PORT   
+PORT
 void DestroyAnalyzer(int disp)
 {
 	DP a = pdisp[disp];
@@ -1501,7 +1500,7 @@ void DestroyAnalyzer(int disp)
 	_aligned_free (a);
 }
 
-PORT   
+PORT
 void GetPixels	(	int disp,
 					int pixout,
 					dOUTREAL *pix,		//if new pixel values avail, copies to pix and sets flag = 1
@@ -1566,12 +1565,12 @@ int calcompare (const void * a, const void * b)
 		return 1;
 }
 
-PORT   
+PORT
 void SetCalibration (	int disp,
 						int set_num,				//identifier for this calibration data set
 						int n_points,				//number of calibration points in the set
 						double (*cal)[dMAX_M+1]		//pointer to the calibration table, first
-					)								//   column is frequency, add'l columns are
+					)								//	 column is frequency, add'l columns are
 													//	 data for variables being calibrated
 {
 	DP a = pdisp[disp];
@@ -1598,7 +1597,7 @@ void SetCalibration (	int disp,
 	a->cal_changed = 1;
 }
 
-PORT   
+PORT
 void OpenBuffer(int disp, int ss, int LO, void **Ipointer, void **Qpointer)
 {
 	DP a = pdisp[disp];
@@ -1608,7 +1607,7 @@ void OpenBuffer(int disp, int ss, int LO, void **Ipointer, void **Qpointer)
 	LeaveCriticalSection(&a->SetAnalyzerSection);
 }
 
-PORT   
+PORT
 void CloseBuffer(int disp, int ss, int LO)
 {
 	DP a = pdisp[disp];
@@ -1624,7 +1623,7 @@ void CloseBuffer(int disp, int ss, int LO)
 		if ((a->have_samples[ss][LO] += a->buff_size) >= a->size)
 			InterlockedBitTestAndSet(&(a->buff_ready[ss][LO]), 0);
 	LeaveCriticalSection(&(a->BufferControlSection[ss][LO]));
-	if((a->IQin_index[ss][LO] += a->buff_size) >= a->bsize)	//REQUIRES buff_size IS A SUB-MULTIPLE OF SIZE OF INPUT SAMPLE BUFFS!
+	if((a->IQin_index[ss][LO] += a->buff_size) >= a->bsize) //REQUIRES buff_size IS A SUB-MULTIPLE OF SIZE OF INPUT SAMPLE BUFFS!
 		a->IQin_index[ss][LO] = 0;
 
 	if (!InterlockedAnd(&a->dispatcher, 1))
@@ -1663,7 +1662,7 @@ void Spectrum(int disp, int ss, int LO, dINREAL* pI, dINREAL* pQ)
 		if ((a->have_samples[ss][LO] += a->buff_size) >= a->size)
 			InterlockedBitTestAndSet(&(a->buff_ready[ss][LO]), 0);
 	LeaveCriticalSection(&(a->BufferControlSection[ss][LO]));
-	if((a->IQin_index[ss][LO] += a->buff_size) >= a->bsize)	//REQUIRES buff_size IS A SUB-MULTIPLE OF SIZE OF INPUT SAMPLE BUFFS!
+	if((a->IQin_index[ss][LO] += a->buff_size) >= a->bsize) //REQUIRES buff_size IS A SUB-MULTIPLE OF SIZE OF INPUT SAMPLE BUFFS!
 		a->IQin_index[ss][LO] = 0;
 
 	if (!InterlockedAnd(&a->dispatcher, 1))
@@ -1708,7 +1707,7 @@ void Spectrum2(int run, int disp, int ss, int LO, dINREAL* pbuff)
 			if ((a->have_samples[ss][LO] += a->buff_size) >= a->size)
 				InterlockedBitTestAndSet(&(a->buff_ready[ss][LO]), 0);
 		LeaveCriticalSection(&(a->BufferControlSection[ss][LO]));
-		if((a->IQin_index[ss][LO] += a->buff_size) >= a->bsize)	//REQUIRES buff_size IS A SUB-MULTIPLE OF SIZE OF INPUT SAMPLE BUFFS!
+		if((a->IQin_index[ss][LO] += a->buff_size) >= a->bsize) //REQUIRES buff_size IS A SUB-MULTIPLE OF SIZE OF INPUT SAMPLE BUFFS!
 			a->IQin_index[ss][LO] = 0;
 
 		if (!InterlockedAnd(&a->dispatcher, 1))
@@ -1748,13 +1747,13 @@ void Spectrum0(int run, int disp, int ss, int LO, double* pbuff)
 				{
 					//if we're receiving samples too much faster than we're consuming them, skip some
 					if ((a->IQout_index[ss][LO] += a->have_samples[ss][LO] - a->max_writeahead) >= a->bsize)
-					 	a->IQout_index[ss][LO] -= a->bsize;
+						a->IQout_index[ss][LO] -= a->bsize;
 					a->have_samples[ss][LO] = a->max_writeahead;
 				}
 			if ((a->have_samples[ss][LO] += a->buff_size) >= a->size)
 				InterlockedBitTestAndSet(&(a->buff_ready[ss][LO]), 0);
 		LeaveCriticalSection(&(a->BufferControlSection[ss][LO]));
-		if((a->IQin_index[ss][LO] += a->buff_size) >= a->bsize)	//REQUIRES buff_size IS A SUB-MULTIPLE OF SIZE OF INPUT SAMPLE BUFFS!
+		if((a->IQin_index[ss][LO] += a->buff_size) >= a->bsize) //REQUIRES buff_size IS A SUB-MULTIPLE OF SIZE OF INPUT SAMPLE BUFFS!
 			a->IQin_index[ss][LO] = 0;
 
 		if (!InterlockedAnd(&a->dispatcher, 1))

@@ -1,4 +1,4 @@
-/*  analyzer.h
+/*	analyzer.h
 
 This file is part of a program that implements a Spectrum Analyzer
 used in conjunction with software-defined-radio hardware.
@@ -19,7 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -74,7 +74,7 @@ typedef struct _dp
 	int w_pix_buff[dMAX_PIXOUTS];							// number of pixel buffer owned by writing process
 	int r_pix_buff[dMAX_PIXOUTS];							// number of pixel buffer owned by reading process
 	int last_pix_buff[dMAX_PIXOUTS];						// number of the last pixel buffer written
-	volatile LONG pb_ready[dMAX_PIXOUTS][dNUM_PIXEL_BUFFS];	// if value is 0, this data has already been read; 1 = fresh data to read
+	volatile LONG pb_ready[dMAX_PIXOUTS][dNUM_PIXEL_BUFFS]; // if value is 0, this data has already been read; 1 = fresh data to read
 	int num_average[dMAX_PIXOUTS];							// number of spans to average to create the pixels
 	int avail_frames[dMAX_PIXOUTS];							// number of pixel frames currently available to average
 	int av_in_idx[dMAX_PIXOUTS];							// input index in averaging pixel buffer ring
@@ -102,7 +102,7 @@ typedef struct _dp
 	int end_dispatcher;										// set this flag to one to destroy the dispatcher thread
 	volatile int dispatcher;								// one if the dispatcher thread is alive & active
 	int ss;													// sub-span being processed
-	int LO;													// LO (within current sub-span) being processed 
+	int LO;													// LO (within current sub-span) being processed
 	int flag;
 	int have_samples[dMAX_STITCH][dMAX_NUM_FFT];			// number of unused samples remaining in a buffer
 	int type;												// 0 for REAL, 1 for COMPLEX
@@ -173,20 +173,20 @@ void XCreateAnalyzer (	int disp,
 						char *app_data_path
 					 );
 
-extern __declspec( dllexport )   
+extern __declspec( dllexport )
 void DestroyAnalyzer(int disp);
 
-extern __declspec( dllexport )   
+extern __declspec( dllexport )
 void SetCalibration (	int disp,
 						int set_num,				//identifier for this calibration data set
 						int n_points,				//number of calibration points in the set
 						double (*cal)[dMAX_M+1]		//pointer to the calibration table, first
 					);
 
-extern __declspec( dllexport )   
+extern __declspec( dllexport )
 void OpenBuffer(int disp, int ss, int LO, void **Ipointer, void **Qpointer);
 
-extern __declspec( dllexport )   
+extern __declspec( dllexport )
 void CloseBuffer(int disp, int ss, int LO);
 
 extern __declspec( dllexport )
@@ -206,10 +206,10 @@ void SnapSpectrum(	int disp,
 
 extern __declspec( dllexport )
 void SnapSpectrumTimeout (int disp,
-	                      int ss,
-	                      int LO,
-	                      double* snap_buff,
-	                      DWORD timeout,
-	                      int* flag);
+						  int ss,
+						  int LO,
+						  double* snap_buff,
+						  DWORD timeout,
+						  int* flag);
 
 #endif

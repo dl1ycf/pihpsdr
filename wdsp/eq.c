@@ -1,4 +1,4 @@
-/*  eq.c
+/*	eq.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -39,14 +39,14 @@ int fEQcompare (const void * a, const void * b)
 double* eq_impulse (int N, int nfreqs, double* F, double* G, double samplerate, double scale, int ctfmode, int wintype)
 {
 	// check for previous in the cache
-	struct Params 
+	struct Params
 	{
-		int     N;
-		int     nfreqs;
-		int     ctfmode;
-		int     wintype;
-		double  samplerate;
-		double  scale;
+		int		N;
+		int		nfreqs;
+		int		ctfmode;
+		int		wintype;
+		double	samplerate;
+		double	scale;
 	};
 
 	struct Params params;
@@ -70,8 +70,8 @@ double* eq_impulse (int N, int nfreqs, double* F, double* G, double samplerate, 
 	if (imp) return imp;
 	//
 
-	double* fp = (double *) malloc0 ((nfreqs + 2)   * sizeof (double));
-	double* gp = (double *) malloc0 ((nfreqs + 2)   * sizeof (double));
+	double* fp = (double *) malloc0 ((nfreqs + 2)	* sizeof (double));
+	double* gp = (double *) malloc0 ((nfreqs + 2)	* sizeof (double));
 	double* A  = (double *) malloc0 ((N / 2 + 1) * sizeof (double));
 	double* sary = (double *) malloc0 (2 * nfreqs * sizeof (double));
 	double gpreamp, f, frac;
@@ -271,7 +271,7 @@ void setSize_eqp (EQP a, int size)
 
 /********************************************************************************************************
 *																										*
-*							Partitioned Overlap-Save Equalizer:  RXA Properties							*
+*							Partitioned Overlap-Save Equalizer:	 RXA Properties							*
 *																										*
 ********************************************************************************************************/
 
@@ -325,7 +325,7 @@ void SetRXAEQProfile (int channel, int nfreqs, double* F, double* G)
 	a->G = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
 	memcpy (a->F, F, (nfreqs + 1) * sizeof (double));
 	memcpy (a->G, G, (nfreqs + 1) * sizeof (double));
-	impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G, 
+	impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G,
 		a->samplerate, 1.0 / (2.0 * a->size), a->ctfmode, a->wintype);
 	setImpulse_fircore (a->p, impulse, 1);
 	_aligned_free (impulse);
@@ -393,15 +393,15 @@ void SetRXAGrphEQ10 (int channel, int *rxeq)
 	a->nfreqs = 10;
 	a->F = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
 	a->G = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
-	a->F[1]  =    32.0;
-	a->F[2]  =    63.0;
-	a->F[3]  =   125.0;
-	a->F[4]  =   250.0;
-	a->F[5]  =   500.0;
-	a->F[6]  =  1000.0;
-	a->F[7]  =  2000.0;
-	a->F[8]  =  4000.0;
-	a->F[9]  =  8000.0;
+	a->F[1]	 =	  32.0;
+	a->F[2]	 =	  63.0;
+	a->F[3]	 =	 125.0;
+	a->F[4]	 =	 250.0;
+	a->F[5]	 =	 500.0;
+	a->F[6]	 =	1000.0;
+	a->F[7]	 =	2000.0;
+	a->F[8]	 =	4000.0;
+	a->F[9]	 =	8000.0;
 	a->F[10] = 16000.0;
 	for (i = 0; i <= a->nfreqs; i++)
 		a->G[i] = (double)rxeq[i];
@@ -414,7 +414,7 @@ void SetRXAGrphEQ10 (int channel, int *rxeq)
 
 /********************************************************************************************************
 *																										*
-*							Partitioned Overlap-Save Equalizer:  TXA Properties							*
+*							Partitioned Overlap-Save Equalizer:	 TXA Properties							*
 *																										*
 ********************************************************************************************************/
 
@@ -535,15 +535,15 @@ void SetTXAGrphEQ10 (int channel, int *txeq)
 	a->nfreqs = 10;
 	a->F = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
 	a->G = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
-	a->F[1]  =    32.0;
-	a->F[2]  =    63.0;
-	a->F[3]  =   125.0;
-	a->F[4]  =   250.0;
-	a->F[5]  =   500.0;
-	a->F[6]  =  1000.0;
-	a->F[7]  =  2000.0;
-	a->F[8]  =  4000.0;
-	a->F[9]  =  8000.0;
+	a->F[1]	 =	  32.0;
+	a->F[2]	 =	  63.0;
+	a->F[3]	 =	 125.0;
+	a->F[4]	 =	 250.0;
+	a->F[5]	 =	 500.0;
+	a->F[6]	 =	1000.0;
+	a->F[7]	 =	2000.0;
+	a->F[8]	 =	4000.0;
+	a->F[9]	 =	8000.0;
 	a->F[10] = 16000.0;
 	for (i = 0; i <= a->nfreqs; i++)
 		a->G[i] = (double)txeq[i];
@@ -665,10 +665,10 @@ void setSize_eq (EQ a, int size)
 
 /********************************************************************************************************
 *																										*
-*								Overlap-Save Equalizer:  RXA Properties									*
+*								Overlap-Save Equalizer:	 RXA Properties									*
 *																										*
 ********************************************************************************************************/
-/*  // UNCOMMENT properties when a pointer is in place in rxa[channel]
+/*	// UNCOMMENT properties when a pointer is in place in rxa[channel]
 PORT
 void SetRXAEQRun (int channel, int run)
 {
@@ -757,15 +757,15 @@ void SetRXAGrphEQ10 (int channel, int *rxeq)
 	a->nfreqs = 10;
 	a->F = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
 	a->G = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
-	a->F[1]  =    32.0;
-	a->F[2]  =    63.0;
-	a->F[3]  =   125.0;
-	a->F[4]  =   250.0;
-	a->F[5]  =   500.0;
-	a->F[6]  =  1000.0;
-	a->F[7]  =  2000.0;
-	a->F[8]  =  4000.0;
-	a->F[9]  =  8000.0;
+	a->F[1]	 =	  32.0;
+	a->F[2]	 =	  63.0;
+	a->F[3]	 =	 125.0;
+	a->F[4]	 =	 250.0;
+	a->F[5]	 =	 500.0;
+	a->F[6]	 =	1000.0;
+	a->F[7]	 =	2000.0;
+	a->F[8]	 =	4000.0;
+	a->F[9]	 =	8000.0;
 	a->F[10] = 16000.0;
 	for (i = 0; i <= a->nfreqs; i++)
 		a->G[i] = (double)rxeq[i];
@@ -777,10 +777,10 @@ void SetRXAGrphEQ10 (int channel, int *rxeq)
 */
 /********************************************************************************************************
 *																										*
-*								Overlap-Save Equalizer:  TXA Properties									*
+*								Overlap-Save Equalizer:	 TXA Properties									*
 *																										*
 ********************************************************************************************************/
-/*  // UNCOMMENT properties when a pointer is in place in rxa[channel]
+/*	// UNCOMMENT properties when a pointer is in place in rxa[channel]
 PORT
 void SetTXAEQRun (int channel, int run)
 {
@@ -869,15 +869,15 @@ void SetTXAGrphEQ10 (int channel, int *txeq)
 	a->nfreqs = 10;
 	a->F = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
 	a->G = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
-	a->F[1]  =    32.0;
-	a->F[2]  =    63.0;
-	a->F[3]  =   125.0;
-	a->F[4]  =   250.0;
-	a->F[5]  =   500.0;
-	a->F[6]  =  1000.0;
-	a->F[7]  =  2000.0;
-	a->F[8]  =  4000.0;
-	a->F[9]  =  8000.0;
+	a->F[1]	 =	  32.0;
+	a->F[2]	 =	  63.0;
+	a->F[3]	 =	 125.0;
+	a->F[4]	 =	 250.0;
+	a->F[5]	 =	 500.0;
+	a->F[6]	 =	1000.0;
+	a->F[7]	 =	2000.0;
+	a->F[8]	 =	4000.0;
+	a->F[9]	 =	8000.0;
 	a->F[10] = 16000.0;
 	for (i = 0; i <= a->nfreqs; i++)
 		a->G[i] = (double)txeq[i];

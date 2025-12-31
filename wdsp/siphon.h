@@ -1,4 +1,4 @@
-/*  siphon.h
+/*	siphon.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@pratt.one
 
@@ -54,7 +54,7 @@ typedef struct _siphon
 	int* alloc_disp;			// vector of 'disp' identifiers for the additional allocated disps
 } siphon, *SIPHON;
 
-extern SIPHON create_siphon (int run, int position, int mode, int disp, int insize, double* in, int sipsize, 
+extern SIPHON create_siphon (int run, int position, int mode, int disp, int insize, double* in, int sipsize,
 	int fftsize, int specmode);
 
 extern void destroy_siphon (SIPHON a);
@@ -73,13 +73,13 @@ extern __declspec (dllexport) void TXASetSipAllocDisps (int channel, int n_alloc
 
 // RXA Properties
 
-extern __declspec (dllexport) void RXAGetaSipF  (int channel, float* out, int size);
+extern __declspec (dllexport) void RXAGetaSipF	(int channel, float* out, int size);
 
 extern __declspec (dllexport) void RXAGetaSipF1 (int channel, float* out, int size);
 
 // TXA Properties
 
-extern __declspec (dllexport) void TXAGetaSipF  (int channel, float* out, int size);
+extern __declspec (dllexport) void TXAGetaSipF	(int channel, float* out, int size);
 
 extern __declspec (dllexport) void TXAGetaSipF1 (int channel, float* out, int size);
 

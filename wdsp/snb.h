@@ -1,4 +1,4 @@
-/*  snb.h
+/*	snb.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -149,8 +149,8 @@ extern void calc_bpsnba (BPSNBA a);
 
 extern void decalc_bpsnba (BPSNBA a);
 
-extern BPSNBA create_bpsnba (int run, int run_notches, int position, int size, int nc, int mp, double* in, double* out, int rate,  
-	double abs_low_freq, double abs_high_freq, double f_low, double f_high, int wintype, double gain, int autoincr, 
+extern BPSNBA create_bpsnba (int run, int run_notches, int position, int size, int nc, int mp, double* in, double* out, int rate,
+	double abs_low_freq, double abs_high_freq, double f_low, double f_high, int wintype, double gain, int autoincr,
 	int maxpb, NOTCHDB* ptraddr);
 
 extern void destroy_bpsnba (BPSNBA a);

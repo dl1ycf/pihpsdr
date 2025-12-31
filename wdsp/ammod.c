@@ -1,4 +1,4 @@
-/*  ammod.h
+/*	ammod.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -57,15 +57,15 @@ void xammod (AMMOD a)
 		int i;
 		switch (a->mode)
 		{
-		case 0:	// AM
+		case 0: // AM
 			for (i = 0; i < a->size; i++)
 				a->out[2 * i + 0] = a->out[2 * i + 1] = a->mult * (a->c_level + a->a_level * a->in[2 * i + 0]);
 			break;
-		case 1:	// DSB
+		case 1: // DSB
 			for (i = 0; i < a->size; i++)
 				a->out[2 * i + 0] = a->out[2 * i + 1] = a->mult * a->in[2 * i + 0];
 			break;
-		case 2:	// SSB w/Carrier
+		case 2: // SSB w/Carrier
 			for (i = 0; i < a->size; i++)
 			{
 				a->out[2 * i + 0] = a->mult * a->c_level + a->a_level * a->in[2 * i + 0];

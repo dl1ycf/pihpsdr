@@ -1,4 +1,4 @@
-/*  lmath.c
+/*	lmath.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -29,156 +29,156 @@ warren@wpratt.com
 void dR (int n, double* r, double* y, double* z)
 {
 	int i, j, k;
-    double alpha, beta, gamma;
+	double alpha, beta, gamma;
 	memset (z, 0, (n - 1) * sizeof (double));	// work space
-    y[0] = -r[1];
-    alpha = -r[1];
-    beta = 1.0;
-    for (k = 0; k < n - 1; k++)
-    {
-        beta *= 1.0 - alpha * alpha;
-        gamma = 0.0;
-        for (i = k + 1, j = 0; i > 0; i--, j++)
-            gamma += r[i] * y[j];
-        alpha = - (r[k + 2] + gamma) / beta;
-        for (i = 0, j = k; i <= k; i++, j--)
-            z[i] = y[i] + alpha * y[j];
+	y[0] = -r[1];
+	alpha = -r[1];
+	beta = 1.0;
+	for (k = 0; k < n - 1; k++)
+	{
+		beta *= 1.0 - alpha * alpha;
+		gamma = 0.0;
+		for (i = k + 1, j = 0; i > 0; i--, j++)
+			gamma += r[i] * y[j];
+		alpha = - (r[k + 2] + gamma) / beta;
+		for (i = 0, j = k; i <= k; i++, j--)
+			z[i] = y[i] + alpha * y[j];
 		memcpy (y, z, (k + 1) * sizeof (double));
-        y[k + 1] = alpha;
-    }
+		y[k + 1] = alpha;
+	}
 }
 
 void trI (
-    int n,
-    double* r,
-    double* B,
+	int n,
+	double* r,
+	double* B,
 	double* y,
 	double* v,
 	double* dR_z
-    )
+	)
 {
-    int i, j, ni, nj;
-    double gamma, t, scale, b;
+	int i, j, ni, nj;
+	double gamma, t, scale, b;
 	memset (y, 0, (n - 1) * sizeof (double));	// work space
 	memset (v, 0, (n - 1) * sizeof (double));	// work space
-    scale = 1.0 / r[0];
-    for (i = 0; i < n; i++)
-        r[i] *= scale;
-    dR(n - 1, r, y, dR_z);
+	scale = 1.0 / r[0];
+	for (i = 0; i < n; i++)
+		r[i] *= scale;
+	dR(n - 1, r, y, dR_z);
 
-    t = 0.0;
-    for (i = 0; i < n - 1; i++)
-        t += r[i + 1] * y[i];
-    gamma = 1.0 / (1.0 + t);
-    for (i = 0, j = n - 2; i < n - 1; i++, j--)
-        v[i] = gamma * y[j];
-    B[0] = gamma;
-    for (i = 1, j = n - 2; i < n; i++, j--)
-        B[i] = v[j];
-    for (i = 1; i <= (n - 1) / 2; i++)
-        for (j = i; j < n - i; j++)
-            B[i * n + j] = B[(i - 1) * n + (j - 1)] + (v[n - j - 1] * v[n - i - 1] - v[i - 1] * v[j - 1]) / gamma;
-    for (i = 0; i <= (n - 1)/2; i++)
-        for (j = i; j < n - i; j++)
-        {
-            b = B[i * n + j] *= scale;
-            B[j * n + i] = b;
-            ni = n - i - 1;
-            nj = n - j - 1;
-            B[ni * n + nj] = b;
-            B[nj * n + ni] = b;
-        }
+	t = 0.0;
+	for (i = 0; i < n - 1; i++)
+		t += r[i + 1] * y[i];
+	gamma = 1.0 / (1.0 + t);
+	for (i = 0, j = n - 2; i < n - 1; i++, j--)
+		v[i] = gamma * y[j];
+	B[0] = gamma;
+	for (i = 1, j = n - 2; i < n; i++, j--)
+		B[i] = v[j];
+	for (i = 1; i <= (n - 1) / 2; i++)
+		for (j = i; j < n - i; j++)
+			B[i * n + j] = B[(i - 1) * n + (j - 1)] + (v[n - j - 1] * v[n - i - 1] - v[i - 1] * v[j - 1]) / gamma;
+	for (i = 0; i <= (n - 1)/2; i++)
+		for (j = i; j < n - i; j++)
+		{
+			b = B[i * n + j] *= scale;
+			B[j * n + i] = b;
+			ni = n - i - 1;
+			nj = n - j - 1;
+			B[ni * n + nj] = b;
+			B[nj * n + ni] = b;
+		}
 }
 
 void asolve(int xsize, int asize, double* x, double* a, double* r, double* z)
 {
-    int i, j, k;
-    double beta, alpha, t;
+	int i, j, k;
+	double beta, alpha, t;
 	memset(r, 0, (asize + 1) * sizeof(double));		// work space
 	memset(z, 0, (asize + 1) * sizeof(double));		// work space
-    for (i = 0; i <= asize; i++)
-    {
+	for (i = 0; i <= asize; i++)
+	{
 		for (j = 0; j < xsize; j++)
 			r[i] += x[j] * x[j - i];
-    }
-    z[0] = 1.0;
-    beta = r[0];
-    for (k = 0; k < asize; k++)
-    {
-        alpha = 0.0;
-        for (j = 0; j <= k; j++)
-            alpha -= z[j] * r[k + 1 - j];
-        alpha /= beta;
-        for (i = 0; i <= (k + 1) / 2; i++)
-        {
-            t = z[k + 1 - i] + alpha * z[i];
-            z[i] = z[i] + alpha * z[k + 1 - i];
-            z[k + 1 - i] = t;
-        }
-        beta *= 1.0 - alpha * alpha;
-    }
-    for (i = 0; i < asize; i++)
+	}
+	z[0] = 1.0;
+	beta = r[0];
+	for (k = 0; k < asize; k++)
 	{
-        a[i] = - z[i + 1];
+		alpha = 0.0;
+		for (j = 0; j <= k; j++)
+			alpha -= z[j] * r[k + 1 - j];
+		alpha /= beta;
+		for (i = 0; i <= (k + 1) / 2; i++)
+		{
+			t = z[k + 1 - i] + alpha * z[i];
+			z[i] = z[i] + alpha * z[k + 1 - i];
+			z[k + 1 - i] = t;
+		}
+		beta *= 1.0 - alpha * alpha;
+	}
+	for (i = 0; i < asize; i++)
+	{
+		a[i] = - z[i + 1];
 		if (a[i] != a[i]) a[i] = 0.0;
 	}
 }
 
 void median (int n, double* a, double* med)
 {
-    int S0, S1, i, j, m, k;
-    double x, t;
-    S0 = 0;
-    S1 = n - 1;
-    k = n / 2;
-    while (S1 > S0 + 1)
-    {
-        m = (S0 + S1) / 2;
-        t = a[m];
-        a[m] = a[S0 + 1];
-        a[S0 + 1] = t;
-        if (a[S0] > a[S1])
-        {
-            t = a[S0];
-            a[S0] = a[S1];
-            a[S1] = t;
-        }
-        if (a[S0 + 1] > a[S1])
-        {
-            t = a[S0 + 1];
-            a[S0 + 1] = a[S1];
-            a[S1] = t;
-        }
-        if (a[S0] > a[S0 + 1])
-        {
-            t = a[S0];
-            a[S0] = a[S0 + 1];
-            a[S0 + 1] = t;
-        }
-        i = S0 + 1;
-        j = S1;
-        x = a[S0 + 1];
+	int S0, S1, i, j, m, k;
+	double x, t;
+	S0 = 0;
+	S1 = n - 1;
+	k = n / 2;
+	while (S1 > S0 + 1)
+	{
+		m = (S0 + S1) / 2;
+		t = a[m];
+		a[m] = a[S0 + 1];
+		a[S0 + 1] = t;
+		if (a[S0] > a[S1])
+		{
+			t = a[S0];
+			a[S0] = a[S1];
+			a[S1] = t;
+		}
+		if (a[S0 + 1] > a[S1])
+		{
+			t = a[S0 + 1];
+			a[S0 + 1] = a[S1];
+			a[S1] = t;
+		}
+		if (a[S0] > a[S0 + 1])
+		{
+			t = a[S0];
+			a[S0] = a[S0 + 1];
+			a[S0 + 1] = t;
+		}
+		i = S0 + 1;
+		j = S1;
+		x = a[S0 + 1];
 		do i++; while (a[i] < x);
-        do j--; while (a[j] > x);
-        while (j >= i)
-        {
-            t = a[i];
-            a[i] = a[j];
-            a[j] = t;
+		do j--; while (a[j] > x);
+		while (j >= i)
+		{
+			t = a[i];
+			a[i] = a[j];
+			a[j] = t;
 			do i++; while (a[i] < x);
-            do j--; while (a[j] > x);
-        }
-        a[S0 + 1] = a[j];
-        a[j] = x;
-        if (j >= k) S1 = j - 1;
-        if (j <= k) S0 = i;
-    }
-    if (S1 == S0 + 1 && a[S1] < a[S0])
-    {
-        t = a[S0];
-        a[S0] = a[S1];
-        a[S1] = t;
-    }
+			do j--; while (a[j] > x);
+		}
+		a[S0 + 1] = a[j];
+		a[j] = x;
+		if (j >= k) S1 = j - 1;
+		if (j <= k) S0 = i;
+	}
+	if (S1 == S0 + 1 && a[S1] < a[S0])
+	{
+		t = a[S0];
+		a[S0] = a[S1];
+		a[S1] = t;
+	}
 	*med = a[k];
 }
 
@@ -188,38 +188,38 @@ BLDR create_builder(int points, int ints)
 	// for the create function, 'points' and 'ints' are the MAXIMUM values that will be encountered
 	BLDR a = (BLDR)malloc0 (sizeof(bldr));
 	a->catxy = (double*)malloc0(2 * points * sizeof(double));
-	a->sx    = (double*)malloc0(    points * sizeof(double));
-	a->sy    = (double*)malloc0(    points * sizeof(double));
-	a->h     = (double*)malloc0(    ints   * sizeof(double));
-	a->p     = (int*)   malloc0(    ints   * sizeof(int));
-	a->np    = (int*)   malloc0(    ints   * sizeof(int));
-	a->taa   = (double*)malloc0(    ints   * sizeof(double));
-	a->tab   = (double*)malloc0(    ints   * sizeof(double));
-	a->tag   = (double*)malloc0(    ints   * sizeof(double));
-	a->tad   = (double*)malloc0(    ints   * sizeof(double));
-	a->tbb   = (double*)malloc0(    ints   * sizeof(double));
-	a->tbg   = (double*)malloc0(    ints   * sizeof(double));
-	a->tbd   = (double*)malloc0(    ints   * sizeof(double));
-	a->tgg   = (double*)malloc0(    ints   * sizeof(double));
-	a->tgd   = (double*)malloc0(    ints   * sizeof(double));
-	a->tdd   = (double*)malloc0(    ints   * sizeof(double));
+	a->sx	 = (double*)malloc0(	points * sizeof(double));
+	a->sy	 = (double*)malloc0(	points * sizeof(double));
+	a->h	 = (double*)malloc0(	ints   * sizeof(double));
+	a->p	 = (int*)	malloc0(	ints   * sizeof(int));
+	a->np	 = (int*)	malloc0(	ints   * sizeof(int));
+	a->taa	 = (double*)malloc0(	ints   * sizeof(double));
+	a->tab	 = (double*)malloc0(	ints   * sizeof(double));
+	a->tag	 = (double*)malloc0(	ints   * sizeof(double));
+	a->tad	 = (double*)malloc0(	ints   * sizeof(double));
+	a->tbb	 = (double*)malloc0(	ints   * sizeof(double));
+	a->tbg	 = (double*)malloc0(	ints   * sizeof(double));
+	a->tbd	 = (double*)malloc0(	ints   * sizeof(double));
+	a->tgg	 = (double*)malloc0(	ints   * sizeof(double));
+	a->tgd	 = (double*)malloc0(	ints   * sizeof(double));
+	a->tdd	 = (double*)malloc0(	ints   * sizeof(double));
 	int nsize = 3 * ints + 1;
 	int intp1 = ints + 1;
 	int intm1 = ints - 1;
-	a->A     = (double*)malloc0(intp1 * intp1 * sizeof(double));
-	a->B     = (double*)malloc0(intp1 * intp1 * sizeof(double));
-	a->C     = (double*)malloc0(intm1 * intp1 * sizeof(double));
-	a->D     = (double*)malloc0(intp1         * sizeof(double));
-	a->E     = (double*)malloc0(intp1 * intp1 * sizeof(double));
-	a->F     = (double*)malloc0(intm1 * intp1 * sizeof(double));
-	a->G     = (double*)malloc0(intp1         * sizeof(double));
-	a->MAT   = (double*)malloc0(nsize * nsize * sizeof(double));
-	a->RHS   = (double*)malloc0(nsize         * sizeof(double));
-	a->SLN   = (double*)malloc0(nsize         * sizeof(double));
-	a->z     = (double*)malloc0(intp1         * sizeof(double));
-	a->zp    = (double*)malloc0(intp1         * sizeof(double));
-	a->wrk   = (double*)malloc0(nsize         * sizeof(double));
-	a->ipiv  = (int*)   malloc0(nsize         * sizeof(int));
+	a->A	 = (double*)malloc0(intp1 * intp1 * sizeof(double));
+	a->B	 = (double*)malloc0(intp1 * intp1 * sizeof(double));
+	a->C	 = (double*)malloc0(intm1 * intp1 * sizeof(double));
+	a->D	 = (double*)malloc0(intp1		  * sizeof(double));
+	a->E	 = (double*)malloc0(intp1 * intp1 * sizeof(double));
+	a->F	 = (double*)malloc0(intm1 * intp1 * sizeof(double));
+	a->G	 = (double*)malloc0(intp1		  * sizeof(double));
+	a->MAT	 = (double*)malloc0(nsize * nsize * sizeof(double));
+	a->RHS	 = (double*)malloc0(nsize		  * sizeof(double));
+	a->SLN	 = (double*)malloc0(nsize		  * sizeof(double));
+	a->z	 = (double*)malloc0(intp1		  * sizeof(double));
+	a->zp	 = (double*)malloc0(intp1		  * sizeof(double));
+	a->wrk	 = (double*)malloc0(nsize		  * sizeof(double));
+	a->ipiv	 = (int*)	malloc0(nsize		  * sizeof(int));
 	return a;
 }
 
@@ -266,38 +266,38 @@ void destroy_builder(BLDR a)
 void flush_builder(BLDR a, int points, int ints)
 {
 	memset(a->catxy, 0, 2 * points * sizeof(double));
-	memset(a->sx,    0, points * sizeof(double));
-	memset(a->sy,    0, points * sizeof(double));
-	memset(a->h,     0, ints * sizeof(double));
-	memset(a->p,     0, ints * sizeof(int));
-	memset(a->np,    0, ints * sizeof(int));
-	memset(a->taa,   0, ints * sizeof(double));
-	memset(a->tab,   0, ints * sizeof(double));
-	memset(a->tag,   0, ints * sizeof(double));
-	memset(a->tad,   0, ints * sizeof(double));
-	memset(a->tbb,   0, ints * sizeof(double));
-	memset(a->tbg,   0, ints * sizeof(double));
-	memset(a->tbd,   0, ints * sizeof(double));
-	memset(a->tgg,   0, ints * sizeof(double));
-	memset(a->tgd,   0, ints * sizeof(double));
-	memset(a->tdd,   0, ints * sizeof(double));
+	memset(a->sx,	 0, points * sizeof(double));
+	memset(a->sy,	 0, points * sizeof(double));
+	memset(a->h,	 0, ints * sizeof(double));
+	memset(a->p,	 0, ints * sizeof(int));
+	memset(a->np,	 0, ints * sizeof(int));
+	memset(a->taa,	 0, ints * sizeof(double));
+	memset(a->tab,	 0, ints * sizeof(double));
+	memset(a->tag,	 0, ints * sizeof(double));
+	memset(a->tad,	 0, ints * sizeof(double));
+	memset(a->tbb,	 0, ints * sizeof(double));
+	memset(a->tbg,	 0, ints * sizeof(double));
+	memset(a->tbd,	 0, ints * sizeof(double));
+	memset(a->tgg,	 0, ints * sizeof(double));
+	memset(a->tgd,	 0, ints * sizeof(double));
+	memset(a->tdd,	 0, ints * sizeof(double));
 	int nsize = 3 * ints + 1;
 	int intp1 = ints + 1;
 	int intm1 = ints - 1;
-	memset(a->A,     0, intp1 * intp1 * sizeof(double));
-	memset(a->B,     0, intp1 * intp1 * sizeof(double));
-	memset(a->C,     0, intm1 * intp1 * sizeof(double));
-	memset(a->D,     0, intp1         * sizeof(double));
-	memset(a->E,     0, intp1 * intp1 * sizeof(double));
-	memset(a->F,     0, intm1 * intp1 * sizeof(double));
-	memset(a->G,     0, intp1         * sizeof(double));
-	memset(a->MAT,   0, nsize * nsize * sizeof(double));
-	memset(a->RHS,   0, nsize * sizeof(double));
-	memset(a->SLN,   0, nsize * sizeof(double));
-	memset(a->z,     0, intp1 * sizeof(double));
-	memset(a->zp,    0, intp1 * sizeof(double));
-	memset(a->wrk,   0, nsize * sizeof(double));
-	memset(a->ipiv,  0, nsize * sizeof(int));
+	memset(a->A,	 0, intp1 * intp1 * sizeof(double));
+	memset(a->B,	 0, intp1 * intp1 * sizeof(double));
+	memset(a->C,	 0, intm1 * intp1 * sizeof(double));
+	memset(a->D,	 0, intp1		  * sizeof(double));
+	memset(a->E,	 0, intp1 * intp1 * sizeof(double));
+	memset(a->F,	 0, intm1 * intp1 * sizeof(double));
+	memset(a->G,	 0, intp1		  * sizeof(double));
+	memset(a->MAT,	 0, nsize * nsize * sizeof(double));
+	memset(a->RHS,	 0, nsize * sizeof(double));
+	memset(a->SLN,	 0, nsize * sizeof(double));
+	memset(a->z,	 0, intp1 * sizeof(double));
+	memset(a->zp,	 0, intp1 * sizeof(double));
+	memset(a->wrk,	 0, nsize * sizeof(double));
+	memset(a->ipiv,	 0, nsize * sizeof(int));
 }
 
 int fcompare(const void* a, const void* b)
@@ -324,7 +324,7 @@ void decomp(int n, double* a, int* piv, int* info, double* wrk)
 		{
 			mt_row = a[n * i + j];
 			if (mt_row < 0.0)  mt_row = -mt_row;
-			if (mt_row > m_row)  m_row = mt_row;
+			if (mt_row > m_row)	 m_row = mt_row;
 		}
 		if (m_row == 0.0)
 		{
@@ -337,7 +337,7 @@ void decomp(int n, double* a, int* piv, int* info, double* wrk)
 	{
 		j = k;
 		m_col = a[n * piv[k] + k] / wrk[piv[k]];
-		if (m_col < 0)  m_col = -m_col;
+		if (m_col < 0)	m_col = -m_col;
 		for (i = k + 1; i < n; i++)
 		{
 			mt_col = a[n * piv[i] + k] / wrk[piv[k]];

@@ -1,4 +1,4 @@
-/*  cblock.c
+/*	cblock.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -28,8 +28,8 @@ warren@wpratt.com
 
 void calc_cbl (CBL a)
 {
-	a->prevIin  = 0.0;
-	a->prevQin  = 0.0;
+	a->prevIin	= 0.0;
+	a->prevQin	= 0.0;
 	a->prevIout = 0.0;
 	a->prevQout = 0.0;
 	a->mtau = exp(-1.0 / (a->sample_rate * a->tau));
@@ -65,8 +65,8 @@ void destroy_cbl(CBL a)
 
 void flush_cbl (CBL a)
 {
-	a->prevIin  = 0.0;
-	a->prevQin  = 0.0;
+	a->prevIin	= 0.0;
+	a->prevQin	= 0.0;
 	a->prevIout = 0.0;
 	a->prevQout = 0.0;
 }
@@ -83,8 +83,8 @@ void xcbl (CBL a)
 			tempQ  = a->in_buff[2 * i + 1];
 			a->out_buff[2 * i + 0] = a->in_buff[2 * i + 0] - a->prevIin + a->mtau * a->prevIout;
 			a->out_buff[2 * i + 1] = a->in_buff[2 * i + 1] - a->prevQin + a->mtau * a->prevQout;
-			a->prevIin  = tempI;
-			a->prevQin  = tempQ;
+			a->prevIin	= tempI;
+			a->prevQin	= tempQ;
 			if (fabs(a->prevIout = a->out_buff[2 * i + 0]) < 1.0e-100) a->prevIout = 0.0;
 			if (fabs(a->prevQout = a->out_buff[2 * i + 1]) < 1.0e-100) a->prevQout = 0.0;
 		}

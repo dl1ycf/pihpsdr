@@ -1,4 +1,4 @@
-/*  fmmod.c
+/*	fmmod.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -39,7 +39,7 @@ void calc_fmmod (FMMOD a)
 	a->bp_fc = a->deviation + a->f_high;
 }
 
-FMMOD create_fmmod (int run, int size, double* in, double* out, int rate, double dev, double f_low, double f_high, 
+FMMOD create_fmmod (int run, int size, double* in, double* out, int rate, double dev, double f_low, double f_high,
 	int ctcss_run, double ctcss_level, double ctcss_freq, int bp_run, int nc, int mp)
 {
 	FMMOD a = (FMMOD) malloc0 (sizeof (fmmod));
@@ -95,7 +95,7 @@ void xfmmod (FMMOD a)
 			dp = a->out[2 * i + 0] * a->sdelta;
 			a->sphase += dp;
 			if (a->sphase >= TWOPI) a->sphase -= TWOPI;
-			if (a->sphase <   0.0 ) a->sphase += TWOPI;
+			if (a->sphase <	  0.0 ) a->sphase += TWOPI;
 			a->out[2 * i + 0] = 0.7071 * cos (a->sphase);
 			a->out[2 * i + 1] = 0.7071 * sin (a->sphase);
 			if ((magdp = dp) < 0.0) magdp = - magdp;
@@ -200,7 +200,7 @@ void SetTXAFMNC (int channel, int nc)
 	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
-PORT 
+PORT
 void SetTXAFMMP (int channel, int mp)
 {
 	FMMOD a;

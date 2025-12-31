@@ -1,4 +1,4 @@
-/*  wisdom.c
+/*	wisdom.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -52,11 +52,11 @@ int WDSPwisdom (char* directory)
 	strncat (wisdom_file, "wdspWisdom00", 16);
 	if(!fftw_import_wisdom_from_filename(wisdom_file))
 	{
-		fftin =  (double *) malloc0 (maxsize * sizeof (complex));
+		fftin =	 (double *) malloc0 (maxsize * sizeof (complex));
 		fftout = (double *) malloc0 (maxsize * sizeof (complex));
 #ifdef _WIN32
 		AllocConsole();								// create console
-	    freopen_s(&stream, "conout$", "w", stdout); // redirect output to console
+		freopen_s(&stream, "conout$", "w", stdout); // redirect output to console
 #endif
 		fprintf(stdout, "Optimizing FFT sizes through %d\n\n", maxsize);
 		fprintf(stdout, "Please do not close this window until wisdom plans are completed.\n\n");
@@ -96,9 +96,9 @@ int WDSPwisdom (char* directory)
 				fftw_execute (tplan);
 				fftw_destroy_plan (tplan);
 			}
-			fprintf(stdout, "Planning REAL    FORWARD  FFT size %d\n", psize);
+			fprintf(stdout, "Planning REAL	  FORWARD  FFT size %d\n", psize);
 			fflush(stdout);
-			sprintf(status, "Planning REAL    FORWARD  FFT size %d\n", psize);
+			sprintf(status, "Planning REAL	  FORWARD  FFT size %d\n", psize);
 			tplan = fftw_plan_dft_r2c_1d(psize, fftin, (fftw_complex *)fftout, FFTW_PATIENT);
 			fftw_execute (tplan);
 			fftw_destroy_plan (tplan);

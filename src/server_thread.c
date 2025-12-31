@@ -1527,13 +1527,11 @@ static int server_command(void *data) {
       rx->nb_thresh              = from_double(command->nb_thresh);
       rx->nr2_trained_threshold  = from_double(command->nr2_trained_threshold);
       rx->nr2_trained_t2         = from_double(command->nr2_trained_t2);
-#ifdef EXTNR
       rx->nr4_reduction_amount   = from_double(command->nr4_reduction_amount);
       rx->nr4_smoothing_factor   = from_double(command->nr4_smoothing_factor);
       rx->nr4_whitening_factor   = from_double(command->nr4_whitening_factor);
       rx->nr4_noise_rescale      = from_double(command->nr4_noise_rescale);
       rx->nr4_post_threshold     = from_double(command->nr4_post_threshold);
-#endif
       rx_set_noise(rx);
       send_rx_data(remoteclient.sock_tcp, id);
     }

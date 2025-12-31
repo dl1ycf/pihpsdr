@@ -1,4 +1,4 @@
-/*  nob.h
+/*	nob.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -41,23 +41,23 @@ typedef struct _anb
 	double advtime;					// deadtime (zero output) in advance of detected noise
 	double backtau;					// time constant used in averaging the magnitude of the input signal
 	double threshold;				// triggers if (noise > threshold * average_signal_magnitude)
-    double *wave;                   // pointer to array holding transition waveform
-    int state;                      // state of the state machine
-    double avg;                     // average value of the signal magnitude
-    int dtime;                      // count when decreasing the signal magnitude
-    int htime;                      // count when hanging
-    int itime;                      // count when increasing the signal magnitude
-    int atime;                      // count at zero before the noise burst (advance count)
-    double coef;					// parameter in calculating transition waveform
-    int trans_count;                // number of samples to equal 'tau' time
-    int hang_count;                 // number of samples to equal 'hangtime' time
-    int adv_count;                  // number of samples to equal 'advtime' time
-    int in_idx;                     // ring buffer position into which new samples are inserted
-    int out_idx;                    // ring buffer position from which delayed samples are pulled
-    double power;					// level at which signal was increasing when a new decrease is started
-    int count;						// set each time a noise sample is detected, counts down
-    double backmult;				// multiplier for waveform averaging
-    double ombackmult;				// multiplier for waveform averaging
+	double *wave;					// pointer to array holding transition waveform
+	int state;						// state of the state machine
+	double avg;						// average value of the signal magnitude
+	int dtime;						// count when decreasing the signal magnitude
+	int htime;						// count when hanging
+	int itime;						// count when increasing the signal magnitude
+	int atime;						// count at zero before the noise burst (advance count)
+	double coef;					// parameter in calculating transition waveform
+	int trans_count;				// number of samples to equal 'tau' time
+	int hang_count;					// number of samples to equal 'hangtime' time
+	int adv_count;					// number of samples to equal 'advtime' time
+	int in_idx;						// ring buffer position into which new samples are inserted
+	int out_idx;					// ring buffer position from which delayed samples are pulled
+	double power;					// level at which signal was increasing when a new decrease is started
+	int count;						// set each time a noise sample is detected, counts down
+	double backmult;				// multiplier for waveform averaging
+	double ombackmult;				// multiplier for waveform averaging
 	CRITICAL_SECTION cs_update;
 	double *legacy;																										////////////  legacy interface - remove
 } anb, *ANB;

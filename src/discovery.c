@@ -75,6 +75,10 @@ static gulong     host_combo_signal_id = 0;
 
 static int        discovery_state = 0;
 
+#ifdef GPIO
+static int        saturn_found = 0;
+#endif
+
 
 GtkWidget *tcpaddr;
 char ipaddr_radio[128] = { 0 };
@@ -179,6 +183,13 @@ static gboolean protocols_cb (GtkWidget *widget, GdkEventButton *event, gpointer
 #ifdef GPIO
 static void gpio_changed_cb(GtkWidget *widget, gpointer data) {
   controller = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  //
+  // On a G2, we can only have "G2V1 Front Panel" or no controller
+  //
+  if (saturn_found && controller != G2V1_PANEL) {
+    controller = NO_CONTROLLER;
+    gtk_combo_box_set_active(GTK_COMBO_BOX(widget), controller);
+  }
   //
   // This will generate a new gpio.props from scratch,
   // all existing entries there are lost when changing the
@@ -629,6 +640,12 @@ static void discovery() {
   if (enable_saturn_xdma && !discover_only_stemlab) {
     status_text("Looking for /dev/xdma* based saturn devices");
     saturn_discovery();
+    //
+    // Check if a SATURN board has been found
+    //
+    for (int i = 0; i < devices; i++) {
+      if (discovered[i].device == NEW_DEVICE_SATURN) { saturn_found = 1; }
+    }
   }
 
 #endif
@@ -908,11 +925,14 @@ static void discovery() {
   row++;
 #ifdef GPIO
   gpio_restore_state();
+  if (saturn_found && controller != G2V1_PANEL) {
+    controller = NO_CONTROLLER;
+  }
   GtkWidget *gpio = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "No Controller");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller1");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller2 V1");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller2 V2");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, saturn_found ? "G2V2" : "No Controller");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, saturn_found ? "---"  : "Controller1");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, saturn_found ? "---"  : "Controller2 V1");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, saturn_found ? "---"  : "Controller2 V2");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "G2V1 Front Panel");
   my_combo_attach(GTK_GRID(grid), gpio, 0, row, 1, 1);
   gtk_combo_box_set_active(GTK_COMBO_BOX(gpio), controller);

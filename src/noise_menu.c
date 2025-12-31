@@ -37,9 +37,7 @@ static RECEIVER *myrx;
 
 static GtkWidget *nr_container;
 static GtkWidget *nb_container;
-#ifdef EXTNR
-  static GtkWidget *nr4_container;
-#endif
+static GtkWidget *nr4_container;
 
 static void cleanup() {
   if (dialog != NULL) {
@@ -170,7 +168,6 @@ static void nb_sel_changed(GtkWidget *widget, gpointer data) {
   }
 }
 
-#ifdef EXTNR
 static void nr4_sel_changed(GtkWidget *widget, gpointer data) {
   // show or hide all controls for NR4 settings
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
@@ -204,8 +201,6 @@ static void nr4_threshold_cb(GtkWidget *widget, gpointer data) {
   myrx->nr4_post_threshold = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
   rx_set_noise(myrx);
 }
-
-#endif
 
 void noise_menu(GtkWidget *parent) {
   dialog = gtk_dialog_new();
@@ -258,10 +253,8 @@ void noise_menu(GtkWidget *parent) {
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "NONE");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "NR");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "NR2");
-#ifdef EXTNR
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "NR3");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "NR4");
-#endif
   gtk_combo_box_set_active(GTK_COMBO_BOX(btn), myrx->nr);
   my_combo_attach(GTK_GRID(grid), btn, 3, 1, 1, 1);
   g_signal_connect(btn, "changed", G_CALLBACK(nr_cb), NULL);
@@ -311,14 +304,12 @@ void noise_menu(GtkWidget *parent) {
   gtk_widget_show(btn);
   gtk_grid_attach(GTK_GRID(grid), btn, 1, 4, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(nb_sel_changed), NULL);
-#ifdef EXTNR
   btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(nr_sel), "NR4 Settings");
   gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), 0);
   gtk_widget_show(btn);
   gtk_grid_attach(GTK_GRID(grid), btn, 2, 4, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(nr4_sel_changed), NULL);
-#endif
   //
   // Hiding/Showing ComboBoxes optimized for Touch-Screens does not
   // work. Therefore, we have to group the NR, NB, and NR4 controls
@@ -489,7 +480,6 @@ void noise_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(nb_grid), thresh_b, 3, 2, 1, 1);
   g_signal_connect(thresh_b, "changed", G_CALLBACK(thresh_cb), NULL);
   gtk_container_add(GTK_CONTAINER(nb_container), nb_grid);
-#ifdef EXTNR
   //
   // NR4 controls starting at row 4
   //
@@ -547,7 +537,6 @@ void noise_menu(GtkWidget *parent) {
   g_signal_connect(G_OBJECT(nr4_threshold_b), "changed", G_CALLBACK(nr4_threshold_cb), NULL);
   //
   gtk_container_add(GTK_CONTAINER(nr4_container), nr4_grid);
-#endif
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
@@ -560,11 +549,7 @@ void noise_menu(GtkWidget *parent) {
   int width = gtk_widget_get_allocated_width(grid);
   gtk_widget_set_size_request(nr_grid, width, -1);
   gtk_widget_set_size_request(nb_grid, width, -1);
-#ifdef EXTNR
   gtk_widget_set_size_request(nr4_grid, width, -1);
-#endif
   gtk_widget_hide(nb_container);
-#ifdef EXTNR
   gtk_widget_hide(nr4_container);
-#endif
 }

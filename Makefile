@@ -19,7 +19,7 @@ USBOZY=OFF
 SOAPYSDR=OFF
 STEMLAB=OFF
 AUDIO=PULSE
-EXTENDED_NR=OFF
+NR34LIB=OFF
 TTS=ON
 
 #######################################################################################
@@ -32,6 +32,8 @@ TTS=ON
 # USBOZY       | If ON, piHPSDR can talk to legacy USB OZY radios (needs  libusb-1.0)
 # SOAPYSDR     | If ON, piHPSDR can talk to radios via SoapySDR library
 # STEMLAB      | If ON, piHPSDR can start SDR app on RedPitay via Web interface (needs libcurl)
+# NR34LIB      | If ON, an installed version of rnnoise and libspecbleach are used,
+#              | If Off, rnnoise and libspecbleach as distributed with piHPSDR are used
 # AUDIO        | If AUDIO=ALSA, use ALSA rather than PulseAudio on Linux
 #
 # If you want to use a non-default compile time option, write them
@@ -73,6 +75,9 @@ LINK+=-pthread
 
 PKG_CONFIG = pkg-config
 
+WDSP_INCLUDE=-I./wdsp
+WDSP_LIBS=wdsp/libwdsp.a `$(PKG_CONFIG) --libs fftw3`
+
 ##############################################################################
 # CPP_DEFINES and CPP_SOURCES are "filled" with all  possible options,
 # so that everything is processed when running "cppcheck".
@@ -80,28 +85,22 @@ PKG_CONFIG = pkg-config
 
 CPP_DEFINES=
 CPP_SOURCES=
-CPP_INCLUDE=
-
-WDSP_INCLUDE=-I./wdsp
-WDSP_LIBS=wdsp/libwdsp.a `$(PKG_CONFIG) --libs fftw3`
+CPP_INCLUDE= $(WDSP_INCLUDE)
 
 ##############################################################################
 #
-# Add support for extended noise reduction, if requested
-# This implies that one compiles against a wdsp.h e.g. in /usr/local/include,
-# and links with a WDSP shared lib e.g. in /usr/local/lib
-#
-# THIS IS GOING TO BE REMOVED! Reason: vu3rdd wdsp library still version 1.23
+# Add support for extended noise reduction, if requested. Note libspecbleach
+# needs linking with the single-precision version of fftw.
 #
 ##############################################################################
 
-ifeq ($(EXTENDED_NR), ON)
-EXTNR_OPTIONS=-DEXTNR
-WDSP_INCLUDE=
-WDSP_LIBS=-lwdsp `$(PKG_CONFIG) --libs fftw3`
+ifeq ($(NR34LIB), ON)
+WDSP_LIBS=wdsp/libwdsp.a -lrnnoise -lspecbleach \
+	`$(PKG_CONFIG) --libs fftw3` `$(PKG_CONFIG) --libs fftw3f`
+else
+WDSP_LIBS=wdsp/libwdsp.a rnnoise/librnnoise.a libspecbleach/libspecbleach.a \
+	`$(PKG_CONFIG) --libs fftw3` `$(PKG_CONFIG) --libs fftw3f`
 endif
-CPP_DEFINES += -DEXTNR
-CPP_INCLUDE +=$(WDSP_INCLUDE)
 
 ##############################################################################
 #
@@ -416,7 +415,7 @@ OPTIONS=$(MIDI_OPTIONS) $(USBOZY_OPTIONS) \
 	$(STEMLAB_OPTIONS) \
 	$(SERVER_OPTIONS) \
 	$(TTS_OPTIONS) \
-	$(AUDIO_OPTIONS) $(EXTNR_OPTIONS) $(TCI_OPTIONS) \
+	$(AUDIO_OPTIONS) $(TCI_OPTIONS) \
 	-D GIT_DATE='"$(GIT_DATE)"' -D GIT_VERSION='"$(GIT_VERSION)"' -D GIT_COMMIT='"$(GIT_COMMIT)"'
 
 INCLUDES=$(GTKINCLUDE) $(WDSP_INCLUDE) $(OPENSSL_INCLUDE) $(AUDIO_INCLUDE) $(STEMLAB_INCLUDE)
@@ -724,9 +723,11 @@ src/waterfall.o
 $(PROGRAM):  $(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS) $(SOAPYSDR_OBJS) \
 		$(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(SATURN_OBJS) $(TTS_OBJS)
 	$(COMPILE) -c -o src/version.o src/version.c
-ifneq (z$(WDSP_INCLUDE), z)
-	@+make -C wdsp
+ifneq ($(NR34LIB), ON)
+	@+make -C libspecbleach
+	@+make -C rnnoise
 endif
+	@+make NR34LIB=$(NR34LIB) -C wdsp
 	$(LINK) -o $(PROGRAM) $(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS) $(SOAPYSDR_OBJS) \
 		$(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(SATURN_OBJS) $(TTS_OBJS)\
 		$(LIBS)
@@ -781,6 +782,8 @@ clean:
 	rm -f $(PROGRAM) hpsdrsim bootloader
 	rm -rf $(PROGRAM).app
 	@make -C release/LatexManual clean
+	@make -C libspecbleach clean
+	@make -C rnnoise clean
 	@make -C wdsp clean
 
 #############################################################################
@@ -840,7 +843,7 @@ bootloader:	src/bootloader.c
 DEPEND:
 	rm -f DEPEND
 	touch DEPEND
-	export LC_ALL=C && makedepend -DMIDI -DSATURN -DUSBOZY -DSOAPYSDR -DEXTNR -DGPIO \
+	export LC_ALL=C && makedepend -DMIDI -DSATURN -DUSBOZY -DSOAPYSDR -DGPIO \
 		-DSTEMLAB_DISCOVERY -DPULSEAUDIO \
 		-DPORTAUDIO -DALSA -DTTS -D__APPLE__ -D__linux__ \
 		-f DEPEND -I./src src/*.c src/*.h
@@ -865,9 +868,11 @@ DEPEND:
 .PHONY: app
 app:	$(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS)  $(SOAPYSDR_OBJS) $(TCI_OBJS) \
 		$(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(SATURN_OBJS) $(TTS_OBJS)
-ifneq (z$(WDSP_INCLUDE), z)
-	@+make -C wdsp
+ifneq ($(NR34LIB), ON)
+	@+make -C libspecbleach
+	@+make -C rnnoise
 endif
+	@+make NR34LIB=$(NR34LIB) -C wdsp
 	$(LINK) -headerpad_max_install_names -o $(PROGRAM) $(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS)  \
 		$(SOAPYSDR_OBJS) $(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(SATURN_OBJS) $(TTS_OBJS) \
 		$(TCI_OBJS) $(LIBS) $(LDFLAGS)

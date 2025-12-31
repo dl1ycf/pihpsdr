@@ -1233,15 +1233,9 @@ int process_action(void *data) {
   case NR:
     if (a->mode == PRESSED) {
       active_receiver->nr++;
-#ifdef EXTNR
 
       if (active_receiver->nr > 4) { active_receiver->nr = 0; }
 
-#else
-
-      if (active_receiver->nr > 2) { active_receiver->nr = 0; }
-
-#endif
       rx_set_noise(active_receiver);
     }
 

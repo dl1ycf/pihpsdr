@@ -1,4 +1,4 @@
-/*  delay.c
+/*	delay.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -47,7 +47,7 @@ DELAY create_delay (int run, int size, double* in, double* out, int rate, double
 	a->phnum %= a->L;
 	a->idx_in = 0;
 	a->adelay = a->adelta * (a->snum * a->L + a->phnum);
-	a->h = fir_bandpass (a->ncoef,-a->ft, +a->ft, 1.0, 1, 0, (double)a->L);	
+	a->h = fir_bandpass (a->ncoef,-a->ft, +a->ft, 1.0, 1, 0, (double)a->L);
 	a->rsize = a->cpp + (WSDEL - 1);
 	a->ring = (double *) malloc0 (a->rsize * sizeof (complex));
 	InitializeCriticalSectionAndSpinCount ( &a->cs_update, 2500 );

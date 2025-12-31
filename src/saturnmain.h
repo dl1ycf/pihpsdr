@@ -33,17 +33,16 @@
 #ifndef __saturnmain_h
 #define __saturnmain_h
 
-#include "saturnregisters.h"
-
 void saturn_discovery(void);
 void saturn_init(void);
-void saturn_register_init(void);
 void saturn_handle_speaker_audio(const unsigned char *UDPInBuffer);
-void saturn_handle_high_priority(bool FromNetwork, const unsigned char *high_priority_buffer_to_radio);
-void saturn_handle_general_packet(bool FromNetwork, const unsigned char *PacketBuffer);
-void saturn_handle_ddc_specific(bool FromNetwork, const unsigned char *receive_specific_buffer);
-void saturn_handle_duc_specific(bool FromNetwork, const unsigned char *transmit_specific_buffer);
-void saturn_handle_duc_iq(bool FromNetwork, unsigned char *UDPInBuffer);
+void saturn_handle_high_priority_server(const unsigned char *high_priority_buffer_to_radio);
+void saturn_handle_high_priority(const unsigned char *high_priority_buffer_to_radio);
+void saturn_handle_general_packet(const unsigned char *PacketBuffer);
+void saturn_handle_ddc_specific_server(const unsigned char *receive_specific_buffer);
+void saturn_handle_ddc_specific(const unsigned char *receive_specific_buffer);
+void saturn_handle_duc_specific(const unsigned char *transmit_specific_buffer);
+void saturn_handle_duc_iq(const unsigned char *UDPInBuffer);
 void saturn_free_buffers(void);
 void saturn_exit(void);
 

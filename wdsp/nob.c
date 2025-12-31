@@ -1,4 +1,4 @@
-/*  nob.c
+/*	nob.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -28,27 +28,27 @@ warren@wpratt.com
 
 #define MAX_TAU			(0.002)		// maximum transition time, signal<->zero
 #define MAX_ADVTIME		(0.002)		// maximum deadtime (zero output) in advance of detected noise
-#define MAX_SAMPLERATE  (1536000)
+#define MAX_SAMPLERATE	(1536000)
 
 void initBlanker(ANB a)
 {
-    int i;
-    a->trans_count = (int)(a->tau * a->samplerate);
-    if (a->trans_count < 2) a->trans_count = 2;
-    a->hang_count = (int)(a->hangtime * a->samplerate);
-    a->adv_count = (int)(a->advtime * a->samplerate);
-    a->count = 0;
-    a->in_idx = a->trans_count + a->adv_count;
-    a->out_idx = 0;
-    a->coef = PI / a->trans_count;
-    a->state = 0;
-    a->avg = 1.0;
-    a->power = 1.0;
-    a->backmult = exp(-1.0 / (a->samplerate * a->backtau));
-    a->ombackmult = 1.0 - a->backmult;
-    for (i = 0; i <= a->trans_count; i++)
-        a->wave[i] = 0.5 * cos(i * a->coef);
-    memset(a->dline, 0, a->dline_size * sizeof(complex));
+	int i;
+	a->trans_count = (int)(a->tau * a->samplerate);
+	if (a->trans_count < 2) a->trans_count = 2;
+	a->hang_count = (int)(a->hangtime * a->samplerate);
+	a->adv_count = (int)(a->advtime * a->samplerate);
+	a->count = 0;
+	a->in_idx = a->trans_count + a->adv_count;
+	a->out_idx = 0;
+	a->coef = PI / a->trans_count;
+	a->state = 0;
+	a->avg = 1.0;
+	a->power = 1.0;
+	a->backmult = exp(-1.0 / (a->samplerate * a->backtau));
+	a->ombackmult = 1.0 - a->backmult;
+	for (i = 0; i <= a->trans_count; i++)
+		a->wave[i] = 0.5 * cos(i * a->coef);
+	memset(a->dline, 0, a->dline_size * sizeof(complex));
 }
 
 PORT
@@ -88,7 +88,7 @@ ANB create_anb	(
 
 PORT
 void destroy_anb (ANB a)
-{ 
+{
 	DeleteCriticalSection (&a->cs_update);
 	_aligned_free (a->legacy);																						/////////////// legacy interface - remove
 	_aligned_free (a->dline);
@@ -107,10 +107,10 @@ void flush_anb (ANB a)
 PORT
 void xanb (ANB a)
 {
-    double scale;
-    double mag;
+	double scale;
+	double mag;
 	int i;
-    if (a->run)
+	if (a->run)
 	{
 		EnterCriticalSection (&a->cs_update);
 		for (i = 0; i < a->buffsize; i++)
@@ -153,7 +153,7 @@ void xanb (ANB a)
 				case 3:
 					if (a->count > 0)
 						a->htime = -a->count;
-                                
+								
 					a->out[2 * i + 0] = 0.0;
 					a->out[2 * i + 1] = 0.0;
 					if (++a->htime > a->hang_count)
@@ -177,7 +177,7 @@ void xanb (ANB a)
 					break;
 			}
 			if (a->count > 0) a->count--;
-			if (++a->in_idx == a->dline_size) a->in_idx = 0; 
+			if (++a->in_idx == a->dline_size) a->in_idx = 0;
 			if (++a->out_idx == a->dline_size) a->out_idx = 0;
 		}
 		LeaveCriticalSection (&a->cs_update);
@@ -300,7 +300,7 @@ void pSetRCVRANBThreshold (ANB a, double thresh)
 
 /********************************************************************************************************
 *																										*
-*									    CALLS FOR EXTERNAL USE											*
+*										CALLS FOR EXTERNAL USE											*
 *																										*
 ********************************************************************************************************/
 

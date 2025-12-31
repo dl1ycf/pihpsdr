@@ -1,0 +1,9 @@
+libspecbleach
+=============
+
+The material put here into piHPSDR comes from
+
+https://github.com/lucianodato/libspecbleach
+
+A Makefile has been provided that just compiles the files needed
+in piHPSDR and produce a library that can be linked statically.

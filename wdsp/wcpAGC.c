@@ -1,4 +1,4 @@
-/*  wcpAGC.c
+/*	wcpAGC.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -26,7 +26,7 @@ or by paper mail at
 
 Warren Pratt
 11303 Empire Grade
-Santa Cruz, CA  95060
+Santa Cruz, CA	95060
 
 */
 
@@ -136,7 +136,7 @@ void loadWcpAGC (WCPAGC a)
 	a->inv_max_input = 1.0 / a->max_input;
 
 	tmp = pow (10.0, (a->hang_thresh - 1.0) / 0.125);
-	a->hang_level = (a->max_input * tmp + (a->out_target / 
+	a->hang_level = (a->max_input * tmp + (a->out_target /
 		(a->var_gain * a->max_gain)) * (1.0 - tmp)) * 0.637;
 
 	a->hang_backmult = 1.0 - exp(-1.0 / (a->sample_rate * a->tau_hang_backmult));
@@ -377,30 +377,30 @@ SetRXAAGCMode (int channel, int mode)
 	EnterCriticalSection (&ch[channel].csDSP);
 	switch (mode)
 	{
-		case 0:	//agcOFF
+		case 0: //agcOFF
 			rxa[channel].agc.p->mode = 0;
 			loadWcpAGC ( rxa[channel].agc.p );
 			break;
-		case 1:	//agcLONG
+		case 1: //agcLONG
 			rxa[channel].agc.p->mode = 1;
 			rxa[channel].agc.p->hangtime = 2.000;
 			rxa[channel].agc.p->tau_decay = 2.000;
 			loadWcpAGC ( rxa[channel].agc.p );
 			break;
-		case 2:	//agcSLOW
+		case 2: //agcSLOW
 			rxa[channel].agc.p->mode = 2;
 			rxa[channel].agc.p->hangtime = 1.000;
 			rxa[channel].agc.p->tau_decay = 0.500;
 			loadWcpAGC ( rxa[channel].agc.p );
 			break;
-		case 3:	//agcMED
+		case 3: //agcMED
 			rxa[channel].agc.p->mode = 3;
 			rxa[channel].agc.p->hang_thresh = 1.0;
 			rxa[channel].agc.p->hangtime = 0.000;
 			rxa[channel].agc.p->tau_decay = 0.250;
 			loadWcpAGC ( rxa[channel].agc.p );
 			break;
-		case 4:	//agcFAST
+		case 4: //agcFAST
 			rxa[channel].agc.p->mode = 4;
 			rxa[channel].agc.p->hang_thresh = 1.0;
 			rxa[channel].agc.p->hangtime = 0.000;
@@ -459,7 +459,7 @@ SetRXAAGCHangLevel(int channel, double hangLevel)
 	if (rxa[channel].agc.p->max_input > rxa[channel].agc.p->min_volts)
 	{
 		convert = pow (10.0, hangLevel / 20.0);
-		tmp = max(1e-8, (convert - rxa[channel].agc.p->min_volts) / 
+		tmp = max(1e-8, (convert - rxa[channel].agc.p->min_volts) /
 			(rxa[channel].agc.p->max_input - rxa[channel].agc.p->min_volts));
 		rxa[channel].agc.p->hang_thresh = 1.0 + 0.125 * log10 (tmp);
 	}
@@ -494,7 +494,7 @@ GetRXAAGCThresh(int channel, double *thresh, double size, double rate)
 {
 	double noise_offset;
 	EnterCriticalSection (&ch[channel].csDSP);
-	noise_offset = 10.0 * log10((rxa[channel].nbp0.p->fhigh - rxa[channel].nbp0.p->flow) 
+	noise_offset = 10.0 * log10((rxa[channel].nbp0.p->fhigh - rxa[channel].nbp0.p->flow)
 		* size / rate);
 	*thresh = 20.0 * log10( rxa[channel].agc.p->min_volts ) - noise_offset;
 	LeaveCriticalSection (&ch[channel].csDSP);
@@ -506,9 +506,9 @@ SetRXAAGCThresh(int channel, double thresh, double size, double rate)
 {
 	double noise_offset;
 	EnterCriticalSection (&ch[channel].csDSP);
-	noise_offset = 10.0 * log10((rxa[channel].nbp0.p->fhigh - rxa[channel].nbp0.p->flow) 
+	noise_offset = 10.0 * log10((rxa[channel].nbp0.p->fhigh - rxa[channel].nbp0.p->flow)
 		* size / rate);
-	rxa[channel].agc.p->max_gain = rxa[channel].agc.p->out_target / 
+	rxa[channel].agc.p->max_gain = rxa[channel].agc.p->out_target /
 		(rxa[channel].agc.p->var_gain * pow (10.0, (thresh + noise_offset) / 20.0));
 	loadWcpAGC ( rxa[channel].agc.p );
 	LeaveCriticalSection (&ch[channel].csDSP);

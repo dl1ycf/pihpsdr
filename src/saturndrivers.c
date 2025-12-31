@@ -52,21 +52,31 @@
 #include "message.h"
 #include "saturndrivers.h"
 
-#define VMEMBUFFERSIZE 32768                    // memory buffer to reserve
-#define AXIBaseAddress 0x10000                  // address of StreamRead/Writer IP
+//
+// Global "version" variables, determined upon startup
+//
+uint32_t FPGA_MinorVersion;
+uint32_t Saturn_PCB_Version;
 
-// START hwaccess.c
+////////////////////////////////////////////////////////////////////////////////
 //
-// mem read/write variables:
+// - open/close connection to the XDMA device driver for register and DMA access
+// - DMA read and write operations from/to FPGA
+// - register read and write
+// - monitoring FIFOs
+// - Analyse DDC headers
 //
-int register_fd;                             // device identifier
+////////////////////////////////////////////////////////////////////////////////
+static int register_fd = -1;                     // device identifier, -1 means "not open"
 
-//
-// open connection to the XDMA device driver for register and DMA access
-//
 int OpenXDMADriver(void) {
   int Result = 0;
 
+  //
+  // If hitting "discover" several times on the startup screen,
+  // XDMA is opened repeatedly, so close it first
+  //
+  if (register_fd >= 0) { close(register_fd); }
   //
   // Note this fd is used for both pread() and pwrite() so use read-write mode
   //
@@ -83,30 +93,11 @@ int OpenXDMADriver(void) {
 //
 // close connection to the XDMA device driver for register and DMA access
 //
-int CloseXDMADriver(void) {
-  int ret = close(register_fd);
-  register_fd = 0;
-  return ret;
-}
-
-//
-// function call to get firmware ID and version
-//
-unsigned int GetFirmwareVersion(ESoftwareID* ID) {
-  unsigned int Version = 0;
-  uint32_t SoftwareInformation;                                 // swid & version
-  SoftwareInformation = RegisterRead(VADDRSWVERSIONREG);
-  Version = (SoftwareInformation >> 4) & 0xFFFF;                // 16 bit sw version
-  *ID = (ESoftwareID)((SoftwareInformation >> 20) & 0x1F);      //  5 bit software ID
-  return Version;
-}
-
-unsigned int GetFirmwareMajorVersion(void) {
-  unsigned int MajorVersion = 0;
-  uint32_t SoftwareInformation;                                 // swid & version
-  SoftwareInformation = RegisterRead(VADDRSWVERSIONREG);
-  MajorVersion = (SoftwareInformation >> 25) & 0x7F;            // 7 bit major fw version
-  return MajorVersion;
+void CloseXDMADriver(void) {
+  if (register_fd >= 0) {
+    close(register_fd);
+    register_fd = -1;
+  }
 }
 
 //
@@ -119,13 +110,11 @@ unsigned int GetFirmwareMajorVersion(void) {
 //
 int DMAWriteToFPGA(int fd, unsigned char*SrcData, uint32_t Length, uint32_t AXIAddr) {
   ssize_t rc;                 // response code
-  off_t OffsetAddr;
-  OffsetAddr = AXIAddr;
   // write data to FPGA from memory buffer
-  rc = pwrite(fd, SrcData, Length, OffsetAddr);
+  rc = pwrite(fd, SrcData, Length, (off_t) AXIAddr);
 
   if (rc < 0) {
-    t_print("write 0x%x @ 0x%lx failed %ld.\n", Length, OffsetAddr, rc);
+    t_print("write 0x%x @ 0x%lx failed %ld.\n", (int)Length, (long)AXIAddr, (long)rc);
     t_perror("DMA write");
     return -EIO;
   }
@@ -143,13 +132,11 @@ int DMAWriteToFPGA(int fd, unsigned char*SrcData, uint32_t Length, uint32_t AXIA
 //
 int DMAReadFromFPGA(int fd, unsigned char*DestData, uint32_t Length, uint32_t AXIAddr) {
   ssize_t rc;                 // response code
-  off_t OffsetAddr;
-  OffsetAddr = AXIAddr;
   // read data from FPGA to memory buffer
-  rc = pread(fd, DestData, Length, OffsetAddr);
+  rc = pread(fd, DestData, Length, (off_t) AXIAddr);
 
   if (rc < 0) {
-    t_print("read 0x%x @ 0x%lx failed %ld.\n", Length, OffsetAddr, rc);
+    t_print("read 0x%x @ 0x%lX failed %ld.\n", (int)Length, (long)AXIAddr, (long)rc);
     t_perror("DMA read");
     return -EIO;
   }
@@ -163,12 +150,12 @@ int DMAReadFromFPGA(int fd, unsigned char*DestData, uint32_t Length, uint32_t AX
 uint32_t RegisterRead(uint32_t Address) {
   uint32_t result = 0;
 
-  if (register_fd == 0) {
+  if (register_fd < 0) {
     return result;
   }
 
   if (pread(register_fd, &result, sizeof(result), (off_t) Address) != sizeof(result)) {
-    t_print("ERROR: register read: addr=0x%08X   error=%s\n", Address, strerror(errno));
+    t_print("ERROR: register read: addr=0x%lX   error=%s\n", (long)Address, strerror(errno));
   }
 
   return result;
@@ -178,32 +165,38 @@ uint32_t RegisterRead(uint32_t Address) {
 // 32 bit register write over the AXILite bus
 //
 void RegisterWrite(uint32_t Address, uint32_t Data) {
-  if (register_fd == 0) {
+  if (register_fd < 0) {
     return;
   }
 
   if (pwrite(register_fd, &Data, sizeof(Data), (off_t) Address) != sizeof(Data)) {
-    t_print("ERROR: Write: addr=0x%08X   error=%s\n", Address, strerror(errno));
+    t_print("ERROR: Write: addr=0x%lX   error=%s\n", (long)Address, strerror(errno));
   }
 }
 
-// END hwaccess.c
-
-sem_t DDCResetFIFOMutex;
-
-bool GFIFOSizesInitialised = false;
+////////////////////////////////////////////////////////////////////////////////
+//
+// from common/saturnregisters.c
+//
+////////////////////////////////////////////////////////////////////////////////
 
 //
 // DMA FIFO depths
-// this is the number of 64 bit FIFO locations
+// this is the number of *64 bit* FIFO locations
 // this is now version dependent, and updated by InitialiseFIFOSizes()
 //
-uint32_t DMAFIFODepths[VNUMDMAFIFO] = {
+static uint32_t DMAFIFODepths[VNUMDMAFIFO] = {
   8192,             //  eRXDDCDMA,    selects RX
   1024,             //  eTXDUCDMA,    selects TX
   256,              //  eMicCodecDMA, selects mic samples
   256               //  eSpkCodecDMA  selects speaker samples
 };
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// from common/saturndrivers.c
+//
+////////////////////////////////////////////////////////////////////////////////
 
 //
 // void SetupFIFOMonitorChannel(EDMAStreamSelect Channel, bool EnableInterrupt);
@@ -216,14 +209,34 @@ uint32_t DMAFIFODepths[VNUMDMAFIFO] = {
 void SetupFIFOMonitorChannel(EDMAStreamSelect Channel, bool EnableInterrupt) {
   uint32_t Address;             // register address
   uint32_t Data;                // register content
+  static bool GFIFOSizesInitialised = false;
 
   if (!GFIFOSizesInitialised) {
-    InitialiseFIFOSizes();        // load FIFO size table, if not already done
+    if (FPGA_MinorVersion < 10) {
+      t_print("loading new FIFO sizes for 0.x firmware\n");
+      DMAFIFODepths[0] = 8192;        //  eRXDDCDMA (RX)
+      DMAFIFODepths[1] = 1024;        //  eTXDUCDMA (TX)
+      DMAFIFODepths[2] = 256;         //  eMicCodecDMA (Mic)
+      DMAFIFODepths[3] = 256;         //  eSpkCodecDMA (Headphone)
+    } else if (FPGA_MinorVersion <= 12) {
+      t_print("loading new FIFO sizes for 1.0, 1.1, 1.2 firmware\n");
+      DMAFIFODepths[0] = 16384;       //  eRXDDCDMA (RX)
+      DMAFIFODepths[1] = 2048;        //  eTXDUCDMA (TX)
+      DMAFIFODepths[2] = 256;         //  eMicCodecDMA (Mic)
+      DMAFIFODepths[3] = 1024;        //  eSpkCodecDMA (Headphone)
+    } else {
+      t_print("loading new FIFO sizes for firmware version 1.3 and newer\n");
+      DMAFIFODepths[0] = 16384;       //  eRXDDCDMA (RX)
+      DMAFIFODepths[1] = 4096;        //  eTXDUCDMA (TX)
+      DMAFIFODepths[2] = 256;         //  eMicCodecDMA (Mic)
+      DMAFIFODepths[3] = 1024;        //  eSpkCodecDMA (Headphone)
+    }
+
     GFIFOSizesInitialised = true;
   }
 
   Address = VADDRFIFOMONBASE + 4 * Channel + 0x10;      // config register address
-  Data = DMAFIFODepths[(int)Channel];             // memory depth
+  Data = DMAFIFODepths[(int)Channel];                   // memory depth
 
   if (EnableInterrupt) {
     Data += 0x80000000;  // bit 31
@@ -247,7 +260,7 @@ void SetupFIFOMonitorChannel(EDMAStreamSelect Channel, bool EnableInterrupt) {
 uint32_t ReadFIFOMonitorChannel(EDMAStreamSelect Channel, bool* Overflowed, bool* OverThreshold, bool* Underflowed,
                                 unsigned int* Current) {
   uint32_t Address;             // register address
-  uint32_t Data = 0;              // register content
+  uint32_t Data = 0;            // register content
   bool Overflow = false;
   bool OverThresh = false;
   bool Underflow = false;
@@ -268,41 +281,19 @@ uint32_t ReadFIFOMonitorChannel(EDMAStreamSelect Channel, bool* Overflowed, bool
 
   Data = Data & 0xFFFF;                   // strip to 16 bits
   *Current = Data;
-  *Overflowed = Overflow;                   // send out overflow result
-  *OverThreshold = OverThresh;                // send out over threshold result
-  *Underflowed = Underflow;                 // send out underflow result
+  *Overflowed = Overflow;                 // send out overflow result
+  *OverThreshold = OverThresh;            // send out over threshold result
+  *Underflowed = Underflow;               // send out underflow result
 
-  if ((Channel == eTXDUCDMA) || (Channel == eSpkCodecDMA)) { // if a write channel
-    Data = DMAFIFODepths[Channel] - Data;  // calculate free locations
+  //
+  // If it is a "write" channel, return number of free locations instead
+  // of the currentfilling
+  //
+  if ((Channel == eTXDUCDMA) || (Channel == eSpkCodecDMA)) {
+    Data = DMAFIFODepths[Channel] - Data;
   }
 
   return Data;                        // return 16 bit FIFO count
-}
-
-//
-// InitialiseFIFOSizes(void)
-// initialise the FIFO size table, which is FPGA version dependent
-//
-void InitialiseFIFOSizes(void) {
-  ESoftwareID ID;
-  unsigned int Version =  GetFirmwareVersion(&ID);
-
-  //
-  // For Version < 10, the defaults given above are used
-  //
-  if ((Version >= 10) && (Version <= 12)) {
-    t_print("loading new FIFO sizes for updated firmware <= 12\n");
-    DMAFIFODepths[0] = 16384;       //  eRXDDCDMA,           selects RX
-    DMAFIFODepths[1] = 2048;        //  eTXDUCDMA,           selects TX
-    DMAFIFODepths[2] = 256;         //  eMicCodecDMA, selects mic samples
-    DMAFIFODepths[3] = 1024;        //  eSpkCodecDMA selects speaker samples
-  } else if (Version >= 13) {
-    t_print("loading new FIFO sizes for updated firmware V13+\n");
-    DMAFIFODepths[0] = 16384;       //  eRXDDCDMA,           selects RX
-    DMAFIFODepths[1] = 4096;        //  eTXDUCDMA,           selects TX
-    DMAFIFODepths[2] = 256;         //  eMicCodecDMA, selects mic samples
-    DMAFIFODepths[3] = 1024;        //  eSpkCodecDMA selects speaker samples
-  }
 }
 
 //
@@ -311,6 +302,7 @@ void InitialiseFIFOSizes(void) {
 void ResetDMAStreamFIFO(EDMAStreamSelect DDCNum) {
   uint32_t Data;                    // DDC register content
   uint32_t DataBit = 0;
+  static pthread_mutex_t ResetMutex = PTHREAD_MUTEX_INITIALIZER;
 
   switch (DDCNum) {
   case eRXDDCDMA:             // selects RX
@@ -330,13 +322,14 @@ void ResetDMAStreamFIFO(EDMAStreamSelect DDCNum) {
     break;
   }
 
-  sem_wait(&DDCResetFIFOMutex);                       // get protected access
+  // The Mutex takes care we get a clean "data pulse"
+  pthread_mutex_lock(&ResetMutex);
   Data = RegisterRead(VADDRFIFORESET);        // read current content
   Data = Data & ~DataBit;
   RegisterWrite(VADDRFIFORESET, Data);        // set reset bit to zero
   Data = Data | DataBit;
   RegisterWrite(VADDRFIFORESET, Data);        // set reset bit to 1
-  sem_post(&DDCResetFIFOMutex);                       // release protected access
+  pthread_mutex_unlock(&ResetMutex);
 }
 
 //
@@ -345,7 +338,7 @@ void ResetDMAStreamFIFO(EDMAStreamSelect DDCNum) {
 // a value of "7" indicates an interleaved DDC
 // and the rate value is stored for *next* DDC
 //
-const uint32_t DDCSampleCounts[] = {
+static const uint32_t DDCSampleCounts[] = {
   0,            // set to zero so no samples transferred
   1,
   2,
@@ -357,11 +350,13 @@ const uint32_t DDCSampleCounts[] = {
 };
 
 //
-// uint32_t AnalyseDDCHeader(unit32_t Header, unit32_t** DDCCounts)
+// uint32_t AnalyseDDCHeader(unit32_t Header, unit32_t* DDCCounts)
 // parameters are the header read from the DDC stream, and
 // a pointer to an array [DDC count] of ints
 // the array of ints is populated with the number of samples to read for each DDC
 // returns the number of words per frame, which helps set the DMA transfer size
+// This limits the total number of DDCs to 10, since each DDC is described
+// by 3 bits in the Header word.
 //
 uint32_t AnalyseDDCHeader(uint32_t Header, uint32_t* DDCCounts) {
   uint32_t DDC;               // DDC counter
@@ -370,19 +365,23 @@ uint32_t AnalyseDDCHeader(uint32_t Header, uint32_t* DDCCounts) {
 
   for (DDC = 0; DDC < VNUMDDC; DDC++) {
     // 3 bit value for this DDC
-    uint32_t Rate = Header & 7;            // get settings for this DDC
+    uint32_t Rate = Header & 7;
 
     if (Rate != 7) {
       Count = DDCSampleCounts[Rate];
       DDCCounts[DDC] = Count;
-      Total += Count;           // add up samples
-    } else {              // interleaved
-      Header = Header >> 3;
-      Rate = Header & 7;          // next 3 bits
-      Count = 2 * DDCSampleCounts[Rate];
-      DDCCounts[DDC] = Count;
       Total += Count;
-      DDCCounts[DDC + 1] = 0;
+    } else {
+      // This and the next DDC channel form a "synchronised pair"
+      // which share the sample rate and where all samples are
+      // delivered pair-wise in the DDC stream of the first member
+      // of the pair.
+      Header = Header >> 3;
+      Rate = Header & 7;
+      Count = 2 * DDCSampleCounts[Rate];
+      DDCCounts[DDC] = Count;   // This one gets all the samples for the pair
+      Total += Count;
+      DDCCounts[DDC + 1] = 0;   // This one gets no samples
       DDC += 1;
     }
 

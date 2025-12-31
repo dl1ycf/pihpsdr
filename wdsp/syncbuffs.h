@@ -1,4 +1,4 @@
-/*  cmbuffs.h
+/*	cmbuffs.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@pratt.one
 
@@ -34,17 +34,17 @@ typedef struct _syncb
 	void (*exf)(void);							// pointer to function to execute after output buffer is filled
 	double** out;								// pointer to array of output buffers
 	int nstreams;								// number of streams of data being buffered
-	int   max_in_size;							// max input number of complex samples
-	int   max_outsize;							// max output number of complex samples
-	int   r1_outsize;							// number of complex samples taken out of the ring for processing 
+	int	  max_in_size;							// max input number of complex samples
+	int	  max_outsize;							// max output number of complex samples
+	int	  r1_outsize;							// number of complex samples taken out of the ring for processing
 
-	int   r1_size;								// size of a single maximum sized transfer
-	int   r1_active_buffsize;					// size of ring (in complex samples)
+	int	  r1_size;								// size of a single maximum sized transfer
+	int	  r1_active_buffsize;					// size of ring (in complex samples)
 	
 	double** r1_baseptr;						// array of pointers, one to each ring
-	int   r1_inidx;								// in 'double', actual index into the buffer is 2 times this
-	int   r1_outidx;							// in 'double', actual index into the buffer is 2 times this
-	int   r1_unqueuedsamps;						// number of input samples not yet queued/released for execution
+	int	  r1_inidx;								// in 'double', actual index into the buffer is 2 times this
+	int	  r1_outidx;							// in 'double', actual index into the buffer is 2 times this
+	int	  r1_unqueuedsamps;						// number of input samples not yet queued/released for execution
 	volatile long run;							// when 1, thread loops; when 0, thread terminates
 	volatile long accept;						// flag indicating whether accepting input data
 	HANDLE Sem_BuffReady;						// count = number of output-sized buffers queued for processing
@@ -58,7 +58,7 @@ extern void destroy_syncbuffs (SYNCB a);
 
 extern void flush_syncbuffs (SYNCB a);
 
-extern void Syncbound (SYNCB a, int nsamples, double** in);	
+extern void Syncbound (SYNCB a, int nsamples, double** in);
 
 extern void syncbdata (SYNCB a);
 
@@ -85,8 +85,8 @@ typedef struct _dumfilt
 	int opsize;									// number of complex samples exchanged per call
 	int inidx;									// input index into ring (complex samples)
 	int outidx;									// output index from ring (complex samples)
-	double* in;									// pointer to input buffer  (may be same as output buffer)
-	double* out;								// pointer to output buffer  (may be same as input buffer)
+	double* in;									// pointer to input buffer	(may be same as output buffer)
+	double* out;								// pointer to output buffer	 (may be same as input buffer)
 	double* ring;								// pointer to ring buffer
 } dumfilt, *DUMFILT;
 

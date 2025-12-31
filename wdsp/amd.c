@@ -1,4 +1,4 @@
-/*  amd.c
+/*	amd.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -91,19 +91,19 @@ void init_amd(AMD a)
 	//sideband separation
 	a->c0[0] = -0.328201924180698;
 	a->c0[1] = -0.744171491539427;
-    a->c0[2] = -0.923022915444215;
-    a->c0[3] = -0.978490468768238;
-    a->c0[4] = -0.994128272402075;
-    a->c0[5] = -0.998458978159551;
-    a->c0[6] = -0.999790306259206;
-   
-    a->c1[0] = -0.0991227952747244;
-    a->c1[1] = -0.565619728761389;
-    a->c1[2] = -0.857467122550052;
-    a->c1[3] = -0.959123933111275;
-    a->c1[4] = -0.988739372718090;
-    a->c1[5] = -0.996959189310611;
-    a->c1[6] = -0.999282492800792;
+	a->c0[2] = -0.923022915444215;
+	a->c0[3] = -0.978490468768238;
+	a->c0[4] = -0.994128272402075;
+	a->c0[5] = -0.998458978159551;
+	a->c0[6] = -0.999790306259206;
+
+	a->c1[0] = -0.0991227952747244;
+	a->c1[1] = -0.565619728761389;
+	a->c1[2] = -0.857467122550052;
+	a->c1[3] = -0.959123933111275;
+	a->c1[4] = -0.988739372718090;
+	a->c1[5] = -0.996959189310611;
+	a->c1[6] = -0.999282492800792;
 }
 
 void flush_amd (AMD a)
@@ -193,17 +193,17 @@ void xamd (AMD a)
 
 						switch(a->sbmode)
 						{
-						case 0:	//both sidebands
+						case 0: //both sidebands
 							{
 								audio = corr[0];
 								break;
 							}
-						case 1:	//LSB
+						case 1: //LSB
 							{
 								audio = (ai_ps - bi_ps) + (aq_ps + bq_ps);
 								break;
 							}
-						case 2:	//USB
+						case 2: //USB
 							{
 								audio = (ai_ps + bi_ps) - (aq_ps - bq_ps);
 								break;
@@ -267,8 +267,10 @@ SetRXAAMDRun(int channel, int run)
 	AMD a = rxa[channel].amd.p;
 	if (a->run != run)
 	{
-		RXAbp1Check (channel, run, rxa[channel].snba.p->run, rxa[channel].emnr.p->run, 
-			rxa[channel].anf.p->run, rxa[channel].anr.p->run);
+		RXAbp1Check (channel, run, rxa[channel].snba.p->run, rxa[channel].emnr.p->run,
+			rxa[channel].anf.p->run, rxa[channel].anr.p->run,
+			rxa[channel].rnnr.p->run, rxa[channel].sbnr.p->run);  // NR3 + NR4 support
+
 		EnterCriticalSection (&ch[channel].csDSP);
 		a->run = run;
 		RXAbp1Set (channel);

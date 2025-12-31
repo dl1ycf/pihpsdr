@@ -1,4 +1,4 @@
-/*  patchpanel.c
+/*	patchpanel.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -61,7 +61,7 @@ void xpanel (PANEL a)
 	// inselect is either 0(neither), 1(Q), 2(I), or 3(both)
 	switch (a->copy)
 	{
-	case 0:	// no copy
+	case 0: // no copy
 		for (i = 0; i < a->size; i++)
 		{
 			I = a->in[2 * i + 0] * (a->inselect >> 1);		
@@ -70,7 +70,7 @@ void xpanel (PANEL a)
 			a->out[2 * i + 1] = gainQ * Q;
 		}
 		break;
-	case 1:	// copy I to Q (then Q == I)
+	case 1: // copy I to Q (then Q == I)
 		for (i = 0; i < a->size; i++)
 		{
 			I = a->in[2 * i + 0] * (a->inselect >> 1);
@@ -79,7 +79,7 @@ void xpanel (PANEL a)
 			a->out[2 * i + 1] = gainQ * Q;
 		}
 		break;
-	case 2:	// copy Q to I (then I == Q)
+	case 2: // copy Q to I (then I == Q)
 		for (i = 0; i < a->size; i++)
 		{
 			Q = a->in[2 * i + 1] * (a->inselect &  1);
@@ -88,7 +88,7 @@ void xpanel (PANEL a)
 			a->out[2 * i + 1] = gainQ * Q;
 		}
 		break;
-	case 3:	// reverse (I=>Q and Q=>I)
+	case 3: // reverse (I=>Q and Q=>I)
 		for (i = 0; i < a->size; i++)
 		{
 			Q = a->in[2 * i + 0] * (a->inselect >> 1);
@@ -218,7 +218,7 @@ PORT
 void SetTXAPanelSelect (int channel, int select)
 {
 	EnterCriticalSection (&ch[channel].csDSP);
-	if (select == 1) 
+	if (select == 1)
 		txa[channel].panel.p->copy = 3;
 	else
 		txa[channel].panel.p->copy = 0;

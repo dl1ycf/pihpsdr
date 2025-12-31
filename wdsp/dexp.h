@@ -1,4 +1,4 @@
-/*  dexp.h
+/*	dexp.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -64,7 +64,7 @@ typedef struct _dexp
 	double thold;						// hold time
 	int nhold;							// hold count
 	double exp_ratio;					// expander ratio (high-gain to low-gain)
-	double hysteresis_ratio;			// ratio hold_thresh/attack_thresh.  0.0 < ratio < 1.0
+	double hysteresis_ratio;			// ratio hold_thresh/attack_thresh.	 0.0 < ratio < 1.0
 	double low_gain;					// gain when gate is closed
 	double* trigsig;					// buffer for trigger signal (signal after side-channel filter)
 	double* delsig;						// buffer for signal delayed to match trigger signal
@@ -103,8 +103,8 @@ typedef struct _dexp
 
 extern DEXP pdexp[];
 
-__declspec (dllexport) void create_dexp (int id, int run_dexp, int size, double* in, double* out, int rate, double dettau, double tattack, double tdecay, 
-	double thold, double exp_ratio, double hyst_ratio, double attack_thresh, int nc, int wtype, double lowcut, double highcut, 
+__declspec (dllexport) void create_dexp (int id, int run_dexp, int size, double* in, double* out, int rate, double dettau, double tattack, double tdecay,
+	double thold, double exp_ratio, double hyst_ratio, double attack_thresh, int nc, int wtype, double lowcut, double highcut,
 	int run_filt, int run_vox, int run_audelay, double audelay, void (__stdcall *pushvox)(int id, int active),
 	int antivox_run, int antivox_size, int antivox_rate, double antivox_gain, double antivox_tau);
 

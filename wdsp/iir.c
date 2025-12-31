@@ -1,4 +1,4 @@
-/*  iir.c
+/*	iir.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -153,12 +153,12 @@ void calc_speak (SPEAK a)
 		{
 		case 4:
 			bw_parm = 2.4;
-			f_corr  = 1.0 - 0.160 * ratio + 1.440 * ratio * ratio;
+			f_corr	= 1.0 - 0.160 * ratio + 1.440 * ratio * ratio;
 			g_corr = 1.0 - 1.003 * ratio + 3.990 * ratio * ratio;
 			break;
 		default:
 			bw_parm = 1.0;
-			f_corr  = 1.0;
+			f_corr	= 1.0;
 			g_corr = 1.0;
 			break;
 		}
@@ -275,10 +275,10 @@ void xspeak (SPEAK a)
 				for (n = 0; n < a->nstages; n++)
 				{
 					if (n > 0) a->x0[2 * n + j] = a->y0[2 * (n - 1) + j];
-					a->y0[2 * n + j]	= a->a0 * a->x0[2 * n + j] 
-										+ a->a1 * a->x1[2 * n + j] 
-										+ a->a2 * a->x2[2 * n + j] 
-										+ a->b1 * a->y1[2 * n + j] 
+					a->y0[2 * n + j]	= a->a0 * a->x0[2 * n + j]
+										+ a->a1 * a->x1[2 * n + j]
+										+ a->a2 * a->x2[2 * n + j]
+										+ a->b1 * a->y1[2 * n + j]
 										+ a->b2 * a->y2[2 * n + j];
 					a->y2[2 * n + j] = a->y1[2 * n + j];
 					a->y1[2 * n + j] = a->y0[2 * n + j];
@@ -319,7 +319,7 @@ void setSize_speak (SPEAK a, int size)
 ********************************************************************************************************/
 
 PORT
-void SetRXASPCWRun (int channel, int run)
+void SetRXABiQuadRun (int channel, int run)
 {
 	SPEAK a = rxa[channel].speak.p;
 	EnterCriticalSection (&a->cs_update);
@@ -328,7 +328,7 @@ void SetRXASPCWRun (int channel, int run)
 }
 
 PORT
-void SetRXASPCWFreq (int channel, double freq)
+void SetRXABiQuadFreq (int channel, double freq)
 {
 	SPEAK a = rxa[channel].speak.p;
 	EnterCriticalSection (&a->cs_update);
@@ -338,7 +338,7 @@ void SetRXASPCWFreq (int channel, double freq)
 }
 
 PORT
-void SetRXASPCWBandwidth (int channel, double bw)
+void SetRXABiQuadBandwidth (int channel, double bw)
 {
 	SPEAK a = rxa[channel].speak.p;
 	EnterCriticalSection (&a->cs_update);
@@ -348,7 +348,7 @@ void SetRXASPCWBandwidth (int channel, double bw)
 }
 
 PORT
-void SetRXASPCWGain (int channel, double gain)
+void SetRXABiQuadGain (int channel, double gain)
 {
 	SPEAK a = rxa[channel].speak.p;
 	EnterCriticalSection (&a->cs_update);
@@ -370,15 +370,15 @@ void calc_mpeak (MPEAK a)
 	a->mix = (double *) malloc0 (a->size * sizeof (complex));
 	for (i = 0; i < a->npeaks; i++)
 	{
-		a->pfil[i] = create_speak (	1, 
-									a->size, 
-									a->in, 
-									a->tmp, 
-									a->rate, 
-									a->f[i], 
-									a->bw[i], 
-									a->gain[i], 
-									a->nstages, 
+		a->pfil[i] = create_speak ( 1,
+									a->size,
+									a->in,
+									a->tmp,
+									a->rate,
+									a->f[i],
+									a->bw[i],
+									a->gain[i],
+									a->nstages,
 									1 );
 	}
 }
@@ -403,8 +403,8 @@ MPEAK create_mpeak (int run, int size, double* in, double* out, int rate, int np
 	a->npeaks = npeaks;
 	a->nstages = nstages;
 	a->enable  = (int *) malloc0 (a->npeaks * sizeof (int));
-	a->f    = (double *) malloc0 (a->npeaks * sizeof (double));
-	a->bw   = (double *) malloc0 (a->npeaks * sizeof (double));
+	a->f	= (double *) malloc0 (a->npeaks * sizeof (double));
+	a->bw	= (double *) malloc0 (a->npeaks * sizeof (double));
 	a->gain = (double *) malloc0 (a->npeaks * sizeof (double));
 	memcpy (a->enable, enable, a->npeaks * sizeof (int));
 	memcpy (a->f, f, a->npeaks * sizeof (double));
@@ -549,7 +549,7 @@ void SetRXAmpeakFilGain (int channel, int fil, double gain)
 
 /********************************************************************************************************
 *																										*
-*										    Phase Rotator												*
+*											Phase Rotator												*
 *																										*
 ********************************************************************************************************/
 
@@ -704,7 +704,7 @@ void SetTXAPHROTReverse (int channel, int reverse)
 
 /********************************************************************************************************
 *																										*
-*									Complex Bi-Quad Low-Pass				     						*
+*									Complex Bi-Quad Low-Pass											*
 *																										*
 ********************************************************************************************************/
 
@@ -821,7 +821,7 @@ void setSize_bqlp(BQLP a, int size)
 
 /********************************************************************************************************
 *																										*
-*									   Double Bi-Quad Low-Pass				     						*
+*									   Double Bi-Quad Low-Pass											*
 *																										*
 ********************************************************************************************************/
 
@@ -935,7 +935,7 @@ void setSize_dbqlp(BQLP a, int size)
 
 /********************************************************************************************************
 *																										*
-*									Complex Bi-Quad Band-Pass				     						*
+*									Complex Bi-Quad Band-Pass											*
 *																										*
 ********************************************************************************************************/
 
@@ -1056,7 +1056,7 @@ void setSize_bqbp(BQBP a, int size)
 
 /********************************************************************************************************
 *																										*
-*									  Double Bi-Quad Band-Pass				     						*
+*									  Double Bi-Quad Band-Pass											*
 *																										*
 ********************************************************************************************************/
 
@@ -1173,7 +1173,7 @@ void setSize_dbqbp(BQBP a, int size)
 
 /********************************************************************************************************
 *																										*
-*								     Complex Single-Pole High-Pass				     					*
+*									 Complex Single-Pole High-Pass										*
 *																										*
 ********************************************************************************************************/
 
@@ -1278,7 +1278,7 @@ void setSize_sphp(SPHP a, int size)
 
 /********************************************************************************************************
 *																										*
-*								     Double Single-Pole High-Pass				     					*
+*									 Double Single-Pole High-Pass										*
 *																										*
 ********************************************************************************************************/
 

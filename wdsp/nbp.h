@@ -1,4 +1,4 @@
-/*  nbp.h
+/*	nbp.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -72,7 +72,7 @@ typedef struct _nbp
 	int hadnotch;
 } nbp, *NBP;
 
-extern NBP create_nbp(int run, int fnfrun, int position, int size, int nc, int mp, double* in, double* out, 
+extern NBP create_nbp(int run, int fnfrun, int position, int size, int nc, int mp, double* in, double* out,
 	double flow, double fhigh, int rate, int wintype, double gain, int autoincr, int maxpb, NOTCHDB* ptraddr);
 
 extern void destroy_nbp (NBP a);

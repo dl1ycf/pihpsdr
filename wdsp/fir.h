@@ -1,8 +1,8 @@
-/*  fir.h
+/*	fir.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2013, 2016, 2022 Warren Pratt, NR0V
+Copyright (C) 2013, 2016, 2022, 2025 Warren Pratt, NR0V
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@pratt.one
 
@@ -35,6 +35,8 @@ extern double* fir_bandpass (int N, double f_low, double f_high, double samplera
 extern double* get_fsamp_window(int N, int wintype);
 
 extern double *fir_read (int N, const char *filename, int rtype, double scale);
+
+extern void analytic (int N, double* in, double* out);
 
 extern void mp_imp (int N, double* fir, double* mpfir, int pfactor, int polarity);
 

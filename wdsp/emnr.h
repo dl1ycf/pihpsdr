@@ -1,4 +1,4 @@
-/*  emnr.h
+/*	emnr.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -187,23 +187,23 @@ typedef struct _emnr
 		double* nmask;
 		double t2;
 	} ae;
-        struct _post2
-        {
-                int run;
-                double nlevel;
-                double factor;
-                double taper;
-                double tc_decay;
-                double rate_decay;
-                double* w;
-                int noise_frames;
-                int noise_frame_index;
-                double* noise_frame;
-                double olddmag;
-        } post2;
+		struct _post2
+		{
+				int run;
+				double nlevel;
+				double factor;
+				double taper;
+				double tc_decay;
+				double rate_decay;
+				double* w;
+				int noise_frames;
+				int noise_frame_index;
+				double* noise_frame;
+				double olddmag;
+		} post2;
 }emnr, *EMNR;
 
-extern EMNR create_emnr (int run, int position, int size, double* in, double* out, int fsize, int ovrlp, 
+extern EMNR create_emnr (int run, int position, int size, double* in, double* out, int fsize, int ovrlp,
 	int rate, int wintype, double gain, int gain_method, int npe_method, int ae_run);
 
 extern void destroy_emnr (EMNR a);

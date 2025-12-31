@@ -1,4 +1,4 @@
-/*  resample.c
+/*	resample.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -261,7 +261,7 @@ RESAMPLEF create_resampleF ( int run, int size, float* in, float* out, int in_ra
 		z = y;
 		y = x % y;
 		x = z;
-    }
+	}
 	a->L = out_rate / x;
 	a->M = in_rate / x;
 	if (in_rate < out_rate) min_rate = in_rate;

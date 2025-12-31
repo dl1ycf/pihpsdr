@@ -1,4 +1,4 @@
-/*  nobII.c
+/*	nobII.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -40,24 +40,24 @@ void init_nob (NOB a)
 	a->adv_slew_count = (int)(a->advslewtime * a->samplerate);
 	a->adv_count = (int)(a->advtime * a->samplerate);
 	a->hang_count = (int)(a->hangtime * a->samplerate);
-    a->hang_slew_count = (int)(a->hangslewtime * a->samplerate);
-    a->max_imp_seq = (int)(a->max_imp_seq_time * a->samplerate);
-    a->backmult = exp (-1.0 / (a->samplerate * a->backtau));
-    a->ombackmult = 1.0 - a->backmult;
-    if (a->adv_slew_count > 0)
-    {
-        coef = PI / (a->adv_slew_count + 1);
-        for (i = 0; i < a->adv_slew_count; i++)
-            a->awave[i] = 0.5 * cos ((i + 1) * coef);
-    }
-    if (a->hang_slew_count > 0)
-    {
-        coef = PI / a->hang_slew_count;
-        for (i = 0; i < a->hang_slew_count; i++)
-            a->hwave[i] = 0.5 * cos (i * coef);
-    }
+	a->hang_slew_count = (int)(a->hangslewtime * a->samplerate);
+	a->max_imp_seq = (int)(a->max_imp_seq_time * a->samplerate);
+	a->backmult = exp (-1.0 / (a->samplerate * a->backtau));
+	a->ombackmult = 1.0 - a->backmult;
+	if (a->adv_slew_count > 0)
+	{
+		coef = PI / (a->adv_slew_count + 1);
+		for (i = 0; i < a->adv_slew_count; i++)
+			a->awave[i] = 0.5 * cos ((i + 1) * coef);
+	}
+	if (a->hang_slew_count > 0)
+	{
+		coef = PI / a->hang_slew_count;
+		for (i = 0; i < a->hang_slew_count; i++)
+			a->hwave[i] = 0.5 * cos (i * coef);
+	}
 	
-    flush_nob (a);
+	flush_nob (a);
 }
 
 PORT
@@ -91,10 +91,10 @@ NOB create_nob (
 	a->max_imp_seq_time = max_imp_seq_time;
 	a->backtau = backtau;
 	a->threshold = threshold;
-	a->dline_size = (int)(MAX_SAMPLERATE * (MAX_ADV_SLEW_TIME + 
-											MAX_ADV_TIME + 
-											MAX_HANG_SLEW_TIME + 
-											MAX_HANG_TIME + 
+	a->dline_size = (int)(MAX_SAMPLERATE * (MAX_ADV_SLEW_TIME +
+											MAX_ADV_TIME +
+											MAX_HANG_SLEW_TIME +
+											MAX_HANG_TIME +
 											MAX_SEQ_TIME ) + 2);
 	a->dline = (double *)malloc0 (a->dline_size * sizeof (complex));
 	a->imp = (int *)malloc0 (a->dline_size * sizeof (int));
@@ -126,7 +126,7 @@ NOB create_nob (
 PORT
 void destroy_nob (NOB a)
 {
-	_aligned_free (a->legacy);																					   ///////////////  remove
+	_aligned_free (a->legacy);																					   ///////////////	remove
 	_aligned_free (a->fcoefs);
 	_aligned_free (a->ffbuff);
 	_aligned_free (a->bfbuff);
@@ -141,13 +141,13 @@ PORT
 void flush_nob (NOB a)
 {
 	a->out_idx = 0;
-    a->scan_idx = a->out_idx + a->adv_slew_count + a->adv_count + 1;
-    a->in_idx = a->scan_idx + a->max_imp_seq + a->hang_count + a->hang_slew_count + a->filterlen;
-    a->state = 0;
+	a->scan_idx = a->out_idx + a->adv_slew_count + a->adv_count + 1;
+	a->in_idx = a->scan_idx + a->max_imp_seq + a->hang_count + a->hang_slew_count + a->filterlen;
+	a->state = 0;
 	a->overflow = 0;
-    a->avg = 1.0;
-    a->bfb_in_idx = a->filterlen - 1;
-    a->ffb_in_idx = a->filterlen - 1;
+	a->avg = 1.0;
+	a->bfb_in_idx = a->filterlen - 1;
+	a->ffb_in_idx = a->filterlen - 1;
 	memset (a->dline, 0, a->dline_size * sizeof (complex));
 	memset (a->imp, 0, a->dline_size * sizeof (int));
 	memset (a->bfbuff, 0, a->filterlen * sizeof (complex));
@@ -158,19 +158,19 @@ PORT
 void xnob (NOB a)
 {
 	double scale;
-    double mag;
-    int bf_idx;
-    int ff_idx;
-    int lidx, tidx;
-    int i, j, k;
-    int bfboutidx;
-    int ffboutidx;
-    int hcount;
-    int len;
+	double mag;
+	int bf_idx;
+	int ff_idx;
+	int lidx, tidx;
+	int i, j, k;
+	int bfboutidx;
+	int ffboutidx;
+	int hcount;
+	int len;
 	int ffcount;
 	int staydown;
 	EnterCriticalSection (&a->cs_update);
-    if (a->run)
+	if (a->run)
 	{
 		for (i = 0; i < a->buffsize; i++)
 		{
@@ -192,12 +192,12 @@ void xnob (NOB a)
 
 			switch (a->state)
 			{
-				case 0:     // normal output & impulse setup
+				case 0:		// normal output & impulse setup
 					{
 						a->out[2 * i + 0] = a->dline[2 * a->out_idx + 0];
 						a->out[2 * i + 1] = a->dline[2 * a->out_idx + 1];
 						a->Ilast = a->dline[2 * a->out_idx + 0];
-						a->Qlast = a->dline[2 * a->out_idx + 1];    
+						a->Qlast = a->dline[2 * a->out_idx + 1];	
 						if (a->imp[a->scan_idx] > 0)
 						{
 							a->time = 0;
@@ -244,7 +244,7 @@ void xnob (NOB a)
 								a->blank_count -= a->hang_slew_count;
 								a->Inext = a->dline[2 * tidx + 0];
 								a->Qnext = a->dline[2 * tidx + 1];
-                                
+								
 								if (a->mode == 1 || a->mode == 2 || a->mode == 4)
 								{
 									bfboutidx = a->bfb_in_idx;
@@ -332,7 +332,7 @@ void xnob (NOB a)
 						}
 						break;
 					}
-				case 1:     // slew output in advance of blanking period
+				case 1:		// slew output in advance of blanking period
 					{
 						scale = 0.5 + a->awave[a->time];
 						a->out[2 * i + 0] = a->Ilast * scale + (1.0 - scale) * a->I;
@@ -347,7 +347,7 @@ void xnob (NOB a)
 						}
 						break;
 					}
-				case 2:     // initial advance period
+				case 2:		// initial advance period
 					{
 						a->out[2 * i + 0] = a->I;
 						a->out[2 * i + 1] = a->Q;
@@ -361,7 +361,7 @@ void xnob (NOB a)
 						}
 						break;
 					}
-				case 3:     // impulse & hang period
+				case 3:		// impulse & hang period
 					{
 						a->out[2 * i + 0] = a->I;
 						a->out[2 * i + 1] = a->Q;
@@ -375,12 +375,12 @@ void xnob (NOB a)
 								a->state = 4;
 								a->time = 0;
 							}
-							else 
+							else
 								a->state = 0;
 						}
 						break;
 					}
-				case 4:     // slew output after blanking period
+				case 4:		// slew output after blanking period
 					{
 						scale = 0.5 - a->hwave[a->time];
 						a->out[2 * i + 0] = a->Inext * scale + (1.0 - scale) * a->I;
@@ -395,11 +395,11 @@ void xnob (NOB a)
 						a->out[2 * i + 0] = a->Ilast * scale;
 						a->out[2 * i + 1] = a->Qlast * scale;
 						if (++a->time == a->adv_slew_count)
-                        {
-                            a->state = 6;
-                            a->time = 0;
-                            a->blank_count += a->adv_count + a->filterlen;
-                        }
+						{
+							a->state = 6;
+							a->time = 0;
+							a->blank_count += a->adv_count + a->filterlen;
+						}
 						break;
 					}
 				case 6:
@@ -414,36 +414,36 @@ void xnob (NOB a)
 					{
 						a->out[2 * i + 0] = 0.0;
 						a->out[2 * i + 1] = 0.0;
-                        staydown = 0;
-                        a->time = 0;
-                        if ((tidx = a->scan_idx + a->hang_slew_count + a->hang_count) >= a->dline_size) tidx -= a->dline_size;
-                        while (a->time++ <= a->adv_count + a->adv_slew_count + a->hang_slew_count + a->hang_count)                                                                            //  CHECK EXACT COUNTS!!!!!!!!!!!!!!!!!!!!!!!
-                        {
-                            if (a->imp[tidx] == 1) staydown = 1;
-                            if (--tidx < 0) tidx += a->dline_size;
-                        }
-                        if (staydown == 0)
-                        {
-                            if (a->hang_count > 0)
-                            {
-                                a->state = 8;
-                                a->time = 0;
-                            }
-                            else if (a->hang_slew_count > 0)
-                            {
-                                a->state = 9;
-                                a->time = 0;
-                                if ((tidx = a->scan_idx + a->hang_slew_count + a->hang_count - a->adv_count - a->adv_slew_count) >= a->dline_size) tidx -= a->dline_size;
-                                if (tidx < 0) tidx += a->dline_size;
-                                a->Inext = a->dline[2 * tidx + 0];
-                                a->Qnext = a->dline[2 * tidx + 1];
-                            }
-                            else
-                            {
-                                a->state = 0;
-                                a->overflow = 0;
-                            }
-                        }
+						staydown = 0;
+						a->time = 0;
+						if ((tidx = a->scan_idx + a->hang_slew_count + a->hang_count) >= a->dline_size) tidx -= a->dline_size;
+						while (a->time++ <= a->adv_count + a->adv_slew_count + a->hang_slew_count + a->hang_count)																			  //  CHECK EXACT COUNTS!!!!!!!!!!!!!!!!!!!!!!!
+						{
+							if (a->imp[tidx] == 1) staydown = 1;
+							if (--tidx < 0) tidx += a->dline_size;
+						}
+						if (staydown == 0)
+						{
+							if (a->hang_count > 0)
+							{
+								a->state = 8;
+								a->time = 0;
+							}
+							else if (a->hang_slew_count > 0)
+							{
+								a->state = 9;
+								a->time = 0;
+								if ((tidx = a->scan_idx + a->hang_slew_count + a->hang_count - a->adv_count - a->adv_slew_count) >= a->dline_size) tidx -= a->dline_size;
+								if (tidx < 0) tidx += a->dline_size;
+								a->Inext = a->dline[2 * tidx + 0];
+								a->Qnext = a->dline[2 * tidx + 1];
+							}
+							else
+							{
+								a->state = 0;
+								a->overflow = 0;
+							}
+						}
 						break;
 					}
 				case 8:
@@ -451,35 +451,35 @@ void xnob (NOB a)
 						a->out[2 * i + 0] = 0.0;
 						a->out[2 * i + 1] = 0.0;
 						if (++a->time == a->hang_count)
-                        {
-                            if (a->hang_slew_count > 0)
-                            {
-                                a->state = 9;
-                                a->time = 0;
-                                if ((tidx = a->scan_idx + a->hang_slew_count - a->adv_count - a->adv_slew_count) >= a->dline_size) tidx -= a->dline_size;
-                                if (tidx < 0) tidx += a->dline_size;
-                                a->Inext = a->dline[2 * tidx + 0];
-                                a->Qnext = a->dline[2 * tidx + 1];
-                            }
-                            else
-                            {
-                                a->state = 0;
-                                a->overflow = 0;
-                            }
-                        }
+						{
+							if (a->hang_slew_count > 0)
+							{
+								a->state = 9;
+								a->time = 0;
+								if ((tidx = a->scan_idx + a->hang_slew_count - a->adv_count - a->adv_slew_count) >= a->dline_size) tidx -= a->dline_size;
+								if (tidx < 0) tidx += a->dline_size;
+								a->Inext = a->dline[2 * tidx + 0];
+								a->Qnext = a->dline[2 * tidx + 1];
+							}
+							else
+							{
+								a->state = 0;
+								a->overflow = 0;
+							}
+						}
 						break;
 					}
 				case 9:
 					{
 						scale = 0.5 - a->hwave[a->time];
-                        a->out[2 * i + 0] = a->Inext * scale;
-                        a->out[2 * i + 1] = a->Qnext * scale;
+						a->out[2 * i + 0] = a->Inext * scale;
+						a->out[2 * i + 1] = a->Qnext * scale;
 
-                        if (++a->time >= a->hang_slew_count)
-                        {
-                            a->state = 0;
-                            a->overflow = 0;
-                        }
+						if (++a->time >= a->hang_slew_count)
+						{
+							a->state = 0;
+							a->overflow = 0;
+						}
 						break;
 					}
 			}
@@ -597,7 +597,7 @@ void pSetRCVRNOBThreshold (NOB a, double thresh)
 
 /********************************************************************************************************
 *																										*
-*									    CALLS FOR EXTERNAL USE											*
+*										CALLS FOR EXTERNAL USE											*
 *																										*
 ********************************************************************************************************/
 

@@ -1,0 +1,24 @@
+RNNoise is a noise suppression library based on a recurrent neural network.
+A description of the algorithm is provided in the following paper:
+
+J.-M. Valin, A Hybrid DSP/Deep Learning Approach to Real-Time Full-Band Speech
+Enhancement, Proceedings of IEEE Multimedia Signal Processing (MMSP) Workshop,
+arXiv:1709.08243, 2018.
+https://arxiv.org/pdf/1709.08243.pdf
+
+Note from DL1YCF
+================
+
+The material put into piHPDSR is meant as a minimal model for the ease of the user,
+it is generally recommended to use "installed" versions of RNNoise compiled
+with CPU-specific optimisations etc.
+
+The code copied here comes from
+
+https://github.com/xiph/rnnoise.git
+
+A "Makefile" has been provided that just compiles the files needed with standard
+optimisation levels.
+
+Since the file src/rnnoise_data.c (80 MByte) is larger that the recommended
+maximum file size in github (50 MByte), it has been split into two parts.

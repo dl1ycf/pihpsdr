@@ -1,4 +1,4 @@
-/*  linux_port.h
+/*	linux_port.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -62,7 +62,7 @@ john.d.melton@googlemail.com
 #define __forceinline
 
 #define _aligned_malloc(x,y) malloc(x)
-#define _aligned_free(x)     free(x)
+#define _aligned_free(x)	 free(x)
 // Activate these for malloc debug
 //#define _aligned_malloc(x,y) my_malloc(x);
 //#define _aligned_free(x) my_free(x);
@@ -87,7 +87,9 @@ void my_free(void *p);
 
 void QueueUserWorkItem(void *function,void *context,int flags);
 
-void InitializeCriticalSectionAndSpinCount(pthread_mutex_t *mutex,int count);
+// these two functions are the same on LINUX
+void InitializeCriticalSection(pthread_mutex_t *mutex);
+void InitializeCriticalSectionAndSpinCount(pthread_mutex_t *mutex, int count);
 
 void EnterCriticalSection(pthread_mutex_t *mutex);
 

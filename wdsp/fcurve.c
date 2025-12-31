@@ -1,4 +1,4 @@
-/*  fcurve.c
+/*	fcurve.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -29,18 +29,18 @@ warren@wpratt.com
 double* fc_impulse (int nc, double f0, double f1, double g0, double g1, int curve, double samplerate, double scale, int ctfmode, int wintype)
 {
 	// check for previous in the cache
-	struct Params 
+	struct Params
 	{
-		int     nc;
-		int     curve;
-		int     ctfmode;
-		int     wintype;
-		double  f0;
-		double  f1;
-		double  g0;
-		double  g1;
-		double  samplerate;
-		double  scale;
+		int		nc;
+		int		curve;
+		int		ctfmode;
+		int		wintype;
+		double	f0;
+		double	f1;
+		double	g0;
+		double	g1;
+		double	samplerate;
+		double	scale;
 	};
 
 	struct Params params;
@@ -75,13 +75,13 @@ double* fc_impulse (int nc, double f0, double f1, double g0, double g1, int curv
 			f = fn * samplerate / 2.0;
 			switch (curve)
 			{
-			case 0:	// fm pre-emphasis
+			case 0: // fm pre-emphasis
 				if (f0 > 0.0)
 					A[i] = scale * (g0_lin * f / f0);
 				else
 					A[i] = 0.0;
 				break;
-			case 1:	// fm de-emphasis
+			case 1: // fm de-emphasis
 				if (f > 0.0)
 					A[i] = scale * (g0_lin * f0 / f);
 				else
@@ -98,13 +98,13 @@ double* fc_impulse (int nc, double f0, double f1, double g0, double g1, int curv
 			f = fn * samplerate / 2.0;
 			switch (curve)
 			{
-			case 0:	// fm pre-emphasis
+			case 0: // fm pre-emphasis
 				if (f0 > 0.0)
 					A[i] = scale * (g0_lin * f / f0);
 				else
 					A[i] = 0.0;
 				break;
-			case 1:	// fm de-emphasis
+			case 1: // fm de-emphasis
 				if (f > 0.0)
 					A[i] = scale * (g0_lin * f0 / f);
 				else
@@ -119,7 +119,7 @@ double* fc_impulse (int nc, double f0, double f1, double g0, double g1, int curv
 		double lowmag, highmag, flow4, fhigh4;
 		if (nc & 1)
 		{
-			low  = (int)(2.0 * f0 / samplerate * mid);
+			low	 = (int)(2.0 * f0 / samplerate * mid);
 			high = (int)(2.0 * f1 / samplerate * mid + 0.5);
 			lowmag = A[low];
 			highmag = A[high];
@@ -144,7 +144,7 @@ double* fc_impulse (int nc, double f0, double f1, double g0, double g1, int curv
 		}
 		else
 		{
-			low  = (int)(2.0 * f0 / samplerate * mid - 0.5);
+			low	 = (int)(2.0 * f0 / samplerate * mid - 0.5);
 			high = (int)(2.0 * f1 / samplerate * mid - 0.5);
 			lowmag = A[low];
 			highmag = A[high];

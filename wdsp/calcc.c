@@ -1,4 +1,4 @@
-/*  calcc.c
+/*	calcc.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -41,7 +41,7 @@ void size_calcc (CALCC a)
 	a->ys = (double*)malloc0(a->tsamps * sizeof(double));
 	a->cat = (double*)malloc0(4 * a->nsamps * sizeof(double));
 
-	a->t    = (double *) malloc0 ((a->ints + 1) * sizeof(double));
+	a->t	= (double *) malloc0 ((a->ints + 1) * sizeof(double));
 	a->tmap = (double *) malloc0 ((a->ints + 1) * sizeof(double));
 	for (i = 0; i < a->ints + 1; i++)
 		a->t[i] = (double)i / (double)a->ints;
@@ -116,7 +116,7 @@ void desize_calcc (CALCC a)
 	_aligned_free(a->env_RX);
 }
 
-CALCC create_calcc (int channel, int runcal, int size, int rate, int ints, int spi, double hw_scale, 
+CALCC create_calcc (int channel, int runcal, int size, int rate, int ints, int spi, double hw_scale,
 	double moxdelay, double loopdelay, double ptol, int mox, int solidmox, int pin, int map, int stbl,
 	int npsamps, double alpha)
 {
@@ -139,7 +139,7 @@ CALCC create_calcc (int channel, int runcal, int size, int rate, int ints, int s
 	a->npsamps = npsamps;
 	a->alpha = alpha;
 
-	a->info  = (int *) malloc0 (16 * sizeof (int));
+	a->info	 = (int *) malloc0 (16 * sizeof (int));
 	a->binfo = (int *) malloc0 (16 * sizeof (int));
 
 	a->ctrl.state = 0;
@@ -274,7 +274,7 @@ void scheck(CALCC a)
 			if (out > 1.0)
 				a->binfo[6] |= 0x0004;
 			if (out < 0.0) a->binfo[6] |= 0x0010;
-		} 
+		}
 	}
 
 	dx = a->t[a->ints] - a->t[intm1];
@@ -337,7 +337,7 @@ void calc (CALCC a)
 		double txrxcoefs[4 * 2];
 		double rx_scale;
 		if (a->ints < 16) rints = 1;
-		else              rints = 2;
+		else			  rints = 2;
 		ix = rints - 1;
 		for (i = 0; i <= rints; i++)
 			tvec[i] = (double)i / (double)rints / a->hw_scale;
@@ -360,7 +360,7 @@ void calc (CALCC a)
 	a->binfo[4] = (int)(256.0 * (a->hw_scale / a->rx_scale));
 	a->binfo[5]++;
 
-	if (a->pin)	// regress
+	if (a->pin) // regress
 	{
 		const double slope = 0.001;
 		double max_rx;
@@ -375,7 +375,7 @@ void calc (CALCC a)
 	for (i = 0; i < a->nsamps; i++)
 	{
 		norm = a->env_TX[i] * a->env_RX[i];
-		a->x[i]  = a->rx_scale * a->env_RX[i];
+		a->x[i]	 = a->rx_scale * a->env_RX[i];
 		a->ym[i] = (a->hw_scale * a->env_TX[i]) / (a->rx_scale * a->env_RX[i]);
 		a->yc[i] = (+ a->txs[2 * i + 0] * a->rxs[2 * i + 0] + a->txs[2 * i + 1] * a->rxs[2 * i + 1]) / norm;
 		a->ys[i] = (- a->txs[2 * i + 0] * a->rxs[2 * i + 1] + a->txs[2 * i + 1] * a->rxs[2 * i + 0]) / norm;
@@ -394,7 +394,7 @@ void calc (CALCC a)
 		}
 	}
 
-	if (a->pin)	// pin
+	if (a->pin) // pin
 	{
 		const double mval = 1.0e+00 - 1.0e-10;
 		double cval, sval;
@@ -408,7 +408,7 @@ void calc (CALCC a)
 		qsort(a->cat, a->nsamps, 4 * sizeof(double), fcompare);
 		for (i = 0; i < a->nsamps; i++)
 		{
-			a->x[i]  = a->cat[4 * i + 0];
+			a->x[i]	 = a->cat[4 * i + 0];
 			a->ym[i] = a->cat[4 * i + 1];
 			a->yc[i] = a->cat[4 * i + 2];
 			a->ys[i] = a->cat[4 * i + 3];
@@ -424,7 +424,7 @@ void calc (CALCC a)
 		sval /= 16.0;
 		for (i = a->nsamps; i < a->tsamps; i++)
 		{
-			a->x[i]  = mval;
+			a->x[i]	 = mval;
 			a->ym[i] = mval;
 			a->yc[i] = cval;
 			a->ys[i] = sval;
@@ -440,7 +440,7 @@ void calc (CALCC a)
 		xbuilder(a->ccbld, a->nsamps, a->x, a->ys, a->ints, a->t, &(a->binfo[3]), a->cs, a->ptol);
 	}
 
-	if (a->pin)	// tune
+	if (a->pin) // tune
 	{
 		int k = a->ints - 1;
 		double dx = a->t[a->ints] - a->t[a->ints - 1];
@@ -461,7 +461,7 @@ void calc (CALCC a)
 	}
 
 	EnterCriticalSection (&a->disp.cs_disp);
-	memcpy(a->disp.x, a->x,  a->nsamps * sizeof (double));
+	memcpy(a->disp.x, a->x,	 a->nsamps * sizeof (double));
 	memcpy(a->disp.ym, a->ym, a->nsamps * sizeof (double));
 	memcpy(a->disp.yc, a->yc, a->nsamps * sizeof (double));
 	memcpy(a->disp.ys, a->ys, a->nsamps * sizeof (double));
@@ -794,7 +794,7 @@ void pscc (int channel, int size, double* tx, double* rx)
 					}
 					else if (++(a->ctrl.bs_count) >= 2)
 						a->ctrl.state = LRESET;
-					else if (InterlockedAnd (&a->mox, 1) && InterlockedAnd (&a->solidmox, 1)) 
+					else if (InterlockedAnd (&a->mox, 1) && InterlockedAnd (&a->solidmox, 1))
 						a->ctrl.state = LSETUP;
 					else a->ctrl.state = LWAIT;
 				}
@@ -836,7 +836,7 @@ void pscc (int channel, int size, double* tx, double* rx)
 	LeaveCriticalSection (&txa[channel].calcc.cs_update);
 }
 
-PORT 
+PORT
 void psccF (int channel, int size, float *Itxbuff, float *Qtxbuff, float *Irxbuff, float *Qrxbuff, int mox, int solidmox)
 {
 	int i;
@@ -910,7 +910,7 @@ void SetPSMox (int channel, int mox)
 	}
 }
 
-PORT 
+PORT
 void GetPSInfo (int channel, int *info)
 {
 	CALCC a;
@@ -1051,7 +1051,7 @@ void GetPSDisp (int channel, double* x, double* ym, double* yc, double* ys, doub
 {
 	CALCC a = txa[channel].calcc.p;
 	EnterCriticalSection (&a->disp.cs_disp);
-	memcpy (x,  a->disp.x,  a->nsamps * sizeof (double));
+	memcpy (x,	a->disp.x,	a->nsamps * sizeof (double));
 	memcpy (ym, a->disp.ym, a->nsamps * sizeof (double));
 	memcpy (yc, a->disp.yc, a->nsamps * sizeof (double));
 	memcpy (ys, a->disp.ys, a->nsamps * sizeof (double));
@@ -1132,21 +1132,21 @@ PORT
 void SetPSIntsAndSpi (int channel, int ints, int spi)
 {
 	CALCC a = txa[channel].calcc.p;
-	IQC   b = txa[channel].iqc.p1;
+	IQC	  b = txa[channel].iqc.p1;
 	if (b->ints != ints || b->dog.spi != spi || a->ints != ints || a->spi != spi)
 	{
 		// SHUT-DOWN
 		const int timeout = 50;
-		int runcal   = a->runcal;
-		int mancal   = a->ctrl.mancal;
+		int runcal	 = a->runcal;
+		int mancal	 = a->ctrl.mancal;
 		int automode = a->ctrl.automode;
-		int turnon   = a->ctrl.turnon;
+		int turnon	 = a->ctrl.turnon;
 		int count = 0;
 		SetPSControl (a->channel, 1, 0, 0, 0);
-		while (count++ < timeout && (LRESET != _InterlockedAnd (&a->ctrl.current_state, 0xFFFFFFFF) 
-			|| _InterlockedAnd (&a->ctrl.running, 1) || _InterlockedAnd (&b->run, 1))) 
+		while (count++ < timeout && (LRESET != _InterlockedAnd (&a->ctrl.current_state, 0xFFFFFFFF)
+			|| _InterlockedAnd (&a->ctrl.running, 1) || _InterlockedAnd (&b->run, 1)))
 			Sleep (1);						// wait for normal shutdown (when samples are flowing)
-		if (LRESET != _InterlockedAnd (&a->ctrl.current_state, 0xFFFFFFFF) 
+		if (LRESET != _InterlockedAnd (&a->ctrl.current_state, 0xFFFFFFFF)
 			|| _InterlockedAnd (&a->ctrl.running, 1) || _InterlockedAnd (&b->run, 1))
 			ForceShutDown(a, b, timeout);	// apparently no sammples flowing; force shutdown.
 		// MAKE CHANGES

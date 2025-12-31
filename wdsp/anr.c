@@ -1,4 +1,4 @@
-/*  anr.c
+/*	anr.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -81,11 +81,11 @@ void destroy_anr (ANR a)
 
 void xanr (ANR a, int position)
 {
-    int i, j, idx;
-    double c0, c1;
-    double y, error, sigma, inv_sigp;
+	int i, j, idx;
+	double c0, c1;
+	double y, error, sigma, inv_sigp;
 	double nel, nev;
-    if (a->run && (a->position == position))
+	if (a->run && (a->position == position))
 	{
 		for (i = 0; i < a->buff_size; i++)
 		{
@@ -169,8 +169,10 @@ SetRXAANRRun (int channel, int run)
 	ANR a = rxa[channel].anr.p;
 	if (a->run != run)
 	{
-		RXAbp1Check (channel, rxa[channel].amd.p->run, rxa[channel].snba.p->run, 
-			rxa[channel].emnr.p->run, rxa[channel].anf.p->run, run);
+		RXAbp1Check (channel, rxa[channel].amd.p->run, rxa[channel].snba.p->run,
+			rxa[channel].emnr.p->run, rxa[channel].anf.p->run, run,
+			rxa[channel].rnnr.p->run, rxa[channel].sbnr.p->run);  // NR3 + NR4 support
+
 		EnterCriticalSection (&ch[channel].csDSP);
 		a->run = run;
 		RXAbp1Set (channel);

@@ -1,4 +1,4 @@
-/*  nbp.c
+/*	nbp.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -40,9 +40,9 @@ NOTCHDB create_notchdb (int master_run, int maxnotches)
 	a->nn = 0;
 	a->fcenter = (double *) malloc0 (a->maxnotches * sizeof (double));
 	a->fwidth  = (double *) malloc0 (a->maxnotches * sizeof (double));
-	a->nlow    = (double *) malloc0 (a->maxnotches * sizeof (double));
+	a->nlow	   = (double *) malloc0 (a->maxnotches * sizeof (double));
 	a->nhigh   = (double *) malloc0 (a->maxnotches * sizeof (double));
-	a->active  = (int    *) malloc0 (a->maxnotches * sizeof (int   ));
+	a->active  = (int	 *) malloc0 (a->maxnotches * sizeof (int   ));
 	return a;
 }
 
@@ -97,7 +97,7 @@ double min_notch_width (NBP a)
 	return min_width;
 }
 
-int make_nbp (int nn, int* active, double* center, double* width, double* nlow, double* nhigh, 
+int make_nbp (int nn, int* active, double* center, double* width, double* nlow, double* nhigh,
 	double minwidth, int autoincr, double flow, double fhigh, double* bplow, double* bphigh, int* havnotch)
 {
 	int nbp;
@@ -192,14 +192,14 @@ void calc_nbp_lightweight (NBP a)
 		offset = b->tunefreq + b->shift;
 		fl = a->flow  + offset;
 		fh = a->fhigh + offset;
-		a->numpb = make_nbp (b->nn, b->active, b->fcenter, b->fwidth, b->nlow, b->nhigh, 
+		a->numpb = make_nbp (b->nn, b->active, b->fcenter, b->fwidth, b->nlow, b->nhigh,
 			min_notch_width (a), a->autoincr, fl, fh, a->bplow, a->bphigh, &a->havnotch);
 		// when tuning, no need to recalc filter if there were not and are not any notches in passband
 		if (a->hadnotch || a->havnotch)
 		{
 			for (i = 0; i < a->numpb; i++)
 			{
-				a->bplow[i]  -=	offset;
+				a->bplow[i]	 -= offset;
 				a->bphigh[i] -= offset;
 			}
 			a->impulse = fir_mbandpass (a->nc, a->numpb, a->bplow, a->bphigh,
@@ -225,11 +225,11 @@ void calc_nbp_impulse (NBP a)
 		offset = b->tunefreq + b->shift;
 		fl = a->flow  + offset;
 		fh = a->fhigh + offset;
-		a->numpb = make_nbp (b->nn, b->active, b->fcenter, b->fwidth, b->nlow, b->nhigh, 
+		a->numpb = make_nbp (b->nn, b->active, b->fcenter, b->fwidth, b->nlow, b->nhigh,
 			min_notch_width (a), a->autoincr, fl, fh, a->bplow, a->bphigh, &a->havnotch);
 		for (i = 0; i < a->numpb; i++)
 		{
-			a->bplow[i]  -=	offset;
+			a->bplow[i]	 -= offset;
 			a->bphigh[i] -= offset;
 		}
 		a->impulse = fir_mbandpass (a->nc, a->numpb, a->bplow, a->bphigh,
@@ -241,7 +241,7 @@ void calc_nbp_impulse (NBP a)
 	}
 }
 
-NBP create_nbp(int run, int fnfrun, int position, int size, int nc, int mp, double* in, double* out, 
+NBP create_nbp(int run, int fnfrun, int position, int size, int nc, int mp, double* in, double* out,
 	double flow, double fhigh, int rate, int wintype, double gain, int autoincr, int maxpb, NOTCHDB* ptraddr)
 {
 	NBP a = (NBP) malloc0 (sizeof (nbp));
@@ -498,7 +498,7 @@ void RXANBPSetShiftFrequency (int channel, double shift)
 PORT
 void RXANBPSetNotchesRun (int channel, int run)
 {
-	NOTCHDB a = rxa[channel].ndb.p; 
+	NOTCHDB a = rxa[channel].ndb.p;
 	NBP b = rxa[channel].nbp0.p;
 	if ( run != a->master_run)
 	{

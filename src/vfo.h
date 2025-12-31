@@ -111,13 +111,11 @@ struct _mode_settings {
   int    nr2_post_rate;
   double nr2_trained_threshold;
   double nr2_trained_t2;
-#ifdef EXTNR
-  double nr4_reduction_amount;      // NR4 parameters, only used if compiled with EXTNR
+  double nr4_reduction_amount;      // NR4 parameters
   double nr4_smoothing_factor;
   double nr4_whitening_factor;
   double nr4_noise_rescale;
   double nr4_post_threshold;
-#endif
   int squelch_enable;               // Squelch on/off
   double squelch;                   // squelch value
   int anf;                          // Automatic notch filter

@@ -1,4 +1,4 @@
-/*  gen.c
+/*	gen.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -204,7 +204,7 @@ void flush_gen (GEN a)
 	a->ttpulse.state = 0;
 }
 
-enum pstate 
+enum pstate
 {
 	OFF,
 	UP,
@@ -218,7 +218,7 @@ void xgen (GEN a)
 	{
 		switch (a->mode)
 		{
-		case 0:	// tone
+		case 0: // tone
 			{
 				int i;
 				double t1, t2;
@@ -234,11 +234,11 @@ void xgen (GEN a)
 					sinphase = t1 * a->tone.sindelta + t2 * a->tone.cosdelta;
 					a->tone.phs += a->tone.delta;
 					if (a->tone.phs >= TWOPI) a->tone.phs -= TWOPI;
-					if (a->tone.phs <   0.0 ) a->tone.phs += TWOPI;
+					if (a->tone.phs <	0.0 ) a->tone.phs += TWOPI;
 				}
 				break;
 			}
-		case 1:	// two-tone
+		case 1: // two-tone
 			{
 				int i;
 				double tcos, tsin;
@@ -285,7 +285,7 @@ void xgen (GEN a)
 				}
 				break;
 			}
-		case 3:  // sweep
+		case 3:	 // sweep
 			{
 				int i;
 				for (i = 0; i < a->size; i++)
@@ -295,13 +295,13 @@ void xgen (GEN a)
 					a->sweep.phs += a->sweep.dphs;
 					a->sweep.dphs += a->sweep.d2phs;
 					if (a->sweep.phs >= TWOPI) a->sweep.phs -= TWOPI;
-					if (a->sweep.phs <   0.0 ) a->sweep.phs += TWOPI;
+					if (a->sweep.phs <	 0.0 ) a->sweep.phs += TWOPI;
 					if (a->sweep.dphs > a->sweep.dphsmax)
 						a->sweep.dphs = TWOPI * a->sweep.f1 / a->rate;
 				}
 				break;
 			}
-		case 4:  // sawtooth (audio only)
+		case 4:	 // sawtooth (audio only)
 			{
 				int i;
 				for (i = 0; i < a->size; i++)
@@ -313,13 +313,13 @@ void xgen (GEN a)
 				}
 			}
 			break;
-		case 5:  // triangle (audio only)
+		case 5:	 // triangle (audio only)
 			{
 				int i;
 				for (i = 0; i < a->size; i++)
 				{
 					if (a->tri.t > a->tri.period) a->tri.t1 = a->tri.t -= a->tri.period;
-					if (a->tri.t > a->tri.half)	a->tri.t1 -= a->tri.delta;
+					if (a->tri.t > a->tri.half) a->tri.t1 -= a->tri.delta;
 					else						a->tri.t1 += a->tri.delta;
 					a->out[2 * i + 0] = a->tri.mag * (4.0 * a->tri.t1 * a->tri.f - 1.0);
 					a->out[2 * i + 1] = 0.0;
@@ -327,7 +327,7 @@ void xgen (GEN a)
 				}
 			}
 			break;
-		case 6:  // pulse (audio or IQ output)
+		case 6:	 // pulse (audio or IQ output)
 			{
 				int i;
 				double t1, t2;
@@ -414,7 +414,7 @@ void xgen (GEN a)
 					sinphase = t1 * a->pulse.tsindelta + t2 * a->pulse.tcosdelta;
 					a->pulse.tphs += a->pulse.tdelta;
 					if (a->pulse.tphs >= TWOPI) a->pulse.tphs -= TWOPI;
-					if (a->pulse.tphs <   0.0 ) a->pulse.tphs += TWOPI;
+					if (a->pulse.tphs <	  0.0 ) a->pulse.tphs += TWOPI;
 				}
 			}
 			break;
@@ -505,14 +505,14 @@ void xgen (GEN a)
 					sinphase1 = t1a * a->ttpulse.tsindelta1 + t1b * a->ttpulse.tcosdelta1;
 					a->ttpulse.tphs1 += a->ttpulse.tdelta1;
 					if (a->ttpulse.tphs1 >= TWOPI) a->ttpulse.tphs1 -= TWOPI;
-					if (a->ttpulse.tphs1 <  0.0)   a->ttpulse.tphs1 += TWOPI;
+					if (a->ttpulse.tphs1 <	0.0)   a->ttpulse.tphs1 += TWOPI;
 					t2a = cosphase2;
 					t2b = sinphase2;
 					cosphase2 = t2a * a->ttpulse.tcosdelta2 - t2b * a->ttpulse.tsindelta2;
 					sinphase2 = t2a * a->ttpulse.tsindelta2 + t2b * a->ttpulse.tcosdelta2;
 					a->ttpulse.tphs2 += a->ttpulse.tdelta2;
 					if (a->ttpulse.tphs2 >= TWOPI) a->ttpulse.tphs2 -= TWOPI;
-					if (a->ttpulse.tphs2 <  0.0)   a->ttpulse.tphs2 += TWOPI;
+					if (a->ttpulse.tphs2 <	0.0)   a->ttpulse.tphs2 += TWOPI;
 				}
 			}
 			break;

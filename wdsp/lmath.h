@@ -1,4 +1,4 @@
-/*  lmath.h
+/*	lmath.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -27,13 +27,13 @@ warren@wpratt.com
 extern void dR (int n, double* r, double* y, double* z);
 
 extern void trI (
-    int n,
-    double* r,
-    double* B,
+	int n,
+	double* r,
+	double* B,
 	double* y,
 	double* v,
 	double* dR_z
-    );
+	);
 
 extern void asolve(int xsize, int asize, double* x, double* a, double* r, double* z);
 

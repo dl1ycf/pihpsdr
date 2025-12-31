@@ -1,4 +1,4 @@
-/*  iir.h
+/*	iir.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -109,6 +109,14 @@ extern void setSamplerate_speak (SPEAK a, int rate);
 
 extern void setSize_speak (SPEAK a, int size);
 
+extern __declspec (dllexport) void SetRXABiQuadRun(int channel, int run);
+
+extern __declspec (dllexport) void SetRXABiQuadFreq(int channel, double freq);
+
+extern __declspec (dllexport) void SetRXABiQuadBandwidth(int channel, double bw);
+
+extern __declspec (dllexport) void SetRXABiQuadGain(int channel, double gain);
+
 #endif
 
 /********************************************************************************************************
@@ -157,7 +165,7 @@ extern void setSize_mpeak (MPEAK a, int size);
 
 /********************************************************************************************************
 *																										*
-*										     Phase Rotator      										*
+*											 Phase Rotator												*
 *																										*
 ********************************************************************************************************/
 
@@ -198,7 +206,7 @@ extern void setSize_phrot (PHROT a, int size);
 
 /********************************************************************************************************
 *																										*
-*									Complex Bi-Quad Low-Pass				     						*
+*									Complex Bi-Quad Low-Pass											*
 *																										*
 ********************************************************************************************************/
 
@@ -239,7 +247,7 @@ extern void setSize_bqlp(BQLP a, int size);
 
 /********************************************************************************************************
 *																										*
-*									   Double Bi-Quad Low-Pass				     						*
+*									   Double Bi-Quad Low-Pass											*
 *																										*
 ********************************************************************************************************/
 
@@ -264,7 +272,7 @@ extern void setSize_dbqlp(BQLP a, int size);
 
 /********************************************************************************************************
 *																										*
-*									Complex Bi-Quad Band-Pass				     						*
+*									Complex Bi-Quad Band-Pass											*
 *																										*
 ********************************************************************************************************/
 
@@ -305,7 +313,7 @@ extern void setSize_bqbp(BQBP a, int size);
 
 /********************************************************************************************************
 *																										*
-*									  Double Bi-Quad Band-Pass				     						*
+*									  Double Bi-Quad Band-Pass											*
 *																										*
 ********************************************************************************************************/
 
@@ -330,7 +338,7 @@ extern void setSize_dbqbp(BQBP a, int size);
 
 /********************************************************************************************************
 *																										*
-*									   Double Single-Pole High-Pass				   						*
+*									   Double Single-Pole High-Pass										*
 *																										*
 ********************************************************************************************************/
 
@@ -369,7 +377,7 @@ extern void setSize_dsphp(SPHP a, int size);
 
 /********************************************************************************************************
 *																										*
-*								     Complex Single-Pole High-Pass				     					*
+*									 Complex Single-Pole High-Pass										*
 *																										*
 ********************************************************************************************************/
 

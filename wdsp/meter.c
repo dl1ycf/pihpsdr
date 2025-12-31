@@ -1,4 +1,4 @@
-/*  meter.c
+/*	meter.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -50,8 +50,8 @@ METER create_meter (int run, int* prun, int size, double* buff, int rate, double
 	a->pgain = pgain;
 	calc_meter(a);
 	InitializeCriticalSectionAndSpinCount (&a->mtupdate, 2500);
-	pmtupdate[enum_av]   = &a->mtupdate;
-	pmtupdate[enum_pk]   = &a->mtupdate;
+	pmtupdate[enum_av]	 = &a->mtupdate;
+	pmtupdate[enum_pk]	 = &a->mtupdate;
 	pmtupdate[enum_gain] = &a->mtupdate;
 	return a;
 }
@@ -64,7 +64,7 @@ void destroy_meter (METER a)
 
 void flush_meter (METER a)
 {
-	a->avg  = 0.0;
+	a->avg	= 0.0;
 	a->peak = 0.0;
 	a->result[a->enum_av] = -400.0;
 	a->result[a->enum_pk] = -400.0;
@@ -100,9 +100,9 @@ void xmeter (METER a)
 	}
 	else
 	{
-		if (a->enum_av   >= 0) a->result[a->enum_av]   = - 400.0;
-		if (a->enum_pk   >= 0) a->result[a->enum_pk]   = - 400.0;
-		if (a->enum_gain >= 0) a->result[a->enum_gain] = +   0.0;
+		if (a->enum_av	 >= 0) a->result[a->enum_av]   = - 400.0;
+		if (a->enum_pk	 >= 0) a->result[a->enum_pk]   = - 400.0;
+		if (a->enum_gain >= 0) a->result[a->enum_gain] = +	 0.0;
 	}
 	LeaveCriticalSection (&a->mtupdate);
 }

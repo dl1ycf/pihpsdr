@@ -1,4 +1,4 @@
-/*  utilities.c
+/*	utilities.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -96,7 +96,7 @@ void analyze_bandpass_filter (int N, double f_low, double f_high, double sampler
 	double* minphase_imp = (double *) malloc0 (N * sizeof (complex));
 	linphase_imp = fir_bandpass (N, f_low, f_high, samplerate, wintype, rtype, scale);
 	mp_imp (N, linphase_imp, minphase_imp, 16, 0);
-	print_impulse ("linear_phase_impulse.txt",  N, linphase_imp, 1, 0);
+	print_impulse ("linear_phase_impulse.txt",	N, linphase_imp, 1, 0);
 	print_impulse ("minimum_phase_impulse.txt", N, minphase_imp, 1, 0);
 	_aligned_free (minphase_imp);
 	_aligned_free (linphase_imp);
@@ -192,24 +192,24 @@ void print_buffer_parameters (const char* filename, int channel)
 	FILE* file;
 	if (file = fopen(filename, "a"))
 	{
-		fprintf(file, "channel            = %d\n", channel);
-		fprintf(file, "in_size            = %d\n", a->in_size);
-		fprintf(file, "r1_outsize         = %d\n", a->r1_outsize);
-		fprintf(file, "r1_size            = %d\n", a->r1_size);
-		fprintf(file, "r2_size            = %d\n", a->r2_size);
-		fprintf(file, "out_size           = %d\n", a->out_size);
-		fprintf(file, "r2_insize          = %d\n", a->r2_insize);
+		fprintf(file, "channel			  = %d\n", channel);
+		fprintf(file, "in_size			  = %d\n", a->in_size);
+		fprintf(file, "r1_outsize		  = %d\n", a->r1_outsize);
+		fprintf(file, "r1_size			  = %d\n", a->r1_size);
+		fprintf(file, "r2_size			  = %d\n", a->r2_size);
+		fprintf(file, "out_size			  = %d\n", a->out_size);
+		fprintf(file, "r2_insize		  = %d\n", a->r2_insize);
 		fprintf(file, "r1_active_buffsize = %d\n", a->r1_active_buffsize);
 		fprintf(file, "f2_active_buffsize = %d\n", a->r2_active_buffsize);
-		fprintf(file, "r1_inidx           = %d\n", a->r1_inidx);
-		fprintf(file, "r1_outidx          = %d\n", a->r1_outidx);
-		fprintf(file, "r1_unqueuedsamps   = %d\n", a->r1_unqueuedsamps);
-		fprintf(file, "r2_inidx           = %d\n", a->r2_inidx);
-		fprintf(file, "r2_outidx          = %d\n", a->r2_outidx);
-		fprintf(file, "r2_havesamps       = %d\n", a->r2_havesamps);
-		fprintf(file, "in_rate            = %d\n", ch[channel].in_rate);
-		fprintf(file, "dsp_rate           = %d\n", ch[channel].dsp_rate);
-		fprintf(file, "out_rate           = %d\n", ch[channel].out_rate);
+		fprintf(file, "r1_inidx			  = %d\n", a->r1_inidx);
+		fprintf(file, "r1_outidx		  = %d\n", a->r1_outidx);
+		fprintf(file, "r1_unqueuedsamps	  = %d\n", a->r1_unqueuedsamps);
+		fprintf(file, "r2_inidx			  = %d\n", a->r2_inidx);
+		fprintf(file, "r2_outidx		  = %d\n", a->r2_outidx);
+		fprintf(file, "r2_havesamps		  = %d\n", a->r2_havesamps);
+		fprintf(file, "in_rate			  = %d\n", ch[channel].in_rate);
+		fprintf(file, "dsp_rate			  = %d\n", ch[channel].dsp_rate);
+		fprintf(file, "out_rate			  = %d\n", ch[channel].out_rate);
 		fprintf(file, "\n");
 		fflush(file);
 		fclose(file);
@@ -236,7 +236,7 @@ void print_message (const char* filename, const char* message, int p0, int p1, i
 	if (file = fopen(filename, "a"))
 	{
 		const char* msg = message;
-		fprintf(file, "%s     %d     %d     %d\n", msg, p0, p1, p2);
+		fprintf(file, "%s	  %d	 %d		%d\n", msg, p0, p1, p2);
 		fflush(file);
 		fclose(file);
 	}
@@ -251,22 +251,22 @@ void print_window_gain (const char* filename, int wintype, double inv_coherent_g
 		switch (wintype)
 		{
 		case 0:
-			fprintf(file, "Rectangular             %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
+			fprintf(file, "Rectangular			   %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
 			break;
 		case 1:
 			fprintf(file, "Blackman-Harris 4-term  %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
 			break;
 		case 2:
-			fprintf(file, "Hann                    %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
+			fprintf(file, "Hann					   %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
 			break;
 		case 3:
-			fprintf(file, "Flat Top                %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
+			fprintf(file, "Flat Top				   %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
 			break;
 		case 4:
-			fprintf(file, "Hamming                 %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
+			fprintf(file, "Hamming				   %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
 			break;
 		case 5:
-			fprintf(file, "Kaiser                  %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
+			fprintf(file, "Kaiser				   %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
 			break;
 		case 6:
 			fprintf(file, "Blackman-Harris 7-term  %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
@@ -306,7 +306,7 @@ void __cdecl CalccPrintSamples (void *pargs)
 		{
 			env_tx = sqrt(a->txs[2 * i + 0] * a->txs[2 * i + 0] + a->txs[2 * i + 1] * a->txs[2 * i + 1]);
 			env_rx = sqrt(a->rxs[2 * i + 0] * a->rxs[2 * i + 0] + a->rxs[2 * i + 1] * a->rxs[2 * i + 1]);
-			fprintf(file, "%.12f  %.12f  %.12f      %.12f  %.12f  %.12f\n",
+			fprintf(file, "%.12f  %.12f	 %.12f		%.12f  %.12f  %.12f\n",
 				a->txs[2 * i + 0], a->txs[2 * i + 1], env_tx,
 				a->rxs[2 * i + 0], a->rxs[2 * i + 1], env_rx);
 		}
@@ -326,13 +326,13 @@ void print_anb_parms (const char* filename, ANB a)
 	FILE* file;
 	if (file = fopen(filename, "a"))
 	{
-		fprintf(file, "Run         = %d\n", a->run);
+		fprintf(file, "Run		   = %d\n", a->run);
 		fprintf(file, "Buffer Size = %d\n", a->buffsize);
 		fprintf(file, "Sample Rate = %d\n", (int)a->samplerate);
 		fprintf(file, "Threshold   = %.6f\n", a->threshold);
-		fprintf(file, "BackTau     = %.6f\n", a->backtau);
-		fprintf(file, "BackMult    = %.6f\n", a->backmult);
-		fprintf(file, "Tau         = %.6f\n", a->tau);
+		fprintf(file, "BackTau	   = %.6f\n", a->backtau);
+		fprintf(file, "BackMult	   = %.6f\n", a->backmult);
+		fprintf(file, "Tau		   = %.6f\n", a->tau);
 		fflush(file);
 		fclose(file);
 	}
@@ -356,10 +356,10 @@ void WriteAudioFile(void* arg)
 	// for (i = 0; i < 4 * audiocount; i++)
 	// {
 	//	b = dat[i];
-	// 	b = ((b >> 1) & 0x55) | ((b << 1) & 0xaa);
-	// 	b = ((b >> 2) & 0x33) | ((b << 2) & 0xcc);
-	// 	b = ((b >> 4) & 0x0f) | ((b << 4) & 0xf0);
-	// 	dat[i] = b;
+	//	b = ((b >> 1) & 0x55) | ((b << 1) & 0xaa);
+	//	b = ((b >> 2) & 0x33) | ((b << 2) & 0xcc);
+	//	b = ((b >> 4) & 0x0f) | ((b << 4) & 0xf0);
+	//	dat[i] = b;
 	// }
 	if (file = fopen("AudioFile", "wb"))
 	{
@@ -396,7 +396,7 @@ void WriteAudioWDSP (double seconds, int rate, int size, double* indata, int mod
 		{
 			switch (mode)
 			{
-			case 0:	// I only (mono)
+			case 0: // I only (mono)
 				data[audiocount++] = (int)(conv * indata[2 * i + 0]);
 				break;
 			case 1: // Q only (mono)
@@ -405,7 +405,7 @@ void WriteAudioWDSP (double seconds, int rate, int size, double* indata, int mod
 			case 2: // envelope (mono)
 				data[audiocount++] = (int)(conv * sqrt(indata[2 * i + 0] * indata[2 * i + 0] + indata[2 * i + 1] * indata[2 * i + 1]));
 				break;
-			case 3:	// complex samples (stereo)
+			case 3: // complex samples (stereo)
 				data[audiocount++] = (int)(conv * indata[2 * i + 0]);
 				data[audiocount++] = (int)(conv * indata[2 * i + 1]);
 				break;
@@ -560,7 +560,7 @@ int create_bfcu(int id, int min_size, int max_size, double rate, double corner, 
 	// max_size = maximum impulse response size for filters (power of two)
 	// rate = sample-rate at which filters run
 	// corner = -6dB corner frequency; bandpass filter is symmetrical about zero
-	//    two corners, one at +corner and the other at -corner
+	//	  two corners, one at +corner and the other at -corner
 	// points = number of points to generate for each filter response (power of two; >= max_size)
 	if (max_size > points) return -1;
 	BFCU a = (BFCU)malloc0(sizeof(bfcu));
@@ -613,7 +613,7 @@ void getFilterCorners(int id, int* lower_index, int* upper_index)
 	*upper_index = a->i_upper_corner;
 }
 
-PORT 
+PORT
 void getFilterCurve(int id, int size, int w_type, int index_low, int index_high, double* segment)
 {
 	// size = filter_size

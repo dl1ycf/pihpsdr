@@ -1,4 +1,4 @@
-/*  fmsq.c
+/*	fmsq.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -52,9 +52,9 @@ void calc_fmsq (FMSQ a)
 	a->onem_longavm = 1.0 - a->longavm;
 	a->longnoise = 1.0;
 	// level change
-	a->ntup   = (int)(a->tup   * a->rate);
+	a->ntup	  = (int)(a->tup   * a->rate);
 	a->ntdown = (int)(a->tdown * a->rate);
-	a->cup   = (double *)malloc0 ((a->ntup   + 1) * sizeof(double));
+	a->cup	 = (double *)malloc0 ((a->ntup	 + 1) * sizeof(double));
 	a->cdown = (double *)malloc0 ((a->ntdown + 1) * sizeof(double));
 	delta = PI / (double)a->ntup;
 	theta = 0.0;
@@ -85,8 +85,8 @@ void decalc_fmsq (FMSQ a)
 	_aligned_free(a->noise);
 }
 
-FMSQ create_fmsq (int run, int size, double* insig, double* outsig, double* trigger, int rate, double fc, 
-	double* pllpole, double tdelay, double avtau, double longtau, double tup, double tdown, double tail_thresh, 
+FMSQ create_fmsq (int run, int size, double* insig, double* outsig, double* trigger, int rate, double fc,
+	double* pllpole, double tdelay, double avtau, double longtau, double tup, double tdown, double tail_thresh,
 	double unmute_thresh, double min_tail, double max_tail, int nc, int mp)
 {
 	FMSQ a = (FMSQ) malloc0 (sizeof (fmsq));
@@ -266,7 +266,7 @@ void SetRXAFMSQNC (int channel, int nc)
 	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
-PORT 
+PORT
 void SetRXAFMSQMP (int channel, int mp)
 {
 	FMSQ a;

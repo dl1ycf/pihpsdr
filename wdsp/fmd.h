@@ -1,4 +1,4 @@
-/*  fmd.h
+/*	fmd.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -79,8 +79,8 @@ typedef struct _fmd
 	double lim_pre_gain;
 } fmd, *FMD;
 
-extern FMD create_fmd ( int run, int size, double* in, double* out, int rate, double deviation, 
-	double f_low, double f_high, double fmin, double fmax, double zeta, double omegaN, double tau, 
+extern FMD create_fmd ( int run, int size, double* in, double* out, int rate, double deviation,
+	double f_low, double f_high, double fmin, double fmax, double zeta, double omegaN, double tau,
 	double afgain, int sntch_run, double ctcss_freq, int nc_de, int mp_de, int nc_aud, int mp_aud);
 
 extern void destroy_fmd (FMD a);

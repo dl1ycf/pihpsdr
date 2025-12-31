@@ -5,6 +5,10 @@
 
 CFLAGS?= -pthread -O3 -D_GNU_SOURCE -Wno-parentheses
 
+ifneq ($(NR34LIB), ON)
+  CFLAGS += -I../rnnoise/include -I../libspecbleach/include
+endif
+
 FFTWINCLUDE=`pkg-config --cflags fftw3`
 
 COMPILE=$(CC) $(CFLAGS) $(FFTWINCLUDE)
@@ -15,6 +19,7 @@ amsq.c \
 analyzer.c \
 anf.c \
 anr.c \
+apfshadow.c \
 bandpass.c \
 calcc.c \
 calculus.c \
@@ -22,10 +27,12 @@ cblock.c \
 cfcomp.c \
 cfir.c \
 channel.c \
+cmath.c \
 compress.c \
 delay.c \
 dexp.c \
 div.c \
+doublepole.c \
 eer.c \
 emnr.c \
 emph.c \
@@ -38,6 +45,7 @@ fmd.c \
 fmmod.c \
 fmsq.c \
 gain.c \
+gaussian.c \
 gen.c \
 icfir.c \
 iir.c \
@@ -47,6 +55,7 @@ iqc.c \
 linux_port.c \
 lmath.c \
 main.c \
+matchedCW.c \
 meter.c \
 meterlog10.c \
 nbp.c \
@@ -56,7 +65,9 @@ osctrl.c \
 patchpanel.c \
 resample.c \
 rmatch.c \
+rnnr.c \
 RXA.c \
+sbnr.c \
 sender.c \
 shift.c \
 siphon.c \
@@ -78,6 +89,7 @@ amsq.h \
 analyzer.h \
 anf.h \
 anr.h \
+apfshadow.h \
 bandpass.h \
 calcc.h \
 calculus.h \
@@ -85,11 +97,13 @@ cblock.h \
 cfcomp.h \
 cfir.h \
 channel.h \
+cmath.h \
 comm.h \
 compress.h \
 delay.h \
 dexp.h \
 div.h \
+doublepole.h \
 eer.h \
 emnr.h \
 emph.h \
@@ -103,6 +117,7 @@ fmd.h \
 fmmod.h \
 fmsq.h \
 gain.h \
+gaussian.h \
 gen.h \
 icfir.h \
 iir.h \
@@ -112,6 +127,7 @@ iqc.h \
 linux_port.h \
 lmath.h \
 main.h \
+matchedCW.h \
 meter.h \
 meterlog10.h \
 nbp.h \
@@ -122,7 +138,9 @@ patchpanel.h \
 resample.h \
 resource.h \
 rmatch.h \
+rnnr.h \
 RXA.h \
+sbnr.h \
 sender.h \
 shift.h \
 siphon.h \
@@ -142,6 +160,7 @@ amsq.o \
 analyzer.o \
 anf.o \
 anr.o \
+apfshadow.o \
 bandpass.o \
 calcc.o \
 calculus.o \
@@ -149,10 +168,12 @@ cblock.o \
 cfcomp.o \
 cfir.o \
 channel.o \
+cmath.o \
 compress.o \
 delay.o \
 dexp.o \
 div.o \
+doublepole.o \
 eer.o \
 emnr.o \
 emph.o \
@@ -165,6 +186,7 @@ fmd.o \
 fmmod.o \
 fmsq.o \
 gain.o \
+gaussian.o \
 gen.o \
 icfir.o \
 iir.o \
@@ -173,6 +195,7 @@ iobuffs.o \
 iqc.o \
 lmath.o \
 main.o \
+matchedCW.o \
 meter.o \
 meterlog10.o \
 nbp.o \
@@ -182,7 +205,9 @@ osctrl.o \
 patchpanel.o \
 resample.o \
 rmatch.o \
+rnnr.o \
 RXA.o \
+sbnr.o \
 sender.o \
 shift.o \
 siphon.o \
@@ -207,7 +232,7 @@ libwdsp.a:	$(OBJS)
 
 
 clean:
-	-rm -f libwdsp.a *.o
+	-rm -f libwdsp.a $(OBJS)
 
 #############################################################################
 #
@@ -217,429 +242,572 @@ clean:
 
 # DO NOT DELETE
 
-RXA.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h firmin.h
-RXA.o: calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h compress.h
-RXA.o: dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
-RXA.o: wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h main.h
-RXA.o: meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-RXA.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-RXA.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-TXA.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h firmin.h
-TXA.o: calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h compress.h
-TXA.o: dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
-TXA.o: wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h main.h
-TXA.o: meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-TXA.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-TXA.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-amd.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h firmin.h
-amd.o: calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h compress.h
-amd.o: dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
-amd.o: wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h main.h
-amd.o: meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-amd.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-amd.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-ammod.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-ammod.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-ammod.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-ammod.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-ammod.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-ammod.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-ammod.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-amsq.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-amsq.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-amsq.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h
-amsq.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h
-amsq.o: main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-amsq.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-amsq.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-analyzer.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-analyzer.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
-analyzer.o: channel.h compress.h dexp.h div.h eer.h emnr.h emph.h eq.h
-analyzer.o: fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h
-analyzer.o: icfir.h iobuffs.h iqc.h main.h meter.h meterlog10.h nbp.h nob.h
-analyzer.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
-analyzer.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
-analyzer.o: utilities.h
-anf.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h firmin.h
-anf.o: calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h compress.h
-anf.o: dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
-anf.o: wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h main.h
-anf.o: meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-anf.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-anf.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-anr.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h firmin.h
-anr.o: calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h compress.h
-anr.o: dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
-anr.o: wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h main.h
-anr.o: meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-anr.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-anr.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-bandpass.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-bandpass.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
-bandpass.o: channel.h compress.h dexp.h div.h eer.h emnr.h emph.h eq.h
-bandpass.o: fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h
-bandpass.o: icfir.h iobuffs.h iqc.h main.h meter.h meterlog10.h nbp.h nob.h
-bandpass.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
-bandpass.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
-bandpass.o: utilities.h
-calcc.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-calcc.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-calcc.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-calcc.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-calcc.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-calcc.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-calcc.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-cblock.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-cblock.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-cblock.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-cblock.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-cblock.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-cblock.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-cblock.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-cfcomp.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-cfcomp.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-cfcomp.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-cfcomp.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-cfcomp.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-cfcomp.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-cfcomp.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-cfir.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-cfir.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-cfir.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h
-cfir.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h
-cfir.o: main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-cfir.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-cfir.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-channel.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-channel.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
-channel.o: channel.h compress.h dexp.h div.h eer.h emnr.h emph.h eq.h
-channel.o: fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h
-channel.o: icfir.h iobuffs.h iqc.h main.h meter.h meterlog10.h nbp.h nob.h
-channel.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
-channel.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
-channel.o: utilities.h
-comm.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-comm.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-comm.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h
-comm.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h
-comm.o: main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-comm.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-comm.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-compress.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-compress.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
-compress.o: channel.h compress.h dexp.h div.h eer.h emnr.h emph.h eq.h
-compress.o: fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h
-compress.o: icfir.h iobuffs.h iqc.h main.h meter.h meterlog10.h nbp.h nob.h
-compress.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
-compress.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
-compress.o: utilities.h
-delay.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-delay.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-delay.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-delay.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-delay.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-delay.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-delay.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-dexp.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-dexp.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-dexp.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h
-dexp.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h
-dexp.o: main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-dexp.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-dexp.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-div.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h firmin.h
-div.o: calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h compress.h
-div.o: dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
-div.o: wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h main.h
-div.o: meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-div.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-div.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-eer.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h firmin.h
-eer.o: calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h compress.h
-eer.o: dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
-eer.o: wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h main.h
-eer.o: meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-eer.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-eer.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-emnr.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-emnr.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-emnr.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h
-emnr.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h
-emnr.o: main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-emnr.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-emnr.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h calculus.h
-emph.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-emph.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-emph.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h
-emph.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h
-emph.o: main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-emph.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-emph.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-eq.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h firmin.h
-eq.o: calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h compress.h
-eq.o: dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
-eq.o: wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h main.h
-eq.o: meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-eq.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-eq.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-fcurve.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-fcurve.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-fcurve.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-fcurve.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-fcurve.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-fcurve.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-fcurve.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-fir.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h firmin.h
-fir.o: calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h compress.h
-fir.o: dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
-fir.o: wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h main.h
-fir.o: meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-fir.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-fir.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-firmin.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-firmin.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-firmin.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-firmin.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-firmin.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-firmin.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-firmin.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-fmd.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h firmin.h
-fmd.o: calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h compress.h
-fmd.o: dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
-fmd.o: wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h main.h
-fmd.o: meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-fmd.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-fmd.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-fmmod.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-fmmod.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-fmmod.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-fmmod.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-fmmod.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-fmmod.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-fmmod.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-fmsq.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-fmsq.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-fmsq.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h
-fmsq.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h
-fmsq.o: main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-fmsq.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-fmsq.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-gain.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-gain.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-gain.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h
-gain.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h
-gain.o: main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-gain.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-gain.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-gen.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h firmin.h
-gen.o: calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h compress.h
-gen.o: dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
-gen.o: wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h main.h
-gen.o: meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-gen.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-gen.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-icfir.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-icfir.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-icfir.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-icfir.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-icfir.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-icfir.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-icfir.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-iir.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h firmin.h
-iir.o: calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h compress.h
-iir.o: dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
-iir.o: wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h main.h
-iir.o: meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-iir.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-iir.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-iobuffs.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-iobuffs.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
-iobuffs.o: channel.h compress.h dexp.h div.h eer.h emnr.h emph.h eq.h
-iobuffs.o: fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h
-iobuffs.o: icfir.h iobuffs.h iqc.h main.h meter.h meterlog10.h nbp.h nob.h
-iobuffs.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
-iobuffs.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
-iobuffs.o: utilities.h
-iqc.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h firmin.h
-iqc.o: calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h compress.h
-iqc.o: dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
-iqc.o: wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h main.h
-iqc.o: meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-iqc.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-iqc.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
+RXA.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+RXA.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+RXA.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+RXA.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+RXA.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+RXA.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+RXA.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
+RXA.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+TXA.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+TXA.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+TXA.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+TXA.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+TXA.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+TXA.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+TXA.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
+TXA.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+amd.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+amd.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+amd.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+amd.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+amd.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+amd.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+amd.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
+amd.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+ammod.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+ammod.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+ammod.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+ammod.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h
+ammod.o: fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h
+ammod.o: iobuffs.h iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h
+ammod.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
+ammod.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
+ammod.o: utilities.h
+amsq.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+amsq.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+amsq.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+amsq.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+amsq.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h
+amsq.o: iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h
+amsq.o: osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h
+amsq.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+analyzer.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+analyzer.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+analyzer.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h
+analyzer.o: eer.h emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+analyzer.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+analyzer.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+analyzer.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+analyzer.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+analyzer.o: ssql.h syncbuffs.h TXA.h utilities.h
+anf.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+anf.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+anf.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+anf.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+anf.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+anf.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+anf.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
+anf.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+anr.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+anr.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+anr.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+anr.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+anr.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+anr.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+anr.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
+anr.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+apfshadow.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+apfshadow.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+apfshadow.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h
+apfshadow.o: eer.h emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h
+apfshadow.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+apfshadow.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+apfshadow.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
+apfshadow.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h
+apfshadow.o: slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+bandpass.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+bandpass.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+bandpass.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h
+bandpass.o: eer.h emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+bandpass.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+bandpass.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+bandpass.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+bandpass.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+bandpass.o: ssql.h syncbuffs.h TXA.h utilities.h
+calcc.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+calcc.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+calcc.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+calcc.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h
+calcc.o: fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h
+calcc.o: iobuffs.h iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h
+calcc.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
+calcc.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
+calcc.o: utilities.h
+cblock.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+cblock.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+cblock.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h
+cblock.o: emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+cblock.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+cblock.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+cblock.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+cblock.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+cblock.o: ssql.h syncbuffs.h TXA.h utilities.h
+cfcomp.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+cfcomp.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+cfcomp.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h
+cfcomp.o: emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+cfcomp.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+cfcomp.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+cfcomp.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+cfcomp.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+cfcomp.o: ssql.h syncbuffs.h TXA.h utilities.h
+cfir.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+cfir.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+cfir.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+cfir.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+cfir.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h
+cfir.o: iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h
+cfir.o: osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h
+cfir.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+channel.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+channel.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+channel.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h
+channel.o: eer.h emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+channel.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+channel.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+channel.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+channel.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+channel.o: ssql.h syncbuffs.h TXA.h utilities.h
+cmath.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+cmath.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+cmath.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+cmath.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h
+cmath.o: fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h
+cmath.o: iobuffs.h iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h
+cmath.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
+cmath.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
+cmath.o: utilities.h
+compress.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+compress.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+compress.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h
+compress.o: eer.h emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+compress.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+compress.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+compress.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+compress.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+compress.o: ssql.h syncbuffs.h TXA.h utilities.h
+delay.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+delay.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+delay.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+delay.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h
+delay.o: fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h
+delay.o: iobuffs.h iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h
+delay.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
+delay.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
+delay.o: utilities.h
+dexp.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+dexp.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+dexp.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+dexp.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+dexp.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h
+dexp.o: iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h
+dexp.o: osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h
+dexp.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+div.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+div.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+div.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+div.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+div.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+div.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+div.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
+div.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+doublepole.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+doublepole.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+doublepole.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h
+doublepole.o: eer.h emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h
+doublepole.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+doublepole.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+doublepole.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
+doublepole.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h
+doublepole.o: slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+eer.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+eer.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+eer.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+eer.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+eer.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+eer.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+eer.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
+eer.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+emnr.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+emnr.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+emnr.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+emnr.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+emnr.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h
+emnr.o: iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h
+emnr.o: osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h
+emnr.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+emnr.o: calculus.h zetaHat.h FDnoiseIQ.h
+emph.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+emph.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+emph.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+emph.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+emph.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h
+emph.o: iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h
+emph.o: osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h
+emph.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+eq.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+eq.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+eq.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+eq.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+eq.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+eq.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+eq.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
+eq.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+fcurve.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+fcurve.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+fcurve.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h
+fcurve.o: emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+fcurve.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+fcurve.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+fcurve.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+fcurve.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+fcurve.o: ssql.h syncbuffs.h TXA.h utilities.h
+fir.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+fir.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+fir.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+fir.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+fir.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+fir.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+fir.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
+fir.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+firmin.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+firmin.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+firmin.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h
+firmin.o: emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+firmin.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+firmin.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+firmin.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+firmin.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+firmin.o: ssql.h syncbuffs.h TXA.h utilities.h
+fmd.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+fmd.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+fmd.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+fmd.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+fmd.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+fmd.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+fmd.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
+fmd.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+fmmod.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+fmmod.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+fmmod.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+fmmod.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h
+fmmod.o: fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h
+fmmod.o: iobuffs.h iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h
+fmmod.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
+fmmod.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
+fmmod.o: utilities.h
+fmsq.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+fmsq.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+fmsq.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+fmsq.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+fmsq.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h
+fmsq.o: iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h
+fmsq.o: osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h
+fmsq.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+gain.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+gain.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+gain.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+gain.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+gain.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h
+gain.o: iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h
+gain.o: osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h
+gain.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+gaussian.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+gaussian.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+gaussian.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h
+gaussian.o: eer.h emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+gaussian.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+gaussian.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+gaussian.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+gaussian.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+gaussian.o: ssql.h syncbuffs.h TXA.h utilities.h
+gen.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+gen.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+gen.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+gen.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+gen.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+gen.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+gen.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
+gen.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+icfir.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+icfir.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+icfir.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+icfir.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h
+icfir.o: fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h
+icfir.o: iobuffs.h iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h
+icfir.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
+icfir.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
+icfir.o: utilities.h
+iir.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+iir.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+iir.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+iir.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+iir.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+iir.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+iir.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
+iir.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+impulse_cache.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
+impulse_cache.o: apfshadow.h bandpass.h firmin.h calcc.h delay.h lmath.h
+impulse_cache.o: cblock.h cfcomp.h cfir.h channel.h cmath.h compress.h dexp.h
+impulse_cache.o: div.h doublepole.h eer.h emnr.h rnnr.h sbnr.h emph.h eq.h
+impulse_cache.o: fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h
+impulse_cache.o: gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+impulse_cache.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h
+impulse_cache.o: osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
+impulse_cache.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h
+impulse_cache.o: TXA.h utilities.h
+iobuffs.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+iobuffs.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+iobuffs.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h
+iobuffs.o: eer.h emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+iobuffs.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+iobuffs.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+iobuffs.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+iobuffs.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+iobuffs.o: ssql.h syncbuffs.h TXA.h utilities.h
+iqc.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+iqc.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+iqc.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+iqc.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+iqc.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+iqc.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+iqc.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
+iqc.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
 linux_port.o: linux_port.h comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-linux_port.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
-linux_port.o: cfir.h channel.h compress.h dexp.h div.h eer.h emnr.h emph.h
-linux_port.o: eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h
-linux_port.o: gen.h icfir.h iobuffs.h iqc.h main.h meter.h meterlog10.h nbp.h
-linux_port.o: nob.h nobII.h osctrl.h patchpanel.h resample.h rmatch.h
-linux_port.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-linux_port.o: syncbuffs.h TXA.h utilities.h
-lmath.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-lmath.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-lmath.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-lmath.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-lmath.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-lmath.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-lmath.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-main.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-main.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-main.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h
-main.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h
-main.o: main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-main.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-main.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-meter.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-meter.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-meter.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-meter.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-meter.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-meter.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-meter.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-meterlog10.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-meterlog10.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
-meterlog10.o: channel.h compress.h dexp.h div.h eer.h emnr.h emph.h eq.h
-meterlog10.o: fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h
-meterlog10.o: icfir.h iobuffs.h iqc.h main.h meter.h meterlog10.h nbp.h nob.h
-meterlog10.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h
-meterlog10.o: RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h
-meterlog10.o: TXA.h utilities.h
-nbp.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h firmin.h
-nbp.o: calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h compress.h
-nbp.o: dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
-nbp.o: wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h main.h
-nbp.o: meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-nbp.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-nbp.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-nob.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h firmin.h
-nob.o: calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h compress.h
-nob.o: dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
-nob.o: wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h main.h
-nob.o: meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-nob.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-nob.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-nobII.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-nobII.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-nobII.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-nobII.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-nobII.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-nobII.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-nobII.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-osctrl.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-osctrl.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-osctrl.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-osctrl.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-osctrl.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-osctrl.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-osctrl.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-patchpanel.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-patchpanel.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
-patchpanel.o: channel.h compress.h dexp.h div.h eer.h emnr.h emph.h eq.h
-patchpanel.o: fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h
-patchpanel.o: icfir.h iobuffs.h iqc.h main.h meter.h meterlog10.h nbp.h nob.h
-patchpanel.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h
-patchpanel.o: RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h
-patchpanel.o: TXA.h utilities.h
-resample.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-resample.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
-resample.o: channel.h compress.h dexp.h div.h eer.h emnr.h emph.h eq.h
-resample.o: fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h
-resample.o: icfir.h iobuffs.h iqc.h main.h meter.h meterlog10.h nbp.h nob.h
-resample.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
-resample.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
-resample.o: utilities.h
-rmatch.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-rmatch.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-rmatch.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-rmatch.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-rmatch.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-rmatch.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-rmatch.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-sender.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-sender.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-sender.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-sender.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-sender.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-sender.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-sender.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-shift.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-shift.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-shift.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-shift.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-shift.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-shift.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-shift.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-siphon.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-siphon.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-siphon.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-siphon.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-siphon.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-siphon.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-siphon.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-slew.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-slew.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-slew.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h
-slew.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h
-slew.o: main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-slew.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-slew.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-snb.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h firmin.h
-snb.o: calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h compress.h
-snb.o: dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
-snb.o: wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h main.h
-snb.o: meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-snb.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-snb.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-ssql.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-ssql.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-ssql.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h fmd.h
-ssql.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h iqc.h
-ssql.o: main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
-ssql.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
-ssql.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h
-syncbuffs.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-syncbuffs.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
-syncbuffs.o: channel.h compress.h dexp.h div.h eer.h emnr.h emph.h eq.h
-syncbuffs.o: fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h
-syncbuffs.o: icfir.h iobuffs.h iqc.h main.h meter.h meterlog10.h nbp.h nob.h
-syncbuffs.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h
-syncbuffs.o: RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h
-syncbuffs.o: TXA.h utilities.h
-utilities.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-utilities.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
-utilities.o: channel.h compress.h dexp.h div.h eer.h emnr.h emph.h eq.h
-utilities.o: fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h
-utilities.o: icfir.h iobuffs.h iqc.h main.h meter.h meterlog10.h nbp.h nob.h
-utilities.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h
-utilities.o: RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h
-utilities.o: TXA.h utilities.h
-varsamp.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-varsamp.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
-varsamp.o: channel.h compress.h dexp.h div.h eer.h emnr.h emph.h eq.h
-varsamp.o: fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h
-varsamp.o: icfir.h iobuffs.h iqc.h main.h meter.h meterlog10.h nbp.h nob.h
-varsamp.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
-varsamp.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
-varsamp.o: utilities.h
-version.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-version.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
-version.o: channel.h compress.h dexp.h div.h eer.h emnr.h emph.h eq.h
-version.o: fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h
-version.o: icfir.h iobuffs.h iqc.h main.h meter.h meterlog10.h nbp.h nob.h
-version.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
-version.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
-version.o: utilities.h
-wcpAGC.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-wcpAGC.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-wcpAGC.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-wcpAGC.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-wcpAGC.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-wcpAGC.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-wcpAGC.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-wisdom.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h bandpass.h
-wisdom.o: firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h channel.h
-wisdom.o: compress.h dexp.h div.h eer.h emnr.h emph.h eq.h fcurve.h fir.h
-wisdom.o: fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h gen.h icfir.h iobuffs.h
-wisdom.o: iqc.h main.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
-wisdom.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
-wisdom.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+linux_port.o: apfshadow.h bandpass.h firmin.h calcc.h delay.h lmath.h
+linux_port.o: cblock.h cfcomp.h cfir.h channel.h cmath.h compress.h dexp.h
+linux_port.o: div.h doublepole.h eer.h emnr.h rnnr.h sbnr.h emph.h eq.h
+linux_port.o: fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h fmsq.h gain.h
+linux_port.o: gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h main.h
+linux_port.o: matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+linux_port.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h
+linux_port.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
+linux_port.o: utilities.h
+lmath.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+lmath.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+lmath.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+lmath.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h
+lmath.o: fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h
+lmath.o: iobuffs.h iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h
+lmath.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
+lmath.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
+lmath.o: utilities.h
+main.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+main.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+main.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+main.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+main.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h
+main.o: iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h
+main.o: osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h
+main.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+matchedCW.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+matchedCW.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+matchedCW.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h
+matchedCW.o: eer.h emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h
+matchedCW.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+matchedCW.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+matchedCW.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
+matchedCW.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h
+matchedCW.o: slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+meter.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+meter.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+meter.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+meter.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h
+meter.o: fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h
+meter.o: iobuffs.h iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h
+meter.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
+meter.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
+meter.o: utilities.h
+meterlog10.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+meterlog10.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+meterlog10.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h
+meterlog10.o: eer.h emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h
+meterlog10.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+meterlog10.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+meterlog10.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
+meterlog10.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h
+meterlog10.o: slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+nbp.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+nbp.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+nbp.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+nbp.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+nbp.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+nbp.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+nbp.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
+nbp.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+nob.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+nob.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+nob.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+nob.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+nob.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+nob.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+nob.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
+nob.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+nobII.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+nobII.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+nobII.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+nobII.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h
+nobII.o: fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h
+nobII.o: iobuffs.h iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h
+nobII.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
+nobII.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
+nobII.o: utilities.h
+osctrl.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+osctrl.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+osctrl.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h
+osctrl.o: emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+osctrl.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+osctrl.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+osctrl.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+osctrl.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+osctrl.o: ssql.h syncbuffs.h TXA.h utilities.h
+patchpanel.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+patchpanel.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+patchpanel.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h
+patchpanel.o: eer.h emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h
+patchpanel.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+patchpanel.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+patchpanel.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
+patchpanel.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h
+patchpanel.o: slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+resample.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+resample.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+resample.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h
+resample.o: eer.h emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+resample.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+resample.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+resample.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+resample.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+resample.o: ssql.h syncbuffs.h TXA.h utilities.h
+rmatch.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+rmatch.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+rmatch.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h
+rmatch.o: emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+rmatch.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+rmatch.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+rmatch.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+rmatch.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+rmatch.o: ssql.h syncbuffs.h TXA.h utilities.h
+rnnr.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+rnnr.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+rnnr.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+rnnr.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+rnnr.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h
+rnnr.o: iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h
+rnnr.o: osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h
+rnnr.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+sbnr.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+sbnr.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+sbnr.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+sbnr.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+sbnr.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h
+sbnr.o: iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h
+sbnr.o: osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h
+sbnr.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+sender.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+sender.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+sender.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h
+sender.o: emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+sender.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+sender.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+sender.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+sender.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+sender.o: ssql.h syncbuffs.h TXA.h utilities.h
+shift.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+shift.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+shift.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+shift.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h
+shift.o: fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h
+shift.o: iobuffs.h iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h
+shift.o: nobII.h osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h
+shift.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
+shift.o: utilities.h
+siphon.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+siphon.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+siphon.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h
+siphon.o: emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+siphon.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+siphon.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+siphon.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+siphon.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+siphon.o: ssql.h syncbuffs.h TXA.h utilities.h
+slew.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+slew.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+slew.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+slew.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+slew.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h
+slew.o: iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h
+slew.o: osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h
+slew.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+snb.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+snb.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+snb.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+snb.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+snb.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h iqc.h
+snb.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h osctrl.h
+snb.o: patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h shift.h
+snb.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+ssql.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+ssql.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h cfir.h
+ssql.o: channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h emnr.h
+ssql.o: rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h wcpAGC.h fmmod.h
+ssql.o: fmsq.h gain.h gaussian.h gen.h icfir.h impulse_cache.h iobuffs.h
+ssql.o: iqc.h main.h matchedCW.h meter.h meterlog10.h nbp.h nob.h nobII.h
+ssql.o: osctrl.h patchpanel.h resample.h rmatch.h varsamp.h RXA.h sender.h
+ssql.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+syncbuffs.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+syncbuffs.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+syncbuffs.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h
+syncbuffs.o: eer.h emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h
+syncbuffs.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+syncbuffs.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+syncbuffs.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
+syncbuffs.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h
+syncbuffs.o: slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+utilities.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+utilities.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+utilities.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h
+utilities.o: eer.h emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h
+utilities.o: iir.h wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+utilities.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+utilities.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h
+utilities.o: resample.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h
+utilities.o: slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
+varsamp.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+varsamp.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+varsamp.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h
+varsamp.o: eer.h emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+varsamp.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+varsamp.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+varsamp.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+varsamp.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+varsamp.o: ssql.h syncbuffs.h TXA.h utilities.h
+version.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+version.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+version.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h
+version.o: eer.h emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+version.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+version.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+version.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+version.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+version.o: ssql.h syncbuffs.h TXA.h utilities.h
+wcpAGC.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+wcpAGC.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+wcpAGC.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h
+wcpAGC.o: emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+wcpAGC.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+wcpAGC.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+wcpAGC.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+wcpAGC.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+wcpAGC.o: ssql.h syncbuffs.h TXA.h utilities.h
+wisdom.o: comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h
+wisdom.o: bandpass.h firmin.h calcc.h delay.h lmath.h cblock.h cfcomp.h
+wisdom.o: cfir.h channel.h cmath.h compress.h dexp.h div.h doublepole.h eer.h
+wisdom.o: emnr.h rnnr.h sbnr.h emph.h eq.h fcurve.h fir.h fmd.h iir.h
+wisdom.o: wcpAGC.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
+wisdom.o: impulse_cache.h iobuffs.h iqc.h main.h matchedCW.h meter.h
+wisdom.o: meterlog10.h nbp.h nob.h nobII.h osctrl.h patchpanel.h resample.h
+wisdom.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+wisdom.o: ssql.h syncbuffs.h TXA.h utilities.h

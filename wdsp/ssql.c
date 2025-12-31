@@ -1,4 +1,4 @@
-/*  ssql.c
+/*	ssql.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -28,7 +28,7 @@ warren@pratt.one
 
 /********************************************************************************************************
 *																										*
-*									   Frequency to Voltage Converter		     						*
+*									   Frequency to Voltage Converter									*
 *																										*
 ********************************************************************************************************/
 
@@ -69,8 +69,8 @@ void flush_ftov (FTOV a)
 
 void xftov (FTOV a)
 {
-	// 'ftov' does frequency to voltage conversion looking only at zero crossings of an 
-	//     AC (DC blocked) signal, i.e., ignoring signal amplitude.
+	// 'ftov' does frequency to voltage conversion looking only at zero crossings of an
+	//	   AC (DC blocked) signal, i.e., ignoring signal amplitude.
 	if (a->run)
 	{
 		if (a->ring[a->rptr] == 1)								// if current ring location is a '1' ...
@@ -94,7 +94,7 @@ void xftov (FTOV a)
 				a->rcount--;									// decrement the count
 				a->ring[a->rptr] = 0;							// set the location to '0'
 			}
-			if ((a->in[i - 1] * a->in[i] < 0.0)	&&				// different signs mean zero-crossing
+			if ((a->in[i - 1] * a->in[i] < 0.0) &&				// different signs mean zero-crossing
 				(fabs (a->in[i - 1] - a->in[i]) > a->eps))
 			{
 				a->ring[a->rptr] = 1;							// set the ring location to '1'
@@ -174,7 +174,7 @@ void decalc_ssql (SSQL a)
 	_aligned_free (a->cup);
 }
 
-SSQL create_ssql (int run, int size, double* in, double* out, int rate, double tup, double tdown, 
+SSQL create_ssql (int run, int size, double* in, double* out, int rate, double tup, double tdown,
 	double muted_gain, double tau_mute, double tau_unmute, double wthresh, double tr_thresh, int rsize, double fmax)
 {
 	SSQL a = (SSQL) malloc0 (sizeof (ssql));
@@ -255,7 +255,7 @@ void xssql (SSQL a)
 			if (a->wdbuff[i] == 1)
 				a->tr_voltage += (a->tr_ss_mute - a->tr_voltage) * a->mute_mult;
 			if (a->tr_voltage > a->tr_thresh) a->tr_signal[i] = 0;	// muted
-			else                              a->tr_signal[i] = 1;	// unmuted
+			else							  a->tr_signal[i] = 1;	// unmuted
 		}
 		// execute state machine; calculate audio output
 		for (int i = 0; i < a->size; i++)

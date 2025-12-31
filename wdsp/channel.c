@@ -1,4 +1,4 @@
-/*  channel.c
+/*	channel.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -36,20 +36,20 @@ void start_thread (int channel)
 
 void pre_main_build (int channel)
 {
-	if (ch[channel].in_rate  >= ch[channel].dsp_rate)
-		ch[channel].dsp_insize  = ch[channel].dsp_size * (ch[channel].in_rate  / ch[channel].dsp_rate);
+	if (ch[channel].in_rate	 >= ch[channel].dsp_rate)
+		ch[channel].dsp_insize	= ch[channel].dsp_size * (ch[channel].in_rate  / ch[channel].dsp_rate);
 	else
-		ch[channel].dsp_insize  = ch[channel].dsp_size / (ch[channel].dsp_rate /  ch[channel].in_rate);
+		ch[channel].dsp_insize	= ch[channel].dsp_size / (ch[channel].dsp_rate /  ch[channel].in_rate);
 
 	if (ch[channel].out_rate >= ch[channel].dsp_rate)
 		ch[channel].dsp_outsize = ch[channel].dsp_size * (ch[channel].out_rate / ch[channel].dsp_rate);
 	else
 		ch[channel].dsp_outsize = ch[channel].dsp_size / (ch[channel].dsp_rate / ch[channel].out_rate);
 
-	if (ch[channel].in_rate  >= ch[channel].out_rate)
-		ch[channel].out_size    = ch[channel].in_size  / (ch[channel].in_rate  / ch[channel].out_rate);
+	if (ch[channel].in_rate	 >= ch[channel].out_rate)
+		ch[channel].out_size	= ch[channel].in_size  / (ch[channel].in_rate  / ch[channel].out_rate);
 	else
-		ch[channel].out_size    = ch[channel].in_size  * (ch[channel].out_rate /  ch[channel].in_rate);
+		ch[channel].out_size	= ch[channel].in_size  * (ch[channel].out_rate /  ch[channel].in_rate);
 
 	InitializeCriticalSectionAndSpinCount ( &ch[channel].csDSP, 2500 );
 	InitializeCriticalSectionAndSpinCount ( &ch[channel].csEXCH,  2500 );
@@ -62,7 +62,7 @@ void post_main_build (int channel)
 	InterlockedBitTestAndSet (&ch[channel].run, 0);
 	start_thread (channel);
 	if (ch[channel].state == 1)
-	 	InterlockedBitTestAndSet (&ch[channel].exchange, 0);
+		InterlockedBitTestAndSet (&ch[channel].exchange, 0);
 }
 
 void build_channel (int channel)
@@ -73,7 +73,7 @@ void build_channel (int channel)
 }
 
 PORT
-void OpenChannel (int channel, int in_size, int dsp_size, int input_samplerate, int dsp_rate, int output_samplerate, 
+void OpenChannel (int channel, int in_size, int dsp_size, int input_samplerate, int dsp_rate, int output_samplerate,
 	int type, int state, double tdelayup, double tslewup, double tdelaydown, double tslewdown, int bfo)
 {
 	ch[channel].in_size = in_size;
@@ -115,7 +115,7 @@ void pre_main_destroy (int channel)
 void post_main_destroy (int channel)
 {
 	destroy_iobuffs (channel);
-	DeleteCriticalSection ( &ch[channel].csEXCH  );
+	DeleteCriticalSection ( &ch[channel].csEXCH	 );
 	DeleteCriticalSection ( &ch[channel].csDSP );
 }
 
@@ -246,7 +246,7 @@ void SetAllRates (int channel, int in_rate, int dsp_rate, int out_rate)
 	{
 		pre_main_destroy (channel);
 		post_main_destroy (channel);
-		ch[channel].in_rate  = in_rate;
+		ch[channel].in_rate	 = in_rate;
 		ch[channel].dsp_rate = dsp_rate;
 		ch[channel].out_rate = out_rate;
 		pre_main_build (channel);
@@ -274,7 +274,7 @@ int SetChannelState (int channel, int state, int dmode)
 			InterlockedBitTestAndSet (&ch[channel].flushflag, 0);
 			if (dmode)
 			{
-				while (_InterlockedAnd (&ch[channel].flushflag, 1) && count < timeout) 
+				while (_InterlockedAnd (&ch[channel].flushflag, 1) && count < timeout)
 				{
 					Sleep(1);
 					count++;

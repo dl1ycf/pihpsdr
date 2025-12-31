@@ -1,4 +1,4 @@
-/*  amsq.c
+/*	amsq.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -70,7 +70,7 @@ void decalc_amsq (AMSQ a)
 	_aligned_free (a->trigsig);
 }
 
-AMSQ create_amsq (int run, int size, double* in, double* out, double* trigger, int rate, double avtau, 
+AMSQ create_amsq (int run, int size, double* in, double* out, double* trigger, int rate, double avtau,
 	double tup, double tdown, double tail_thresh, double unmute_thresh, double min_tail, double max_tail, double muted_gain)
 {
 	AMSQ a = (AMSQ) malloc0 (sizeof (amsq));

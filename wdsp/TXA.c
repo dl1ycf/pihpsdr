@@ -1,4 +1,4 @@
-/*  TXA.c
+/*	TXA.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -30,12 +30,12 @@ struct _txa txa[MAX_CHANNELS];
 
 void create_txa (int channel)
 {
-	txa[channel].mode   = TXA_LSB;
-	txa[channel].f_low  = -5000.0;
+	txa[channel].mode	= TXA_LSB;
+	txa[channel].f_low	= -5000.0;
 	txa[channel].f_high = - 100.0;
-	txa[channel].inbuff  = (double *) malloc0 (1 * ch[channel].dsp_insize  * sizeof (complex));
+	txa[channel].inbuff	 = (double *) malloc0 (1 * ch[channel].dsp_insize  * sizeof (complex));
 	txa[channel].outbuff = (double *) malloc0 (1 * ch[channel].dsp_outsize * sizeof (complex));
-	txa[channel].midbuff = (double *) malloc0 (2 * ch[channel].dsp_size    * sizeof (complex));
+	txa[channel].midbuff = (double *) malloc0 (2 * ch[channel].dsp_size	   * sizeof (complex));
 
 	txa[channel].rsmpin.p = create_resample (
 		0,											// run - will be turned on below if needed
@@ -43,7 +43,7 @@ void create_txa (int channel)
 		txa[channel].inbuff,						// pointer to input buffer
 		txa[channel].midbuff,						// pointer to output buffer
 		ch[channel].in_rate,						// input sample rate
-		ch[channel].dsp_rate, 						// output sample rate
+		ch[channel].dsp_rate,						// output sample rate
 		0.0,										// select cutoff automatically
 		0,											// select ncoef automatically
 		1.0);										// gain
@@ -109,9 +109,9 @@ void create_txa (int channel)
 		0.200);										// muted gain
 
 	{
-	double default_F[11] = {0.0,  32.0,  63.0, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0};
-	double default_G[11] = {0.0, -12.0, -12.0, -12.0,  -1.0,  +1.0,   +4.0,   +9.0,  +12.0,  -10.0,   -10.0};
-	//double default_G[11] =   {0.0,   0.0,   0.0,   0.0,   0.0,   0.0,    0.0,    0.0,    0.0,    0.0,     0.0};
+	double default_F[11] = {0.0,  32.0,	 63.0, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0};
+	double default_G[11] = {0.0, -12.0, -12.0, -12.0,  -1.0,  +1.0,	  +4.0,	  +9.0,	 +12.0,	 -10.0,	  -10.0};
+	//double default_G[11] =   {0.0,   0.0,	  0.0,	 0.0,	0.0,   0.0,	   0.0,	   0.0,	   0.0,	   0.0,		0.0};
 	txa[channel].eqp.p = create_eqp (
 		0,											// run - OFF by default
 		ch[channel].dsp_size,						// size
@@ -127,7 +127,7 @@ void create_txa (int channel)
 		ch[channel].dsp_rate);						// samplerate
 	}
 
-	txa[channel].eqmeter.p = create_meter (	
+	txa[channel].eqmeter.p = create_meter (
 		1,											// run
 		&(txa[channel].eqp.p->run),					// pointer to eqp 'run'
 		ch[channel].dsp_size,						// size
@@ -243,7 +243,7 @@ void create_txa (int channel)
 		max(2048, ch[channel].dsp_size),			// number of coefficients
 		0,											// flag for minimum phase
 		txa[channel].midbuff,						// pointer to input buffer
-		txa[channel].midbuff,						// pointer to output buffer 
+		txa[channel].midbuff,						// pointer to output buffer
 		txa[channel].f_low,							// low freq cutoff
 		txa[channel].f_high,						// high freq cutoff
 		ch[channel].dsp_rate,						// samplerate
@@ -264,12 +264,12 @@ void create_txa (int channel)
 		max(2048, ch[channel].dsp_size),			// number of coefficients
 		0,											// flag for minimum phase
 		txa[channel].midbuff,						// pointer to input buffer
-		txa[channel].midbuff,						// pointer to output buffer 
+		txa[channel].midbuff,						// pointer to output buffer
 		txa[channel].f_low,							// low freq cutoff
 		txa[channel].f_high,						// high freq cutoff
 		ch[channel].dsp_rate,						// samplerate
 		1,											// wintype
-		2.0);										// gain	
+		2.0);										// gain
 
 	txa[channel].osctrl.p = create_osctrl (
 		0,											// run
@@ -286,7 +286,7 @@ void create_txa (int channel)
 		max(2048, ch[channel].dsp_size),			// number of coefficients
 		0,											// flag for minimum phase
 		txa[channel].midbuff,						// pointer to input buffer
-		txa[channel].midbuff,						// pointer to output buffer 
+		txa[channel].midbuff,						// pointer to output buffer
 		txa[channel].f_low,							// low freq cutoff
 		txa[channel].f_high,						// high freq cutoff
 		ch[channel].dsp_rate,						// samplerate
@@ -519,9 +519,9 @@ void destroy_txa (int channel)
 
 void flush_txa (int channel)
 {
-	memset (txa[channel].inbuff,  0, 1 * ch[channel].dsp_insize  * sizeof (complex));
+	memset (txa[channel].inbuff,  0, 1 * ch[channel].dsp_insize	 * sizeof (complex));
 	memset (txa[channel].outbuff, 0, 1 * ch[channel].dsp_outsize * sizeof (complex));
-	memset (txa[channel].midbuff, 0, 2 * ch[channel].dsp_size    * sizeof (complex));
+	memset (txa[channel].midbuff, 0, 2 * ch[channel].dsp_size	 * sizeof (complex));
 	flush_resample (txa[channel].rsmpin.p);
 	flush_gen (txa[channel].gen0.p);
 	flush_panel (txa[channel].panel.p);
@@ -595,7 +595,7 @@ void setInputSamplerate_txa (int channel)
 {
 	// buffers
 	_aligned_free (txa[channel].inbuff);
-	txa[channel].inbuff = (double *)malloc0(1 * ch[channel].dsp_insize  * sizeof(complex));
+	txa[channel].inbuff = (double *)malloc0(1 * ch[channel].dsp_insize	* sizeof(complex));
 	// input resampler
 	setBuffers_resample (txa[channel].rsmpin.p, txa[channel].inbuff, txa[channel].midbuff);
 	setSize_resample (txa[channel].rsmpin.p, ch[channel].dsp_insize);
@@ -624,7 +624,7 @@ void setDSPSamplerate_txa (int channel)
 {
 	// buffers
 	_aligned_free (txa[channel].inbuff);
-	txa[channel].inbuff = (double *)malloc0(1 * ch[channel].dsp_insize  * sizeof(complex));
+	txa[channel].inbuff = (double *)malloc0(1 * ch[channel].dsp_insize	* sizeof(complex));
 	_aligned_free (txa[channel].outbuff);
 	txa[channel].outbuff = (double *)malloc0(1 * ch[channel].dsp_outsize * sizeof(complex));
 	// input resampler
@@ -672,7 +672,7 @@ void setDSPBuffsize_txa (int channel)
 {
 	// buffers
 	_aligned_free (txa[channel].inbuff);
-	txa[channel].inbuff = (double *)malloc0(1 * ch[channel].dsp_insize  * sizeof(complex));
+	txa[channel].inbuff = (double *)malloc0(1 * ch[channel].dsp_insize	* sizeof(complex));
 	_aligned_free (txa[channel].midbuff);
 	txa[channel].midbuff = (double *)malloc0(2 * ch[channel].dsp_size * sizeof(complex));
 	_aligned_free (txa[channel].outbuff);
@@ -756,27 +756,27 @@ void SetTXAMode (int channel, int mode)
 	{
 		EnterCriticalSection (&ch[channel].csDSP);
 		txa[channel].mode = mode;
-		txa[channel].ammod.p->run   = 0;
-		txa[channel].fmmod.p->run   = 0;
+		txa[channel].ammod.p->run	= 0;
+		txa[channel].fmmod.p->run	= 0;
 		txa[channel].preemph.p->run = 0;
 		switch (mode)
 		{
 		case TXA_AM:
 		case TXA_SAM:
-			txa[channel].ammod.p->run   = 1;
-			txa[channel].ammod.p->mode  = 0;
+			txa[channel].ammod.p->run	= 1;
+			txa[channel].ammod.p->mode	= 0;
 			break;
 		case TXA_DSB:
-			txa[channel].ammod.p->run   = 1;
-			txa[channel].ammod.p->mode  = 1;
+			txa[channel].ammod.p->run	= 1;
+			txa[channel].ammod.p->mode	= 1;
 			break;
 		case TXA_AM_LSB:
 		case TXA_AM_USB:
-			txa[channel].ammod.p->run   = 1;
-			txa[channel].ammod.p->mode  = 2;
+			txa[channel].ammod.p->run	= 1;
+			txa[channel].ammod.p->mode	= 2;
 			break;
 		case TXA_FM:
-			txa[channel].fmmod.p->run   = 1;
+			txa[channel].fmmod.p->run	= 1;
 			txa[channel].preemph.p->run = 1;
 			break;
 		default:
@@ -809,7 +809,7 @@ void SetTXABandpassFreqs (int channel, double f_low, double f_high)
 void TXAResCheck (int channel)
 {
 	RESAMPLE a = txa[channel].rsmpin.p;
-	if (ch[channel].in_rate  != ch[channel].dsp_rate)	a->run = 1;
+	if (ch[channel].in_rate	 != ch[channel].dsp_rate)	a->run = 1;
 	else												a->run = 0;
 	a = txa[channel].rsmpout.p;
 	if (ch[channel].dsp_rate != ch[channel].out_rate)	a->run = 1;

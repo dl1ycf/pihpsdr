@@ -1,6 +1,15 @@
 LIST OF RECENT PIHPSDR CHANGES
 ==============================
 
+January 2026:
+-------------
+
+Added NR3 and NR4 noise reduction, and updated to WDSP 1.29.
+NR3 (RNNoise) and NR4 (libspecbleach) software is bundled with
+piHPSDR, but one can use "installed" versions (with proper
+CPU-specific optimisations) using the new compile-time
+option NR34LIB.
+
 December 2025:
 ______________
 

@@ -1,4 +1,4 @@
-/*  shift.c
+/*	shift.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -77,7 +77,7 @@ void xshift (SHIFT a)
 			sin_phase = t1 * a->sin_delta + t2 * a->cos_delta;
 			a->phase += a->delta;
 			if (a->phase >= TWOPI) a->phase -= TWOPI;
-			if (a->phase <   0.0 ) a->phase += TWOPI;
+			if (a->phase <	 0.0 ) a->phase += TWOPI;
 		}
 	}
 	else if (a->in != a->out)

@@ -1,4 +1,4 @@
-/*  bandpass.h
+/*	bandpass.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -52,7 +52,7 @@ typedef struct _bps
 	fftw_plan CRev;
 }bps, *BPS;
 
-extern BPS create_bps (int run, int position, int size, double* in, double* out, 
+extern BPS create_bps (int run, int position, int size, double* in, double* out,
 	double f_low, double f_high, int samplerate, int wintype, double gain);
 
 extern void destroy_bps (BPS a);
@@ -111,7 +111,7 @@ typedef struct _bandpass
 	FIRCORE p;
 }bandpass, *BANDPASS;
 
-extern BANDPASS create_bandpass (int run, int position, int size, int nc, int mp, double* in, double* out, 
+extern BANDPASS create_bandpass (int run, int position, int size, int nc, int mp, double* in, double* out,
 	double f_low, double f_high, int samplerate, int wintype, double gain);
 
 extern void destroy_bandpass (BANDPASS a);

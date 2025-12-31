@@ -1,4 +1,4 @@
-/*  siphon.c
+/*	siphon.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@pratt.one
 
@@ -50,7 +50,7 @@ void build_window (SIPHON a)
 		a->window[i] *= scale;
 }
 
-SIPHON create_siphon (int run, int position, int mode, int disp, int insize, 
+SIPHON create_siphon (int run, int position, int mode, int disp, int insize,
 	double* in, int sipsize, int fftsize, int specmode)
 {
 	SIPHON a = (SIPHON) malloc0 (sizeof (siphon));
@@ -327,7 +327,7 @@ void TXASetSipAllocDisps (int channel, int n_alloc_disps, int* alloc_run, int* a
 	a->n_alloc_disps = n_alloc_disps;
 	for (i = 0; i < a->n_alloc_disps; i++)
 	{
-		a->alloc_run[i]  = alloc_run[i];
+		a->alloc_run[i]	 = alloc_run[i];
 		a->alloc_disp[i] = alloc_disp[i];
 	}
 	LeaveCriticalSection(&a->update);
@@ -335,11 +335,11 @@ void TXASetSipAllocDisps (int channel, int n_alloc_disps, int* alloc_run, int* a
 
 /********************************************************************************************************
 *																										*
-*									    CALLS FOR EXTERNAL USE											*
+*										CALLS FOR EXTERNAL USE											*
 *																										*
 ********************************************************************************************************/
 
-#define MAX_EXT_SIPHONS	(2)									// maximum number of Siphons called from outside wdsp
+#define MAX_EXT_SIPHONS (2)									// maximum number of Siphons called from outside wdsp
 __declspec (align (16)) SIPHON psiphon[MAX_EXT_SIPHONS];	// array of pointers for Siphons used EXTERNAL to wdsp
 
 

@@ -1,4 +1,4 @@
-/*  iobuffs.c
+/*	iobuffs.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -28,7 +28,7 @@ warren@wpratt.com
 
 /********************************************************************************************************
 *																										*
-*										    Begin Slew Code												*
+*											Begin Slew Code												*
 *																										*
 ********************************************************************************************************/
 
@@ -56,7 +56,7 @@ void create_slews (IOB a)
 	a->slew.ndeldown = (int)(ch[a->channel].tdelaydown * ch[a->channel].out_rate);
 	a->slew.ntup = (int)(ch[a->channel].tslewup * ch[a->channel].in_rate);
 	a->slew.ntdown = (int)(ch[a->channel].tslewdown * ch[a->channel].out_rate);
-	a->slew.cup   = (double *) malloc0 ((a->slew.ntup + 1) * sizeof (double));
+	a->slew.cup	  = (double *) malloc0 ((a->slew.ntup + 1) * sizeof (double));
 	a->slew.cdown = (double *) malloc0 ((a->slew.ntdown + 1) * sizeof (double));
 
 	delta = PI / (double)a->slew.ntup;
@@ -413,7 +413,7 @@ void create_iobuffs (int channel)
 	a->r2_unqueuedsamps = a->r2_havesamps - n * a->out_size;
 	InitializeCriticalSectionAndSpinCount(&a->r2_ControlSection, 2500);
 	a->Sem_BuffReady = CreateSemaphore(0, 0, 1000, 0);
-	a->Sem_OutReady  = CreateSemaphore(0, n, 1000, 0);
+	a->Sem_OutReady	 = CreateSemaphore(0, n, 1000, 0);
 	a->bfo = ch[channel].bfo;
 	create_slews (a);
 
@@ -456,7 +456,7 @@ void flush_iobuffs (int channel)
 	n = a->r2_havesamps / a->out_size;
 	a->r2_unqueuedsamps = a->r2_havesamps - n * a->out_size;
 	CloseHandle (a->Sem_OutReady);
-	a->Sem_OutReady  = CreateSemaphore(0, n, 1000, 0);
+	a->Sem_OutReady	 = CreateSemaphore(0, n, 1000, 0);
 	flush_slews (a);
 }
 

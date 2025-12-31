@@ -65,8 +65,6 @@
 #define VPORTWIDEBAND0 18
 #define VPORTWIDEBAND1 19
 
-extern bool HW_Timer_Enable;
-
 //
 // a type to hold data for each incoming or outgoing data thread
 //
@@ -82,13 +80,15 @@ struct ThreadSocketData {
 };
 
 extern struct ThreadSocketData SocketData[];        // data for each thread
-extern struct sockaddr_in reply_addr;               // destination address for outgoing data
-extern bool IsTXMode;                               // true if in TX
-extern bool SDRActive;                              // true if this SDR is running at the moment
+extern struct sockaddr_in server_reply_addr;          // destination address for outgoing data
 extern bool ReplyAddressSet;                        // true when reply address has been set
 extern bool StartBitReceived;                       // true when "run" bit has been set
-extern bool NewMessageReceived;                     // set whenever a message is received
-extern bool ThreadError;                            // set true if a thread reports an error
+extern bool ServerActive;
+
+//extern bool IsTXMode;                               // true if in TX
+//extern bool SDRActive;                              // true if this SDR is running at the moment
+//extern bool NewMessageReceived;                     // set whenever a message is received
+//extern bool ThreadError;                            // set true if a thread reports an error
 
 #define VBITCHANGEPORT 1                        // if set, thread must close its socket and open a new one on different port
 #define VBITINTERLEAVE 2                        // if set, DDC threads should interleave data
@@ -97,7 +97,7 @@ extern bool ThreadError;                            // set true if a thread repo
 //
 // default port numbers, used if incoming port number = 0
 //
-extern uint16_t DefaultPorts[];
+//extern uint16_t DefaultPorts[];
 
 void start_saturn_server(void);
 void shutdown_saturn_server(void);
@@ -135,4 +135,5 @@ void *IncomingSpkrAudio(void *arg);             // listener thread
 // END InSpkrAudio.h
 
 extern bool saturn_server_en;
+extern bool client_enable_tx;
 #endif

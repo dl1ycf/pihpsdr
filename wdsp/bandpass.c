@@ -1,4 +1,4 @@
-/*  bandpass.c
+/*	bandpass.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -53,7 +53,7 @@ void decalc_bps (BPS a)
 	_aligned_free(a->infilt);
 }
 
-BPS create_bps (int run, int position, int size, double* in, double* out, 
+BPS create_bps (int run, int position, int size, double* in, double* out,
 	double f_low, double f_high, int samplerate, int wintype, double gain)
 {
 	BPS a = (BPS) malloc0 (sizeof (bps));
@@ -136,7 +136,7 @@ void setFreqs_bps (BPS a, double f_low, double f_high)
 
 /********************************************************************************************************
 *																										*
-*								Overlap-Save Bandpass:  RXA Properties									*
+*								Overlap-Save Bandpass:	RXA Properties									*
 *																										*
 ********************************************************************************************************/
 /*	// UNCOMMENT properties when a pointer is in place in rxa[channel]
@@ -281,7 +281,7 @@ void SetTXABPSWindow (int channel, int wintype)
 *																										*
 ********************************************************************************************************/
 
-BANDPASS create_bandpass (int run, int position, int size, int nc, int mp, double* in, double* out, 
+BANDPASS create_bandpass (int run, int position, int size, int nc, int mp, double* in, double* out,
 	double f_low, double f_high, int samplerate, int wintype, double gain)
 {
 	// NOTE:  'nc' must be >= 'size'
@@ -396,7 +396,7 @@ void SetRXABandpassFreqs (int channel, double f_low, double f_high)
 	BANDPASS a = rxa[channel].bp1.p;
 	if ((f_low != a->f_low) || (f_high != a->f_high))
 	{
-		impulse = fir_bandpass (a->nc, f_low, f_high, a->samplerate, 
+		impulse = fir_bandpass (a->nc, f_low, f_high, a->samplerate,
 			a->wintype, 1, a->gain / (double)(2 * a->size));
 		setImpulse_fircore (a->p, impulse, 0);
 		_aligned_free (impulse);
@@ -415,7 +415,7 @@ void SetRXABandpassWindow (int channel, int wintype)
 	BANDPASS a = rxa[channel].bp1.p;
 	if ((a->wintype != wintype))
 	{
-		impulse = fir_bandpass (a->nc, a->f_low, a->f_high, a->samplerate, 
+		impulse = fir_bandpass (a->nc, a->f_low, a->f_high, a->samplerate,
 			wintype, 1, a->gain / (double)(2 * a->size));
 		setImpulse_fircore (a->p, impulse, 0);
 		_aligned_free (impulse);

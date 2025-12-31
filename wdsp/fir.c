@@ -1,4 +1,4 @@
-/*  fir.c
+/*	fir.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@pratt.one
 */
@@ -28,7 +28,7 @@ warren@pratt.one
 
 double* fftcv_mults (int NM, double* c_impulse)
 {
-	double* mults        = (double *) malloc0 (NM * sizeof (complex));
+	double* mults		 = (double *) malloc0 (NM * sizeof (complex));
 	double* cfft_impulse = (double *) malloc0 (NM * sizeof (complex));
 	fftw_plan ptmp = fftw_plan_dft_1d(NM, (fftw_complex *) cfft_impulse,
 			(fftw_complex *) mults, FFTW_FORWARD, FFTW_PATIENT);
@@ -86,7 +86,7 @@ double* fir_fsamp_odd (int N, double* A, int rtype, double scale, int wintype)
 	int mid = (N - 1) / 2;
 	double mag, phs;
 	double* window;
-	double *fcoef     = (double *) malloc0 (N * sizeof (complex));
+	double *fcoef	  = (double *) malloc0 (N * sizeof (complex));
 	double *c_impulse = (double *) malloc0 (N * sizeof (complex));
 	fftw_plan ptmp = fftw_plan_dft_1d(N, (fftw_complex *)fcoef, (fftw_complex *)c_impulse, FFTW_BACKWARD, FFTW_PATIENT);
 	double local_scale = 1.0 / (double)N;
@@ -187,7 +187,7 @@ double* fir_fsamp (int N, double* A, int rtype, double scale, int wintype)
 double* fir_bandpass (int N, double f_low, double f_high, double samplerate, int wintype, int rtype, double scale)
 {
 	// check for previous in the cache
-	struct Params 
+	struct Params
 	{
 		int N;
 		int wintype;
@@ -233,7 +233,7 @@ double* fir_bandpass (int N, double f_low, double f_high, double samplerate, int
 			break;
 		case 1:
 			c_impulse[N - 1] = scale * 2.0 * ft;
-			c_impulse[  N  ] = 0.0;
+			c_impulse[	N  ] = 0.0;
 			break;
 		}
 	}
@@ -244,21 +244,21 @@ double* fir_bandpass (int N, double f_low, double f_high, double samplerate, int
 		sinc = sin (ft_rad * posi) / (PI * posi);
 		switch (wintype)
 		{
-		case 0:	// Blackman-Harris 4-term
+		case 0: // Blackman-Harris 4-term
 			cosphi = cos (delta * i);
-			window  =             + 0.21747
-					+ cosphi *  ( - 0.45325
-					+ cosphi *  ( + 0.28256
-					+ cosphi *  ( - 0.04672 )));
+			window	=			  + 0.21747
+					+ cosphi *	( - 0.45325
+					+ cosphi *	( + 0.28256
+					+ cosphi *	( - 0.04672 )));
 			break;
-		case 1:	// Blackman-Harris 7-term
+		case 1: // Blackman-Harris 7-term
 		default:
 			cosphi = cos (delta * i);
 			window	=			  + 6.3964424114390378e-02
-					+ cosphi *  ( - 2.3993864599352804e-01
-					+ cosphi *  ( + 3.5015956323820469e-01
+					+ cosphi *	( - 2.3993864599352804e-01
+					+ cosphi *	( + 3.5015956323820469e-01
 					+ cosphi *	( - 2.4774111897080783e-01
-					+ cosphi *  ( + 8.5438256055858031e-02
+					+ cosphi *	( + 8.5438256055858031e-02
 					+ cosphi *	( - 1.2320203369293225e-02
 					+ cosphi *	( + 4.3778825791773474e-04 ))))));
 			break;
@@ -309,7 +309,7 @@ double *fir_read (int N, const char *filename, int rtype, double scale)
 			{
 			case 0:
 				if (error == 0 && fscanf(file, "%le", &I) != 1) error = 1;
-				if (error == 0) 
+				if (error == 0)
 					c_impulse[i] = +scale * I;
 				break;
 			case 1:
@@ -356,42 +356,42 @@ void analytic (int N, double* in, double* out)
 
 void mp_imp (int N, double* fir, double* mpfir, int pfactor, int polarity)
 {
-    // check for previous in the cache
-    struct Params
-    {
-        int N;
-        int pfactor;
-        int polarity;
-    };
+	// check for previous in the cache
+	struct Params
+	{
+		int N;
+		int pfactor;
+		int polarity;
+	};
 
-    struct Params params;
-    memset(&params, 0, sizeof(params));
-    params.N = N;
-    params.pfactor = pfactor;
-    params.polarity = polarity;
+	struct Params params;
+	memset(&params, 0, sizeof(params));
+	params.N = N;
+	params.pfactor = pfactor;
+	params.polarity = polarity;
 
-    HASH_T h = fnv1a_hash(&params, sizeof(params));
+	HASH_T h = fnv1a_hash(&params, sizeof(params));
 
-    size_t arr_len = N * sizeof(complex);
-    HASH_T hf = fnv1a_hash((uint8_t*)fir, arr_len);
-    h ^= hf + GOLDEN_RATIO + (h << 6) + (h >> 2);
+	size_t arr_len = N * sizeof(complex);
+	HASH_T hf = fnv1a_hash((uint8_t*)fir, arr_len);
+	h ^= hf + GOLDEN_RATIO + (h << 6) + (h >> 2);
 
-    double* imp = get_impulse_cache_entry(MP_CACHE, h, N);
-    if (imp)
-    {
-        memcpy(mpfir, imp, N * sizeof(complex)); // need to copy into mpfir
-        _aligned_free (imp);
-        return;
-    }
-    //
+	double* imp = get_impulse_cache_entry(MP_CACHE, h, N);
+	if (imp)
+	{
+		memcpy(mpfir, imp, N * sizeof(complex)); // need to copy into mpfir
+		_aligned_free (imp);
+		return;
+	}
+	//
 
 	int i;
 	int size = N * pfactor;
 	double inv_PN = 1.0 / (double)size;
-	double* firpad  = (double *) malloc0 (size * sizeof (complex));
+	double* firpad	= (double *) malloc0 (size * sizeof (complex));
 	double* firfreq = (double *) malloc0 (size * sizeof (complex));
-	double* mag     = (double *) malloc0 (size * sizeof (double));
-	double* ana     = (double *) malloc0 (size * sizeof (complex));
+	double* mag		= (double *) malloc0 (size * sizeof (double));
+	double* ana		= (double *) malloc0 (size * sizeof (complex));
 	double* impulse = (double *) malloc0 (size * sizeof (complex));
 	double* newfreq = (double *) malloc0 (size * sizeof (complex));
 	memcpy (firpad, fir, N * sizeof (complex));
@@ -433,12 +433,12 @@ void mp_imp (int N, double* fir, double* mpfir, int pfactor, int polarity)
 	_aligned_free (firfreq);
 	_aligned_free (firpad);
 
-    // store in cache
-    add_impulse_to_cache(MP_CACHE, h, N, mpfir);
+	// store in cache
+	add_impulse_to_cache(MP_CACHE, h, N, mpfir);
 }
 
-// impulse response of a zero frequency filter comprising a cascade of two resonators, 
-//    each followed by a detrending filter
+// impulse response of a zero frequency filter comprising a cascade of two resonators,
+//	  each followed by a detrending filter
 double* zff_impulse(int nc, double scale)
 {
 	// nc = number of coefficients (power of two)
@@ -454,7 +454,7 @@ double* zff_impulse(int nc, double scale)
 	double* dresdet = (double*)malloc0 (n_dresdet * sizeof(double));
 	double div = (double)((nc / 2 + 1) * (nc / 2 + 1));					// calculate divisor
 	double* c_dresdet = (double*)malloc0 (nc * sizeof(complex));
-	for (int n = 0; n < n_dresdet; n++)	// convolve to make the cascade
+	for (int n = 0; n < n_dresdet; n++) // convolve to make the cascade
 	{
 		for (int k = 0; k < n_resdet; k++)
 			if ((n - k) >= 0 && (n - k) < n_resdet)

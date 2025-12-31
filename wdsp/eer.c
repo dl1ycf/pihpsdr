@@ -1,4 +1,4 @@
-/*  eer.c
+/*	eer.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -123,7 +123,7 @@ void xeer (EER a)
 
 /********************************************************************************************************
 *																										*
-*									    CALLS FOR EXTERNAL USE											*
+*										CALLS FOR EXTERNAL USE											*
 *																										*
 ********************************************************************************************************/
 
@@ -256,7 +256,7 @@ void SetEERSamplerate (int id, int rate)
 
 /********************************************************************************************************
 *																										*
-*								            POINTER-BASED PROPERTIES	    							*
+*											POINTER-BASED PROPERTIES									*
 *																										*
 ********************************************************************************************************/
 
@@ -370,8 +370,8 @@ void xeerEXTF (int id, float* inI, float* inQ, float* outI, float* outQ, float* 
 	if (mox && a->run)
 	{
 		int i;
-		a->in   = a->legacy;
-		a->out  = a->legacy;
+		a->in	= a->legacy;
+		a->out	= a->legacy;
 		a->outM = a->legacyM;
 		a->size = size;
 		SetDelayBuffs (a->mdel, a->size, a->outM, a->outM);
@@ -384,8 +384,8 @@ void xeerEXTF (int id, float* inI, float* inQ, float* outI, float* outQ, float* 
 		xeer (a);
 		for (i = 0; i < a->size; i++)
 		{
-			outI[i]  = (float)a->legacy [2 * i + 0];
-			outQ[i]  = (float)a->legacy [2 * i + 1];
+			outI[i]	 = (float)a->legacy [2 * i + 0];
+			outQ[i]	 = (float)a->legacy [2 * i + 1];
 			outMI[i] = (float)a->legacyM[2 * i + 0];
 			outMQ[i] = (float)a->legacyM[2 * i + 1];
 		}

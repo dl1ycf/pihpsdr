@@ -1,4 +1,4 @@
-/*  ssql.h
+/*	ssql.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -80,8 +80,8 @@ typedef struct _ssql					// Syllabic Squelch
 	double tr_thresh;					// trigger threshold:  100K/(100K+22K)=0.8197
 	double tr_tau_unmute;				// trigger unmute time-constant:  (100K||220K)*10uF = 0.6875
 	double tr_ss_unmute;				// trigger steady-state level for unmute:  100K/(100K+220K)=0.3125
-	double tr_tau_mute;					// trigger mute time-constant:  220K*10uF = 2.2
-	double tr_ss_mute;					// trigger steady-state level for mute:  1.0
+	double tr_tau_mute;					// trigger mute time-constant:	220K*10uF = 2.2
+	double tr_ss_mute;					// trigger steady-state level for mute:	 1.0
 	double tr_voltage;					// trigger voltage
 	double mute_mult;					// multiplier for successive voltage calcs when muted
 	double unmute_mult;					// multiplier for successive voltage calcs when unmuted

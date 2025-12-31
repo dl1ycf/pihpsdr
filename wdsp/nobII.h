@@ -1,4 +1,4 @@
-/*  nobII.h
+/*	nobII.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -51,22 +51,22 @@ typedef struct _nob
 	int ffb_in_idx;
 	double backtau;					// time constant used in averaging the magnitude of the input signal
 	double threshold;				// triggers if (noise > threshold * average_signal_magnitude)
-    double *awave;                   // pointer to array holding transition waveform
+	double *awave;					 // pointer to array holding transition waveform
 	double *hwave;
-    int state;                      // state of the state machine
-    double avg;                     // average value of the signal magnitude
-    int time;                       // count when decreasing the signal magnitude
+	int state;						// state of the state machine
+	double avg;						// average value of the signal magnitude
+	int time;						// count when decreasing the signal magnitude
 	int adv_slew_count;
-    int adv_count;                  // number of samples to equal 'tau' time
-    int hang_count;                 // number of samples to equal 'hangtime' time
-    int hang_slew_count;            // number of samples to equal 'advtime' time
+	int adv_count;					// number of samples to equal 'tau' time
+	int hang_count;					// number of samples to equal 'hangtime' time
+	int hang_slew_count;			// number of samples to equal 'advtime' time
 	int max_imp_seq;
 	int blank_count;
-    int in_idx;                     // ring buffer position into which new samples are inserted
+	int in_idx;						// ring buffer position into which new samples are inserted
 	int scan_idx;
-    int out_idx;                    // ring buffer position from which delayed samples are pulled
-    double backmult;				// multiplier for waveform averaging
-    double ombackmult;				// multiplier for waveform averaging
+	int out_idx;					// ring buffer position from which delayed samples are pulled
+	double backmult;				// multiplier for waveform averaging
+	double ombackmult;				// multiplier for waveform averaging
 	double I1, Q1;
 	double I2, Q2;
 	double I, Q;

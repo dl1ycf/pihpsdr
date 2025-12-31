@@ -1,4 +1,4 @@
-/*  fmd.c
+/*	fmd.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -78,7 +78,7 @@ void decalc_fmd (FMD a)
 	destroy_snotch(a->sntch);
 }
 
-FMD create_fmd( int run, int size, double* in, double* out, int rate, double deviation, double f_low, double f_high, 
+FMD create_fmd( int run, int size, double* in, double* out, int rate, double deviation, double f_low, double f_high,
 	double fmin, double fmax, double zeta, double omegaN, double tau, double afgain, int sntch_run, double ctcss_freq, int nc_de, int mp_de, int nc_aud, int mp_aud)
 {
 	FMD a = (FMD) malloc0 (sizeof (fmd));
@@ -151,8 +151,8 @@ void xfmd (FMD a)
 		for (i = 0; i < a->size; i++)
 		{
 			// pll
-			vco[0]  = cos (a->phs);
-			vco[1]  = sin (a->phs);
+			vco[0]	= cos (a->phs);
+			vco[1]	= sin (a->phs);
 			corr[0] = + a->in[2 * i + 0] * vco[0] + a->in[2 * i + 1] * vco[1];
 			corr[1] = - a->in[2 * i + 0] * vco[1] + a->in[2 * i + 1] * vco[0];
 			if ((corr[0] == 0.0) && (corr[1] == 0.0)) corr[0] = 1.0;
@@ -193,7 +193,7 @@ void setBuffers_fmd (FMD a, double* in, double* out)
 	a->in = in;
 	a->out = out;
 	calc_fmd (a);
-	setBuffers_fircore (a->pde,  a->audio, a->out);
+	setBuffers_fircore (a->pde,	 a->audio, a->out);
 	setBuffers_fircore (a->paud, a->out, a->out);
 	setBuffers_wcpagc (a->plim, a->out, a->out);
 }

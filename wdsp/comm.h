@@ -1,4 +1,4 @@
-/*  comm.h
+/*	comm.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -51,18 +51,23 @@ warren@wpratt.com
 #include "analyzer.h"
 #include "anf.h"
 #include "anr.h"
+#include "apfshadow.h"
 #include "bandpass.h"
 #include "calcc.h"
 #include "cblock.h"
 #include "cfcomp.h"
 #include "cfir.h"
 #include "channel.h"
+#include "cmath.h"
 #include "compress.h"
 #include "delay.h"
 #include "dexp.h"
 #include "div.h"
+#include "doublepole.h"
 #include "eer.h"
 #include "emnr.h"
+#include "rnnr.h" // NR3 + NR4 support
+#include "sbnr.h" // NR3 + NR4 support
 #include "emph.h"
 #include "eq.h"
 #include "fcurve.h"
@@ -72,6 +77,7 @@ warren@wpratt.com
 #include "fmmod.h"
 #include "fmsq.h"
 #include "gain.h"
+#include "gaussian.h"
 #include "gen.h"
 #include "icfir.h"
 #include "iir.h"
@@ -80,6 +86,7 @@ warren@wpratt.com
 #include "iqc.h"
 #include "lmath.h"
 #include "main.h"
+#include "matchedCW.h"
 #include "meter.h"
 #include "meterlog10.h"
 #include "nbp.h"

@@ -1,4 +1,4 @@
-/*  cfir.c
+/*	cfir.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -40,21 +40,21 @@ void decalc_cfir (CFIR a)
 	destroy_fircore (a->p);
 }
 
-CFIR create_cfir (int run, int size, int nc, int mp, double* in, double* out, int runrate, int cicrate, 
+CFIR create_cfir (int run, int size, int nc, int mp, double* in, double* out, int runrate, int cicrate,
 	int DD, int R, int Pairs, double cutoff, int xtype, double xbw, int wintype)
 //	run:  0 - no action; 1 - operate
 //	size:  number of complex samples in an input buffer to the CFIR filter
-//	nc:  number of filter coefficients
-//  mp:  minimum phase flag
-//	in:  pointer to the input buffer
+//	nc:	 number of filter coefficients
+//	mp:	 minimum phase flag
+//	in:	 pointer to the input buffer
 //	out:  pointer to the output buffer
 //	rate:  samplerate
-//	DD:  differential delay of the CIC to be compensated (usually 1 or 2)
-//	R:  interpolation factor of CIC
-//	Pairs:  number of comb-integrator pairs in the CIC
-//	cutoff:  cutoff frequency
-//  xtype:  0 - fourth power transition; 1 - raised cosine transition; 2 - brick wall
-//  xbw:  width of raised cosine transition
+//	DD:	 differential delay of the CIC to be compensated (usually 1 or 2)
+//	R:	interpolation factor of CIC
+//	Pairs:	number of comb-integrator pairs in the CIC
+//	cutoff:	 cutoff frequency
+//	xtype:	0 - fourth power transition; 1 - raised cosine transition; 2 - brick wall
+//	xbw:  width of raised cosine transition
 {
 	CFIR a = (CFIR) malloc0 (sizeof (cfir));
 	a->run = run;
@@ -130,7 +130,7 @@ double* cfir_impulse (int N, int DD, int R, int Pairs, double runrate, double ci
 	// DD:		differential delay used in the CIC filter
 	// R:		interpolation / decimation factor of the CIC
 	// Pairs:	number of comb-integrator pairs in the CIC
-	// runrate:	sample rate at which this filter is to run (assumes there may be flat interp. between this filter and the CIC)
+	// runrate: sample rate at which this filter is to run (assumes there may be flat interp. between this filter and the CIC)
 	// cicrate: sample rate at interface to CIC
 	// cutoff:	cutoff frequency
 	// xtype:	transition type, 0 for 4th-power rolloff, 1 for raised cosine, 2 for brick wall
@@ -172,7 +172,7 @@ double* cfir_impulse (int N, int DD, int R, int Pairs, double runrate, double ci
 			}
 			else
 				mag *= (ft * ft * ft * ft) / (fn * fn * fn * fn);
-			A[i] = mag; 
+			A[i] = mag;
 		}
 	}
 	else if (xtype == 1)

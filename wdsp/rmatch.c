@@ -1,4 +1,4 @@
-/*  rmatch.c
+/*	rmatch.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -57,15 +57,15 @@ void xmav (MAV a, int input, double* output)
 {
 	if (a->load >= a->ringmax)
 		a->sum -= a->ring[a->i];
-    if (a->load < a->ringmax) a->load++;
-    a->ring[a->i] = input;
+	if (a->load < a->ringmax) a->load++;
+	a->ring[a->i] = input;
 	a->sum += a->ring[a->i];
-    
+	
 	if (a->load >= a->ringmin)
 		*output = (double)a->sum / (double)a->load;
 	else
 		*output = a->nom_value;
-    a->i = (a->i + 1) & a->mask;
+	a->i = (a->i + 1) & a->mask;
 }
 
 AAMAV create_aamav (int ringmin, int ringmax, double nom_ratio)
@@ -101,18 +101,18 @@ void flush_aamav (AAMAV a)
 void xaamav (AAMAV a, int input, double* output)
 {
 	if (a->load >= a->ringmax)
-    {
-        if (a->ring[a->i] >= 0)
-            a->pos -= a->ring[a->i];
-        else
-            a->neg += a->ring[a->i];
-    }
-    if (a->load <= a->ringmax) a->load++;
-    a->ring[a->i] = input;
-    if (a->ring[a->i] >= 0)
-        a->pos += a->ring[a->i];
-    else
-        a->neg -= a->ring[a->i];
+	{
+		if (a->ring[a->i] >= 0)
+			a->pos -= a->ring[a->i];
+		else
+			a->neg += a->ring[a->i];
+	}
+	if (a->load <= a->ringmax) a->load++;
+	a->ring[a->i] = input;
+	if (a->ring[a->i] >= 0)
+		a->pos += a->ring[a->i];
+	else
+		a->neg -= a->ring[a->i];
 	if (a->load >= a->ringmin)
 		*output = (double)a->neg / (double)a->pos;
 	else if (a->neg > 0 && a->pos > 0)
@@ -122,7 +122,7 @@ void xaamav (AAMAV a, int input, double* output)
 	}
 	else
 		*output = a->nom_ratio;
-    a->i = (a->i + 1) & a->mask;
+	a->i = (a->i + 1) & a->mask;
 }
 
 void calc_rmatch (RMATCH a)
@@ -132,7 +132,7 @@ void calc_rmatch (RMATCH a)
 	int max_ring_insize;
 	a->nom_ratio = (double)a->nom_outrate / (double)a->nom_inrate;
 	max_ring_insize = (int)(1.0 + (double)a->insize * (1.05 * a->nom_ratio));
-	if (a->ringsize < 2 * max_ring_insize)  a->ringsize = 2 * max_ring_insize;
+	if (a->ringsize < 2 * max_ring_insize)	a->ringsize = 2 * max_ring_insize;
 	if (a->ringsize < 2 * a->outsize) a->ringsize = 2 * a->outsize;
 	a->ring = (double *) malloc0 (a->ringsize * sizeof (complex));
 	a->rsize = a->ringsize;
@@ -140,7 +140,7 @@ void calc_rmatch (RMATCH a)
 	a->iin = a->rsize / 2;
 	a->iout = 0;
 	a->resout = (double *) malloc0 (max_ring_insize * sizeof (complex));
-	a->v = create_varsamp (1, a->insize, a->in, a->resout, a->nom_inrate, a->nom_outrate, 
+	a->v = create_varsamp (1, a->insize, a->in, a->resout, a->nom_inrate, a->nom_outrate,
 		a->fc_high, a->fc_low, a->R, a->gain, a->var, a->varmode);
 	a->ffmav = create_aamav (a->ff_ringmin, a->ff_ringmax, a->nom_ratio);
 	a->propmav = create_mav (a->prop_ringmin, a->prop_ringmax, 0.0);
@@ -149,7 +149,7 @@ void calc_rmatch (RMATCH a)
 	a->feed_forward = 1.0;
 	a->av_deviation = 0.0;
 	InitializeCriticalSectionAndSpinCount (&a->cs_ring, 2500);
-	InitializeCriticalSectionAndSpinCount (&a->cs_var,  2500);
+	InitializeCriticalSectionAndSpinCount (&a->cs_var,	2500);
 	a->ntslew = (int)(a->tslew * a->nom_outrate);
 	if (a->ntslew + 1 > a->rsize / 2) a->ntslew = a->rsize / 2 - 1;
 	a->cslew = (double *) malloc0 ((a->ntslew + 1) * sizeof (double));
@@ -230,7 +230,7 @@ RMATCH create_rmatch (
 	a->ff_ringmax = ffmav_max;		// must be a power of two
 	a->ff_alpha = ff_alpha;
 	a->prop_ringmin = prop_ringmin;
-	a->prop_ringmax = prop_ringmax;	// must be a power of two
+	a->prop_ringmax = prop_ringmax; // must be a power of two
 	a->prop_gain = prop_gain;
 	a->varmode = varmode;
 	a->tslew = tslew;
@@ -415,7 +415,7 @@ void dslew (RMATCH a)
 			second = 0;
 		}
 		memset (a->ring + 2 * i, 0, first  * sizeof (complex));
-		memset (a->ring,         0, second * sizeof (complex));
+		memset (a->ring,		 0, second * sizeof (complex));
 		n += zeros; //
 	} //
 	// a->n_ring = a->outsize + a->rsize / 2;
@@ -433,7 +433,7 @@ void xrmatchOUT (void* b, double* out)
 		int first, second;
 		a->out = out;
 		EnterCriticalSection (&a->cs_ring);
-		if (a->n_ring < a->outsize) 
+		if (a->n_ring < a->outsize)
 		{
 			dslew (a);
 			a->ucnt = a->ntslew;
@@ -471,7 +471,7 @@ void getRMatchDiags (void* b, int* underflows, int* overflows, double* var, int*
 {
 	RMATCH a = (RMATCH)b;
 	*underflows = InterlockedAnd (&a->underflows, 0xFFFFFFFF);
-	*overflows  = InterlockedAnd (&a->overflows,  0xFFFFFFFF);
+	*overflows	= InterlockedAnd (&a->overflows,  0xFFFFFFFF);
 	EnterCriticalSection (&a->cs_var);
 	*var = a->var;
 	*ringsize = a->ringsize;
@@ -484,7 +484,7 @@ void resetRMatchDiags (void* b)
 {
 	RMATCH a = (RMATCH)b;
 	InterlockedExchange (&a->underflows, 0);
-	InterlockedExchange (&a->overflows,  0);
+	InterlockedExchange (&a->overflows,	 0);
 }
 
 PORT
@@ -657,7 +657,7 @@ void setRMatchPropRingMax(void* ptr, int prop_max)
 	InterlockedBitTestAndReset(&a->run, 0);
 	Sleep(10);
 	decalc_rmatch(a);
-	a->prop_ringmax = prop_max;	// must be a power of two
+	a->prop_ringmax = prop_max; // must be a power of two
 	calc_rmatch(a);
 	InterlockedBitTestAndSet(&a->run, 0);
 }
@@ -732,6 +732,6 @@ void* create_rmatchLegacyV(int in_size, int out_size, int nom_inrate, int nom_ou
 		4096,					// proportional feedback min moving av ringsize
 		16384,					// proportional feedback max moving av ringsize - POWER OF TWO!
 		1.0e-06,				// proportional feedback gain  ***W4WMT - reduce loop gain a bit for PowerSDR to help Primary buffers > 512
-		0,						// linearly interpolate cvar by sample  ***W4WMT - set varmode = 0 for PowerSDR (doesn't work otherwise!?!)
+		0,						// linearly interpolate cvar by sample	***W4WMT - set varmode = 0 for PowerSDR (doesn't work otherwise!?!)
 		0.003);					// slew time (seconds)
 }

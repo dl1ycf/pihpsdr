@@ -1,8 +1,8 @@
-/*  RXA.c
+/*	RXA.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2013, 2014, 2015, 2016, 2023 Warren Pratt, NR0V
+Copyright (C) 2013, 2014, 2015, 2016, 2023, 2025 Warren Pratt, NR0V
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -31,9 +31,9 @@ struct _rxa rxa[MAX_CHANNELS];
 void create_rxa (int channel)
 {
 	rxa[channel].mode = RXA_LSB;
-	rxa[channel].inbuff  = (double *) malloc0 (1 * ch[channel].dsp_insize  * sizeof (complex));
+	rxa[channel].inbuff	 = (double *) malloc0 (1 * ch[channel].dsp_insize  * sizeof (complex));
 	rxa[channel].outbuff = (double *) malloc0 (1 * ch[channel].dsp_outsize * sizeof (complex));
-	rxa[channel].midbuff = (double *) malloc0 (2 * ch[channel].dsp_size    * sizeof (complex));
+	rxa[channel].midbuff = (double *) malloc0 (2 * ch[channel].dsp_size	   * sizeof (complex));
 
 	// shift to select a slice of spectrum
 	rxa[channel].shift.p = create_shift (
@@ -256,9 +256,9 @@ void create_rxa (int channel)
 
 	// EQ
 	{
-	double default_F[11] = {0.0,  32.0,  63.0, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0};
-	//double default_G[11] = {0.0, -12.0, -12.0, -12.0,  -1.0,  +1.0,   +4.0,   +9.0,  +12.0,  -10.0,   -10.0};
-	double default_G[11] =   {0.0,   0.0,   0.0,   0.0,   0.0,   0.0,    0.0,    0.0,    0.0,    0.0,     0.0};
+	double default_F[11] = {0.0,  32.0,	 63.0, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0};
+	//double default_G[11] = {0.0, -12.0, -12.0, -12.0,	 -1.0,	+1.0,	+4.0,	+9.0,  +12.0,  -10.0,	-10.0};
+	double default_G[11] =	 {0.0,	 0.0,	0.0,   0.0,	  0.0,	 0.0,	 0.0,	 0.0,	 0.0,	 0.0,	  0.0};
 	rxa[channel].eqp.p = create_eqp (
 		0,												// run - OFF by default
 		ch[channel].dsp_size,							// buffer size
@@ -330,6 +330,24 @@ void create_rxa (int channel)
 		2,												// gain method
 		0,												// npe_method
 		1);												// ae_run
+
+	// RNNoise based noise reduction					// NR3 + NR4 support (nr3)
+	rxa[channel].rnnr.p = create_rnnr (
+		0,												// run
+		0,												// position
+		ch[channel].dsp_size,							// buffer size
+		rxa[channel].midbuff,							// input buffer
+		rxa[channel].midbuff,							// output buffer
+		ch[channel].dsp_rate);							// samplerate
+
+	// libspecbleach based noise reduction				// NR3 + NR4 support (nr4)
+	rxa[channel].sbnr.p = create_sbnr(
+		0,												// run
+		0,												// position
+		ch[channel].dsp_size,							// buffer size
+		rxa[channel].midbuff,							// input buffer
+		rxa[channel].midbuff,							// output buffer
+		ch[channel].dsp_rate);							// samplerate
 
 	// AGC
 	rxa[channel].agc.p = create_wcpagc (
@@ -410,7 +428,48 @@ void create_rxa (int channel)
 		ch[channel].dsp_rate,							// sample rate
 		0.02);											// tau
 
-	// peaking filter
+	// double-pole CW filter
+	rxa[channel].doublepole.p = create_doublepole (
+		0,												// run
+		0,												// position
+		ch[channel].dsp_size,							// buffer size
+		rxa[channel].midbuff,							// pointer to input buffer
+		rxa[channel].midbuff,							// pointer to output buffer
+		600.0,											// center frequency
+		100.0,											// bandwidth
+		ch[channel].dsp_rate,							// sample rate
+		2.0,											// gain
+		2 );											// mode
+
+	// matched CW filter
+	rxa[channel].matched.p = create_matched (
+		0,												// run
+		0,												// position
+		ch[channel].dsp_size,							// buffer size
+		rxa[channel].midbuff,							// pointer to input buffer
+		rxa[channel].midbuff,							// pointer to output buffer
+		600.0,											// center frequency
+		100.0,											// bandwidth
+		ch[channel].dsp_rate,							// sample rate
+		2.0,											// gain
+		2 );											// mode
+
+	// gaussian peaking filter
+	rxa[channel].gaussian.p = create_gaussian (
+		0,												// run
+		0,												// position
+		ch[channel].dsp_size,							// buffer size
+		0,												// number of coefficients
+		rxa[channel].midbuff,							// pointer to input buffer
+		rxa[channel].midbuff,							// pointer to output buffer
+		600.0,											// center frequency
+		100.0,											// bandwidth
+		ch[channel].dsp_rate,							// sample rate
+		2.0,											// gain
+		3.0,											// nsigma
+		2 );											// mode
+
+	// bi-quad peaking filter
 	rxa[channel].speak.p = create_speak (
 		0,												// run
 		ch[channel].dsp_size,							// buffer size,
@@ -442,6 +501,14 @@ void create_rxa (int channel)
 			def_gain,									// gain vector
 			4 );										// number of stages
 	}
+
+	// apf_shadow
+	rxa[channel].apfshadow.p = create_apfshadow (
+		0,												// selection
+		0,												// run
+		600.0,											// center frequency
+		100.0,											// bandwidth
+		2.0 );											// gain
 
 	// syllabic squelch
 	rxa[channel].ssql.p = create_ssql(
@@ -476,7 +543,7 @@ void create_rxa (int channel)
 	// resample
 	rxa[channel].rsmpout.p = create_resample (
 		0,												// run - will be turned ON below if needed
-		ch[channel].dsp_size,							// input buffer size			 
+		ch[channel].dsp_size,							// input buffer size
 		rxa[channel].midbuff,							// pointer to input buffer
 		rxa[channel].outbuff,							// pointer to output buffer
 		ch[channel].dsp_rate,							// input sample rate
@@ -494,14 +561,20 @@ void destroy_rxa (int channel)
 	destroy_resample (rxa[channel].rsmpout.p);
 	destroy_panel (rxa[channel].panel.p);
 	destroy_ssql (rxa[channel].ssql.p);
+	destroy_apfshadow(rxa[channel].apfshadow.p);
 	destroy_mpeak (rxa[channel].mpeak.p);
 	destroy_speak (rxa[channel].speak.p);
+	destroy_gaussian (rxa[channel].gaussian.p);
+	destroy_matched (rxa[channel].matched.p);
+	destroy_doublepole (rxa[channel].doublepole.p);
 	destroy_cbl (rxa[channel].cbl.p);
 	destroy_siphon (rxa[channel].sip1.p);
 	destroy_bandpass (rxa[channel].bp1.p);
 	destroy_meter (rxa[channel].agcmeter.p);
 	destroy_wcpagc (rxa[channel].agc.p);
 	destroy_emnr (rxa[channel].emnr.p);
+	destroy_rnnr (rxa[channel].rnnr.p);		// NR3 + NR4 support (nr3)
+	destroy_sbnr (rxa[channel].sbnr.p);		// NR3 + NR4 support (nr4)
 	destroy_anr (rxa[channel].anr.p);
 	destroy_anf (rxa[channel].anf.p);
 	destroy_eqp (rxa[channel].eqp.p);
@@ -526,9 +599,9 @@ void destroy_rxa (int channel)
 
 void flush_rxa (int channel)
 {
-	memset (rxa[channel].inbuff,  0, 1 * ch[channel].dsp_insize  * sizeof (complex));
+	memset (rxa[channel].inbuff,  0, 1 * ch[channel].dsp_insize	 * sizeof (complex));
 	memset (rxa[channel].outbuff, 0, 1 * ch[channel].dsp_outsize * sizeof (complex));
-	memset (rxa[channel].midbuff, 0, 2 * ch[channel].dsp_size    * sizeof (complex));
+	memset (rxa[channel].midbuff, 0, 2 * ch[channel].dsp_size	 * sizeof (complex));
 	flush_shift (rxa[channel].shift.p);
 	flush_resample (rxa[channel].rsmpin.p);
 	flush_gen (rxa[channel].gen0.p);
@@ -551,6 +624,9 @@ void flush_rxa (int channel)
 	flush_bandpass (rxa[channel].bp1.p);
 	flush_siphon (rxa[channel].sip1.p);
 	flush_cbl (rxa[channel].cbl.p);
+	flush_doublepole (rxa[channel].doublepole.p);
+	flush_matched (rxa[channel].matched.p);
+	flush_gaussian (rxa[channel].gaussian.p);
 	flush_speak (rxa[channel].speak.p);
 	flush_mpeak (rxa[channel].mpeak.p);
 	flush_ssql (rxa[channel].ssql.p);
@@ -580,15 +656,22 @@ void xrxa (int channel)
 	xanf (rxa[channel].anf.p, 0);
 	xanr (rxa[channel].anr.p, 0);
 	xemnr (rxa[channel].emnr.p, 0);
+	xrnnr (rxa[channel].rnnr.p, 0);	  // NR3 + NR4 support (nr3)
+	xsbnr (rxa[channel].sbnr.p, 0);	  // NR3 + NR4 support (nr4)
 	xbandpass (rxa[channel].bp1.p, 0);
 	xwcpagc (rxa[channel].agc.p);
 	xanf (rxa[channel].anf.p, 1);
 	xanr (rxa[channel].anr.p, 1);
 	xemnr (rxa[channel].emnr.p, 1);
+	xrnnr (rxa[channel].rnnr.p, 1);	  // NR3 + NR4 support (nr3)
+	xsbnr (rxa[channel].sbnr.p, 1);	  // NR3 + NR4 support (nr4)
 	xbandpass (rxa[channel].bp1.p, 1);
 	xmeter (rxa[channel].agcmeter.p);
 	xsiphon (rxa[channel].sip1.p, 0);
 	xcbl (rxa[channel].cbl.p);
+	xdoublepole (rxa[channel].doublepole.p, 0);
+	xmatched (rxa[channel].matched.p, 0);
+	xgaussian (rxa[channel].gaussian.p, 0);
 	xspeak (rxa[channel].speak.p);
 	xmpeak (rxa[channel].mpeak.p);
 	xssql (rxa[channel].ssql.p);
@@ -601,7 +684,7 @@ void setInputSamplerate_rxa (int channel)
 {
 	// buffers
 	_aligned_free (rxa[channel].inbuff);
-	rxa[channel].inbuff = (double *)malloc0(1 * ch[channel].dsp_insize  * sizeof(complex));
+	rxa[channel].inbuff = (double *)malloc0(1 * ch[channel].dsp_insize	* sizeof(complex));
 	// shift
 	setBuffers_shift (rxa[channel].shift.p, rxa[channel].inbuff, rxa[channel].inbuff);
 	setSize_shift (rxa[channel].shift.p, ch[channel].dsp_insize);
@@ -628,7 +711,7 @@ void setDSPSamplerate_rxa (int channel)
 {
 	// buffers
 	_aligned_free (rxa[channel].inbuff);
-	rxa[channel].inbuff = (double *)malloc0(1 * ch[channel].dsp_insize  * sizeof(complex));
+	rxa[channel].inbuff = (double *)malloc0(1 * ch[channel].dsp_insize	* sizeof(complex));
 	_aligned_free (rxa[channel].outbuff);
 	rxa[channel].outbuff = (double *)malloc0(1 * ch[channel].dsp_outsize * sizeof(complex));
 	// shift
@@ -655,11 +738,16 @@ void setDSPSamplerate_rxa (int channel)
 	setSamplerate_anf (rxa[channel].anf.p, ch[channel].dsp_rate);
 	setSamplerate_anr (rxa[channel].anr.p, ch[channel].dsp_rate);
 	setSamplerate_emnr (rxa[channel].emnr.p, ch[channel].dsp_rate);
+	setSamplerate_rnnr(rxa[channel].rnnr.p, ch[channel].dsp_rate); // NR3 + NR4 support (nr3)
+	setSamplerate_sbnr(rxa[channel].sbnr.p, ch[channel].dsp_rate); // NR3 + NR4 support (nr4)
 	setSamplerate_bandpass (rxa[channel].bp1.p, ch[channel].dsp_rate);
 	setSamplerate_wcpagc (rxa[channel].agc.p, ch[channel].dsp_rate);
 	setSamplerate_meter (rxa[channel].agcmeter.p, ch[channel].dsp_rate);
 	setSamplerate_siphon (rxa[channel].sip1.p, ch[channel].dsp_rate);
 	setSamplerate_cbl (rxa[channel].cbl.p, ch[channel].dsp_rate);
+	setSamplerate_doublepole (rxa[channel].doublepole.p, ch[channel].dsp_rate);
+	setSamplerate_matched (rxa[channel].matched.p, ch[channel].dsp_rate);
+	setSamplerate_gaussian (rxa[channel].gaussian.p, ch[channel].dsp_rate);
 	setSamplerate_speak (rxa[channel].speak.p, ch[channel].dsp_rate);
 	setSamplerate_mpeak (rxa[channel].mpeak.p, ch[channel].dsp_rate);
 	setSamplerate_ssql (rxa[channel].ssql.p, ch[channel].dsp_rate);
@@ -674,7 +762,7 @@ void setDSPBuffsize_rxa (int channel)
 {
 	// buffers
 	_aligned_free(rxa[channel].inbuff);
-	rxa[channel].inbuff = (double *)malloc0(1 * ch[channel].dsp_insize  * sizeof(complex));
+	rxa[channel].inbuff = (double *)malloc0(1 * ch[channel].dsp_insize	* sizeof(complex));
 	_aligned_free (rxa[channel].midbuff);
 	rxa[channel].midbuff = (double *)malloc0(2 * ch[channel].dsp_size * sizeof(complex));
 	_aligned_free (rxa[channel].outbuff);
@@ -715,6 +803,10 @@ void setDSPBuffsize_rxa (int channel)
 	setBuffers_anr (rxa[channel].anr.p, rxa[channel].midbuff, rxa[channel].midbuff);
 	setSize_anr (rxa[channel].anr.p, ch[channel].dsp_size);
 	setBuffers_emnr (rxa[channel].emnr.p, rxa[channel].midbuff, rxa[channel].midbuff);
+	setSize_rnnr(rxa[channel].rnnr.p, ch[channel].dsp_size); // NR3 + NR4 support (nr3)
+	setBuffers_rnnr(rxa[channel].rnnr.p, rxa[channel].midbuff, rxa[channel].midbuff); // NR3 + NR4 support (nr3)
+	setSize_sbnr(rxa[channel].sbnr.p, ch[channel].dsp_size); // NR3 + NR4 support (nr4)
+	setBuffers_sbnr (rxa[channel].sbnr.p, rxa[channel].midbuff, rxa[channel].midbuff); // NR3 + NR4 support (nr4)
 	setSize_emnr (rxa[channel].emnr.p, ch[channel].dsp_size);
 	setBuffers_bandpass (rxa[channel].bp1.p, rxa[channel].midbuff, rxa[channel].midbuff);
 	setSize_bandpass (rxa[channel].bp1.p, ch[channel].dsp_size);
@@ -726,6 +818,12 @@ void setDSPBuffsize_rxa (int channel)
 	setSize_siphon (rxa[channel].sip1.p, ch[channel].dsp_size);
 	setBuffers_cbl (rxa[channel].cbl.p, rxa[channel].midbuff, rxa[channel].midbuff);
 	setSize_cbl (rxa[channel].cbl.p, ch[channel].dsp_size);
+	setBuffers_doublepole (rxa[channel].doublepole.p, rxa[channel].midbuff, rxa[channel].midbuff);
+	setSize_doublepole (rxa[channel].doublepole.p, ch[channel].dsp_size);
+	setBuffers_matched (rxa[channel].matched.p, rxa[channel].midbuff, rxa[channel].midbuff);
+	setSize_matched (rxa[channel].matched.p, ch[channel].dsp_size);
+	setBuffers_gaussian (rxa[channel].gaussian.p, rxa[channel].midbuff, rxa[channel].midbuff);
+	setSize_gaussian (rxa[channel].gaussian.p, ch[channel].dsp_size);
 	setBuffers_speak (rxa[channel].speak.p, rxa[channel].midbuff, rxa[channel].midbuff);
 	setSize_speak (rxa[channel].speak.p, ch[channel].dsp_size);
 	setBuffers_mpeak (rxa[channel].mpeak.p, rxa[channel].midbuff, rxa[channel].midbuff);
@@ -752,29 +850,32 @@ void SetRXAMode (int channel, int mode)
 	{
 		int amd_run = (mode == RXA_AM) || (mode == RXA_SAM);
 		RXAbpsnbaCheck (channel, mode, rxa[channel].ndb.p->master_run);
-		RXAbp1Check (channel, amd_run, rxa[channel].snba.p->run, rxa[channel].emnr.p->run, 
-			rxa[channel].anf.p->run, rxa[channel].anr.p->run);
+
+		RXAbp1Check (channel, amd_run, rxa[channel].snba.p->run, rxa[channel].emnr.p->run,
+			rxa[channel].anf.p->run, rxa[channel].anr.p->run,
+			rxa[channel].rnnr.p->run, rxa[channel].sbnr.p->run);  // NR3 + NR4 support
+
 		EnterCriticalSection (&ch[channel].csDSP);
 		rxa[channel].mode = mode;
-		rxa[channel].amd.p->run  = 0;
-		rxa[channel].fmd.p->run  = 0;
-		rxa[channel].agc.p->run  = 1;
+		rxa[channel].amd.p->run	 = 0;
+		rxa[channel].fmd.p->run	 = 0;
+		rxa[channel].agc.p->run	 = 1;
 		switch (mode)
 		{
 		case RXA_AM:
-			rxa[channel].amd.p->run  = 1;
+			rxa[channel].amd.p->run	 = 1;
 			rxa[channel].amd.p->mode = 0;
 			break;
 		case RXA_SAM:
-			rxa[channel].amd.p->run  = 1;
+			rxa[channel].amd.p->run	 = 1;
 			rxa[channel].amd.p->mode = 1;
 			break;
 		case RXA_DSB:
 		
 			break;
 		case RXA_FM:
-			rxa[channel].fmd.p->run  = 1;
-			rxa[channel].agc.p->run  = 0;
+			rxa[channel].fmd.p->run	 = 1;
+			rxa[channel].agc.p->run	 = 0;
 			break;
 		default:
 
@@ -790,22 +891,25 @@ void RXAResCheck (int channel)
 {	
 	// turn OFF/ON resamplers depending upon whether they're needed
 	RESAMPLE a = rxa[channel].rsmpin.p;
-	if (ch[channel].in_rate  != ch[channel].dsp_rate)	a->run = 1;
+	if (ch[channel].in_rate	 != ch[channel].dsp_rate)	a->run = 1;
 	else												a->run = 0;
 	a = rxa[channel].rsmpout.p;
 	if (ch[channel].dsp_rate != ch[channel].out_rate)	a->run = 1;
 	else												a->run = 0;
 }
 
-void RXAbp1Check (int channel, int amd_run, int snba_run, 
-	int emnr_run, int anf_run, int anr_run)
+void RXAbp1Check (int channel, int amd_run, int snba_run,
+	int emnr_run, int anf_run, int anr_run,
+	int rnnr_run, int sbnr_run) // NR3 + NR4 support
 {
 	BANDPASS a = rxa[channel].bp1.p;
 	double gain;
-	if (amd_run  ||
+	if (amd_run	 ||
 		snba_run ||
 		emnr_run ||
-		anf_run  ||
+		rnnr_run || // NR3 + NR4 support (nr3)
+		sbnr_run || // NR3 + NR4 support (nr4)
+		anf_run	 ||
 		anr_run)	gain = 2.0;
 	else			gain = 1.0;
 	if (a->gain != gain)
@@ -819,6 +923,8 @@ void RXAbp1Set (int channel)
 	if ((rxa[channel].amd.p->run  == 1) ||
 		(rxa[channel].snba.p->run == 1) ||
 		(rxa[channel].emnr.p->run == 1) ||
+		(rxa[channel].rnnr.p->run == 1) ||	// NR3 + NR4 support (nr3)
+		(rxa[channel].sbnr.p->run == 1) ||	// NR3 + NR4 support (nr4)
 		(rxa[channel].anf.p->run  == 1) ||
 		(rxa[channel].anr.p->run  == 1))	a->run = 1;
 	else									a->run = 0;
@@ -868,8 +974,8 @@ void RXAbpsnbaCheck (int channel, int mode, int notch_run)
 	}
 	// 'run' and 'position' are examined at run time; no filter changes required.
 	// Recalculate filter if frequencies OR 'run_notches' changed.
-	if ((a->f_low       != f_low      ) ||
-		(a->f_high      != f_high     ) ||
+	if ((a->f_low		!= f_low	  ) ||
+		(a->f_high		!= f_high	  ) ||
 		(a->run_notches != run_notches))	
 	{
 		a->f_low  = f_low;

@@ -1063,13 +1063,11 @@ static void *client_tcp_thread(void* arg) {
       rx->nb_hang               = from_double(data.nb_hang);
       rx->nb_advtime            = from_double(data.nb_advtime);
       rx->nb_thresh             = from_double(data.nb_thresh);
-#ifdef EXTNR
       rx->nr4_reduction_amount  = from_double(data.nr4_reduction_amount);
       rx->nr4_smoothing_factor  = from_double(data.nr4_smoothing_factor);
       rx->nr4_whitening_factor  = from_double(data.nr4_whitening_factor);
       rx->nr4_noise_rescale     = from_double(data.nr4_noise_rescale);
       rx->nr4_post_threshold    = from_double(data.nr4_post_threshold);
-#endif
 
       for (int i = 0; i < 11; i++) {
         rx->eq_freq[i]          = from_double(data.eq_freq[i]);

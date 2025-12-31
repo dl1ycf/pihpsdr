@@ -1,4 +1,4 @@
-/*  calcc.h
+/*	calcc.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -132,7 +132,7 @@ typedef struct _calcc
 	double* temprx;				//////////////////////////////////////////////////// temporary rx complex buffer - remove with new callback3port()
 } calcc, *CALCC;
 
-extern CALCC create_calcc (int channel, int runcal, int size, int rate, int ints, int spi, double hw_scale, 
+extern CALCC create_calcc (int channel, int runcal, int size, int rate, int ints, int spi, double hw_scale,
 	double moxdelay, double loopdelay, double ptol, int mox, int solidmox, int pin, int map, int stbl,
 	int npsamps, double alpha);
 
@@ -160,7 +160,7 @@ extern void __cdecl doPSTurnoff(void* arg);
 //		 4 - feedback level warning
 //		 5 - count of attempted calibrations
 //		 6 - results from scheck()
-//       7 - results from rxscheck()
+//		 7 - results from rxscheck()
 //
 //		13 - dogcount
 //		14 - indicates iqc_Run = 1

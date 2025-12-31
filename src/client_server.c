@@ -603,22 +603,11 @@ void send_rx_data(int sock, int id) {
   data.nb_hang               = to_double(rx->nb_hang);
   data.nb_advtime            = to_double(rx->nb_advtime);
   data.nb_thresh             = to_double(rx->nb_thresh);
-#ifdef EXTNR
   data.nr4_reduction_amount  = to_double(rx->nr4_reduction_amount);
   data.nr4_smoothing_factor  = to_double(rx->nr4_smoothing_factor);
   data.nr4_whitening_factor  = to_double(rx->nr4_whitening_factor);
   data.nr4_noise_rescale     = to_double(rx->nr4_noise_rescale);
   data.nr4_post_threshold    = to_double(rx->nr4_post_threshold);
-#else
-  //
-  // If this side is not compiled with EXTNR, fill in default values
-  //
-  data.nr4_reduction_amount  = to_double(10.0);
-  data.nr4_smoothing_factor  = to_double(0.0);
-  data.nr4_whitening_factor  = to_double(0.0);
-  data.nr4_noise_rescale     = to_double(2.0);
-  data.nr4_post_threshold    = to_double(-10.0);
-#endif
 
   for (int i = 0; i < 11; i++) {
     data.eq_freq[i]          = to_double(rx->eq_freq[i]);
@@ -920,22 +909,11 @@ void send_noise(int s, const RECEIVER *rx) {
   command.nb_thresh                 = to_double(rx->nb_thresh);
   command.nr2_trained_threshold     = to_double(rx->nr2_trained_threshold);
   command.nr2_trained_t2            = to_double(rx->nr2_trained_t2);
-#ifdef EXTNR
   command.nr4_reduction_amount      = to_double(rx->nr4_reduction_amount);
   command.nr4_smoothing_factor      = to_double(rx->nr4_smoothing_factor);
   command.nr4_whitening_factor      = to_double(rx->nr4_whitening_factor);
   command.nr4_noise_rescale         = to_double(rx->nr4_noise_rescale);
   command.nr4_post_threshold        = to_double(rx->nr4_post_threshold);
-#else
-  //
-  // If this side is not compiled with EXTNR, fill in default values
-  //
-  command.nr4_reduction_amount      = to_double(10.0);
-  command.nr4_smoothing_factor      = to_double(0.0);
-  command.nr4_whitening_factor      = to_double(0.0);
-  command.nr4_noise_rescale         = to_double(2.0);
-  command.nr4_post_threshold        = to_double(-10.0);
-#endif
   send_tcp(s, (char *)&command, sizeof(command));
 }
 
