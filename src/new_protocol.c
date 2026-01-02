@@ -1482,7 +1482,7 @@ static void new_protocol_transmit_specific() {
     transmit_specific_buffer[50] |= 0x04;
   }
 
-  if (mic_ptt_tip_bias_ring) {
+  if (mic_ptt_tip) {
     transmit_specific_buffer[50] |= 0x08;
   }
 

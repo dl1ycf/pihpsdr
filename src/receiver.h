@@ -150,6 +150,7 @@ typedef struct _receiver {
   double nr4_whitening_factor;
   double nr4_noise_rescale;
   double nr4_post_threshold;
+  int    nr4_noise_scaling_type;
 
   int filter_low;
   int filter_high;

@@ -41,7 +41,7 @@
 struct desc *MidiCommandsTable[129];
 
 void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
-  struct desc *desc;
+  const struct desc *desc;
   int new;
 #ifdef MIDIDEBUG
   t_print("%s:EVENT=%d CHAN=%d NOTE=%d VAL=%d\n", __FUNCTION__, event, channel, note, val);
@@ -217,7 +217,7 @@ enum MIDIevent String2MidiEvent(const char *str) {
 }
 
 void midi_save_state() {
-  struct desc *cmd;
+  const struct desc *cmd;
   int entry;
   int i;
   entry = 0;

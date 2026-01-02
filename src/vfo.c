@@ -128,6 +128,7 @@ void modesettings_save_state() {
     SetPropF1("modeset.%d.nr4_whitening_factor", i,   mode_settings[i].nr4_whitening_factor);
     SetPropF1("modeset.%d.nr4_noise_rescale", i,      mode_settings[i].nr4_noise_rescale);
     SetPropF1("modeset.%d.nr4_post_threshold", i,     mode_settings[i].nr4_post_threshold);
+    SetPropI1("modeset.%d.nr4_noise_scaling_type", i, mode_settings[i].nr4_noise_scaling_type);
     SetPropI1("modeset.%d.en_squelch", i,             mode_settings[i].squelch_enable);
     SetPropF1("modeset.%d.squelch", i,                mode_settings[i].squelch);
     SetPropI1("modeset.%d.anf", i,                    mode_settings[i].anf);
@@ -242,6 +243,7 @@ void modesettings_restore_state() {
     mode_settings[i].nr4_whitening_factor = 0.0;
     mode_settings[i].nr4_noise_rescale = 2.0;
     mode_settings[i].nr4_post_threshold = 2.0;
+    mode_settings[i].nr4_noise_scaling_type = 0;
     mode_settings[i].squelch_enable = 0;
     mode_settings[i].squelch = 0.0;
     mode_settings[i].anf = 0;
@@ -339,6 +341,7 @@ void modesettings_restore_state() {
     GetPropF1("modeset.%d.nr4_whitening_factor", i,   mode_settings[i].nr4_whitening_factor);
     GetPropF1("modeset.%d.nr4_noise_rescale", i,      mode_settings[i].nr4_noise_rescale);
     GetPropF1("modeset.%d.nr4_post_threshold", i,     mode_settings[i].nr4_post_threshold);
+    GetPropI1("modeset.%d.nr4_noise_scaling_type", i, mode_settings[i].nr4_noise_scaling_type);
     GetPropI1("modeset.%d.en_squelch", i,             mode_settings[i].squelch_enable);
     GetPropF1("modeset.%d.squelch", i,                mode_settings[i].squelch);
     GetPropI1("modeset.%d.anf", i,                    mode_settings[i].anf);
@@ -638,6 +641,7 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
   rx->nr4_whitening_factor      = mode_settings[m].nr4_whitening_factor;
   rx->nr4_noise_rescale         = mode_settings[m].nr4_noise_rescale;
   rx->nr4_post_threshold        = mode_settings[m].nr4_post_threshold;
+  rx->nr4_noise_scaling_type    = mode_settings[m].nr4_noise_scaling_type;
   rx->anf                       = mode_settings[m].anf;
   rx->snb                       = mode_settings[m].snb;
   rx->agc                       = mode_settings[m].agc;

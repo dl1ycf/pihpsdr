@@ -67,16 +67,19 @@ int ext_vfo_update(void *data) {
   return G_SOURCE_REMOVE;
 }
 
+// cppcheck-suppress constParameterPointer
 int ext_radio_set_tune(void *data) {
   radio_set_tune(GPOINTER_TO_INT(data));
   return G_SOURCE_REMOVE;
 }
 
+// cppcheck-suppress constParameterPointer
 int ext_radio_set_mox(void *data) {
   radio_set_mox(GPOINTER_TO_INT(data));
   return G_SOURCE_REMOVE;
 }
 
+// cppcheck-suppress constParameterPointer
 int ext_radio_set_vox(void *data) {
   radio_set_vox(GPOINTER_TO_INT(data));
   return G_SOURCE_REMOVE;
@@ -88,6 +91,7 @@ int ext_start_band(void *data) {
   return G_SOURCE_REMOVE;
 }
 
+// cppcheck-suppress constParameterPointer
 int ext_start_vfo(void *data) {
   int val = GPOINTER_TO_INT(data);
   start_vfo(val);

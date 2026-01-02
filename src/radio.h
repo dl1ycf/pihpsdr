@@ -158,7 +158,7 @@ extern double linein_gain;
 extern int mic_boost;
 extern int mic_bias_enabled;
 extern int mic_ptt_enabled;
-extern int mic_ptt_tip_bias_ring;
+extern int mic_ptt_tip;
 extern int mic_input_xlr;
 
 extern int receivers;
@@ -266,6 +266,7 @@ extern int display_pacurr;
 
 extern int hl2_audio_codec;
 extern int hl2_cl1_input;
+extern int hl2_ah4_atu;
 
 extern int anan10E;
 

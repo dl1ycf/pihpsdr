@@ -116,6 +116,7 @@ struct _mode_settings {
   double nr4_whitening_factor;
   double nr4_noise_rescale;
   double nr4_post_threshold;
+  int    nr4_noise_scaling_type;
   int squelch_enable;               // Squelch on/off
   double squelch;                   // squelch value
   int anf;                          // Automatic notch filter

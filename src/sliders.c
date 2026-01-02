@@ -744,7 +744,7 @@ int sliders_squelch(gpointer data) {
   if (id > receivers) { return G_SOURCE_REMOVE; }
 
   //
-  RECEIVER *rx = receiver[id];
+  const RECEIVER *rx = receiver[id];
 
   if (squelch_scale && id == active_receiver->id) {
     g_signal_handler_block(G_OBJECT(squelch_scale), squelch_signal_id);

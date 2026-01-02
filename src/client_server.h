@@ -141,7 +141,7 @@ enum _header_type_enum {
   CLIENT_SERVER_COMMANDS,
 };
 
-#define CLIENT_SERVER_VERSION 0x01260010 // 32-bit version number
+#define CLIENT_SERVER_VERSION 0x01260011 // 32-bit version number
 #define SPECTRUM_DATA_SIZE 4096          // Maximum width of a panadapter
 #define AUDIO_DATA_SIZE 512              // 512 (mono) samples
 
@@ -197,7 +197,7 @@ typedef struct __attribute__((__packed__)) _radiomenu_data {
   uint16_t OCfull_tune_time;
   uint16_t OCmemory_tune_time;
   //
-  uint8_t  mic_ptt_tip_bias_ring;
+  uint8_t  mic_ptt_tip;
   uint8_t  sat_mode;
   uint8_t  mic_input_xlr;
   uint8_t  atlas_clock_source_10mhz;
@@ -398,7 +398,7 @@ typedef struct __attribute__((__packed__)) _radio_data {
   uint8_t  mic_linein;
   uint8_t  mic_ptt_enabled;
   uint8_t  mic_bias_enabled;
-  uint8_t  mic_ptt_tip_bias_ring;
+  uint8_t  mic_ptt_tip;
   uint8_t  mic_input_xlr;
   uint8_t  cw_keyer_sidetone_volume;
   uint8_t  OCtune;
@@ -627,6 +627,7 @@ typedef struct __attribute__((__packed__)) _receiver_data {
   uint8_t nr2_post_nlevel; // 0 ... 100
   uint8_t nr2_post_factor; // 0 ... 100
   uint8_t nr2_post_rate;   // 0 ... 100
+  uint8_t nr4_noise_scaling_type;
   uint8_t anf;
   uint8_t snb;
   uint8_t display_detector_mode;
@@ -879,6 +880,7 @@ typedef struct __attribute__((__packed__)) _noise_command {
   uint8_t  nr2_post_nlevel;
   uint8_t  nr2_post_factor;
   uint8_t  nr2_post_rate;
+  uint8_t  nr4_noise_scaling_type;
 } NOISE_COMMAND;
 
 #define HPSDR_PWD_LEN 64

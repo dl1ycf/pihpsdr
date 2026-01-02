@@ -133,7 +133,7 @@ void loadProperties(const char* filename) {
 * @param filename
 */
 void saveProperties(const char* filename) {
-  PROPERTY* property;
+  const PROPERTY* property;
   FILE* f = fopen(filename, "w+");
   char line[1024];
 

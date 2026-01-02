@@ -306,6 +306,7 @@ void rx_save_state(const RECEIVER *rx) {
     SetPropF1("receiver.%d.nr4_whitening_factor", rx->id,       rx->nr4_whitening_factor);
     SetPropF1("receiver.%d.nr4_noise_rescale", rx->id,          rx->nr4_noise_rescale);
     SetPropF1("receiver.%d.nr4_post_threshold", rx->id,         rx->nr4_post_threshold);
+    SetPropI1("receiver.%d.nr4_noise_scaling_type", rx->id,     rx->nr4_noise_scaling_type);
     SetPropI1("receiver.%d.deviation", rx->id,                  rx->deviation);
     SetPropI1("receiver.%d.squelch_enable", rx->id,             rx->squelch_enable);
     SetPropF1("receiver.%d.squelch", rx->id,                    rx->squelch);
@@ -405,6 +406,7 @@ void rx_restore_state(RECEIVER *rx) {
     GetPropF1("receiver.%d.nr4_whitening_factor", rx->id,       rx->nr4_whitening_factor);
     GetPropF1("receiver.%d.nr4_noise_rescale", rx->id,          rx->nr4_noise_rescale);
     GetPropF1("receiver.%d.nr4_post_threshold", rx->id,         rx->nr4_post_threshold);
+    GetPropI1("receiver.%d.nr4_noise_scaling_type", rx->id,     rx->nr4_noise_scaling_type);
     GetPropI1("receiver.%d.deviation", rx->id,                  rx->deviation);
     GetPropI1("receiver.%d.squelch_enable", rx->id,             rx->squelch_enable);
     GetPropF1("receiver.%d.squelch", rx->id,                    rx->squelch);
@@ -784,9 +786,9 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->nr = 0;
   rx->anf = 0;
   rx->snb = 0;
-  rx->nr_agc = 0;                   // NR/NR2/ANF before AGC
-  rx->nr2_gain_method = 2;          // Gamma
-  rx->nr2_npe_method = 0;           // OSMS
+  rx->nr_agc = 1;
+  rx->nr2_gain_method = 2;
+  rx->nr2_npe_method = 0;
   rx->nr2_post = 0;
   rx->nr2_post_taper = 12;
   rx->nr2_post_nlevel = 15;
@@ -814,7 +816,8 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->nr4_smoothing_factor = 0.0;
   rx->nr4_whitening_factor = 0.0;
   rx->nr4_noise_rescale = 2.0;
-  rx->nr4_post_threshold = -10.0;
+  rx->nr4_post_threshold = 0.0;
+  rx->nr4_noise_scaling_type = 0;
   rx->agc = AGC_MEDIUM;
   rx->agc_gain = 80.0;
   rx->agc_slope = 35.0;
@@ -1973,6 +1976,7 @@ void rx_set_noise(const RECEIVER *rx) {
     mode_settings[mode].nr4_whitening_factor = rx->nr4_whitening_factor;
     mode_settings[mode].nr4_noise_rescale = rx->nr4_noise_rescale;
     mode_settings[mode].nr4_post_threshold = rx->nr4_post_threshold;
+    mode_settings[mode].nr4_noise_scaling_type = rx->nr4_noise_scaling_type;
     copy_mode_settings(mode);
   }
 
@@ -1983,54 +1987,55 @@ void rx_set_noise(const RECEIVER *rx) {
   //
   // a) NB
   //
-  SetEXTANBTau(rx->id, rx->nb_tau);
-  SetEXTANBHangtime(rx->id, rx->nb_hang);
-  SetEXTANBAdvtime(rx->id, rx->nb_advtime);
-  SetEXTANBThreshold(rx->id, rx->nb_thresh);
-  SetEXTANBRun(rx->id, (rx->nb == 1));
+  SetEXTANBTau(rx->id,                  rx->nb_tau);
+  SetEXTANBHangtime(rx->id,             rx->nb_hang);
+  SetEXTANBAdvtime(rx->id,              rx->nb_advtime);
+  SetEXTANBThreshold(rx->id,            rx->nb_thresh);
+  SetEXTANBRun(rx->id,                  (rx->nb == 1));
   //
   // b) NB2
   //
-  SetEXTNOBMode(rx->id, rx->nb2_mode);
-  SetEXTNOBTau(rx->id, rx->nb_tau);
-  SetEXTNOBHangtime(rx->id, rx->nb_hang);
-  SetEXTNOBAdvtime(rx->id, rx->nb_advtime);
-  SetEXTNOBThreshold(rx->id, rx->nb_thresh);
-  SetEXTNOBRun(rx->id, (rx->nb == 2));
+  SetEXTNOBMode(rx->id,                 rx->nb2_mode);
+  SetEXTNOBTau(rx->id,                  rx->nb_tau);
+  SetEXTNOBHangtime(rx->id,             rx->nb_hang);
+  SetEXTNOBAdvtime(rx->id,              rx->nb_advtime);
+  SetEXTNOBThreshold(rx->id,            rx->nb_thresh);
+  SetEXTNOBRun(rx->id,                  (rx->nb == 2));
   //
   // c) NR
   //
-  SetRXAANRVals(rx->id, 64, 16, 16e-4, 10e-7);
-  SetRXAANRPosition(rx->id, rx->nr_agc);
-  SetRXAANRRun(rx->id, (rx->nr == 1));
+  SetRXAANRVals(rx->id,                 64, 16, 16e-4, 10e-7);
+  SetRXAANRPosition(rx->id,             rx->nr_agc);
+  SetRXAANRRun(rx->id,                  (rx->nr == 1));
   //
   // d) NR2
   //
-  SetRXAEMNRPosition(rx->id, rx->nr_agc);
-  SetRXAEMNRgainMethod(rx->id, rx->nr2_gain_method);
-  SetRXAEMNRnpeMethod(rx->id, rx->nr2_npe_method);
-  SetRXAEMNRtrainZetaThresh(rx->id, rx->nr2_trained_threshold);
-  SetRXAEMNRtrainT2(rx->id, rx->nr2_trained_t2);
-  SetRXAEMNRpost2Taper (rx->id, rx->nr2_post_taper);
-  SetRXAEMNRpost2Nlevel(rx->id, (double) rx->nr2_post_nlevel);
-  SetRXAEMNRpost2Factor(rx->id, (double) rx->nr2_post_factor);
-  SetRXAEMNRpost2Rate(rx->id, (double) rx->nr2_post_rate);
-  SetRXAEMNRaeRun(rx->id, 1);                  // ArtifactElminiation ON
-  SetRXAEMNRpost2Run(rx->id, rx->nr2_post);
-  SetRXAEMNRRun(rx->id, (rx->nr == 2));
+  SetRXAEMNRPosition(rx->id,            rx->nr_agc);
+  SetRXAEMNRgainMethod(rx->id,          rx->nr2_gain_method);
+  SetRXAEMNRnpeMethod(rx->id,           rx->nr2_npe_method);
+  SetRXAEMNRtrainZetaThresh(rx->id,     rx->nr2_trained_threshold);
+  SetRXAEMNRtrainT2(rx->id,             rx->nr2_trained_t2);
+  SetRXAEMNRpost2Taper (rx->id,         rx->nr2_post_taper);
+  SetRXAEMNRpost2Nlevel(rx->id,         (double) rx->nr2_post_nlevel);
+  SetRXAEMNRpost2Factor(rx->id,         (double) rx->nr2_post_factor);
+  SetRXAEMNRpost2Rate(rx->id,           (double) rx->nr2_post_rate);
+  SetRXAEMNRaeRun(rx->id,               1); // ArtifactElminiation *always* ON
+  SetRXAEMNRpost2Run(rx->id,            rx->nr2_post);
+  SetRXAEMNRRun(rx->id,                 (rx->nr == 2));
   //
   // e) ANF
   //
-  SetRXAANFRun(rx->id, rx->anf);
-  SetRXAANFPosition(rx->id, rx->nr_agc);
+  SetRXAANFRun(rx->id,                  rx->anf);
+  SetRXAANFPosition(rx->id,             rx->nr_agc);
   //
   // f) SNB
   //
-  SetRXASNBARun(rx->id, rx->snb);
+  SetRXASNBARun(rx->id,                 rx->snb);
   //
   // g) NR3
   //
-  SetRXARNNRRun(rx->id, (rx->nr == 3));
+  SetRXARNNRPosition(rx->id,            rx->nr_agc);
+  SetRXARNNRRun(rx->id,                 (rx->nr == 3));
   //
   // NR4
   //
@@ -2039,7 +2044,9 @@ void rx_set_noise(const RECEIVER *rx) {
   SetRXASBNRwhiteningFactor(rx->id,     rx->nr4_whitening_factor);
   SetRXASBNRnoiseRescale(rx->id,        rx->nr4_noise_rescale);
   SetRXASBNRpostFilterThreshold(rx->id, rx->nr4_post_threshold);
-  SetRXASBNRRun(rx->id, (rx->nr == 4));
+  SetRXASBNRnoiseScalingType(rx->id,    rx->nr4_noise_scaling_type);
+  SetRXASBNRPosition(rx->id,            rx->nr_agc);
+  SetRXASBNRRun(rx->id,                 (rx->nr == 4));
 }
 
 void rx_set_offset(const RECEIVER *rx) {

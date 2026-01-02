@@ -2200,7 +2200,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
 
         if (pa_enabled && !txband->disablePA) { buffer[C2] |= 0x08; }
 
-        if (transmitter->tune) { buffer[C2] |= 0x10; }
+        if (transmitter->tune && hl2_ah4_atu) { buffer[C2] |= 0x10; }
       }
 
       command = 4;
@@ -2222,7 +2222,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
         buffer[C1] |= 0x20;
       }
 
-      if (mic_ptt_tip_bias_ring) {
+      if (mic_ptt_tip) {
         buffer[C1] |= 0x10;
       }
 
@@ -2504,7 +2504,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
       // When start TUNEing and an IO-board is detected,
       // write '1' into the tuner register as fast as possible
       //
-      if (hl2_iob_present && transmitter->tune && !hl2_last_tune) {
+      if (hl2_iob_present && transmitter->tune && !hl2_last_tune && !hl2_ah4_atu) {
         buffer[C0] = 0x7A;                         // I2C-2 without ACK
         buffer[C1] = 0x06;                         // write
         buffer[C2] = 0x80 | 0x1d;                  // i2c addr

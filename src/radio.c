@@ -140,8 +140,19 @@ int atlas_janus = 0;
 // for a 10 MHz reference clock, and CL2 is used as a 10 MHz
 // reference output.
 //
+// if hl2_ah4_atu is set, then the TUNE-ing state is indicated in
+// the protocol such that the HL2 looks for an Icom AH4 tuner and
+// starts a TUNE sequence. If this variable is set but not AH4 tuner
+// is connected, then RF will be temporarily removed at the beginning
+// of TUNE-ing which may cause problems (e.g. if using another tuner
+// type controlled by the Hl2 IO-Board).
+// On the other hand, the "tuner" register of the IO-Board will only
+// be written to if hl2_ah4_atu is *not* set.
+//
+
 int hl2_audio_codec = 0;
 int hl2_cl1_input = 0;
+int hl2_ah4_atu = 0;
 
 //
 // if anan10E is set, we have a limited-capacity HERMES board
@@ -173,7 +184,7 @@ double linein_gain = 0.0;  // -34.0 ... +12.5 in steps of 1.5 dB
 int mic_boost = 0;
 int mic_bias_enabled = 0;
 int mic_ptt_enabled = 0;
-int mic_ptt_tip_bias_ring = 0;
+int mic_ptt_tip = 0;
 int mic_input_xlr = 0;
 
 int receivers;
@@ -3348,6 +3359,7 @@ static void radio_restore_state() {
     GetPropI0("atlas_janus",                                 atlas_janus);
     GetPropI0("hl2_audio_codec",                             hl2_audio_codec);
     GetPropI0("hl2_cl1_input",                               hl2_cl1_input);
+    GetPropI0("hl2_ah4_atu",                                 hl2_ah4_atu);
     GetPropI0("anan10E",                                     anan10E);
     GetPropI0("tx_out_of_band",                              tx_out_of_band_allowed);
     GetPropI0("filter_board",                                filter_board);
@@ -3358,7 +3370,7 @@ static void radio_restore_state() {
     GetPropF0("linein_gain",                                 linein_gain);
     GetPropI0("mic_ptt_enabled",                             mic_ptt_enabled);
     GetPropI0("mic_bias_enabled",                            mic_bias_enabled);
-    GetPropI0("mic_ptt_tip_bias_ring",                       mic_ptt_tip_bias_ring);
+    GetPropI0("mic_ptt_tip_bias_ring",                       mic_ptt_tip);
     GetPropI0("mic_input_xlr",                               mic_input_xlr);
     GetPropI0("cw_keys_reversed",                            cw_keys_reversed);
     GetPropI0("cw_keyer_speed",                              cw_keyer_speed);
@@ -3571,6 +3583,7 @@ void radio_save_state() {
     SetPropI0("atlas_janus",                                 atlas_janus);
     SetPropI0("hl2_audio_codec",                             hl2_audio_codec);
     SetPropI0("hl2_cl1_input",                               hl2_cl1_input);
+    SetPropI0("hl2_ah4_atu",                                 hl2_ah4_atu);
     SetPropI0("anan10E",                                     anan10E);
     SetPropI0("tx_out_of_band",                              tx_out_of_band_allowed);
     SetPropI0("filter_board",                                filter_board);
@@ -3581,7 +3594,7 @@ void radio_save_state() {
     SetPropF0("linein_gain",                                 linein_gain);
     SetPropI0("mic_ptt_enabled",                             mic_ptt_enabled);
     SetPropI0("mic_bias_enabled",                            mic_bias_enabled);
-    SetPropI0("mic_ptt_tip_bias_ring",                       mic_ptt_tip_bias_ring);
+    SetPropI0("mic_ptt_tip_bias_ring",                       mic_ptt_tip);
     SetPropI0("mic_input_xlr",                               mic_input_xlr);
     SetPropI0("cw_keys_reversed",                            cw_keys_reversed);
     SetPropI0("cw_keyer_speed",                              cw_keyer_speed);

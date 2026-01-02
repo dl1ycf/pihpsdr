@@ -413,7 +413,7 @@ static void add_store(int key, const struct desc *cmd) {
 }
 
 static void load_store() {
-  struct desc *cmd;
+  const struct desc *cmd;
   gtk_list_store_clear(store);
 
   for (int i = 127; i >= 0; i--) {

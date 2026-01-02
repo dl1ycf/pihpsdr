@@ -558,19 +558,19 @@ void calc_emnr(EMNR a)
 	a->ae.t2 = 0.20;
 	a->ae.nmask = (double *)malloc0(a->ae.msize * sizeof(double));
 	//
-		// post2
-		a->post2.run = 0;
-		a->post2.factor = 0.15;
-		a->post2.nlevel = 0.15;
-		a->post2.tc_decay = 5.0;
-		a->post2.rate_decay = exp(-a->fsize / (a->post2.tc_decay * a->rate * a->ovrlp));
-		a->post2.taper = 0.12;
-		a->post2.w = (double*)malloc0(a->msize * sizeof(double));
-		a->post2.noise_frames = FDnoise_frames;
-		a->post2.noise_frame_index = 0;
-		a->post2.noise_frame = (double*)malloc0(2 * a->msize * sizeof(double));
-		a->post2.olddmag = 0.0;
-		post2_calc_w(a);
+	// post2
+	a->post2.run = 0;
+	a->post2.factor = 0.15;
+	a->post2.nlevel = 0.15;
+	a->post2.tc_decay = 5.0;
+	a->post2.rate_decay = exp(-a->fsize / (a->post2.tc_decay * a->rate * a->ovrlp));
+	a->post2.taper = 0.12;
+	a->post2.w = (double*)malloc0(a->msize * sizeof(double));
+	a->post2.noise_frames = FDnoise_frames;
+	a->post2.noise_frame_index = 0;
+	a->post2.noise_frame = (double*)malloc0(2 * a->msize * sizeof(double));
+	a->post2.olddmag = 0.0;
+	post2_calc_w(a);
 }
 
 void decalc_emnr(EMNR a)

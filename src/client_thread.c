@@ -608,7 +608,6 @@ static void *client_udp_thread(void* arg) {
 }
 
 static void *client_tcp_thread(void* arg) {
-  int bytes_read;
   HEADER header;
   char *server = (char *)arg;
   static char title[256];
@@ -689,6 +688,7 @@ static void *client_tcp_thread(void* arg) {
 
   while (client_running) {
     int type;
+    int bytes_read;
     bytes_read = recv_tcp(cl_sock_tcp, (char *)&header, sizeof(HEADER));
 
     if (bytes_read <= 0) {
@@ -861,7 +861,7 @@ static void *client_tcp_thread(void* arg) {
       mic_linein = data.mic_linein;
       mic_ptt_enabled = data.mic_ptt_enabled;
       mic_bias_enabled = data.mic_bias_enabled;
-      mic_ptt_tip_bias_ring = data.mic_ptt_tip_bias_ring;
+      mic_ptt_tip = data.mic_ptt_tip;
       cw_keyer_sidetone_volume = mic_input_xlr = data.mic_input_xlr;
       OCtune = data.OCtune;
       mute_rx_while_transmitting = data.mute_rx_while_transmitting;
@@ -1014,68 +1014,69 @@ static void *client_tcp_thread(void* arg) {
 
       int id = data.id;
       RECEIVER *rx = receiver[id];
-      rx->id                    = id;
-      rx->adc                   = data.adc;
-      rx->agc                   = data.agc;
-      rx->nb                    = data.nb;
-      rx->nb2_mode              = data.nb2_mode;
-      rx->nr                    = data.nr;
-      rx->nr_agc                = data.nr_agc;
-      rx->nr2_gain_method       = data.nr2_gain_method;
-      rx->nr2_npe_method        = data.nr2_npe_method;
-      rx->nr2_post              = data.nr2_post;
-      rx->nr2_post_taper        = data.nr2_post_taper;
-      rx->nr2_post_nlevel       = data.nr2_post_nlevel;
-      rx->nr2_post_factor       = data.nr2_post_factor;
-      rx->nr2_post_rate         = data.nr2_post_rate;
-      rx->anf                   = data.anf;
-      rx->snb                   = data.snb;
-      rx->display_detector_mode = data.display_detector_mode;
-      rx->display_average_mode  = data.display_average_mode;
-      rx->zoom                  = data.zoom;
-      rx->squelch_enable        = data.squelch_enable;
-      rx->binaural              = data.binaural;
-      rx->eq_enable             = data.eq_enable;
-      rx->smetermode            = data.smetermode;
-      rx->low_latency           = data.low_latency;
-      rx->pan                   = data.pan;
+      rx->id                     = id;
+      rx->adc                    = data.adc;
+      rx->agc                    = data.agc;
+      rx->nb                     = data.nb;
+      rx->nb2_mode               = data.nb2_mode;
+      rx->nr                     = data.nr;
+      rx->nr_agc                 = data.nr_agc;
+      rx->nr2_gain_method        = data.nr2_gain_method;
+      rx->nr2_npe_method         = data.nr2_npe_method;
+      rx->nr2_post               = data.nr2_post;
+      rx->nr2_post_taper         = data.nr2_post_taper;
+      rx->nr2_post_nlevel        = data.nr2_post_nlevel;
+      rx->nr2_post_factor        = data.nr2_post_factor;
+      rx->nr2_post_rate          = data.nr2_post_rate;
+      rx->nr4_noise_scaling_type = data.nr4_noise_scaling_type;
+      rx->anf                    = data.anf;
+      rx->snb                    = data.snb;
+      rx->display_detector_mode  = data.display_detector_mode;
+      rx->display_average_mode   = data.display_average_mode;
+      rx->zoom                   = data.zoom;
+      rx->squelch_enable         = data.squelch_enable;
+      rx->binaural               = data.binaural;
+      rx->eq_enable              = data.eq_enable;
+      rx->smetermode             = data.smetermode;
+      rx->low_latency            = data.low_latency;
+      rx->pan                    = data.pan;
       //
-      rx->fps                   = from_16(data.fps);
-      rx->filter_low            = from_16(data.filter_low);
-      rx->filter_high           = from_16(data.filter_high);
-      rx->deviation             = from_16(data.deviation);
-      rx->width                 = from_16(data.width);
+      rx->fps                    = from_16(data.fps);
+      rx->filter_low             = from_16(data.filter_low);
+      rx->filter_high            = from_16(data.filter_high);
+      rx->deviation              = from_16(data.deviation);
+      rx->width                  = from_16(data.width);
       //
-      rx->cA                    = from_double(data.cA);
-      rx->cB                    = from_double(data.cB);
-      rx->cAp                   = from_double(data.cAp);
-      rx->cBp                   = from_double(data.cBp);
-      rx->squelch               = from_double(data.squelch);
-      rx->display_average_time  = from_double(data.display_average_time);
-      rx->volume                = from_double(data.volume);
-      rx->agc_gain              = from_double(data.agc_gain);
-      rx->agc_hang              = from_double(data.agc_hang);
-      rx->agc_thresh            = from_double(data.agc_thresh);
-      rx->agc_hang_threshold    = from_double(data.agc_hang_threshold);
-      rx->nr2_trained_threshold = from_double(data.nr2_trained_threshold);
-      rx->nr2_trained_t2        = from_double(data.nr2_trained_t2);
-      rx->nb_tau                = from_double(data.nb_tau);
-      rx->nb_hang               = from_double(data.nb_hang);
-      rx->nb_advtime            = from_double(data.nb_advtime);
-      rx->nb_thresh             = from_double(data.nb_thresh);
-      rx->nr4_reduction_amount  = from_double(data.nr4_reduction_amount);
-      rx->nr4_smoothing_factor  = from_double(data.nr4_smoothing_factor);
-      rx->nr4_whitening_factor  = from_double(data.nr4_whitening_factor);
-      rx->nr4_noise_rescale     = from_double(data.nr4_noise_rescale);
-      rx->nr4_post_threshold    = from_double(data.nr4_post_threshold);
+      rx->cA                     = from_double(data.cA);
+      rx->cB                     = from_double(data.cB);
+      rx->cAp                    = from_double(data.cAp);
+      rx->cBp                    = from_double(data.cBp);
+      rx->squelch                = from_double(data.squelch);
+      rx->display_average_time   = from_double(data.display_average_time);
+      rx->volume                 = from_double(data.volume);
+      rx->agc_gain               = from_double(data.agc_gain);
+      rx->agc_hang               = from_double(data.agc_hang);
+      rx->agc_thresh             = from_double(data.agc_thresh);
+      rx->agc_hang_threshold     = from_double(data.agc_hang_threshold);
+      rx->nr2_trained_threshold  = from_double(data.nr2_trained_threshold);
+      rx->nr2_trained_t2         = from_double(data.nr2_trained_t2);
+      rx->nb_tau                 = from_double(data.nb_tau);
+      rx->nb_hang                = from_double(data.nb_hang);
+      rx->nb_advtime             = from_double(data.nb_advtime);
+      rx->nb_thresh              = from_double(data.nb_thresh);
+      rx->nr4_reduction_amount   = from_double(data.nr4_reduction_amount);
+      rx->nr4_smoothing_factor   = from_double(data.nr4_smoothing_factor);
+      rx->nr4_whitening_factor   = from_double(data.nr4_whitening_factor);
+      rx->nr4_noise_rescale      = from_double(data.nr4_noise_rescale);
+      rx->nr4_post_threshold     = from_double(data.nr4_post_threshold);
 
       for (int i = 0; i < 11; i++) {
-        rx->eq_freq[i]          = from_double(data.eq_freq[i]);
-        rx->eq_gain[i]          = from_double(data.eq_gain[i]);
+        rx->eq_freq[i]           = from_double(data.eq_freq[i]);
+        rx->eq_gain[i]           = from_double(data.eq_gain[i]);
       }
 
-      rx->fft_size              = from_32(data.fft_size);
-      rx->sample_rate           = from_32(data.sample_rate);
+      rx->fft_size               = from_32(data.fft_size);
+      rx->sample_rate            = from_32(data.sample_rate);
 
       if (protocol == ORIGINAL_PROTOCOL && id == 1) {
         rx->sample_rate = receiver[0]->sample_rate;

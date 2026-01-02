@@ -157,6 +157,7 @@ Here we list the main new featured introduced in each version.
 
 \textbf{\pH Version 2.6, under development}
 \begin{itemize}
+\item{NR3 (RNNnoise) and NR4 (SpecBleach) noise reduction models fully integrated}
 \item{Performance and Resilience improvement in Client/Server operation}
 \item{RX1 and TX audio settings (audio device, Stereo/Left/Right) are now part of the RX/TX profile
 and automatically switched when changing the mode}
@@ -399,9 +400,6 @@ This controller is denoted Controller2 in the rest of this manual.}
 \item[G2V1 Front Panel]{Choose this if you have a first-generation (7-inch screen) Anan G2
  radio with a built-in controller.}
 \end{itemize}
-Note that the front panel of the second-generation (8-inch screen with LEDs)
-Anan G2 radios is not controlled via GPIO. For these
-radios you should choose \rett{No Controller} or, even better, compile \pH without GPIO support.
 
 \begin{center}
 \fbox{
@@ -413,9 +411,12 @@ Be sure to choose a controller only if such a controller is actually connected t
 Raspberry Pi. Unexpected things can happen if you chose one type of controller here but have totally different
 hardware connected to the GPIO. For example, if you have a so-called ,,audio hat'' attached to the RaspPi
 GPIO, then it is safest to compile \pH without GPIO support.
-The same applies to G2 Ultras where GPIO lines may be used for serial connection
-to the panel. Note that even if you choose \rett{No Controller}, some GPIO lines may still be used
-e.g. for CW, as documented in Appendix \ref{sec:gpio}.
+
+For an Anan G2 radio, only the first item (which then reads \rett{G2V2}) and the last item are available.
+For second-generation G2 radios (8-inch screen with LEDs) the \rett{G2V2} option (which is identical
+to \rett{No Controller}) has to be chosen since for these radios, the front panel is not
+controlled via GPIO. To avoid confusion on the user's side, \pH on second-generation G2 radios
+should be compiled without GPIO support.
 }
 }
 \end{center}
@@ -1285,6 +1286,7 @@ for different radios.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter[Radio-related menus]{The Main Menu: Radio-related menus}
 \section{The \texttt{Radio} Menu}
+\label{sec:radiomenu}
 
 \begin{figure}[ht]
 \center
@@ -1296,10 +1298,8 @@ for different radios.
 
 The \bltt{Radio} menu lets you make settings which affect the general setting, and the hardware of the
 radio.
-The following figure (Fig. \ref{fig:RadioMenu}) shows the menu as it opens on an Anan G2 radio.
-Note this menu looks slightly different for different radios and protocols, this will be discussed
-at the end of the section. First, we go through all the elements we see in Fig. \ref{fig:RadioMenu},
-they will be coloured red in the following list.
+The following figure (Fig. \ref{fig:RadioMenu}) shows the Radio menu. In the top right corner
+there are radio specific settings that are discussed below. First we go through all the elements we see in Fig. \ref{fig:RadioMenu}.
 
 \rett{Receivers}. In the pop-down menu (GTK combo-box) below this string, you can select the number
 of receivers that are running (well, you can choose between 1 and 2). When the number of receivers change,
@@ -1320,19 +1320,12 @@ band according to the regulations valid in the USA and Great Britain. "WRC15" gi
 wide) 60m band according to the WRC15 (World Radio Conference 2015) document, which is now implemented in
 many countries.
 
-\rett{Orion/Saturn Mic jack}. This part of the menu is not shown for pre-Orion boards.
-The Orion, Orion2, and Saturn boards can switch the connections
-of the TRS microphone jack in software (hardware jumpers had to be used previously).
-While the ring of the TRS plug is always connected to ground, the microphone and PTT connections are on the
-ring an tip and you can choose which one is on the ring and which one on the tip. You can then separately
-enable the PTT function of the jack, and select whether a bias (DC offset) is applied to the mic connection
-(this is necessary for condenser (electret) microphones and detrimental if a dynamic microphone is connected without
-a blocking capacitor).
-
-\rett{Mic Input}. This is only shown for Anan G2 radios (Saturn boards).
-These radios have two jacks for connecting a
-microphone, either a 3.5mm TRS jack in the front panel, or an XLR connection in the back panel. The pop-down
-menu lets you choose between these two options.
+\rett{Sample Rate}. This box does not appear for HPSDR radios running protocol-2, since there each receiver
+has its own sample rate that is therefore set in the \bltt{RX} menu (chapter \ref{sec:rxmenu}). For HPSDR
+radios running protocol-1, the available sample rates are between 48 and 384 kHz. For SoapySDR radios the
+sample rate can usually chosen between 48 kHz and the native sample rate of the radio in steps of two, but
+little is gained choosing a sample rate that is below the native sample rate because the downsampling
+is done within \pH.
 
 \rett{SAT mode}. Here you can choose between \texttt{SAT off}, \texttt{SAT}, and \texttt{RSAT}. In SAT mode,
 frequency moves applied to one of the two VFOs are applied to the other VFO as well. This is convenient
@@ -1375,6 +1368,21 @@ option is mostly meant for touch-screens which are usually not very accurate. No
 this option is checked, you may not be able to exactly tune on a signal by clicking on
 it with a mouse.
 
+\rett{Optimise for TouchScreen}. The normal procedure to make a selection from a
+pop-down menu (such as the \rett{Receivers} button on this screen) is to click
+(and hold) it with a mouse, then drag the mouse to your choice, and then the selection
+is made by releasing the mouse button. This is very difficult to achieve on a touch
+screen. Therefore, if \rett{Optimise for TouchScreen} checkbox is checked, the pop-down
+menus are modified as follows: You click and release on the menu button, then it pops
+down and stays open. Then you make your selection by a second click/release sequence
+on your choice. While this is (only a little bit) more involved than the normal procedure
+when using a mouse, it is a great helper when using a touch screen. Therefore this
+option is set by default, but you can uncheck it here if you prefer normal
+mouse operation. Note that this option becomes effective when the next menu is opened.
+
+The next line with check boxes \rett{Split}, \rett{Duplex}, \rett{Mute RX on TX} and
+\rett{PA enable} is only shown for radios that have a transmitter.
+
 \rett{Split}. Use this checkbox to enable/disable Split mode. In Split mode, the frequency of
 the non-active receiver (when using two receivers) or the frequency of VFO-B (when using one
 receiver) controls the TX frequency. In normal (non-Split) mode, it is the frequency of
@@ -1406,37 +1414,11 @@ minimum position while transmitting.
 flag, there is a per-band PA enable option for the transverter bands (see the \bltt{XVTR}
 menu).
 
-Note that the last four options (\rett{Split}, \rett{Duplex}, \rett{Mute RX when TX},
-and \rett{PA enable} are not shown for RX-only radios.
+The controls \rett{Enable TxInhibit Input} and \rett{Enable AutoTune  input}
+only appears for HPSDR (and not for SoapySDR) radios, since it assigns actions to
+HPSDR user input bits.
 
-\rett{Optimise for TouchScreen}. The normal procedure to make a selection from a
-pop-down menu (such as the \rett{Receivers} button on this screen) is to click
-(and hold) it with a mouse, then drag the mouse to your choice, and then the selection
-is made by releasing the mouse button. This is very difficult to achieve on a touch
-screen. Therefore, if \rett{Optimise for TouchScreen} checkbox is checked, the pop-down
-menus are modified as follows: You click and release on the menu button, then it pops
-down and stays open. Then you make your selection by a second click/release sequence
-on your choice. While this is (only a little bit) more involved than the normal procedure
-when using a mouse, it is a great helper when using a touch screen. Therefore this
-option is set by default, but you can uncheck it here if you prefer normal
-mouse operation. Note that this option becomes effective when the next menu is opened.
-
-\rett{Mute Spkr Amp}. This box only appears on Anan-7000/8000 and G2 radios using protocol 2.
-If checked, the audio amplifier driving the speakers (either the speaker jacks in the
-back panel, or the built-in speakers) is disabled. This does not affect the audio signal
-at the headphone jack.
-
-\rett{Mute Spkr when TX}. This box only appears on Anan-7000/8000 and G2 radios using protocol 2.
-If checked, it mutes the audio amplifier driving the speakers upon transmit only.
-Note that this box has no effect if TXing in CW mode or TUNE-ing such that a side tone
-is not muted. It is generally \textit{not recommended} to use this option, because the
-speakers emit an audible ``plop'' each time the speaker amplifier is muted or un-muted.
-Some users have reported RFI problems with the speakers and this option has been added
-to make it possible to mute the speakers during transmit only.
-
-\rett{Enable TxInhibit Input}. This box only appears for HPSDR (and not for SoapySDR)
-radios.
-For  protocol 1, TxInhibit is signalled for most radios by the Hermes IO1 bit being
+\rett{Enable TxInhibit Input}. For  protocol 1, TxInhibit is signalled for most radios by the Hermes IO1 bit being
 cleared (the Hermes IO2 bit is used for Anan-7000/8000). For protocol 2, for most
 radios the IO4 bit is used (Anan-7000/8000/G2 use the IO5 bit).
 If the \rett{Enable TxInhibit Input} box is checked, ,,TX Inhibit'' will be drawn
@@ -1482,61 +1464,54 @@ if the signal in the meter is too strong. For most HPSDR radios, the default val
 zero. For the HermesLite-II and other radios using the AD9866 chip, the default
 value is 14, but this may depend on the RF front end.
 
-There are some further check boxes in the \bltt{Radio} menu that you cannot see
-in Fig. \ref{fig:RadioMenu}, since they only appear for specific radio hardware.
-They appear to the right of the touch screen optimisation check box
-and will be listed here.
-
-\rett{HL2 audio codec} This box only appears if the radio is a HermesLite-II (HL2). Some
-of these radios are equipped with an audio codec and a modified firmware. The
-audio codec must be enabled by setting a specific bit in the HL2 protocol,
-and this check box enables/disables this bit. Furthermore, if this check box
-is enabled, RX audio data is sent to the HL2.
-
-\rett{HL2 CL1/2} This box only appears if the radio is a HermesLite-II (HL2). This
-radio has two SMA jacks denoted CL1 and CL2. If this box is checked, CL1 can be
-used as a master clock input for a 10 MHz clock, while CL2 then is a master
-clock output (also 10 MHz). Sec. \ref{sec:hl2support} discusses the HL2-specific options
-in more detail.
-
-\rett{Anan-10E/100B} This box only appears for Hermes boards. While the Anan-10E and
-the Anan-100B identify themselves as Hermes boards, they have a FPGA with limited
-resources and this affects the allocation of PureSignal feedback channels. To make
-PureSignal work on these machines, you have to check this box in the \bltt{Radio} menu.
-This also applies to the new ,,revised'' version of the Anan-10E that came out
-in 2025.
-
-\rett{Swap IQ} This box only appears for radios connected via the SoapySDR library. If checked
-the I and Q samples are exchanged, both in the receivers and in the transmitter. An indication
-that this is necessary is if you see signals with a frequency above your dial frequency in
-the left half of the RX panel, or if you have to go to LSB to receive USB signals. If you
-observe this behaviour, check this box.
-
-\rett{Hardware AGC} This box only appears for radios connected via the SoapySDR library.
-If checked, automatic gain control (AGC) that is implemented in hardware in the radio is enabled.
-
-\textbf{ATLAS bus options.} For legacy ATLAS bus radios, a number of additional settings have to be
-made. Therefore, the area where we have seen the Orion microphone options now contains ATLAS bus
-settings, as shown in Fig. \ref{fig:RadioMenuMetis}. You will see this only if the radio identifies
-itself as a METIS board.
+\subsubsection{Orion/Orion-II/Saturn}
+For these radios, the upper right corner of the radio menu is as shown in 
+Fig. \ref{fig:RadioMenuG2}:
 
 \begin{figure}[ht]
 \center
-\includegraphics[scale=0.45]{RadioMenuMetis.png}
-\caption{The \bltt{Radio} menu for a legacy METIS board.}
+\includegraphics[scale=0.6]{RadioMenuG2.png}
+\caption{\bltt{Radio} menu settings for Orion/OrionII/Saturn}
+\label{fig:RadioMenuG2}
+\end{figure}
+
+\rett{Mic PTT on} This chooses the wiring of the 3.5 mm TRS microphone jack. The possible choices
+are \rett{Ring} and \rett{Tip}. For \rett{Ring}, the ring connector is used for PTT, while the
+top connector is used for microphone input (and possibly microphone bias). For \rett{Tip}, it
+is the other way round (PTT on tip, Mic/Bias on ring).
+
+\rett{Mic Input}. This is only shown for Anan G2 radios (Saturn boards).
+These radios have two jacks for connecting a
+microphone, either a 3.5mm TRS jack in the front panel, or an XLR connection in the back panel. The pop-down
+menu lets you choose between these two options.
+
+\rett{Spkr Amp}. For OrionII and Saturn radios, the headphone output is driven directly by the audio codec
+chip, but additionally there is an AF amplifier that drives the speaker jacks and possibly built-in speakers.
+The possible choices in this pop-down menu are \rett{On} (speaker amp switched on all the time),
+\rett{Mute on Tx} (speaker amp switched off only while transmitting) and \rett{Off} (speaker amp switched
+off all the time). Note that the option \rett{Mute on TX} is generally 
+\textit{not recommended}, because the
+speakers may emit an audible ``plop'' each time the speaker amplifier is muted or un-muted.
+Some users have reported RFI problems with the speakers (but not with the headphone)
+and this option has been added to make it possible to mute the speakers during transmit only.
+
+\subsubsection{ATLAS bus systems}
+The settings for an ATLAS (first-generation HPSDR) system are shown in Fig. \ref{fig:RadioMenuMetis}.
+They are only shown if the radio identifies itself as a METIS or OYZ device.
+A characteristic of this bus system is that each receiver and the transmitter are built as individual
+cards that can be plugged into a bus system.
+
+\begin{figure}[ht]
+\center
+\includegraphics[scale=0.6]{RadioMenuMetis.png}
+\caption{\bltt{Radio} menu settings for ATLAS bus systems}
 \label{fig:RadioMenuMetis}
 \end{figure}
 
-The first difference you notice is that at the left edge of the menu, in the middle,
-there is a new \rett{Sample Rate} pop-down menu. This has nothing to do with the
-ATLAS bus, this occurs if the radio is connected via Protocol-1, as it is often the case for
-legacy radios. In Protocol-1, all receivers share the sample rate, therefore it is set in the
-\bltt{Radio} menu. The same applies for SoapySDR radios. In Protocol-2 on the other hand, each
-of the two receivers can have its own sample rate, therefore the sample rate is specified
-in the \bltt{RX} menu. The ATLAS bus settings are at the right edge of the menu (see Fig.
-\ref{fig:RadioMenuMetis}. The ATLAS bus has separate receiver and transmitter plug-in boards.
-To build a radio, they must be synchronised somehow, and therefore their clocks cannot run
-independently, but there must be a master clock.
+Note that I have no access to such legacy radios, so the \pH code to handle these radios
+is partly built on speculation (that is, studying the specs) and exchanging e-mails with
+people who still run such hardware. If you meet any inconsistencies, please contact
+the author.
 
 \rett{10 MHz source} This selects the 10 MHz master clock, which can be either \texttt{ATLAS}
 (the bus itself is the source), \texttt{Penelope} (the transmitter board is the source),
@@ -1557,16 +1532,86 @@ The \texttt{Pennylane} is a later version of the Penelope transmitter board, the
 difference is that it can control the output signal level. In the Penelope case,
 \pH will scale the IQ samples to provide TX drive control.
 
-\rett{Janus Only} This box is for ATLAS systems that only have a Janus ADC/DAC card,
+\rett{Janus Only}. This box (not shown in Fig. \ref{fig:RadioMenuMetis})
+is for ATLAS systems that only have a Janus ADC/DAC card,
 and will only appear for OZY (USB-connected) boards. While this hardware is not a radio,
 external hardware such as the SDR-1000 can be connected to the Janus card. If this
 option is checked, \pH assumes that the radio is controlled outside \pH, and
 will thus only process the data stream but not try to send any commands to the radio.
 
-Note that I have no access to such legacy radios, so the \pH code to handle these radios
-is partly built on speculation (that is, studying the specs) and exchanging e-mails with
-people who still run such hardware. If you meet any inconsistencies, please contact
-the author.
+\subsubsection{HermesLite-II}
+
+The HermesLite-II (HL2) specific options are shown in Fig. \ref{fig:RadioMenuHL2}.
+Note that in addition, the \bltt{N2ADR} filter board is chosen by default for this
+radio, and the RX gain calibration defaults to 14 dB.
+
+\begin{figure}[ht]
+\center
+\includegraphics[scale=0.6]{RadioMenuHL2.png}
+\caption{The \bltt{Radio} menu setting for a HermesLite-II.}
+\label{fig:RadioMenuHL2}
+\end{figure}
+
+ \rett{HL2 audio codec}. Check this box if you have the AK4951 companion board installed.
+  \pH then activates the audio codec on that board and includes RX audio samples in the
+   data stream to the HL2.
+
+ \rett{HL2 CL1/2}. The HL2 has two SMA jacks denoted CL1 and CL2 in the front panel. When checking this box,
+ you can feed a 10 MHz reference clock to the (input) CL1 jack, and the (output) Cl2 jack then
+ has an internally re-generated 10 Mhz output signal with about 3.3 V$_{pp}$.
+ 
+\rett{HL2 AH4 ATU}. The standard HL2 firmware includes support for an Icom AH4 automatic antenna
+tuner. As a consequence, when one starts TUNE-ing, the HL2 stops RF output and first looks
+for the presence of the tuner and then activates it. If no such tuner, or another tuner
+e.g. controlled by the HL2 IO-Board, is connected, this interruption of the RF output may have
+unwanted side effects. So the standard HL2 tuner support will only be active if this box
+is checked, while the HL2 IO-Board tuner register is written upon TUNE-ing if this box
+is un-checked.
+
+\subsubsection{Hermes}
+For these boards, there are normally no specific settings to be made
+(Fig. \ref{fig:RadioMenuHermes}).
+
+\begin{figure}[ht]
+\center
+\includegraphics[scale=0.6]{RadioMenuHermes.png}
+\caption{The \bltt{Radio} menu setting for Hermes boards.}
+\label{fig:RadioMenuHermes}
+\end{figure}
+
+\rett{Anan-10E/100B}. While the Anan-10E and
+the Anan-100B identify themselves as Hermes boards, they differ from standard
+Hermes boards since they have a FPGA with limited
+resources, and this affects the allocation of PureSignal feedback channels. To make
+PureSignal work on these machines, you have to check this box in the \bltt{Radio} menu.
+This also applies to the new ,,revised'' version of the Anan-10E that came out
+in 2025. Note that checking this box for standard Hermes boards will prevent
+PureSignal from working.
+
+\subsubsection{SoapySDR}
+Few check boxes appear in the \bltt{Radio} menu that are specific for SoapySDR radios
+(Fig. \ref{fig:RadioMenuSoapy}).
+
+\begin{figure}[ht]
+\center
+\includegraphics[scale=0.6]{RadioMenuSoapy.png}
+\caption{The \bltt{Radio} menu setting for SoapySDR radios.}
+\label{fig:RadioMenuSoapy}
+\end{figure}
+
+\rett{Swap IQ} This box only appears for radios connected via the SoapySDR library. If checked
+the I and Q samples are exchanged, both in the receivers and in the transmitter. An indication
+that this is necessary is if you see signals with a frequency above your dial frequency in
+the left half of the RX panel, or if you have to go to LSB to receive USB signals. If you
+observe this behaviour, check this box.
+
+\rett{HW AGC RX1}. If checked, automatic gain control (AGC) that is implemented in hardware
+in the radio is enabled.
+Note that in this case S meter readings may be significantly off.
+
+For SoapySDR radios running two receivers, there is an additional check box
+\rett{HW AGC RX2}.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{Screen} Menu}
@@ -2196,6 +2241,7 @@ The second column of the main menu contains menus which allow you to change
 receiver settings.
 
 \section{The \texttt{RX} Menu}
+\label{sec:rxmenu}
 
 \begin{figure}[ht!]
 \center
@@ -2393,19 +2439,28 @@ and 5000 Hz.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{Noise} Menu}
+\label{sec:noisemenu}
 
 \begin{figure}[ht]
 \center
 \includegraphics[scale=0.45]{NoiseMenu1.png}
-\caption{The \bltt{Noise} menu (with NR settings).}
+\caption{The \bltt{Noise} menu (with NB settings).}
 \label{fig:NoiseMenu1}
 \end{figure}
 
 With the \bltt{Noise} menu you can select a variety of noise reduction and/or
 noise blanker capabilities (Fig. \ref{fig:NoiseMenu1}). The upper part of the
-menu always looks the same, the lower part lets you fine-tune noise reduction
-or noise blanker parameters. For an in-depth explanation of the noise reduction
-and noise blanker capabilities, the reader is referred to the WDSP manual.
+menu always looks the same, the lower part lets you fine-tune 
+parameters for the noise blanker (NB) or the noise reduction models NR2 and NR4.
+ For an in-depth explanation of the NR/NR2/NB
+capabilities, the reader is referred to the WDSP manual. The noise reduction
+models NR3 (\texttt{RNNnoise}) and NR4 (\texttt{libspecbleach}) more information can
+be found starting at their github repositories
+
+RNNoise: \texttt{https://github.com/xiph/rnnoise.git} \\
+SpecBleach: \texttt{https://github.com/lucianodato/libspecbleach}
+
+We first go through the controls in the upper half of the noise menu:
 
 \rett{SNB}. This check box lets you enable/disable the spectral noise blanker.
 
@@ -2414,34 +2469,74 @@ very good at eliminating a single-tone QRM carrier in SSB modes. It goes without
 saying that activating the ANF in CW is detrimental rather than beneficial, because
 here the signal is of the type the ANF tries to eliminate.
 
-\rett{NR/NR2/ANF Position}. In the RX chain, the noise reduction can be placed before or after
+\rett{NR Position}. In the RX chain, the noise reduction can be placed before or after
 the automatic gain control (AGC). The choice made here refers to \textit{all} noise reduction
-capabilities (ANF, NR1, NR2). Having the noise reduction before AGC normally works better,
-but with sudden noise changes, having noise reduction after AGC may be preferred.
+capabilities (ANF, NR, NR2, NR3, Nr4). Having the noise reduction before AGC 
+(box unchecked) normally works better,
+but with sudden noise changes, having noise reduction after AGC (box checked) may be preferred.
 
 \rett{Reduction}. With this pop-down menu, you can choose the type of noise reduction
-namely no noise reduction, LMS noise reduction (NR1) or spectral noise reduction (NR2).
+namely no noise reduction, LMS noise reduction (NR), spectral noise reduction (NR2),
+RNNnoise reduction based on a trained neural network (NR3) and noise reduction using
+the \texttt{libspecbleach} library (NR4).
 
 \rett{Blanker}. With this pop-down menu, you can choose the type of noise blanker
 (no noise blanker, the preemptive wide band blanker NB or the interpolating wide band
 blanker NB2 ).
 
 
-
-\rett{NR Settings} and \rett{NB Settings}.
 You see a thin horizontal line in Fig. \ref{fig:NoiseMenu1}.
-Choosing one of the two buttons just below the horizontal line determines whether the
-lower part of the menu offers fine-tuning of the noise reduction or noise blanker settings.
-The set up for changing the noise reduction settings is shown in Fig. \ref{fig:NoiseMenu1},
-below (Fig \ref{fig:NoiseMenu2}) you find the set up for changing the noise blanker settings.
-We discuss the noise reduction settings first, but note again for the details you have
-to study the WDSP manual. It should also be noted that noise reduction in general has two
+Choosing one of the three buttons just below the horizontal line determines whether the
+lower part of the menu offers fine-tuning of NB, NR2, or NR4 settings.
+The set up for changing the noise blanker settings is shown in Fig. \ref{fig:NoiseMenu1},
+below (Fig \ref{fig:NoiseMenu2}) you find the set up for changing the NR2 settings
+and the NR4 settings (Fig. \ref{fig:NoiseMenu3}). Note there are no settings for NR3:
+the default ,,full'' RNNnoise model is hard-wired into the code and used.
+
+\subsection{NB settings}
+
+A noise blanker works very different from  noise reduction, since noise blanking
+is applied to the original RX IQ samples before any frequency shifts and down-sampling take place.
+Noise blanking is targeted at impulse noise, that is, small but strong impulses in the RX
+signal that are almost exclusively man-made noise.
+If you have a single source of noise (e.g. a Plasma TV) that drives you crazy, it is worth
+the effort to play around with the NB2 parameters, especially the timings. Different
+QRM sources will require different noise blanker parameters! The default parameters have been proven useful
+for many situations, but for you a different setting may produce better results!
+The options to control the noise blanker algorithms are (for an in-depth discussion,
+see the WDSP manual):
+
+\rett{NB2 Mode}. The available choices for the interpolating NB2 noise blanker here are Zero,
+Sample\&Hold, Mean Hold, Hold Sample, and Interpolate.
+
+\rett{Slew time}, \rett{Lag time}, \rett{Lead time} and \rett{Threshold}.
+These parameters apply both to NB and NB2.
+\pH currently does not allow to have a separate set of parameters for NB and NB2.
+The times are in the range $0\ldots0.1$ msec, and 0.01 msec is a good starting point. The Threshold
+can vary from 15 to 500. If normal signals are blanked out (erroneously treated as impulse noise),
+then this threshold should be increased. On the other hand, a too high value will prevent the
+noise blanker from detecting (and blanking) impulse noise.
+
+
+\subsection{NR2 settings}
+
+
+It should also be noted that noise reduction in general has two
 goals, namely to reduce fatigue (that is, quieting the background)
 and to increase readability (that is, digging otherwise unreadable signals out of the noise).
 This implies that which settings
 are judged to be ,,best'' very much depends on the beholder,
 and that you have to play around with the parameters until you find a setting that
-suits your needs.
+suits your needs. Again, changing the settings for NR2 requires that you have read
+(and understood) the discussion of NR2 in the WDSP manual. The noise menu with the NR2-specific
+control is shown in Fig. \ref{fig:NoiseMenu2}:
+
+\begin{figure}[ht]
+\center
+\includegraphics[scale=0.45]{NoiseMenu2.png}
+\caption{The \bltt{Noise} menu (with NR2 settings).}
+\label{fig:NoiseMenu2}
+\end{figure}
 
 \rett{NR2 Gain Method}. The available choices for the NR2 gain-per-bin calculation
 are \rett{Linear},
@@ -2486,34 +2581,47 @@ by the noise reduction. The range is from 0 to 100, a value of 100 corresponds t
 beyond 24 kHz. The default value is 12 (taper beyond 2800 Hz) which is good for normal SSB.
 For ,,wider'' modes (ESSB or AM), this value need be increased.
 
-\textbf{Noise blankers.} A noise blanker works very different from  noise reduction, since noise blanking
-is applied to the original RX IQ samples before any frequency shifts and down-sampling take place.
-Noise blanking is targeted at impulse noise, that is, small but strong impulses in the RX
-signal that are almost exclusively man-made noise.
-If you have a single source of noise (e.g. a Plasma TV) that drives you crazy, it is worth
-the effort to play around with the NB2 parameters, especially the timings. Different
-QRM sources will require different noise blanker parameters! The default parameters have been proven useful
-for many situations, but for you a different setting may produce better results!
-The options to control the noise blanker algorithms are:
+\subsection{NR4 settings}
+
+The noise reduction menu with the NR4-specific settings is shown in Fig. \ref{fig:NoiseMenu3}.
 
 \begin{figure}[ht]
 \center
-\includegraphics[scale=0.45]{NoiseMenu2.png}
-\caption{The \bltt{Noise} menu (with NB settings).}
-\label{fig:NoiseMenu2}
+\includegraphics[scale=0.45]{NoiseMenu3.png}
+\caption{The \bltt{Noise} menu (with NR4 settings).}
+\label{fig:NoiseMenu3}
 \end{figure}
-\rett{NB2 Mode}. The available choices for the interpolating NB2 noise blanker here are Zero,
-Sample\&Hold, Mean Hold, Hold Sample, and Interpolate.
 
-\rett{Slew time}, \rett{Lag time}, \rett{Lead time} and \rett{Threshold}.
-These parameters apply both to NB and NB2.
-\pH currently does not allow to have a separate set of parameters for NB and NB2.
-The times are in the range $0\ldots0.1$ msec, and 0.01 msec is a good starting point. The Threshold
-can vary from 15 to 500. If normal signals are blanked out (erroneously treated as impulse noise),
-then this threshold should be increased. On the other hand, a too high value will prevent the
-noise blanker from detecting (and blanking) impulse noise.
+NR4 involves the algorithms from \texttt{libspecbleach} which perform short-time Fourier transforms
+on the audio data.
 
+\rett{Reduction}. This value is in dB and can be between 0 and 20 (the default is 10). It is the amount
+of attenuation applied to the noise.
 
+\rett{Smoothing}. Percentage of smoothing to apply. Averages the reduction calculation frame
+per frame so the rate of change is less resulting in less musical noise but
+if too strong it can blur transient and reduce high frequencies. It goes
+from 0 to 100 percent.
+
+\rett{Whitening}. Percentage of whitening that is going to be applied to the residue of the
+ reduction. It modifies the noise floor to be more like white noise. This can help hide musical noise
+ when the noise is colored. It goes from 0 to 100 percent.
+ 
+ \rett{Rescale}. Strength in which the reduction will be applied. It uses the masking
+ thresholds of the signal to determine where in the spectrum the reduction
+ needs to be stronger. This parameter scales how much in each of the
+ frequencies the reduction is going to be applied. It can be a positive dB
+ value in between 0 dB and 12 dB.
+
+\rett{Scaling type}. Type of algorithm used to scale noise in order to apply over or under
+ subtraction in different parts of the spectrum while calculating the
+ reduction. The pop-down menu can choose beween \rett{Default} (a-posteriori snr scaling
+  using the complete spectrum), \rett{CriticalBands} (a-posteriori snr scaling
+  using critical bands) and \rett{MaskingThresh} (using masking thresholds).
+  
+\rett{Post Threshold}. Sets the SNR threshold in dB in which the post-filter
+will start to blur musical noise. It can be a positive or negative dB value in between -10 dB
+ and 10 dB.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{AGC} Menu}
 
@@ -5074,6 +5182,8 @@ board (internet link B) featuring the low-pass filters that are required before 
 Some have also included the so-called AK4951 companion board (internet link C) that features, among others,
  an audio codec so you can connect a headphone and a microphone. There is also a more recent HL2 I/O-board
  (internet link D) that offers a variety of I/O resources. All these boards are supported by \pH.
+ Several HL2-specific settings can be made in the \bltt{Radio} menu (chapter \ref{sec:radiomenu}) and
+ are discussed there.
 
 \section{Default PA calibration values}
 
@@ -5087,34 +5197,6 @@ the default PA calibration value (for all bands) is
 reduced to 40.5 dB for HermesLite-II (and RadioBerry) radios. This only applies at the very first start
 of \pH, since in later runs the default value will be overwritten anyway when reading the settings from
 the props file.
-
-
-
-\section{Additional controls in the \bltt{Radio} menu}
-
-\begin{figure}[ht]
-\center
-\includegraphics[scale=0.45]{RadioMenuHL2.png}
-\caption{The \bltt{Radio} menu for the HL2}
-\label{fig:hl2radiomenu}
-\end{figure}
-
- Fig \ref{fig:hl2radiomenu} shows the \bltt{Radio} menu as it shows when \pH runs a HL2. To use the N2ADR
- filter board, choose \texttt{N2ADR} in the \rett{Filter Board} pop-down menu. Using this filter board
- requires a special settings of the open-collector outputs, so to be sure these are set, the safest way
- after playing around in the \bltt{OC} menu
- is to choose another filter board in the \bltt{Radio} menu and then again the \texttt{N2ADR} board
- because then the necessary adjustment to the open-collector settings are automatically made.
- Note that when
- using the \texttt{N2ADR} filter board, you should  change  settings in the open collector (\bltt{OC})
- menu for transverter bands only!
-
- \rett{HL2 audio codec}. Check this box if you have the AK4951 companion board installed. \pH then activates
- the audio codec on that board and includes RX audio samples in the data stream to the HL2.
-
- \rett{HL2 CL1/2}. The HL2 has two SMA jacks denoted CL1 and CL2 in the front panel. When checking this box,
- you can feed a 10 MHz reference clock to the (input) CL1 jack, and the (output) Cl2 jack then
- has an internally re-generated 10 Mhz output signal with about 3.3 V$_{pp}$.
 
 \section{Support for the HL2 I/O board}
 
@@ -5146,7 +5228,8 @@ The IO-Board registers updated by \pH are:
 \textbf{TX frequency.} The TX frequency is a 40-bit word that contains the (dial) TX frequency in Hz. When using
 a transverter, this it \textit{not} the frequency at which the HL2 operates.
 
-\textbf{Antenna Tuner.} When starting TUNE-ing, a '1' is written into register 7.
+\textbf{Antenna Tuner.} When starting TUNE-ing and the \rett{HL2 AH4 ATU} box is
+unchecked in the \bltt{Radio} menu, a '1' is written into register 7.
 It is up to the HL2 IOB firmware in the Pico to take care that an external automatic
 antenna tuner starts its tuning sequence. For \pH, it is simply ,,fire and forget''.
 
@@ -5186,7 +5269,7 @@ amount of time. Together with a too small TX latency value this leads to ``relay
 if the network connection is sloppy because the T/R relay is frequently switched. With a decently chosen
 value of the TX latency, the PTT hang time is not very critical so I set it to 20 msec.
 
-\section{HL2 parameters displayed in the panadapter}
+\section{HL2 parameters in the panadapter}
 
 The HL2 transfers some non-standard information about its state to the host program (\pH) that can be displayed.
 If the box \rett{Display PA current} is checked in the \bltt{Screen} menu (see Fig. \ref{fig:ScreenMenu}),
@@ -8018,19 +8101,28 @@ PulseAudio is used. On MacOS, the \texttt{AUDIO} choice has no effect since the 
 module is used no matter what the \texttt{AUDIO} setting is.
 }
 
-\item[\rett{EXTENDED\_NR}] {(default: \texttt{OFF})
-There is a special version of the WDSP library that contains additional noise
-reduction facilities which are based on  \texttt{rnnnoise} and \texttt{libspecbleach}, see
- \texttt{https://github.com/vu3rdd/wdsp}. If you have such a version of WDSP installed, these
- extended noise reduction facilities can be used with \pH if this option is activated
- at compile time.
- Note that activating this option implies that the modified WDSP version is installed such
- that the include file \texttt{wdsp.h} of \textit{that}
- WDSP library, can be found by the compiler, and that \textit{that} WDSP (shared)
- library can be linked with the ,,\texttt{-lwdsp}'' linker option. This normally means
- that the WDSP shared library is installed in \texttt{/usr/local/lib} and the WDSP header file
- in \texttt{/usr/local/include}. The \texttt{wdsp} directory that is part of
- the \pH repository is not used if \texttt{EXTENDED\_NR} is activated.}
+\item[\rett{NR34LIB}] {(default: \texttt{OFF})
+\pH offers two noise reduction models (NR3 and NR4, see chapter \ref{sec:noisemenu})
+that are actually implemented outside the WDSP library.
+NR3 is a neural network based noise reduction model called \texttt{RNNnoise}, while NR4
+uses the \texttt{libspecbleach} library. Source code from the repositories indicated below
+has been included in the \pH code to make life easier for non-expert users. 
+
+It is also possible to have \texttt{RNNnoise} and \texttt{libspecbleach} installed
+separately. This code is available on github:
+
+RNNoise: \texttt{https://github.com/xiph/rnnoise.git} \\
+SpecBleach: \texttt{https://github.com/lucianodato/libspecbleach}
+
+So if you want your own versions of RNNnoise and libspecbleach
+installed (either installed from a software repository or compiled
+from scratch) and want to use these, set \texttt{NR34LIB=ON}. It is up to you
+to ensure that include files and libraries are installed in standard locations
+such that they can be found in the compilation process.
+The (only) advantage of installing these libraries from scratch is, that you
+(or the auto-configuration process) can take care to compile these libraries
+with CPU-specific optimisations (e.g. using AVX2 with x86 processors) enabled.
+}
 
 \end{itemize}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

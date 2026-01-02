@@ -1521,6 +1521,7 @@ static int server_command(void *data) {
       rx->nr2_post_nlevel        = command->nr2_post_nlevel;
       rx->nr2_post_factor        = command->nr2_post_factor;
       rx->nr2_post_rate          = command->nr2_post_rate;
+      rx->nr4_noise_scaling_type = command->nr4_noise_scaling_type;
       rx->nb_tau                 = from_double(command->nb_tau);
       rx->nb_hang                = from_double(command->nb_hang);
       rx->nb_advtime             = from_double(command->nb_advtime);
@@ -1998,7 +1999,7 @@ static int server_command(void *data) {
 
   case CMD_RADIOMENU: {
     const RADIOMENU_DATA *command = (RADIOMENU_DATA *)data;
-    mic_ptt_tip_bias_ring = command->mic_ptt_tip_bias_ring;
+    mic_ptt_tip = command->mic_ptt_tip;
     sat_mode = command->sat_mode;
     mic_input_xlr = command->mic_input_xlr;
     atlas_clock_source_10mhz = command->atlas_clock_source_10mhz;
