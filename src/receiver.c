@@ -1824,19 +1824,24 @@ void rx_set_bandpass(const RECEIVER *rx) {
 void rx_set_cw_peak(const RECEIVER *rx, int state, double freq) {
   ASSERT_SERVER();
 
+  //
+  // We use the "double pole" IIR filter implemented in WDSP (since version 1.29)
+  // At the nominal filter edges (4 * w), where the IF filter has -6 dB, its
+  // additional damping is -15 dB (compared to -25 dB for the simple BiQuad)
+  // so it implements a less aggressive "tuning aid"
+  //
   if (state) {
     double w = 0.25 * (rx->filter_high - rx->filter_low);
 
     if (w < 0.0) { w = -w; }      // This happens with CWL
 
-    if (w < 25.0) { w = 25.0; }   // Do not go below 25 Hz
+    if (w < 25.0) { w = 25.0; }   // Do not go below 25 Hz to avoid ringing
 
-    SetRXASPCWFreq(rx->id, freq);
-    SetRXASPCWBandwidth(rx->id, w);
-    SetRXASPCWGain(rx->id, 1.50);
+    SetRXADoublepoleFreqs(rx->id, freq, w);
+    SetRXADoublepoleGain(rx->id, 1.50);
   }
 
-  SetRXASPCWRun(rx->id, state);
+  SetRXADoublepoleRun(rx->id, state);
 }
 
 void rx_set_detector(const RECEIVER *rx) {
