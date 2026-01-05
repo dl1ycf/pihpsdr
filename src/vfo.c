@@ -239,10 +239,10 @@ void modesettings_restore_state() {
     mode_settings[i].nr2_trained_threshold = -0.5;
     mode_settings[i].nr2_trained_t2 = 0.2;
     mode_settings[i].nr4_reduction_amount = 10.0;
-    mode_settings[i].nr4_smoothing_factor = 0.0;
+    mode_settings[i].nr4_smoothing_factor = 20.0;
     mode_settings[i].nr4_whitening_factor = 0.0;
     mode_settings[i].nr4_noise_rescale = 2.0;
-    mode_settings[i].nr4_post_threshold = 2.0;
+    mode_settings[i].nr4_post_threshold = -3.0;
     mode_settings[i].nr4_noise_scaling_type = 0;
     mode_settings[i].squelch_enable = 0;
     mode_settings[i].squelch = 0.0;

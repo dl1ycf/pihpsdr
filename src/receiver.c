@@ -813,10 +813,10 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->nb_thresh =  4.95;          // Threshold=30 in the DSP menu
   rx->nb2_mode = 0;               // Zero mode
   rx->nr4_reduction_amount = 10.0;
-  rx->nr4_smoothing_factor = 0.0;
+  rx->nr4_smoothing_factor = 20.0;
   rx->nr4_whitening_factor = 0.0;
   rx->nr4_noise_rescale = 2.0;
-  rx->nr4_post_threshold = 0.0;
+  rx->nr4_post_threshold = -3.0;
   rx->nr4_noise_scaling_type = 0;
   rx->agc = AGC_MEDIUM;
   rx->agc_gain = 80.0;
