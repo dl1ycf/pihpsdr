@@ -2,6 +2,11 @@
 # Makefile for RNNOISE
 # This one creates librnnoise.a intended for static linking
 #
+# DL1YCF NOTE:
+# the "full model", rnnoise_data.c, does not compile on RaspPis
+# with only 1 GByte of memory, therefore this has now been split
+# into 6 files that can be compiled separately.
+#
 
 CFLAGS?= -pthread -O3 -D_GNU_SOURCE -Wno-parentheses -Iinclude -Isrc
 
@@ -17,6 +22,12 @@ src/parse_lpcnet_weights.c \
 src/pitch.c \
 src/rnn.c \
 src/rnnoise_data.c \
+src/rnnoise_data_1.c \
+src/rnnoise_data_2.c \
+src/rnnoise_data_3.c \
+src/rnnoise_data_4.c \
+src/rnnoise_data_5.c \
+src/rnnoise_data_6.c \
 src/rnnoise_tables.c
 
 OBJS= \
@@ -29,6 +40,12 @@ src/parse_lpcnet_weights.o \
 src/pitch.o \
 src/rnn.o \
 src/rnnoise_data.o \
+src/rnnoise_data_1.o \
+src/rnnoise_data_2.o \
+src/rnnoise_data_3.o \
+src/rnnoise_data_4.o \
+src/rnnoise_data_5.o \
+src/rnnoise_data_6.o \
 src/rnnoise_tables.o
 
 librnnoise.a:	$(OBJS)
