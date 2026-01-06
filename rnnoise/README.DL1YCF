@@ -1,0 +1,61 @@
+========================================================================================
+Notes from DL1YCF (Start)
+========================================================================================
+
+The material put into piHPDSR is meant as a minimal model for the ease of the user,
+it is generally recommended to use "installed" versions of RNNoise compiled
+with CPU-specific optimisations etc.
+
+The RNNoise code within pihpsdr comes from
+
+https://github.com/xiph/rnnoise.git
+
+A new "Makefile" has been provided that just compiles the files needed with standard
+optimisation levels. This means, that only the file
+
+rnnoise/Makefile
+
+within the pihpsdr directory differ from those in https://github.com/xiph/rnnoise.git.
+
+The RNNnoise model is not contained in the above repository but downloaded during
+installation of rnnoise. The model is originally contained in the files
+
+rnnoise/src/rnnoise_data.c  (originally, 80 MByte)
+rnnoise/src/rnnoise_data.h  (1 KByte)
+
+The file rnnoise_data.c (80 MByte) is not only larger that the recommended
+maximum file size in github (50 MByte), its compilation runs out of memory
+on RaspPis with only 1 GByte of main memory. Therefore it has been split
+into six parts. This means, rnnoise_data.c has been changed (it is now only 
+16 KByte long) and most of its contents have been moved to the following
+six header files:
+
+rnnoise/src/rnnoise_data_1.h  (16 MByte)
+rnnoise/src/rnnoise_data_2.h  (13 MByte)
+rnnoise/src/rnnoise_data_3.h  (12 MByte)
+rnnoise/src/rnnoise_data_4.h  (14 MByte)
+rnnoise/src/rnnoise_data_5.h  (11 MByte)
+rnnoise/src/rnnoise_data_6.h  ( 9 MByte)
+
+The following six *.c files, each of this is < 100 Bytes long, each include one
+of these header files and can be compiled separately:
+
+rnnoise/src/rnnoise_data_1.c
+rnnoise/src/rnnoise_data_2.c
+rnnoise/src/rnnoise_data_3.c
+rnnoise/src/rnnoise_data_4.c
+rnnoise/src/rnnoise_data_5.c
+rnnoise/src/rnnoise_data_6.c
+
+These changes now make it possible to compile pihpsdr with rnnnoise on a RaspPi
+or a RaspPi ComputeModul with only 1 GByte of main memory.
+
+Consequences:
+
+Upgrading the model (that is, adapting a new file rnnoise/src/rnnoise_data.c) is somewhat
+involved. Upgrading rnnoise itself (*.h and *.c files in rnnoise/src other than rnnoise_data.c
+and rnnoise_data.h) is straightforward.
+
+========================================================================================
+Notes from DL1YCF (End)
+========================================================================================

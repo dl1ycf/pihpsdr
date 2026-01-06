@@ -7,3 +7,11 @@ https://github.com/lucianodato/libspecbleach
 
 A Makefile has been provided that just compiles the files needed
 in piHPSDR and produce a library that can be linked statically.
+
+This means, compared to the original repository, only the files
+
+libspecbleach/Makefile
+libspecbleach/README     (this file)
+
+have been added and lots of files omitted (e.g. tests, examples,
+meson build files, etc.)
