@@ -161,6 +161,9 @@ Here we list the main new featured introduced in each version.
 \item{Performance and Resilience improvement in Client/Server operation}
 \item{RX1 and TX audio settings (audio device, Stereo/Left/Right) are now part of the RX/TX profile
 and automatically switched when changing the mode}
+\item{TX audio monitor option: the audio that goes into the TX chain (before being processed
+by the compressor or the equalizer) can be routed
+to the RX audio output.}
 \end{itemize}
 \medskip
 \textbf{\pH Version 2.5, released October 2025}
@@ -2460,7 +2463,26 @@ be found starting at their github repositories
 RNNoise: \texttt{https://github.com/xiph/rnnoise.git} \\
 SpecBleach: \texttt{https://github.com/lucianodato/libspecbleach}
 
-We first go through the controls in the upper half of the noise menu:
+It should be noted that noise reduction in general has two
+goals, namely to reduce fatigue (that is, quieting the background)
+and to increase readability (that is, digging otherwise unreadable signals out of the noise).
+This implies that which settings
+are judged to be ,,best'' very much depends on the beholder,
+and that you have to play around with the parameters until you find a setting that
+suits your needs.
+
+\textbf{Most noise reduction models only work reasonably well for phone. In my experience, NR4 does
+a very decent job also for CW.}
+
+You see a thin horizontal line in Fig. \ref{fig:NoiseMenu1}.
+Choosing one of the three buttons just below the horizontal line determines whether the
+lower part of the menu offers fine-tuning of NB, NR2, or NR4 settings.
+The set up for changing the noise blanker settings is shown in Fig. \ref{fig:NoiseMenu1},
+below (Fig \ref{fig:NoiseMenu2}) you find the set up for changing the NR2 settings
+and the NR4 settings (Fig. \ref{fig:NoiseMenu3}). Note there are no settings for NR3:
+the default ,,full'' RNNnoise model is hard-wired into the code and used.
+
+\subsection{Upper half of the Noise menu}
 
 \rett{SNB}. This check box lets you enable/disable the spectral noise blanker.
 
@@ -2471,7 +2493,7 @@ here the signal is of the type the ANF tries to eliminate.
 
 \rett{NR Position}. In the RX chain, the noise reduction can be placed before or after
 the automatic gain control (AGC). The choice made here refers to \textit{all} noise reduction
-capabilities (ANF, NR, NR2, NR3, Nr4). Having the noise reduction before AGC 
+capabilities (ANF, NR, NR2, NR3, NR4). Having the noise reduction before AGC 
 (box unchecked) normally works better,
 but with sudden noise changes, having noise reduction after AGC (box checked) may be preferred.
 
@@ -2483,15 +2505,6 @@ the \texttt{libspecbleach} library (NR4).
 \rett{Blanker}. With this pop-down menu, you can choose the type of noise blanker
 (no noise blanker, the preemptive wide band blanker NB or the interpolating wide band
 blanker NB2 ).
-
-
-You see a thin horizontal line in Fig. \ref{fig:NoiseMenu1}.
-Choosing one of the three buttons just below the horizontal line determines whether the
-lower part of the menu offers fine-tuning of NB, NR2, or NR4 settings.
-The set up for changing the noise blanker settings is shown in Fig. \ref{fig:NoiseMenu1},
-below (Fig \ref{fig:NoiseMenu2}) you find the set up for changing the NR2 settings
-and the NR4 settings (Fig. \ref{fig:NoiseMenu3}). Note there are no settings for NR3:
-the default ,,full'' RNNnoise model is hard-wired into the code and used.
 
 \subsection{NB settings}
 
@@ -2521,15 +2534,11 @@ noise blanker from detecting (and blanking) impulse noise.
 \subsection{NR2 settings}
 
 
-It should also be noted that noise reduction in general has two
-goals, namely to reduce fatigue (that is, quieting the background)
-and to increase readability (that is, digging otherwise unreadable signals out of the noise).
-This implies that which settings
-are judged to be ,,best'' very much depends on the beholder,
-and that you have to play around with the parameters until you find a setting that
-suits your needs. Again, changing the settings for NR2 requires that you have read
-(and understood) the discussion of NR2 in the WDSP manual. The noise menu with the NR2-specific
-control is shown in Fig. \ref{fig:NoiseMenu2}:
+Of course it is perfectly possible to ,,play'' with the settings here, hoping to find
+a combination that suits your needs. It is, however, recommended that you have read
+(and understood) the discussion of NR2 in the WDSP manual.
+
+The noise menu with the NR2-specific control is shown in Fig. \ref{fig:NoiseMenu2}:
 
 \begin{figure}[ht]
 \center
