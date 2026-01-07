@@ -640,12 +640,14 @@ static void discovery() {
   if (enable_saturn_xdma && !discover_only_stemlab) {
     status_text("Looking for /dev/xdma* based saturn devices");
     saturn_discovery();
+#ifdef GPIO
     //
     // Check if a SATURN board has been found
     //
     for (int i = 0; i < devices; i++) {
       if (discovered[i].device == NEW_DEVICE_SATURN) { saturn_found = 1; }
     }
+#endif
   }
 
 #endif
