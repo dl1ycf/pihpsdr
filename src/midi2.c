@@ -143,7 +143,7 @@ void MidiReleaseCommands() {
 
     while (loop != NULL) {
       new = loop->next;
-      free(loop);
+      free(loop);  // allocated with malloc()
       loop = new;
     }
 

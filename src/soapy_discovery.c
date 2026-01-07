@@ -172,14 +172,14 @@ static void get_info(char *driver) {
               (int)(id + 1), ranges[i].minimum, ranges[i].maximum);
     }
 
-    free(ranges);
+    free(ranges);  // allocated with malloc inside SoapySDR
     bandwidths = SoapySDRDevice_listBandwidths(sdr, SOAPY_SDR_RX, id, &length);
 
     for (size_t i = 0; i < length; i++) {
       t_print("%s: RX%d bandwidth available: %20.6f\n", __FUNCTION__, (int)(id + 1), bandwidths[i]);
     }
 
-    free(bandwidths);
+    free(bandwidths);  // allocated with malloc inside SoapySDR
     SoapySDRDevice_setBandwidth(sdr, SOAPY_SDR_RX, id, (double) sample_rate);
     bw = SoapySDRDevice_getBandwidth(sdr, SOAPY_SDR_RX, id);
     t_print("%s: RX%d: bandwidth selected: %f\n", __FUNCTION__, (int)(id + 1), bw);
@@ -198,7 +198,7 @@ static void get_info(char *driver) {
       discovered[devices].frequency_max = ranges[0].maximum;
     }
 
-    free(ranges);
+    free(ranges);  // allocated with malloc inside SoapySDR
     antennas = SoapySDRDevice_listAntennas(sdr, SOAPY_SDR_RX, id, &length);
 
     if (length > 8) { length = 8; }
@@ -243,7 +243,7 @@ static void get_info(char *driver) {
       t_print( "%s: RX%d format available: %s\n", __FUNCTION__, (int)(id + 1), formats[i]);
     }
 
-    free(formats);
+    free(formats);  // allocated with malloc inside SoapySDR
   }
 
   //
@@ -268,14 +268,14 @@ static void get_info(char *driver) {
               ranges[i].minimum, ranges[i].maximum);
     }
 
-    free(ranges);
+    free(ranges);  // allocated with malloc inside SoapySDR
     bandwidths = SoapySDRDevice_listBandwidths(sdr, SOAPY_SDR_TX, 0, &length);
 
     for (size_t i = 0; i < length; i++) {
       t_print("%s: TX bandwidth available: %20.6f\n", __FUNCTION__, bandwidths[i]);
     }
 
-    free(bandwidths);
+    free(bandwidths);  // allocated with malloc inside SoapySDR
     bw = SoapySDRDevice_getBandwidth(sdr, SOAPY_SDR_TX, 0);
     t_print("%s: TX bandwidth selected: %f\n", __FUNCTION__, bw);
     ranges = SoapySDRDevice_getFrequencyRange(sdr, SOAPY_SDR_TX, 0, &length);
@@ -323,7 +323,7 @@ static void get_info(char *driver) {
       t_print( "%s: TX format available: %s\n", __FUNCTION__, formats[i]);
     }
 
-    free(formats);
+    free(formats);  // allocated with malloc inside SoapySDR
   }
 
   //

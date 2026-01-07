@@ -37,7 +37,7 @@ void clearProperties() {
 
     while (properties != NULL) {
       next = properties->next_property;
-      free(properties);
+      g_free(properties);
       properties = next;
     }
   }
@@ -202,7 +202,7 @@ void setProperty(const char* name, const char* value) {
 
   if (property) {
     // just update
-    free(property->value);
+    g_free(property->value);
     property->value = g_strdup(value);
   } else {
     // new property
@@ -243,7 +243,7 @@ double myatof(const char* string) {
   }
 
   ret = atof(lstr);
-  free(lstr);
+  g_free(lstr);
   return ret;
 }
 

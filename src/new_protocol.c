@@ -1697,7 +1697,7 @@ void new_protocol_menu_stop() {
       recvfrom(data_socket, buffer, NET_BUFFER_SIZE, 0, (struct sockaddr*)&addr, &length);
     }
 
-    free(buffer);
+    free(buffer);  // allocated with malloc
   }
 }
 

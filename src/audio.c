@@ -698,7 +698,7 @@ static void *tx_audio_thread(gpointer arg) {
     }
   }
 
-  free(buffer);
+  free(buffer);  // allocated with malloc
   t_print("%s: exiting\n", __FUNCTION__);
   return NULL;
 }
@@ -908,11 +908,11 @@ void audio_get_cards() {
     //  snd_device_name_get_hint()
     //
     if (name != NULL) {
-      free(name);
+      free(name);   // allocated with malloc() inside ALSA
     }
 
     if (descr != NULL) {
-      free(descr);
+      free(descr);   // allocated with malloc() inside ALSA
     }
 
     n++;

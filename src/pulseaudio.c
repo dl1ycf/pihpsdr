@@ -271,7 +271,7 @@ static void *tx_audio_thread(gpointer arg) {
   }
 
   t_print("%s: exit\n", __FUNCTION__);
-  free(buffer);
+  free(buffer);  // allocated with malloc
   return NULL;
 }
 

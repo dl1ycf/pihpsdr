@@ -392,7 +392,7 @@ void tx_panadapter_update(TRANSMITTER *tx) {
           qsort(sorted_samples, mywidth, sizeof(double), compare_doubles);
           int index = (int)((noise_percentile / 100.0) * mywidth);
           noise_level = sorted_samples[index] + 3.0;
-          free(sorted_samples); // Free memory after use
+          free(sorted_samples); // allocated with malloc()
         }
       }
 
