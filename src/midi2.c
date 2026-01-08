@@ -143,7 +143,7 @@ void MidiReleaseCommands() {
 
     while (loop != NULL) {
       new = loop->next;
-      free(loop);  // allocated with malloc()
+      g_free(loop);
       loop = new;
     }
 
@@ -394,7 +394,7 @@ void midi_restore_state() {
       //
       // Construct descriptor and add to the list of MIDI commands
       //
-      struct desc *desc = (struct desc *) malloc(sizeof(struct desc));
+      struct desc *desc = g_new(struct desc, 1);
 
       if (!desc) {
         fatal_error("FATAL: alloc desc in midi");

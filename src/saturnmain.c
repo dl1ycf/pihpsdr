@@ -188,7 +188,7 @@ static mybuffer *get_my_buffer(int numlist) {
   }
 
   for (i = 0; i < j; i++) {
-    bp = malloc(sizeof(mybuffer));
+    bp = g_new(mybuffer, 1);  // never released
 
     if (bp) {
       bp->free = 1;
@@ -246,7 +246,8 @@ static bool CreateDynamicMemory(void) {                     // return true if er
   // set up per-DDC data structures
   //
   for (int DDC = 0; DDC < VNUMDDC; DDC++) {
-    DDCSampleBuffer[DDC] = malloc(DMABufferSize);
+    // cannot use g_new here, we need the "fundamentally aligned" feature of malloc()
+    DDCSampleBuffer[DDC] = malloc(DMABufferSize);  // never released
 
     if (!DDCSampleBuffer[DDC]) {
       t_print("DDC%d buffer allocation failed\n", DDC);

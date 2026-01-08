@@ -224,7 +224,7 @@ int audio_open_output(RECEIVER *rx) {
 static void *tx_audio_thread(gpointer arg) {
   TRANSMITTER *tx = (TRANSMITTER *)arg;
   int err;
-  float *buffer = (float *) malloc(inp_buffer_size * sizeof(float));
+  float *buffer = g_new(float, inp_buffer_size);
 
   if (!buffer) { return NULL; }
 
@@ -271,7 +271,7 @@ static void *tx_audio_thread(gpointer arg) {
   }
 
   t_print("%s: exit\n", __FUNCTION__);
-  free(buffer);  // allocated with malloc
+  g_free(buffer);
   return NULL;
 }
 

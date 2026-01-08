@@ -619,10 +619,10 @@ static void *tx_audio_thread(gpointer arg) {
   //
   // Allocate buffer such that it fits for all
   //
-  void *buffer = malloc(inp_buffer_size * sizeof(float));
+  void *buffer = g_new(float, inp_buffer_size);
 
   if (!buffer) {
-    t_print("%s: unknown sound format or malloc error\n", __FUNCTION__);
+    t_print("%s: unknown sound format or alloc error\n", __FUNCTION__);
     return NULL;
   }
 
@@ -698,7 +698,7 @@ static void *tx_audio_thread(gpointer arg) {
     }
   }
 
-  free(buffer);  // allocated with malloc
+  g_free(buffer);
   t_print("%s: exiting\n", __FUNCTION__);
   return NULL;
 }
@@ -902,17 +902,12 @@ void audio_get_cards() {
 
 #endif
 
-    //
-    //  For these three items, use free() instead of g_free(),
-    //  since these have been allocated by ALSA via
-    //  snd_device_name_get_hint()
-    //
     if (name != NULL) {
-      free(name);   // allocated with malloc() inside ALSA
+      free(name);   // allocated inside ALSA so use free() and not g_free()
     }
 
     if (descr != NULL) {
-      free(descr);   // allocated with malloc() inside ALSA
+      free(descr);  // allocated inside ALSA so use free() and not g_free()
     }
 
     n++;

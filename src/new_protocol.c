@@ -199,7 +199,7 @@ static pthread_mutex_t send_rxaudio_mutex   = PTHREAD_MUTEX_INITIALIZER;
 //
 ////////////////////////////////////////////////////////////////////////////
 //
-// Instead of allocating and free-ing (malloc/free) the network buffers
+// Instead of allocating and free-ing the network buffers
 // at a very high rate, we do it the "pedestrian" way, which may
 // alleviate the system load a little.
 //
@@ -301,7 +301,7 @@ static mybuffer *get_my_buffer() {
   // and add to the head of the list
   //
   for (i = 0; i < 25; i++) {
-    bp = malloc(sizeof(mybuffer));
+    bp = g_new(mybuffer, 1);
 
     if (!bp) {
       fatal_error("FATAL: P2: out of memory");
@@ -1691,13 +1691,13 @@ void new_protocol_menu_stop() {
     FD_SET(data_socket, &fds);
     tv.tv_usec = 50000;
     tv.tv_sec = 0;
-    buffer = malloc(NET_BUFFER_SIZE);
+    buffer = g_new(char, NET_BUFFER_SIZE);
 
     while (select(data_socket + 1, &fds, NULL, NULL, &tv) > 0) {
       recvfrom(data_socket, buffer, NET_BUFFER_SIZE, 0, (struct sockaddr*)&addr, &length);
     }
 
-    free(buffer);  // allocated with malloc
+    g_free(buffer);
   }
 }
 

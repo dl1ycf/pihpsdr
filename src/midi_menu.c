@@ -440,10 +440,10 @@ static void updateDescription() {
     //
     // This is a new Note/Event combination, so we need a new entry
     //
-    current_cmd = (struct desc *) malloc(sizeof(struct desc));
+    current_cmd = g_new(struct desc, 1);
 
     if (!current_cmd) {
-      fatal_error("FATAL: malloc cmd in midi");
+      fatal_error("FATAL: alloc cmd in midi");
       return;
     }
 

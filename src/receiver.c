@@ -606,7 +606,7 @@ RECEIVER *rx_create_pure_signal_receiver(int id, int sample_rate, int width, int
   // For a PureSignal receiver, most parameters are not needed
   // so we fill the entire data with zeroes
   //
-  RECEIVER *rx = malloc(sizeof(RECEIVER));
+  RECEIVER *rx = g_new(RECEIVER, 1);
 
   if (!rx) {
     fatal_error("FATAL: cannot allocate PS-rx");
@@ -688,7 +688,7 @@ void rx_create_remote(RECEIVER *rx) {
 RECEIVER *rx_create_receiver(int id, int width, int height) {
   ASSERT_SERVER(NULL);
   t_print("%s: RXid=%d width=%d height=%d\n", __FUNCTION__, id, width, height);
-  RECEIVER *rx = malloc(sizeof(RECEIVER));
+  RECEIVER *rx = g_new(RECEIVER, 1);
 
   if (!rx) {
     fatal_error("FATAL: cannot allocate rx");

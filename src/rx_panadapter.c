@@ -489,7 +489,7 @@ void rx_panadapter_update(RECEIVER *rx) {
 
       if (hide_noise) {
         // Dynamically allocate a copy of samples for sorting
-        double *sorted_samples = malloc(mywidth * sizeof(double));
+        double *sorted_samples = g_new(double, mywidth);
 
         if (sorted_samples != NULL) {
           for (int i = 0; i < mywidth; i++) {
@@ -499,7 +499,7 @@ void rx_panadapter_update(RECEIVER *rx) {
           qsort(sorted_samples, mywidth, sizeof(double), compare_doubles);
           int index = (int)((noise_percentile / 100.0) * mywidth);
           noise_level = sorted_samples[index] + 3.0;
-          free(sorted_samples); // allocated with malloc()
+          g_free(sorted_samples);
         }
       }
 
