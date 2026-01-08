@@ -45,7 +45,7 @@ https://github.com/lucianodato/libspecbleach
 
 #define _CRT_SECURE_NO_WARNINGS
 
-#include <specbleach/specbleach_adenoiser.h>
+#include <specbleach_adenoiser.h>
 
 #include "comm.h"
 
@@ -98,8 +98,8 @@ void xsbnr (SBNR a, int pos)
 {
 	if (a->run && pos == a->position)
 	{
-		SpectralBleachParameters parameters =
-			  (SpectralBleachParameters){.residual_listen = false,
+		SpectralBleachAdaptiveParameters parameters =
+			  (SpectralBleachAdaptiveParameters){.residual_listen = false,
 								 .reduction_amount = a->reduction_amount,
 								 .smoothing_factor = a->smoothing_factor,
 								 .whitening_factor = a->whitening_factor,

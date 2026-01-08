@@ -47,7 +47,7 @@ https://github.com/lucianodato/libspecbleach
 #ifndef _sbnr_h
 #define _sbnr_h
 
-#include <specbleach/specbleach_adenoiser.h>
+#include <specbleach_adenoiser.h>
 
 typedef struct _sbnr
 {
