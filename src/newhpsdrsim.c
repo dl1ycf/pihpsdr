@@ -1090,12 +1090,13 @@ void *rx_thread(void *data) {
   unsigned int seed;
   double off, tonearg, tonedelta;
   double off2, tonearg2, tonedelta2;
-  int do_tone, t3p, t3l;
+  int do_tone, t3p;
+  double *pulseshape = NULL;
+  int myrate = 0;
   struct timespec delay;
   tonearg = 0.0;
   tonearg2 = 0.0;
-  t3l = 0.0;
-  t3p = 0.0;
+  t3p = 0;
   myddc = (int) (uintptr_t) data;
 
   if (myddc < 0 || myddc >= NUMRECEIVERS) { return NULL; }
@@ -1135,26 +1136,37 @@ void *rx_thread(void *data) {
       continue;
     }
 
-    decimation = 1536 / rxrate[myddc];
+    if (myrate != rxrate[myddc]) {
+      myrate = rxrate[myddc];
+      t3p = 0;
+      if (pulseshape) { free(pulseshape); }
+      pulseshape = malloc(800 * myrate * sizeof(double));
+      for (int i =   0 * myrate; i<800 * myrate; i++) { pulseshape[i] = 0.0000; }
+      for (int i = 100 * myrate; i<150 * myrate; i++) { pulseshape[i] = 0.0001; }
+      for (int i = 200 * myrate; i<250 * myrate; i++) { pulseshape[i] = 0.0001; }
+      for (int i = 300 * myrate; i<350 * myrate; i++) { pulseshape[i] = 0.0001; }
+      for (int i = 400 * myrate; i<550 * myrate; i++) { pulseshape[i] = 0.0001; }
+      decimation = 1536 / myrate;
+    }
+
     myadc = adcmap[myddc];
 
     //
     // IQ frequency of 14.1 MHz signal
     //
-    if (myadc == 0 && labs(7100000L - rxfreq[myddc]) < 500 * rxrate[myddc]) {
+    if (myadc == 0 && labs(7100000L - rxfreq[myddc]) < 500 * myrate) {
       off = (double)(7100000 - rxfreq[myddc]);
-      tonedelta = -6.283185307179586476925286766559 * off / ((double) (1000 * rxrate[myddc]));
+      tonedelta = -6.283185307179586476925286766559 * off / ((double) (1000 * myrate));
       do_tone = 3;
-      t3l = 200 * rxrate[myddc];
-    } else if (myadc == 0 && labs(14100000L - rxfreq[myddc]) < 500 * rxrate[myddc]) {
+    } else if (myadc == 0 && labs(14100000L - rxfreq[myddc]) < 500 * myrate) {
       off = (double)(14100000 - rxfreq[myddc]);
-      tonedelta = -6.283185307179586476925286766559 * off / ((double) (1000 * rxrate[myddc]));
+      tonedelta = -6.283185307179586476925286766559 * off / ((double) (1000 * myrate));
       do_tone = 1;
-    } else if (myadc == 0 && labs(21100000L - rxfreq[myddc]) < 500 * rxrate[myddc]) {
+    } else if (myadc == 0 && labs(21100000L - rxfreq[myddc]) < 500 * myrate) {
       off = (double)(21100000 - rxfreq[myddc]);
-      tonedelta = -6.283185307179586476925286766559 * off / ((double) (1000 * rxrate[myddc]));
+      tonedelta = -6.283185307179586476925286766559 * off / ((double) (1000 * myrate));
       off2 = (double)(21100900 - rxfreq[myddc]);
-      tonedelta2 = -6.283185307179586476925286766559 * off2 / ((double) (1000 * rxrate[myddc]));
+      tonedelta2 = -6.283185307179586476925286766559 * off2 / ((double) (1000 * myrate));
       do_tone = 2;
     } else {
       do_tone = 0;
@@ -1176,11 +1188,11 @@ void *rx_thread(void *data) {
     // we send 119 sample *pairs*.
     if (sync) {
       size = 119;
-      wait = 119000000L / rxrate[myddc]; // time for these samples in nano-secs
+      wait = 119000000L / myrate; // time for these samples in nano-secs
       syncadc = adcmap[sync - 1];
     } else {
       size = 238;
-      wait = 238000000L / rxrate[myddc]; // time for these samples in nano-secs
+      wait = 238000000L / myrate; // time for these samples in nano-secs
       syncadc = 0;
     }
 
@@ -1240,7 +1252,7 @@ void *rx_thread(void *data) {
       // a) add man-made-noise on I-sample of RX channel
       // b) add man-made-noise on Q-sample of "synced" channel
       //
-      if (sync && (rxrate[myadc] == 192) && ptt && (syncadc == n_adc)) {
+      if (sync && (myrate == 192) && ptt && (syncadc == n_adc)) {
         irsample = isample[rxptr];
         qrsample = qsample[rxptr++];
 
@@ -1281,19 +1293,17 @@ void *rx_thread(void *data) {
         if (tonearg < -6.3) { tonearg += 6.283185307179586476925286766559; }
 
         if (tonearg2 < -6.3) { tonearg2 += 6.283185307179586476925286766559; }
-      } else if (do_tone == 3 && t3p >= 0) {
-        i0sample += cos(tonearg) * 0.000003162278 * rxatt0_dbl;
-        q0sample += sin(tonearg) * 0.000003162278 * rxatt0_dbl;
+      } else if (do_tone == 3) {
+        i0sample += cos(tonearg) * pulseshape[t3p] * rxatt0_dbl;
+        q0sample += sin(tonearg) * pulseshape[t3p] * rxatt0_dbl;
         tonearg += tonedelta;
 
         if (tonearg > 6.3) { tonearg -= 6.283185307179586476925286766559; }
 
         if (tonearg < -6.3) { tonearg += 6.283185307179586476925286766559; }
+
+        if (t3p++ >= 800 * myrate) { t3p = 0; }
       }
-
-      t3p++;
-
-      if (t3p >= t3l) { t3p = -t3l; }
 
       if (diversity && !sync && myadc == 0) {
         i0sample += 0.0001 * rxatt0_dbl * divtab[divptr];
