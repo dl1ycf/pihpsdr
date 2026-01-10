@@ -6,7 +6,7 @@
 supporting both the old (P1) and new (P2) HPSDR protocols, as well as the SoapySDR framework.
 It runs on Linux (Raspberry Pi but also Desktop or Laptop computers running LINUX) and MacOS (Intel or AppleSilicon CPUs, using  "Homebrew" or "MacPorts").
 
-**piHPSDR Manual (PDF file) for release versions:**
+**piHPSDR Manual (PDF file, about 300 pages) for release versions:**
 
 **v2.3:** https://github.com/dl1ycf/pihpsdr/releases/download/v2.5/piHPSDR-Manual-v2.3.pdf
 
