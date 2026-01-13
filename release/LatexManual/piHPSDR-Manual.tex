@@ -1468,7 +1468,7 @@ zero. For the HermesLite-II and other radios using the AD9866 chip, the default
 value is 14, but this may depend on the RF front end.
 
 \subsubsection{Orion/Orion-II/Saturn}
-For these radios, the upper right corner of the radio menu is as shown in 
+For these radios, the upper right corner of the radio menu is as shown in
 Fig. \ref{fig:RadioMenuG2}:
 
 \begin{figure}[ht]
@@ -1492,7 +1492,7 @@ menu lets you choose between these two options.
 chip, but additionally there is an AF amplifier that drives the speaker jacks and possibly built-in speakers.
 The possible choices in this pop-down menu are \rett{On} (speaker amp switched on all the time),
 \rett{Mute on Tx} (speaker amp switched off only while transmitting) and \rett{Off} (speaker amp switched
-off all the time). Note that the option \rett{Mute on TX} is generally 
+off all the time). Note that the option \rett{Mute on TX} is generally
 \textit{not recommended}, because the
 speakers may emit an audible ``plop'' each time the speaker amplifier is muted or un-muted.
 Some users have reported RFI problems with the speakers (but not with the headphone)
@@ -1562,7 +1562,7 @@ radio, and the RX gain calibration defaults to 14 dB.
  \rett{HL2 CL1/2}. The HL2 has two SMA jacks denoted CL1 and CL2 in the front panel. When checking this box,
  you can feed a 10 MHz reference clock to the (input) CL1 jack, and the (output) Cl2 jack then
  has an internally re-generated 10 Mhz output signal with about 3.3 V$_{pp}$.
- 
+
 \rett{HL2 AH4 ATU}. The standard HL2 firmware includes support for an Icom AH4 automatic antenna
 tuner. As a consequence, when one starts TUNE-ing, the HL2 stops RF output and first looks
 for the presence of the tuner and then activates it. If no such tuner, or another tuner
@@ -2453,7 +2453,7 @@ and 5000 Hz.
 
 With the \bltt{Noise} menu you can select a variety of noise reduction and/or
 noise blanker capabilities (Fig. \ref{fig:NoiseMenu1}). The upper part of the
-menu always looks the same, the lower part lets you fine-tune 
+menu always looks the same, the lower part lets you fine-tune
 parameters for the noise blanker (NB) or the noise reduction models NR2 and NR4.
  For an in-depth explanation of the NR/NR2/NB
 capabilities, the reader is referred to the WDSP manual. The noise reduction
@@ -2493,7 +2493,7 @@ here the signal is of the type the ANF tries to eliminate.
 
 \rett{NR Position}. In the RX chain, the noise reduction can be placed before or after
 the automatic gain control (AGC). The choice made here refers to \textit{all} noise reduction
-capabilities (ANF, NR, NR2, NR3, NR4). Having the noise reduction before AGC 
+capabilities (ANF, NR, NR2, NR3, NR4). Having the noise reduction before AGC
 (box unchecked) normally works better,
 but with sudden noise changes, having noise reduction after AGC (box checked) may be preferred.
 
@@ -2615,7 +2615,7 @@ from 0 to 100 percent.
 \rett{Whitening}. Percentage of whitening that is going to be applied to the residue of the
  reduction. It modifies the noise floor to be more like white noise. This can help hide musical noise
  when the noise is colored. It goes from 0 to 100 percent.
- 
+
  \rett{Rescale}. Strength in which the reduction will be applied. It uses the masking
  thresholds of the signal to determine where in the spectrum the reduction
  needs to be stronger. This parameter scales how much in each of the
@@ -2627,7 +2627,7 @@ from 0 to 100 percent.
  reduction. The pop-down menu can choose beween \rett{Default} (a-posteriori snr scaling
   using the complete spectrum), \rett{CriticalBands} (a-posteriori snr scaling
   using critical bands) and \rett{MaskingThresh} (using masking thresholds).
-  
+
 \rett{Post Threshold}. Sets the SNR threshold in dB in which the post-filter
 will start to blur musical noise. It can be a positive or negative dB value in between -10 dB
  and 10 dB.
@@ -4441,6 +4441,7 @@ illegal use of the transmitter. While the password is stored unencrypted on the 
 model ensures that a non-encrypted password is never contained in the data stream between the client and
 the server.
 
+\section{Server side: the Server menu}
 In the \pH ``server`` instance (connected directly to the radio), client/server operation must be enabled
 via the \bltt{Server} menu, to be opened by a button in the bottom  part of the leftmost  column of the  main menu.
 The server menu is shown in Fig. \ref{fig:servermenu} and only has a few controls.
@@ -4482,7 +4483,7 @@ If the server is already running, and you want this option to become effective i
 un-check and re-check the \rett{Server Enable} box. Choosing \rett{Restart} in the main menu
 will also resume radio operation.
 
-\textbf{Client/Server operation}
+\section{Client side: connecting the server}
 
 Having explained the \bltt{Server} menu, we now discuss how operate remote.
 Let us assume you have a server instance of \pH running, so how to connect  to it from a  remote location?
@@ -4542,7 +4543,7 @@ label reads \rett{Show} again.
 If all data has been entered, pushing the \rett{Use Server} button starts establishing a connection
 with the server. The same happens if hitting \texttt{Return} in the password field.
 
-\textbf{A note on network security}
+\section{Encryption and network security}
 
 The password you enter is \textbf{never ever} transmitted ``as is'' over the line. Instead, the server sends a random
 512 bit (64 byte) \textit{challenge} which is different for each connection.
@@ -4562,8 +4563,7 @@ If you feel you must go beyond, one option is to set up a VPN \textit{virtual pr
 you can have expert-level (professional) cyber security provided by your network infrastructure, which is
 far beyond the amateur-level security features that I can build into \pH.
 
-\newpage
-\textbf{Auto disconnect feature:}
+\section{Auto disconnect feature}
 
 Equally important is to ensure that your radio stops transmitting if
 the connection to the client breaks down. To this end, the server closes the connection and goes RX if
@@ -4571,7 +4571,7 @@ it has not received any command from the client for about 30 seconds, or if the 
 next command from the client failed (the client will send a
 ``heartbeat'' message every 15 seconds).
 
-\textbf{Network bandwidth required for client/server operation:}
+\section{Network bandwidth}
 
  The user commands and even the spectrum
 data to be displayed in the panadapters and waterfalls are the smallest part of the data flowing between the client
@@ -4589,6 +4589,27 @@ My first tests indicate that client/server operation works very well even
 if  the connection between Client and Server
 involves WiFi. I mention this because my attempts using WiFi for connection to the \textit{radio}
 (that is, for the base band IQ data) were not entirely satisfactory.
+
+\section{Settings on the Client side}
+When the client connects to the server, most radio settings are transferred from the server to the client
+side. In the following, applying any changes on the client side are transferred to the server and
+utlimately stored in the settings (,,props file'') on the server side. Some settings, however, are independent
+on the client and server side. These settings are read from the props file on the client when the client
+starts, and if they are changed, they are written to that file. These local settings include
+\begin{itemize}
+\item{Screen height and VFO bar layout}
+\item{Layout of the slider and toolbar area}
+\item{Panadapter/Waterfall settings}
+\item{Local audio settings (sound cards, stereo/mono settings, etc.)}
+\item{All CAT/TCI/Midi settings}
+\item{GPIO settings (if GPIO is enabled)}
+\item{VOX settings and VOX threshold}
+\end{itemize}
+Note the screen width must be the same on client and server, and is stored in the settings on the server
+side. This is so because the spectrum in the panadapter is calculated for a specific width (in pixels).
+The server will never be in full-screen mode, even if the client is. Note the complete RX/TX profiles
+are stored in the props file on the client side, but only the local audio settings contained therein
+are actually used.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Latencies}
@@ -8115,7 +8136,7 @@ module is used no matter what the \texttt{AUDIO} setting is.
 that are actually implemented outside the WDSP library.
 NR3 is a neural network based noise reduction model called \texttt{RNNnoise}, while NR4
 uses the \texttt{libspecbleach} library. Source code from the repositories indicated below
-has been included in the \pH code to make life easier for non-expert users. 
+has been included in the \pH code to make life easier for non-expert users.
 
 It is also possible to have \texttt{RNNnoise} and \texttt{libspecbleach} installed
 separately. This code is available on github:
