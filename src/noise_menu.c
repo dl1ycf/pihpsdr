@@ -160,6 +160,7 @@ static void nr2_sel_changed(GtkWidget *widget, gpointer data) {
   // show or hide all controls for NR settings
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
     gtk_widget_show(nr2_container);
+    gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
   } else {
     gtk_widget_hide(nr2_container);
   }
@@ -169,6 +170,7 @@ static void nb_sel_changed(GtkWidget *widget, gpointer data) {
   // show or hide all controls for NB settings
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
     gtk_widget_show(nb_container);
+    gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
   } else {
     gtk_widget_hide(nb_container);
   }
@@ -178,6 +180,7 @@ static void nr4_sel_changed(GtkWidget *widget, gpointer data) {
   // show or hide all controls for NR4 settings
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
     gtk_widget_show(nr4_container);
+    gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
   } else {
     gtk_widget_hide(nr4_container);
   }
@@ -246,14 +249,12 @@ void noise_menu(GtkWidget *parent) {
   btn = gtk_check_button_new_with_label("ANF");
   gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), myrx->anf);
-  gtk_widget_show(btn);
   gtk_grid_attach(GTK_GRID(grid), btn, 1, 1, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(anf_cb), NULL);
   //
   lbl = gtk_label_new("Reduction");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_widget_show(lbl);
   gtk_grid_attach(GTK_GRID(grid), lbl, 2, 1, 1, 1);
   btn = gtk_combo_box_text_new();
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "NONE");
@@ -270,7 +271,6 @@ void noise_menu(GtkWidget *parent) {
   lbl = gtk_label_new("NR Position");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_widget_show(lbl);
   gtk_grid_attach(GTK_GRID(grid), lbl, 0, 2, 1, 1);
   btn = gtk_combo_box_text_new();
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Pre AGC");
@@ -282,7 +282,6 @@ void noise_menu(GtkWidget *parent) {
   lbl = gtk_label_new("Blanker");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_widget_show(lbl);
   gtk_grid_attach(GTK_GRID(grid), lbl, 2, 2, 1, 1);
   btn = gtk_combo_box_text_new();
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "NONE");
@@ -333,7 +332,6 @@ void noise_menu(GtkWidget *parent) {
   lbl = gtk_label_new("Gain Method");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_widget_show(lbl);
   gtk_grid_attach(GTK_GRID(nr2_grid), lbl, 0, 0, 1, 1);
   //
   btn = gtk_combo_box_text_new();
@@ -348,7 +346,6 @@ void noise_menu(GtkWidget *parent) {
   lbl = gtk_label_new("NPE Method");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_widget_show(lbl);
   gtk_grid_attach(GTK_GRID(nr2_grid), lbl, 2, 0, 1, 1);
   btn = gtk_combo_box_text_new();
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "OSMS");
@@ -361,7 +358,6 @@ void noise_menu(GtkWidget *parent) {
   lbl = gtk_label_new("Trained Thresh");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_widget_show(lbl);
   gtk_grid_attach(GTK_GRID(nr2_grid), lbl, 0, 2, 1, 1);
   btn = gtk_spin_button_new_with_range(-5.0, 5.0, 0.1);
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), myrx->nr2_trained_threshold);
@@ -371,7 +367,6 @@ void noise_menu(GtkWidget *parent) {
   lbl = gtk_label_new("Trained T2");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_widget_show(lbl);
   gtk_grid_attach(GTK_GRID(nr2_grid), lbl, 2, 2, 1, 1);
   btn = gtk_spin_button_new_with_range(0.02, 0.3, 0.01);
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), myrx->nr2_trained_t2);
@@ -381,14 +376,12 @@ void noise_menu(GtkWidget *parent) {
   btn = gtk_check_button_new_with_label("NR2 Post-Processing");
   gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), myrx->nr2_post);
-  gtk_widget_show(btn);
   gtk_grid_attach(GTK_GRID(nr2_grid), btn, 0, 3, 2, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(post_cb), NULL);
   //
   lbl = gtk_label_new("Post Level");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_widget_show(lbl);
   gtk_grid_attach(GTK_GRID(nr2_grid), lbl, 0, 4, 1, 1);
   btn = gtk_spin_button_new_with_range(0, 100.0, 1.0);
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), myrx->nr2_post_nlevel);
@@ -397,7 +390,6 @@ void noise_menu(GtkWidget *parent) {
   lbl = gtk_label_new("Post Factor");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_widget_show(lbl);
   gtk_grid_attach(GTK_GRID(nr2_grid), lbl, 2, 4, 1, 1);
   btn = gtk_spin_button_new_with_range(0, 100.0, 1.0);
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), myrx->nr2_post_factor);
@@ -407,7 +399,6 @@ void noise_menu(GtkWidget *parent) {
   lbl = gtk_label_new("Post Rate");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_widget_show(lbl);
   gtk_grid_attach(GTK_GRID(nr2_grid), lbl, 0, 5, 1, 1);
   btn = gtk_spin_button_new_with_range(0, 100.0, 1.0);
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), myrx->nr2_post_rate);
@@ -416,7 +407,6 @@ void noise_menu(GtkWidget *parent) {
   lbl = gtk_label_new("Post Taper");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_widget_show(lbl);
   gtk_grid_attach(GTK_GRID(nr2_grid), lbl, 2, 5, 1, 1);
   btn = gtk_spin_button_new_with_range(0, 100.0, 1.0);
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), myrx->nr2_post_taper);
@@ -567,4 +557,5 @@ void noise_menu(GtkWidget *parent) {
   gtk_widget_set_size_request(nr4_grid, width, -1);
   gtk_widget_hide(nr2_container);
   gtk_widget_hide(nr4_container);
+  gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
 }

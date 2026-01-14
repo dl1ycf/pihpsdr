@@ -38,6 +38,7 @@
 #include "ps_menu.h"
 #include "radio.h"
 #include "receiver.h"
+#include "rigctl.h"
 #include "sliders.h"
 #include "store.h"
 #include "toolbar.h"
@@ -107,6 +108,11 @@ ACTION_TABLE ActionTable[] = {
   {CW_KEYER_KEYDOWN,    "CW Key\n(Keyer)",      "CWKy",         AT_BTN},
   {CW_KEYER_PTT,        "PTT\n(CW Keyer)",      "CWKyPTT",      AT_BTN},
   {CW_KEYER_SPEED,      "Speed\n(Keyer)",       "CWKySpd",      AT_KNB},
+  {CW_TXT_1,            "CW Txt1",              "CWTxt1",       AT_BTN},
+  {CW_TXT_2,            "CW Txt2",              "CWTxt2",       AT_BTN},
+  {CW_TXT_3,            "CW Txt3",              "CWTxt3",       AT_BTN},
+  {CW_TXT_4,            "CW Txt4",              "CWTxt4",       AT_BTN},
+  {CW_TXT_5,            "CW Txt5",              "CWTxt5",       AT_BTN},
   {DIV,                 "DIV On/Off",           "DIVT",         AT_BTN},
   {DIV_GAIN,            "DIV Gain",             "DIVG",         AT_ENC},
   {DIV_GAIN_COARSE,     "DIV Gain\nCoarse",     "DIVGC",        AT_ENC},
@@ -873,6 +879,17 @@ int process_action(void *data) {
   case CW_SPEED:
     value = KnobOrWheel(a, (double)cw_keyer_speed, 1.0, 60.0, 1.0);
     radio_set_cw_speed((int) value);
+    break;
+
+  case CW_TXT_1:
+  case CW_TXT_2:
+  case CW_TXT_3:
+  case CW_TXT_4:
+  case CW_TXT_5:
+    if (a->mode == PRESSED) {
+      rigctl_send_cw_text(action - CW_TXT_1);
+    }
+
     break;
 
   case DIV:

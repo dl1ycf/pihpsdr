@@ -75,6 +75,9 @@ int rigctl_tcp_autoreporting = 0;
 
 gboolean rigctl_debug = FALSE;
 
+char predef_cwtxt[5][256] = { 0 };
+char predef_call[256] = { 0 };
+
 static int parse_cmd (void *data);
 
 int cat_control = 0;
@@ -85,7 +88,6 @@ static GMutex mutex_numcat;   // only needed to make in/de-crements of "cat_cont
 #define MAX_ANDROMEDA_LEDS 16
 
 static GThread *rigctl_server_thread_id = NULL;
-static GThread *rigctl_cw_thread_id = NULL;
 static int tcp_running = 0;
 
 static int server_socket = -1;
@@ -709,21 +711,7 @@ static gpointer rigctl_cw_thread(gpointer data) {
     }
   }
 
-  // NOTREACHED (now this thread is started once-and-for-all)
-
-  // We arrive here if the rigctl server shuts down.
-  // This very rarely happens. But we should shut down the
-  // local CW system gracefully, in case we were in the mid
-  // of a transmission
-  if (CAT_cw_is_active) {
-    CAT_cw_is_active = 0;
-
-    if (!radio_is_remote) { schedule_transmit_specific(); }
-
-    g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(0));
-  }
-
-  rigctl_cw_thread_id = NULL;
+  //NOTREACHED: this thread is started once and for ever
   return NULL;
 }
 
@@ -1070,6 +1058,52 @@ static gboolean andromeda_oneshot_handler(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
+static void queue_cw_char(char c) {
+
+  if (c < ' ') { return; } // suppress non-printable characters including \0
+
+  int new = cw_buf_in + 1;
+
+  if (new >= CW_BUF_SIZE) { new = 0; }
+
+  // If space left in buffer, queue character
+  if (new != cw_buf_out) {
+    cw_buf[cw_buf_in] = c;
+    cw_buf_in = new;
+  }
+}
+
+void rigctl_send_cw_text(int pos) {
+  //
+  // Send one of the pre-defined CW texts
+  // It is important that this runs in the GTK queue to
+  // be thread-safe with CAT CW.
+  //
+  char *text = predef_cwtxt[pos];
+
+  for (unsigned int i = 0; i <= strlen(text); i++) {
+    char c = text[i];
+
+    if (c == '#') {
+      for (unsigned int j = 0; j < strlen(predef_call); j++) {
+        queue_cw_char(predef_call[j]);
+       }
+     } else {
+       queue_cw_char(c);
+     }
+   }
+}
+
+void rigctl_start_cw_thread() {
+  //
+  // Start the rigctl CW thread. This is now done at the start of
+  // the program once and for ever
+  //
+  cw_buf_in = 0;
+  cw_buf_out = 0;
+  g_thread_new("RIGCTL cw", rigctl_cw_thread, NULL);
+}
+
 static gpointer rigctl_server(gpointer data) {
   int port = GPOINTER_TO_INT(data);
   int on = 1;
@@ -1107,12 +1141,6 @@ static gpointer rigctl_server(gpointer data) {
     close(server_socket);
     return NULL;
   }
-
-  // must start the thread here in order NOT to inherit a lock
-  cw_buf_in = 0;
-  cw_buf_out = 0;
-
-  if (!rigctl_cw_thread_id) { rigctl_cw_thread_id = g_thread_new("RIGCTL cw", rigctl_cw_thread, NULL); }
 
   while (tcp_running) {
     int spare;
@@ -4256,14 +4284,7 @@ static int parse_cmd(void *data) {
         // j points to the last non-blank character, or to the first blank
         // in an empty string
         for (int i = 3; i <= j; i++) {
-          int new = cw_buf_in + 1;
-
-          if (new >= CW_BUF_SIZE) { new = 0; }
-
-          if (new != cw_buf_out) {
-            cw_buf[cw_buf_in] = command[i];
-            cw_buf_in = new;
-          }
+          queue_cw_char(command[i]);
         }
       }
 
@@ -5804,14 +5825,6 @@ void disable_serial_rigctl (int id) {
 void launch_tcp_rigctl () {
   t_print( "---- LAUNCHING RIGCTL SERVER ----\n");
   tcp_running = 1;
-
-  //
-  // Start CW thread and auto reporter, if not yet done
-  //
-  if (!rigctl_cw_thread_id) {
-    rigctl_cw_thread_id = g_thread_new("RIGCTL cw", rigctl_cw_thread, NULL);
-  }
-
   //
   // Start TCP thread
   //
@@ -5829,16 +5842,22 @@ void rigctl_restore_state() {
     // Do not overwrite a "detected" port
     //
     if (!SerialPorts[id].g2) {
-      GetPropS1("rigctl_serial_port[%d]", id,                  SerialPorts[id].port);
-      GetPropI1("rigctl_serial_enable[%d]", id,                SerialPorts[id].enable);
-      GetPropI1("rigctl_serial_andromeda[%d]", id,             SerialPorts[id].andromeda);
-      GetPropI1("rigctl_serial_baud_rate[%i]", id,             SerialPorts[id].speed);
-      GetPropI1("rigctl_serial_autoreporting[%d]", id,         SerialPorts[id].autoreporting);
+      GetPropS1("rigctl_serial_port[%d]", id,                SerialPorts[id].port);
+      GetPropI1("rigctl_serial_enable[%d]", id,              SerialPorts[id].enable);
+      GetPropI1("rigctl_serial_andromeda[%d]", id,           SerialPorts[id].andromeda);
+      GetPropI1("rigctl_serial_baud_rate[%i]", id,           SerialPorts[id].speed);
+      GetPropI1("rigctl_serial_autoreporting[%d]", id,       SerialPorts[id].autoreporting);
 
       if (SerialPorts[id].andromeda) {
         SerialPorts[id].speed = B9600;
       }
     }
+  }
+
+  GetPropS0("rigctl_cw_call",                                predef_call);
+
+  for (int i = 0; i < 5; i++) {
+    GetPropS1("rigctl_cw_text[%d]", i,                       predef_cwtxt[i]);
   }
 
   //
@@ -5860,6 +5879,11 @@ void rigctl_save_state() {
     SetPropI1("rigctl_serial_autoreporting[%d]", id,         SerialPorts[id].autoreporting);
   }
 
+  SetPropS0("rigctl_cw_call",                                predef_call);
+
+  for (int i = 0; i < 5; i++) {
+    SetPropS1("rigctl_cw_text[%d]", i,                       predef_cwtxt[i]);
+  }
   //
   // Save Andromeda controller settings. Only types 4 and 5 are saved.
   // Only the first controller found is saved, and the search order is:

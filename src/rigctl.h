@@ -38,6 +38,9 @@ struct _SERIALPORT {
 
 typedef struct _SERIALPORT SERIALPORT;
 
+extern char predef_cwtxt[5][256];
+extern char predef_call[256];
+
 #define MAX_SERIAL 3
 extern SERIALPORT SerialPorts[MAX_SERIAL];
 extern gboolean rigctl_debug;
@@ -49,6 +52,8 @@ extern int rigctl_tcp_running();
 extern void  shutdown_tcp_rigctl(void);
 extern void rigctl_save_state(void);
 extern void rigctl_restore_state(void);
+extern void rigctl_start_cw_thread(void);
+extern void rigctl_send_cw_text(int pos);
 
 extern int cat_control;
 extern unsigned int rigctl_tcp_port;

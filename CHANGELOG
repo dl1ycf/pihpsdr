@@ -4,6 +4,10 @@ LIST OF RECENT PIHPSDR CHANGES
 January 2026:
 -------------
 
+- added CW texts that can be changed in the CW menu and
+  transmitted upon pushing a (physical) button or clicking a 
+  toolbar (on-screen) button.
+
 - re-worked the "machine specific" settings in the Radio menu.
 
 - Added NR3 and NR4 noise reduction, and updated to WDSP 1.29.

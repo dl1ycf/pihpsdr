@@ -1112,6 +1112,7 @@ void radio_start_radio() {
   }
 
   gdk_window_set_cursor(gtk_widget_get_window(top_window), gdk_cursor_new(GDK_WATCH));
+  rigctl_start_cw_thread(); // do this early and once
   //
   // The behaviour of pop-up menus (Combo-Boxes) can be set to
   // "mouse friendly" (standard case) and "touchscreen friendly"
@@ -3681,6 +3682,9 @@ int radio_client_start(void *data) {
 
     if (property_path[i] == ' ') { property_path[i] = '-'; }
   }
+
+  gdk_window_set_cursor(gtk_widget_get_window(top_window), gdk_cursor_new(GDK_WATCH));
+  rigctl_start_cw_thread(); // do this early and once
 
   radio_is_remote = TRUE;
   optimize_for_touchscreen = 1;

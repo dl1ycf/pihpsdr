@@ -134,14 +134,17 @@ static void eqid_changed_cb(GtkWidget *widget, gpointer data) {
     switch (eqid) {
     case 0:
       gtk_widget_show(rx1_container);
+      gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
       break;
 
     case 1:
       gtk_widget_show(rx2_container);
+      gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
       break;
 
     case 2:
       gtk_widget_show(tx_container);
+      gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
       break;
     }
   }
@@ -332,4 +335,5 @@ void equalizer_menu(GtkWidget *parent) {
     gtk_widget_hide(rx2_container);
     break;
   }
+  gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
 }
