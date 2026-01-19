@@ -1663,7 +1663,7 @@ void old_protocol_audio_samples(short left_audio_sample, short right_audio_sampl
   }
 }
 
-void old_protocol_iq_samples(int isample, int qsample, int side) {
+void old_protocol_iq_samples(double isample, double qsample, int side) {
   ASSERT_SERVER();
 
   if (radio_is_transmitting()) {
@@ -1691,6 +1691,14 @@ void old_protocol_iq_samples(int isample, int qsample, int side) {
     int iptr = txring_inptr + 8 * txring_count;
 
     //
+    // In P1, TX samples are signed 16-bit quantities.
+    // The following conversion implicitly scales IQ samples with 0.99999,
+    // to have a safety margin against overflows. Note we cannot use
+    // int16_t here!
+    //
+    int32_t is = (int32_t)(isample * 32766.672 + 32767.5) - 32767;
+    int32_t qs = (int32_t)(qsample * 32766.672 + 32767.5) - 32767;
+    //
     // The HL2 makes no use of audio samples, but instead
     // uses them to write to extended addrs which we do not
     // want to do un-intentionally, therefore send zeros.
@@ -1717,15 +1725,15 @@ void old_protocol_iq_samples(int isample, int qsample, int side) {
       // The resolution of the IQ samples is thus reduced from 16 to 15 bits,
       // but since the HL2 DAC is 12-bit this is no problem.
       //
-      TXRINGBUF[iptr++] = isample >> 8;
-      TXRINGBUF[iptr++] = isample & 0xFE;
-      TXRINGBUF[iptr++] = qsample >> 8;
-      TXRINGBUF[iptr++] = qsample & 0xFE;
+      TXRINGBUF[iptr++] = is >> 8;
+      TXRINGBUF[iptr++] = is & 0xFE;
+      TXRINGBUF[iptr++] = qs >> 8;
+      TXRINGBUF[iptr++] = qs & 0xFE;
     } else {
-      TXRINGBUF[iptr++] = isample >> 8;
-      TXRINGBUF[iptr++] = isample;
-      TXRINGBUF[iptr++] = qsample >> 8;
-      TXRINGBUF[iptr++] = qsample;
+      TXRINGBUF[iptr++] = is >> 8;
+      TXRINGBUF[iptr++] = is;
+      TXRINGBUF[iptr++] = qs >> 8;
+      TXRINGBUF[iptr++] = qs;
     }
 
     txring_count++;

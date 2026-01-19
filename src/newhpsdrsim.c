@@ -1035,7 +1035,7 @@ void *highprio_thread(void *data) {
 
     // rxatt0 depends both on ALEX att and Step Att, so re-calc. it each time
     if (NEWDEVICE == NDEV_ORION2 || NEWDEVICE == NDEV_SATURN) {
-      // There is no step attenuator on ANAN7000
+      // There is no ALEX attenuator on these machines
       rxatt0_dbl = pow(10.0, -0.05 * stepatt0);
     } else {
       rxatt0_dbl = pow(10.0, -0.05 * (stepatt0 + 10 * alex0[14] + 20 * alex0[13]));
@@ -1168,6 +1168,8 @@ void *rx_thread(void *data) {
       off2 = (double)(21100900 - rxfreq[myddc]);
       tonedelta2 = -6.283185307179586476925286766559 * off2 / ((double) (1000 * myrate));
       do_tone = 2;
+    } else if (myadc == 0 && myrate == 192 && labs(3500000L - rxfreq[myddc]) < 500 * myrate) {
+      do_tone = 4;
     } else {
       do_tone = 0;
     }
@@ -1303,6 +1305,14 @@ void *rx_thread(void *data) {
         if (tonearg < -6.3) { tonearg += 6.283185307179586476925286766559; }
 
         if (t3p++ >= 800 * myrate) { t3p = 0; }
+      } else if (do_tone == 4) {
+        irsample = isample[rxptr];
+        qrsample = qsample[rxptr++];
+
+        if (rxptr >= NEWRTXLEN) { rxptr = 0; }
+
+        i0sample += irsample * 0.001;
+        q0sample += qrsample * 0.001;
       }
 
       if (diversity && !sync && myadc == 0) {

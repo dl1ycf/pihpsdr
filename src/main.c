@@ -106,7 +106,7 @@ static gboolean main_delete (GtkWidget *widget) {
   _exit(0);
 }
 
-static int init(void *data) {
+static int init(gpointer data) {
   char wisdom_directory[1025];
   char text[1024];
   t_print("%s\n", __FUNCTION__);
@@ -339,7 +339,7 @@ int main(int argc, char **argv) {
   return rc;
 }
 
-int fatal_error(void *data) {
+int fatal_error(gpointer data) {
   //
   // This replaces the calls to exit. It now emits
   // a GTK modal dialog waiting for user response.

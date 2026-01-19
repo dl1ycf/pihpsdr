@@ -392,19 +392,9 @@ void schedule_action(enum ACTION action, enum ACTION_MODE mode, int val) {
       gpio_set_cw(1);
 #endif
 
-      if (wait > 48000) {
-        //
-        // first key-down after a pause: queue without delay if local,
-        // but if remote, queue a no-delay pause that is at least 100 msec
-        // to get some "buffering" on the other side
-        //
-        if (radio_is_remote) {
-          tx_queue_cw_event(0, 0);  // immeadiate key-up
-          wait = 4800;
-        } else {
-          wait = 0;
-        }
-      }
+      // after a pause, queue without delay
+
+      if (wait > 24000) { wait = 0; }
 
       tx_queue_cw_event(1, wait);  // key-down after specified wait time
       cw_key_hit = 1;
@@ -430,7 +420,7 @@ void schedule_action(enum ACTION action, enum ACTION_MODE mode, int val) {
   }
 }
 
-int process_action(void *data) {
+int process_action(gpointer data) {
   PROCESS_ACTION *a = (PROCESS_ACTION *)data;
   double value;
   int i;

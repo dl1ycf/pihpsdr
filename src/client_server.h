@@ -141,7 +141,7 @@ enum _header_type_enum {
   CLIENT_SERVER_COMMANDS,
 };
 
-#define CLIENT_SERVER_VERSION 0x01260011 // 32-bit version number
+#define CLIENT_SERVER_VERSION 0x01260012 // 32-bit version number
 #define SPECTRUM_DATA_SIZE 4096          // Maximum width of a panadapter
 #define AUDIO_DATA_SIZE 512              // 512 (mono) samples
 
@@ -400,7 +400,6 @@ typedef struct __attribute__((__packed__)) _radio_data {
   uint8_t  mic_bias_enabled;
   uint8_t  mic_ptt_tip;
   uint8_t  mic_input_xlr;
-  uint8_t  cw_keyer_sidetone_volume;
   uint8_t  OCtune;
   uint8_t  mute_rx_while_transmitting;
   uint8_t  mute_spkr_amp;
@@ -890,14 +889,14 @@ extern char hpsdr_pwd[HPSDR_PWD_LEN];
 
 extern int cl_sock_tcp;
 
-extern int start_spectrum(void *data);
 extern void start_vfo_timer(void);
-extern gboolean remote_started;
+extern int remote_started;
 
 extern REMOTE_CLIENT remoteclient;
 
 extern int listen_port;
 
+extern gpointer client_udp_thread(gpointer data);
 extern int create_hpsdr_server(void);
 extern int destroy_hpsdr_server(void);
 

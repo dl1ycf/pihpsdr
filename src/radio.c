@@ -2018,7 +2018,7 @@ static void rxtx(int state) {
 
       if (fp) {
         for (int i = 0; i < rxiq_count; i++) {
-          fprintf(fp, "%d  %ld  %ld\n", i, rxiqi[i], rxiqq[i]);
+          fprintf(fp, "%8d  %20.15f  %20.15f\n", i, rxiqi[i], rxiqq[i]);
         }
 
         fclose(fp);
@@ -3337,6 +3337,16 @@ static void radio_restore_state() {
   GetPropI0("tci_enable",                                    tci_enable);
   GetPropI0("tci_port",                                      tci_port);
   GetPropI0("tci_txonly",                                    tci_txonly);
+  GetPropI0("cw_keys_reversed",                              cw_keys_reversed);
+  GetPropI0("cw_keyer_speed",                                cw_keyer_speed);
+  GetPropI0("cw_keyer_mode",                                 cw_keyer_mode);
+  GetPropI0("cw_keyer_weight",                               cw_keyer_weight);
+  GetPropI0("cw_keyer_spacing",                              cw_keyer_spacing);
+  GetPropI0("cw_keyer_internal",                             cw_keyer_internal);
+  GetPropI0("cw_keyer_sidetone_volume",                      cw_keyer_sidetone_volume);
+  GetPropI0("cw_keyer_ptt_delay",                            cw_keyer_ptt_delay);
+  GetPropI0("cw_keyer_hang_time",                            cw_keyer_hang_time);
+  GetPropI0("cw_breakin",                                    cw_breakin);
 
   for (int i = 0; i < 6; i++) {
     GetPropI1("display_vfobar[%d]", i,                       display_vfobar[i]);
@@ -3373,17 +3383,7 @@ static void radio_restore_state() {
     GetPropI0("mic_bias_enabled",                            mic_bias_enabled);
     GetPropI0("mic_ptt_tip_bias_ring",                       mic_ptt_tip);
     GetPropI0("mic_input_xlr",                               mic_input_xlr);
-    GetPropI0("cw_keys_reversed",                            cw_keys_reversed);
-    GetPropI0("cw_keyer_speed",                              cw_keyer_speed);
-    GetPropI0("cw_keyer_mode",                               cw_keyer_mode);
-    GetPropI0("cw_keyer_weight",                             cw_keyer_weight);
-    GetPropI0("cw_keyer_spacing",                            cw_keyer_spacing);
-    GetPropI0("cw_keyer_internal",                           cw_keyer_internal);
-    GetPropI0("cw_keyer_sidetone_volume",                    cw_keyer_sidetone_volume);
-    GetPropI0("cw_keyer_ptt_delay",                          cw_keyer_ptt_delay);
-    GetPropI0("cw_keyer_hang_time",                          cw_keyer_hang_time);
     GetPropI0("cw_keyer_sidetone_frequency",                 cw_keyer_sidetone_frequency);
-    GetPropI0("cw_breakin",                                  cw_breakin);
     GetPropI0("OCtune",                                      OCtune);
     GetPropI0("OCfull_tune_time",                            OCfull_tune_time);
     GetPropI0("OCmemory_tune_time",                          OCmemory_tune_time);
@@ -3561,6 +3561,16 @@ void radio_save_state() {
   SetPropI0("tci_enable",                                    tci_enable);
   SetPropI0("tci_port",                                      tci_port);
   SetPropI0("tci_txonly",                                    tci_txonly);
+  SetPropI0("cw_keys_reversed",                              cw_keys_reversed);
+  SetPropI0("cw_keyer_speed",                                cw_keyer_speed);
+  SetPropI0("cw_keyer_mode",                                 cw_keyer_mode);
+  SetPropI0("cw_keyer_weight",                               cw_keyer_weight);
+  SetPropI0("cw_keyer_spacing",                              cw_keyer_spacing);
+  SetPropI0("cw_keyer_internal",                             cw_keyer_internal);
+  SetPropI0("cw_keyer_sidetone_volume",                      cw_keyer_sidetone_volume);
+  SetPropI0("cw_keyer_ptt_delay",                            cw_keyer_ptt_delay);
+  SetPropI0("cw_keyer_hang_time",                            cw_keyer_hang_time);
+  SetPropI0("cw_breakin",                                    cw_breakin);
 
   for (int i = 0; i < 6; i++) {
     SetPropI1("display_vfobar[%d]", i,                       display_vfobar[i]);
@@ -3597,17 +3607,7 @@ void radio_save_state() {
     SetPropI0("mic_bias_enabled",                            mic_bias_enabled);
     SetPropI0("mic_ptt_tip_bias_ring",                       mic_ptt_tip);
     SetPropI0("mic_input_xlr",                               mic_input_xlr);
-    SetPropI0("cw_keys_reversed",                            cw_keys_reversed);
-    SetPropI0("cw_keyer_speed",                              cw_keyer_speed);
-    SetPropI0("cw_keyer_mode",                               cw_keyer_mode);
-    SetPropI0("cw_keyer_weight",                             cw_keyer_weight);
-    SetPropI0("cw_keyer_spacing",                            cw_keyer_spacing);
-    SetPropI0("cw_keyer_internal",                           cw_keyer_internal);
-    SetPropI0("cw_keyer_sidetone_volume",                    cw_keyer_sidetone_volume);
-    SetPropI0("cw_keyer_ptt_delay",                          cw_keyer_ptt_delay);
-    SetPropI0("cw_keyer_hang_time",                          cw_keyer_hang_time);
     SetPropI0("cw_keyer_sidetone_frequency",                 cw_keyer_sidetone_frequency);
-    SetPropI0("cw_breakin",                                  cw_breakin);
     SetPropI0("OCtune",                                      OCtune);
     SetPropI0("OCfull_tune_time",                            OCfull_tune_time);
     SetPropI0("OCmemory_tune_time",                          OCmemory_tune_time);
@@ -3673,7 +3673,7 @@ void radio_save_state() {
 }
 
 // cppcheck-suppress constParameterPointer
-int radio_client_start(void *data) {
+int radio_client_start(gpointer data) {
   const char *server = (const char *)data;
   snprintf(property_path, sizeof(property_path), "%s@%s.props", radio->name, server);
 
@@ -3763,6 +3763,12 @@ int radio_client_start(void *data) {
 
 #endif
 
+  //
+  // This is the right place to start the udp and sidetone threads
+  //
+  g_thread_new("client_udp", client_udp_thread, NULL);
+  g_thread_new("client_cw", client_sidetone_thread, transmitter);
+
   for (int i = 0; i < receivers; i++) {
     send_startstop_rxspectrum(cl_sock_tcp, i, 1);
   }
@@ -3772,6 +3778,7 @@ int radio_client_start(void *data) {
   }
 
   start_vfo_timer();
+
   remote_started = TRUE;
   //
   // Now the radio is up and running. Connect "Radio" keyboard interceptor

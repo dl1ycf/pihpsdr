@@ -79,7 +79,7 @@ static snd_pcm_format_t formats[4] = {
   SND_PCM_FORMAT_UNKNOWN
 };
 
-static void *tx_audio_thread(void *arg);
+static gpointer tx_audio_thread(gpointer arg);
 
 int n_input_devices;
 int n_output_devices;
@@ -533,7 +533,7 @@ int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
         // (We may also arrive here if the output buffer is nearly drained)
         //
         //
-        void *silence = NULL;
+        void *silence;
         size_t len;
         int num = (out_buflen - delay);
 
@@ -606,7 +606,7 @@ int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
   return 0;
 }
 
-static void *tx_audio_thread(gpointer arg) {
+static gpointer tx_audio_thread(gpointer arg) {
   TRANSMITTER *tx = (TRANSMITTER *)arg;
   int rc;
 

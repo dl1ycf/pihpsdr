@@ -21,22 +21,22 @@
 
 extern int radio_reconfigure_screen_done;
 
-extern int ext_set_title(void *data);
+extern int ext_set_title(gpointer data);
 
 //
 // The following calls functions can be called usig g_idle_add
 //
-extern int ext_start_radio(void *data);
-extern int ext_vfo_update(void *data);
-extern int ext_radio_set_tune(void *data);
-extern int ext_radio_set_mox(void *data);
-extern int ext_start_tx(void *data);        // is this necessary?
-extern int ext_start_rx(void *data);
-extern int ext_start_vfo(void *data);
-extern int ext_start_band(void *data);
-extern int ext_radio_set_vox(void *data);
-extern int ext_radio_set_duplex(void *data);      // is this necessary?
-extern int ext_radio_reconfigure_screen(void *data);
+extern int ext_start_radio(gpointer data);
+extern int ext_vfo_update(gpointer data);
+extern int ext_radio_set_tune(gpointer data);
+extern int ext_radio_set_mox(gpointer data);
+extern int ext_start_tx(gpointer data);        // is this necessary?
+extern int ext_start_rx(gpointer data);
+extern int ext_start_vfo(gpointer data);
+extern int ext_start_band(gpointer data);
+extern int ext_radio_set_vox(gpointer data);
+extern int ext_radio_set_duplex(gpointer data);      // is this necessary?
+extern int ext_radio_reconfigure_screen(gpointer data);
 
 ///////////////////////////////////////////////////////////
 //

@@ -48,9 +48,6 @@
 int cl_sock_tcp = -1;
 int remote_started = 0;
 
-static int client_running = 0;
-static GThread *client_tcp_thread_id;
-static GThread *client_udp_thread_id;
 static GMutex accumulated_mutex;
 static int accumulated_steps[2] = {0, 0};
 static long long accumulated_hz[2] = {0LL, 0LL};
@@ -67,8 +64,7 @@ static struct sockaddr_in server_address;
 static int old_rx1mode;
 static int old_txmode;
 
-static void *client_tcp_thread(void* arg);
-static void *client_udp_thread(void* arg);
+static gpointer client_tcp_thread(gpointer arg);
 
 //
 // version of connect() which takes a time-out.
@@ -249,9 +245,12 @@ int radio_connect_remote(char *host, int port, const char *pwd) {
     return -1;
   }
 
-  client_running = TRUE;
-  client_tcp_thread_id = g_thread_new("remote_client_tcp", client_tcp_thread, &server_host);
-  client_udp_thread_id = g_thread_new("remote_client_udp", client_udp_thread, NULL);
+  //
+  // Start TCP thread. This thread will start the radio if it gets
+  // the START_RADIO command.
+  // UDP and CW thread will be created at the end of radio_client_start()
+  //
+  g_thread_new("remote_client_tcp", client_tcp_thread, &server_host);
   return 0;
 }
 
@@ -338,10 +337,8 @@ static void send_vfo_move(int s, int id, long long hz, int round) {
   send_tcp(s, (char *)&command, sizeof(U64_COMMAND));
 }
 
-static int check_vfo(void *arg) {
+static int check_vfo(gpointer arg) {
   static int count = 0;
-
-  if (!client_running) { return FALSE; }
 
   if (count++ >= 150) {
     send_heartbeat(cl_sock_tcp);
@@ -525,12 +522,12 @@ static int client_spectrum(gpointer ptr) {
 // make sense to receive after a short "hang"
 ////////////////////////////////////////////////////////////////////////////
 
-static void *client_udp_thread(void* arg) {
-  char *buffer; // large enough
+gpointer client_udp_thread(gpointer arg) {
+  char *buffer;
   t_print("%s: Starting\n", __FUNCTION__);
-  buffer = g_new(char, 4096);
+  buffer = g_new(char, 4096); // large enough
 
-  while (client_running) {
+  for (;;) {
     int bytes_read = recvfrom(cl_sock_udp, buffer, 4096, 0, NULL, NULL);
 
     if (bytes_read < 12) { continue;}
@@ -607,7 +604,7 @@ static void *client_udp_thread(void* arg) {
   return NULL;
 }
 
-static void *client_tcp_thread(void* arg) {
+static gpointer client_tcp_thread(gpointer arg) {
   HEADER header;
   char *server = (char *)arg;
   static char title[256];
@@ -686,7 +683,7 @@ static void *client_tcp_thread(void* arg) {
     rx->id = PS_RX_FEEDBACK;
   }
 
-  while (client_running) {
+  for (;;) {
     int type;
     int bytes_read;
     bytes_read = recv_tcp(cl_sock_tcp, (char *)&header, sizeof(HEADER));
@@ -705,7 +702,7 @@ static void *client_tcp_thread(void* arg) {
       int syncs = 0;
       uint8_t c;
 
-      while (syncs != sizeof(syncbytes) && client_running) {
+      while (syncs != sizeof(syncbytes)) {
         bytes_read = recv_tcp(cl_sock_tcp, (char *)&c, 1);
 
         if (bytes_read <= 0) {
@@ -862,7 +859,7 @@ static void *client_tcp_thread(void* arg) {
       mic_ptt_enabled = data.mic_ptt_enabled;
       mic_bias_enabled = data.mic_bias_enabled;
       mic_ptt_tip = data.mic_ptt_tip;
-      cw_keyer_sidetone_volume = mic_input_xlr = data.mic_input_xlr;
+      mic_input_xlr = data.mic_input_xlr;
       OCtune = data.OCtune;
       mute_rx_while_transmitting = data.mute_rx_while_transmitting;
       mute_spkr_amp = data.mute_spkr_amp;
@@ -974,7 +971,7 @@ static void *client_tcp_thread(void* arg) {
       }
 
       snprintf(title, sizeof(title), "piHPSDR: %s remote at %s", radio->name, server);
-      g_idle_add(ext_set_title, (void *)title);
+      g_idle_add(ext_set_title, (gpointer)title);
     }
     break;
 
@@ -1274,6 +1271,8 @@ static void *client_tcp_thread(void* arg) {
         g_idle_add(radio_client_start, (gpointer)server);
       }
 
+      g_thread_new("client_udp", client_udp_thread, NULL);
+      g_thread_new("client_cw", client_sidetone_thread, transmitter);
       g_idle_add(ext_vfo_update, NULL);
     }
     break;

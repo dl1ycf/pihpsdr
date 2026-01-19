@@ -34,5 +34,5 @@ extern GtkWidget *topgrid;
 extern void status_text(const char *text);
 
 extern gulong keypress_signal_id;
-extern int fatal_error(void *data);
+extern int fatal_error(gpointer data);
 #endif

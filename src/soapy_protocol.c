@@ -557,6 +557,16 @@ void soapy_protocol_init(gboolean hf) {
 static void process_rx_buffer(RECEIVER *rx, const float *rxbuff, int elements, int micflag) {
   double isample, qsample;
 
+  //
+  // The WDSP engine in this program works with CF64 (2 * double) format. Ideally, conversion
+  // from the (radio specific) native format to CF64 would be one in the radio's SoapySDR
+  // driver. Unfortunately, CF64 is very uncommon in the Soapy universe and many drivers
+  // do not support it.
+  // Therefore, the SoapySDR data stream ALWAYS uses CF32 since this is supported by any
+  // SoapySDR driver I know of. This means, the SoapySDR driver first converts from the
+  // native format to CF32, and then the conversion to CF64 (float --> double) is done HERE
+  //
+
   if (rx->resampler != NULL) {
     //
     // When using the resampler, copy all elements of the Soapy buffer into the input
@@ -716,9 +726,22 @@ static gpointer soapy_receive_dual_thread(gpointer data) {
 
 
 
-void soapy_protocol_iq_samples(float isample, float qsample) {
+void soapy_protocol_iq_samples(double isample, double qsample) {
   ASSERT_SERVER();
   int flags = 0;
+
+  //
+  // The WDSP engine produces samples in CF64 (2*double) format in the
+  // range -1.0 ... +1.0. Ideally, the conversion to the (radio specific)
+  // native format is then done within the SoapySDR driver.
+  // Unfortunately, CF64 is not very popular in the Soapy universe and
+  // many drivers do not support this format. On the other hand, the
+  // CF32 format (2*float) is supported by any SoapySDR driver I know of.
+  //
+  // For this reason, this module ALWAYS uses CF32 for the Soapy stream.
+  // So we convert HERE from CF64 to CF32 (double --> float) and then,
+  // in the driver, this is converted to the native format.
+  //
 
   if (radio_is_transmitting()) {
     //
@@ -727,11 +750,11 @@ void soapy_protocol_iq_samples(float isample, float qsample) {
     // upon RX.
     //
     if (soapy_iqswap) {
-      tx_output_buffer[(tx_output_buffer_index * 2)] = qsample;
-      tx_output_buffer[(tx_output_buffer_index * 2) + 1] = isample;
+      tx_output_buffer[(tx_output_buffer_index * 2)] = (float) qsample;
+      tx_output_buffer[(tx_output_buffer_index * 2) + 1] = (float) isample;
     } else {
-      tx_output_buffer[(tx_output_buffer_index * 2)] = isample;
-      tx_output_buffer[(tx_output_buffer_index * 2) + 1] = qsample;
+      tx_output_buffer[(tx_output_buffer_index * 2)] = (float) isample;
+      tx_output_buffer[(tx_output_buffer_index * 2) + 1] = (float) qsample;
     }
 
     tx_output_buffer_index++;

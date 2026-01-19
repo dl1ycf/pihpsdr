@@ -31,7 +31,7 @@
 //
 
 // cppcheck-suppress constParameterPointer
-int ext_start_radio(void *data) {
+int ext_start_radio(gpointer data) {
   radio_start_radio();
   return G_SOURCE_REMOVE;
 }
@@ -45,7 +45,7 @@ int ext_start_radio(void *data) {
 static guint vfo_timeout = 0;
 
 // cppcheck-suppress constParameterCallback
-static int vfo_timeout_cb(void * data) {
+static int vfo_timeout_cb(gpointer data) {
   if (vfo_timeout > 0) {
     g_source_remove(vfo_timeout);
     vfo_timeout = 0;
@@ -55,7 +55,7 @@ static int vfo_timeout_cb(void * data) {
   return G_SOURCE_REMOVE;
 }
 
-int ext_vfo_update(void *data) {
+int ext_vfo_update(gpointer data) {
   //
   // If no timeout is pending, then a vfo_update() is to
   // be scheduled soon.
@@ -68,56 +68,56 @@ int ext_vfo_update(void *data) {
 }
 
 // cppcheck-suppress constParameterPointer
-int ext_radio_set_tune(void *data) {
+int ext_radio_set_tune(gpointer data) {
   radio_set_tune(GPOINTER_TO_INT(data));
   return G_SOURCE_REMOVE;
 }
 
 // cppcheck-suppress constParameterPointer
-int ext_radio_set_mox(void *data) {
+int ext_radio_set_mox(gpointer data) {
   radio_set_mox(GPOINTER_TO_INT(data));
   return G_SOURCE_REMOVE;
 }
 
 // cppcheck-suppress constParameterPointer
-int ext_radio_set_vox(void *data) {
+int ext_radio_set_vox(gpointer data) {
   radio_set_vox(GPOINTER_TO_INT(data));
   return G_SOURCE_REMOVE;
 }
 
 // cppcheck-suppress constParameterPointer
-int ext_start_band(void *data) {
+int ext_start_band(gpointer data) {
   start_band();
   return G_SOURCE_REMOVE;
 }
 
 // cppcheck-suppress constParameterPointer
-int ext_start_vfo(void *data) {
+int ext_start_vfo(gpointer data) {
   int val = GPOINTER_TO_INT(data);
   start_vfo(val);
   return G_SOURCE_REMOVE;
 }
 
 // cppcheck-suppress constParameterPointer
-int ext_start_rx(void *data) {
+int ext_start_rx(gpointer data) {
   start_rx();
   return G_SOURCE_REMOVE;
 }
 
 // cppcheck-suppress constParameterPointer
-int ext_start_tx(void *data) {
+int ext_start_tx(gpointer data) {
   start_tx();
   return G_SOURCE_REMOVE;
 }
 
 // cppcheck-suppress constParameterPointer
-int ext_radio_set_duplex(void *data) {
+int ext_radio_set_duplex(gpointer data) {
   int state = GPOINTER_TO_INT(data);
   radio_set_duplex(state);
   return G_SOURCE_REMOVE;
 }
 
-int ext_set_title(void *data) {
+int ext_set_title(gpointer data) {
   gtk_window_set_title(GTK_WINDOW(top_window), (char *)data);
   return G_SOURCE_REMOVE;
 }
@@ -125,7 +125,7 @@ int ext_set_title(void *data) {
 int radio_reconfigure_screen_done = 0;
 
 // cppcheck-suppress constParameterPointer
-int ext_radio_reconfigure_screen(void *data) {
+int ext_radio_reconfigure_screen(gpointer data) {
   radio_reconfigure_screen();
   radio_reconfigure_screen_done = 1;
   return G_SOURCE_REMOVE;

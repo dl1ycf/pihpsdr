@@ -40,8 +40,8 @@ extern void sliders_show_sliders(int y);
 extern void sliders_create(int width, int height, int rows);
 extern void sliders_destroy();
 
-extern int sliders_active_receiver_changed(void *data);
-extern int sliders_att_type_changed(void *data);
+extern int sliders_active_receiver_changed(gpointer data);
+extern int sliders_att_type_changed(gpointer data);
 
 //
 // These functions ONLY move the sliders

@@ -52,4 +52,4 @@ void soapy_protocol_set_tx_antenna(int ant);
 void soapy_protocol_set_tx_gain(double gain);
 void soapy_protocol_set_tx_gain_element(char *name, double gain);
 double soapy_protocol_get_tx_gain_element(char *name);
-void soapy_protocol_iq_samples(float isample, float qsample);
+void soapy_protocol_iq_samples(double isample, double qsample);

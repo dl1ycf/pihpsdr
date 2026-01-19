@@ -50,7 +50,7 @@ static int vox_timeout_cb(gpointer data) {
   return FALSE;
 }
 
-static int level_update(void *data) {
+static int level_update(gpointer data) {
   if (run_level) {
     gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(level), peak);
 

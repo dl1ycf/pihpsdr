@@ -63,8 +63,8 @@
 #include "vox.h"
 
 #ifdef DUMP_TX_DATA
-  long rxiqi[1000000];
-  long rxiqq[1000000];
+  double rxiqi[1000000];
+  double rxiqq[1000000];
   int  rxiq_count = 0;
 #endif
 
@@ -2442,14 +2442,14 @@ static void process_ps_iq_data(const unsigned char *buffer) {
 #if defined(DUMP_TX_DATA)
 
     if ((DUMP_TX_DATA == DUMP_TXFDBK) && (rxiq_count < 1000000)) {
-      rxiqi[rxiq_count] = leftsample1;
-      rxiqq[rxiq_count] = rightsample1;
+      rxiqi[rxiq_count] = leftsampledouble1;
+      rxiqq[rxiq_count] = rightsampledouble1;
       rxiq_count++;
     }
 
     if ((DUMP_TX_DATA == DUMP_RXFDBK) && (rxiq_count < 1000000)) {
-      rxiqi[rxiq_count] = leftsample0;
-      rxiqq[rxiq_count] = rightsample0;
+      rxiqi[rxiq_count] = leftsampledouble0;
+      rxiqq[rxiq_count] = rightsampledouble0;
       rxiq_count++;
     }
 
@@ -2734,7 +2734,7 @@ void new_protocol_audio_samples(short left_audio_sample, short right_audio_sampl
   pthread_mutex_unlock(&send_rxaudio_mutex);
 }
 
-void new_protocol_iq_samples(int isample, int qsample) {
+void new_protocol_iq_samples(double isample, double qsample) {
   ASSERT_SERVER();
 
   if (txiq_count < 0) {
@@ -2751,13 +2751,21 @@ void new_protocol_iq_samples(int isample, int qsample) {
   }
 
 #endif
+
   int iptr = txiq_inptr + 6 * txiq_count;
-  TXIQRINGBUF[iptr++] = (isample >> 16) & 0xFF;
-  TXIQRINGBUF[iptr++] = (isample >>  8) & 0xFF;
-  TXIQRINGBUF[iptr++] = (isample      ) & 0xFF;
-  TXIQRINGBUF[iptr++] = (qsample >> 16) & 0xFF;
-  TXIQRINGBUF[iptr++] = (qsample >>  8) & 0xFF;
-  TXIQRINGBUF[iptr++] = (qsample      ) & 0xFF;
+  //
+  // In P2, samples are signed 24-bit quantities.
+  // The following conversion implicitly scales IQ samples with 0.99999,
+  // to have a safety margin against overflows.
+  //
+  int32_t is = (int32_t)(isample * 8388523.114 + 8388607.5) - 8388607;
+  int32_t qs = (int32_t)(qsample * 8388523.114 + 8388607.5) - 8388607;
+  TXIQRINGBUF[iptr++] = (is >> 16) & 0xFF;
+  TXIQRINGBUF[iptr++] = (is >>  8) & 0xFF;
+  TXIQRINGBUF[iptr++] = (is      ) & 0xFF;
+  TXIQRINGBUF[iptr++] = (qs >> 16) & 0xFF;
+  TXIQRINGBUF[iptr++] = (qs >>  8) & 0xFF;
+  TXIQRINGBUF[iptr++] = (qs      ) & 0xFF;
   txiq_count++;
 
   if (txiq_count >= 240) {
@@ -2782,7 +2790,7 @@ void new_protocol_iq_samples(int isample, int qsample) {
 }
 
 // cppcheck-suppress constParameterCallback
-void *new_protocol_timer_thread(void* arg) {
+void *new_protocol_timer_thread(gpointer arg) {
   ASSERT_SERVER(NULL);
   //
   // Periodically send HighPriority as well as General packets.

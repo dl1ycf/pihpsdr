@@ -106,7 +106,7 @@ static void state_cb(pa_context *c, void *userdata) {
 // (which quickly returns) and the enumeration is done in the background.
 // If it fails, piHPDSR may run normally for radios with codecs.
 //
-static void *enumerate_thread(gpointer arg) {
+static gpointer enumerate_thread(gpointer arg) {
   pa_context *context = (pa_context *) arg;
   pa_operation *op;
 
@@ -221,7 +221,7 @@ int audio_open_output(RECEIVER *rx) {
   return 0;
 }
 
-static void *tx_audio_thread(gpointer arg) {
+static gpointer tx_audio_thread(gpointer arg) {
   TRANSMITTER *tx = (TRANSMITTER *)arg;
   int err;
   float *buffer = g_new(float, inp_buffer_size);

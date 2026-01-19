@@ -95,7 +95,7 @@ static GThread *udp_thread_id;
 static int server_running = 0;
 static int listen_socket = -1;
 
-static int server_command(void * data);
+static int server_command(gpointer data);
 
 static int send_periodic_data(gpointer arg) {
   //
@@ -797,7 +797,7 @@ static void server_loop() {
 // this thread receives UDP packets. Currently, only TX audio packets
 // should arrive
 //
-static void *udp_thread(void * arg) {
+static gpointer udp_thread(gpointer arg) {
   while (remoteclient.running) {
     TXAUDIO_DATA data;
     int bytes_read = recvfrom(remoteclient.sock_udp,  &data, sizeof(TXAUDIO_DATA), 0, NULL, NULL);
@@ -839,7 +839,7 @@ static void *udp_thread(void * arg) {
 // listen_thread runs on the server side, waits for connections,
 // and starts the server loop
 //
-static void *listen_thread(void *arg) {
+static gpointer listen_thread(gpointer arg) {
   struct sockaddr_in addr;
   socklen_t addrlen = sizeof(addr);
   struct timeval timeout;
@@ -1133,7 +1133,7 @@ int destroy_hpsdr_server() {
 // This is executed on the server side only.
 //
 //
-static int server_command(void *data) {
+static int server_command(gpointer data) {
   HEADER *header = (HEADER *)data;
   int type = from_16(header->data_type);
 

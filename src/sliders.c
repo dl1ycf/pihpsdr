@@ -420,7 +420,7 @@ int sliders_att_type_changed(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
-int sliders_active_receiver_changed(void *data) {
+int sliders_active_receiver_changed(gpointer data) {
   if (sliders_grid) {
     //
     // Change sliders and check-boxes to reflect the state of the

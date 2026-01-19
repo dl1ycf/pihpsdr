@@ -78,7 +78,7 @@ gboolean rigctl_debug = FALSE;
 char predef_cwtxt[5][256] = { 0 };
 char predef_call[256] = { 0 };
 
-static int parse_cmd (void *data);
+static int parse_cmd (gpointer data);
 
 int cat_control = 0;
 
@@ -1079,7 +1079,7 @@ void rigctl_send_cw_text(int pos) {
   // It is important that this runs in the GTK queue to
   // be thread-safe with CAT CW.
   //
-  char *text = predef_cwtxt[pos];
+  const char *text = predef_cwtxt[pos];
 
   for (unsigned int i = 0; i <= strlen(text); i++) {
     char c = text[i];
@@ -3592,7 +3592,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 }
 
 // called with g_idle_add so that the processing is running on the main thread
-static int parse_cmd(void *data) {
+static int parse_cmd(gpointer data) {
   COMMAND *info = (COMMAND *)data;
   CLIENT *client = info->client;
   char *command = info->command;

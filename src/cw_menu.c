@@ -293,7 +293,6 @@ void cw_menu(GtkWidget *parent) {
   gtk_grid_set_column_spacing (GTK_GRID(cw_grid), 5);
   gtk_grid_set_row_spacing (GTK_GRID(cw_grid), 5);
   gtk_container_add(GTK_CONTAINER(cwtxt_container), cw_grid);
-  row=0;
   lbl = gtk_label_new("Callsign (# token)");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_START);

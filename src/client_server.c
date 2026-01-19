@@ -347,7 +347,6 @@ void send_radio_data(int sock) {
   data.mic_bias_enabled = mic_bias_enabled;
   data.mic_ptt_tip = mic_ptt_tip;
   data.mic_input_xlr = mic_input_xlr;
-  data.cw_keyer_sidetone_volume = cw_keyer_sidetone_volume;
   data.OCtune = OCtune;
   data.mute_rx_while_transmitting = mute_rx_while_transmitting;
   data.mute_spkr_amp = mute_spkr_amp;
@@ -1361,11 +1360,34 @@ void send_split(int s, int state) {
 
 void send_cw(int s, int state, int wait) {
   //
-  // Send this in one header, encode wait-time in two shorts
+  // Only sent from the client. Encode wait-time in two shorts
+  // (12 bit each) to get a header-only message.
   //
+  static double last = 0.0;
+  double now, elapsed;
+  struct timespec ts;
   HEADER header;
   SYNC(header.sync);
   header.data_type = to_16(CMD_CW);
+  //
+  // If this is the first key-down after a pause: send
+  // two CW events, the first one is simply a 100-msec-pause
+  // such that on the server side, everything what follows
+  // is slightly delayed to provide some head-room against
+  // jitters
+  //
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  now = ts.tv_sec + 1.0E-9 * ts.tv_nsec;
+  elapsed = now - last;
+  last = now;
+
+  if (state && elapsed > 0.5) {
+    header.b1 = 0;
+    header.s1 = to_16(1);     // 4800 * 4096 + 704
+    header.s2 = to_16(704);
+    send_tcp(s, (char *)&header, sizeof(HEADER));
+  }
+
   header.b1  = state;
   header.s1 = to_16(wait >> 12);
   header.s2 = to_16(wait & 0xFFF);
