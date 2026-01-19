@@ -235,16 +235,23 @@ struct RNNModel {
 RNNModel *rnnoise_model_from_buffer(const void *ptr, int len) {
   RNNModel *model;
   model = malloc(sizeof(*model));
-  model->blob = NULL;
-  model->const_blob = ptr;
-  model->blob_len = len;
+  if (model) {
+    model->blob = NULL;
+    model->const_blob = ptr;
+    model->blob_len = len;
+  }
   return model;
 }
 
 RNNModel *rnnoise_model_from_filename(const char *filename) {
   RNNModel *model;
   FILE *f = fopen(filename, "rb");
+  if (f == NULL) return NULL;
   model = rnnoise_model_from_file(f);
+  if (model == NULL) {
+    fclose(f);
+    return NULL;
+  }
   model->file = f;
   return model;
 }

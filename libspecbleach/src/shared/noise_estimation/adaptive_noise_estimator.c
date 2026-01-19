@@ -211,8 +211,8 @@ void louizou_estimator_free(AdaptiveNoiseEstimator* self) {
   free(self->spp_previous_noise_psd);
   free(self->spp_smoothed_spp);
 
-  frame_spectrum_free(self->current);
-  frame_spectrum_free(self->previous);
+  if (self->current) frame_spectrum_free(self->current);
+  if (self->previous) frame_spectrum_free(self->previous);
 
   free(self);
 }
