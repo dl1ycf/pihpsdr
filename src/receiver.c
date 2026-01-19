@@ -1135,7 +1135,7 @@ static void rx_process_buffer(RECEIVER *rx) {
       //
       if (capture_state == CAP_RECORDING) {
         if (capture_record_pointer < capture_max) {
-          capture_data[capture_record_pointer++] = scale * (left_sample + right_sample);
+          capture_data[capture_record_pointer++] = scale * left_sample;
         } else {
           // switching the state to RECORD_DONE takes care that the
           // CAPTURE switch is "pressed" only once
