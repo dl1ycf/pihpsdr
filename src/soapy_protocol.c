@@ -71,7 +71,7 @@ static GThread *soapy_receive_thread_id = NULL;
 static gpointer soapy_receive_single_thread(gpointer data);  // for 1RX
 static gpointer soapy_receive_dual_thread(gpointer data);    // for 2RX
 
-static int running;
+static int rxthread_running;
 
 static int mic_samples = 0;
 static int mic_sample_divisor = 1;
@@ -363,6 +363,9 @@ void soapy_protocol_create_dual_receiver(RECEIVER *rx1, RECEIVER *rx2) {
 }
 
 void soapy_protocol_start_single_receiver(RECEIVER *rx) {
+  //
+  // call activateStream on rx_stream and start "single" receive thread for rx
+  //
   ASSERT_SERVER();
   int rc;
 
@@ -385,12 +388,13 @@ void soapy_protocol_start_single_receiver(RECEIVER *rx) {
 
 void soapy_protocol_start_dual_receiver(RECEIVER *rx1, RECEIVER *rx2) {
   //
-  // Here we start a stream with two channels which MUST be 0 and 1
+  // call activateStream on rx_stream and start "double" receive thread for rx1/rx2
   //
   ASSERT_SERVER();
   int rc;
 
   if (rx1->id != 0 || rx2->id != 1) {
+    // Here we start a stream with two channels which MUST be 0 and 1
     t_print("%s:WARNING:SOAPY: id not 0 and 1\n", __FUNCTION__);
     return;
   }
@@ -482,6 +486,9 @@ void soapy_protocol_create_transmitter(const TRANSMITTER *tx) {
 }
 
 void soapy_protocol_start_transmitter() {
+  //
+  // call activateStream on tx_stream
+  //
   ASSERT_SERVER();
   int rc;
   double rate = SoapySDRDevice_getSampleRate(soapy_device, SOAPY_SDR_TX, 0);
@@ -495,14 +502,12 @@ void soapy_protocol_start_transmitter() {
 }
 
 void soapy_protocol_stop_receivers() {
+  //
+  // Terminate the (single or dual) receiver thread, which will call deactivateStream on rx_stream
+  //
   ASSERT_SERVER();
-  running = FALSE;
+  rxthread_running = FALSE;
 
-  //
-  // This terminates the receiver thread, let it be
-  // the single or dual receiver thread.
-  // The terminating thread will then deactivate the RX stream
-  //
   if (soapy_receive_thread_id) {
     g_thread_join(soapy_receive_thread_id);
     soapy_receive_thread_id = NULL;
@@ -511,6 +516,9 @@ void soapy_protocol_stop_receivers() {
 
 // cppcheck-suppress unusedFunction
 void soapy_protocol_stop_transmitter() {
+  //
+  // call deactivateStream on tx_stream
+  //
   ASSERT_SERVER();
   int rc;
   rc = SoapySDRDevice_deactivateStream(soapy_device, tx_stream, 0, 0LL);
@@ -655,10 +663,10 @@ static void *soapy_receive_single_thread(void *arg) {
   float *rxbuff = g_new(float, max_rx_samples * 2);
   void *buffs[1] = {rxbuff};
   int id = rx->id;
-  running = TRUE;
+  rxthread_running = TRUE;
   t_print("%s started, id=%d\n", __FUNCTION__, id);
 
-  while (running) {
+  while (rxthread_running) {
     int elements = SoapySDRDevice_readStream(soapy_device, rx_stream, buffs, max_rx_samples, &flags, &timeNs,
                    timeoutUs);
 
@@ -690,10 +698,10 @@ static gpointer soapy_receive_dual_thread(gpointer data) {
   float *rx1buff = g_new(float, max_rx_samples * 2);
   float *rx2buff = g_new(float, max_rx_samples * 2);
   void *buffs[2] = {rx1buff, rx2buff};
-  running = TRUE;
+  rxthread_running = TRUE;
   t_print("%s started\n", __FUNCTION__);
 
-  while (running) {
+  while (rxthread_running) {
     int elements = SoapySDRDevice_readStream(
                      soapy_device, rx_stream, buffs, max_rx_samples, &flags, &timeNs, timeoutUs
                    );
@@ -772,13 +780,6 @@ void soapy_protocol_iq_samples(double isample, double qsample) {
       tx_output_buffer_index = 0;
     }
   }
-}
-
-// cppcheck-suppress unusedFunction
-void soapy_protocol_stop() {
-  ASSERT_SERVER();
-  t_print("%s\n", __FUNCTION__);
-  running = FALSE;
 }
 
 void soapy_protocol_set_rx_frequency(int id) {
@@ -1089,5 +1090,81 @@ void soapy_protocol_set_automatic_gain(int id, gboolean mode) {
 
   if (rc != 0) {
     t_print("%s: SetGainMode failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+  }
+}
+
+void soapy_protocol_rxtx(TRANSMITTER *tx) {
+  //
+  // Do everything that needs be done for a RX->TX transition
+  //
+  // This is called from rxtx() after the WDSP receivers are slewed down
+  // (unless using DUPLEX) and the WDSP transmitter is slewed up.
+  //
+  // This routine is *never* called if there is no transmitter!
+  //
+  // HALFDUPLEX: should do
+  // - soapy_protocol_stop_receivers()
+  // - soapy_protocol_start_transmitter()
+  //
+  if (have_lime) {
+    //
+    // LIME:
+    // - "mute" receivers if not running duplex,
+    // - execute TRX relay via GPIO,
+    // - (re-)connect TX antenna (since it was disconnected upon TXRX)
+    // - (re-)set nominal TX drive (since it was set to zero upon TXRX)
+    //
+    if (!duplex) {
+      for (int i = 0; i < RECEIVERS; i++) {
+        soapy_protocol_rx_attenuate(i);
+      }
+    }
+
+    SoapySDRDevice *sdr = get_soapy_device();
+    const char *bank = "MAIN";
+    t_print("%s: Setting LIME GPIO to 1\n", __FUNCTION__);
+    SoapySDRDevice_writeGPIODir(sdr, bank, 0xFF);
+    SoapySDRDevice_writeGPIO(sdr, bank, 0x01);
+    usleep(30000);
+    soapy_protocol_set_tx_antenna(tx->antenna);
+    soapy_protocol_set_tx_gain(tx->drive);
+  }
+
+  soapy_protocol_set_tx_frequency();
+}
+
+void soapy_protocol_txrx() {
+  //
+  // Do everything that needs be done for a TX->RX transition
+  //
+  // This is called from rxtx() after the WDSP transmitter is slewed down
+  // and the WDSP receivers are slewed up (in non-DUPLEX case)
+  //
+  // This routine is *never* called if there is no transmitter!
+  //
+  //
+  // HALFDUPLEX: should do
+  // - soapy_protocol_stop_transmitter()
+  // - soapy_protocol_start_single_receiver() or soapy_protocol_start_dual_receiver()
+  //
+  if (have_lime) {
+    //
+    // LIME: DO NOT STOP the transmitter, but
+    // - set TX gain to zero,
+    // - disconnect antenna,
+    // - execute TRX relay,
+    // - set RX gains to nominal value
+    //
+    soapy_protocol_set_tx_gain(0);
+    soapy_protocol_set_tx_antenna(0); // 0 is NONE
+    const char *bank = "MAIN"; //set GPIO to signal the relay to RX
+    t_print("%s: Setting LIME GPIO to 0\n", __FUNCTION__);
+    SoapySDRDevice *sdr = get_soapy_device();
+    SoapySDRDevice_writeGPIODir(sdr, bank, 0xFF);
+    SoapySDRDevice_writeGPIO(sdr, bank, 0x00);
+
+    for (int i = 0; i < RECEIVERS; i++) {
+      soapy_protocol_rx_unattenuate(i);
+    }
   }
 }

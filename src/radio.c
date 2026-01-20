@@ -1992,7 +1992,7 @@ static void rxtx(int state) {
 
       if (protocol == SOAPYSDR_PROTOCOL) {
 #ifdef SOAPYSDR
-        soapy_protocol_set_tx_frequency();
+        soapy_protocol_rxtx(transmitter);
 #endif
       }
     } else {
@@ -2026,21 +2026,18 @@ static void rxtx(int state) {
 
 #endif
 
-      if (protocol == SOAPYSDR_PROTOCOL) {
-#ifdef SOAPYSDR
-        //
-        // Do not stop, since starting the transmitter takes long
-        //
-        //soapy_protocol_stop_transmitter(transmitter);
-#endif
-      }
-
       if (transmitter->puresignal) {
         tx_ps_mox(transmitter, 0);
       }
 
       tx_off(transmitter);
       tx_set_displaying(transmitter);
+
+      if (protocol == SOAPYSDR_PROTOCOL) {
+#ifdef SOAPYSDR
+        soapy_protocol_txrx();
+#endif
+      }
     } else {
       send_startstop_txspectrum(cl_sock_tcp, 0);
     }
@@ -3151,8 +3148,9 @@ void radio_set_drive(double value) {
 #ifdef SOAPYSDR
 
     //
-    // LIME: do not change TX drive if not transmitting
-    //       (this is now done on each RX/TX and TX/RX transition)
+    // LIME: do not change TX drive if not transmitting since the
+    //       TX gain should be kept at zero if not transmitting.
+    //       (TX gain is set on each RX/TX transition anyway)
     //
     if (!have_lime || radio_is_transmitting()) {
       soapy_protocol_set_tx_gain(transmitter->drive);
@@ -3897,6 +3895,9 @@ void radio_protocol_stop() {
 
   case SOAPYSDR_PROTOCOL:
 #ifdef SOAPYSDR
+    //
+    // The Soapy transmitter is not stopped, it just gets no further IQ samples
+    //
     soapy_protocol_stop_receivers();
 #endif
     break;

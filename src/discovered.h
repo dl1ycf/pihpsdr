@@ -143,6 +143,7 @@ struct _DISCOVERED {
     int          sample_rate;
     int          rx_channels;
     int          tx_channels;
+    int          halfduplex;
     SOAPYCHANNEL rx[2];
     SOAPYCHANNEL tx;
   } soapy;

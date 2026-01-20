@@ -41,8 +41,6 @@ static void get_info(char *driver) {
   char gw_version[32];
   char hw_version[32];
   char p_version[32];
-  int rxincompatible = 0;  // can use the RX?
-  int txincompatible = 0;  // can use the TX?
 
   *fw_version = *gw_version = *hw_version = *p_version = 0;
 
@@ -56,6 +54,7 @@ static void get_info(char *driver) {
   discovered[devices].protocol = SOAPYSDR_PROTOCOL;
   snprintf(discovered[devices].name, sizeof(discovered[devices].name), "%s", driver);
   discovered[devices].status = STATE_AVAILABLE;
+  discovered[devices].soapy.halfduplex = 0;
   SoapySDRKwargs_set(&args, "driver", driver);
 
   //
@@ -166,7 +165,7 @@ static void get_info(char *driver) {
     t_print("%s: RX%d full duplex=%d\n", __FUNCTION__,  (int) (id + 1), fullduplex);
 
     if (!fullduplex) {
-      txincompatible = 1;
+      discovered[devices].soapy.halfduplex = 1;
     }
 
     ranges = SoapySDRDevice_getSampleRateRange(sdr, SOAPY_SDR_RX, id, &length);
@@ -254,7 +253,7 @@ static void get_info(char *driver) {
     //
     if (!foundcf32) {
       t_print("INCOMPATIBLE: RX does not allow %s format\n", SOAPY_SDR_CF32);
-      rxincompatible = 1;
+      discovered[devices].status = STATE_INCOMPATIBLE;
     }
 
     free(formats);  // allocated within SoapySDR so use free() rather than g_free()
@@ -281,7 +280,8 @@ static void get_info(char *driver) {
     t_print("%s: TX full duplex =%d\n", __FUNCTION__, fullduplex);
 
     if (!fullduplex) {
-      txincompatible = 1;
+      discovered[devices].soapy.halfduplex = 1;
+      t_print("%s: Device restricted to HALF DUPLEX\n", __FUNCTION__);
     }
 
     ranges = SoapySDRDevice_getSampleRateRange(sdr, SOAPY_SDR_TX, 0, &length);
@@ -353,7 +353,7 @@ static void get_info(char *driver) {
     //
     if (!foundcf32) {
       t_print("INCOMPATIBLE: TX does not allow %s format\n", SOAPY_SDR_CF32);
-      txincompatible = 1;
+      discovered[devices].status = STATE_INCOMPATIBLE;
     }
 
     free(formats);  // allocated within SoapySDR so use free() rather than g_free()
@@ -383,13 +383,6 @@ static void get_info(char *driver) {
           discovered[devices].frequency_min * 1E-6,
           discovered[devices].frequency_max * 1E-6);
 
-  if (txincompatible) {
-    // do not set STATE_INCOMPATIBLE since RX-only might still work
-    tx_channels = 0;
-  }
-
-  if (rxincompatible) { discovered[devices].status = STATE_INCOMPATIBLE; }
-  
   discovered[devices].soapy.rx_channels = rx_channels;
   discovered[devices].supported_receivers = rx_channels;
   discovered[devices].adcs = rx_channels;
