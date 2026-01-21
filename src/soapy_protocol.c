@@ -184,6 +184,7 @@ void soapy_protocol_create_single_receiver(RECEIVER *rx) {
   //
   ASSERT_SERVER();
   int rc;
+  double bw;
 
   if (rx->id != 0) {
     t_print("%s:WARNING:SOAPY:create single receiver but id nonzero\n", __FUNCTION__);
@@ -191,10 +192,7 @@ void soapy_protocol_create_single_receiver(RECEIVER *rx) {
   }
 
   mic_sample_divisor = rx->sample_rate / 48000;
-  double bandwidth = (double) soapy_radio_sample_rate;
-  t_print("%s: setting samplerate=%f id=%d mic_sample_divisor=%d\n", __FUNCTION__,
-          (double)soapy_radio_sample_rate,
-          rx->id, mic_sample_divisor);
+
   rc = SoapySDRDevice_setSampleRate(soapy_device, SOAPY_SDR_RX, rx->id, (double)soapy_radio_sample_rate);
 
   if (rc != 0) {
@@ -202,29 +200,27 @@ void soapy_protocol_create_single_receiver(RECEIVER *rx) {
             SoapySDR_errToStr(rc));
   }
 
-  if (have_lime) {
-    //
-    // LIME: we have to use the large bandwidth (before decimation) here.
-    //
-    bandwidth = lime_rx_bw;
-  }
-
-  t_print("%s: id=%d setting bandwidth=%f\n", __FUNCTION__, rx->id, bandwidth);
-  rc = SoapySDRDevice_setBandwidth(soapy_device, SOAPY_SDR_RX, rx->id, bandwidth);
+  //
+  // LIME: we have to use the large bandwidth (before decimation) here.
+  //
+  bw = have_lime ? lime_rx_bw : (double) soapy_radio_sample_rate;
+  rc = SoapySDRDevice_setBandwidth(soapy_device, SOAPY_SDR_RX, rx->id, bw);
 
   //
   // A 2-MHz-Bandwidth was used as a constant value in previous versions,
   // we take this if setting bandwidth = sample rate fails
   //
   if (rc != 0) {
-    bandwidth = 2000000.0;
-    t_print("%s: id=%d setting bandwidth=%f\n", __FUNCTION__, rx->id, bandwidth);
-    rc = SoapySDRDevice_setBandwidth(soapy_device, SOAPY_SDR_RX, rx->id, bandwidth);
+    bw = 2000000.0;
+    rc = SoapySDRDevice_setBandwidth(soapy_device, SOAPY_SDR_RX, rx->id, bw);
   }
 
   if (rc != 0) {
-    t_print("%s: SetBandWidth (%f) failed: %s\n", __FUNCTION__, (double)bandwidth, SoapySDR_errToStr(rc));
+    t_print("%s: SetBandWidth (%f) failed: %s\n", __FUNCTION__, bw, SoapySDR_errToStr(rc));
   }
+
+  bw = SoapySDRDevice_getBandwidth(soapy_device, SOAPY_SDR_RX, rx->id);
+  t_print("%s: RX%d Bandwidth=%f\n", __FUNCTION__, (int)(rx->id + 1), bw);
 
   if (have_lime) {
     //
@@ -239,7 +235,6 @@ void soapy_protocol_create_single_receiver(RECEIVER *rx) {
 
   size_t channel = rx->id;
 #if defined(SOAPY_SDR_API_VERSION) && (SOAPY_SDR_API_VERSION < 0x00080000)
-  t_print("%s: SetupStream(version<0x00080000): channel=%d\n", __FUNCTION__, channel);
   rc = SoapySDRDevice_setupStream(soapy_device, &rx_stream, SOAPY_SDR_RX, SOAPY_SDR_CF32, &channel, 1, NULL);
 
   if (rc != 0) {
@@ -248,7 +243,6 @@ void soapy_protocol_create_single_receiver(RECEIVER *rx) {
   }
 
 #else
-  t_print("%s: SetupStream(version>=0x00080000): channel=%d\n", __FUNCTION__, (int) channel);
   rx_stream = SoapySDRDevice_setupStream(soapy_device, SOAPY_SDR_RX, SOAPY_SDR_CF32, &channel, 1, NULL);
 
   if (rx_stream == NULL) {
@@ -282,6 +276,7 @@ void soapy_protocol_create_dual_receiver(RECEIVER *rx1, RECEIVER *rx2) {
   //
   ASSERT_SERVER();
   int rc;
+  double bw;
 
   if (have_lime) {
     rc = SoapySDRDevice_writeSetting(soapy_device, "OVERSAMPLING", "32");
@@ -295,8 +290,11 @@ void soapy_protocol_create_dual_receiver(RECEIVER *rx1, RECEIVER *rx2) {
   rc = SoapySDRDevice_setBandwidth(soapy_device, SOAPY_SDR_RX, rx1->id, lime_rx_bw);
 
   if (rc != 0) {
-    t_print("%s: SetBandWidth RX1 (%f) failed: %s\n", __FUNCTION__, (double)lime_rx_bw, SoapySDR_errToStr(rc));
+    t_print("%s: SetBandWidth RX1 (%f) failed: %s\n", __FUNCTION__, lime_rx_bw, SoapySDR_errToStr(rc));
   }
+
+  bw = SoapySDRDevice_getBandwidth(soapy_device, SOAPY_SDR_RX, rx1->id);
+  t_print("%s: RX1 Bandwidth=%f\n", __FUNCTION__, bw);
 
   rc = SoapySDRDevice_setSampleRate(soapy_device, SOAPY_SDR_RX, rx1->id, (double)soapy_radio_sample_rate);
 
@@ -310,6 +308,9 @@ void soapy_protocol_create_dual_receiver(RECEIVER *rx1, RECEIVER *rx2) {
   if (rc != 0) {
     t_print("%s: SetBandWidth RX2 (%f) failed: %s\n", __FUNCTION__, (double)lime_rx_bw, SoapySDR_errToStr(rc));
   }
+
+  bw = SoapySDRDevice_getBandwidth(soapy_device, SOAPY_SDR_RX, rx2->id);
+  t_print("%s: RX2 Bandwidth=%f\n", __FUNCTION__, bw);
 
   rc = SoapySDRDevice_setSampleRate(soapy_device, SOAPY_SDR_RX, rx2->id, (double)soapy_radio_sample_rate);
 
