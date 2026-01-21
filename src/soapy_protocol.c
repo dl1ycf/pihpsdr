@@ -91,14 +91,6 @@ const double lime_tx_bw =   768000.0;
 //
 static int lime_mute_rx2 = 0;
 
-//
-// TO BE REMOVED: any other function that needs this should be
-//                moved to this file
-//
-SoapySDRDevice *get_soapy_device() {
-  return soapy_device;
-}
-
 void soapy_protocol_change_rx_sample_rate(RECEIVER *rx) {
   ASSERT_SERVER();
   //
@@ -132,6 +124,10 @@ void soapy_protocol_change_rx_sample_rate(RECEIVER *rx) {
 
   //
   // We stick to the hardware sample rate and use the WDSP resampler
+  // We still enforce the sample rates of RX1 and RX2 to be the same
+  // (if there are two receivers). Still, the caller must invoke this
+  // function for both receivers in order to re-start both WDSP
+  // resamplers.
   //
   if (rx->sample_rate == soapy_radio_sample_rate) {
     //
@@ -514,7 +510,6 @@ void soapy_protocol_stop_receivers() {
   }
 }
 
-// cppcheck-suppress unusedFunction
 void soapy_protocol_stop_transmitter() {
   //
   // call deactivateStream on tx_stream
@@ -997,7 +992,7 @@ void soapy_protocol_set_rx_gain(int id) {
   }
 }
 
-void soapy_protocol_rx_attenuate(int id) {
+static void soapy_protocol_rx_attenuate(int id) {
   //
   // Make this receiver temporarily "deaf". This may be useful while TXing
   //
@@ -1010,7 +1005,7 @@ void soapy_protocol_rx_attenuate(int id) {
   }
 }
 
-void soapy_protocol_rx_unattenuate(int id) {
+static void soapy_protocol_rx_unattenuate(int id) {
   //
   // Restore nominal RF gain to recover from having "deaf-ened" it
   // This must not do any harm if receivers have not been "deaf-ened" before
@@ -1093,7 +1088,7 @@ void soapy_protocol_set_automatic_gain(int id, gboolean mode) {
   }
 }
 
-void soapy_protocol_rxtx(TRANSMITTER *tx) {
+void soapy_protocol_rxtx(const TRANSMITTER *tx) {
   //
   // Do everything that needs be done for a RX->TX transition
   //
@@ -1102,10 +1097,7 @@ void soapy_protocol_rxtx(TRANSMITTER *tx) {
   //
   // This routine is *never* called if there is no transmitter!
   //
-  // HALFDUPLEX: should do
-  // - soapy_protocol_stop_receivers()
-  // - soapy_protocol_start_transmitter()
-  //
+
   if (have_lime) {
     //
     // LIME:
@@ -1120,11 +1112,10 @@ void soapy_protocol_rxtx(TRANSMITTER *tx) {
       }
     }
 
-    SoapySDRDevice *sdr = get_soapy_device();
     const char *bank = "MAIN";
     t_print("%s: Setting LIME GPIO to 1\n", __FUNCTION__);
-    SoapySDRDevice_writeGPIODir(sdr, bank, 0xFF);
-    SoapySDRDevice_writeGPIO(sdr, bank, 0x01);
+    SoapySDRDevice_writeGPIODir(soapy_device, bank, 0xFF);
+    SoapySDRDevice_writeGPIO(soapy_device, bank, 0x01);
     usleep(30000);
     soapy_protocol_set_tx_antenna(tx->antenna);
     soapy_protocol_set_tx_gain(tx->drive);
@@ -1143,10 +1134,7 @@ void soapy_protocol_txrx() {
   // This routine is *never* called if there is no transmitter!
   //
   //
-  // HALFDUPLEX: should do
-  // - soapy_protocol_stop_transmitter()
-  // - soapy_protocol_start_single_receiver() or soapy_protocol_start_dual_receiver()
-  //
+
   if (have_lime) {
     //
     // LIME: DO NOT STOP the transmitter, but
@@ -1159,9 +1147,8 @@ void soapy_protocol_txrx() {
     soapy_protocol_set_tx_antenna(0); // 0 is NONE
     const char *bank = "MAIN"; //set GPIO to signal the relay to RX
     t_print("%s: Setting LIME GPIO to 0\n", __FUNCTION__);
-    SoapySDRDevice *sdr = get_soapy_device();
-    SoapySDRDevice_writeGPIODir(sdr, bank, 0xFF);
-    SoapySDRDevice_writeGPIO(sdr, bank, 0x00);
+    SoapySDRDevice_writeGPIODir(soapy_device, bank, 0xFF);
+    SoapySDRDevice_writeGPIO(soapy_device, bank, 0x00);
 
     for (int i = 0; i < RECEIVERS; i++) {
       soapy_protocol_rx_unattenuate(i);

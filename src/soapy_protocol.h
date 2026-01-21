@@ -23,13 +23,11 @@
 #include "receiver.h"
 #include "transmitter.h"
 
-SoapySDRDevice *get_soapy_device(void);
-
 void soapy_protocol_create_single_receiver(RECEIVER *rx);
 void soapy_protocol_create_dual_receiver(RECEIVER *rx1, RECEIVER *rx2);
 void soapy_protocol_start_single_receiver(RECEIVER *rx);
 void soapy_protocol_start_dual_receiver(RECEIVER *rx1, RECEIVER *rx2);
-void soapy_protocol_rxtx(TRANSMITTER *tx);
+void soapy_protocol_rxtx(const TRANSMITTER *tx);
 void soapy_protocol_txrx();
 
 void soapy_protocol_init(gboolean hf);
@@ -38,8 +36,6 @@ void soapy_protocol_set_rx_frequency(int id);
 void soapy_protocol_set_rx_antenna(int channel, int ant);
 void soapy_protocol_set_lna_gain(RECEIVER *rx, int gain);
 void soapy_protocol_set_rx_gain(int id);
-void soapy_protocol_rx_attenuate(int id);
-void soapy_protocol_rx_unattenuate(int id);
 void soapy_protocol_set_rx_gain_element(int id, char *name, double gain);
 double soapy_protocol_get_rx_gain_element(int id, char *name);
 void soapy_protocol_change_rx_sample_rate(RECEIVER *rx);

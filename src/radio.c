@@ -1887,9 +1887,17 @@ void radio_change_sample_rate(int rate) {
     break;
 
   case SOAPYSDR_PROTOCOL:
+    //
+    // If there are two SOAPY receivers, we enforce that
+    // they share the sample rate.
+    //
     if (receiver[0]->sample_rate != rate) {
       radio_protocol_stop();
-      rx_change_sample_rate(receiver[0], rate);
+
+      for (int i = 0; i < receivers; i++) {
+        rx_change_sample_rate(receiver[i], rate);
+      }
+
       radio_protocol_run();
     }
 
@@ -3876,13 +3884,10 @@ int radio_server_protocol_stop(gpointer data) {
 }
 
 void radio_protocol_stop() {
-  //
-  // paranoia ...
-  //
+  if (!radio_protocol_running) { return; }
+
   radio_set_mox(0);
   usleep(100000);
-
-  if (!radio_protocol_running) { return; }
 
   switch (protocol) {
   case ORIGINAL_PROTOCOL:
@@ -3896,7 +3901,14 @@ void radio_protocol_stop() {
   case SOAPYSDR_PROTOCOL:
 #ifdef SOAPYSDR
     //
-    // The Soapy transmitter is not stopped, it just gets no further IQ samples
+    // The transmitter is not stopped. If the Soapy receiver(s) are
+    // stopped, there will we no further calls to tx_add_mic_sample()
+    // and thus no calls to soapy_protocol_iq_samples() and
+    // SoapySDRDevice_writeStream() but the TX continues.
+    //
+    // This seems to be important for LIME where stopping/restarting
+    // the transmitter induces a rather long spin-up phase until
+    // the clocks have been stabilized.
     //
     soapy_protocol_stop_receivers();
 #endif
