@@ -121,10 +121,20 @@ static void calibration_value_changed_cb(GtkWidget *widget, gpointer data) {
     frequency_calibration = (int) (10.0 * f - 0.5);
   }
 
-  t_print("F=%f C=%d\n", f, frequency_calibration);
-
   if (radio_is_remote) {
     send_radiomenu(cl_sock_tcp);
+  }
+  //
+  // For SoapySDR, the frequency calibration does not become effective
+  // until the frequency is explititly set.
+  //
+  if (device == SOAPYSDR_USB_DEVICE) {
+#ifdef SOAPYSDR
+    for (int id=0; id < RECEIVERS; id++) {
+      soapy_protocol_set_rx_frequency(id);
+    }
+    soapy_protocol_set_tx_frequency();
+#endif
   }
 }
 

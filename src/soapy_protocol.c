@@ -1151,8 +1151,12 @@ void soapy_protocol_txrx() {
     SoapySDRDevice_writeGPIODir(soapy_device, bank, 0xFF);
     SoapySDRDevice_writeGPIO(soapy_device, bank, 0x00);
 
-    for (int i = 0; i < RECEIVERS; i++) {
-      soapy_protocol_rx_unattenuate(i);
+    for (int id = 0; id < RECEIVERS; id++) {
+      soapy_protocol_rx_unattenuate(id);
     }
+  }
+
+  for (int id=0; id < RECEIVERS; id++) {
+    soapy_protocol_set_rx_frequency(id);
   }
 }

@@ -1220,13 +1220,12 @@ static int server_command(gpointer data) {
     adc[id].alex_attenuation = command->alex_attenuation;
     adc[id].filter_bypass = command->filter_bypass;
     adc[id].antenna = from_16(command->antenna);
-#ifdef SOAPYSDR
 
     if (device == SOAPYSDR_USB_DEVICE) {
+#ifdef SOAPYSDR
       soapy_protocol_set_rx_antenna(id, adc[id].antenna);
-    }
-
 #endif
+    }
   }
   break;
 
@@ -2029,6 +2028,18 @@ static int server_command(gpointer data) {
     schedule_transmit_specific();
     schedule_general();
     schedule_high_priority();
+    //
+    // For SoapySDR, the frequency calibration does not become effective
+    // until the frequency is explititly set.
+    //
+    if (device == SOAPYSDR_USB_DEVICE) {
+#ifdef SOAPYSDR
+      for (int id=0; id < RECEIVERS; id++) {
+        soapy_protocol_set_rx_frequency(id);
+      }
+      soapy_protocol_set_tx_frequency();
+#endif
+    }
   }
   break;
 
