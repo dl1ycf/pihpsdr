@@ -871,6 +871,7 @@ DWORD WINAPI Cspectra (void *pargs)
 		//
 
 	}
+
 	if (a->stop)
 	{
 		InterlockedDecrement(a->pnum_threads);

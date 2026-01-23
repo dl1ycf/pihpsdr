@@ -850,11 +850,9 @@ void SetRXAMode (int channel, int mode)
 	{
 		int amd_run = (mode == RXA_AM) || (mode == RXA_SAM);
 		RXAbpsnbaCheck (channel, mode, rxa[channel].ndb.p->master_run);
-
 		RXAbp1Check (channel, amd_run, rxa[channel].snba.p->run, rxa[channel].emnr.p->run,
 			rxa[channel].anf.p->run, rxa[channel].anr.p->run,
 			rxa[channel].rnnr.p->run, rxa[channel].sbnr.p->run);  // NR3 + NR4 support
-
 		EnterCriticalSection (&ch[channel].csDSP);
 		rxa[channel].mode = mode;
 		rxa[channel].amd.p->run	 = 0;

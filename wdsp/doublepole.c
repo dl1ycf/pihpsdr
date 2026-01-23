@@ -1,8 +1,8 @@
-/*	doublepole.c
+/*  doublepole.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2025 Warren Pratt, NR0V
+Copyright (C) 2025-2026 Warren Pratt, NR0V
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -135,12 +135,36 @@ double* build_doublepole_2sided (int* nc, double rate, double fcenter, double ba
 	}
 	fftw_plan prev = fftw_plan_dft_1d (ncc, (fftw_complex*)H_i,
 		(fftw_complex*)h_i, FFTW_BACKWARD, FFTW_PATIENT);
-	fftw_execute	  (prev);
+	fftw_execute      (prev);
 	fftw_destroy_plan (prev);
-	_aligned_free	  (H_i);
+	_aligned_free     (H_i);
 	for (i = 0; i < ncc; i++)
 		h_i[2 * i + 1] = 0.0;
 	return h_i;
+}
+
+double* build_doublepole_1eff(int* nc, double rate, double fcenter, double bandwidth, double scale)
+{
+	// *nc - number of impulse response values, POWER OF TWO
+	// rate - sample_rate (samples/second)
+	// f - center frequency (Hz)
+	// bandwidth - bandwidth (Hz)
+	// scale - scale factor to apply to impulse response
+	double bw = bandwidth / 1.7;
+	int ncc = calc_dpole_nc (rate, bw);
+	*nc = ncc;
+	double alpha = PI * bw / rate;
+	double omega = - TWOPI * fcenter / rate;
+	double impulse, arg;
+	double* c_impulse = (double*) malloc0 (ncc * sizeof(complex));
+	for (int i = 0; i < ncc; i++)
+	{
+		impulse = scale * alpha * exp (-alpha * (double)i);
+		arg = omega * (double)i;
+		c_impulse[2 * i + 0] = + impulse * cos (arg);
+		c_impulse[2 * i + 1] = - impulse * sin (arg);
+	}
+	return c_impulse;
 }
 
 DOUBLEPOLE create_doublepole (int run, int position, int size, double* in, double* out,
@@ -159,7 +183,7 @@ DOUBLEPOLE create_doublepole (int run, int position, int size, double* in, doubl
 	a->gain = gain;
 	a->scale = a->gain / (double)(2 * a->size);
 	a->mode = mode;
-	impulse = build_doublepole_2sided (&a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale);
+	impulse = build_doublepole_1eff (&a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale);
 	a->p = create_fircore (a->size, a->in, a->out, a->nc, 0, impulse);
 	_aligned_free (impulse);
 	return a;
@@ -209,7 +233,7 @@ void setSamplerate_doublepole (DOUBLEPOLE a, int rate)
 	double* impulse;
 	int nc = a->nc;
 	a->samplerate = rate;
-	impulse = build_doublepole_2sided (&a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale);
+	impulse = build_doublepole_1eff (&a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale);
 	if (nc == a->nc)
 		setImpulse_fircore (a->p, impulse, 1);
 	else
@@ -224,7 +248,7 @@ void setSize_doublepole (DOUBLEPOLE a, int size)
 	setSize_fircore(a->p, a->size);
 	// recalc impulse because scale factor is a function of size
 	a->scale = a->gain / (double)(2 * a->size);
-	double* impulse = build_doublepole_2sided (&a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale);
+	double* impulse = build_doublepole_1eff (&a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale);
 	setImpulse_fircore (a->p, impulse, 1);
 	_aligned_free (impulse);
 }
@@ -234,7 +258,7 @@ void setGain_doublepole (DOUBLEPOLE a, double gain)
 	double* impulse;
 	a->gain = gain;
 	a->scale = a->gain / (double)(2 * a->size);
-	impulse = build_doublepole_2sided (&a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale);
+	impulse = build_doublepole_1eff (&a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale);
 	setImpulse_fircore (a->p, impulse, 1);
 	_aligned_free (impulse);
 }
@@ -249,7 +273,7 @@ void CalcDoublepoleFilter (DOUBLEPOLE a, double f_center, double bandwidth, doub
 		a->bandwidth = bandwidth;
 		a->gain = gain;
 		a->scale = a->gain / (double)(2 * a->size);
-		impulse = build_doublepole_2sided (&a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale);
+		impulse = build_doublepole_1eff (&a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale);
 		if (nc == a->nc)
 			setImpulse_fircore (a->p, impulse, 1);
 		else
