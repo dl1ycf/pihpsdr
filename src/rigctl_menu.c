@@ -267,6 +267,27 @@ void rigctl_menu(GtkWidget *parent) {
   gtk_widget_set_size_request(w, -1, 3);
   gtk_grid_attach(GTK_GRID(grid), w, 0, row, 7, 1);
   row++;
+  w = gtk_label_new("TCI");
+  gtk_widget_set_name(w, "boldlabel");
+  gtk_widget_set_halign(w, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), w, 0, row, 1, 1);
+  w = gtk_spin_button_new_with_range(35000, 55000, 1);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(w), (double)tci_port);
+  gtk_grid_attach(GTK_GRID(grid), w, 1, row, 1, 1);
+  g_signal_connect(w, "value_changed", G_CALLBACK(tci_port_changed_cb), NULL);
+  w = gtk_check_button_new_with_label("Enable");
+  gtk_widget_set_name(w, "boldlabel");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), tci_enable);
+  gtk_widget_show(w);
+  gtk_grid_attach(GTK_GRID(grid), w, 4, row, 1, 1);
+  g_signal_connect(w, "toggled", G_CALLBACK(tci_enable_cb), NULL);
+  w = gtk_check_button_new_with_label("Report TX Frequency Only");
+  gtk_widget_set_name(w, "boldlabel");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), tci_txonly);
+  gtk_widget_show(w);
+  gtk_grid_attach(GTK_GRID(grid), w, 5, row, 3, 1);
+  g_signal_connect(w, "toggled", G_CALLBACK(tci_txonly_changed_cb), NULL);
+  row++;
   w = gtk_label_new("TCP");
   gtk_widget_set_name(w, "boldlabel");
   gtk_widget_set_halign(w, GTK_ALIGN_END);
@@ -291,6 +312,10 @@ void rigctl_menu(GtkWidget *parent) {
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), rigctl_tcp_autoreporting);
   gtk_grid_attach(GTK_GRID(grid), w, 6, row, 1, 1);
   g_signal_connect(w, "toggled", G_CALLBACK(tcp_autoreporting_cb), NULL);
+  row++;
+  w = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+  gtk_widget_set_size_request(w, -1, 3);
+  gtk_grid_attach(GTK_GRID(grid), w, 0, row, 7, 1);
 
   /* Put the Serial Port stuff here, one port per line */
   for (int i = 0; i <= MAX_SERIAL; i++) {
@@ -315,7 +340,7 @@ void rigctl_menu(GtkWidget *parent) {
       gtk_grid_attach(GTK_GRID(grid), w, 1, row, 2, 1);
       g_signal_connect(w, "changed", G_CALLBACK(serial_port_cb), GINT_TO_POINTER(i));
       if (is_ptt) {
-        serial_enable[i] = gtk_check_button_new_with_label("Use serial port for PTT in and PTT out");
+        serial_enable[i] = gtk_check_button_new_with_label("Enable (serial port for PTT in/out)");
         gtk_widget_set_name(serial_enable[i], "boldlabel");
         gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (serial_enable[i]), SerialPorts[i].enable);
         gtk_grid_attach(GTK_GRID(grid), serial_enable[i], 4, row, 3, 1);
@@ -377,27 +402,6 @@ void rigctl_menu(GtkWidget *parent) {
       gtk_grid_attach(GTK_GRID(grid), w, 1, row, 5, 1);
     }
   }
-  row++;
-  w = gtk_label_new("TCI");
-  gtk_widget_set_name(w, "boldlabel");
-  gtk_widget_set_halign(w, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), w, 0, row, 1, 1);
-  w = gtk_spin_button_new_with_range(35000, 55000, 1);
-  gtk_spin_button_set_value(GTK_SPIN_BUTTON(w), (double)tci_port);
-  gtk_grid_attach(GTK_GRID(grid), w, 1, row, 1, 1);
-  g_signal_connect(w, "value_changed", G_CALLBACK(tci_port_changed_cb), NULL);
-  w = gtk_check_button_new_with_label("Enable");
-  gtk_widget_set_name(w, "boldlabel");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), tci_enable);
-  gtk_widget_show(w);
-  gtk_grid_attach(GTK_GRID(grid), w, 4, row, 1, 1);
-  g_signal_connect(w, "toggled", G_CALLBACK(tci_enable_cb), NULL);
-  w = gtk_check_button_new_with_label("Report TX Frequency Only");
-  gtk_widget_set_name(w, "boldlabel");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), tci_txonly);
-  gtk_widget_show(w);
-  gtk_grid_attach(GTK_GRID(grid), w, 5, row, 3, 1);
-  g_signal_connect(w, "toggled", G_CALLBACK(tci_txonly_changed_cb), NULL);
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);

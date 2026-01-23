@@ -151,12 +151,53 @@ can be found on the screen. This may be confusing upon first reading, but I shal
 convention as laid out here.
 
 \clearpage
+\section{Philosophy of the \pH user interface}
+
+In this section some of the design principles of \pH are explained, as they are the reason why I
+sometimes say ,,no'' to feature requests.
+
+\subsection{Screen size}
+\pH is designed to run on really small screens with sizes down to 800x480 pixels. Although it is
+perfectly possible to run \pH in large windows (see the \bltt{Screen} menu, chapter \ref{sec:screenmenu}),
+the requirement that is must also work on a small screen restricts the size that menus and submenus
+can have and the number of control elements that can be put on the screen. When it comes to building a
+,,standalone'' radio from a small SDR board, a single-board computer and a small screen, \pH is
+the software of choice, and any new features to be built in are checked whether they possibly
+destroy the possibility of building such a radio.
+
+\subsection{Automatic vs. Manual settings}
+I am often asked to make more controls user-accessible, allowing them to fine-tune the radio's
+behaviour. Such suggestions are often turned down in favour of making things work automatically.
+This makes using \pH easier and the results are often better, compared what happens is users
+have too many controls to play with. So making things automatic does not only allow for a
+simpler user interface, but also gives decent results with a flat learning curve.
+
+To illustrate this, I give two examples: in \pH, when activating a CW audio peak filter, the only
+user control is to turn it on or off, and the bandwidth and gain of that filter is automatically
+calculated, based on the characteristics of the main filter. I do not allow the user to
+individually choose the width of the audio peak filter since there are certainly unreasonable
+combinations of the base and peak filter widths. The advantage is, that each time the main filter
+is changed, the audio peak filter bandwidth is recalculated.
+
+The second example is SSB mode with TX compression. Activating compression automatically activates
+the auto-leveler in the TX chain (with 8 dB amplification, see chapter \ref{sec:txchain}).
+Furthermore, if the compression level exceeds 5 dB, the CESSB overshoot control is automatically
+activated without the user needing to think about CESSB. As an aside, this also
+excludes the use of low-latency filter for the TX signal since this is not compatible with CESSB.
+Of course there may be special situations in which, for example, using the compressor
+\textit{without} auto-leveling is helpful, but this is the exception. So for the benefit of the
+average user who certainly profits from activating the auto-leveler automatically when activating
+compression, these functions are tied together in \pH.
+
+
+\clearpage
 \section{Version history}
 \label{sec:versionhistory}
 Here we list the main new featured introduced in each version.
 
 \textbf{\pH Version 2.6, under development}
 \begin{itemize}
+\item{One serial port can be used for a PTT-input and a PTT-output line.}
 \item{Added CW texts that can be changed in the CW menu and transmitted upon pushing
 a phyiscal (controller/panel) button or clicking a toolbar (on-screen) button.}
 \item{NR3 (RNNnoise) and NR4 (SpecBleach) noise reduction models fully integrated}
@@ -228,8 +269,82 @@ by Lukasz).}
 \smallskip
 The last synchronisation with John Melton's (G0ORX) \pH version 2.0.8 took place in January 2022.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Prominent beginner's problems}
+Over the years, many problems have been reported to me by those who start using \pH. In this
+section, I want to address those problems which occurred frequently, and point to the
+chapter in the manual where this is addressed. My selection of ,,prominent problems'' will
+be extended upon request, or if I get the feeling that a problem not yet mentions pops up
+too frequently.
+
+\section{I cannot find a ready-to-run executable}
+\pH is meant to run on a variety of very different computers, from desktop computer running
+MacOS or LINUX to small single-board computers such as the RasperryPi. Many different versions
+of flavours (32-bit vs. 64-bit) of operating systems are around, such that maintaining executables
+for all those systems is a too high burden for me.
+
+Therefore, \pH must be compiled from the sources which are freely available in the internet. Detailed
+procedures how to do so are descriped in Appendix \ref{sec:installsources} for Linux computers
+(including the RaspberryPi) and in Appendix \ref{sec:installmacosx} for Macintosh MacOS-X computers.
+
+Meanwhile lots of ,,absolute beginners'' have successfully managed to get \pH installed and running
+this way, and you will also be able to do so.
+
+\section{No (or too little) RF power out when transmitting}
+This is actually the most prominent beginner's problem. Read Sec. \ref{sec:PAmenu} on the \bltt{PA} menu,
+where one has to adjust the output level up to the nominal power of the PA. By default \pH wants to
+be on the safe side, therefore many radios produce no or very little output power before you make
+the proper adjustments in the \bltt{PA} menu.
+
+
+\section{The RX spectrum looks fine, but I hear no RX signal}
+Many radios do not have built-in audio codecs. In this case, you must choose local audio output in
+the \bltt{RX} menu and connect a head-phone to the sound card selected there. The same applies to
+the microphone: choose a sound card with a mic jack in the \bltt{TX} menu for audio input and connect
+your microphone there.
+
+\section{How do I connect a PTT foot-switch or a Morse key}
+The standard setup of many users is that they run \pH on a computer placed in close proximity to the
+radio, and that the radio then provides jacks for headphone, microphone, Morse key, and PTT foot-switch.
+In this case, there is little need to worry how to connect such gear to the \textit{computer} running
+\pH (see also the previous section).
+
+This changes if there is a long distance between computer and radio. Imagine radio is placed in the attic
+and you are sitting in your living room operating the radio through an ethernet cable that connects the
+computer on your desktop with the radio in the attic. The same applies if you are running \pH in client
+mode (see chapter \ref{sec:clientserver}) and operate a remote station over the internet. Note further
+that there are radios which do not have any jacks for the mentioned hardware. In all these cases you have
+to connect things to your computer. For a headphone and a microphone, this is explained in the previous
+section, but you also need at least a PTT switch (for SSB operation) and a Morse key (for CW).
+
+Originally \pH was designed to run on small single-board computers which offer lots of general-purpose
+input/output (GPIO) lines that can be used for connecting e.g. a foot switch and a key (see Appendix
+\ref{sec:gpio}), but if \pH is
+running on a desktop or laptop computer, then the computer offers no such GPIO lines.
+
+The most versatile way for providing input lines is certainly to use a small micro-controller (uC) which
+has such lines and which communicates with the computer using MIDI commands over an USB connection.
+Chapter \ref{midimenu} explains in detail how one can ,,teach'' \pH to make use of such MIDI commands
+(see also Appendix \ref{sec:ConnectCW}). Personally I use a standard CW keyer software on an ArduinoMicro
+with a small extension that sends MIDI commands for PTT on/off and Key up/down events. A ,,luxury''
+version thereof is described in
+
+\texttt{https://github.com/softerhardware/CWKeyer}
+
+which does not only implement a CW keyer, but also a sound card in a single USB connection. So you can
+connect a headphone, a microphone (with PTT contact), and a CW key to that small device consisting of
+a Teensy4.0 uC and an audio codec. I have also built a prototype thereof using the standard Teensy
+AudioShield.
+
+Many users are not very familiar with uCs and and a maximally simple way to connect a PTT footswitch to
+a desktop computer. For those, a dedicated serial port (or USB-serial adapter) can be
+specified in the CAT/TCI menu (chapter \ref{sec:catmenu}) which can then be used for PTT input simply
+by connecting the DTR and CTS serial lines with a foot switch or with an (isolated) microphone PTT contact.
+In addition, the serial line signals on the RTS line whether \pH is transmitting or not.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Starting \pH for the first time}
-\section{First invocation of \pH}
 Let us assume you have an SDR (say, an Anan-7000 or a HermesLite-II) powered up and connected to an antenna,
 and you have \pH installed on a computer (say, a Raspberry Pi or an Apple Macintosh).
 The first thing to
@@ -484,25 +599,6 @@ may not need a slider to adjust Mic gain or TX compression but will want a slide
 speed. FM operators may need a Squelch slider, but for SSB operators a slider to change the
 level (and enable/disable) a TX compressor (speech processor) will be more important.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Prominent beginner's problems}
-There are some problems that occur again and again, so the purpose of this section is to name them.
-
-\subsection{No (or too little) RF power out when transmitting}
-
-This is actually the most prominent beginner's problem. Read Sec. \ref{sec:PAmenu} on the \bltt{PA} menu,
-where one has to adjust the output level up to the nominal power of the PA. By default \pH wants to
-be on the safe side, therefore many radios produce no or very little output power before you make
-the proper adjustments in the \bltt{PA} menu.
-
-
-\subsection{The RX spectrum looks fine, but I hear no RX signal}
-
-Many radios do not have built-in audio codecs. In this case, you must choose local audio output in
-the \bltt{RX} menu.
-
-
-(this section will be extended if other ,,frequent problems'' are reported to me.)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Main window layout}
@@ -1620,6 +1716,7 @@ For SoapySDR radios running two receivers, there is an additional check box
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{Screen} Menu}
+\label{sec:screenmenu}
 
 The \bltt{Screen} menu lets you dynamically change the font used by \pH and
 the size of the \pH main
@@ -3924,11 +4021,14 @@ slider, there appears a check-box that enables or disables squelch.}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{CAT/TCI} Menu}
+\label{sec:catmenu}
 
 \pH has a built-in rig control or CAT (computer aided transceiver) facility. This can be used to control
 \pH from other programs or even other computers. You can have up to three simultaneous CAT connections
 via TCP, and three additional CAT connections via serial lines (provided the host computer running \pH
-has those serial interfaces available). Note that on the new Anan G2-Ultra radios, one of the serial lines
+has those serial interfaces available). One further serial port (or USB-to-serial adapter) can be
+used for a PTT input and output line.
+Note that on the new Anan G2-Ultra radios, one of the serial lines
 is used for controlling the front panel.
 It is also possible to use FIFOs (also known as named pipes) instead of real serial devices, which offers a
 hardware-free connection
@@ -3946,21 +4046,19 @@ the Kenwood TS-2000 as the radio model would do it, if the digi mode or laptop p
 radios, either choose TS-2000 or (preferably) the ,,OpenHPSDR PiHPSDR'' radio model because this
 uses time-out values adapted to \pH.
 
-If compiled  with TCI  support, \pH also offers a (substantially  stripped-down) TCI server, and in this
-case this menu is named \bltt{CAT/TCI}. \pH cannot
-be \textit{controlled} via TCI (all incoming TCI commands are  ignored) but it periodically (every 500 msec)
-reports operating frequencies  and modes, if they have changed. This is meant  to support  logbook programs
-and external PAs that use TCI  to get frequency and/or mode information.
-
-The \bltt{CAT/TCI} menu is shown in Fig. \ref{fig:CATmenu}. Note that if \pH  is  not compiled
-with TCI support,  this menu is simply called  \bltt{CAT} and lower part  of the menu is not shown.
-
 \begin{figure}[ht]
 \center
 \includegraphics[scale=0.45]{CATmenu.png}
 \caption{The CAT/TCI  menu.}
 \label{fig:CATmenu}
 \end{figure}
+
+\pH also offers a (substantially  stripped-down) TCI server \pH cannot
+be \textit{controlled} via TCI (all incoming TCI commands are  ignored) but it periodically (every 500 msec)
+reports operating frequencies  and modes, if they have changed. This is meant  to support  logbook programs
+and external PAs that use TCI  to get frequency and/or mode information.
+The \bltt{CAT/TCI} menu is shown in Fig. \ref{fig:CATmenu}.
+
 
 \rett{Enable CAT/TCI Debug Logging}. If enabled, the \pH CAT subsystem sends lots of debug messages to the standard output. If
 \pH is run
@@ -3972,12 +4070,26 @@ are stored. This checkbox is only of interest for software developers to analyse
 errors, and should
 not be checked for normal use.
 
+\rett{TCI}. To the right of this string, there is a spin button which selects the TCP port used by the
+TCI  server (the default value is 40001). The TCI server identifies itself as an ExpertsSDR3 program
+running TCI version 1.8 with a SunSDR2PRO radio, but in fact it ignores all incoming commands and only
+reports VFO-A/B frequencies and modes, if they have changed. It also reports the TX frequency if it has changed.
+This is necessary since the TX frequency can jump from the VFO-A to the VFO-B frequency and back e.g. when
+changing the split status or the active receiver. It is thus clear that TCI can be used to
+inform logbook programs and/or PAs about frequencies and modes, but not much more.
+
+\rett{Report TX  Frequency Only}. If power amplifiers connect to \pH, they usually only want to know the
+TX frequency to adjust the output low-pass filters. Checking this box restricts the TCI outgoing commands
+to the TX  frequency messages. It is important  to note that the TX frequency is only  checked every
+500 msec, so after a band change, the PA may  not be aware of  the changed TX frequency for half  a second.
+
 \rett{TCP}. This sets the TCP port number for CAT connection to TCP. The default value (19090)
 is rather standard, using another one is only necessary if you are running more than one
 SDR program on the host computer at the same time.
 This port number must match the port number used in the (digi-mode or logbook) program that wants to connect.
 
-\rett{Serial}. \pH support up two three CAT connections over serial lines or named pipes.
+
+\rett{Serial}. \pH supports up two three CAT connections over serial lines or named pipes.
 In the text field, enter the device name of the serial port or the named pipe to use.
 Which names to use
 is highly operating system dependent. On a RaspPi,  USB-to-serial
@@ -3988,15 +4100,36 @@ port is detected automatically and the third "Serial" line done not contain any 
 states the auto-detected port name and whether the connection to the panel has been successfully
 established.
 
-
 To the right of the serial port text field, there is a pop-down menu for choosing the baud rate. Only 4800,
 9600, 19200, and 38400 baud are offered, but this should cover most cases.
 
-\rett{Enable}. This checkbox enables or disables the \pH CAT subsystem for that particular case.
-Enabling and disabling can be done separately for the TCP CAT subsystem, for each of the serial
-CAT connections, and the TCI server.
+\rett{PTT}. One serial port can be used for PTT-in and PTT-out. Only the DTR, RTS, and CTS control lines
+and GND of that port will be used. According to the RS232C standard, these control lines have two states
+(OFF and ON) defined through voltage levels (w.r.t. GND) that are below -3 V for OFF and above +3 V for
+ON. For a serial port used for PTT, \pH will set the DTR output line to ON constantly and sense the
+CTS input line periodically (every 100 msec). If its level changes, ON is interpreted as PTT pressed,
+and OFF as PTT released. Since a serial port will usually read the OFF state for an open (unconnected)
+line, a foot-switch used for PTT then must simply connect the DTR and CTS lines of the serial port.
+The RTS line follows whether \pH is transmitting (RTS=ON) or not (RTS=OFF). For most operating systems,
+RTS is OFF when the serial port is not in use and set to ON when it is opened. \pH will then set it
+OFF as soon as possible, but most likely there will be a short ON pulse on the RTS line when \pH starts
+or when the PTT port is enabled in this menu, and this might lead to a short click-clack of
+the T/R relay in the external gear if this is controlled by the RTS line.
 
-\rett{Andromeda}. This checkbox enables the TCP or  serial CAT connection for use with ANDROMEDA consoles
+Using serial control lines as general purpose input/output lines (which is outside of the RS232C
+standard anyway) is  different if a USB-serial interface with TTL-level lines is used.
+In this case, in addition to the RTS, CTS, and GND lines, also a +5V line is provided. There is no
+official standard for serial TTL levels, but according to my experiments negative TTL logic is used.
+This means that the RTS line has HIGH level ($> 2.5$ V) during RX and LOW level ($< 0.4$ V) during TX,
+and the CTS input line must be connected to GND with a PTT foot switch, and to +5V via a pull-up
+resistor.
+
+\rett{Enable}. This checkbox enables or disables the function in that particular line.
+Enabling and disabling can be done separately for the TCI server, the TCP CAT subsystem,
+for each of the serial CAT connections, and for the PTT in/out serial port.
+
+\rett{Andromeda}. (For TCP and serial CAT only)
+This checkbox enables the TCP or  serial CAT connection for use with ANDROMEDA consoles
 of the G2-MkII front panel. Serial lines are
 forced to 9600 baud if enabled for ANDROMEDA. Furthermore, status changes of \pH (e.g. RIT on/off) are
 automatically reported via ZZZI CAT commands (see Appendix \ref{sec:catcommands}). These messages are
@@ -4006,7 +4139,8 @@ of \pH. Note that the \rett{Andromeda} flag is only inspected when the connectio
 are established when successfully opened upon program start or via this menu.
 TCP CAT connections are established when the \textit{client} successfully connects.
 
-\rett{AutoRprt}. If a CAT connection (either via TCP or via a serial line) is opened and this box is checked,
+\rett{AutoRprt}. (For TCP and serial CAT only)
+If a CAT connection is opened and this box is checked,
 the connection is put in ,,auto reporting'' mode. This mode can generally be enabled and disabled with the
 ZZAI or AI CAT commands (see Appendix \ref{sec:catcommands}), but with this checkbox, the connection can be put
 into ``level 1'' auto reporting mode without the CAT client sending AI commands. ``Level 1'' means that \pH
@@ -4017,17 +4151,6 @@ is connected via a serial line that needs frequency or mode  info via CAT but fa
 \texttt{AI} command.  If you do not have hardware that depends
 on such unsolicited (without requesting them via ZZAI or AI commands) messages, this box should never be checked.
 
-\rett{TCI}. To the right of this string, there is a spin button which selects the TCP port used by the
-TCI  server (the default value is 40001). The TCI server identifies itself as an ExpertsSDR3 program
-running TCI version 1.8 with a SunSDR2PRO radio, but in fact it ignores all incoming commands and only
-reports VFO-A/B frequencies and modes, if they have changed. It also reports the TX frequency if it has changed.
-This is necessary since the TX frequency can jump from the VFO-A to the VFO-B frequency and back e.g. when
-changing the split status or the active receiver.
-
-\rett{Report TX  Frequency Only}. If power amplifiers connect to \pH, they usually only want to know the
-TX frequency to adjust the output low-pass filters. Checking this box restricts the TCI outgoing commands
-to the TX  frequency messages. It is important  to note that the TX frequency is only  checked every
-500 msec, so after a band change, the PA may  not be aware of  the changed TX frequency for half  a second.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
