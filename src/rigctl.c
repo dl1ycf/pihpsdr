@@ -37,6 +37,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h> //inet_addr
 #include <netinet/tcp.h>
+#include <sys/ioctl.h>
 
 #include "actions.h"
 #include "agc.h"
@@ -137,8 +138,8 @@ typedef struct _command {
 } COMMAND;
 
 static CLIENT tcp_client[MAX_TCP_CLIENTS]; // TCP clients
-static CLIENT serial_client[MAX_SERIAL];   // serial clienta
-SERIALPORT SerialPorts[MAX_SERIAL];
+static CLIENT serial_client[MAX_SERIAL + 1];   // one extra for serial PTT
+SERIALPORT SerialPorts[MAX_SERIAL + 1];        // one extra for serial PTT
 
 static gpointer rigctl_client (gpointer data);
 
@@ -5695,6 +5696,89 @@ static gpointer serial_server(gpointer data) {
   return NULL;
 }
 
+void *ptt_server(gpointer data) {
+  CLIENT *client = (CLIENT *)data;
+  int status;
+  int pttout = 0;
+  int pttin = 0;
+  t_print("$s: starting thread\n");
+  client->running = TRUE;
+  ioctl(client->fd, TIOCMGET, &status);
+  status &= ~TIOCM_RTS;
+  status |=  TIOCM_DTR;
+  ioctl(client->fd, TIOCMSET, &status);
+
+  while (client->running) {
+    usleep(100000);
+    if (ioctl(client->fd, TIOCMGET, &status) == -1) { continue; }
+    int new = SET(status & TIOCM_CTS);
+
+    //
+    // Connect RTS with CTS to activate PTT
+    // (schedule action only if changed)
+    //
+    if (pttin != new) {
+      pttin = new;
+      schedule_action(PTT, pttin ? PRESSED : RELEASED, 0);
+    }
+
+    new = radio_is_transmitting();
+
+    //
+    // Set RTS to the transmitting state (if changed)
+    //
+    if (pttout != new) {
+      pttout = new;
+      if (pttout) {
+        status |= TIOCM_RTS;
+      } else {
+        status &= ~TIOCM_RTS;
+      }
+      ioctl(client->fd, TIOCMSET, &status);
+    }
+  }
+
+  t_print("$s: exiting\n");
+  return NULL;
+}
+
+int launch_serial_ptt(int id) {
+  int fd;
+  int status;
+  speed_t speed;
+  t_print("%s:  Port %s\n", __FUNCTION__, SerialPorts[id].port);
+  //
+  // Use O_NONBLOCK to prevent "hanging" upon open()
+  // later.
+  //
+  fd = open (SerialPorts[id].port, O_RDWR | O_NOCTTY | O_SYNC | O_NONBLOCK);
+
+  if (fd < 0) {
+    t_perror("RIGCTL (open ptt)");
+    return 0 ;
+  }
+
+  t_print("%s: ptt port fd=%d\n", __FUNCTION__, fd);
+  speed = B1200;  // not used anyway
+
+  if (set_interface_attribs (fd, speed, 0) != 0) {
+    close(fd);
+    return 0;
+  }
+
+  //
+  // set RTS=OFF (used for PTT out) and DTR=ON (used as voltage source for CTS input)
+  //
+  ioctl(fd, TIOCMGET, &status);
+  status &= ~TIOCM_RTS;
+  status |=  TIOCM_DTR;
+  ioctl(fd, TIOCMSET, &status);
+
+  serial_client[id].fd = fd;
+  serial_client[id].thread_id = g_thread_new( "PTTserver", ptt_server, (gpointer)&serial_client[id]);
+  return 1;
+}
+
 int launch_serial_rigctl (int id) {
   int fd;
   speed_t speed;
@@ -5784,6 +5868,21 @@ int launch_serial_rigctl (int id) {
   return 1;
 }
 
+void disable_serial_ptt(int id) {
+  t_print("%s: Close Serial Port %s\n", __FUNCTION__, SerialPorts[id].port);
+  serial_client[id].running = FALSE;
+
+  if (serial_client[id].thread_id) {
+    g_thread_join(serial_client[id].thread_id);
+    serial_client[id].thread_id = NULL;
+  }
+
+  if (serial_client[id].fd >= 0) {
+    close(serial_client[id].fd);
+    serial_client[id].fd = -1;
+  }
+}
+
 // Serial Port close
 void disable_serial_rigctl (int id) {
   t_print("%s: Close Serial Port %s\n", __FUNCTION__, SerialPorts[id].port);
@@ -5837,7 +5936,7 @@ void rigctl_restore_state() {
   GetPropI0("rigctl_tcp_autoreporting",                      rigctl_tcp_autoreporting);
   GetPropI0("rigctl_port_base",                              rigctl_tcp_port);
 
-  for (int id = 0; id < MAX_SERIAL; id++) {
+  for (int id = 0; id <= MAX_SERIAL; id++) {
     //
     // Do not overwrite a "detected" port
     //
@@ -5871,7 +5970,7 @@ void rigctl_save_state() {
   SetPropI0("rigctl_tcp_autoreporting",                      rigctl_tcp_autoreporting);
   SetPropI0("rigctl_port_base",                              rigctl_tcp_port);
 
-  for (int id = 0; id < MAX_SERIAL; id++) {
+  for (int id = 0; id <= MAX_SERIAL; id++) {
     SetPropI1("rigctl_serial_enable[%d]", id,                SerialPorts[id].enable);
     SetPropI1("rigctl_serial_andromeda[%d]", id,             SerialPorts[id].andromeda);
     SetPropI1("rigctl_serial_baud_rate[%i]", id,             SerialPorts[id].speed);

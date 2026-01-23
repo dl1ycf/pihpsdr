@@ -1162,7 +1162,7 @@ void radio_start_radio() {
   gpio_init();
 #endif
 
-  for (int id = 0; id < MAX_SERIAL; id++) {
+  for (int id = 0; id <= MAX_SERIAL; id++) {
     //
     // Apply some default values. The name ttyACMx is suitable for
     // USB-serial adapters on Linux
@@ -1635,6 +1635,10 @@ void radio_start_radio() {
     if (SerialPorts[id].enable) {
       SerialPorts[id].enable = launch_serial_rigctl(id);
     }
+  }
+
+  if (SerialPorts[MAX_SERIAL].enable) {
+    SerialPorts[MAX_SERIAL].enable = launch_serial_ptt(MAX_SERIAL);
   }
 
 #ifdef SOAPYSDR
@@ -3726,6 +3730,10 @@ int radio_client_start(gpointer data) {
     if (SerialPorts[id].enable) {
       SerialPorts[id].enable = launch_serial_rigctl(id);
     }
+  }
+
+  if (SerialPorts[MAX_SERIAL].enable) {
+    SerialPorts[MAX_SERIAL].enable = launch_serial_ptt(MAX_SERIAL);
   }
 
   if (can_transmit) {

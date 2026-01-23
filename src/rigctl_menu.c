@@ -34,8 +34,8 @@
 #include "vfo.h"
 
 static GtkWidget *dialog = NULL;
-static GtkWidget *serial_speed[MAX_SERIAL];
-static GtkWidget *serial_enable[MAX_SERIAL];
+static GtkWidget *serial_speed[MAX_SERIAL + 1];
+static GtkWidget *serial_enable[MAX_SERIAL + 1];
 
 static void cleanup() {
   if (dialog != NULL) {
@@ -149,6 +149,21 @@ static void andromeda_cb(GtkWidget *widget, gpointer data) {
     gtk_combo_box_set_active(GTK_COMBO_BOX(serial_speed[id]), 1);
     SerialPorts[id].speed = B9600;
   }
+}
+
+static void ptt_enable_cb(GtkWidget *widget, gpointer data) {
+  int id = GPOINTER_TO_INT(data);
+
+  if ((SerialPorts[id].enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)))) {
+    if (launch_serial_ptt(id) == 0) {
+      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), FALSE);
+      SerialPorts[id].enable = 0;
+    }
+  } else {
+    disable_serial_ptt(id);
+  }
+
+  t_print("%s: Serial PTT : ID=%d Enabled=%d\n", __FUNCTION__, id, SerialPorts[id].enable);
 }
 
 static void serial_enable_cb(GtkWidget *widget, gpointer data) {
@@ -278,13 +293,14 @@ void rigctl_menu(GtkWidget *parent) {
   g_signal_connect(w, "toggled", G_CALLBACK(tcp_autoreporting_cb), NULL);
 
   /* Put the Serial Port stuff here, one port per line */
-  for (int i = 0; i < MAX_SERIAL; i++) {
+  for (int i = 0; i <= MAX_SERIAL; i++) {
     char str[512];
     row++;
+    int is_ptt = (i == MAX_SERIAL);
     //
     // If this serial port is used internally in a G2 simply state port name
     //
-    snprintf (str, sizeof(str), "Serial");
+    snprintf (str, sizeof(str), is_ptt ? "PTT" : "Serial");
     w = gtk_label_new(str);
     gtk_widget_set_name(w, "boldlabel");
     gtk_widget_set_halign(w, GTK_ALIGN_END);
@@ -298,48 +314,56 @@ void rigctl_menu(GtkWidget *parent) {
       gtk_entry_set_text(GTK_ENTRY(w), SerialPorts[i].port);
       gtk_grid_attach(GTK_GRID(grid), w, 1, row, 2, 1);
       g_signal_connect(w, "changed", G_CALLBACK(serial_port_cb), GINT_TO_POINTER(i));
-      serial_speed[i] = gtk_combo_box_text_new();
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(serial_speed[i]), NULL, "4800 Bd");
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(serial_speed[i]), NULL, "9600 Bd");
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(serial_speed[i]), NULL, "19200 Bd");
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(serial_speed[i]), NULL, "38400 Bd");
+      if (is_ptt) {
+        serial_enable[i] = gtk_check_button_new_with_label("Use serial port for PTT in and PTT out");
+        gtk_widget_set_name(serial_enable[i], "boldlabel");
+        gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (serial_enable[i]), SerialPorts[i].enable);
+        gtk_grid_attach(GTK_GRID(grid), serial_enable[i], 4, row, 3, 1);
+        g_signal_connect(serial_enable[i], "toggled", G_CALLBACK(ptt_enable_cb), GINT_TO_POINTER(i));
+      } else {
+        serial_speed[i] = gtk_combo_box_text_new();
+        gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(serial_speed[i]), NULL, "4800 Bd");
+        gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(serial_speed[i]), NULL, "9600 Bd");
+        gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(serial_speed[i]), NULL, "19200 Bd");
+        gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(serial_speed[i]), NULL, "38400 Bd");
 
-      switch (SerialPorts[i].speed) {
-      case B9600:
-        gtk_combo_box_set_active(GTK_COMBO_BOX(serial_speed[i]), 1);
-        break;
+        switch (SerialPorts[i].speed) {
+        case B9600:
+          gtk_combo_box_set_active(GTK_COMBO_BOX(serial_speed[i]), 1);
+          break;
 
-      case B19200:
-        gtk_combo_box_set_active(GTK_COMBO_BOX(serial_speed[i]), 2);
-        break;
+        case B19200:
+          gtk_combo_box_set_active(GTK_COMBO_BOX(serial_speed[i]), 2);
+          break;
 
-      case B38400:
-        gtk_combo_box_set_active(GTK_COMBO_BOX(serial_speed[i]), 3);
-        break;
+        case B38400:
+          gtk_combo_box_set_active(GTK_COMBO_BOX(serial_speed[i]), 3);
+          break;
 
-      default:
-        SerialPorts[i].speed = B4800;
-        gtk_combo_box_set_active(GTK_COMBO_BOX(serial_speed[i]), 0);
-        break;
-      }
+        default:
+          SerialPorts[i].speed = B4800;
+          gtk_combo_box_set_active(GTK_COMBO_BOX(serial_speed[i]), 0);
+          break;
+        }
 
-      my_combo_attach(GTK_GRID(grid), serial_speed[i], 3, row, 1, 1);
-      g_signal_connect(serial_speed[i], "changed", G_CALLBACK(speed_cb), GINT_TO_POINTER(i));
-      serial_enable[i] = gtk_check_button_new_with_label("Enable");
-      gtk_widget_set_name(serial_enable[i], "boldlabel");
-      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (serial_enable[i]), SerialPorts[i].enable);
-      gtk_grid_attach(GTK_GRID(grid), serial_enable[i], 4, row, 1, 1);
-      g_signal_connect(serial_enable[i], "toggled", G_CALLBACK(serial_enable_cb), GINT_TO_POINTER(i));
-      w = gtk_check_button_new_with_label("Andromeda");
-      gtk_widget_set_name(w, "boldlabel");
-      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), SerialPorts[i].andromeda);
-      gtk_grid_attach(GTK_GRID(grid), w, 5, row, 1, 1);
-      g_signal_connect(w, "toggled", G_CALLBACK(andromeda_cb), GINT_TO_POINTER(i));
-      w = gtk_check_button_new_with_label("AutoRprt");
-      gtk_widget_set_name(w, "boldlabel");
-      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), SerialPorts[i].autoreporting);
-      gtk_grid_attach(GTK_GRID(grid), w, 6, row, 1, 1);
-      g_signal_connect(w, "toggled", G_CALLBACK(serial_autoreporting_cb), GINT_TO_POINTER(i));
+        my_combo_attach(GTK_GRID(grid), serial_speed[i], 3, row, 1, 1);
+        g_signal_connect(serial_speed[i], "changed", G_CALLBACK(speed_cb), GINT_TO_POINTER(i));
+        serial_enable[i] = gtk_check_button_new_with_label("Enable");
+        gtk_widget_set_name(serial_enable[i], "boldlabel");
+        gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (serial_enable[i]), SerialPorts[i].enable);
+        gtk_grid_attach(GTK_GRID(grid), serial_enable[i], 4, row, 1, 1);
+        g_signal_connect(serial_enable[i], "toggled", G_CALLBACK(serial_enable_cb), GINT_TO_POINTER(i));
+        w = gtk_check_button_new_with_label("Andromeda");
+        gtk_widget_set_name(w, "boldlabel");
+        gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), SerialPorts[i].andromeda);
+        gtk_grid_attach(GTK_GRID(grid), w, 5, row, 1, 1);
+        g_signal_connect(w, "toggled", G_CALLBACK(andromeda_cb), GINT_TO_POINTER(i));
+        w = gtk_check_button_new_with_label("AutoRprt");
+        gtk_widget_set_name(w, "boldlabel");
+        gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), SerialPorts[i].autoreporting);
+        gtk_grid_attach(GTK_GRID(grid), w, 6, row, 1, 1);
+        g_signal_connect(w, "toggled", G_CALLBACK(serial_autoreporting_cb), GINT_TO_POINTER(i));
+      } 
     } else {
       //
       // If the Serial port is used for the G2 panel, just report port name.
@@ -353,11 +377,6 @@ void rigctl_menu(GtkWidget *parent) {
       gtk_grid_attach(GTK_GRID(grid), w, 1, row, 5, 1);
     }
   }
-
-  row++;
-  w = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-  gtk_widget_set_size_request(w, -1, 3);
-  gtk_grid_attach(GTK_GRID(grid), w, 0, row, 7, 1);
   row++;
   w = gtk_label_new("TCI");
   gtk_widget_set_name(w, "boldlabel");
@@ -382,5 +401,6 @@ void rigctl_menu(GtkWidget *parent) {
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
+  gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
 }
 
