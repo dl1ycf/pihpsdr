@@ -450,15 +450,6 @@ void WriteP2DDCRateRegister(void) {
 }
 
 //
-// uint32_t GetDDCEnabled(void)
-// get enable bits for each DDC; 1 bit per DDC
-// this is needed to set timings and sizes for DMA transfers
-//
-uint32_t GetDDCEnables(void) {
-  return GDDCEnabled;
-}
-
-//
 // SetOpenCollectorOutputs(unsigned int bits)
 // sets the 7 open collector output bits
 // data must be provided in bits 6:0
@@ -967,36 +958,6 @@ void SetCWIambicKeyer(uint8_t Speed, uint8_t Weight, bool ReverseKeys, bool Mode
 }
 
 //
-// void SetCWXBits(bool CWXEnabled, bool CWXDash, bool CWXDot)
-// setup CWX (host generated dot and dash)
-// Note: piHPSDR currently does not use this feature.
-//
-void SetCWXBits(bool CWXEnabled, bool CWXDash, bool CWXDot) {
-  uint32_t Register;
-  pthread_mutex_lock(&IambicMutex);
-  Register = GIambicConfigReg;                    // copy of H/W register
-  Register &= ~VIAMBICCWXBITS;                    // strip off old CWX bits
-
-  if (CWXEnabled) {
-    Register |= (1 << VIAMBICCWX);  // set bit if enabled
-  }
-
-  if (CWXDot) {
-    Register |= (1 << VIAMBICCWXDOT);  // set bit if enabled
-  }
-
-  if (CWXDash) {
-    Register |= (1 << VIAMBICCWXDASH);  // set bit if enabled
-  }
-
-  if (Register != GIambicConfigReg) {             // save if changed
-    GIambicConfigReg = Register;
-    RegisterWrite(VADDRIAMBICCONFIG, Register);
-  }
-  pthread_mutex_unlock(&IambicMutex);
-}
-
-//
 // SetDDCADC(int DDC, EADCSelect ADC)
 // sets the ADC to be used for each DDC
 // DDC = 0 to 9
@@ -1299,50 +1260,6 @@ void ReadStatusRegister(void) {
   uint32_t StatusRegisterValue = 0;
   StatusRegisterValue = RegisterRead(VADDRSTATUSREG);
   GStatusRegister = StatusRegisterValue;                        // save to global
-}
-
-//
-// GetPTTInput(void)
-// return true if PTT input is pressed.
-// depends on the status register having been read before this is called!
-//
-bool GetPTTInput(void) {
-  bool Result = false;
-  Result = (bool)(GStatusRegister & 1);                       // get PTT bit
-  return Result;
-}
-
-//
-// GetKeyerDashInput(void)
-// return true if keyer dash input is pressed.
-// depends on the status register having been read before this is called!
-//
-bool GetKeyerDashInput(void) {
-  bool Result = false;
-  Result = (bool)((GStatusRegister >> VKEYINB) & 1);                       // get PTT bit
-  return Result;
-}
-
-//
-// GetKeyerDotInput(void)
-// return true if keyer dot input is pressed.
-// depends on the status register having been read before this is called!
-//
-bool GetKeyerDotInput(void) {
-  bool Result = false;
-  Result = (bool)((GStatusRegister >> VKEYINA) & 1);                       // get PTT bit
-  return Result;
-}
-
-//
-// GetCWKeyDown(void)
-// return true if keyer has initiated TX.
-// depends on the status register having been read before this is called!
-//
-bool GetCWKeyDown(void) {
-  bool Result = false;
-  Result = (bool)((GStatusRegister >> VCWKEYDOWN) & 1);                       // get "PTT from keyer" bit.
-  return Result;
 }
 
 //
@@ -1744,32 +1661,6 @@ void ResetDUCMux(void) {
   Register &= ~BitMask;                               // remove old bit
   RegisterWrite(VADDRTXCONFIGREG, Register);          // and write to it
   TXConfigRegValue = Register;
-  pthread_mutex_unlock(&TXConfigMutex);
-}
-
-//
-// void SetTXOutputGate(bool AlwaysOn)
-// sets the sample output gater. If false, samples gated by TX strobe.
-// if true, samples are alweays enabled.
-//
-void SetTXOutputGate(bool AlwaysOn) {
-  uint32_t Register;
-  uint32_t BitMask;
-  BitMask = (1 << 2);
-  pthread_mutex_lock(&TXConfigMutex);
-  Register = TXConfigRegValue;                        // get current settings
-
-  if (AlwaysOn) {
-    Register |= BitMask;  // set bit if true
-  } else {
-    Register &= ~BitMask;  // clear bit if false
-  }
-
-  if (Register != TXConfigRegValue) {
-    TXConfigRegValue = Register;                    // store it back
-    RegisterWrite(VADDRTXCONFIGREG, Register);  // and write to it
-  }
-
   pthread_mutex_unlock(&TXConfigMutex);
 }
 

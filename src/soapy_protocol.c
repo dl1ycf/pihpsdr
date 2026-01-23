@@ -514,6 +514,17 @@ void soapy_protocol_stop_receivers() {
 void soapy_protocol_stop_transmitter() {
   //
   // call deactivateStream on tx_stream
+  // Normally there is no need to call this functions, since the delivery of
+  // IQ samples stop anyway if the receiver(s) are not running, since
+  // then tx_add_mic_sample() is no longer called.
+  //
+  // We refrain from stopping the transmitter because for LIME, because
+  // auto-calibration takes place when starting the transmitter and
+  // then we let it run forever (except reducing the output level to zero
+  // when we are not transmitting).
+  //
+  // TODO: use start_transmitter/stop_transmitter in RXTX cycles
+  //       when NOT using a LIMEsdr.
   //
   ASSERT_SERVER();
   int rc;

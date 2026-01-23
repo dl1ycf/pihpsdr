@@ -1484,15 +1484,6 @@ void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
   Byte2=  UDPInBuffer[1443] & 0x1F;      // ADC0 atten
   SetADCAttenuator(Byte2, true, false, Byte, true, false);
 
-  //
-  // CWX bits - currently not used by piHPSDR
-  //
-  //Byte = UDPInBuffer[5] & 0xFF;
-  //bool CWXEnabled = (bool) (Byte & 0x01);
-  //bool CWXDot     = (bool) (Byte & 0x02);
-  //bool CWXDash    = (bool) (Byte & 0x04);
-  //SetCWXBits(CWXEnabled, CWXDot, CWXDash);
-
   return;
 }
 

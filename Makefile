@@ -734,7 +734,7 @@ endif
 
 ##############################################################################
 #
-# "make check" invokes the cppcheck program to do a source-code checking.
+# "make cppcheck" invokes the cppcheck program to do a source-code checking.
 #
 # The "-pthread" compiler option is not valid for cppcheck and must be filtered out.
 # Furthermore, we can add additional options to cppcheck in the variable CPP_OPTIONS

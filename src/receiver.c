@@ -652,30 +652,6 @@ RECEIVER *rx_create_pure_signal_receiver(int id, int sample_rate, int width, int
   return rx;
 }
 
-int rx_remote_update_display(gpointer data) {
-  RECEIVER *rx = (RECEIVER *) data;
-
-  if (rx->displaying && rx->pixels > 0) {
-    g_mutex_lock(&rx->display_mutex);
-
-    if (rx->display_panadapter) {
-      rx_panadapter_update(rx);
-    }
-
-    if (rx->display_waterfall) {
-      waterfall_update(rx);
-    }
-
-    g_mutex_unlock(&rx->display_mutex);
-  }
-
-  if (active_receiver == rx) {
-    meter_update(rx, SMETER, rx->meter, 0.0, 0.0);
-  }
-
-  return G_SOURCE_REMOVE;
-}
-
 void rx_create_remote(RECEIVER *rx) {
   //
   // receiver structure already setup via INFO_RECEIVER packet.

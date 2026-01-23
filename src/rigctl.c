@@ -4230,9 +4230,7 @@ static int parse_cmd(gpointer data) {
         int speed = atoi(&command[2]);
 
         if (speed >= 1 && speed <= 60) {
-          cw_keyer_speed = speed;
-          keyer_update();
-          g_idle_add(ext_vfo_update, NULL);
+          radio_set_cw_speed(speed);
         }
       }
 
@@ -5696,12 +5694,12 @@ static gpointer serial_server(gpointer data) {
   return NULL;
 }
 
-void *ptt_server(gpointer data) {
+static gpointer ptt_server(gpointer data) {
   CLIENT *client = (CLIENT *)data;
   int status;
   int pttout = 0;
   int pttin = 0;
-  t_print("$s: starting thread\n");
+  t_print("%s: starting thread\n", __FUNCTION__);
   client->running = TRUE;
   ioctl(client->fd, TIOCMGET, &status);
   status &= ~TIOCM_RTS;
@@ -5738,7 +5736,7 @@ void *ptt_server(gpointer data) {
     }
   }
 
-  t_print("$s: exiting\n");
+  t_print("%s: exiting\n", __FUNCTION__);
   return NULL;
 }
 

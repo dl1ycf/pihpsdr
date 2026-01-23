@@ -2382,6 +2382,7 @@ void radio_load_filters(int b) {
 
 void radio_set_cw_speed(int val) {
   cw_keyer_speed = val;
+  g_idle_add(sliders_wpm, NULL);
 
   if (!radio_is_remote) {
     keyer_update();

@@ -197,13 +197,6 @@ void SetP2SampleRate(unsigned int DDC, bool Enabled, unsigned int SampleRate, bo
 void WriteP2DDCRateRegister(void);
 
 //
-// uint32_t GetDDCEnables(void)
-// get enable bits for each DDC; 1 bit per DDC
-// this is needed to set timings and sizes for DMA transfers
-//
-uint32_t GetDDCEnables(void);
-
-//
 // SetOpenCollectorOutputs(unsigned int bits)
 // sets the 7 open collector output bits
 // data must be provided in bits 0-6

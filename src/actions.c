@@ -1939,10 +1939,8 @@ int process_action(gpointer data) {
     //
     i = a->val;
 
-    if (i >= 1 && i <= 60) { cw_keyer_speed = i; }
+    if (i >= 1 && i <= 60) { radio_set_cw_speed(i); }
 
-    keyer_update();
-    g_idle_add(ext_vfo_update, NULL);
     break;
 
   case NO_ACTION:
