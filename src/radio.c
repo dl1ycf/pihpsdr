@@ -328,7 +328,7 @@ static SaturnSerialPort SaturnSerialPortsList[] = {
   {NULL, 0, 0}
 };
 
-static void radio_restore_state();
+static void radio_restore_state(void);
 
 //
 // This is the key-press handler which is activated as soon as the
@@ -517,7 +517,7 @@ gboolean radio_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
   return ret;
 }
 
-void radio_stop_radio() {
+void radio_stop_radio(void) {
   ASSERT_SERVER();
 
   if (can_transmit) {
@@ -537,7 +537,7 @@ void radio_stop_radio() {
   }
 }
 
-static void choose_vfo_layout() {
+static void choose_vfo_layout(void) {
   //
   // a) secure that vfo_layout is a valid pointer
   // b) secure that the VFO layout width fits
@@ -585,7 +585,7 @@ static void choose_vfo_layout() {
     }
 
     layout = vfl - vfo_layout_list;
-    //t_print("%s: vfo_layout changed (width=%d)\n", __FUNCTION__, vfl->width);
+    //t_print("%s: vfo_layout changed (width=%d)\n", __func__, vfl->width);
   }
 
   //
@@ -627,7 +627,7 @@ static int set_full_screen(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
-void radio_reconfigure_screen() {
+void radio_reconfigure_screen(void) {
   GdkWindow *gw = gtk_widget_get_window(top_window);
   GdkWindowState ws = gdk_window_get_state(GDK_WINDOW(gw));
   int last_fullscreen = SET(ws & GDK_WINDOW_STATE_FULLSCREEN);
@@ -710,10 +710,10 @@ void radio_reconfigure_screen() {
   g_idle_add(ext_vfo_update, NULL);
 }
 
-void radio_reconfigure() {
+void radio_reconfigure(void) {
   int i;
   int y;
-  t_print("%s: receivers=%d\n", __FUNCTION__, receivers);
+  t_print("%s: receivers=%d\n", __func__, receivers);
   int my_height = display_height[display_size];
   int my_width  = display_width[display_size];
   rx_height = my_height - VFO_HEIGHT;
@@ -849,7 +849,7 @@ static gboolean menu_cb (GtkWidget *widget, GdkEventButton *event, gpointer data
   return TRUE;
 }
 
-static void radio_create_visual() {
+static void radio_create_visual(void) {
   int y = 0;
   fixed = gtk_fixed_new();
   //
@@ -1043,17 +1043,17 @@ static void radio_create_visual() {
   g_idle_add(sliders_att_type_changed, NULL);   // ... and this hides the „wrong“ ones.
 }
 
-void radio_stop_program() {
+void radio_stop_program(void) {
 #ifdef GPIO
   gpio_close();
-  t_print("%s: GPIO closed\n", __FUNCTION__);
+  t_print("%s: GPIO closed\n", __func__);
 #endif
 
   if (!radio_is_remote) {
     radio_protocol_stop();
-    t_print("%s: protocol stopped\n", __FUNCTION__);
+    t_print("%s: protocol stopped\n", __func__);
     radio_stop_radio();
-    t_print("%s: radio stopped\n", __FUNCTION__);
+    t_print("%s: radio stopped\n", __func__);
 
     if (have_saturn_xdma) {
 #ifdef SATURN
@@ -1063,15 +1063,15 @@ void radio_stop_program() {
   }
 
   radio_save_state();
-  t_print("%s: radio state saved\n", __FUNCTION__);
+  t_print("%s: radio state saved\n", __func__);
 }
 
-void radio_exit_program() {
+void radio_exit_program(void) {
   radio_stop_program();
   _exit(0);
 }
 
-void radio_shutdown() {
+void radio_shutdown(void) {
   radio_stop_program();
   //
   // The following call may fail (e.g. missing admin privileges),
@@ -1085,7 +1085,7 @@ void radio_shutdown() {
   _exit(0);
 }
 
-void radio_reboot() {
+void radio_reboot(void) {
   radio_stop_program();
   //
   // The following call may fail (e.g. missing admin privileges),
@@ -1095,7 +1095,7 @@ void radio_reboot() {
   _exit(0);
 }
 
-void radio_start_radio() {
+void radio_start_radio(void) {
   //
   // Debug code. Placed here at the start of the program. piHPSDR  implicitly assumes
   //             that the entires in the action table (actions.c) are sorted by their
@@ -1603,11 +1603,11 @@ void radio_start_radio() {
 
     PS_TX_FEEDBACK = RECEIVERS;
     PS_RX_FEEDBACK = RECEIVERS + 1;
-    t_print("%s: setup %d receivers for SoapySDR\n", __FUNCTION__, RECEIVERS);
+    t_print("%s: setup %d receivers for SoapySDR\n", __func__, RECEIVERS);
     break;
 
   default:
-    t_print("%s: default setup for 2 receivers\n", __FUNCTION__);
+    t_print("%s: default setup for 2 receivers\n", __func__);
     RECEIVERS = 2;
     PS_TX_FEEDBACK = (RECEIVERS);
     PS_RX_FEEDBACK = (RECEIVERS + 1);
@@ -1645,7 +1645,7 @@ void radio_start_radio() {
 
   if (protocol == SOAPYSDR_PROTOCOL) {
     if (!have_lime) {
-      t_print("%s: create %d SOAPY receiver(s)\n", __FUNCTION__, RECEIVERS);
+      t_print("%s: create %d SOAPY receiver(s)\n", __func__, RECEIVERS);
 
       //
       // LIME: do not start receivers before TX is running
@@ -1662,13 +1662,13 @@ void radio_start_radio() {
         break;
 
       default:
-        t_print("%s:WARNING:SOAPY: can only create 1 or 2 receivers\n", __FUNCTION__);
+        t_print("%s:WARNING:SOAPY: can only create 1 or 2 receivers\n", __func__);
         break;
       }
     }
 
     if (can_transmit) {
-      t_print("%s: create SOAPY transmitter\n", __FUNCTION__);
+      t_print("%s: create SOAPY transmitter\n", __func__);
       soapy_protocol_create_transmitter(transmitter);
       soapy_protocol_set_tx_antenna(transmitter->antenna);
       //
@@ -1687,7 +1687,7 @@ void radio_start_radio() {
       }
     }
 
-    t_print("%s: start %d SOAPY receiver(s)\n", __FUNCTION__, RECEIVERS);
+    t_print("%s: start %d SOAPY receiver(s)\n", __func__, RECEIVERS);
 
     //
     // Start receivers, in the LIME case first create them
@@ -1706,7 +1706,7 @@ void radio_start_radio() {
       break;
 
     default:
-      t_print("%s:WARNING:SOAPY: can only start 1 or 2 receivers\n", __FUNCTION__);
+      t_print("%s:WARNING:SOAPY: can only start 1 or 2 receivers\n", __func__);
       break;
     }
 
@@ -1786,7 +1786,7 @@ void radio_start_radio() {
 
 int radio_client_change_receivers(gpointer data) {
   int r = GPOINTER_TO_INT(data);
-  t_print("%s: from %d to %d\n", __FUNCTION__, receivers, r);
+  t_print("%s: from %d to %d\n", __func__, receivers, r);
 
   if (receivers == r) { return G_SOURCE_REMOVE; }
 
@@ -2135,7 +2135,7 @@ static void rxtx(int state) {
 #endif
 }
 
-void radio_toggle_mox() {
+void radio_toggle_mox(void) {
   if (radio_is_remote) {
     send_toggle_mox(cl_sock_tcp);
     return;
@@ -2283,7 +2283,7 @@ void radio_set_mox(int state) {
   g_idle_add(ext_vfo_update, NULL);
 }
 
-int radio_get_mox() {
+int radio_get_mox(void) {
   return mox;
 }
 
@@ -2316,7 +2316,7 @@ void radio_set_duplex(int state) {
   g_idle_add(ext_vfo_update, NULL);
 }
 
-void radio_n2adr_oc_settings() {
+void radio_n2adr_oc_settings(void) {
   ASSERT_SERVER();
   //
   // set OC outputs for each band according to the N2ADR board requirements
@@ -2407,7 +2407,7 @@ void radio_set_sidetone_freq(int val) {
   g_idle_add(ext_vfo_update, NULL);
 }
 
-void radio_calc_div_params() {
+void radio_calc_div_params(void) {
   //
   // Calculate the Cosine and Sine values
   // corresponding to the current values
@@ -2518,7 +2518,7 @@ void radio_set_twotone(TRANSMITTER *tx, int state) {
   g_idle_add(ext_vfo_update, NULL);
 }
 
-void radio_toggle_tune() {
+void radio_toggle_tune(void) {
   if (radio_is_remote) {
     send_toggle_tune(cl_sock_tcp);
     return;
@@ -2717,7 +2717,7 @@ void radio_set_tune(int state) {
   g_idle_add(ext_vfo_update, NULL);
 }
 
-int radio_is_transmitting() {
+int radio_is_transmitting(void) {
   int ret = 0;
 
   if (can_transmit) { ret = mox | vox | transmitter->tune; }
@@ -2725,7 +2725,7 @@ int radio_is_transmitting() {
   return ret;
 }
 
-double radio_get_drive() {
+double radio_get_drive(void) {
   if (can_transmit) {
     return transmitter->drive;
   } else {
@@ -2754,7 +2754,7 @@ static int calcLevel(double d) {
   return level;
 }
 
-void radio_calc_drive_level() {
+void radio_calc_drive_level(void) {
   int level;
 
   if (!can_transmit) { return; }
@@ -3238,7 +3238,7 @@ void radio_apply_band_settings(int flag, int id) {
   suppress_popup_sliders--;
 }
 
-void radio_tx_vfo_changed() {
+void radio_tx_vfo_changed(void) {
   //
   // When changing the active receiver or changing the split status,
   // the VFO that controls the transmitter my flip between VFOA/VFOB.
@@ -3292,7 +3292,7 @@ void radio_set_anan10E(int new) {
   radio_protocol_run();
 }
 
-void radio_split_toggle() {
+void radio_split_toggle(void) {
   radio_set_split(!split);
 }
 
@@ -3316,8 +3316,8 @@ void radio_set_split(int val) {
   }
 }
 
-static void radio_restore_state() {
-  t_print("%s: path=%s\n", __FUNCTION__, property_path);
+static void radio_restore_state(void) {
+  t_print("%s: path=%s\n", __func__, property_path);
   g_mutex_lock(&property_mutex);
   loadProperties(property_path);
   //
@@ -3458,7 +3458,7 @@ static void radio_restore_state() {
 #ifdef MIDI
   midi_restore_state();
 #endif
-  t_print("%s: radio state (except receiver/transmitter) restored.\n", __FUNCTION__);
+  t_print("%s: radio state (except receiver/transmitter) restored.\n", __func__);
 
   //
   // Some post-restore operations and sanity checks.
@@ -3522,7 +3522,7 @@ static void radio_restore_state() {
   g_mutex_unlock(&property_mutex);
 }
 
-void radio_save_state() {
+void radio_save_state(void) {
   g_mutex_lock(&property_mutex);
   clearProperties();
 
@@ -3778,12 +3778,6 @@ int radio_client_start(gpointer data) {
 
 #endif
 
-  //
-  // This is the right place to start the udp and sidetone threads
-  //
-  g_thread_new("client_udp", client_udp_thread, NULL);
-  g_thread_new("client_cw", client_sidetone_thread, transmitter);
-
   for (int i = 0; i < receivers; i++) {
     send_startstop_rxspectrum(cl_sock_tcp, i, 1);
   }
@@ -3860,7 +3854,7 @@ void my_combo_attach(GtkGrid *grid, GtkWidget *combo, int row, int col, int span
 // (xvtr bands are not counted here)
 //
 
-int radio_max_band() {
+int radio_max_band(void) {
   int max = BANDS - 1;
 
   switch (device) {
@@ -3892,7 +3886,7 @@ int radio_server_protocol_stop(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
-void radio_protocol_stop() {
+void radio_protocol_stop(void) {
   if (!radio_protocol_running) { return; }
 
   radio_set_mox(0);
@@ -3935,7 +3929,7 @@ int radio_server_protocol_run(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
-void radio_protocol_run() {
+void radio_protocol_run(void) {
   if (radio_protocol_running) { return; }
 
   switch (protocol) {
@@ -3959,7 +3953,7 @@ void radio_protocol_run() {
       break;
 
     default:
-      t_print("%s:WARNING:SOAPY:only 1 or 2 receivers allowed\n", __FUNCTION__);
+      t_print("%s:WARNING:SOAPY:only 1 or 2 receivers allowed\n", __func__);
     }
 
 #endif
@@ -3969,7 +3963,7 @@ void radio_protocol_run() {
   radio_protocol_running = 1;
 }
 
-void radio_protocol_restart() {
+void radio_protocol_restart(void) {
   radio_protocol_stop();
   usleep(200000);
   radio_protocol_run();
@@ -4016,7 +4010,7 @@ static gpointer auto_tune_thread(gpointer data) {
   return NULL;
 }
 
-void radio_start_auto_tune() {
+void radio_start_auto_tune(void) {
   static GThread *tune_thread_id = NULL;
 
   if (tune_thread_id) {
@@ -4033,7 +4027,7 @@ void radio_start_auto_tune() {
 // The next four functions implement a temporary change
 // of settings during capture/replay.
 //
-void radio_start_capture() {
+void radio_start_capture(void) {
   //
   // - turn off  equalisers for both RX but keep the state in rx
   //
@@ -4042,7 +4036,7 @@ void radio_start_capture() {
   }
 }
 
-void radio_end_capture() {
+void radio_end_capture(void) {
   //
   // - normalise what has been captured
   // - restore  RX equaliser on/off flags
@@ -4080,13 +4074,13 @@ void radio_end_capture() {
   }
 }
 
-void radio_start_xmit_captured_data() {
+void radio_start_xmit_captured_data(void) {
   if (can_transmit) {
     tx_xmit_captured_data_start(transmitter);
   }
 }
 
-void radio_end_xmit_captured_data() {
+void radio_end_xmit_captured_data(void) {
   if (can_transmit) {
     tx_xmit_captured_data_end(transmitter);
   }
