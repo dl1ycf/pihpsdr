@@ -128,7 +128,7 @@ int recv_tcp(int s, char *buffer, int bytes) {
     if (rc < 0 || ++count >= 10) {
       // return -1, so we need not check downstream
       // on incomplete messages received
-      t_print("%s: read %d bytes, but expected %d.\n", __FUNCTION__, bytes_read, bytes);
+      t_print("%s: read %d bytes, but expected %d.\n", __func__, bytes_read, bytes);
       bytes_read = -1;
       t_perror("recv_tcp");
 
@@ -168,7 +168,7 @@ int send_tcp(int s, char *buffer, int bytes) {
     if (rc < 0) {
       // return -1, so we need not check downstream
       // on incomplete messages sent
-      t_print("%s: sent %d bytes, but tried %d.\n", __FUNCTION__, bytes_sent, bytes);
+      t_print("%s: sent %d bytes, but tried %d.\n", __func__, bytes_sent, bytes);
       bytes_sent = -1;
       t_perror("send_tcp");
 

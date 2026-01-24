@@ -17,9 +17,9 @@
 *
 */
 
-#ifdef GPIO
 #include <gtk/gtk.h>
 
+#ifdef GPIO
 #include "action_dialog.h"
 #include "actions.h"
 #include "agc.h"

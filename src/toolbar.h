@@ -28,10 +28,10 @@
 extern int tb_function[MAX_TB_ROWS];
 extern enum ACTION tb_actions[MAX_TB_FUNCTIONS][MAX_TB_BUTTONS];
 
-extern void toolbar_save_state();
-extern void toolbar_restore_state();
+extern void toolbar_save_state(void);
+extern void toolbar_restore_state(void);
 
 extern void toolbar_create(int width, int height, int rows);
-extern void toolbar_destroy();
+extern void toolbar_destroy(void);
 extern void toolbar_show(int ypos);
 extern void update_toolbar_labels(void);

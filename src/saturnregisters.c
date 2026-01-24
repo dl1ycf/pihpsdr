@@ -804,7 +804,7 @@ void SetCodecInputParams(bool EnableLine, bool EnableBoost, int LineInGain) {
     }
     break;
   default:
-    t_print("%s: Invalid Installed Codec\n", __FUNCTION__);
+    t_print("%s: Invalid Installed Codec\n", __func__);
     break;
   }
   pthread_mutex_unlock(&CodecMutex);

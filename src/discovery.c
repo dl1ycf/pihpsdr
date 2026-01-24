@@ -93,14 +93,14 @@ static char host_addr[128] = "127.0.0.1:50000";
 static void host_entry_cb(GtkWidget *widget, gpointer data);
 
 static void print_devices(void) {
-  t_print("%s: discovery found %d devices\n", __FUNCTION__, devices);
+  t_print("%s: discovery found %d devices\n", __func__, devices);
 
   for (int i = 0; i < devices; i++) {
     switch (discovered[i].protocol) {
     case ORIGINAL_PROTOCOL:
     case NEW_PROTOCOL:
       t_print("%s: found protocol=%d device=%d software_version=%d status=%d address=%s (%02X:%02X:%02X:%02X:%02X:%02X) via %s\n",
-              __FUNCTION__,
+              __func__,
               discovered[i].protocol,
               discovered[i].device,
               discovered[i].software_version,
@@ -116,7 +116,7 @@ static void print_devices(void) {
       break;
 
     case SOAPYSDR_PROTOCOL:
-      t_print("%s: found protocol=%d driver=%s software_version=%d driver_key=%s hardware_key=%s via %s\n", __FUNCTION__,
+      t_print("%s: found protocol=%d driver=%s software_version=%d driver_key=%s hardware_key=%s via %s\n", __func__,
               discovered[i].protocol,
               discovered[i].name,
               discovered[i].software_version,
@@ -128,7 +128,7 @@ static void print_devices(void) {
   }
 }
 
-static gboolean close_cb() {
+static gboolean close_cb(void) {
   host_entry_cb(host_entry, NULL);
   return TRUE;
 }
@@ -212,7 +212,7 @@ static gboolean exit_cb (GtkWidget *widget, GdkEventButton *event, gpointer data
   return TRUE;
 }
 
-static void save_ipaddr() {
+static void save_ipaddr(void) {
   clearProperties();
 
   if (strlen(ipaddr_radio) > 0) {
@@ -246,7 +246,7 @@ static void tcp_en_cb(GtkWidget *widget, gpointer data) {
 // Supporting functions for the server selection screen |
 //------------------------------------------------------+
 
-static void save_hostlist() {
+static void save_hostlist(void) {
   g_signal_handler_block(G_OBJECT(host_combo), host_combo_signal_id);
   clearProperties();
   int count = 0;
@@ -340,7 +340,7 @@ static void connect_cb(GtkWidget *widget, gpointer data) {
 
   g_strfreev(splitstr);
   mypwd = gtk_entry_get_text(GTK_ENTRY(host_pwd));
-  t_print("%s: host=%s port=%d\n", __FUNCTION__, myhost, myport);
+  t_print("%s: host=%s port=%d\n", __func__, myhost, myport);
 
   if (*myhost == 0 || myport == 0) {
     g_idle_add(fatal_error, "NOTICE: invalid host:port string.");
@@ -586,7 +586,7 @@ gboolean discovery_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer d
 // Build the discovery window                         |
 //----------------------------------------------------+
 
-static void discovery() {
+static void discovery(void) {
   //
   // On the discovery screen, make the combo-boxes "touchscreen-friendly"
   //
@@ -626,7 +626,7 @@ static void discovery() {
       discovered[devices].use_tcp = 0;
       discovered[devices].use_routing = 0;
       discovered[devices].supported_receivers = 2;
-      t_print("%s: found USB OZY device min=%0.3f MHz max=%0.3f MHz\n", __FUNCTION__,
+      t_print("%s: found USB OZY device min=%0.3f MHz max=%0.3f MHz\n", __func__,
               discovered[devices].frequency_min * 1E-6,
               discovered[devices].frequency_max * 1E-6);
       devices++;
@@ -863,7 +863,7 @@ static void discovery() {
   //----------------------------------------------------+
   loadProperties("remote.props");
   GetPropS0("current_host", host_addr);
-  t_print("%s: current server host %s\n", __FUNCTION__, host_addr);
+  t_print("%s: current server host %s\n", __func__, host_addr);
   // Create a "Server" button
   GtkWidget *start_server_button = gtk_button_new_with_label("Use Server");
   g_signal_connect(start_server_button, "clicked", G_CALLBACK(connect_cb), grid);
@@ -881,7 +881,7 @@ static void discovery() {
   for (int i = 0; i < num_hosts; i++) {
     *str = 0;
     GetPropS1("host[%d]", i, str);
-    t_print("%s: server host entry #%d = %s\n", __FUNCTION__, i, str);
+    t_print("%s: server host entry #%d = %s\n", __func__, i, str);
 
     if (strcmp(str, host_addr) && *str && strlen(str) > 0) {  // Avoid duplicate
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(host_combo), NULL, str);
@@ -969,7 +969,7 @@ static void discovery() {
   gtk_grid_attach(GTK_GRID(grid), exit_b, 3, row, 1, 1);
   gtk_container_add (GTK_CONTAINER (content), grid);
   gtk_widget_show_all(discovery_dialog);
-  t_print("%s: showing device dialog\n", __FUNCTION__);
+  t_print("%s: showing device dialog\n", __func__);
   //
   // Autostart and RedPitaya radios:
   //
@@ -984,7 +984,7 @@ static void discovery() {
   // and then the discovery process is re-initiated for RedPitya
   // devices only.
   //
-  t_print("%s: devices=%d autostart=%d\n", __FUNCTION__, devices, autostart);
+  t_print("%s: devices=%d autostart=%d\n", __func__, devices, autostart);
 
   if (devices == 1 && autostart) {
     d = &discovered[0];

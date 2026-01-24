@@ -83,7 +83,7 @@ static inline long long ROUND(long long freq, int nsteps, int step) {
 struct _vfo vfo[MAX_VFOS];
 struct _mode_settings mode_settings[MODES];
 
-static void vfo_save_bandstack() {
+static void vfo_save_bandstack(void) {
   BANDSTACK *bandstack = bandstack_get_bandstack(vfo[0].band);
   bandstack->current_entry = vfo[0].bandstack;
   BANDSTACK_ENTRY *entry = &bandstack->entry[vfo[0].bandstack];
@@ -100,7 +100,7 @@ static void vfo_save_bandstack() {
   }
 }
 
-void modesettings_save_state() {
+void modesettings_save_state(void) {
   for (int i = 0; i < MODES; i++) {
     SetPropI1("modeset.%d.filter", i,                 mode_settings[i].filter);
     SetPropI1("modeset.%d.cwPeak", i,                 mode_settings[i].cwPeak);
@@ -174,7 +174,7 @@ void modesettings_save_state() {
   }
 }
 
-void modesettings_restore_state() {
+void modesettings_restore_state(void) {
   for (int i = 0; i < MODES; i++) {
     //
     // set defaults that depend on  the mode: filter, agc, step
@@ -420,7 +420,7 @@ void copy_mode_settings(int mode) {
   }
 }
 
-void vfo_save_state() {
+void vfo_save_state(void) {
   ASSERT_SERVER();
   vfo_save_bandstack();
 
@@ -444,7 +444,7 @@ void vfo_save_state() {
   }
 }
 
-void vfo_restore_state() {
+void vfo_restore_state(void) {
   ASSERT_SERVER();
 
   for (int i = 0; i < MAX_VFOS; i++) {
@@ -558,7 +558,7 @@ static inline void vfo_id_adjust_band(int v, long long f) {
   }
 }
 
-void vfo_xvtr_changed() {
+void vfo_xvtr_changed(void) {
   ASSERT_SERVER();
 
   //
@@ -676,7 +676,7 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
 
         if (audio_open_output(rx) < 0) {
           rx->local_audio = 0;
-          t_print("%s: Open audio output failed\n", __FUNCTION__);
+          t_print("%s: Open audio output failed\n", __func__);
         } else {
           rx->local_audio = 1;
         }
@@ -738,7 +738,7 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
 
         if (audio_open_input(transmitter) < 0) {
           transmitter->local_audio = 0;
-          t_print("%s: Open audio input failed\n", __FUNCTION__);
+          t_print("%s: Open audio input failed\n", __func__);
         } else {
           transmitter->local_audio = 1;
         }
@@ -1000,7 +1000,7 @@ void vfo_id_filter_changed(int id, int f) {
   g_idle_add(ext_vfo_update, NULL);
 }
 
-void vfo_vfos_changed() {
+void vfo_vfos_changed(void) {
   ASSERT_SERVER();
   //
   // Use this when there are large changes in the VFOs.
@@ -1023,7 +1023,7 @@ void vfo_vfos_changed() {
   g_idle_add(ext_vfo_update, NULL);
 }
 
-void vfo_a_to_b() {
+void vfo_a_to_b(void) {
   if (radio_is_remote) {
     send_vfo_atob(cl_sock_tcp);
     return;
@@ -1039,7 +1039,7 @@ void vfo_a_to_b() {
   vfo_vfos_changed();
 }
 
-void vfo_b_to_a() {
+void vfo_b_to_a(void) {
   if (radio_is_remote) {
     send_vfo_btoa(cl_sock_tcp);
     return;
@@ -1055,7 +1055,7 @@ void vfo_b_to_a() {
   vfo_vfos_changed();
 }
 
-void vfo_a_swap_b() {
+void vfo_a_swap_b(void) {
   if (radio_is_remote) {
     send_vfo_swap(cl_sock_tcp);
     return;
@@ -1500,7 +1500,7 @@ static gboolean vfo_draw_cb (GtkWidget *widget,
 // is determined by the current vfo layout
 // Elements whose x-coordinate is zero are not drawn
 //
-void vfo_update() {
+void vfo_update(void) {
   char wid[6];
 
   if (!vfo_surface) { return; }
@@ -2313,7 +2313,7 @@ GtkWidget* vfo_init(int width, int height) {
 // transmitter
 //
 
-int vfo_get_tx_vfo() {
+int vfo_get_tx_vfo(void) {
   int txvfo = active_receiver->id;
 
   if (split) { txvfo = 1 - txvfo; }
@@ -2321,7 +2321,7 @@ int vfo_get_tx_vfo() {
   return txvfo;
 }
 
-int vfo_get_tx_mode() {
+int vfo_get_tx_mode(void) {
   int txvfo = active_receiver->id;
 
   if (split) { txvfo = 1 - txvfo; }
@@ -2329,7 +2329,7 @@ int vfo_get_tx_mode() {
   return vfo[txvfo].mode;
 }
 
-long long vfo_get_tx_freq() {
+long long vfo_get_tx_freq(void) {
   int txvfo = active_receiver->id;
 
   if (split) { txvfo = 1 - txvfo; }
@@ -2363,7 +2363,7 @@ void vfo_id_xit_value(int id, long long value ) {
   g_idle_add(ext_vfo_update, NULL);
 }
 
-void vfo_xit_toggle() {
+void vfo_xit_toggle(void) {
   int id = vfo_get_tx_vfo();
   vfo_id_xit_toggle(id);
 }

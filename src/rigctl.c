@@ -143,12 +143,12 @@ SERIALPORT SerialPorts[MAX_SERIAL + 1];        // one extra for serial PTT
 
 static gpointer rigctl_client (gpointer data);
 
-int rigctl_tcp_running() {
+int rigctl_tcp_running(void) {
   return (server_socket >= 0);
 }
 
-void shutdown_tcp_rigctl() {
-  t_print("%s: server_socket=%d\n", __FUNCTION__, server_socket);
+void shutdown_tcp_rigctl(void) {
+  t_print("%s: server_socket=%d\n", __func__, server_socket);
   tcp_running = 0;
 
   //
@@ -168,7 +168,7 @@ void shutdown_tcp_rigctl() {
     }
 
     if (tcp_client[id].fd != -1) {
-      t_print("%s: closing client socket: %d\n", __FUNCTION__, tcp_client[id].fd);
+      t_print("%s: closing client socket: %d\n", __func__, tcp_client[id].fd);
       shutdown(tcp_client[id].fd, SHUT_RDWR);
       close(tcp_client[id].fd);
       tcp_client[id].fd = -1;
@@ -184,7 +184,7 @@ void shutdown_tcp_rigctl() {
   // Close server socket
   //
   if (server_socket >= 0) {
-    t_print("%s: closing server_socket: %d\n", __FUNCTION__, server_socket);
+    t_print("%s: closing server_socket: %d\n", __func__, server_socket);
     shutdown(server_socket, SHUT_RDWR);
     close(server_socket);
     server_socket = -1;
@@ -215,7 +215,7 @@ static int dashsamples;
 // send_space(int len) send a "key_down" of zero,      followed by a "key-up" of len*dotlen
 //
 //
-static void send_dash() {
+static void send_dash(void) {
   struct timespec ts;
 
   if (cw_key_hit) { return; }
@@ -234,7 +234,7 @@ static void send_dash() {
   clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
 }
 
-static void send_dot() {
+static void send_dot(void) {
   struct timespec ts;
 
   if (cw_key_hit) { return; }
@@ -1095,7 +1095,7 @@ void rigctl_send_cw_text(int pos) {
    }
 }
 
-void rigctl_start_cw_thread() {
+void rigctl_start_cw_thread(void) {
   //
   // Start the rigctl CW thread. This is now done at the start of
   // the program once and for ever
@@ -1108,7 +1108,7 @@ void rigctl_start_cw_thread() {
 static gpointer rigctl_server(gpointer data) {
   int port = GPOINTER_TO_INT(data);
   int on = 1;
-  t_print("%s: starting TCP server on port %d\n", __FUNCTION__, port);
+  t_print("%s: starting TCP server on port %d\n", __func__, port);
   server_socket = socket(AF_INET, SOCK_STREAM, 0);
 
   if (server_socket < 0) {
@@ -1167,7 +1167,7 @@ static gpointer rigctl_server(gpointer data) {
     // A slot is available, try to get connection via accept()
     // (this initialises fd, address, address_length)
     //
-    t_print("%s: slot= %d waiting for connection\n", __FUNCTION__, spare);
+    t_print("%s: slot= %d waiting for connection\n", __func__, spare);
     tcp_client[spare].fd = accept(server_socket, (struct sockaddr*)&tcp_client[spare].address,
                                   &tcp_client[spare].address_length);
 
@@ -1177,7 +1177,7 @@ static gpointer rigctl_server(gpointer data) {
       continue;
     }
 
-    t_print("%s: slot= %d connected with fd=%d\n", __FUNCTION__, spare, tcp_client[spare].fd);
+    t_print("%s: slot= %d connected with fd=%d\n", __func__, spare, tcp_client[spare].fd);
     //
     // Setting TCP_NODELAY may (or may not) improve responsiveness
     // by *disabling* Nagle's algorithm for clustering small packets
@@ -1238,7 +1238,7 @@ static gpointer rigctl_server(gpointer data) {
 
 static gpointer rigctl_client (gpointer data) {
   CLIENT *client = (CLIENT *)data;
-  t_print("%s: starting rigctl_client: socket=%d\n", __FUNCTION__, client->fd);
+  t_print("%s: starting rigctl_client: socket=%d\n", __func__, client->fd);
   g_mutex_lock(&mutex_numcat);
   cat_control++;
 
@@ -1282,7 +1282,7 @@ static gpointer rigctl_client (gpointer data) {
 
   // Release the last "command" buffer (that has not yet been used)
   g_free(command);
-  t_print("%s: Leaving rigctl_client thread\n", __FUNCTION__);
+  t_print("%s: Leaving rigctl_client thread\n", __func__);
 
   //
   // If rigctl is disabled via the GUI, the connections are closed by shutdown_rigctl_ports()
@@ -5596,7 +5596,7 @@ static gpointer serial_server(gpointer data) {
   int i;
   fd_set fds;
   struct timeval tv;
-  t_print("%s: Entering Thread\n", __FUNCTION__);
+  t_print("%s: Entering Thread\n", __func__);
   g_mutex_lock(&mutex_numcat);
   cat_control++;
   g_mutex_unlock(&mutex_numcat);
@@ -5690,7 +5690,7 @@ static gpointer serial_server(gpointer data) {
   cat_control--;
   g_mutex_unlock(&mutex_numcat);
   g_idle_add(ext_vfo_update, NULL);
-  t_print("%s: Exiting Thread, running=%d\n", __FUNCTION__, client->running);
+  t_print("%s: Exiting Thread, running=%d\n", __func__, client->running);
   return NULL;
 }
 
@@ -5699,7 +5699,7 @@ static gpointer ptt_server(gpointer data) {
   int status;
   int pttout = 0;
   int pttin = 0;
-  t_print("%s: starting thread\n", __FUNCTION__);
+  t_print("%s: starting thread\n", __func__);
   client->running = TRUE;
   ioctl(client->fd, TIOCMGET, &status);
   status &= ~TIOCM_RTS;
@@ -5736,7 +5736,7 @@ static gpointer ptt_server(gpointer data) {
     }
   }
 
-  t_print("%s: exiting\n", __FUNCTION__);
+  t_print("%s: exiting\n", __func__);
   return NULL;
 }
 
@@ -5744,7 +5744,7 @@ int launch_serial_ptt(int id) {
   int fd;
   int status;
   speed_t speed;
-  t_print("%s:  Port %s\n", __FUNCTION__, SerialPorts[id].port);
+  t_print("%s:  Port %s\n", __func__, SerialPorts[id].port);
   //
   // Use O_NONBLOCK to prevent "hanging" upon open()
   // later.
@@ -5756,7 +5756,7 @@ int launch_serial_ptt(int id) {
     return 0 ;
   }
 
-  t_print("%s: ptt port fd=%d\n", __FUNCTION__, fd);
+  t_print("%s: ptt port fd=%d\n", __func__, fd);
   speed = B1200;  // not used anyway
 
   if (set_interface_attribs (fd, speed, 0) != 0) {
@@ -5780,7 +5780,7 @@ int launch_serial_ptt(int id) {
 int launch_serial_rigctl (int id) {
   int fd;
   speed_t speed;
-  t_print("%s:  Port %s\n", __FUNCTION__, SerialPorts[id].port);
+  t_print("%s:  Port %s\n", __func__, SerialPorts[id].port);
   //
   // Use O_NONBLOCK to prevent "hanging" upon open(), set blocking mode
   // later.
@@ -5792,7 +5792,7 @@ int launch_serial_rigctl (int id) {
     return 0 ;
   }
 
-  t_print("%s: serial port fd=%d\n", __FUNCTION__, fd);
+  t_print("%s: serial port fd=%d\n", __func__, fd);
   serial_client[id].fd = fd;
   // hard-wired parity = NONE
   speed = SerialPorts[id].speed;
@@ -5804,7 +5804,7 @@ int launch_serial_rigctl (int id) {
     speed = B9600;
   }
 
-  t_print("%s: Speed (baud rate code)=%d\n", __FUNCTION__, (int) speed);
+  t_print("%s: Speed (baud rate code)=%d\n", __func__, (int) speed);
   serial_client[id].fifo = 0;
 
   if (set_interface_attribs (fd, speed, 0) == 0) {
@@ -5815,7 +5815,7 @@ int launch_serial_rigctl (int id) {
     // than a serial line (most likely a FIFO), but it
     // can still be used.
     //
-    t_print("%s: serial port is probably a FIFO\n", __FUNCTION__);
+    t_print("%s: serial port is probably a FIFO\n", __func__);
     serial_client[id].fifo = 1;
   }
 
@@ -5867,7 +5867,7 @@ int launch_serial_rigctl (int id) {
 }
 
 void disable_serial_ptt(int id) {
-  t_print("%s: Close Serial Port %s\n", __FUNCTION__, SerialPorts[id].port);
+  t_print("%s: Close Serial Port %s\n", __func__, SerialPorts[id].port);
   serial_client[id].running = FALSE;
 
   if (serial_client[id].thread_id) {
@@ -5883,7 +5883,7 @@ void disable_serial_ptt(int id) {
 
 // Serial Port close
 void disable_serial_rigctl (int id) {
-  t_print("%s: Close Serial Port %s\n", __FUNCTION__, SerialPorts[id].port);
+  t_print("%s: Close Serial Port %s\n", __func__, SerialPorts[id].port);
 
   if (serial_client[id].andromeda_timer != 0) {
     g_source_remove(serial_client[id].andromeda_timer);
@@ -5919,7 +5919,7 @@ void disable_serial_rigctl (int id) {
   }
 }
 
-void launch_tcp_rigctl () {
+void launch_tcp_rigctl(void) {
   t_print( "---- LAUNCHING RIGCTL SERVER ----\n");
   tcp_running = 1;
   //
@@ -5928,7 +5928,7 @@ void launch_tcp_rigctl () {
   rigctl_server_thread_id = g_thread_new( "rigctl server", rigctl_server, GINT_TO_POINTER(rigctl_tcp_port));
 }
 
-void rigctl_restore_state() {
+void rigctl_restore_state(void) {
   GetPropI0("rigctl_tcp_enable",                             rigctl_tcp_enable);
   GetPropI0("rigctl_tcp_andromeda",                          rigctl_tcp_andromeda);
   GetPropI0("rigctl_tcp_autoreporting",                      rigctl_tcp_autoreporting);
@@ -5962,7 +5962,7 @@ void rigctl_restore_state() {
   //
 }
 
-void rigctl_save_state() {
+void rigctl_save_state(void) {
   SetPropI0("rigctl_tcp_enable",                             rigctl_tcp_enable);
   SetPropI0("rigctl_tcp_andromeda",                          rigctl_tcp_andromeda);
   SetPropI0("rigctl_tcp_autoreporting",                      rigctl_tcp_autoreporting);

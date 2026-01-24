@@ -396,7 +396,7 @@ unsigned int GetAnalogueIn(unsigned int AnalogueSelect);
 // CodecInitialise()
 // initialise the CODEC, with the register values that don't normally change
 //
-void CodecInitialise();
+void CodecInitialise(void);
 
 //
 // SetTXAmplitudeScaling (unsigned int Amplitude)

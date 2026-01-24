@@ -75,26 +75,26 @@ static bool ThreadError = false;                   // true if a thread reports a
 #define VCONSTTXAMPLSCALEFACTOR 0x0001FFFF  // 18 bit scale value - set to 1/2 of full scale
 
 struct ThreadSocketData SocketData[VPORTTABLESIZE] = {
-  {0, 0, 1024, "Cmd", false, {}, 0, 0},                     // command (incoming) thread
-  {0, 0, 1025, "DDC Specific", false, {}, 0, 0},            // DDC specifc (incoming) thread
-  {0, 0, 1026, "DUC Specific", false, {}, 0, 0},            // DUC specific (incoming) thread
-  {0, 0, 1027, "High Priority In", false, {}, 0, 0},        // High Priority (incoming) thread
-  {0, 0, 1028, "Spkr Audio", false, {}, 0, 0},              // Speaker Audio (incoming) thread
-  {0, 0, 1029, "DUC I/Q", false, {}, 0, 0},                 // DUC IQ (incoming) thread
-  {0, 0, 1025, "High Priority Out", false, {}, 0, 0},       // High Priority (outgoing) thread
-  {0, 0, 1026, "Mic Audio", false, {}, 0, 0},               // Mic Audio (outgoing) thread
-  {0, 0, 1035, "DDC I/Q 0", false, {}, 0, 0},               // DDC IQ 0 (outgoing) thread
-  {0, 0, 1036, "DDC I/Q 1", false, {}, 0, 0},               // DDC IQ 1 (outgoing) thread
-  {0, 0, 1037, "DDC I/Q 2", false, {}, 0, 0},               // DDC IQ 2 (outgoing) thread
-  {0, 0, 1038, "DDC I/Q 3", false, {}, 0, 0},               // DDC IQ 3 (outgoing) thread
-  {0, 0, 1039, "DDC I/Q 4", false, {}, 0, 0},               // DDC IQ 4 (outgoing) thread
-  {0, 0, 1040, "DDC I/Q 5", false, {}, 0, 0},               // DDC IQ 5 (outgoing) thread
-  {0, 0, 1041, "DDC I/Q 6", false, {}, 0, 0},               // DDC IQ 6 (outgoing) thread
-  {0, 0, 1042, "DDC I/Q 7", false, {}, 0, 0},               // DDC IQ 7 (outgoing) thread
-  {0, 0, 1043, "DDC I/Q 8", false, {}, 0, 0},               // DDC IQ 8 (outgoing) thread
-  {0, 0, 1044, "DDC I/Q 9", false, {}, 0, 0},               // DDC IQ 9 (outgoing) thread
-  {0, 0, 1027, "Wideband 0", false, {}, 0, 0},              // Wideband 0 (outgoing) thread
-  {0, 0, 1028, "Wideband 1", false, {}, 0, 0}               // Wideband 1 (outgoing) thread
+  {0, 0, 1024, "Cmd", false, {0}, 0, 0},                     // command (incoming) thread
+  {0, 0, 1025, "DDC Specific", false, {0}, 0, 0},            // DDC specifc (incoming) thread
+  {0, 0, 1026, "DUC Specific", false, {0}, 0, 0},            // DUC specific (incoming) thread
+  {0, 0, 1027, "High Priority In", false, {0}, 0, 0},        // High Priority (incoming) thread
+  {0, 0, 1028, "Spkr Audio", false, {0}, 0, 0},              // Speaker Audio (incoming) thread
+  {0, 0, 1029, "DUC I/Q", false, {0}, 0, 0},                 // DUC IQ (incoming) thread
+  {0, 0, 1025, "High Priority Out", false, {0}, 0, 0},       // High Priority (outgoing) thread
+  {0, 0, 1026, "Mic Audio", false, {0}, 0, 0},               // Mic Audio (outgoing) thread
+  {0, 0, 1035, "DDC I/Q 0", false, {0}, 0, 0},               // DDC IQ 0 (outgoing) thread
+  {0, 0, 1036, "DDC I/Q 1", false, {0}, 0, 0},               // DDC IQ 1 (outgoing) thread
+  {0, 0, 1037, "DDC I/Q 2", false, {0}, 0, 0},               // DDC IQ 2 (outgoing) thread
+  {0, 0, 1038, "DDC I/Q 3", false, {0}, 0, 0},               // DDC IQ 3 (outgoing) thread
+  {0, 0, 1039, "DDC I/Q 4", false, {0}, 0, 0},               // DDC IQ 4 (outgoing) thread
+  {0, 0, 1040, "DDC I/Q 5", false, {0}, 0, 0},               // DDC IQ 5 (outgoing) thread
+  {0, 0, 1041, "DDC I/Q 6", false, {0}, 0, 0},               // DDC IQ 6 (outgoing) thread
+  {0, 0, 1042, "DDC I/Q 7", false, {0}, 0, 0},               // DDC IQ 7 (outgoing) thread
+  {0, 0, 1043, "DDC I/Q 8", false, {0}, 0, 0},               // DDC IQ 8 (outgoing) thread
+  {0, 0, 1044, "DDC I/Q 9", false, {0}, 0, 0},               // DDC IQ 9 (outgoing) thread
+  {0, 0, 1027, "Wideband 0", false, {0}, 0, 0},              // Wideband 0 (outgoing) thread
+  {0, 0, 1028, "Wideband 1", false, {0}, 0, 0}               // Wideband 1 (outgoing) thread
 };
 
 static pthread_t saturn_server_thread;
@@ -183,7 +183,7 @@ static void* SaturnServerWatchdog(void *arg) {
     NewMessageReceived = false;
   }
 
-  t_print("%s ended\n", __FUNCTION__);
+  t_print("%s ended\n", __func__);
   return NULL;
 }
 

@@ -28,7 +28,7 @@ void soapy_protocol_create_dual_receiver(RECEIVER *rx1, RECEIVER *rx2);
 void soapy_protocol_start_single_receiver(RECEIVER *rx);
 void soapy_protocol_start_dual_receiver(RECEIVER *rx1, RECEIVER *rx2);
 void soapy_protocol_rxtx(const TRANSMITTER *tx);
-void soapy_protocol_txrx();
+void soapy_protocol_txrx(void);
 
 void soapy_protocol_init(gboolean hf);
 void soapy_protocol_stop_receivers(void);

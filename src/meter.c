@@ -84,7 +84,7 @@ static gboolean meter_press_event_cb (GtkWidget *widget, GdkEventButton *event, 
 }
 
 GtkWidget* meter_init(int width, int height) {
-  t_print("%s: width=%d height=%d\n", __FUNCTION__, width, height);
+  t_print("%s: width=%d height=%d\n", __func__, width, height);
   meter = gtk_drawing_area_new ();
   gtk_widget_set_size_request (meter, width, height);
   /* Signals used to handle the backing surface */

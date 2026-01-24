@@ -77,7 +77,7 @@ static int apply(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
-static void schedule_apply() {
+static void schedule_apply(void) {
   if (apply_timeout > 0) {
     g_source_remove(apply_timeout);
   }
@@ -85,7 +85,7 @@ static void schedule_apply() {
   apply_timeout = g_timeout_add(500, apply, NULL);
 }
 
-static void cleanup() {
+static void cleanup(void) {
   if (dialog != NULL) {
     GtkWidget *tmp = dialog;
     dialog = NULL;
@@ -96,7 +96,7 @@ static void cleanup() {
   }
 }
 
-static gboolean close_cb () {
+static gboolean close_cb(void) {
   cleanup();
   return TRUE;
 }

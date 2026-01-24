@@ -109,10 +109,10 @@ enum {
 };
 
 static int updatePanel(int state);
-static void updateDescription();
+static void updateDescription(void);
 static void load_store(void);
 
-static void cleanup() {
+static void cleanup(void) {
   if (dialog != NULL) {
     GtkWidget *tmp = dialog;
     dialog = NULL;
@@ -125,7 +125,7 @@ static void cleanup() {
   }
 }
 
-static gboolean close_cb () {
+static gboolean close_cb(void) {
   cleanup();
   return TRUE;
 }
@@ -148,7 +148,7 @@ static void device_cb(GtkWidget *widget, gpointer data) {
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), midi_devices[ind].active);
 }
 
-static void updateEncoderParams() {
+static void updateEncoderParams(void) {
   //
   // Task: show or hide EncoderContainer depending on whether
   //       thre current type is an encoder. If it is an encoder,
@@ -212,7 +212,7 @@ static gboolean action_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void row_inserted_cb(GtkTreeModel *tree_model, GtkTreePath *path, GtkTreeIter *iter, gpointer user_data) {
-  //t_print("%s\n",__FUNCTION__);
+  //t_print("%s\n",__func__);
   gtk_tree_view_set_cursor(GTK_TREE_VIEW(view), path, NULL, FALSE);
 }
 
@@ -257,7 +257,7 @@ static void tree_selection_changed_cb (GtkTreeSelection *sel, gpointer data) {
   }
 }
 
-static void find_current_cmd() {
+static void find_current_cmd(void) {
   struct desc *cmd;
   cmd = MidiCommandsTable[thisNote];
 
@@ -412,7 +412,7 @@ static void add_store(int key, const struct desc *cmd) {
   }
 }
 
-static void load_store() {
+static void load_store(void) {
   const struct desc *cmd;
   gtk_list_store_clear(store);
 
@@ -426,7 +426,7 @@ static void load_store() {
   }
 }
 
-static void updateDescription() {
+static void updateDescription(void) {
   char str_channel[64];
   char str_note[64];
   int  addFlag = 0;
@@ -505,7 +505,7 @@ static void delete_cb(GtkButton *widget, GdkEventButton *event, gpointer user_da
   struct desc *next_cmd;
 
   if (current_cmd == NULL) {
-    t_print("%s: current_cmd is NULL!\n", __FUNCTION__);
+    t_print("%s: current_cmd is NULL!\n", __func__);
     return;
   }
 
@@ -870,7 +870,7 @@ static int updatePanel(int state) {
 
     default:
       // This cannot happen
-      t_print("%s: Unknown Event in UPDATE_NEW\n", __FUNCTION__);
+      t_print("%s: Unknown Event in UPDATE_NEW\n", __func__);
     }
 
     gtk_combo_box_set_active (GTK_COMBO_BOX(newType), 0);
@@ -931,7 +931,7 @@ static int updatePanel(int state) {
 
     default:
       // cannot happen
-      t_print("%s: Unknown event in  UPDATE_EXISTING\n", __FUNCTION__);
+      t_print("%s: Unknown event in  UPDATE_EXISTING\n", __func__);
       break;
     }
 
@@ -943,7 +943,7 @@ static int updatePanel(int state) {
     gtk_label_set_text(GTK_LABEL(newMax), text);
     find_current_cmd();
 
-    //t_print("%s: current_cmd %p\n", __FUNCTION__, current_cmd);
+    //t_print("%s: current_cmd %p\n", __func__, current_cmd);
     if (current_cmd != NULL) {
       thisVfl1  = current_cmd->vfl1;
       thisVfl2  = current_cmd->vfl2;
@@ -1100,6 +1100,6 @@ void NewMidiConfigureEvent(enum MIDIevent event, int channel, int note, int val)
   data->channel = channel;
   data->note = note;
   data->val = val;
-  //t_print("%s: Event=%d Chan=%d Note=%d Val=%d\n", __FUNCTION__, event, channel, note, val);
+  //t_print("%s: Event=%d Chan=%d Note=%d Val=%d\n", __func__, event, channel, note, val);
   g_idle_add(ProcessNewMidiConfigureEvent, data);
 }

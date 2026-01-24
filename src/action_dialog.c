@@ -38,18 +38,18 @@ static gulong previous_signal_id;
 static enum ACTION new_action;   // action currently chosen
 static enum ACTION ret_action;   // action to be returned
 
-static void destroy() {
+static void destroy(void) {
   if (dialog) {
     gtk_widget_destroy(dialog);
   }
 }
 
-static gboolean cancel_cb() {
+static gboolean cancel_cb(void) {
   destroy();
   return TRUE;
 }
 
-static gboolean choose_cb() {
+static gboolean choose_cb(void) {
   //
   // Here we set ret_action
   //

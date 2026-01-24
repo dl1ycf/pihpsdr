@@ -39,7 +39,7 @@ static GtkWidget *last_label = NULL;
 static GtkWidget *newAction = NULL;
 static GtkWidget *restore = NULL;
 
-static void cleanup() {
+static void cleanup(void) {
   g2panel_menu_is_open = 0;
 
   if (dialog != NULL) {
@@ -54,7 +54,7 @@ static void cleanup() {
   last_label = NULL;
 }
 
-static gboolean close_cb () {
+static gboolean close_cb(void) {
   cleanup();
   return TRUE;
 }

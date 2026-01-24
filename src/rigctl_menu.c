@@ -37,7 +37,7 @@ static GtkWidget *dialog = NULL;
 static GtkWidget *serial_speed[MAX_SERIAL + 1];
 static GtkWidget *serial_enable[MAX_SERIAL + 1];
 
-static void cleanup() {
+static void cleanup(void) {
   if (dialog != NULL) {
     GtkWidget *tmp = dialog;
     dialog = NULL;
@@ -48,7 +48,7 @@ static void cleanup() {
   }
 }
 
-static gboolean close_cb () {
+static gboolean close_cb(void) {
   cleanup();
   return TRUE;
 }
@@ -163,7 +163,7 @@ static void ptt_enable_cb(GtkWidget *widget, gpointer data) {
     disable_serial_ptt(id);
   }
 
-  t_print("%s: Serial PTT : ID=%d Enabled=%d\n", __FUNCTION__, id, SerialPorts[id].enable);
+  t_print("%s: Serial PTT : ID=%d Enabled=%d\n", __func__, id, SerialPorts[id].enable);
 }
 
 static void serial_enable_cb(GtkWidget *widget, gpointer data) {
@@ -178,7 +178,7 @@ static void serial_enable_cb(GtkWidget *widget, gpointer data) {
     disable_serial_rigctl(id);
   }
 
-  t_print("%s: Serial enable : ID=%d Enabled=%d\n", __FUNCTION__, id, SerialPorts[id].enable);
+  t_print("%s: Serial enable : ID=%d Enabled=%d\n", __func__, id, SerialPorts[id].enable);
 }
 
 // Set Baud Rate
@@ -225,7 +225,7 @@ static void speed_cb(GtkWidget *widget, gpointer data) {
   SerialPorts[id].speed = new;
 
   if (SerialPorts[id].enable) {
-    t_print("%s: closing/re-opening serial port %s\n", __FUNCTION__, SerialPorts[id].port);
+    t_print("%s: closing/re-opening serial port %s\n", __func__, SerialPorts[id].port);
     disable_serial_rigctl(id);
 
     if (launch_serial_rigctl(id) == 0) {
@@ -234,7 +234,7 @@ static void speed_cb(GtkWidget *widget, gpointer data) {
     }
   }
 
-  t_print("%s: Baud rate changed: Port=%s SpeedCode=%d\n", __FUNCTION__, SerialPorts[id].port,
+  t_print("%s: Baud rate changed: Port=%s SpeedCode=%d\n", __func__, SerialPorts[id].port,
           (int) SerialPorts[id].speed);
 }
 

@@ -289,14 +289,14 @@ extern const int tx_dialog_height;
 // exception: my_combo_attach()
 //
 extern gboolean radio_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data);
-extern void   radio_n2adr_oc_settings();
+extern void   radio_n2adr_oc_settings(void);
 extern void   radio_load_filters(int fb);
 extern void   radio_set_voxenable(int state);
 extern void   radio_set_voxlevel(double level);
 extern void   radio_set_mox(int state);
 extern void   radio_toggle_mox(void);
 extern void   radio_toggle_tune(void);
-extern void   radio_save_state();
+extern void   radio_save_state(void);
 extern void   radio_shutdown(void);
 extern void   radio_reboot(void);
 extern void   radio_exit_program(void);
@@ -381,7 +381,7 @@ extern void my_combo_attach(GtkGrid *grid, GtkWidget *combo, int row, int col, i
 #define ASSERT_SERVER(ret)                                                    \
     if (radio_is_remote) {                                                    \
       char *msg = g_new(char, 512);                                           \
-      snprintf(msg, 512, "WARNING %s:\nClient/Server Not Implemented!", __FUNCTION__); \
+      snprintf(msg, 512, "WARNING %s:\nClient/Server Not Implemented!", __func__); \
       g_idle_add(fatal_error, msg);                                           \
       return ret;                                                             \
    }

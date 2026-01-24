@@ -426,7 +426,7 @@ int process_action(gpointer data) {
   int i;
   enum ACTION action = a->action;
 
-  //t_print("%s: a=%p action=%d mode=%d value=%d\n",__FUNCTION__,a,action,a->mode,a->val);
+  //t_print("%s: a=%p action=%d mode=%d value=%d\n",__func__,a,action,a->mode,a->val);
   switch (action) {
   case A_SWAP_B:
     if (a->mode == PRESSED) {
@@ -1949,9 +1949,9 @@ int process_action(gpointer data) {
 
   default:
     if (a->action >= 0 && a->action < ACTIONS) {
-      t_print("%s: UNKNOWN PRESSED SWITCH ACTION %d (%s)\n", __FUNCTION__, a->action, ActionTable[a->action].str);
+      t_print("%s: UNKNOWN PRESSED SWITCH ACTION %d (%s)\n", __func__, a->action, ActionTable[a->action].str);
     } else {
-      t_print("%s: INVALID PRESSED SWITCH ACTION %d\n", __FUNCTION__, a->action);
+      t_print("%s: INVALID PRESSED SWITCH ACTION %d\n", __func__, a->action);
     }
 
     break;
@@ -2033,7 +2033,7 @@ enum ACTION String2Action(const char *str) {
 // status = 1: "active" (normal) state (status in yellow)
 // status = 2: "select" state (status in red)
 //
-int  GetMultifunctionStatus() {
+int  GetMultifunctionStatus(void) {
   if (multi_first) {
     return 0;
   }

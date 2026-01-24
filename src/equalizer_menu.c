@@ -35,7 +35,7 @@ static GtkWidget *tx_container;
 
 static int eqid = 0;      // 0: RX1, 1: RX2, 2: TX
 
-static void cleanup() {
+static void cleanup(void) {
   if (dialog != NULL) {
     GtkWidget *tmp = dialog;
     dialog = NULL;
@@ -46,7 +46,7 @@ static void cleanup() {
   }
 }
 
-static gboolean close_cb () {
+static gboolean close_cb(void) {
   cleanup();
   return TRUE;
 }

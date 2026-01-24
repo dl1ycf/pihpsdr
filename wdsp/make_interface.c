@@ -37,6 +37,8 @@ int main(int argc, char **argv)
 	char line[1000];
 	size_t linesize=999;
 	char *buffer=line;
+    char *needle;
+    char shipout[1000];
 
 	for (i=1; i<argc; i++) {
 	  infile=fopen(argv[i],"r");
@@ -52,7 +54,9 @@ int main(int argc, char **argv)
 		  first_in_file=0;
 		}
 		if (strlen(line) >4) {
-		  printf("extern %s ", line+4);
+          int pos = 4;
+          if (line[4] == ' ') pos++;
+		  printf("extern %s ", line+pos);
 		} else {
 		  printf("extern ");
 		}
@@ -69,11 +73,18 @@ int main(int argc, char **argv)
 			printf(";\n");
 			break;
 		  } else {
+            needle = strstr(line, "()");
+            if (needle) {
+              *needle = 0;
+              snprintf(shipout, sizeof(shipout), "%s(void)%s", line, needle+2);
+            } else {
+              snprintf(shipout, sizeof(shipout), "%s", line);
+            }
 			if (first_in_decl) {
-			  printf("%s", line);
+			  printf("%s", shipout);
 			  first_in_decl=0;
 			} else {
-			  printf("\n%s", line);
+			  printf("\n%s", shipout);
 			}
 		  }
 		}

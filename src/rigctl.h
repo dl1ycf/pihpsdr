@@ -50,7 +50,7 @@ extern int launch_serial_rigctl (int id);
 extern int launch_serial_ptt (int id);
 extern void disable_serial_rigctl (int id);
 extern void disable_serial_ptt (int id);
-extern int rigctl_tcp_running();
+extern int rigctl_tcp_running(void);
 extern void  shutdown_tcp_rigctl(void);
 extern void rigctl_save_state(void);
 extern void rigctl_restore_state(void);

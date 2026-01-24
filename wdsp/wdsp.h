@@ -110,15 +110,15 @@ extern void SetTXAFMAFFilter (int channel, double low, double high);
 // Interfaces from amd.c
 //
 
-extern	void SetRXAAMDRun(int channel, int run);
-extern	void SetRXAAMDSBMode(int channel, int sbmode);
-extern	void SetRXAAMDFadeLevel(int channel, int levelfade);
+extern void SetRXAAMDRun(int channel, int run);
+extern void SetRXAAMDSBMode(int channel, int sbmode);
+extern void SetRXAAMDFadeLevel(int channel, int levelfade);
 
 //
 // Interfaces from ammod.c
 //
 
-extern	void SetTXAAMCarrierLevel (int channel, double c_level);
+extern void SetTXAAMCarrierLevel (int channel, double c_level);
 
 //
 // Interfaces from amsq.c
@@ -204,25 +204,25 @@ extern double GetDisplayENB (int disp);
 // Interfaces from anf.c
 //
 
-extern	void SetRXAANFRun (int channel, int run);
-extern	void SetRXAANFVals (int channel, int taps, int delay, double gain, double leakage);
-extern	void SetRXAANFTaps (int channel, int taps);
-extern	void SetRXAANFDelay (int channel, int delay);
-extern	void SetRXAANFGain (int channel, double gain);
-extern	void SetRXAANFLeakage (int channel, double leakage);
-extern	void SetRXAANFPosition (int channel, int position);
+extern void SetRXAANFRun (int channel, int run);
+extern void SetRXAANFVals (int channel, int taps, int delay, double gain, double leakage);
+extern void SetRXAANFTaps (int channel, int taps);
+extern void SetRXAANFDelay (int channel, int delay);
+extern void SetRXAANFGain (int channel, double gain);
+extern void SetRXAANFLeakage (int channel, double leakage);
+extern void SetRXAANFPosition (int channel, int position);
 
 //
 // Interfaces from anr.c
 //
 
-extern	void SetRXAANRRun (int channel, int run);
-extern	void SetRXAANRVals (int channel, int taps, int delay, double gain, double leakage);
-extern	void SetRXAANRTaps (int channel, int taps);
-extern	void SetRXAANRDelay (int channel, int delay);
-extern	void SetRXAANRGain (int channel, double gain);
-extern	void SetRXAANRLeakage (int channel, double leakage);
-extern	void SetRXAANRPosition (int channel, int position);
+extern void SetRXAANRRun (int channel, int run);
+extern void SetRXAANRVals (int channel, int taps, int delay, double gain, double leakage);
+extern void SetRXAANRTaps (int channel, int taps);
+extern void SetRXAANRDelay (int channel, int delay);
+extern void SetRXAANRGain (int channel, double gain);
+extern void SetRXAANRLeakage (int channel, double leakage);
+extern void SetRXAANRPosition (int channel, int position);
 
 //
 // Interfaces from apfshadow.c
@@ -288,7 +288,7 @@ extern void SetPSIntsAndSpi (int channel, int ints, int spi);
 // Interfaces from cblock.c
 //
 
-extern	void SetRXACBLRun(int channel, int setit);
+extern void SetRXACBLRun(int channel, int setit);
 
 //
 // Interfaces from cfcomp.c
@@ -333,8 +333,8 @@ extern void SetChannelTSlewDown (int channel, double time);
 // Interfaces from compress.c
 //
 
-extern	void SetTXACompressorRun (int channel, int run);
-extern	void SetTXACompressorGain (int channel, double gain);
+extern void SetTXACompressorRun (int channel, int run);
+extern void SetTXACompressorGain (int channel, double gain);
 
 //
 // Interfaces from dexp.c
@@ -915,17 +915,17 @@ extern void SetTXAuSlewTime (int channel, double time);
 // Interfaces from snb.c
 //
 
-extern	void SetRXASNBARun (int channel, int run) ;
-extern	void SetRXASNBAovrlp (int channel, int ovrlp) ;
-extern	void SetRXASNBAasize (int channel, int size) ;
-extern	void SetRXASNBAnpasses (int channel, int npasses) ;
-extern	void SetRXASNBAk1 (int channel, double k1) ;
-extern	void SetRXASNBAk2 (int channel, double k2) ;
-extern	void SetRXASNBAbridge (int channel, int bridge) ;
-extern	void SetRXASNBApresamps (int channel, int presamps) ;
-extern	void SetRXASNBApostsamps (int channel, int postsamps) ;
-extern	void SetRXASNBApmultmin (int channel, double pmultmin) ;
-extern	void SetRXASNBAOutputBandwidth (int channel, double flow, double fhigh) ;
+extern void SetRXASNBARun (int channel, int run) ;
+extern void SetRXASNBAovrlp (int channel, int ovrlp) ;
+extern void SetRXASNBAasize (int channel, int size) ;
+extern void SetRXASNBAnpasses (int channel, int npasses) ;
+extern void SetRXASNBAk1 (int channel, double k1) ;
+extern void SetRXASNBAk2 (int channel, double k2) ;
+extern void SetRXASNBAbridge (int channel, int bridge) ;
+extern void SetRXASNBApresamps (int channel, int presamps) ;
+extern void SetRXASNBApostsamps (int channel, int postsamps) ;
+extern void SetRXASNBApmultmin (int channel, double pmultmin) ;
+extern void SetRXASNBAOutputBandwidth (int channel, double flow, double fhigh) ;
 extern void RXABPSNBASetNC (int channel, int nc);
 extern void RXABPSNBASetMP (int channel, int mp);
 
@@ -943,8 +943,8 @@ extern void SetRXASSQLTauUnMute (int channel, double tau_unmute);
 //
 
 extern void *malloc0 (int size);
-extern	void *NewCriticalSection();
-extern	void DestroyCriticalSection (LPCRITICAL_SECTION cs_ptr);
+extern void *NewCriticalSection(void);
+extern void DestroyCriticalSection (LPCRITICAL_SECTION cs_ptr);
 extern void analyze_bandpass_filter (int N, double f_low, double f_high, double samplerate, int wintype, int rtype, double scale);
 extern void print_buffer_parameters (const char* filename, int channel);
 extern int create_bfcu(int id, int min_size, int max_size, double rate, double corner, int points);
@@ -964,41 +964,41 @@ extern void destroy_varsampV (void* ptr);
 // Interfaces from version.c
 //
 
-extern int GetWDSPVersion();
+extern int GetWDSPVersion(void);
 
 //
 // Interfaces from wcpAGC.c
 //
 
-extern	void SetRXAAGCMode (int channel, int mode);
-extern	void SetRXAAGCAttack (int channel, int attack);
-extern	void SetRXAAGCDecay (int channel, int decay);
-extern	void SetRXAAGCHang (int channel, int hang);
-extern	void GetRXAAGCHangLevel(int channel, double *hangLevel);
-extern	void SetRXAAGCHangLevel(int channel, double hangLevel);
-extern	void GetRXAAGCHangThreshold(int channel, int *hangthreshold);
-extern	void SetRXAAGCHangThreshold (int channel, int hangthreshold);
-extern	void GetRXAAGCThresh(int channel, double *thresh, double size, double rate);
-extern	void SetRXAAGCThresh(int channel, double thresh, double size, double rate);
-extern	void GetRXAAGCTop(int channel, double *max_agc);
-extern	void SetRXAAGCTop (int channel, double max_agc);
-extern	void SetRXAAGCSlope (int channel, int slope);
-extern	void SetRXAAGCFixed (int channel, double fixed_agc);
-extern	void SetRXAAGCMaxInputLevel (int channel, double level);
-extern	void SetTXAALCSt (int channel, int state);
-extern	void SetTXAALCAttack (int channel, int attack);
-extern	void SetTXAALCDecay (int channel, int decay);
-extern	void SetTXAALCHang (int channel, int hang);
-extern	void SetTXAALCMaxGain (int channel, double maxgain);
-extern	void SetTXALevelerSt (int channel, int state);
-extern	void SetTXALevelerAttack (int channel, int attack);
-extern	void SetTXALevelerDecay (int channel, int decay);
-extern	void SetTXALevelerHang (int channel, int hang);
-extern	void SetTXALevelerTop (int channel, double maxgain);
+extern void SetRXAAGCMode (int channel, int mode);
+extern void SetRXAAGCAttack (int channel, int attack);
+extern void SetRXAAGCDecay (int channel, int decay);
+extern void SetRXAAGCHang (int channel, int hang);
+extern void GetRXAAGCHangLevel(int channel, double *hangLevel);
+extern void SetRXAAGCHangLevel(int channel, double hangLevel);
+extern void GetRXAAGCHangThreshold(int channel, int *hangthreshold);
+extern void SetRXAAGCHangThreshold (int channel, int hangthreshold);
+extern void GetRXAAGCThresh(int channel, double *thresh, double size, double rate);
+extern void SetRXAAGCThresh(int channel, double thresh, double size, double rate);
+extern void GetRXAAGCTop(int channel, double *max_agc);
+extern void SetRXAAGCTop (int channel, double max_agc);
+extern void SetRXAAGCSlope (int channel, int slope);
+extern void SetRXAAGCFixed (int channel, double fixed_agc);
+extern void SetRXAAGCMaxInputLevel (int channel, double level);
+extern void SetTXAALCSt (int channel, int state);
+extern void SetTXAALCAttack (int channel, int attack);
+extern void SetTXAALCDecay (int channel, int decay);
+extern void SetTXAALCHang (int channel, int hang);
+extern void SetTXAALCMaxGain (int channel, double maxgain);
+extern void SetTXALevelerSt (int channel, int state);
+extern void SetTXALevelerAttack (int channel, int attack);
+extern void SetTXALevelerDecay (int channel, int decay);
+extern void SetTXALevelerHang (int channel, int hang);
+extern void SetTXALevelerTop (int channel, double maxgain);
 
 //
 // Interfaces from wisdom.c
 //
 
-extern char* wisdom_get_status();
+extern char* wisdom_get_status(void);
 extern int WDSPwisdom (char* directory);

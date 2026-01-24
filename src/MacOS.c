@@ -26,9 +26,10 @@
  *
  */
 
+#include <stdio.h>
+
 #ifdef __APPLE__
 
-#include <stdio.h>
 #include <semaphore.h>
 #include <errno.h>
 

@@ -111,13 +111,13 @@ static gulong pan_signal_id;
 //
 // Store/Restore slider settings
 //
-void sliders_save_state() {
+void sliders_save_state(void) {
   for (int i = 0; i < NUM_SLIDERS; i++) {
     SetPropA1("sliders[%d].funcion",  i,   slider_functions[i]);
   }
 }
 
-void sliders_restore_state() {
+void sliders_restore_state(void) {
   for (int i = 0; i < NUM_SLIDERS; i++) {
     GetPropA1("sliders[%d].funcion",  i,   slider_functions[i]);
   }
@@ -879,7 +879,7 @@ void sliders_show_sliders(int ypos) {
   }
 }
 
-void sliders_destroy() {
+void sliders_destroy(void) {
   if (sliders_grid) {
     gtk_widget_destroy(sliders_grid);
     sliders_grid = NULL;

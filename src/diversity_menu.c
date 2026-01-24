@@ -33,7 +33,7 @@ static GtkWidget *phase_coarse_scale = NULL;
 static double gain_coarse, gain_fine;
 static double phase_coarse, phase_fine;
 
-static void cleanup() {
+static void cleanup(void) {
   if (dialog != NULL) {
     GtkWidget *tmp = dialog;
     dialog = NULL;
@@ -48,7 +48,7 @@ static void cleanup() {
   }
 }
 
-static gboolean close_cb () {
+static gboolean close_cb(void) {
   cleanup();
   return TRUE;
 }

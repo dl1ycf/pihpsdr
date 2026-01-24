@@ -17,9 +17,9 @@
 *
 */
 
-#ifdef GPIO
 #include <gtk/gtk.h>
 
+#ifdef GPIO
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
@@ -86,7 +86,7 @@ static int write_byte_data(unsigned char reg, unsigned char data) {
   int rc;
 
   if ((rc = i2c_smbus_write_byte_data(i2cfd, reg, data & 0xFF)) < 0) {
-    t_print("%s: write REG_GCONF config failed: addr=%02X %s\n", __FUNCTION__, i2c_address_1, g_strerror(errno));
+    t_print("%s: write REG_GCONF config failed: addr=%02X %s\n", __func__, i2c_address_1, g_strerror(errno));
   }
 
   return rc;
@@ -137,7 +137,7 @@ void i2c_interrupt() {
       if (flags == 0) { break; }  // leave loop if no bits left in "flags"
 
       if (i2c_sw[i] & flags) {
-        //t_print("%s: switches=%p sw=%d action=%d\n",__FUNCTION__,switches,i,switches[i].switch_function);
+        //t_print("%s: switches=%p sw=%d action=%d\n",__func__,switches,i,switches[i].switch_function);
         // The input line associated with switch #i has triggered an interrupt
         // clear *this* bit in flags to make it zero when all events have been processed
         flags &= ~i2c_sw[i];
@@ -154,14 +154,14 @@ void i2c_init() {
   i2cfd = open(i2c_device, O_RDWR);
 
   if (i2cfd < 0) {
-    t_print("%s: open i2c device %s failed: %s\n", __FUNCTION__, i2c_device, g_strerror(errno));
+    t_print("%s: open i2c device %s failed: %s\n", __func__, i2c_device, g_strerror(errno));
     return;
   }
 
-  t_print("%s: i2c device %s fd=%d\n", __FUNCTION__, i2c_device, i2cfd);
+  t_print("%s: i2c device %s fd=%d\n", __func__, i2c_device, i2cfd);
 
   if (ioctl(i2cfd, I2C_SLAVE, i2c_address_1) < 0) {
-    t_print("%s: ioctl i2c slave %ud failed: %s\n", __FUNCTION__, i2c_address_1, g_strerror(errno));
+    t_print("%s: ioctl i2c slave %ud failed: %s\n", __func__, i2c_address_1, g_strerror(errno));
     return;
   }
 

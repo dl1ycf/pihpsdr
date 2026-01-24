@@ -44,7 +44,7 @@ void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
   const struct desc *desc;
   int new;
 #ifdef MIDIDEBUG
-  t_print("%s:EVENT=%d CHAN=%d NOTE=%d VAL=%d\n", __FUNCTION__, event, channel, note, val);
+  t_print("%s:EVENT=%d CHAN=%d NOTE=%d VAL=%d\n", __func__, event, channel, note, val);
 #endif
 
   //
@@ -61,15 +61,15 @@ void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
     desc = MidiCommandsTable[note];
   }
 
-  //t_print("%s: init DESC=%p\n",__FUNCTION__,desc);
+  //t_print("%s: init DESC=%p\n",__func__,desc);
   while (desc) {
-    //t_print("%s: DESC=%p next=%p CHAN=%d EVENT=%d\n",__FUNCTION__,desc,desc->next,desc->channel,desc->event);
+    //t_print("%s: DESC=%p next=%p CHAN=%d EVENT=%d\n",__func__,desc,desc->next,desc->channel,desc->event);
     if ((desc->channel == channel || desc->channel == -1) && (desc->event == event)) {
       // Found matching entry
       switch (desc->event) {
       case EVENT_NONE:
         // this cannot happen
-        t_print("%s: Unknown Event\n", __FUNCTION__);
+        t_print("%s: Unknown Event\n", __func__);
         break;
 
       case MIDI_NOTE:
@@ -97,7 +97,7 @@ void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
           if ((val >= desc->vfr1) && (val <= desc->vfr2)) { new = 16; }
 
           //                      t_print("%s: ENCODER PARAMS: val=%d new=%d thrs=%d/%d, %d/%d, %d/%d, %d/%d, %d/%d, %d/%d\n",
-          //                               __FUNCTION__,
+          //                               __func__,
           //                               val, new, desc->vfl1, desc->vfl2, desc->fl1, desc->fl2, desc->lft1, desc->lft2,
           //                               desc->rgt1, desc->rgt2, desc->fr1, desc->fr2, desc->vfr1, desc->vfr2);
           if (new != 0) { DoTheMidi(desc->action, desc->type, new); }
@@ -122,11 +122,11 @@ void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
 
   if (!desc) {
     // Nothing found. This is nothing to worry about, but log the key to stderr
-    if (event == MIDI_PITCH) { t_print("%s: Unassigned PitchBend Value=%d\n", __FUNCTION__, val); }
+    if (event == MIDI_PITCH) { t_print("%s: Unassigned PitchBend Value=%d\n", __func__, val); }
 
-    if (event == MIDI_NOTE ) { t_print("%s: Unassigned Key Note=%d Val=%d\n", __FUNCTION__, note, val); }
+    if (event == MIDI_NOTE ) { t_print("%s: Unassigned Key Note=%d Val=%d\n", __func__, note, val); }
 
-    if (event == MIDI_CTRL ) { t_print("%s: Unassigned Controller Ctl=%d Val=%d\n", __FUNCTION__, note, val); }
+    if (event == MIDI_CTRL ) { t_print("%s: Unassigned Controller Ctl=%d Val=%d\n", __func__, note, val); }
   }
 }
 
@@ -134,7 +134,7 @@ void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
  * Release data from MidiCommandsTable
  */
 
-void MidiReleaseCommands() {
+void MidiReleaseCommands(void) {
   int i;
   struct desc *loop, *new;
 
@@ -216,7 +216,7 @@ enum MIDIevent String2MidiEvent(const char *str) {
   return EVENT_NONE;
 }
 
-void midi_save_state() {
+void midi_save_state(void) {
   const struct desc *cmd;
   int entry;
   int i;
@@ -270,7 +270,7 @@ void midi_save_state() {
   }
 }
 
-void midi_restore_state() {
+void midi_restore_state(void) {
   char str[128];
   int channel;
   int event;
@@ -285,7 +285,7 @@ void midi_restore_state() {
   int i, j;
   get_midi_devices();
   MidiReleaseCommands();
-  //t_print("%s\n",__FUNCTION__);
+  //t_print("%s\n",__func__);
   GetPropI0("midiIgnoreCtrlPairs", midiIgnoreCtrlPairs);
 
   //
@@ -301,7 +301,7 @@ void midi_restore_state() {
     for (j = 0; j < n_midi_devices; j++) {
       if (strcmp(midi_devices[j].name, str) == 0) {
         midi_devices[j].active = 1;
-        t_print("%s: MIDI device %s active=%d\n", __FUNCTION__, str, midi_devices[j].active);
+        t_print("%s: MIDI device %s active=%d\n", __func__, str, midi_devices[j].active);
       }
     }
   }

@@ -33,7 +33,7 @@ static GtkWidget *dialog = NULL;
 static GtkWidget *options_container;
 static GtkWidget *cwtxt_container;
 
-static void cw_changed() {
+static void cw_changed(void) {
   // inform the local keyer about CW parameter changes
   // NewProtocol: rely on periodically sent HighPrio packets
   keyer_update();
@@ -46,7 +46,7 @@ static void cw_changed() {
   g_idle_add(ext_vfo_update, NULL);
 }
 
-static void cleanup() {
+static void cleanup(void) {
   if (dialog != NULL) {
     GtkWidget *tmp = dialog;
     dialog = NULL;
@@ -57,7 +57,7 @@ static void cleanup() {
   }
 }
 
-static gboolean close_cb () {
+static gboolean close_cb(void) {
   cleanup();
   return TRUE;
 }

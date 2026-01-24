@@ -429,7 +429,7 @@ void radio_change_region(int r) {
   }
 }
 
-void band_save_state() {
+void band_save_state(void) {
   for (int b = 0; b < BANDS + XVTRS; b++) {
     //
     // Skip non-assigned transverter bands
@@ -483,7 +483,7 @@ void band_save_state() {
   }
 }
 
-void band_restore_state() {
+void band_restore_state(void) {
   for (int b = 0; b < BANDS + XVTRS; b++) {
     //
     // The No. 1 problem for new HermesLite users is "no RF output",
@@ -673,13 +673,13 @@ char* getFrequencyInfo(long long frequency, int filter_low, int filter_high) {
     }
   }
 
-  t_print("%s: %lld H7z ==>  %s\n", __FUNCTION__, frequency, result);
+  t_print("%s: %lld H7z ==>  %s\n", __func__, frequency, result);
   return result;
 }
 
 #endif
 
-int TransmitAllowed() {
+int TransmitAllowed(void) {
   int result;
   long long txfreq, flow, fhigh;
   int txb, txvfo, txmode;

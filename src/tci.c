@@ -98,8 +98,8 @@ static gpointer tci_listener(gpointer data);
 // enabled in the props file, and from the CAT/TCI menu
 // if TCI is enabled there.
 //
-void launch_tci () {
-  t_print( "%s: LAUNCHING TCI SERVER \n", __FUNCTION__);
+void launch_tci (void) {
+  t_print( "%s: LAUNCHING TCI SERVER \n", __func__);
   tci_running = 1;
   //
   // Start TCI server
@@ -111,8 +111,8 @@ void launch_tci () {
 // Shut down TCI system. Called from CAT/TCI menu
 // if TCI is disabled there.
 //
-void shutdown_tci() {
-  t_print("%s: server_socket=%d\n", __FUNCTION__, server_socket);
+void shutdown_tci(void) {
+  t_print("%s: server_socket=%d\n", __func__, server_socket);
   tci_running = 0;
 
   //
@@ -234,7 +234,7 @@ static void tci_send_text(CLIENT *client, const char *msg) {
     return;
   }
 
-  if (rigctl_debug) { t_print("%s: TCI%d response: %s\n", __FUNCTION__, client->seq, msg); }
+  if (rigctl_debug) { t_print("%s: TCI%d response: %s\n", __func__, client->seq, msg); }
 
   RESPONSE *resp = g_new(RESPONSE, 1);
   resp->client = client;
@@ -441,7 +441,7 @@ static void tci_send_rx(CLIENT *client, int v) {
 static void tci_send_close(CLIENT *client) {
   RESPONSE *resp = g_new(RESPONSE, 1);
 
-  if (rigctl_debug) { t_print("%s: TCI%d CLOSE\n", __FUNCTION__, client->seq); }
+  if (rigctl_debug) { t_print("%s: TCI%d CLOSE\n", __func__, client->seq); }
 
   resp->client = client;
   resp->type   = opCLOSE;
@@ -452,7 +452,7 @@ static void tci_send_close(CLIENT *client) {
 static void tci_send_ping(CLIENT *client) {
   RESPONSE *resp = g_new(RESPONSE, 1);
 
-  if (rigctl_debug) { t_print("%s: TCI%d PING\n", __FUNCTION__, client->seq); }
+  if (rigctl_debug) { t_print("%s: TCI%d PING\n", __func__, client->seq); }
 
   resp->client = client;
   resp->type   = opPING;
@@ -463,7 +463,7 @@ static void tci_send_ping(CLIENT *client) {
 static void tci_send_pong(CLIENT *client) {
   RESPONSE *resp = g_new(RESPONSE, 1);
 
-  if (rigctl_debug) { t_print("%s: TCI%d PONG\n", __FUNCTION__, client->seq); }
+  if (rigctl_debug) { t_print("%s: TCI%d PONG\n", __func__, client->seq); }
 
   resp->client = client;
   resp->type   = opPONG;
@@ -550,7 +550,7 @@ static gboolean tci_reporter(gpointer data) {
 static gpointer tci_server(gpointer data) {
   int port = GPOINTER_TO_INT(data);
   int on = 1;
-  t_print("%s: starting on port %d\n", __FUNCTION__, port);
+  t_print("%s: starting on port %d\n", __func__, port);
   server_socket = socket(AF_INET, SOCK_STREAM, 0);
 
   if (server_socket < 0) {
@@ -623,7 +623,7 @@ static gpointer tci_server(gpointer data) {
       continue;
     }
 
-    t_print("%s: slot= %d connected with fd=%d\n", __FUNCTION__, spare, fd);
+    t_print("%s: slot= %d connected with fd=%d\n", __func__, spare, fd);
 
     //
     // Setting TCP_NODELAY may (or may not) improve responsiveness
@@ -719,7 +719,7 @@ static gpointer tci_server(gpointer data) {
   }
 
   close(server_socket);
-  t_print("%s: terminating\n", __FUNCTION__);
+  t_print("%s: terminating\n", __func__);
   return NULL;
 }
 
@@ -739,7 +739,7 @@ static int digest_frame(const unsigned char *buff, char *msg,  int offset, int *
 
   if (len == 127) {
     // Do not even try
-    t_print("%s: excessive length\n", __FUNCTION__);
+    t_print("%s: excessive length\n", __func__);
     return 0;
   }
 
@@ -784,7 +784,7 @@ static int digest_frame(const unsigned char *buff, char *msg,  int offset, int *
 //
 static gpointer tci_listener(gpointer data) {
   CLIENT *client = (CLIENT *)data;
-  t_print("%s: starting client: socket=%d\n", __FUNCTION__, client->fd);
+  t_print("%s: starting client: socket=%d\n", __func__, client->fd);
   int offset = 0;
   unsigned char buff [MAXDATASIZE];
   char msg [MAXDATASIZE];
@@ -863,7 +863,7 @@ static gpointer tci_listener(gpointer data) {
       switch (type) {
       case opTEXT:
         if (rigctl_debug) {
-          t_print("%s: TCI%d command rcvd=%s\n", __FUNCTION__, client->seq, msg);
+          t_print("%s: TCI%d command rcvd=%s\n", __func__, client->seq, msg);
         }
 
         //
@@ -929,13 +929,13 @@ static gpointer tci_listener(gpointer data) {
         break;
 
       case opPING:
-        if (rigctl_debug) { t_print("%s: TCI%d PING rcvd\n", __FUNCTION__, client->seq); }
+        if (rigctl_debug) { t_print("%s: TCI%d PING rcvd\n", __func__, client->seq); }
 
         tci_send_pong(client);
         break;
 
       case opCLOSE:
-        if (rigctl_debug) { t_print("%s: TCI%d CLOSE rcvd\n", __FUNCTION__, client->seq); }
+        if (rigctl_debug) { t_print("%s: TCI%d CLOSE rcvd\n", __func__, client->seq); }
 
         client->running = 0;
         break;
@@ -972,11 +972,11 @@ static gpointer tci_listener(gpointer data) {
   }
 
   if (client->fd  != -1) {
-    t_print("%s: close fd=%d\n", __FUNCTION__, client->fd);
+    t_print("%s: close fd=%d\n", __func__, client->fd);
     close(client->fd);
     client->fd = -1;
   }
 
-  t_print("%s: leaving thread\n", __FUNCTION__);
+  t_print("%s: leaving thread\n", __func__);
   return NULL;
 }

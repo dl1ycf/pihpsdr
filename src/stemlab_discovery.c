@@ -127,7 +127,7 @@ static size_t alpine_start_callback(void *buffer, size_t size, size_t nmemb, voi
 // cppcheck-suppress constParameterCallback
 static size_t app_start_callback(void *buffer, size_t size, size_t nmemb, void *data) {
   if (strncmp(buffer, "{\"status\":\"OK\"}", size * nmemb) != 0) {
-    t_print( "%s: Receiver error from STEMlab\n", __FUNCTION__);
+    t_print( "%s: Receiver error from STEMlab\n", __func__);
     return 0;
   }
 
@@ -149,13 +149,13 @@ int alpine_start_app(const char * const app_id) {
   CURLcode curl_error = CURLE_OK;
 
   if (curl_handle == NULL) {
-    t_print( "%s: Failed to create cURL handle\n", __FUNCTION__);
+    t_print( "%s: Failed to create cURL handle\n", __func__);
     return -1;
   }
 
 #define check_curl(description) do { \
   if (curl_error != CURLE_OK) { \
-    t_print( "%s: " description ": %s\n", __FUNCTION__, \
+    t_print( "%s: " description ": %s\n", __func__, \
         curl_easy_strerror(curl_error)); \
      return -1; \
   } \
@@ -199,13 +199,13 @@ int stemlab_start_app(const char * const app_id) {
   CURLcode curl_error = CURLE_OK;
 
   if (curl_handle == NULL) {
-    t_print( "%s: Failed to create cURL handle\n", __FUNCTION__);
+    t_print( "%s: Failed to create cURL handle\n", __func__);
     return -1;
   }
 
 #define check_curl(description) do { \
   if (curl_error != CURLE_OK) { \
-    t_print( "%s: " description ": %s\n", __FUNCTION__, \
+    t_print( "%s: " description ": %s\n", __func__, \
         curl_easy_strerror(curl_error)); \
      return -1; \
   } \
@@ -242,7 +242,7 @@ int stemlab_start_app(const char * const app_id) {
   return 0;
 }
 
-void stemlab_cleanup() {
+void stemlab_cleanup(void) {
   if (curl_initialised) {
     curl_global_cleanup();
   }
@@ -260,18 +260,18 @@ void stemlab_cleanup() {
 // have to re-discover to get full info and start the radio.
 //
 
-void stemlab_discovery() {
+void stemlab_discovery(void) {
   char txt[256];
   CURL *curl_handle;
   CURLcode curl_error;
   int app_list;
   struct sockaddr_in ip_address;
   struct sockaddr_in netmask;
-  t_print("%s: using inet addr %s\n", __FUNCTION__, ipaddr_radio);
+  t_print("%s: using inet addr %s\n", __func__, ipaddr_radio);
   ip_address.sin_family = AF_INET;
 
   if (inet_aton(ipaddr_radio, &ip_address.sin_addr) == 0) {
-    t_print("%s: TCP %s is invalid!\n", __FUNCTION__, ipaddr_radio);
+    t_print("%s: TCP %s is invalid!\n", __func__, ipaddr_radio);
     return;
   }
 
@@ -284,7 +284,7 @@ void stemlab_discovery() {
   curl_handle = curl_easy_init();
 
   if (curl_handle == NULL) {
-    t_print( "%s: Failed to create cURL handle\n", __FUNCTION__);
+    t_print( "%s: Failed to create cURL handle\n", __func__);
     return;
   }
 
@@ -300,11 +300,11 @@ void stemlab_discovery() {
   if (curl_error ==  CURLE_OPERATION_TIMEDOUT) {
     snprintf(txt, sizeof(txt), "No response from web server at %s", ipaddr_radio);
     status_text(txt);
-    t_print("%s: %s\n", __FUNCTION__, txt);
+    t_print("%s: %s\n", __func__, txt);
   }
 
   if (curl_error != CURLE_OK) {
-    t_print( "%s: ping error: %s\n", __FUNCTION__, curl_easy_strerror(curl_error));
+    t_print( "%s: ping error: %s\n", __func__, curl_easy_strerror(curl_error));
     return;
   }
 
@@ -315,7 +315,7 @@ void stemlab_discovery() {
     curl_handle = curl_easy_init();
 
     if (curl_handle == NULL) {
-      t_print( "%s: Failed to create cURL handle\n", __FUNCTION__);
+      t_print( "%s: Failed to create cURL handle\n", __func__);
       return;
     }
 
@@ -329,17 +329,17 @@ void stemlab_discovery() {
 
     if (curl_error == CURLE_OPERATION_TIMEDOUT) {
       status_text("No Response from RedPitaya in 20 secs");
-      t_print("%s: TimeOut met when trying to get list of HPSDR apps from RedPitaya\n", __FUNCTION__);
+      t_print("%s: TimeOut met when trying to get list of HPSDR apps from RedPitaya\n", __func__);
     }
 
     if (curl_error != CURLE_OK) {
-      t_print( "%s: app-list error: %s\n", __FUNCTION__, curl_easy_strerror(curl_error));
+      t_print( "%s: app-list error: %s\n", __func__, curl_easy_strerror(curl_error));
       return;
     }
   }
 
   if (app_list == 0) {
-    t_print( "%s: Could contact web server but no SDR apps found.\n", __FUNCTION__);
+    t_print( "%s: Could contact web server but no SDR apps found.\n", __func__);
     return;
   }
 

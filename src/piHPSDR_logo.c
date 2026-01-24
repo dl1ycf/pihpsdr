@@ -824,7 +824,7 @@ unsigned int piHPSDR_logo_png_len = 9510;
 
 #include "message.h"
 
-GtkWidget *piHPSDR_logo() {
+GtkWidget *piHPSDR_logo(void) {
   GInputStream *mem_stream;
   GdkPixbuf *pixbuf;
   GError *error = NULL;
@@ -833,7 +833,7 @@ GtkWidget *piHPSDR_logo() {
   g_object_unref(mem_stream);
 
   if (!pixbuf) {
-    t_print("%s: Could not load piHPSDR logo.\n", __FUNCTION__);
+    t_print("%s: Could not load piHPSDR logo.\n", __func__);
     g_error_free(error);
     return NULL;
   }

@@ -88,9 +88,9 @@ static int wisdom_running = 0;
 
 static void* wisdom_thread(void *arg) {
   if (WDSPwisdom ((char *)arg)) {
-    t_print("%s: WDSP wisdom file has been rebuilt.\n", __FUNCTION__);
+    t_print("%s: WDSP wisdom file has been rebuilt.\n", __func__);
   } else {
-    t_print("%s: Re-using existing WDSP wisdom file.\n", __FUNCTION__);
+    t_print("%s: Re-using existing WDSP wisdom file.\n", __func__);
   }
 
   wisdom_running = 0;
@@ -109,7 +109,7 @@ static gboolean main_delete (GtkWidget *widget) {
 static int init(gpointer data) {
   char wisdom_directory[1025];
   char text[1024];
-  t_print("%s\n", __FUNCTION__);
+  t_print("%s\n", __func__);
   t_print("LC_ALL=%s\n", setlocale(LC_ALL, NULL));
   t_print("LC_NUMERIC=%s\n", setlocale(LC_NUMERIC, NULL));
   //
@@ -128,7 +128,7 @@ static int init(gpointer data) {
   //
   (void) getcwd(text, sizeof(text));
   snprintf(wisdom_directory, sizeof(wisdom_directory), "%s/", text);
-  t_print("%s: Securing wisdom file in directory: %s\n", __FUNCTION__, wisdom_directory);
+  t_print("%s: Securing wisdom file in directory: %s\n", __func__, wisdom_directory);
   status_text("Checking FFTW Wisdom file ...");
   wisdom_running = 1;
   pthread_create(&wisdom_thread_id, NULL, wisdom_thread, wisdom_directory);
@@ -157,14 +157,14 @@ static int init(gpointer data) {
 static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   GtkWidget *label;
   char text[256];
-  t_print("%s: Build: %s (Commit: %s, Date: %s)\n", __FUNCTION__, build_version, build_commit, build_date);
-  t_print("%s: GTK+ version %u.%u.%u\n", __FUNCTION__, gtk_major_version, gtk_minor_version, gtk_micro_version);
+  t_print("%s: Build: %s (Commit: %s, Date: %s)\n", __func__, build_version, build_commit, build_date);
+  t_print("%s: GTK+ version %u.%u.%u\n", __func__, gtk_major_version, gtk_minor_version, gtk_micro_version);
   uname(&unameData);
-  t_print("%s: sysname=  %s\n", __FUNCTION__, unameData.sysname);
-  t_print("%s: nodename= %s\n", __FUNCTION__, unameData.nodename);
-  t_print("%s: release=  %s\n", __FUNCTION__, unameData.release);
-  t_print("%s: version=  %s\n", __FUNCTION__, unameData.version);
-  t_print("%s: machine=  %s\n", __FUNCTION__, unameData.machine);
+  t_print("%s: sysname=  %s\n", __func__, unameData.sysname);
+  t_print("%s: nodename= %s\n", __func__, unameData.nodename);
+  t_print("%s: release=  %s\n", __func__, unameData.release);
+  t_print("%s: version=  %s\n", __func__, unameData.version);
+  t_print("%s: machine=  %s\n", __func__, unameData.machine);
   load_css();
   //
   // Start with default font. The selected
@@ -174,14 +174,14 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   GdkDisplay *display = gdk_display_get_default();
 
   if (display == NULL) {
-    t_print("%s: FATAL: no default display!\n", __FUNCTION__);
+    t_print("%s: FATAL: no default display!\n", __func__);
     _exit(0);
   }
 
   screen = gdk_display_get_default_screen(display);
 
   if (screen == NULL) {
-    t_print("%s: FATAL: no default screen!\n", __FUNCTION__);
+    t_print("%s: FATAL: no default screen!\n", __func__);
     _exit(0);
   }
 
@@ -210,7 +210,7 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   int x, y;
   gtk_window_get_position(GTK_WINDOW(top_window), &x, &y);
   this_monitor = gdk_screen_get_monitor_at_point(screen, x, y);
-  t_print("%s: Monitor Number within Screen=%d\n", __FUNCTION__, this_monitor);
+  t_print("%s: Monitor Number within Screen=%d\n", __func__, this_monitor);
   //
   // Determine the size of "our" monitor
   //
@@ -224,7 +224,7 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   display_width[1]  = 800;
   display_height[1] = 480;
   display_size   = 1;  // Custom
-  t_print("%s: Monitor: width=%d height=%d\n", __FUNCTION__, display_width[0], display_height[0]);
+  t_print("%s: Monitor: width=%d height=%d\n", __func__, display_width[0], display_height[0]);
 
   //
   // Go to full-screen mode by default, if the screen size is approx. 800*480
@@ -233,14 +233,14 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
     display_size = 0;   // FullScreen
   }
 
-  t_print("%s: display_width=%d display_height=%d\n", __FUNCTION__,
+  t_print("%s: display_width=%d display_height=%d\n", __func__,
           display_width[display_size], display_height[display_size]);
 
   if (display_size == 0) {
-    t_print("%s: Going full screen\n", __FUNCTION__);
+    t_print("%s: Going full screen\n", __func__);
     gtk_window_fullscreen_on_monitor(GTK_WINDOW(top_window), screen, this_monitor);
   } else {
-    t_print("%s: display_width=%d display_height=%d\n", __FUNCTION__,
+    t_print("%s: display_width=%d display_height=%d\n", __func__,
             display_width[display_size], display_height[display_size]);
   }
 
@@ -325,16 +325,16 @@ int main(int argc, char **argv) {
   startup(argv[0]);
   setlocale(LC_ALL, "C");  // make a decimal point a decimal point
   rc = getpriority(PRIO_PROCESS, 0);
-  t_print("%s: Base priority on startup: %d\n", __FUNCTION__, rc);
+  t_print("%s: Base priority on startup: %d\n", __func__, rc);
   setpriority(PRIO_PROCESS, 0, -10);
   rc = getpriority(PRIO_PROCESS, 0);
-  t_print("%s: Base priority after adjustment: %d\n", __FUNCTION__, rc);
+  t_print("%s: Base priority after adjustment: %d\n", __func__, rc);
   snprintf(name, sizeof(name), "org.g0orx.pihpsdr.pid%d", getpid());
   gtk_disable_setlocale();  // keep having a decimal point as a decimal point
   pihpsdr = gtk_application_new(name, G_APPLICATION_FLAGS_NONE);
   g_signal_connect(pihpsdr, "activate", G_CALLBACK(activate_pihpsdr), NULL);
   rc = g_application_run(G_APPLICATION(pihpsdr), argc, argv);
-  t_print("%s: exiting ...\n", __FUNCTION__);
+  t_print("%s: exiting ...\n", __func__);
   g_object_unref(pihpsdr);
   return rc;
 }

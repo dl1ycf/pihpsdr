@@ -29,8 +29,8 @@
 
 extern enum ACTION slider_functions[NUM_SLIDERS];
 
-extern void sliders_save_state();
-extern void sliders_restore_state();
+extern void sliders_save_state(void);
+extern void sliders_restore_state(void);
 
 void queue_popup_slider(enum ACTION action, int rx, double min, double max, double delta, double value,
                         const char *title);
@@ -38,7 +38,7 @@ void queue_popup_slider(enum ACTION action, int rx, double min, double max, doub
 extern void sliders_show_zoompan(int y);
 extern void sliders_show_sliders(int y);
 extern void sliders_create(int width, int height, int rows);
-extern void sliders_destroy();
+extern void sliders_destroy(void);
 
 extern int sliders_active_receiver_changed(gpointer data);
 extern int sliders_att_type_changed(gpointer data);

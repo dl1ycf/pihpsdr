@@ -235,8 +235,8 @@ extern int clock_nanosleep(clockid_t __clock_id, int __flags,
                            struct timespec *__rem);
 #endif
 
-static void keyer_close() {
-  t_print("%s\n", __FUNCTION__);
+static void keyer_close(void) {
+  t_print("%s\n", __func__);
   running = 0;
   // keyer thread may be sleeping, so wake it up
 #ifdef __APPLE__
@@ -252,9 +252,9 @@ static void keyer_close() {
 #endif
 }
 
-static int keyer_init() {
+static int keyer_init(void) {
   int rc;
-  t_print("%s\n", __FUNCTION__);
+  t_print("%s\n", __func__);
 #ifdef __APPLE__
   cw_event = apple_sem(0);
 #else
@@ -271,7 +271,7 @@ static int keyer_init() {
   return 0;
 }
 
-void keyer_update() {
+void keyer_update(void) {
   //
   // This function will take notice of changes in the following variables
   //
@@ -359,7 +359,7 @@ static void* keyer_thread(void *arg) {
   int txmode;
   int moxbefore;
   int cwvox;
-  t_print("%s: running= %d\n", __FUNCTION__, running);
+  t_print("%s: running= %d\n", __func__, running);
 
   while (running) {
     enforce_cw_vox = 0;
@@ -631,7 +631,7 @@ static void* keyer_thread(void *arg) {
         break;
 
       default:
-        t_print("%s: unknown state=%d", __FUNCTION__, (int) key_state);
+        t_print("%s: unknown state=%d", __func__, (int) key_state);
         key_state = EXITLOOP;
       }
 
@@ -644,6 +644,6 @@ static void* keyer_thread(void *arg) {
     }
   }
 
-  t_print("%s: EXIT\n", __FUNCTION__);
+  t_print("%s: EXIT\n", __func__);
   return NULL;
 }

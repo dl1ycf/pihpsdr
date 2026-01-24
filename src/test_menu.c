@@ -41,7 +41,7 @@ static int test_action = NO_ACTION;
 static guint repeat_timer = 0;
 static int repeat_state = 0;
 
-static gboolean delete_cb() {
+static gboolean delete_cb(void) {
   //
   // The test menu can be destroyd by standard GTK methods
   // (e.g. closing the menu window).

@@ -45,7 +45,7 @@ VFO_TIMER vfob_timer = {VFOB, 0, 0};
 
 static int vfo_timeout_cb(gpointer data) {
   VFO_TIMER *timer = (VFO_TIMER *)data;
-  //t_print("%s: action=%d val=%d\n", __FUNCTION__, timer->action, timer->val);
+  //t_print("%s: action=%d val=%d\n", __func__, timer->action, timer->val);
   schedule_action(timer->action, RELATIVE, timer->val);
   timer->timeout = 0;
   timer->val = 0;
@@ -53,7 +53,7 @@ static int vfo_timeout_cb(gpointer data) {
 }
 
 void DoTheMidi(int action, enum ACTIONtype type, int val) {
-  //t_print("%s: action=%d val=%d\n", __FUNCTION__, action, val);
+  //t_print("%s: action=%d val=%d\n", __func__, action, val);
   switch (type) {
   case AT_BTN:
     schedule_action(action, val ? PRESSED : RELEASED, 0);

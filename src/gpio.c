@@ -19,10 +19,9 @@
 
 // Note that all pin numbers are now "GPIO numbers"
 
-#ifdef GPIO
-
 #include <gtk/gtk.h>
 
+#ifdef GPIO
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -113,7 +112,7 @@ void gpio_set_ptt(int state) {
 
   if (pttout_line) {
     if (gpiod_line_set_value(pttout_line, NOT(state)) < 0) {
-      t_print("%s failed: %s\n", __FUNCTION__, g_strerror(errno));
+      t_print("%s failed: %s\n", __func__, g_strerror(errno));
     }
   }
 
@@ -133,7 +132,7 @@ void gpio_set_cw(int state) {
 
   if (cwout_line) {
     if (gpiod_line_set_value(cwout_line, NOT(state)) < 0) {
-      t_print("%s failed: %s\n", __FUNCTION__, g_strerror(errno));
+      t_print("%s failed: %s\n", __func__, g_strerror(errno));
     }
   }
 
@@ -653,7 +652,7 @@ static void process_edge(int offset, int value) {
     schedule_action(switches[num].function, value ? PRESSED : RELEASED, 0);
 #endif
   } else {
-    t_print("%s: No action defined for GPIO line %d\n", __FUNCTION__, offset);
+    t_print("%s: No action defined for GPIO line %d\n", __func__, offset);
   }
 }
 
@@ -763,7 +762,7 @@ void gpio_default_switch_actions(int ctrlr) {
 //  and witches, including GPIO lines etc.
 //
 void gpio_set_defaults(int ctrlr) {
-  t_print("%s: Controller=%d\n", __FUNCTION__, ctrlr);
+  t_print("%s: Controller=%d\n", __func__, ctrlr);
   //
   // When changing a controller, mark all "extra" lines
   // as "do not use"
@@ -980,10 +979,10 @@ void gpio_save_actions() {
 static gpointer monitor_thread(gpointer arg) {
   // thread to monitor gpio events
   int ret;
-  t_print("%s: monitoring %d lines.\n", __FUNCTION__, num_input_lines);
+  t_print("%s: monitoring %d lines.\n", __func__, num_input_lines);
 
   for (int i = 0; i < num_input_lines; i++) {
-    t_print("%s: Line=%u Pullup=%d Debounce=%d\n", __FUNCTION__, input_lines[i], input_pullup[i], input_debounce[i]);
+    t_print("%s: Line=%u Pullup=%d Debounce=%d\n", __func__, input_lines[i], input_pullup[i], input_debounce[i]);
   }
 
 #ifdef GPIOV1
@@ -996,7 +995,7 @@ static gpointer monitor_thread(gpointer arg) {
           consumer, &t, NULL, interrupt_cb, NULL);
 
   if (ret < 0) {
-    t_print("%s: ctxless event monitor failed: %s\n", __FUNCTION__, g_strerror(errno));
+    t_print("%s: ctxless event monitor failed: %s\n", __func__, g_strerror(errno));
   }
 
 #endif
@@ -1005,7 +1004,7 @@ static gpointer monitor_thread(gpointer arg) {
   struct gpiod_edge_event_buffer *event_buffer = gpiod_edge_event_buffer_new(event_buf_size);
 
   if (!event_buffer) {
-    t_print("%s: No Event Buffer\n", __FUNCTION__);
+    t_print("%s: No Event Buffer\n", __func__);
     return NULL;
   }
 
@@ -1015,7 +1014,7 @@ static gpointer monitor_thread(gpointer arg) {
     ret = gpiod_line_request_read_edge_events(input_request, event_buffer, event_buf_size);
 
     if (ret < 0) {
-      t_print("%s: read edge returned %d\n", __FUNCTION__, ret);
+      t_print("%s: read edge returned %d\n", __func__, ret);
       continue;
     }
 
@@ -1033,7 +1032,7 @@ static gpointer monitor_thread(gpointer arg) {
         break;
 
       default:
-        t_print("%s: Unknown Edge Event\n", __FUNCTION__);
+        t_print("%s: Unknown Edge Event\n", __func__);
         break;
       }
     }
@@ -1041,7 +1040,7 @@ static gpointer monitor_thread(gpointer arg) {
 
   gpiod_edge_event_buffer_free(event_buffer);
 #endif
-  t_print("%s: exit\n", __FUNCTION__);
+  t_print("%s: exit\n", __func__);
   return NULL;
 }
 
@@ -1060,7 +1059,7 @@ static void setup_input_lines() {
     struct gpiod_line *line = gpiod_chip_get_line(chip, input_lines[i]);
 
     if (!line) {
-      t_print("%s: get line %d failed: %s\n", __FUNCTION__, input_lines[i], g_strerror(errno));
+      t_print("%s: get line %d failed: %s\n", __func__, input_lines[i], g_strerror(errno));
       input_lines[i] = -1;
       continue;
     }
@@ -1072,7 +1071,7 @@ static void setup_input_lines() {
 #endif
 
     if (gpiod_line_request(line, &config, 1) < 0) {
-      t_print("%s: line %d gpiod_line_request failed: %s\n", __FUNCTION__, input_lines[i], g_strerror(errno));
+      t_print("%s: line %d gpiod_line_request failed: %s\n", __func__, input_lines[i], g_strerror(errno));
       input_lines[i] = -1;
       continue;
     }
@@ -1145,12 +1144,12 @@ static struct gpiod_line *setup_output_line(unsigned int offset, int initialValu
   struct gpiod_line *line = gpiod_chip_get_line(chip, offset);
 
   if (!line) {
-    t_print("%s: Offset=%u failed: %s\n", __FUNCTION__, offset, g_strerror(errno));
+    t_print("%s: Offset=%u failed: %s\n", __func__, offset, g_strerror(errno));
     return NULL;
   }
 
   if (gpiod_line_request(line, &config, initialValue) < 0) {
-    t_print("%s: Offset=%u failed: %s\n", __FUNCTION__, offset, g_strerror(errno));
+    t_print("%s: Offset=%u failed: %s\n", __func__, offset, g_strerror(errno));
     gpiod_line_release(line);
     return NULL;
   }
@@ -1181,7 +1180,7 @@ static struct gpiod_line_request *setup_output_request(unsigned int offset, int 
   if (gpiod_line_config_add_line_settings(lineconfig, &offset, 1, settings) == 0) {
     result = gpiod_chip_request_lines(chip, reqcfg, lineconfig);
   } else {
-    t_print("%s: Offset=%d failed: %s\n", __FUNCTION__, offset, g_strerror(errno));
+    t_print("%s: Offset=%d failed: %s\n", __func__, offset, g_strerror(errno));
     result = NULL;
   }
 
@@ -1291,12 +1290,12 @@ void gpio_init() {
   // If no success so far, give up
   //
   if (chip == NULL) {
-    t_print("%s: open chip failed: %s\n", __FUNCTION__, g_strerror(errno));
+    t_print("%s: open chip failed: %s\n", __func__, g_strerror(errno));
     gpio_device = NULL;
     return;
   }
 
-  t_print("%s: GPIO device=%s\n", __FUNCTION__, gpio_device);
+  t_print("%s: GPIO device=%s\n", __func__, gpio_device);
   num_input_lines = 0;
 
   for (int i = 0; i < MAX_LINES; i++) {

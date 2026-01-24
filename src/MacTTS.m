@@ -28,7 +28,7 @@ void MacTTS(const char *text) {
   // then keep it.
   //
   if (synth == NULL) {
-   t_print("%s: Creating the MacOS Speech Synthesizer Instance\n", __FUNCTION__);
+   t_print("%s: Creating the MacOS Speech Synthesizer Instance\n", __func__);
    synth = [[AVSpeechSynthesizer alloc] init];
   }
 

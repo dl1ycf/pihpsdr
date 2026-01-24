@@ -49,7 +49,7 @@ static void p2_discover(struct ifaddrs* iface, int discflag);
 static GThread *discover_thread_id;
 static gpointer p2_discover_receive_thread(gpointer data);
 
-void p2_discovery() {
+void p2_discovery(void) {
   struct ifaddrs *addrs,*ifa;
   //
   // Start with discovering from a fixed ip address
@@ -110,7 +110,7 @@ static void p2_discover(struct ifaddrs* iface, int discflag) {
     // prepeare socket for sending an UDP broadcast packet to interface ifa
     //
     snprintf(interface_name, sizeof(interface_name), "%s", iface->ifa_name);
-    t_print("%s: looking for HPSDR devices on %s\n", __FUNCTION__, interface_name);
+    t_print("%s: looking for HPSDR devices on %s\n", __func__, interface_name);
     // send a broadcast to locate metis boards on the network
     discovery_socket = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
@@ -136,7 +136,7 @@ static void p2_discover(struct ifaddrs* iface, int discflag) {
     rc = setsockopt(discovery_socket, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on));
 
     if (rc != 0) {
-      t_print("%s: cannot set SO_BROADCAST: rc=%d\n", __FUNCTION__, rc);
+      t_print("%s: cannot set SO_BROADCAST: rc=%d\n", __func__, rc);
       close (discovery_socket);
       return;
     }
@@ -184,7 +184,7 @@ static void p2_discover(struct ifaddrs* iface, int discflag) {
       return;
     }
 
-    t_print("%s: trying UDP connection with IP %s\n", __FUNCTION__, ipaddr_radio);
+    t_print("%s: trying UDP connection with IP %s\n", __func__, ipaddr_radio);
     discovery_socket = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     if (discovery_socket < 0) {
@@ -228,11 +228,11 @@ static void p2_discover(struct ifaddrs* iface, int discflag) {
 
   switch (discflag) {
   case 1:
-    t_print("%s: exiting for %s\n", __FUNCTION__, iface->ifa_name);
+    t_print("%s: exiting for %s\n", __func__, iface->ifa_name);
     break;
 
   case 2:
-    t_print("%s: exiting UDP discover for IP %s\n", __FUNCTION__, ipaddr_radio);
+    t_print("%s: exiting UDP discover for IP %s\n", __func__, ipaddr_radio);
 
     if (devices == rc + 1) {
       //
@@ -277,7 +277,7 @@ static gpointer p2_discover_receive_thread(gpointer data) {
       break;
     }
 
-    t_print("%s: received %d bytes\n", __FUNCTION__, bytes_read);
+    t_print("%s: received %d bytes\n", __func__, bytes_read);
 
     if (bytes_read == 1444) {
       if (devices > 0) {
@@ -389,7 +389,7 @@ static gpointer p2_discover_receive_thread(gpointer data) {
             discovered[devices].frequency_min = frequency_min;
             discovered[devices].frequency_max = frequency_max;
             t_print("%s: P2(%d) name=%s  device=%d (%dRX) software_version=%d(.%d) status=%d\n",
-                    __FUNCTION__,
+                    __func__,
                     buffer[12] & 0xFF,
                     discovered[devices].name,
                     discovered[devices].device - 1000,
@@ -398,7 +398,7 @@ static gpointer p2_discover_receive_thread(gpointer data) {
                     buffer[23] & 0xFF,
                     discovered[devices].status);
             t_print("%s: address=%s (%02X:%02X:%02X:%02X:%02X:%02X) on %s min=%0.3f MHz max=%0.3f MHz\n",
-                    __FUNCTION__,
+                    __func__,
                     inet_ntoa(discovered[devices].network.address.sin_addr),
                     discovered[devices].network.mac_address[0],
                     discovered[devices].network.mac_address[1],

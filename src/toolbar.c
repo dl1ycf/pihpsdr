@@ -40,7 +40,7 @@ static GtkWidget *toolbar_grid = NULL;
 
 static GtkWidget *tbbtn[8][3] = { { NULL }};
 
-void toolbar_save_state() {
+void toolbar_save_state(void) {
   for (int i = 0; i < MAX_TB_ROWS; i++) {
     SetPropI1("toolbar.row[%d]", i, tb_function[i]);
   }
@@ -52,7 +52,7 @@ void toolbar_save_state() {
   }
 }
 
-void toolbar_restore_state() {
+void toolbar_restore_state(void) {
   for (int i = 0; i < MAX_TB_ROWS; i++) {
     GetPropI1("toolbar.row[%d]", i, tb_function[i]);
   }
@@ -64,7 +64,7 @@ void toolbar_restore_state() {
   }
 }
 
-void update_toolbar_labels() {
+void update_toolbar_labels(void) {
   for (int i = 0; i < MAX_TB_ROWS; i++) {
     int func = tb_function[i];
 
@@ -139,7 +139,7 @@ void toolbar_show(int ypos) {
   }
 }
 
-void toolbar_destroy() {
+void toolbar_destroy(void) {
   if (toolbar_grid) {
     gtk_widget_destroy(toolbar_grid);
     toolbar_grid = NULL;
@@ -155,7 +155,7 @@ void toolbar_destroy() {
 void toolbar_create(int width, int height, int rows) {
   int button_width = width / 8;
   const char *button_css;
-  t_print("%s: width=%d height=%d button_width=%d\n", __FUNCTION__, width, height, button_width);
+  t_print("%s: width=%d height=%d button_width=%d\n", __func__, width, height, button_width);
 
   if (height < 40) {
     button_css = "small_button";

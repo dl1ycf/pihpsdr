@@ -34,7 +34,7 @@ static GtkWidget *grid = NULL;
 static GtkWidget *hf_container = NULL;
 static GtkWidget *xvtr_container = NULL;
 
-static void cleanup() {
+static void cleanup(void) {
   if (dialog != NULL) {
     GtkWidget *tmp = dialog;
     dialog = NULL;
@@ -45,7 +45,7 @@ static void cleanup() {
   }
 }
 
-static gboolean close_cb () {
+static gboolean close_cb(void) {
   cleanup();
   return TRUE;
 }
@@ -121,7 +121,7 @@ static void dac_antenna_cb(GtkComboBox *widget, gpointer data) {
   }
 }
 
-static void show_hf() {
+static void show_hf(void) {
   GtkWidget *label;
   int bands = radio_max_band();
   hf_container = gtk_fixed_new();
@@ -200,7 +200,7 @@ static void show_hf() {
   gtk_container_add(GTK_CONTAINER(hf_container), mygrid);
 }
 
-static void show_xvtr() {
+static void show_xvtr(void) {
   GtkWidget *label; // re-used for all labels
   int num = 0;
 
