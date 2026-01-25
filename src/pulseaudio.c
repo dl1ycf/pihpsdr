@@ -180,20 +180,20 @@ int audio_open_output(RECEIVER *rx) {
   for (int i = 0; i < n_output_devices; i++) {
     if (!strcmp(rx->audio_name, output_devices[i].name)) {
       err = 0;
-      t_print("%s RX%d:%s\n", __FUNCTION__, rx->id + 1, output_devices[i].description);
+      t_print("%s RX%d:%s\n", __func__, rx->id + 1, output_devices[i].description);
       break;
     }
   }
 
   if (err) {
-    t_print("%s: not registered: %s\n", __FUNCTION__, rx->audio_name);
+    t_print("%s: not registered: %s\n", __func__, rx->audio_name);
     return -1;
   }
 
   g_mutex_lock(&rx->audio_mutex);
-  attr.maxlength = (uint32_t) -1;
-  attr.tlength   = (uint32_t) -1;
-  attr.prebuf    = (uint32_t) -1;
+  attr.maxlength = pa_usec_to_bytes(2*AUDIO_LAT_HIGH, &sample_spec);
+  attr.tlength   = pa_usec_to_bytes(AUDIO_LAT_HIGH, &sample_spec);
+  attr.prebuf    = pa_usec_to_bytes(AUDIO_LAT_LOW, &sample_spec);
   attr.minreq    = (uint32_t) -1;
   attr.fragsize  = (uint32_t) -1;
   rx->audio_handle = pa_simple_new(NULL, // Use the default server.
@@ -208,7 +208,7 @@ int audio_open_output(RECEIVER *rx) {
                                   );
 
   if (rx->audio_handle == NULL) {
-    t_print("%s: ERROR pa_simple_new: %s\n", __FUNCTION__, pa_strerror(err));
+    t_print("%s: ERROR pa_simple_new: %s\n", __func__, pa_strerror(err));
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
   }
@@ -216,7 +216,7 @@ int audio_open_output(RECEIVER *rx) {
   rx->cwaudio = 0;
   rx->cwcount = 0;
   rx->audio_buffer_offset = 0;
-  rx->audio_buffer = g_new0(float, 2 * out_buffer_size);
+  rx->audio_buffer = g_new(double, 2 * out_buffer_size);
   g_mutex_unlock(&rx->audio_mutex);
   return 0;
 }
@@ -240,7 +240,7 @@ static gpointer tx_audio_thread(gpointer arg) {
 
     if (rc < 0) {
       tx->audio_running = FALSE;
-      t_print("%s: ERROR pa_simple_read: %s\n", __FUNCTION__, pa_strerror(err));
+      t_print("%s: ERROR pa_simple_read: %s\n", __func__, pa_strerror(err));
     } else {
       for (int i = 0; i < inp_buffer_size; i++) {
         //
@@ -248,8 +248,7 @@ static gpointer tx_audio_thread(gpointer arg) {
         // to the server without any buffering
         //
         if (radio_is_remote) {
-          short s = buffer[i] * 32767.0;
-          server_tx_audio(s);
+          server_tx_audio((double) buffer[i]);
           continue;
         }
 
@@ -262,7 +261,7 @@ static gpointer tx_audio_thread(gpointer arg) {
 
         if (newpt != tx->audio_buffer_outpt) {
           // buffer space available, do the write
-          tx->audio_buffer[tx->audio_buffer_inpt] = buffer[i];
+          tx->audio_buffer[tx->audio_buffer_inpt] = (double) buffer[i];
           // atomic update of tx->audio_buffer_inpt
           tx->audio_buffer_inpt = newpt;
         }
@@ -270,7 +269,7 @@ static gpointer tx_audio_thread(gpointer arg) {
     }
   }
 
-  t_print("%s: exit\n", __FUNCTION__);
+  t_print("%s: exit\n", __func__);
   g_free(buffer);
   return NULL;
 }
@@ -292,14 +291,14 @@ int audio_open_input(TRANSMITTER *tx) {
 
   for (int i = 0; i < n_input_devices; i++) {
     if (!strcmp(tx->audio_name, input_devices[i].name)) {
-      t_print("%s TX:%s\n", __FUNCTION__, input_devices[i].description);
+      t_print("%s TX:%s\n", __func__, input_devices[i].description);
       err = 0;
       break;
     }
   }
 
   if (err) {
-    t_print("%s: not registered: %s\n", __FUNCTION__, tx->audio_name);
+    t_print("%s: not registered: %s\n", __func__, tx->audio_name);
     return -1;
   }
 
@@ -324,8 +323,8 @@ int audio_open_input(TRANSMITTER *tx) {
                                   );
 
   if (tx->audio_handle != NULL) {
-    t_print("%s: allocating ring buffer\n", __FUNCTION__);
-    tx->audio_buffer = (float *) g_new(float, MICRINGLEN);
+    t_print("%s: allocating ring buffer\n", __func__);
+    tx->audio_buffer = g_new(double, MICRINGLEN);
     tx->audio_buffer_outpt = tx->audio_buffer_inpt = 0;
 
     if (tx->audio_buffer == NULL) {
@@ -339,13 +338,13 @@ int audio_open_input(TRANSMITTER *tx) {
     tx->audio_thread_id = g_thread_try_new("TxAudioIn", tx_audio_thread, tx, &error);
 
     if (!tx->audio_thread_id ) {
-      t_print("%s: g_thread_new failed on tx_audio_thread: %s\n", __FUNCTION__, error->message);
+      t_print("%s: g_thread_new failed on tx_audio_thread: %s\n", __func__, error->message);
       g_mutex_unlock(&tx->audio_mutex);
       audio_close_input(tx);
       return -1;
     }
   } else {
-    t_print("%s: ERROR pa_simple_new: %s\n", __FUNCTION__, pa_strerror(err));
+    t_print("%s: ERROR pa_simple_new: %s\n", __func__, pa_strerror(err));
     return -1;
   }
 
@@ -354,7 +353,7 @@ int audio_open_input(TRANSMITTER *tx) {
 }
 
 void audio_close_output(RECEIVER *rx) {
-  t_print("%s: RX%d:%s\n", __FUNCTION__, rx->id + 1, rx->audio_name);
+  t_print("%s: RX%d:%s\n", __func__, rx->id + 1, rx->audio_name);
   g_mutex_lock(&rx->audio_mutex);
 
   if (rx->audio_handle != NULL) {
@@ -372,7 +371,7 @@ void audio_close_output(RECEIVER *rx) {
 
 void audio_close_input(TRANSMITTER *tx) {
   tx->audio_running = FALSE;
-  t_print("%s: TX:%s\n", __FUNCTION__, tx->audio_name);
+  t_print("%s: TX:%s\n", __func__, tx->audio_name);
   g_mutex_lock(&tx->audio_mutex);
 
   if (tx->audio_thread_id != NULL) {
@@ -401,8 +400,8 @@ void audio_close_input(TRANSMITTER *tx) {
 // Utility function for retrieving mic samples
 // from ring buffer
 //
-float audio_get_next_mic_sample(TRANSMITTER *tx) {
-  float sample;
+double audio_get_next_mic_sample(TRANSMITTER *tx) {
+  double sample;
   g_mutex_lock(&tx->audio_mutex);
 
   if ((tx->audio_buffer == NULL) || (tx->audio_buffer_outpt == tx->audio_buffer_inpt)) {
@@ -435,7 +434,7 @@ float audio_get_next_mic_sample(TRANSMITTER *tx) {
 // So for the time being, using the internal keyer might not be
 // reasonable when running the PulseAudio module.
 //
-int tx_audio_write(RECEIVER *rx, float sample) {
+int tx_audio_write(RECEIVER *rx, double sample) {
   int result = 0;
   int err;
   g_mutex_lock(&rx->audio_mutex);
@@ -451,9 +450,9 @@ int tx_audio_write(RECEIVER *rx, float sample) {
     rx->audio_buffer_offset++;
 
     if (rx->audio_buffer_offset >= out_buffer_size) {
-      pa_usec_t latency = pa_simple_get_latency(rx->audio_handle, &err);
+      rx->latency = pa_simple_get_latency(rx->audio_handle, &err);
 
-      if (latency > AUDIO_LAT_HIGH && rx->cwcount == 0) {
+      if (rx->latency > AUDIO_LAT_HIGH && rx->cwcount == 0) {
         //
         // If the radio is running a a slightly too high clock rate, or if
         // the audio hardware clocks slightly below 48 kHz, then the PA audio
@@ -462,21 +461,32 @@ int tx_audio_write(RECEIVER *rx, float sample) {
         // buffers has been suppressed.
         //
         rx->cwcount = (AUDIO_LAT_HIGH - AUDIO_LAT_LOW) / (20 * out_buffer_size);
-        t_print("%s: suppressing audio block\n", __FUNCTION__);
+        t_print("%s: suppressing audio block\n", __func__);
       }
 
       if (rx->cwcount > 0) {
         rx->cwcount--;
       }
 
-      if (rx->cwcount == 0 || latency < AUDIO_LAT_LOW) {
+      if (rx->cwcount == 0 || rx->latency < AUDIO_LAT_LOW) {
+        //
+        // Write output buffer. To this end, a C variable length
+        // array is allocated to do the conversion from internal (double)
+        // to PulseAudio (float) format.
+        //
+        float buffer[2 * out_buffer_size];
+
+        for (int i = 0; i < 2 * out_buffer_size; i++) {
+          buffer[i] = (float) rx->audio_buffer[i];
+        }
+
         int rc = pa_simple_write(rx->audio_handle,
-                                 rx->audio_buffer,
-                                 out_buffer_size * sizeof(float) * 2,
+                                 buffer,
+                                 2 * out_buffer_size * sizeof(float) ,
                                  &err);
 
         if (rc < 0) {
-          t_print("%s: ERROR pa_simple_write: %s\n", __FUNCTION__, pa_strerror(err));
+          t_print("%s: ERROR pa_simple_write: %s\n", __func__, pa_strerror(err));
         }
       }
 
@@ -488,7 +498,7 @@ int tx_audio_write(RECEIVER *rx, float sample) {
   return result;
 }
 
-int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
+int audio_write(RECEIVER *rx, double left, double right) {
   int result = 0;
   int err;
 
@@ -505,14 +515,14 @@ int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
     // and rx->audio_buffer will not be destroyes until we
     // are finished here.
     //
-    rx->audio_buffer[rx->audio_buffer_offset * 2] = left_sample;
-    rx->audio_buffer[(rx->audio_buffer_offset * 2) + 1] = right_sample;
+    rx->audio_buffer[rx->audio_buffer_offset * 2] = left;
+    rx->audio_buffer[(rx->audio_buffer_offset * 2) + 1] = right;
     rx->audio_buffer_offset++;
 
     if (rx->audio_buffer_offset >= out_buffer_size) {
-      pa_usec_t latency = pa_simple_get_latency(rx->audio_handle, &err);
+      rx->latency = pa_simple_get_latency(rx->audio_handle, &err);
 
-      if (latency > AUDIO_LAT_HIGH && rx->cwcount == 0) {
+      if (rx->latency > AUDIO_LAT_HIGH && rx->cwcount == 0) {
         //
         // If the radio is running a a slightly too high clock rate, or if
         // the audio hardware clocks slightly below 48 kHz, then the PA audio
@@ -521,21 +531,31 @@ int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
         // buffers has been suppressed.
         //
         rx->cwcount = (AUDIO_LAT_HIGH - AUDIO_LAT_LOW) / (20 * out_buffer_size);
-        t_print("%s: suppressing audio block\n", __FUNCTION__);
+        t_print("%s: suppressing audio block\n", __func__);
       }
 
       if (rx->cwcount > 0) {
         rx->cwcount--;
       }
 
-      if (rx->cwcount == 0 || latency < AUDIO_LAT_LOW) {
-        int rc = pa_simple_write(rx->audio_handle,
-                                 rx->audio_buffer,
-                                 out_buffer_size * sizeof(float) * 2,
+      if (rx->cwcount == 0 || rx->latency < AUDIO_LAT_LOW) {
+        //
+        // Write output buffer. To this end, a C variable length
+        // array is allocated to do the conversion from internal (double)
+        // to PulseAudio (float) format.
+        //
+        float buffer[2 * out_buffer_size];
+
+        for (int i = 0; i < 2 * out_buffer_size; i++) {
+          buffer[i] = (float) rx->audio_buffer[i];
+        }
+
+        int rc = pa_simple_write(rx->audio_handle, buffer,
+                                 2 * out_buffer_size * sizeof(float),
                                  &err);
 
         if (rc < 0) {
-          t_print("%s: ERROR pa_simple_write: %s\n", __FUNCTION__, pa_strerror(err));
+          t_print("%s: ERROR pa_simple_write: %s\n", __func__, pa_strerror(err));
         }
       }
 

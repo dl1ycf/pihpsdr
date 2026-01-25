@@ -91,13 +91,12 @@ typedef struct _transmitter {
   volatile int audio_buffer_inpt;
   volatile int audio_buffer_outpt;
   volatile int audio_running;
-  float *audio_buffer;
+  double *audio_buffer;
 
 #if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA)
   // this is only possible for "cppcheck" runs
   // declare all data without conflicts
   void *audio_handle;
-  int audio_running;
   snd_pcm_format_t audio_format;
 #endif
 #if defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA)
@@ -202,7 +201,7 @@ typedef struct _transmitter {
   int display_filled;
 
   double *cw_sig_rf;      // contains the CW RF envelope
-  int    *p1stone;        // contains side tone (CW or TUNE), only used in P1
+  double *p1stone;        // contains side tone (CW or TUNE), only used in P1
 
   int cw_ramp_audio_len;  // ramp width in samples
   int cw_ramp_audio_ptr;
@@ -226,7 +225,7 @@ extern TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int hei
 void tx_create_dialog(TRANSMITTER *tx);
 void tx_reconfigure(TRANSMITTER *tx, int pixels, int width, int height);
 
-extern void   tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample);
+extern void   tx_add_mic_sample(TRANSMITTER *tx, double mic_sample);
 extern void   tx_add_ps_iq_samples(const TRANSMITTER *tx, double i_sample_0, double q_sample_0, double i_sample_1,
                                    double q_sample_1);
 

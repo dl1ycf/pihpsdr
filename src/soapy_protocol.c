@@ -108,13 +108,13 @@ void soapy_protocol_change_rx_sample_rate(RECEIVER *rx) {
   //
   int rc;
   double d;
-  t_print("%s: setting samplerate=%f\n", __FUNCTION__, (double)rx->sample_rate);
+  t_print("%s: setting samplerate=%f\n", __func__, (double)rx->sample_rate);
   d = SoapySDRDevice_getSampleRate(soapy_device, SOAPY_SDR_RX, rx->id);
   d = SoapySDRDevice_getBandwidth(soapy_device, SOAPY_SDR_RX, rx->id);
   rc = SoapySDRDevice_setSampleRate(soapy_device, SOAPY_SDR_RX, rx->id, (double)rx->sample_rate);
 
   if (rc != 0) {
-    t_print("%s: SetSampleRate (%f) failed: %s\n", __FUNCTION__, (double)rx->sample_rate,
+    t_print("%s: SetSampleRate (%f) failed: %s\n", __func__, (double)rx->sample_rate,
             SoapySDR_errToStr(rc));
   }
 
@@ -187,7 +187,7 @@ void soapy_protocol_create_single_receiver(RECEIVER *rx) {
   double bw;
 
   if (rx->id != 0) {
-    t_print("%s:WARNING:SOAPY:create single receiver but id nonzero\n", __FUNCTION__);
+    t_print("%s:WARNING:SOAPY:create single receiver but id nonzero\n", __func__);
     return;
   }
 
@@ -196,7 +196,7 @@ void soapy_protocol_create_single_receiver(RECEIVER *rx) {
   rc = SoapySDRDevice_setSampleRate(soapy_device, SOAPY_SDR_RX, rx->id, (double)soapy_radio_sample_rate);
 
   if (rc != 0) {
-    t_print("%s: SetSampleRate (%f) failed: %s\n", __FUNCTION__, (double)soapy_radio_sample_rate,
+    t_print("%s: SetSampleRate (%f) failed: %s\n", __func__, (double)soapy_radio_sample_rate,
             SoapySDR_errToStr(rc));
   }
 
@@ -216,11 +216,11 @@ void soapy_protocol_create_single_receiver(RECEIVER *rx) {
   }
 
   if (rc != 0) {
-    t_print("%s: SetBandWidth (%f) failed: %s\n", __FUNCTION__, bw, SoapySDR_errToStr(rc));
+    t_print("%s: SetBandWidth (%f) failed: %s\n", __func__, bw, SoapySDR_errToStr(rc));
   }
 
   bw = SoapySDRDevice_getBandwidth(soapy_device, SOAPY_SDR_RX, rx->id);
-  t_print("%s: RX%d Bandwidth=%f\n", __FUNCTION__, (int)(rx->id + 1), bw);
+  t_print("%s: RX%d Bandwidth=%f\n", __func__, (int)(rx->id + 1), bw);
 
   if (have_lime) {
     //
@@ -229,7 +229,7 @@ void soapy_protocol_create_single_receiver(RECEIVER *rx) {
     rc = SoapySDRDevice_writeSetting(soapy_device, "OVERSAMPLING", "32");
 
     if (rc != 0) {
-      t_print("%s: setting oversampling failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+      t_print("%s: setting oversampling failed: %s\n", __func__, SoapySDR_errToStr(rc));
     }
   }
 
@@ -238,7 +238,7 @@ void soapy_protocol_create_single_receiver(RECEIVER *rx) {
   rc = SoapySDRDevice_setupStream(soapy_device, &rx_stream, SOAPY_SDR_RX, SOAPY_SDR_CF32, &channel, 1, NULL);
 
   if (rc != 0) {
-    t_print("%s: SetupStream failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+    t_print("%s: SetupStream failed: %s\n", __func__, SoapySDR_errToStr(rc));
     g_idle_add(fatal_error, "FATAL: Soapy Setup RX Stream Failed");
   }
 
@@ -246,13 +246,13 @@ void soapy_protocol_create_single_receiver(RECEIVER *rx) {
   rx_stream = SoapySDRDevice_setupStream(soapy_device, SOAPY_SDR_RX, SOAPY_SDR_CF32, &channel, 1, NULL);
 
   if (rx_stream == NULL) {
-    t_print("%s: SetupStream yields NULL\n", __FUNCTION__);
+    t_print("%s: SetupStream yields NULL\n", __func__);
     g_idle_add(fatal_error, "FATAL: Soapy Setup RX Stream Failed");
   }
 
 #endif
   max_rx_samples = SoapySDRDevice_getStreamMTU(soapy_device, rx_stream);
-  t_print("%s: max_rx_samples=%d\n", __FUNCTION__, max_rx_samples);
+  t_print("%s: max_rx_samples=%d\n", __func__, max_rx_samples);
 
   if (max_rx_samples > (2 * rx->fft_size)) { max_rx_samples = 2 * rx->fft_size; }
 
@@ -282,7 +282,7 @@ void soapy_protocol_create_dual_receiver(RECEIVER *rx1, RECEIVER *rx2) {
     rc = SoapySDRDevice_writeSetting(soapy_device, "OVERSAMPLING", "32");
 
     if (rc != 0) {
-      t_print("%s: setting oversampling failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+      t_print("%s: setting oversampling failed: %s\n", __func__, SoapySDR_errToStr(rc));
     }
   }
 
@@ -290,32 +290,32 @@ void soapy_protocol_create_dual_receiver(RECEIVER *rx1, RECEIVER *rx2) {
   rc = SoapySDRDevice_setBandwidth(soapy_device, SOAPY_SDR_RX, rx1->id, lime_rx_bw);
 
   if (rc != 0) {
-    t_print("%s: SetBandWidth RX1 (%f) failed: %s\n", __FUNCTION__, lime_rx_bw, SoapySDR_errToStr(rc));
+    t_print("%s: SetBandWidth RX1 (%f) failed: %s\n", __func__, lime_rx_bw, SoapySDR_errToStr(rc));
   }
 
   bw = SoapySDRDevice_getBandwidth(soapy_device, SOAPY_SDR_RX, rx1->id);
-  t_print("%s: RX1 Bandwidth=%f\n", __FUNCTION__, bw);
+  t_print("%s: RX1 Bandwidth=%f\n", __func__, bw);
 
   rc = SoapySDRDevice_setSampleRate(soapy_device, SOAPY_SDR_RX, rx1->id, (double)soapy_radio_sample_rate);
 
   if (rc != 0) {
-    t_print("%s: SetSampleRate RX1 (%f) failed: %s\n", __FUNCTION__, (double)soapy_radio_sample_rate,
+    t_print("%s: SetSampleRate RX1 (%f) failed: %s\n", __func__, (double)soapy_radio_sample_rate,
             SoapySDR_errToStr(rc));
   }
 
   rc = SoapySDRDevice_setBandwidth(soapy_device, SOAPY_SDR_RX, rx2->id, lime_rx_bw);
 
   if (rc != 0) {
-    t_print("%s: SetBandWidth RX2 (%f) failed: %s\n", __FUNCTION__, (double)lime_rx_bw, SoapySDR_errToStr(rc));
+    t_print("%s: SetBandWidth RX2 (%f) failed: %s\n", __func__, (double)lime_rx_bw, SoapySDR_errToStr(rc));
   }
 
   bw = SoapySDRDevice_getBandwidth(soapy_device, SOAPY_SDR_RX, rx2->id);
-  t_print("%s: RX2 Bandwidth=%f\n", __FUNCTION__, bw);
+  t_print("%s: RX2 Bandwidth=%f\n", __func__, bw);
 
   rc = SoapySDRDevice_setSampleRate(soapy_device, SOAPY_SDR_RX, rx2->id, (double)soapy_radio_sample_rate);
 
   if (rc != 0) {
-    t_print("%s: SetSampleRate RX2 (%f) failed: %s\n", __FUNCTION__, (double)soapy_radio_sample_rate,
+    t_print("%s: SetSampleRate RX2 (%f) failed: %s\n", __func__, (double)soapy_radio_sample_rate,
             SoapySDR_errToStr(rc));
   }
 
@@ -323,7 +323,7 @@ void soapy_protocol_create_dual_receiver(RECEIVER *rx1, RECEIVER *rx2) {
   rx_stream = SoapySDRDevice_setupStream(soapy_device, SOAPY_SDR_RX, SOAPY_SDR_CF32, channels, 2, NULL);
 
   if (rx_stream == NULL) {
-    t_print("%s: SetupStream RX failed\n", __FUNCTION__);
+    t_print("%s: SetupStream RX failed\n", __func__);
     g_idle_add(fatal_error, "Soapy Setup RX Stream Failed");
   }
 
@@ -367,16 +367,16 @@ void soapy_protocol_start_single_receiver(RECEIVER *rx) {
   int rc;
 
   if (rx->id != 0) {
-    t_print("%s: WARNING: SOAPY: id nonzero\n", __FUNCTION__);
+    t_print("%s: WARNING: SOAPY: id nonzero\n", __func__);
   }
 
   size_t channel = rx->id;
   double rate = SoapySDRDevice_getSampleRate(soapy_device, SOAPY_SDR_RX, channel);
-  t_print("%s: rate=%f\n", __FUNCTION__, rate);
+  t_print("%s: rate=%f\n", __func__, rate);
   rc = SoapySDRDevice_activateStream(soapy_device, rx_stream, 0, 0LL, 0);
 
   if (rc != 0) {
-    t_print("%s: ActivateStream failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+    t_print("%s: ActivateStream failed: %s\n", __func__, SoapySDR_errToStr(rc));
     g_idle_add(fatal_error, "FATAL: Soapy Start RX Stream failed");
   }
 
@@ -392,17 +392,17 @@ void soapy_protocol_start_dual_receiver(RECEIVER *rx1, RECEIVER *rx2) {
 
   if (rx1->id != 0 || rx2->id != 1) {
     // Here we start a stream with two channels which MUST be 0 and 1
-    t_print("%s:WARNING:SOAPY: id not 0 and 1\n", __FUNCTION__);
+    t_print("%s:WARNING:SOAPY: id not 0 and 1\n", __func__);
     return;
   }
 
   double rate1 = SoapySDRDevice_getSampleRate(soapy_device, SOAPY_SDR_RX, rx1->id);
   double rate2 = SoapySDRDevice_getSampleRate(soapy_device, SOAPY_SDR_RX, rx2->id);
-  t_print("%s: RX1 rate=%f, RX2 rate=%f\n", __FUNCTION__, rate1, rate2);
+  t_print("%s: RX1 rate=%f, RX2 rate=%f\n", __func__, rate1, rate2);
   rc = SoapySDRDevice_activateStream(soapy_device, rx_stream, 0, 0LL, 0);
 
   if (rc != 0) {
-    t_print("%s: ActivateStream failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+    t_print("%s: ActivateStream failed: %s\n", __func__, SoapySDR_errToStr(rc));
     g_idle_add(fatal_error, "Soapy Start RX Stream failed");
   }
 
@@ -416,11 +416,11 @@ void soapy_protocol_create_transmitter(const TRANSMITTER *tx) {
   ASSERT_SERVER();
   int rc;
   double rate = (double) tx->iq_output_rate;
-  t_print("%s: setting samplerate=%f\n", __FUNCTION__, rate);
+  t_print("%s: setting samplerate=%f\n", __func__, rate);
   rc = SoapySDRDevice_setSampleRate(soapy_device, SOAPY_SDR_TX, 0, rate);
 
   if (rc != 0) {
-    t_print("%s: SetSampleRate(%f) failed: %s\n", __FUNCTION__, rate,
+    t_print("%s: SetSampleRate(%f) failed: %s\n", __func__, rate,
             SoapySDR_errToStr(rc));
   }
 
@@ -428,34 +428,34 @@ void soapy_protocol_create_transmitter(const TRANSMITTER *tx) {
     //
     // LIME: use small TX bandwidth, and use oversampling
     //
-    t_print("%s: setting TX%d bandwidth=%f\n", __FUNCTION__, 0, lime_tx_bw);
+    t_print("%s: setting TX%d bandwidth=%f\n", __func__, 0, lime_tx_bw);
     rc = SoapySDRDevice_setBandwidth(soapy_device, SOAPY_SDR_TX, 0, lime_tx_bw);
 
     if (rc != 0) {
-      t_print("%s: SetBandwidth(%f) failed: %s\n", __FUNCTION__, rate, SoapySDR_errToStr(rc));
+      t_print("%s: SetBandwidth(%f) failed: %s\n", __func__, rate, SoapySDR_errToStr(rc));
     }
 
     rc = SoapySDRDevice_writeSetting(soapy_device, "OVERSAMPLING", "32");
 
     if (rc != 0) {
-      t_print("%s: setting oversampling failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+      t_print("%s: setting oversampling failed: %s\n", __func__, SoapySDR_errToStr(rc));
     }
   } else {
-    t_print("%s: setting TX%d bandwidth=%f\n", __FUNCTION__, 0, rate);
+    t_print("%s: setting TX%d bandwidth=%f\n", __func__, 0, rate);
     rc = SoapySDRDevice_setBandwidth(soapy_device, SOAPY_SDR_TX, 0, rate);
 
     if (rc != 0) {
-      t_print("%s: SetBandwidth(%f) failed: %s\n", __FUNCTION__, rate, SoapySDR_errToStr(rc));
+      t_print("%s: SetBandwidth(%f) failed: %s\n", __func__, rate, SoapySDR_errToStr(rc));
     }
   }
 
   size_t channel = 0;
-  t_print("%s: setupStream: channel=%d\n", __FUNCTION__, (int) channel);
+  t_print("%s: setupStream: channel=%d\n", __func__, (int) channel);
 #if defined(SOAPY_SDR_API_VERSION) && (SOAPY_SDR_API_VERSION < 0x00080000)
   rc = SoapySDRDevice_setupStream(soapy_device, &tx_stream, SOAPY_SDR_TX, SOAPY_SDR_CF32, &channel, 1, NULL);
 
   if (rc != 0) {
-    t_print("%s: SetupStream failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+    t_print("%s: SetupStream failed: %s\n", __func__, SoapySDR_errToStr(rc));
     g_idle_add(fatal_error, "FATAL: Soapy Setup TX Stream Failed");
   }
 
@@ -463,7 +463,7 @@ void soapy_protocol_create_transmitter(const TRANSMITTER *tx) {
   tx_stream = SoapySDRDevice_setupStream(soapy_device, SOAPY_SDR_TX, SOAPY_SDR_CF32, &channel, 1, NULL);
 
   if (tx_stream == NULL) {
-    t_print("%s: SetupStream failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+    t_print("%s: SetupStream failed: %s\n", __func__, SoapySDR_errToStr(rc));
     g_idle_add(fatal_error, "FATAL: Soapy Setup TX Stream Failed");
   }
 
@@ -478,27 +478,27 @@ void soapy_protocol_create_transmitter(const TRANSMITTER *tx) {
     g_free(tx_output_buffer);
   }
 
-  t_print("%s: max_tx_samples=%d\n", __FUNCTION__, max_tx_samples);
+  t_print("%s: max_tx_samples=%d\n", __func__, max_tx_samples);
   tx_output_buffer = g_new(float, 2 * max_tx_samples);
 }
 
-void soapy_protocol_start_transmitter() {
+void soapy_protocol_start_transmitter(void) {
   //
   // call activateStream on tx_stream
   //
   ASSERT_SERVER();
   int rc;
   double rate = SoapySDRDevice_getSampleRate(soapy_device, SOAPY_SDR_TX, 0);
-  t_print("%s: rate=%f\n", __FUNCTION__, rate);
+  t_print("%s: rate=%f\n", __func__, rate);
   rc = SoapySDRDevice_activateStream(soapy_device, tx_stream, 0, 0LL, 0);
 
   if (rc != 0) {
-    t_print("%s: ActivateStream failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+    t_print("%s: ActivateStream failed: %s\n", __func__, SoapySDR_errToStr(rc));
     g_idle_add(fatal_error, "FATAL: Soapy Start TX Stream Failed");
   }
 }
 
-void soapy_protocol_stop_receivers() {
+void soapy_protocol_stop_receivers(void) {
   //
   // Terminate the (single or dual) receiver thread, which will call deactivateStream on rx_stream
   //
@@ -511,7 +511,7 @@ void soapy_protocol_stop_receivers() {
   }
 }
 
-void soapy_protocol_stop_transmitter() {
+void soapy_protocol_stop_transmitter(void) {
   //
   // call deactivateStream on tx_stream
   // Normally there is no need to call this functions, since the delivery of
@@ -531,17 +531,17 @@ void soapy_protocol_stop_transmitter() {
   rc = SoapySDRDevice_deactivateStream(soapy_device, tx_stream, 0, 0LL);
 
   if (rc != 0) {
-    t_print("%s: DeactivateStream failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+    t_print("%s: DeactivateStream failed: %s\n", __func__, SoapySDR_errToStr(rc));
     g_idle_add(fatal_error, "FATAL: Soapy Stop TX Stream Failed");
   }
 }
 
 void soapy_protocol_init(gboolean hf) {
   ASSERT_SERVER();
-  SoapySDRKwargs args = {};
+  SoapySDRKwargs args = { 0 };
   char temp[32];
   SoapySDR_setLogLevel(SOAPY_SDR_TRACE);
-  t_print("%s: hf=%d driver=%s\n", __FUNCTION__, hf, radio->name);
+  t_print("%s: hf=%d driver=%s\n", __func__, hf, radio->name);
   // initialise the radio
   SoapySDRKwargs_set(&args, "driver", radio->name);
 
@@ -562,7 +562,7 @@ void soapy_protocol_init(gboolean hf) {
   soapy_device = SoapySDRDevice_make(&args);
 
   if (soapy_device == NULL) {
-    t_print("%s: MakeDevice failed: %s\n", __FUNCTION__, SoapySDRDevice_lastError());
+    t_print("%s: MakeDevice failed: %s\n", __func__, SoapySDRDevice_lastError());
     g_idle_add(fatal_error, "FATAL: Soapy Make Device Failed");
   }
 
@@ -618,7 +618,7 @@ static void process_rx_buffer(RECEIVER *rx, const float *rxbuff, int elements, i
               // We have no mic samples, this call only
               // sets the heart beat
               //
-              tx_add_mic_sample(transmitter, 0);
+              tx_add_mic_sample(transmitter, 0.0);
               mic_samples = 0;
             }
           }
@@ -648,7 +648,7 @@ static void process_rx_buffer(RECEIVER *rx, const float *rxbuff, int elements, i
         mic_samples++;
 
         if (mic_samples >= mic_sample_divisor) { // reduce to 48000
-          tx_add_mic_sample(transmitter, 0);
+          tx_add_mic_sample(transmitter, 0.0);
           mic_samples = 0;
         }
       }
@@ -671,7 +671,7 @@ static void *soapy_receive_single_thread(void *arg) {
   void *buffs[1] = {rxbuff};
   int id = rx->id;
   rxthread_running = TRUE;
-  t_print("%s started, id=%d\n", __FUNCTION__, id);
+  t_print("%s started, id=%d\n", __func__, id);
 
   while (rxthread_running) {
     int elements = SoapySDRDevice_readStream(soapy_device, rx_stream, buffs, max_rx_samples, &flags, &timeNs,
@@ -684,12 +684,12 @@ static void *soapy_receive_single_thread(void *arg) {
     process_rx_buffer(rx, rxbuff, elements, 1);
   }
 
-  t_print("%s: deactivateStream\n", __FUNCTION__);
+  t_print("%s: deactivateStream\n", __func__);
   SoapySDRDevice_deactivateStream(soapy_device, rx_stream, 0, 0LL);
   /*
-  t_print("%s: SoapySDRDevice_closeStream\n", __FUNCTION__);
+  t_print("%s: SoapySDRDevice_closeStream\n", __func__);
   SoapySDRDevice_closeStream(soapy_device,rx_stream);
-  t_print("%s: SoapySDRDevice_unmake\n", __FUNCTION__);
+  t_print("%s: SoapySDRDevice_unmake\n", __func__);
   SoapySDRDevice_unmake(soapy_device);
   */
   g_free(rxbuff);
@@ -706,7 +706,7 @@ static gpointer soapy_receive_dual_thread(gpointer data) {
   float *rx2buff = g_new(float, max_rx_samples * 2);
   void *buffs[2] = {rx1buff, rx2buff};
   rxthread_running = TRUE;
-  t_print("%s started\n", __FUNCTION__);
+  t_print("%s started\n", __func__);
 
   while (rxthread_running) {
     int elements = SoapySDRDevice_readStream(
@@ -731,7 +731,7 @@ static gpointer soapy_receive_dual_thread(gpointer data) {
     }
   }
 
-  t_print("%s: SoapySDRDevice_deactivateStream\n", __FUNCTION__);
+  t_print("%s: SoapySDRDevice_deactivateStream\n", __func__);
   SoapySDRDevice_deactivateStream(soapy_device, rx_stream, 0, 0LL);
   g_free(rx1buff);
   g_free(rx2buff);
@@ -781,7 +781,7 @@ void soapy_protocol_iq_samples(double isample, double qsample) {
       int elements = SoapySDRDevice_writeStream(soapy_device, tx_stream, tx_buffs, max_tx_samples, &flags, timeNs, timeoutUs);
 
       if (elements != max_tx_samples) {
-        t_print("%s: writeStream returned %d for %d elements\n", __FUNCTION__, elements, max_tx_samples);
+        t_print("%s: writeStream returned %d for %d elements\n", __func__, elements, max_tx_samples);
       }
 
       tx_output_buffer_index = 0;
@@ -855,26 +855,26 @@ void soapy_protocol_set_rx_frequency(int id) {
           }
         }
 
-        //t_print("%s: New LIME LO RX1/RX2 freq=%f\n", __FUNCTION__, lo_freq);
+        //t_print("%s: New LIME LO RX1/RX2 freq=%f\n", __func__, lo_freq);
         rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, 1, "RF", lo_freq, NULL);
 
         if (rc != 0) {
-          t_print("%s: RX2-LO failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+          t_print("%s: RX2-LO failed: %s\n", __func__, SoapySDR_errToStr(rc));
         }
 
         rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, 0, "RF", lo_freq, NULL);
 
         if (rc != 0) {
-          t_print("%s: RX1-LO failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+          t_print("%s: RX1-LO failed: %s\n", __func__, SoapySDR_errToStr(rc));
         }
       }
 
       // LO freq is set, determine and set offset
-      //t_print("%s: New LIME RX%d offset=%f\n", __FUNCTION__, id, fd - lo_freq);
+      //t_print("%s: New LIME RX%d offset=%f\n", __func__, id, fd - lo_freq);
       rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, id, "BB", fd - lo_freq, NULL);
 
       if (rc != 0) {
-        t_print("%s: RX%d-BB failed: %s\n", __FUNCTION__, id + 1, SoapySDR_errToStr(rc));
+        t_print("%s: RX%d-BB failed: %s\n", __func__, id + 1, SoapySDR_errToStr(rc));
       }
 
       if (!lo_ok && RECEIVERS > 1 && !lime_mute_rx2) {
@@ -882,11 +882,11 @@ void soapy_protocol_set_rx_frequency(int id) {
         // For the 2RX case and the LO freq has been changed, we need to re-calculate the offset of
         // the "other" receiver
         //
-        t_print("%s: New LIME RX%d offset=%f\n", __FUNCTION__, sid, fd2 - lo_freq);
+        t_print("%s: New LIME RX%d offset=%f\n", __func__, sid, fd2 - lo_freq);
         rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_RX, sid, "BB", fd2 - lo_freq, NULL);
 
         if (rc != 0) {
-          t_print("%s: RX%d-BB failed: %s\n", __FUNCTION__, sid + 1, SoapySDR_errToStr(rc));
+          t_print("%s: RX%d-BB failed: %s\n", __func__, sid + 1, SoapySDR_errToStr(rc));
         }
       }
     } else {
@@ -896,13 +896,13 @@ void soapy_protocol_set_rx_frequency(int id) {
       rc = SoapySDRDevice_setFrequency(soapy_device, SOAPY_SDR_RX, id, (double)f, NULL);
 
       if (rc != 0) {
-        t_print("%s: RX%d failed: %s\n", __FUNCTION__, id + 1, SoapySDR_errToStr(rc));
+        t_print("%s: RX%d failed: %s\n", __func__, id + 1, SoapySDR_errToStr(rc));
       }
     }
   }
 }
 
-void soapy_protocol_set_tx_frequency() {
+void soapy_protocol_set_tx_frequency(void) {
   ASSERT_SERVER();
 
   if (can_transmit && soapy_device != NULL) {
@@ -938,7 +938,7 @@ void soapy_protocol_set_tx_frequency() {
         rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_TX, 0, "RF", lo_freq, NULL);
 
         if (rc != 0) {
-          t_print("%s: TX-LO failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+          t_print("%s: TX-LO failed: %s\n", __func__, SoapySDR_errToStr(rc));
         }
       }
 
@@ -946,7 +946,7 @@ void soapy_protocol_set_tx_frequency() {
       rc = SoapySDRDevice_setFrequencyComponent(soapy_device, SOAPY_SDR_TX, 0, "BB", fd - lo_freq, NULL);
 
       if (rc != 0) {
-        t_print("%s: TX-BB failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+        t_print("%s: TX-BB failed: %s\n", __func__, SoapySDR_errToStr(rc));
       }
     } else {
       //
@@ -955,7 +955,7 @@ void soapy_protocol_set_tx_frequency() {
       rc = SoapySDRDevice_setFrequency(soapy_device, SOAPY_SDR_TX, 0, (double) f, NULL);
 
       if (rc != 0) {
-        t_print("%s: TX: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+        t_print("%s: TX: %s\n", __func__, SoapySDR_errToStr(rc));
       }
     }
   }
@@ -970,11 +970,11 @@ void soapy_protocol_set_rx_antenna(int id, int ant) {
     if (ant > radio->soapy.rx[id].antennas - 1) { ant = radio->soapy.rx[id].antennas - 1; }
 
     antname = radio->soapy.rx[id].antenna[ant];
-    t_print("%s: set_rx_antenna: id=%d ant=%s\n", __FUNCTION__, id, antname);
+    t_print("%s: set_rx_antenna: id=%d ant=%s\n", __func__, id, antname);
     int rc = SoapySDRDevice_setAntenna(soapy_device, SOAPY_SDR_RX, id, antname);
 
     if (rc != 0) {
-      t_print("%s: SetAntenna failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+      t_print("%s: SetAntenna failed: %s\n", __func__, SoapySDR_errToStr(rc));
     }
   }
 }
@@ -985,11 +985,11 @@ void soapy_protocol_set_tx_antenna(int ant) {
   if (soapy_device != NULL) {
     if (ant >= (int) radio->soapy.tx.antennas) { ant = (int) radio->soapy.tx.antennas - 1; }
 
-    t_print("%s: set_tx_antenna: %s\n", __FUNCTION__, radio->soapy.tx.antenna[ant]);
+    t_print("%s: set_tx_antenna: %s\n", __func__, radio->soapy.tx.antenna[ant]);
     int rc = SoapySDRDevice_setAntenna(soapy_device, SOAPY_SDR_TX, 0, radio->soapy.tx.antenna[ant]);
 
     if (rc != 0) {
-      t_print("%s: SetAntenna failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+      t_print("%s: SetAntenna failed: %s\n", __func__, SoapySDR_errToStr(rc));
     }
   }
 }
@@ -1000,7 +1000,7 @@ void soapy_protocol_set_rx_gain(int id) {
   rc = SoapySDRDevice_setGain(soapy_device, SOAPY_SDR_RX, id, adc[id].gain);
 
   if (rc != 0) {
-    t_print("%s: SetGain failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+    t_print("%s: SetGain failed: %s\n", __func__, SoapySDR_errToStr(rc));
   }
 }
 
@@ -1009,11 +1009,11 @@ static void soapy_protocol_rx_attenuate(int id) {
   // Make this receiver temporarily "deaf". This may be useful while TXing
   //
   int rc;
-  //t_print("%s: id=%d gain=%f\n", __FUNCTION__, id, adc[id].min_gain);
+  //t_print("%s: id=%d gain=%f\n", __func__, id, adc[id].min_gain);
   rc = SoapySDRDevice_setGain(soapy_device, SOAPY_SDR_RX, id, adc[id].min_gain);
 
   if (rc != 0) {
-    t_print("%s: SetGain failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+    t_print("%s: SetGain failed: %s\n", __func__, SoapySDR_errToStr(rc));
   }
 }
 
@@ -1029,11 +1029,11 @@ static void soapy_protocol_rx_unattenuate(int id) {
 void soapy_protocol_set_rx_gain_element(int id, char *name, double gain) {
   ASSERT_SERVER();
   int rc;
-  t_print("%s: id=%d %s=%f\n", __FUNCTION__, id, name, gain);
+  t_print("%s: id=%d %s=%f\n", __func__, id, name, gain);
   rc = SoapySDRDevice_setGainElement(soapy_device, SOAPY_SDR_RX, id, name, gain);
 
   if (rc != 0) {
-    t_print("%s: SetGainElement %s failed: %s\n", __FUNCTION__, name, SoapySDR_errToStr(rc));
+    t_print("%s: SetGainElement %s failed: %s\n", __func__, name, SoapySDR_errToStr(rc));
   }
 
   //
@@ -1048,7 +1048,7 @@ void soapy_protocol_set_tx_gain(double gain) {
   rc = SoapySDRDevice_setGain(soapy_device, SOAPY_SDR_TX, 0, gain);
 
   if (rc != 0) {
-    t_print("%s: SetGain failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+    t_print("%s: SetGain failed: %s\n", __func__, SoapySDR_errToStr(rc));
   }
 }
 
@@ -1058,7 +1058,7 @@ void soapy_protocol_set_tx_gain_element(char *name, double gain) {
   rc = SoapySDRDevice_setGainElement(soapy_device, SOAPY_SDR_TX, 0, name, gain);
 
   if (rc != 0) {
-    t_print("%s: SetGainElement %s failed: %s\n", __FUNCTION__, name, SoapySDR_errToStr(rc));
+    t_print("%s: SetGainElement %s failed: %s\n", __func__, name, SoapySDR_errToStr(rc));
   }
 
   //
@@ -1096,7 +1096,7 @@ void soapy_protocol_set_automatic_gain(int id, gboolean mode) {
   rc = SoapySDRDevice_setGainMode(soapy_device, SOAPY_SDR_RX, id, mode);
 
   if (rc != 0) {
-    t_print("%s: SetGainMode failed: %s\n", __FUNCTION__, SoapySDR_errToStr(rc));
+    t_print("%s: SetGainMode failed: %s\n", __func__, SoapySDR_errToStr(rc));
   }
 }
 
@@ -1125,7 +1125,7 @@ void soapy_protocol_rxtx(const TRANSMITTER *tx) {
     }
 
     const char *bank = "MAIN";
-    t_print("%s: Setting LIME GPIO to 1\n", __FUNCTION__);
+    t_print("%s: Setting LIME GPIO to 1\n", __func__);
     SoapySDRDevice_writeGPIODir(soapy_device, bank, 0xFF);
     SoapySDRDevice_writeGPIO(soapy_device, bank, 0x01);
     usleep(30000);
@@ -1136,7 +1136,7 @@ void soapy_protocol_rxtx(const TRANSMITTER *tx) {
   soapy_protocol_set_tx_frequency();
 }
 
-void soapy_protocol_txrx() {
+void soapy_protocol_txrx(void) {
   //
   // Do everything that needs be done for a TX->RX transition
   //
@@ -1158,7 +1158,7 @@ void soapy_protocol_txrx() {
     soapy_protocol_set_tx_gain(0);
     soapy_protocol_set_tx_antenna(0); // 0 is NONE
     const char *bank = "MAIN"; //set GPIO to signal the relay to RX
-    t_print("%s: Setting LIME GPIO to 0\n", __FUNCTION__);
+    t_print("%s: Setting LIME GPIO to 0\n", __func__);
     SoapySDRDevice_writeGPIODir(soapy_device, bank, 0xFF);
     SoapySDRDevice_writeGPIO(soapy_device, bank, 0x00);
 

@@ -100,14 +100,14 @@ int audio_open_output(RECEIVER *rx) {
 
   for (int i = 0; i < n_output_devices; i++) {
     if (!strcmp(rx->audio_name, output_devices[i].name)) {
-      t_print("%s RX%d:%s\n", __FUNCTION__, rx->id + 1, output_devices[i].description);
+      t_print("%s RX%d:%s\n", __func__, rx->id + 1, output_devices[i].description);
       err = 0;
       break;
     }
   }
 
   if (err) {
-    t_print("%s: not registered: %s\n", __FUNCTION__, rx->audio_name);
+    t_print("%s: not registered: %s\n", __func__, rx->audio_name);
     return -1;
   }
 
@@ -123,7 +123,7 @@ int audio_open_output(RECEIVER *rx) {
   for (int i = 0; i < FORMATS; i++) {
 
     if ((err = snd_pcm_open (&rx->audio_handle, rx->audio_name, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0) {
-      t_print("%s: cannot open audio device %s (%s)\n", __FUNCTION__,
+      t_print("%s: cannot open audio device %s (%s)\n", __func__,
               rx->audio_name,
               snd_strerror (err));
       break;
@@ -131,44 +131,28 @@ int audio_open_output(RECEIVER *rx) {
 
     if ((err = snd_pcm_set_params (rx->audio_handle, formats[i], SND_PCM_ACCESS_RW_INTERLEAVED, channels, rate,
                                    soft_resample, out_latency)) < 0) {
-      t_print("%s: could not set params for %s\n", __FUNCTION__, snd_pcm_format_name(formats[i]));
+      t_print("%s: could not set params for %s (%s)\n", __func__,
+              snd_pcm_format_name(formats[i]),
+              snd_strerror (err));
       snd_pcm_close(rx->audio_handle);
       continue;
     }
 
-    t_print("%s: using format %s (%s)\n", __FUNCTION__, snd_pcm_format_name(formats[i]),
+    t_print("%s: using format %s (%s)\n", __func__, snd_pcm_format_name(formats[i]),
             snd_pcm_format_description(formats[i]));
     rx->audio_format = formats[i];
     break;
   }
 
   if (rx->audio_format == SND_PCM_FORMAT_UNKNOWN) {
-    t_print("%s: Device cannot be used\n", __FUNCTION__);
+    t_print("%s: Device cannot be used\n", __func__);
     rx->audio_handle = NULL;
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
   }
 
   rx->audio_buffer_offset = 0;
-
-  switch (rx->audio_format) {
-  case SND_PCM_FORMAT_S16_LE:
-    rx->audio_buffer = g_new(int16_t, 2 * out_buffer_size);
-    break;
-
-  case SND_PCM_FORMAT_S32_LE:
-    rx->audio_buffer = g_new(int32_t, 2 * out_buffer_size);
-    break;
-
-  case SND_PCM_FORMAT_FLOAT_LE:
-    rx->audio_buffer = g_new(float, 2 * out_buffer_size);
-    break;
-
-  default:
-    t_print("%s: unknown sound format\n", __FUNCTION__);
-    rx->audio_buffer = NULL;
-    break;
-  }
+  rx->audio_buffer = g_new(double, 2 * out_buffer_size);
 
   if (rx->audio_buffer == NULL) {
     snd_pcm_close(rx->audio_handle);
@@ -196,14 +180,14 @@ int audio_open_input(TRANSMITTER *tx) {
 
   for (int i = 0; i < n_input_devices; i++) {
     if (!strcmp(tx->audio_name, input_devices[i].name)) {
-      t_print("%s TX:%s\n", __FUNCTION__, input_devices[i].description);
+      t_print("%s TX:%s\n", __func__, input_devices[i].description);
       err = 0;
       break;
     }
   }
 
   if (err) {
-    t_print("%s: not registered: %s\n", __FUNCTION__, tx->audio_name);
+    t_print("%s: not registered: %s\n", __func__, tx->audio_name);
     return -1;
   }
 
@@ -222,7 +206,7 @@ int audio_open_input(TRANSMITTER *tx) {
   for (int i = 0; i < FORMATS; i++) {
 
     if ((err = snd_pcm_open (&tx->audio_handle, tx->audio_name, SND_PCM_STREAM_CAPTURE, SND_PCM_ASYNC)) < 0) {
-      t_print("%s: cannot open audio device %s (%s)\n", __FUNCTION__,
+      t_print("%s: cannot open audio device %s (%s)\n", __func__,
               tx->audio_name,
               snd_strerror (err));
       break;
@@ -231,27 +215,29 @@ int audio_open_input(TRANSMITTER *tx) {
     if ((err = snd_pcm_set_params (tx->audio_handle, formats[i], SND_PCM_ACCESS_RW_INTERLEAVED, channels, rate,
                                    soft_resample,
                                    inp_latency)) < 0) {
-      t_print("%s: could not set params for %s\n", __FUNCTION__, snd_pcm_format_name(formats[i]));
+      t_print("%s: could not set params for %s (%s)\n", __func__,
+              snd_pcm_format_name(formats[i]),
+              snd_strerror (err));
       snd_pcm_close(tx->audio_handle);
       continue;
     }
 
-    t_print("%s: using format %s (%s)\n", __FUNCTION__, snd_pcm_format_name(formats[i]),
+    t_print("%s: using format %s (%s)\n", __func__, snd_pcm_format_name(formats[i]),
             snd_pcm_format_description(formats[i]));
     tx->audio_format = formats[i];
     break;
   }
 
   if (tx->audio_format == SND_PCM_FORMAT_UNKNOWN) {
-    t_print("%s: device cannot be used\n", __FUNCTION__);
+    t_print("%s: device cannot be used\n", __func__);
     tx->audio_handle = NULL;
     g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
 
-  t_print("%s: format=%d\n", __FUNCTION__, tx->audio_format);
-  t_print("%s: allocating ring buffer\n", __FUNCTION__);
-  tx->audio_buffer = (float *) g_new(float, MICRINGLEN);
+  t_print("%s: format=%d\n", __func__, tx->audio_format);
+  t_print("%s: allocating ring buffer\n", __func__);
+  tx->audio_buffer = g_new(double, MICRINGLEN);
   tx->audio_buffer_outpt = tx->audio_buffer_inpt = 0;
 
   if (tx->audio_buffer == NULL) {
@@ -265,7 +251,7 @@ int audio_open_input(TRANSMITTER *tx) {
   tx->audio_thread_id = g_thread_try_new("TxAudioIn", tx_audio_thread, tx, &error);
 
   if (!tx->audio_thread_id ) {
-    t_print("%s: g_thread_new failed on TxAudioIn: %s\n", __FUNCTION__, error->message);
+    t_print("%s: g_thread_new failed on TxAudioIn: %s\n", __func__, error->message);
     snd_pcm_close(tx->audio_handle);
     tx->audio_handle = NULL;
     g_free(tx->audio_buffer);
@@ -279,7 +265,7 @@ int audio_open_input(TRANSMITTER *tx) {
 }
 
 void audio_close_output(RECEIVER *rx) {
-  t_print("%s: RX%d:%s\n", __FUNCTION__, rx->id + 1, rx->audio_name);
+  t_print("%s: RX%d:%s\n", __func__, rx->id + 1, rx->audio_name);
   g_mutex_lock(&rx->audio_mutex);
 
   if (rx->audio_handle != NULL) {
@@ -296,7 +282,7 @@ void audio_close_output(RECEIVER *rx) {
 }
 
 void audio_close_input(TRANSMITTER *tx) {
-  t_print("%s: TX:%s\n", __FUNCTION__, tx->audio_name);
+  t_print("%s: TX:%s\n", __func__, tx->audio_name);
   tx->audio_running = FALSE;
   g_mutex_lock(&tx->audio_mutex);
 
@@ -327,7 +313,7 @@ void audio_close_input(TRANSMITTER *tx) {
 // Note that when sending the buffer, delay "jumps" by the buffer size
 //
 
-int tx_audio_write(RECEIVER *rx, float sample) {
+int tx_audio_write(RECEIVER *rx, double sample) {
   snd_pcm_sframes_t delay;
   g_mutex_lock(&rx->audio_mutex);
 
@@ -379,75 +365,97 @@ int tx_audio_write(RECEIVER *rx, float sample) {
       }
     }
 
-    //
-    // adjust == 1: put sample into buffer (default case)
-    // adjust == 2: put sample into buffer twice (if space permits)
-    // adjust == 0: skip sample
-    //
-    if (adjust) {
+    switch (adjust) {
+      case 1:
       //
       // default case: put sample into buffer and that's it
       //
+      rx->audio_buffer[rx->audio_buffer_offset * 2] = sample;
+      rx->audio_buffer[rx->audio_buffer_offset * 2 + 1] = sample;
+      rx->audio_buffer_offset++;
+      break;
+
+    case 2:
+      //
+      // write it twice if space permits
+      //
+      rx->audio_buffer[rx->audio_buffer_offset * 2] = sample;
+      rx->audio_buffer[rx->audio_buffer_offset * 2 + 1] = sample;
+      rx->audio_buffer_offset++;
+
+      if (rx->audio_buffer_offset <  out_buffer_size) {
+        rx->audio_buffer[rx->audio_buffer_offset * 2] = sample;
+        rx->audio_buffer[rx->audio_buffer_offset * 2 + 1] = sample;
+        rx->audio_buffer_offset++;
+      }
+
+      break;
+
+    default:
+      //
+      // Skip sample
+      //
+      break;
+    }
+
+    if (rx->audio_buffer_offset >= out_buffer_size) {
+      //
+      // Convert audio data from internal (double) into sound card specific format
+      // and send via snd_pcm_writei(). The buffers needed for conversion are
+      // C variable-length-arrays, since this should be the fastest way to
+      // allocate/deallocate a temporary buffer.
+      //
+      long rc;
+
       switch (rx->audio_format) {
       case SND_PCM_FORMAT_S16_LE: {
-        int16_t *short_buffer = (int16_t *)rx->audio_buffer;
-        int16_t shortsample = (int16_t) (sample * 32767.0F);
-        short_buffer[rx->audio_buffer_offset * 2] = shortsample;
-        short_buffer[(rx->audio_buffer_offset * 2) + 1] = shortsample;
-        rx->audio_buffer_offset++;
+        int16_t buffer[2 * out_buffer_size];
 
-        if (adjust == 2 && rx->audio_buffer_offset <  out_buffer_size) {
-          short_buffer[rx->audio_buffer_offset * 2] = shortsample;
-          short_buffer[(rx->audio_buffer_offset * 2) + 1] = shortsample;
-          rx->audio_buffer_offset++;
+        for (int i = 0; i < 2 * out_buffer_size; i++) {
+          buffer[i] = rx->audio_buffer[i] * 32767.0;
         }
+
+        rc = snd_pcm_writei (rx->audio_handle, buffer, out_buffer_size);
       }
       break;
 
       case SND_PCM_FORMAT_S32_LE: {
-        int32_t *long_buffer = (int32_t *)rx->audio_buffer;
-        int32_t longsample = (int32_t)(sample *  2147483647.0F);
-        long_buffer[rx->audio_buffer_offset * 2] = longsample;
-        long_buffer[(rx->audio_buffer_offset * 2) + 1] = longsample;
-        rx->audio_buffer_offset++;
+        int32_t buffer[2 * out_buffer_size];
 
-        if (adjust == 2 && rx->audio_buffer_offset <  out_buffer_size) {
-          long_buffer[rx->audio_buffer_offset * 2] = longsample;
-          long_buffer[(rx->audio_buffer_offset * 2) + 1] = longsample;
-          rx->audio_buffer_offset++;
+        for (int i = 0; i < 2 * out_buffer_size; i++) {
+          buffer[i] = rx->audio_buffer[i] * 2147483647.0;
         }
+
+        rc = snd_pcm_writei (rx->audio_handle, buffer, out_buffer_size);
       }
       break;
 
       case SND_PCM_FORMAT_FLOAT_LE: {
-        float *float_buffer = (float *)rx->audio_buffer;
-        float_buffer[rx->audio_buffer_offset * 2] = sample;
-        float_buffer[(rx->audio_buffer_offset * 2) + 1] =  sample;
-        rx->audio_buffer_offset++;
+        float buffer[2 * out_buffer_size];
 
-        if (adjust == 2 && rx->audio_buffer_offset <  out_buffer_size) {
-          float_buffer[rx->audio_buffer_offset * 2] = sample;
-          float_buffer[(rx->audio_buffer_offset * 2) + 1] = sample;
-          rx->audio_buffer_offset++;
+        for (int i = 0; i < 2 * out_buffer_size; i++) {
+          buffer[i] = (float) rx->audio_buffer[i];
         }
+
+        rc = snd_pcm_writei (rx->audio_handle, buffer, out_buffer_size);
       }
       break;
 
       default:
-        t_print("%s: CATASTROPHIC ERROR: unknown sound format\n", __FUNCTION__);
+        t_print("%s: CATASTROPHIC ERROR: unknown sound format\n", __func__);
+        rc = 0;
         break;
       }
-    }
 
-    if (rx->audio_buffer_offset >= out_buffer_size) {
-      long rc;
-
-      if ((rc = snd_pcm_writei (rx->audio_handle, rx->audio_buffer, out_buffer_size)) != out_buffer_size) {
+      //
+      // Handle error from snd_pcm_writei()
+      //
+      if (rc != out_buffer_size) {
         if (rc < 0) {
           switch (rc) {
           case -EPIPE:
             if ((rc = snd_pcm_prepare (rx->audio_handle)) < 0) {
-              t_print("%s: cannot prepare audio interface for use %ld (%s)\n", __FUNCTION__, rc, snd_strerror (rc));
+              t_print("%s: cannot prepare audio interface for use %ld (%s)\n", __func__, rc, snd_strerror (rc));
               rx->audio_buffer_offset = 0;
               g_mutex_unlock(&rx->audio_mutex);
               return rc;
@@ -456,11 +464,11 @@ int tx_audio_write(RECEIVER *rx, float sample) {
             break;
 
           default:
-            t_print("%s:  write error: %s\n", __FUNCTION__, snd_strerror(rc));
+            t_print("%s:  write error: %s\n", __func__, snd_strerror(rc));
             break;
           }
         } else {
-          t_print("%s: short write lost=%d\n", __FUNCTION__, out_buffer_size - (int) rc);
+          t_print("%s: short write lost=%d\n", __func__, out_buffer_size - (int) rc);
         }
       }
 
@@ -477,7 +485,7 @@ int tx_audio_write(RECEIVER *rx, float sample) {
 // since tx_audio_write may be active
 //
 
-int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
+int audio_write(RECEIVER *rx, double left, double right) {
   snd_pcm_sframes_t delay;
 
   //
@@ -489,33 +497,8 @@ int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
   g_mutex_lock(&rx->audio_mutex);
 
   if (rx->audio_handle != NULL && rx->audio_buffer != NULL) {
-    switch (rx->audio_format) {
-    case SND_PCM_FORMAT_S16_LE: {
-      int16_t *short_buffer = (int16_t *)rx->audio_buffer;
-      short_buffer[rx->audio_buffer_offset * 2] = (int16_t)(left_sample * 32767.0F);
-      short_buffer[(rx->audio_buffer_offset * 2) + 1] = (int16_t)(right_sample * 32767.0F);
-    }
-    break;
-
-    case SND_PCM_FORMAT_S32_LE: {
-      int32_t *long_buffer = (int32_t *)rx->audio_buffer;
-      long_buffer[rx->audio_buffer_offset * 2] = (int32_t)(left_sample * 4294967295.0F);
-      long_buffer[(rx->audio_buffer_offset * 2) + 1] = (int32_t)(right_sample * 4294967295.0F);
-    }
-    break;
-
-    case SND_PCM_FORMAT_FLOAT_LE: {
-      float *float_buffer = (float *)rx->audio_buffer;
-      float_buffer[rx->audio_buffer_offset * 2] = left_sample;
-      float_buffer[(rx->audio_buffer_offset * 2) + 1] = right_sample;
-    }
-    break;
-
-    default:
-      t_print("%s: CATASTROPHIC ERROR: unknown sound format\n", __FUNCTION__);
-      break;
-    }
-
+    rx->audio_buffer[rx->audio_buffer_offset * 2] = left;
+    rx->audio_buffer[rx->audio_buffer_offset * 2 + 1] = right;
     rx->audio_buffer_offset++;
 
     if (rx->audio_buffer_offset >= out_buffer_size) {
@@ -531,43 +514,41 @@ int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
         // TX/RX transision. We have to fill the output buffer (otherwise
         // sound will not resume) and can then rewind to half-filling.
         // (We may also arrive here if the output buffer is nearly drained)
+        // We use a C variable length array for the temporary buffer since
+        // here allocation/deallocation should be fastest
         //
         //
-        void *silence;
-        size_t len;
         int num = (out_buflen - delay);
 
         switch (rx->audio_format) {
-        case SND_PCM_FORMAT_S16_LE:
-          silence = g_new(int16_t, 2 * num);
-          len = 2 * num * sizeof(int16_t);
-          break;
+        case SND_PCM_FORMAT_S16_LE: {
+          int16_t silence[2 * num];
+          memset(silence, 0, 2 * num * sizeof(int16_t));
+          snd_pcm_writei (rx->audio_handle, silence, num);
+        }
+        break;
 
-        case SND_PCM_FORMAT_S32_LE:
-          silence = g_new(int32_t, 2 * num);
-          len = 2 * num * sizeof(int32_t);
-          break;
+        case SND_PCM_FORMAT_S32_LE: {
+          int32_t silence[2 * num];
+          memset(silence, 0, 2 * num * sizeof(int32_t));
+          snd_pcm_writei (rx->audio_handle, silence, num);
+        }
+        break;
 
-        case SND_PCM_FORMAT_FLOAT_LE:
-          silence = g_new(float, 2 * num);
-          len = 2 * num * sizeof(float);
-          break;
+        case SND_PCM_FORMAT_FLOAT_LE: {
+          float silence[2 * num];
+          memset(silence, 0, 2 * num * sizeof(float));
+          snd_pcm_writei (rx->audio_handle, silence, num);
+        }
+        break;
 
         default:
-          t_print("%s: CATASTROPHIC ERROR: unknown sound format\n", __FUNCTION__);
-          silence = NULL;
-          len = 0;
+          t_print("%s: CATASTROPHIC ERROR: unknown sound format\n", __func__);
           break;
         }
 
-        if (silence) {
-          memset(silence, 0, len);
-          snd_pcm_writei (rx->audio_handle, silence, num);
-          snd_pcm_rewind (rx->audio_handle, out_buflen / 2);
-          delay = out_buflen / 2;
-          g_free(silence);
-        }
-
+        snd_pcm_rewind (rx->audio_handle, out_buflen / 2);
+        delay = out_buflen / 2;
         rx->cwaudio = 0;
       }
 
@@ -576,12 +557,56 @@ int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
         snd_pcm_rewind(rx->audio_handle, out_buflen / 2);
       }
 
-      if ((rc = snd_pcm_writei (rx->audio_handle, rx->audio_buffer, out_buffer_size)) != out_buffer_size) {
+      //
+      // Convert audio data from internal (double) into sound card specific format
+      // and send
+      //
+      switch (rx->audio_format) {
+      case SND_PCM_FORMAT_S16_LE: {
+        int16_t buffer[2 * out_buffer_size];
+
+        for (int i = 0; i < 2 * out_buffer_size; i++) {
+          buffer[i] = rx->audio_buffer[i] * 32767.0;
+        }
+
+        rc = snd_pcm_writei (rx->audio_handle, buffer, out_buffer_size);
+      }
+      break;
+
+      case SND_PCM_FORMAT_S32_LE: {
+        int32_t buffer[2 * out_buffer_size];
+
+        for (int i = 0; i < 2 * out_buffer_size; i++) {
+          buffer[i] = rx->audio_buffer[i] * 2147483647.0;
+        }
+
+        rc = snd_pcm_writei (rx->audio_handle, buffer, out_buffer_size);
+      }
+      break;
+
+      case SND_PCM_FORMAT_FLOAT_LE: {
+        float buffer[2 * out_buffer_size];
+
+        for (int i = 0; i < 2 * out_buffer_size; i++) {
+          buffer[i] = (float) rx->audio_buffer[i];
+        }
+
+        rc = snd_pcm_writei (rx->audio_handle, buffer, out_buffer_size);
+      }
+      break;
+
+      default:
+        t_print("%s: CATASTROPHIC ERROR: unknown sound format\n", __func__);
+        rc = 0;
+        break;
+      }
+
+      if (rc != out_buffer_size) {
         if (rc < 0) {
           switch (rc) {
           case -EPIPE:
             if ((rc = snd_pcm_prepare (rx->audio_handle)) < 0) {
-              t_print("%s: cannot prepare audio interface for use %ld (%s)\n", __FUNCTION__, rc, snd_strerror (rc));
+              t_print("%s: cannot prepare audio interface for use %ld (%s)\n", __func__, rc, snd_strerror (rc));
               rx->audio_buffer_offset = 0;
               g_mutex_unlock(&rx->audio_mutex);
               return rc;
@@ -590,11 +615,11 @@ int audio_write(RECEIVER *rx, float left_sample, float right_sample) {
             break;
 
           default:
-            t_print("%s:  write error: %s\n", __FUNCTION__, snd_strerror(rc));
+            t_print("%s:  write error: %s\n", __func__, snd_strerror(rc));
             break;
           }
         } else {
-          t_print("%s: short write lost=%d\n", __FUNCTION__, out_buffer_size - (int) rc);
+          t_print("%s: short write lost=%d\n", __func__, out_buffer_size - (int) rc);
         }
       }
 
@@ -611,7 +636,7 @@ static gpointer tx_audio_thread(gpointer arg) {
   int rc;
 
   if ((rc = snd_pcm_start (tx->audio_handle)) < 0) {
-    t_print("%s: cannot start audio interface for use (%s)\n", __FUNCTION__,
+    t_print("%s: cannot start audio interface for use (%s)\n", __func__,
             snd_strerror (rc));
     return NULL;
   }
@@ -622,84 +647,82 @@ static gpointer tx_audio_thread(gpointer arg) {
   void *buffer = g_new(float, inp_buffer_size);
 
   if (!buffer) {
-    t_print("%s: unknown sound format or alloc error\n", __FUNCTION__);
+    t_print("%s: unknown sound format or alloc error\n", __func__);
     return NULL;
   }
 
-  const int16_t *short_buffer =  (int16_t *) buffer;
-  const int32_t *long_buffer =  (int32_t *) buffer;
+  const int16_t *i16_buffer =  (int16_t *) buffer;
+  const int32_t *i32_buffer =  (int32_t *) buffer;
   const float *float_buffer =  (float *) buffer;
   tx->audio_running = TRUE;
 
   while (tx->audio_running) {
-    if ((rc = snd_pcm_readi (tx->audio_handle, buffer, inp_buffer_size)) != inp_buffer_size) {
-      if (tx->audio_running) {
-        if (rc < 0) {
-          t_print("%s: read from audio interface failed (%s)\n", __FUNCTION__,
-                  snd_strerror (rc));
-        } else {
-          t_print("%s: read %d\n", __FUNCTION__, rc);
-        }
+    rc = snd_pcm_readi (tx->audio_handle, buffer, inp_buffer_size);
+
+    if (!tx->audio_running) { break; }
+
+    if (rc != inp_buffer_size) {
+      if (rc < 0) {
+        t_print("%s: read from audio interface failed (%s)\n", __func__, snd_strerror (rc));
+      } else {
+        t_print("%s: short read %d\n", __func__, rc);
       }
-    } else {
-      // process the mic input
-      for (int i = 0; i < inp_buffer_size; i++) {
-        float sample;
+    }
 
-        switch (tx->audio_format) {
-        case SND_PCM_FORMAT_S16_LE:
-          sample = (float)short_buffer[i] / 32767.0f;
-          break;
+    // process the mic input
+    for (int i = 0; i < inp_buffer_size; i++) {
+      double sample;
 
-        case SND_PCM_FORMAT_S32_LE:
-          sample = (float)long_buffer[i] / 4294967295.0f;
-          break;
+      switch (tx->audio_format) {
+      case SND_PCM_FORMAT_S16_LE:
+        sample = i16_buffer[i] * 0.00003051;
+        break;
 
-        case SND_PCM_FORMAT_FLOAT_LE:
-          sample = float_buffer[i];
-          break;
+      case SND_PCM_FORMAT_S32_LE:
+        sample = i32_buffer[i] * .0000000004656;
+        break;
 
-        default:
-          sample = 0.0;
-          break;
-        }
+      case SND_PCM_FORMAT_FLOAT_LE:
+        sample = (double) float_buffer[i];
+        break;
 
-        //
-        // If we are a client, simply collect and transfer data
-        // to the server without any buffering
-        //
-        if (radio_is_remote) {
-          short s = sample * 32767.0;
-          server_tx_audio(s);
-          continue;
-        }
+      default:
+        sample = 0.0;
+        break;
+      }
 
-        //
-        // put sample into ring buffer
-        // Note check on the mic ring buffer is not necessary
-        // since audio_close_input() waits for this thread to
-        // complete.
-        //
-        if (tx->audio_buffer != NULL) {
-          // do not increase tx->audio_buffer_inpt *here* since it must
-          // assume an illegal value at any time
-          int newpt = tx->audio_buffer_inpt + 1;
+      //
+      // If we are a client, simply collect and transfer data
+      // to the server without any buffering
+      //
+      if (radio_is_remote) {
+        server_tx_audio(sample);
+        continue;
+      }
 
-          if (newpt == MICRINGLEN) { newpt = 0; }
+      //
+      // put sample into ring buffer
+      // Note check on the mic ring buffer is not necessary
+      // since audio_close_input() waits for this thread to
+      // complete.
+      //
+      if (tx->audio_buffer != NULL) {
+        int newpt = tx->audio_buffer_inpt + 1;
 
-          if (newpt != tx->audio_buffer_outpt) {
-            // buffer space available, do the write
-            tx->audio_buffer[tx->audio_buffer_inpt] = sample;
-            // atomic update of tx->audio_buffer_outpt
-            tx->audio_buffer_inpt = newpt;
-          }
+        if (newpt == MICRINGLEN) { newpt = 0; }
+
+        if (newpt != tx->audio_buffer_outpt) {
+          // buffer space available, do the write
+          tx->audio_buffer[tx->audio_buffer_inpt] = sample;
+          // atomic update of tx->audio_buffer_outpt
+          tx->audio_buffer_inpt = newpt;
         }
       }
     }
   }
 
   g_free(buffer);
-  t_print("%s: exiting\n", __FUNCTION__);
+  t_print("%s: exiting\n", __func__);
   return NULL;
 }
 
@@ -707,8 +730,8 @@ static gpointer tx_audio_thread(gpointer arg) {
 // Utility function for retrieving mic samples
 // from ring buffer
 //
-float audio_get_next_mic_sample(TRANSMITTER *tx) {
-  float sample;
+double audio_get_next_mic_sample(TRANSMITTER *tx) {
+  double sample;
   g_mutex_lock(&tx->audio_mutex);
 
   if ((tx->audio_buffer == NULL) || (tx->audio_buffer_inpt == tx->audio_buffer_outpt)) {
@@ -782,7 +805,7 @@ void audio_get_cards() {
           input_devices[n_input_devices].description = g_strdup(device_desc);
           input_devices[n_input_devices].index = 0; // not used
           n_input_devices++;
-          t_print("%s: input_device: %s\n", device_desc, __FUNCTION__);
+          t_print("%s: input_device: %s\n", device_desc, __func__);
         }
       }
 
@@ -801,7 +824,7 @@ void audio_get_cards() {
           output_devices[n_output_devices].description = g_strdup(device_desc);
           output_devices[n_output_devices].index = 0; // not used
           n_output_devices++;
-          t_print("%s: output_device: %s\n", __FUNCTION__, device_desc);
+          t_print("%s: output_device: %s\n", __func__, device_desc);
         }
       }
     }
@@ -857,7 +880,7 @@ void audio_get_cards() {
         output_devices[n_output_devices].description = g_strdup(text);
         output_devices[n_output_devices].index = 0; // not used
         n_output_devices++;
-        t_print("%s: output_device: name=%s descr=%s\n", __FUNCTION__, name, descr);
+        t_print("%s: output_device: name=%s descr=%s\n", __func__, name, descr);
       }
     }
 
@@ -896,7 +919,7 @@ void audio_get_cards() {
         input_devices[n_input_devices].description = g_strdup(text);
         input_devices[n_input_devices].index = 0; // not used
         n_input_devices++;
-        t_print("%s: input_device: name=%s descr=%s\n", __FUNCTION__, name, descr);
+        t_print("%s: input_device: name=%s descr=%s\n", __func__, name, descr);
       }
     }
 

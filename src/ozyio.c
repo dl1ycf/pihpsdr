@@ -303,6 +303,7 @@ static int ozy_load_firmware(const char *fnamep) {
 
         if ( this_val < 0 ) {
           t_print( "ozy_upload_firmware: bad record data\n");
+          fclose(ifile);
           return 0;
         }
 
@@ -314,6 +315,7 @@ static int ozy_load_firmware(const char *fnamep) {
 
       if ( this_val < 0 ) {
         t_print( "ozy_upload_firmware: bad checksum data\n");
+        fclose(ifile);
         return 0;
       }
 
@@ -326,11 +328,13 @@ static int ozy_load_firmware(const char *fnamep) {
 
       if (((cksum + my_cksum) & 0xff) != 0) {
         t_print( "ozy_upload_firmware: bad checksum\n");
+        fclose(ifile);
         return 0;
       }
 
       if ( ozy_write_ram(addr, wbuf, length) < 1 ) {
         t_print( "ozy_upload_firmware: bad write\n");
+        fclose(ifile);
         return 0;
       }
 
@@ -341,6 +345,7 @@ static int ozy_load_firmware(const char *fnamep) {
 
     default: /* invalid */
       t_print( "ozy_upload_firmware: invalid type\n");
+      fclose(ifile);
       return 0;
     }
   }

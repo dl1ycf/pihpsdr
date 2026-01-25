@@ -23,5 +23,5 @@ extern void old_protocol_run(void);
 extern void old_protocol_init(int rate);
 extern void old_protocol_set_mic_sample_rate(int rate);
 
-extern void old_protocol_audio_samples(short left_audio_sample, short right_audio_sample);
-extern void old_protocol_iq_samples(double isample, double qsample, int side);
+extern void old_protocol_audio_samples(double left, double right);
+extern void old_protocol_iq_samples(double isample, double qsample, double side);

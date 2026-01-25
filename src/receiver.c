@@ -65,7 +65,7 @@ static gboolean making_active = FALSE;
 // cppcheck-suppress constParameterCallback
 static void rx_weak_notify(gpointer data, GObject  *obj) {
   const RECEIVER *rx = (RECEIVER *)data;
-  t_print("%s: id=%d obj=%p\n", __FUNCTION__, rx->id, obj);
+  t_print("%s: id=%d obj=%p\n", __func__, rx->id, obj);
 }
 
 // cppcheck-suppress constParameterPointer
@@ -206,7 +206,7 @@ gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpoint
     if (moved != 0) {
       if (has_moved || moved < -1 || moved > 1) {
         int id = active_receiver->id;
-        vfo_id_move(id, (long long)((float)moved * rx->cB), FALSE);
+        vfo_id_move(id, (long long)((double)moved * rx->cB), FALSE);
         last_x = x;
         has_moved = TRUE;
       }
@@ -437,7 +437,7 @@ void rx_reconfigure(RECEIVER *rx, int height) {
   int wheight = height;
   rx->height = height; // total height
   gtk_widget_set_size_request(rx->panel, rx->width, rx->height);
-  t_print("%s: rx=%d width=%d height=%d\n", __FUNCTION__, rx->id, rx->width, rx->height);
+  t_print("%s: rx=%d width=%d height=%d\n", __func__, rx->id, rx->width, rx->height);
 
   if (rx->display_panadapter && rx->display_waterfall) {
     wheight = (rx->waterfall_percent * height) / 100;
@@ -446,7 +446,7 @@ void rx_reconfigure(RECEIVER *rx, int height) {
 
   if (rx->display_panadapter) {
     if (rx->panadapter == NULL) {
-      t_print("%s: panadapter_init: width:%d height:%d\n", __FUNCTION__, rx->width, pheight);
+      t_print("%s: panadapter_init: width:%d height:%d\n", __func__, rx->width, pheight);
       rx_panadapter_init(rx, rx->width, pheight);
       gtk_fixed_put(GTK_FIXED(rx->panel), rx->panadapter, 0, y); // y=0 here always
     } else {
@@ -466,12 +466,12 @@ void rx_reconfigure(RECEIVER *rx, int height) {
 
   if (rx->display_waterfall) {
     if (rx->waterfall == NULL) {
-      t_print("%s: waterfall_init: width:%d height:%d\n", __FUNCTION__, rx->width, wheight);
+      t_print("%s: waterfall_init: width:%d height:%d\n", __func__, rx->width, wheight);
       waterfall_init(rx, rx->width, wheight);
       gtk_fixed_put(GTK_FIXED(rx->panel), rx->waterfall, 0, y); // y=0 if ONLY waterfall is present
     } else {
       // set the size
-      t_print("%s: waterfall set_size_request: width:%d height:%d\n", __FUNCTION__, rx->width, wheight);
+      t_print("%s: waterfall set_size_request: width:%d height:%d\n", __func__, rx->width, wheight);
       gtk_widget_set_size_request(rx->waterfall, rx->width, wheight);
       // move the current one
       gtk_fixed_move(GTK_FIXED(rx->panel), rx->waterfall, 0, y);
@@ -573,7 +573,7 @@ static void rx_create_visual(RECEIVER *rx) {
   //
   int y = 0;
   rx->panel = gtk_fixed_new();
-  t_print("%s: RXid=%d width=%d height=%d %p\n", __FUNCTION__, rx->id, rx->width, rx->height, rx->panel);
+  t_print("%s: RXid=%d width=%d height=%d %p\n", __func__, rx->id, rx->width, rx->height, rx->panel);
   g_object_weak_ref(G_OBJECT(rx->panel), rx_weak_notify, (gpointer)rx);
   gtk_widget_set_size_request (rx->panel, rx->width, rx->height);
   rx->panadapter = NULL;
@@ -585,14 +585,14 @@ static void rx_create_visual(RECEIVER *rx) {
   }
 
   rx_panadapter_init(rx, rx->width, height);
-  t_print("%s: panadapter height=%d y=%d %p\n", __FUNCTION__, height, y, rx->panadapter);
+  t_print("%s: panadapter height=%d y=%d %p\n", __func__, height, y, rx->panadapter);
   g_object_weak_ref(G_OBJECT(rx->panadapter), rx_weak_notify, (gpointer)rx);
   gtk_fixed_put(GTK_FIXED(rx->panel), rx->panadapter, 0, y);
   y += height;
 
   if (rx->display_waterfall) {
     waterfall_init(rx, rx->width, height);
-    t_print("%s: waterfall height=%d y=%d %p\n", __FUNCTION__, height, y, rx->waterfall);
+    t_print("%s: waterfall height=%d y=%d %p\n", __func__, height, y, rx->waterfall);
     g_object_weak_ref(G_OBJECT(rx->waterfall), rx_weak_notify, (gpointer)rx);
     gtk_fixed_put(GTK_FIXED(rx->panel), rx->waterfall, 0, y);
   }
@@ -663,7 +663,7 @@ void rx_create_remote(RECEIVER *rx) {
 
 RECEIVER *rx_create_receiver(int id, int width, int height) {
   ASSERT_SERVER(NULL);
-  t_print("%s: RXid=%d width=%d height=%d\n", __FUNCTION__, id, width, height);
+  t_print("%s: RXid=%d width=%d height=%d\n", __func__, id, width, height);
   RECEIVER *rx = g_new(RECEIVER, 1);
 
   if (!rx) {
@@ -716,7 +716,7 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
 
   if (device == SOAPYSDR_USB_DEVICE) {
     rx->sample_rate = radio->soapy.sample_rate;
-    t_print("%s: RXid=%d sample_rate=%d\n", __FUNCTION__, rx->id, rx->sample_rate);
+    t_print("%s: RXid=%d sample_rate=%d\n", __func__, rx->id, rx->sample_rate);
   }
 
   //
@@ -865,16 +865,16 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->iq_input_buffer = g_new(double, 2 * rx->buffer_size);
   rx->pixels = width;
   rx->pixel_samples = g_new(float, rx->pixels);
-  t_print("%s (after restore): id=%d local_audio=%d\n", __FUNCTION__, rx->id, rx->local_audio);
+  t_print("%s (after restore): id=%d local_audio=%d\n", __func__, rx->id, rx->local_audio);
   int scale = rx->sample_rate / 48000;
   rx->output_samples = rx->buffer_size / scale;
   rx->audio_output_buffer = g_new(double, 2 * rx->output_samples);
-  t_print("%s: RXid=%d output_samples=%d audio_output_buffer=%p\n", __FUNCTION__, rx->id, rx->output_samples,
+  t_print("%s: RXid=%d output_samples=%d audio_output_buffer=%p\n", __func__, rx->id, rx->output_samples,
           rx->audio_output_buffer);
   // setup wdsp for this receiver
-  t_print("%s: RXid=%d after restore adc=%d\n", __FUNCTION__, rx->id, rx->adc);
+  t_print("%s: RXid=%d after restore adc=%d\n", __func__, rx->id, rx->adc);
   t_print("%s: OpenChannel RXid=%d buffer_size=%d dsp_size=%d fft_size=%d sample_rate=%d\n",
-          __FUNCTION__,
+          __func__,
           rx->id,
           rx->buffer_size,
           rx->dsp_size,
@@ -973,7 +973,7 @@ void rx_frequency_changed(const RECEIVER *rx) {
       // reset such that the CTUN center frequency is placed at
       // the new frequency
       //
-      t_print("%s: CTUN freq out of range\n", __FUNCTION__);
+      t_print("%s: CTUN freq out of range\n", __func__);
       vfo[id].frequency = vfo[id].ctun_frequency;
     }
 
@@ -1144,25 +1144,22 @@ static void rx_process_buffer(RECEIVER *rx) {
       break;
     }
 
-    int left_audio_sample = (short)(left_sample * 32767.0);
-    int right_audio_sample = (short)(right_sample * 32767.0);
-
     if (rx->local_audio) {
-      audio_write(rx, (float)left_sample, (float)right_sample);
+      audio_write(rx, left_sample, right_sample);
     }
 
     if (remoteclient.running) {
-      remote_rxaudio(rx, left_audio_sample, right_audio_sample);
+      remote_rxaudio(rx, left_sample);
     }
 
     if (rx == active_receiver) {
       switch (protocol) {
       case ORIGINAL_PROTOCOL:
-        old_protocol_audio_samples(left_audio_sample, right_audio_sample);
+        old_protocol_audio_samples(left_sample, right_sample);
         break;
 
       case NEW_PROTOCOL:
-        new_protocol_audio_samples(left_audio_sample, right_audio_sample);
+        new_protocol_audio_samples(left_sample, right_sample);
         break;
 
       case SOAPYSDR_PROTOCOL:
@@ -1176,7 +1173,7 @@ static void rx_full_buffer(RECEIVER *rx) {
   ASSERT_SERVER();
   int error;
 
-  //t_print("%s: rx=%p\n",__FUNCTION__,rx);
+  //t_print("%s: rx=%p\n",__func__,rx);
   //
   // rx->mutex is locked if a sample rate change is currently going on,
   // in this case we should not block the receiver thread
@@ -1202,7 +1199,7 @@ static void rx_full_buffer(RECEIVER *rx) {
     fexchange0(rx->id, rx->iq_input_buffer, rx->audio_output_buffer, &error);
 
     if (error != 0) {
-      t_print("%s: id=%d fexchange0: error=%d\n", __FUNCTION__, rx->id, error);
+      t_print("%s: id=%d fexchange0: error=%d\n", __func__, rx->id, error);
     }
 
     if (rx->displaying) {
@@ -1419,7 +1416,7 @@ void rx_change_sample_rate(RECEIVER *rx, int sample_rate) {
   rx->sample_rate = sample_rate;
   int scale = rx->sample_rate / 48000;
   rx->output_samples = rx->buffer_size / scale;
-  t_print("%s: id=%d rate=%d scale=%d buffer_size=%d output_samples=%d\n", __FUNCTION__, rx->id, sample_rate, scale,
+  t_print("%s: id=%d rate=%d scale=%d buffer_size=%d output_samples=%d\n", __func__, rx->id, sample_rate, scale,
           rx->buffer_size, rx->output_samples);
 
   if (!radio_is_remote) {
@@ -1438,7 +1435,7 @@ void rx_change_sample_rate(RECEIVER *rx, int sample_rate) {
       //rx->pixel_samples = g_new(float, rx->pixels);
       rx_set_analyzer(rx);
       t_print("%s: PS RX FEEDBACK: id=%d rate=%d buffer_size=%d output_samples=%d\n",
-              __FUNCTION__, rx->id, rx->sample_rate, rx->buffer_size, rx->output_samples);
+              __func__, rx->id, rx->sample_rate, rx->buffer_size, rx->output_samples);
       g_mutex_unlock(&rx->mutex);
       return;
     }
@@ -1472,7 +1469,7 @@ void rx_change_sample_rate(RECEIVER *rx, int sample_rate) {
   }
 
   g_mutex_unlock(&rx->mutex);
-  t_print("%s: RXid=%d rate=%d buffer_size=%d output_samples=%d\n", __FUNCTION__, rx->id, rx->sample_rate,
+  t_print("%s: RXid=%d rate=%d buffer_size=%d output_samples=%d\n", __func__, rx->id, rx->sample_rate,
           rx->buffer_size, rx->output_samples);
 }
 

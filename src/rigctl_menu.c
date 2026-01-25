@@ -388,7 +388,7 @@ void rigctl_menu(GtkWidget *parent) {
         gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), SerialPorts[i].autoreporting);
         gtk_grid_attach(GTK_GRID(grid), w, 6, row, 1, 1);
         g_signal_connect(w, "toggled", G_CALLBACK(serial_autoreporting_cb), GINT_TO_POINTER(i));
-      } 
+      }
     } else {
       //
       // If the Serial port is used for the G2 panel, just report port name.

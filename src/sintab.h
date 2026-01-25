@@ -16,4 +16,4 @@
 *
 */
 
-extern float sintab[];
+extern double sintab[];

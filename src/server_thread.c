@@ -85,9 +85,9 @@ REMOTE_CLIENT remoteclient = { 0 };
 #define MIC_RING_BUFFER_SIZE 9600
 #define MIC_RING_LOW         3000
 
-static short *mic_ring_buffer;
-static volatile short  mic_ring_outpt = 0;
-static volatile short  mic_ring_inpt = 0;
+static double *mic_ring_buffer;
+static volatile int mic_ring_outpt = 0;
+static volatile int mic_ring_inpt = 0;
 
 static GThread *listen_thread_id;
 static GThread *udp_thread_id;
@@ -233,7 +233,7 @@ void send_rxspectrum(int id) {
   }
 }
 
-void send_txspectrum() {
+void send_txspectrum(void) {
   const float *samples;
   SPECTRUM_DATA spectrum_data;
   int numsamples = 0;
@@ -297,7 +297,7 @@ void send_txspectrum() {
   }
 }
 
-void remote_rxaudio(const RECEIVER *rx, short left_sample, short right_sample) {
+void remote_rxaudio(const RECEIVER *rx, double sample) {
   static int rxaudio_buffer_index[2] = { 0, 0};
   static RXAUDIO_DATA rxaudio_data[2];  // for up to 2 receivers
   int id = rx->id;
@@ -306,7 +306,8 @@ void remote_rxaudio(const RECEIVER *rx, short left_sample, short right_sample) {
     return;
   }
 
-  rxaudio_data[id].samples[rxaudio_buffer_index[id]++] = to_16(left_sample);
+  int32_t s = (int32_t)(sample  * 32766.672 + 32767.5) - 32767;
+  rxaudio_data[id].samples[rxaudio_buffer_index[id]++] = to_16(s);
 
   if (rxaudio_buffer_index[id] >= AUDIO_DATA_SIZE) {
     SYNC(rxaudio_data[id].header.sync);
@@ -323,13 +324,13 @@ void remote_rxaudio(const RECEIVER *rx, short left_sample, short right_sample) {
   }
 }
 
-short remote_get_mic_sample() {
+double remote_get_mic_sample(void) {
   //
   // return one sample from the audio input ring buffer
   // If it is empty, return a zero, and continue to return
   // zero until it is at least filled with  MIC_RING_LOW samples
   //
-  short sample;
+  double sample;
   static int is_empty = 1;
   int numsamples = mic_ring_outpt - mic_ring_inpt;
 
@@ -338,7 +339,7 @@ short remote_get_mic_sample() {
   if (numsamples <= 0) { is_empty = 1; }
 
   if (is_empty && numsamples < MIC_RING_LOW) {
-    return 0;
+    return 0.0;
   }
 
   is_empty = 0;
@@ -358,12 +359,12 @@ short remote_get_mic_sample() {
 // server_loop is running on the "local" computer
 // (with direct cable connection to the radio hardware)
 //
-static void server_loop() {
+static void server_loop(void) {
   HEADER header;
   //
   // Allocate ring buffer for TX mic data
   //
-  mic_ring_buffer = g_new(short, MIC_RING_BUFFER_SIZE);
+  mic_ring_buffer = g_new(double, MIC_RING_BUFFER_SIZE);
   mic_ring_outpt = 0;
   mic_ring_inpt = 0;
   //
@@ -451,13 +452,13 @@ static void server_loop() {
     int bytes_read = recv_tcp(remoteclient.sock_tcp, (char *)&header, sizeof(HEADER));
 
     if (bytes_read <= 0) {
-      t_print("%s: ReadErr for HEADER SYNC\n", __FUNCTION__);
+      t_print("%s: ReadErr for HEADER SYNC\n", __func__);
       remoteclient.running = FALSE;
       continue;
     }
 
     if (memcmp(header.sync, syncbytes, sizeof(syncbytes))  != 0) {
-      t_print("%s: header.sync mismatch: %02x %02x %02x %02x\n", __FUNCTION__,
+      t_print("%s: header.sync mismatch: %02x %02x %02x %02x\n", __func__,
               header.sync[0],
               header.sync[1],
               header.sync[2],
@@ -469,7 +470,7 @@ static void server_loop() {
         bytes_read = recv_tcp(remoteclient.sock_tcp, (char *)&c, 1);
 
         if (bytes_read <= 0) {
-          t_print("%s: ReadErr for HEADER RESYNC\n", __FUNCTION__);
+          t_print("%s: ReadErr for HEADER RESYNC\n", __func__);
           remoteclient.running = FALSE;
           break;
         }
@@ -486,9 +487,9 @@ static void server_loop() {
       }
 
       if (remoteclient.running) {
-        t_print("%s: Re-SYNC was successful!\n", __FUNCTION__);
+        t_print("%s: Re-SYNC was successful!\n", __func__);
       } else {
-        t_print("%s: Re-SYNC failed.\n", __FUNCTION__);
+        t_print("%s: Re-SYNC failed.\n", __func__);
       }
     }
 
@@ -498,7 +499,7 @@ static void server_loop() {
     // Now we have a valid header
     //
     int data_type = from_16(header.data_type);
-    //t_print("%s: received header: type=%d\n", __FUNCTION__, data_type);
+    //t_print("%s: received header: type=%d\n", __func__, data_type);
 
     switch (data_type) {
     case CMD_HEARTBEAT:
@@ -784,13 +785,13 @@ static void server_loop() {
     break;
 
     default:
-      t_print("%s: UNKNOWN command: %d\n", __FUNCTION__, from_16(header.data_type));
+      t_print("%s: UNKNOWN command: %d\n", __func__, from_16(header.data_type));
       remoteclient.running = FALSE;
       break;
     }
   }
 
-  t_print("%s: Terminating\n", __FUNCTION__);
+  t_print("%s: Terminating\n", __func__);
 }
 
 //
@@ -823,7 +824,7 @@ static gpointer udp_thread(gpointer arg) {
       if (newpt != mic_ring_outpt) {
         MEMORY_BARRIER;
         // buffer space available, do the write
-        mic_ring_buffer[mic_ring_inpt] = from_16(data.samples[i]);
+        mic_ring_buffer[mic_ring_inpt] = from_16(data.samples[i]) * 0.00003051; // division by 32768
         MEMORY_BARRIER;
         // atomic update of mic_ring_inpt
         mic_ring_inpt = newpt;
@@ -831,7 +832,7 @@ static gpointer udp_thread(gpointer arg) {
     }
   }
 
-  t_print("%s: Terminating\n", __FUNCTION__);
+  t_print("%s: Terminating\n", __func__);
   return NULL;
 }
 
@@ -881,7 +882,7 @@ static gpointer listen_thread(gpointer arg) {
     listen_socket = socket(AF_INET, SOCK_STREAM, 0);
 
     if (listen_socket < 0) {
-      t_print("%s: socket() failed\n", __FUNCTION__);
+      t_print("%s: socket() failed\n", __func__);
       break;
     }
 
@@ -895,18 +896,18 @@ static gpointer listen_thread(gpointer arg) {
     addr.sin_port = htons(listen_port);
 
     if (bind(listen_socket, (struct sockaddr * )&addr, sizeof(addr)) < 0) {
-      t_print("%s: bind() failed\n", __FUNCTION__);
+      t_print("%s: bind() failed\n", __func__);
       break;
     }
 
     // listen for connections
     if (listen(listen_socket, 5) < 0) {
-      t_print("%s: listen() failed\n", __FUNCTION__);
+      t_print("%s: listen() failed\n", __func__);
       break;
     }
 
     remoteclient.address_length = sizeof(remoteclient.address);
-    t_print("%s: accepting connections on port %d...\n", __FUNCTION__, listen_port);
+    t_print("%s: accepting connections on port %d...\n", __func__, listen_port);
 
     if ((remoteclient.sock_tcp = accept(listen_socket, (struct sockaddr * )&remoteclient.address,
                                         &remoteclient.address_length)) < 0) {
@@ -930,7 +931,7 @@ static gpointer listen_thread(gpointer arg) {
     unsigned char s[2 * SHA512_DIGEST_LENGTH];
     unsigned char sha[SHA512_DIGEST_LENGTH];
     inet_ntop(AF_INET, &(((struct sockaddr_in *)&remoteclient.address)->sin_addr), (char *)s, 2 * SHA512_DIGEST_LENGTH);
-    t_print("%s: client connected from %s\n", __FUNCTION__, s);
+    t_print("%s: client connected from %s\n", __func__, s);
     //
     // send version number to the client
     //
@@ -948,7 +949,7 @@ static gpointer listen_thread(gpointer arg) {
     generate_pwd_hash(s, sha, hpsdr_pwd);
 
     if (recv_tcp(remoteclient.sock_tcp, (char *)s, SHA512_DIGEST_LENGTH) < 0) {
-      t_print("%s: could not receive Passwd Response\n", __FUNCTION__);
+      t_print("%s: could not receive Passwd Response\n", __func__);
       remoteclient.running = FALSE;
     }
 
@@ -956,7 +957,7 @@ static gpointer listen_thread(gpointer arg) {
     // Handle too-short server passwords as if the passwords did not match
     //
     if (memcmp(sha, s, SHA512_DIGEST_LENGTH)  != 0 || strlen(hpsdr_pwd) < 5) {
-      t_print("%s: ATTENTION: Wrong Password from Client.\n", __FUNCTION__);
+      t_print("%s: ATTENTION: Wrong Password from Client.\n", __func__);
       sleep(1);
       *s = 0xF7;
       send_tcp(remoteclient.sock_tcp, (char *)s, 1);
@@ -1080,18 +1081,18 @@ static gpointer listen_thread(gpointer arg) {
   // If the server stops and the protocol is halted,
   // restart it.
   //
-  t_print("Terminating %s.\n", __FUNCTION__);
+  t_print("Terminating %s.\n", __func__);
   g_idle_add(radio_server_protocol_run, NULL);
   return NULL;
 }
 
-int create_hpsdr_server() {
+int create_hpsdr_server(void) {
   server_running = TRUE;
   listen_thread_id = g_thread_new( "HPSDR_listen", listen_thread, NULL);
   return 0;
 }
 
-int destroy_hpsdr_server() {
+int destroy_hpsdr_server(void) {
   server_running = FALSE;
   remoteclient.running = FALSE;
 
@@ -1145,14 +1146,14 @@ static int server_command(gpointer data) {
     const BAND_DATA *band_data = (BAND_DATA *)data;
 
     if (band_data->band > BANDS + XVTRS) {
-      t_print("%s: WARNING: band data received for b=%d, too large.\n", __FUNCTION__, band_data->band);
+      t_print("%s: WARNING: band data received for b=%d, too large.\n", __func__, band_data->band);
       break;
     }
 
     BAND *band = band_get_band(band_data->band);
 
     if (band_data->current > band->bandstack->entries) {
-      t_print("%s: WARNING: band stack too large for b=%d, s=%d.\n", __FUNCTION__, band_data->band, band_data->current);
+      t_print("%s: WARNING: band stack too large for b=%d, s=%d.\n", __func__, band_data->band, band_data->current);
       break;
     }
 
@@ -1185,14 +1186,14 @@ static int server_command(gpointer data) {
     const BANDSTACK_DATA *bandstack_data = (BANDSTACK_DATA *)data;
 
     if (bandstack_data->band > BANDS + XVTRS) {
-      t_print("%s: WARNING: band data received for b=%d, too large.\n", __FUNCTION__, bandstack_data->band);
+      t_print("%s: WARNING: band data received for b=%d, too large.\n", __func__, bandstack_data->band);
       break;
     }
 
     BAND *band = band_get_band(bandstack_data->band);
 
     if (bandstack_data->stack > band->bandstack->entries) {
-      t_print("%s: WARNING: band stack too large for b=%d, s=%d.\n", __FUNCTION__,
+      t_print("%s: WARNING: band stack too large for b=%d, s=%d.\n", __func__,
               bandstack_data->band, bandstack_data->stack);
       break;
     }
@@ -2303,7 +2304,7 @@ static int server_command(gpointer data) {
     break;
 
   default: {
-    t_print("%s: forgotten case type=%d\n", __FUNCTION__, type);
+    t_print("%s: forgotten case type=%d\n", __func__, type);
   }
   break;
   }

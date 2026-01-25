@@ -317,7 +317,7 @@ void cw_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(cw_grid), btn, 1, i + 1, 9, 1);
     g_signal_connect(btn, "changed", G_CALLBACK(text_cb), predef_cwtxt[i]);
   }
-    
+
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
   gtk_widget_hide(cwtxt_container);

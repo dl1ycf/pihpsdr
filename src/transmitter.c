@@ -84,7 +84,7 @@ double ctcss_frequencies[CTCSS_FREQUENCIES] = {
 //
 static int p1local = 0, p2local = 0; // sine tone generator
 
-static gboolean close_cb() {
+static gboolean close_cb(void) {
   // there is nothing to clean up
   return TRUE;
 }
@@ -126,8 +126,8 @@ static int clear_out_of_band_warning(gpointer data) {
 // - the phase is always continuous, even if there are frequency jumps
 ///////////////////////////////////////////////////////////////////////////
 
-static float sine_generator(int *phase1, int *phase2, int freq) {
-  register float val, s, d;
+static double sine_generator(int *phase1, int *phase2, int freq) {
+  register double val, s, d;
   register int p1 = *phase1;
   register int p2 = *phase2;
   register int32_t f256 = freq * 256; // so we know 256*freq won't overflow
@@ -285,7 +285,7 @@ void tx_set_ramps(TRANSMITTER *tx) {
 void tx_reconfigure(TRANSMITTER *tx, int pixels, int width, int height) {
   if (width != tx->width || height != tx->height) {
     g_mutex_lock(&tx->display_mutex);
-    t_print("%s: width=%d height=%d\n", __FUNCTION__, width, height);
+    t_print("%s: width=%d height=%d\n", __func__, width, height);
     tx->width = width;
     tx->height = height;
     gtk_widget_set_size_request(tx->panel, width, height);
@@ -845,7 +845,7 @@ static void tx_create_visual(TRANSMITTER *tx) {
   //
   // This creates a panadapter within the main window
   //
-  t_print("%s: id=%d width=%d height=%d\n", __FUNCTION__, tx->id, tx->width, tx->height);
+  t_print("%s: id=%d width=%d height=%d\n", __func__, tx->id, tx->width, tx->height);
 
   if (tx->dialog != NULL) {
     gtk_widget_destroy(tx->dialog);
@@ -984,7 +984,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->displaying = 0;
   tx->antenna = 0; // default: ANT1
   t_print("%s: id=%d buffer_size=%d dsp_rate=%d iq_output_rate=%d output_samples=%d width=%d height=%d\n",
-          __FUNCTION__,
+          __func__,
           tx->id, tx->buffer_size, tx->dsp_rate, tx->iq_output_rate, tx->output_samples,
           tx->width, tx->height);
   tx->default_filter_low = 150;
@@ -1190,7 +1190,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   //
   if (protocol == ORIGINAL_PROTOCOL) {
     // Note output_samples == buffer_size in P1
-    tx->p1stone = g_new(int, tx->output_samples);
+    tx->p1stone = g_new(double, tx->output_samples);
   } else {
     tx->p1stone = NULL;
   }
@@ -1229,7 +1229,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
               1.0,                   // antivox gain
               1.0);                  // antivox tau
   t_print("%s: OpenChannel id=%d buffer_size=%d dsp_size=%d fft_size=%d dspRate=%d outputRate=%d\n",
-          __FUNCTION__,
+          __func__,
           tx->id,
           tx->buffer_size,
           tx->dsp_size,
@@ -1293,7 +1293,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
 
   if (tx->local_audio) {
     if (audio_open_input(tx) < 0) {
-      t_print("%s: audio_open_input failed\n", __FUNCTION__);
+      t_print("%s: audio_open_input failed\n", __func__);
       tx->local_audio = 0;
     }
   }
@@ -1310,8 +1310,8 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
 //
 //////////////////////////////////////////////////////////////////////////
 
-static float next_cw_sidetone_sample(TRANSMITTER *tx, int rfpos) {
-  float sample = 0.0F;
+static double next_cw_sidetone_sample(TRANSMITTER *tx, int rfpos) {
+  double sample = 0.0;
   //
   // shape CW pulses when doing CW and transmitting, else nullify them
   //
@@ -1449,7 +1449,7 @@ gpointer client_sidetone_thread(gpointer arg) {
   //
   // Do everything done in create_transmitter that we need to produce a side tone
   //
-  t_print("%s: starting.\n", __FUNCTION__);
+  t_print("%s: starting.\n", __func__);
   g_mutex_init(&tx->cw_ramp_mutex);
   tx->cw_ramp_audio = NULL;
   tx->cw_ramp_rf    = NULL;
@@ -1462,7 +1462,7 @@ gpointer client_sidetone_thread(gpointer arg) {
     if (radio_is_transmitting() && (txmode == modeCWL || txmode == modeCWU)) {
       // ship out 96 audio samples, possibly with side tone
       for (int i = 0; i < 96; i++) {
-        float sample;
+        double sample;
 
         if (cw_delay_time < 999999) {
           cw_delay_time++;
@@ -1470,11 +1470,6 @@ gpointer client_sidetone_thread(gpointer arg) {
 
         sample = next_cw_sidetone_sample(tx, 0);
 
-        //
-        // Because we need to shape the RF signal, we arrive here
-        // even if running duplex. But do not produce a side tone
-        // in this case.
-        //
         if (active_receiver->local_audio && !duplex) {
           tx_audio_write(active_receiver, sample);
         }
@@ -1489,7 +1484,7 @@ gpointer client_sidetone_thread(gpointer arg) {
 
     ts.tv_nsec += 2000000;  // 2 milli seconds
 
-    while (ts.tv_nsec > NSEC_PER_SEC) {
+    while (ts.tv_nsec >= NSEC_PER_SEC) {
       ts.tv_nsec -= NSEC_PER_SEC;
       ts.tv_sec++;
     }
@@ -1604,7 +1599,7 @@ static void tx_full_buffer(TRANSMITTER *tx) {
     fexchange0(tx->id, tx->mic_input_buffer, tx->iq_output_buffer, &error);
 
     if (error != 0) {
-      t_print("%s: id=%d fexchange0: error=%d\n", __FUNCTION__, tx->id, error);
+      t_print("%s: id=%d fexchange0: error=%d\n", __func__, tx->id, error);
     }
   }
 
@@ -1786,15 +1781,13 @@ void tx_queue_cw_event(int down, int wait) {
     MEMORY_BARRIER;
     cw_ring_inpt = newpt;
   } else {
-    t_print("%s: WARNING: CW ring buffer full.\n", __FUNCTION__);
+    t_print("%s: WARNING: CW ring buffer full.\n", __func__);
   }
 }
 
-void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
+void tx_add_mic_sample(TRANSMITTER *tx, double mic_sample) {
   ASSERT_SERVER();
   int txmode = vfo_get_tx_mode();
-  double mic_sample_double;
-  mic_sample_double = (double)next_mic_sample * 0.00003051;  // divide by 32768
 
   //
   // Since we now have mode-dependent audio settings, we no longer add
@@ -1803,14 +1796,14 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
   // the radio by those from the local audio input device.
   //
   if (tx->local_audio) {
-    mic_sample_double = audio_get_next_mic_sample(tx);
+    mic_sample = audio_get_next_mic_sample(tx);
   }
 
   //
   // If we have a client, it overwrites 'local' audio data.
   //
   if (remoteclient.running) {
-    mic_sample_double = remote_get_mic_sample() * 0.00003051;  // divide by 32768;
+    mic_sample = remote_get_mic_sample();
   }
 
   // If there is captured data to transmit, replace incoming
@@ -1818,7 +1811,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
   //
   if (capture_state == CAP_XMIT) {
     if (capture_replay_pointer < capture_record_pointer) {
-      mic_sample_double = capture_data[capture_replay_pointer++];
+      mic_sample = capture_data[capture_replay_pointer++];
     } else {
       // switching the state to REPLAY_DONE takes care that the
       // CAPTURE switch is "pressed" only once
@@ -1833,10 +1826,10 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
   // (perhaps not really necessary, but can do no harm)
   //
   if (tx->tune || txmode == modeCWL || txmode == modeCWU) {
-    mic_sample_double = 0.0;
+    mic_sample = 0.0;
   }
 
-  tx->mic_input_buffer[tx->samples * 2] = mic_sample_double;
+  tx->mic_input_buffer[tx->samples * 2] = mic_sample;
   tx->mic_input_buffer[(tx->samples * 2) + 1] = 0.0;
   //
   //  CW events are obtained from a ring buffer. The variable
@@ -1858,13 +1851,13 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
   }
 
   if (protocol == ORIGINAL_PROTOCOL) {
-    tx->p1stone[tx->samples] = 0;
+    tx->p1stone[tx->samples] = 0.0;
   }
 
   int xmit = radio_is_transmitting();
   int can_tx_audio = xmit && !duplex;
   int did_tx_audio = 0;
-  float tx_audio_sample = 0.0F;
+  double tx_audio_sample = 0.0;
 
   if (can_tx_audio && transmitter->audiomonitor ) {
     //
@@ -1872,7 +1865,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
     //
     double vol = pow(10.0, 0.05*active_receiver -> volume);
     if (vol > 0.25) vol = 0.25;
-    tx_audio_sample = mic_sample_double * vol;
+    tx_audio_sample = mic_sample * vol;
     did_tx_audio = 1;
   }
 
@@ -1951,16 +1944,13 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
   }
 
   if (did_tx_audio) {
-    int s = (int) (tx_audio_sample * 32767.0F);
-
     if (active_receiver->local_audio) {
       tx_audio_write(active_receiver, tx_audio_sample);
     }
 
-
     switch (protocol) {
     case NEW_PROTOCOL:
-      new_protocol_tx_audio_samples(s, s);
+      new_protocol_tx_audio_samples(tx_audio_sample);
       break;
 
     case ORIGINAL_PROTOCOL:
@@ -1968,7 +1958,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, short next_mic_sample) {
       // For P1, we must store the side tone samples since they
       // are tied in the protocol to the TXIQ samples.
       //
-      tx->p1stone[tx->samples] = s;
+      tx->p1stone[tx->samples] = tx_audio_sample;
       break;
     }
   }
@@ -2024,7 +2014,7 @@ void tx_add_ps_iq_samples(const TRANSMITTER *tx, double i_sample_tx, double q_sa
         if (rxval > rxmax) { rxmax = rxval; }
       }
 
-      t_print("%s: SetPk MEASURED: %f RX FeedBk Level: %f\n", __FUNCTION__, sqrt(pkmax), sqrt(rxmax));
+      t_print("%s: SetPk MEASURED: %f RX FeedBk Level: %f\n", __func__, sqrt(pkmax), sqrt(rxmax));
 #endif
 
       if (!cwmode) {
@@ -2211,7 +2201,7 @@ void tx_create_analyzer(const TRANSMITTER *tx) {
   XCreateAnalyzer(tx->id, &rc, 262144, 1, 1, NULL);
 
   if (rc != 0) {
-    t_print("%s: CreateAnalyzer failed for TXid=%d\n", __FUNCTION__, tx->id);
+    t_print("%s: CreateAnalyzer failed for TXid=%d\n", __func__, tx->id);
   } else {
     tx_set_analyzer(tx);
   }
@@ -2302,7 +2292,7 @@ void tx_set_analyzer(const TRANSMITTER *tx) {
   int max_w = afft_size + (int) min(keep_time * (double) tx->iq_output_rate,
                                     keep_time * (double) afft_size * (double) tx->fps);
   overlap = (int)max(0.0, ceil(afft_size - (double)tx->iq_output_rate / (double)tx->fps));
-  t_print("%s: fft_size=%d overlap=%d pixels=%d\n", __FUNCTION__, afft_size, overlap, tx->pixels);
+  t_print("%s: fft_size=%d overlap=%d pixels=%d\n", __func__, afft_size, overlap, tx->pixels);
   SetAnalyzer(tx->id,                // id of the TXA channel
               n_pixout,              // 1 = "use same data for scope and waterfall"
               spur_elimination_ffts, // 1 = "no spur elimination"

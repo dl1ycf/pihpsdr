@@ -23,7 +23,7 @@
 // i=0,1,...,255, as we are using an "interpolating
 // phaseword generator".
 //
-float sintab[257] = {
+double sintab[257] = {
   0.00000000000000000000000000,
   0.02454122852291228803173453,
   0.04906767432741801425495498,

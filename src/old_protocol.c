@@ -355,9 +355,9 @@ static gpointer old_protocol_txiq_thread(gpointer data) {
   return NULL;
 }
 
-void old_protocol_stop() {
+void old_protocol_stop(void) {
   ASSERT_SERVER();
-  t_print("%s\n", __FUNCTION__);
+  t_print("%s\n", __func__);
   P1running = 0;
 
   if (device != DEVICE_OZY) {
@@ -430,7 +430,7 @@ void old_protocol_init(int rate) {
 // EP4 is the bandscope endpoint (not yet used)
 // EP6 is the "normal" USB frame endpoint
 //
-static void start_usb_receive_threads() {
+static void start_usb_receive_threads(void) {
   ASSERT_SERVER();
   t_print("old_protocol starting USB receive thread\n");
   g_thread_new( "OZYEP6", ozy_ep6_rx_thread, NULL);
@@ -534,7 +534,7 @@ static gpointer ozy_ep6_rx_thread(gpointer arg) {
     //
     if (!P1running) { continue; }
 
-    //t_print("%s: read %d bytes\n",__FUNCTION__,bytes);
+    //t_print("%s: read %d bytes\n",__func__,bytes);
     if (bytes == 0) {
       t_print("old_protocol_ep6_read: ozy_read returned 0 bytes... retrying\n");
       continue;
@@ -554,7 +554,7 @@ static gpointer ozy_ep6_rx_thread(gpointer arg) {
 
 #endif
 
-static void open_udp_socket() {
+static void open_udp_socket(void) {
   ASSERT_SERVER();
   int tmp;
 
@@ -674,11 +674,11 @@ static void open_udp_socket() {
   // Set value of data_socket only after everything succeeded
   //
   data_socket = tmp;
-  t_print("%s: UDP socket established: %d for %s:%d\n", __FUNCTION__, data_socket, inet_ntoa(data_addr.sin_addr),
+  t_print("%s: UDP socket established: %d for %s:%d\n", __func__, data_socket, inet_ntoa(data_addr.sin_addr),
           ntohs(data_addr.sin_port));
 }
 
-static void open_tcp_socket() {
+static void open_tcp_socket(void) {
   ASSERT_SERVER();
   int tmp;
 
@@ -845,7 +845,7 @@ static int metis_read(unsigned char *buffer, int len) {
     last_seq_num = sequence;
     ret = 0;
   } else if (bytes_read > 12) {
-    t_print("%s: Invalid packet Header=%02x%02x EP=%d len=%d\n", __FUNCTION__, buffer[0], buffer[1], buffer[3], bytes_read);
+    t_print("%s: Invalid packet Header=%02x%02x EP=%d len=%d\n", __func__, buffer[0], buffer[1], buffer[3], bytes_read);
   }
 
   return ret;
@@ -895,7 +895,7 @@ static gpointer receive_thread(gpointer arg) {
 //
 //
 
-static int rx_feedback_channel() {
+static int rx_feedback_channel(void) {
   ASSERT_SERVER(0);
   //
   // For radios with small FPGAS only supporting 2 RX, use RX1.
@@ -935,7 +935,7 @@ static int rx_feedback_channel() {
   return ret;
 }
 
-static int tx_feedback_channel() {
+static int tx_feedback_channel(void) {
   ASSERT_SERVER(0);
   //
   // Radios with small FPGAs use RX2
@@ -1043,7 +1043,7 @@ static long long channel_freq(int chan) {
   return freq;
 }
 
-static int how_many_receivers() {
+static int how_many_receivers(void) {
   ASSERT_SERVER(0);
   //
   // For DIVERSITY, we need at least two RX channels
@@ -1106,7 +1106,7 @@ static int how_many_receivers() {
 static int nreceiver;
 static int left_sample;
 static int right_sample;
-static short next_mic_sample;
+static int16_t next_mic_sample;
 static double left_sample_double;
 static double right_sample_double;
 double left_sample_double_rx;
@@ -1121,7 +1121,7 @@ double right_sample_double_aux;
 static int nsamples;
 static int iq_samples;
 
-static void process_control_bytes() {
+static void process_control_bytes(void) {
   ASSERT_SERVER();
   int previous_ptt;
   int previous_dot;
@@ -1479,7 +1479,7 @@ static void process_ozy_byte(int b) {
     nreceiver++;
 
     if (nreceiver == st_num_hpsdr_receivers) {
-      state++;
+      state = MIC_SAMPLE_HI;
     } else {
       state = LEFT_SAMPLE_HI;
     }
@@ -1487,19 +1487,25 @@ static void process_ozy_byte(int b) {
     break;
 
   case MIC_SAMPLE_HI:
-    next_mic_sample = (short)(b << 8);
-    state++;
+    next_mic_sample = (b << 8);
+    state = MIC_SAMPLE_LOW;
     break;
 
   case MIC_SAMPLE_LOW:
-    next_mic_sample |= (short)(b & 0xFF);
+    next_mic_sample |= (b & 0xFF);
     mic_samples++;
 
     if (mic_samples >= mic_sample_divisor) { // reduce to 48000
-      tx_add_mic_sample(transmitter, next_mic_sample);
+      tx_add_mic_sample(transmitter, next_mic_sample * 0.00003051);
       mic_samples = 0;
     }
 
+    //
+    // With the MIC_SAMPLE_LOW, a complete sample has been received
+    // (consisting of RX IQ for all receivers and the mic samples).
+    // So we go to SYNC_0 if all samples in the buffer have been
+    // processed, or go to LEFT_SAMPL_HI to process the next sample.
+    //
     nsamples++;
 
     if (nsamples == iq_samples) {
@@ -1543,7 +1549,7 @@ static void queue_two_ozy_input_buffers(unsigned const char *buf1,
     sem_post(&rxring_sem);
 #endif
   } else {
-    t_print("%s: input buffer overflow.\n", __FUNCTION__);
+    t_print("%s: input buffer overflow.\n", __func__);
     // if an overflow is encountered, skip the next 256 input buffers
     // to allow a "fresh start"
     rxring_count = -256;
@@ -1590,7 +1596,7 @@ static gpointer process_ozy_input_buffer_thread(gpointer arg) {
   return NULL;
 }
 
-void old_protocol_audio_samples(short left_audio_sample, short right_audio_sample) {
+void old_protocol_audio_samples(double left, double right) {
   ASSERT_SERVER();
 
   if (!radio_is_transmitting()) {
@@ -1622,16 +1628,18 @@ void old_protocol_audio_samples(short left_audio_sample, short right_audio_sampl
     // want to do un-intentionally, therefore send zeros.
     // Note special variants of the HL2 *do* have an audio codec!
     //
+    int32_t ls = (int32_t)(left  * 32766.672 + 32767.5) - 32767;
+    int32_t rs = (int32_t)(right * 32766.672 + 32767.5) - 32767;
     if (device == DEVICE_HERMES_LITE2 && !hl2_audio_codec) {
       TXRINGBUF[iptr++] = 0;
       TXRINGBUF[iptr++] = 0;
       TXRINGBUF[iptr++] = 0;
       TXRINGBUF[iptr++] = 0;
     } else {
-      TXRINGBUF[iptr++] = left_audio_sample >> 8;
-      TXRINGBUF[iptr++] = left_audio_sample;
-      TXRINGBUF[iptr++] = right_audio_sample >> 8;
-      TXRINGBUF[iptr++] = right_audio_sample;
+      TXRINGBUF[iptr++] = (ls >> 8) & 0xFF;
+      TXRINGBUF[iptr++] = (ls     ) & 0xFF;
+      TXRINGBUF[iptr++] = (rs >> 8) & 0xFF;
+      TXRINGBUF[iptr++] = (rs     ) & 0xFF;
     }
 
     TXRINGBUF[iptr++] = 0;
@@ -1654,7 +1662,7 @@ void old_protocol_audio_samples(short left_audio_sample, short right_audio_sampl
         txring_inptr = nptr;
         txring_count = 0;
       } else {
-        t_print("%s: output buffer overflow.\n", __FUNCTION__);
+        t_print("%s: output buffer overflow.\n", __func__);
         txring_count = -1260;
       }
     }
@@ -1663,7 +1671,7 @@ void old_protocol_audio_samples(short left_audio_sample, short right_audio_sampl
   }
 }
 
-void old_protocol_iq_samples(double isample, double qsample, int side) {
+void old_protocol_iq_samples(double isample, double qsample, double side) {
   ASSERT_SERVER();
 
   if (radio_is_transmitting()) {
@@ -1696,8 +1704,11 @@ void old_protocol_iq_samples(double isample, double qsample, int side) {
     // to have a safety margin against overflows. Note we cannot use
     // int16_t here!
     //
+    // Note the side tone is mono and used for left+right
+    //
     int32_t is = (int32_t)(isample * 32766.672 + 32767.5) - 32767;
     int32_t qs = (int32_t)(qsample * 32766.672 + 32767.5) - 32767;
+    int32_t sd = (int32_t)(side    * 32766.672 + 32767.5) - 32767;
     //
     // The HL2 makes no use of audio samples, but instead
     // uses them to write to extended addrs which we do not
@@ -1710,10 +1721,10 @@ void old_protocol_iq_samples(double isample, double qsample, int side) {
       TXRINGBUF[iptr++] = 0;
       TXRINGBUF[iptr++] = 0;
     } else {
-      TXRINGBUF[iptr++] = side  >> 8;
-      TXRINGBUF[iptr++] = side;
-      TXRINGBUF[iptr++] = side >> 8;
-      TXRINGBUF[iptr++] = side;
+      TXRINGBUF[iptr++] = (sd >> 8) & 0xFF;
+      TXRINGBUF[iptr++] = (sd     ) & 0xFF;
+      TXRINGBUF[iptr++] = (sd >> 8) & 0xFF;
+      TXRINGBUF[iptr++] = (sd     ) & 0xFF;
     }
 
     if (device == DEVICE_HERMES_LITE2) {
@@ -1725,15 +1736,15 @@ void old_protocol_iq_samples(double isample, double qsample, int side) {
       // The resolution of the IQ samples is thus reduced from 16 to 15 bits,
       // but since the HL2 DAC is 12-bit this is no problem.
       //
-      TXRINGBUF[iptr++] = is >> 8;
-      TXRINGBUF[iptr++] = is & 0xFE;
-      TXRINGBUF[iptr++] = qs >> 8;
-      TXRINGBUF[iptr++] = qs & 0xFE;
+      TXRINGBUF[iptr++] = (is >> 8) & 0xFF;
+      TXRINGBUF[iptr++] = (is     ) & 0xFE;
+      TXRINGBUF[iptr++] = (qs >> 8) & 0xFF;
+      TXRINGBUF[iptr++] = (qs     ) & 0xFE;
     } else {
-      TXRINGBUF[iptr++] = is >> 8;
-      TXRINGBUF[iptr++] = is;
-      TXRINGBUF[iptr++] = qs >> 8;
-      TXRINGBUF[iptr++] = qs;
+      TXRINGBUF[iptr++] = (is >> 8) & 0xFF;
+      TXRINGBUF[iptr++] = (is     ) & 0xFF;
+      TXRINGBUF[iptr++] = (qs >> 8) & 0xFF;
+      TXRINGBUF[iptr++] = (qs     ) & 0xFF;
     }
 
     txring_count++;
@@ -1752,7 +1763,7 @@ void old_protocol_iq_samples(double isample, double qsample, int side) {
         txring_inptr = nptr;
         txring_count = 0;
       } else {
-        t_print("%s: output buffer overflow.\n", __FUNCTION__);
+        t_print("%s: output buffer overflow.\n", __func__);
         txring_count = -1260;
       }
     }
@@ -2771,9 +2782,9 @@ static void ozyusb_write(unsigned char* buffer) {
 
   if (i != OZY_BUFFER_SIZE) {
     if (i == USB_TIMEOUT) {
-      t_print("%s: ozy_write timeout\n", __FUNCTION__);
+      t_print("%s: ozy_write timeout\n", __func__);
     } else {
-      t_print("%s: ozy_write returned %d\n", __FUNCTION__, i);
+      t_print("%s: ozy_write returned %d\n", __func__, i);
     }
   }
 
@@ -2823,10 +2834,10 @@ static void metis_write(unsigned char ep, unsigned const char* buffer) {
   }
 }
 
-void old_protocol_run() {
+void old_protocol_run(void) {
   ASSERT_SERVER();
   unsigned char buffer[2000];
-  t_print("%s\n", __FUNCTION__);
+  t_print("%s\n", __func__);
 
   //
   // In TCP-ONLY mode, we possibly need to re-connect
@@ -2888,7 +2899,7 @@ static void metis_start_stop(int command) {
   ASSERT_SERVER();
   int i;
   unsigned char buffer[1032];
-  t_print("%s: %d\n", __FUNCTION__, command);
+  t_print("%s: %d\n", __func__, command);
 
   if (device == DEVICE_OZY) { return; }
 
@@ -2942,7 +2953,7 @@ static void metis_send_buffer(const unsigned char* buffer, int length) {
   // Send using either the UDP or TCP socket. Do not use TCP for
   // packets that are not 1032 bytes long
   //
-  //t_print("%s: length=%d\n",__FUNCTION__,length);
+  //t_print("%s: length=%d\n",__func__,length);
   if (tcp_socket >= 0) {
     if (length != 1032) {
       t_print("PROGRAMMING ERROR: TCP LENGTH != 1032\n");
@@ -2954,11 +2965,11 @@ static void metis_send_buffer(const unsigned char* buffer, int length) {
     }
   } else if (data_socket >= 0) {
     int bytes_sent;
-    //t_print("%s: sendto %d for %s:%d length=%d\n",__FUNCTION__,data_socket,inet_ntoa(data_addr.sin_addr),ntohs(data_addr.sin_port),length);
+    //t_print("%s: sendto %d for %s:%d length=%d\n",__func__,data_socket,inet_ntoa(data_addr.sin_addr),ntohs(data_addr.sin_port),length);
     bytes_sent = sendto(data_socket, buffer, length, 0, (struct sockaddr*)&data_addr, sizeof(data_addr));
 
     if (bytes_sent != length) {
-      t_print("%s: UDP sendto failed: %d: %s\n", __FUNCTION__, errno, strerror(errno));
+      t_print("%s: UDP sendto failed: %d: %s\n", __func__, errno, strerror(errno));
     }
   } else {
     // This should not happen

@@ -901,9 +901,9 @@ extern int create_hpsdr_server(void);
 extern int destroy_hpsdr_server(void);
 
 extern int radio_connect_remote(char *host, int port, const char *pwd);
-extern void remote_rxaudio(const RECEIVER *rx, short left_sample, short right_sample);
-extern void server_tx_audio(short sample);
-extern short remote_get_mic_sample();
+extern void remote_rxaudio(const RECEIVER *rx, double sample);
+extern void server_tx_audio(double sample);
+extern double remote_get_mic_sample(void);
 extern void  send_rxspectrum(int id);
 extern void  send_txspectrum(void);
 

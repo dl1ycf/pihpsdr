@@ -146,7 +146,7 @@ int radio_connect_remote(char *host, int port, const char *pwd) {
   static char server_host[128];
 
   if (cl_sock_tcp == -1) {
-    t_print("%s: socket creation failed...\n", __FUNCTION__);
+    t_print("%s: socket creation failed...\n", __func__);
     return -1;
   }
 
@@ -155,7 +155,7 @@ int radio_connect_remote(char *host, int port, const char *pwd) {
   struct hostent *server = gethostbyname(host);
 
   if (server == NULL) {
-    t_print("%s: no such host: %s\n", __FUNCTION__, host);
+    t_print("%s: no such host: %s\n", __func__, host);
     close(cl_sock_tcp);
     return -3;
   }
@@ -175,12 +175,12 @@ int radio_connect_remote(char *host, int port, const char *pwd) {
     return rc;  // -1: general error, -2: timeout
   }
 
-  t_print("%s: socket %d bound to %s:%d\n", __FUNCTION__, cl_sock_tcp, host, ntohs(server_address.sin_port));
+  t_print("%s: socket %d bound to %s:%d\n", __func__, cl_sock_tcp, host, ntohs(server_address.sin_port));
   unsigned char s[2 * SHA512_DIGEST_LENGTH];
   unsigned char sha[SHA512_DIGEST_LENGTH];
 
   if (recv_tcp(cl_sock_tcp, (char *)s, 4) < 0) {
-    t_print("%s: Could not receive Version number\n", __FUNCTION__);
+    t_print("%s: Could not receive Version number\n", __func__);
     close(cl_sock_tcp);
     return -1;
   }
@@ -189,13 +189,13 @@ int radio_connect_remote(char *host, int port, const char *pwd) {
       ((CLIENT_SERVER_VERSION >> 16) & 0xFF) != s[1] ||
       ((CLIENT_SERVER_VERSION >>  8) & 0xFF) != s[2] ||
       ((CLIENT_SERVER_VERSION      ) & 0xFF) != s[3]) {
-    t_print("%s: Wrong Client/Server version number\n", __FUNCTION__);
+    t_print("%s: Wrong Client/Server version number\n", __func__);
     close(cl_sock_tcp);
     return -4;
   }
 
   if (recv_tcp(cl_sock_tcp, (char *)s, SHA512_DIGEST_LENGTH) < 0) {
-    t_print("%s: Could not receive Challenge\n", __FUNCTION__);
+    t_print("%s: Could not receive Challenge\n", __func__);
     close(cl_sock_tcp);
     return -1;
   }
@@ -204,13 +204,13 @@ int radio_connect_remote(char *host, int port, const char *pwd) {
   send_tcp(cl_sock_tcp, (char *)sha, SHA512_DIGEST_LENGTH);
 
   if (recv_tcp(cl_sock_tcp, (char *)s, 1) < 0) {
-    t_print("%s: Could not receive pwd Receipt\n", __FUNCTION__);
+    t_print("%s: Could not receive pwd Receipt\n", __func__);
     close(cl_sock_tcp);
     return -1;
   }
 
   if (*s != 0x7F) {
-    t_print("%s: Server did not accept password\n", __FUNCTION__);
+    t_print("%s: Server did not accept password\n", __func__);
     close(cl_sock_tcp);
     return -5;
   }
@@ -254,7 +254,7 @@ int radio_connect_remote(char *host, int port, const char *pwd) {
   return 0;
 }
 
-void server_tx_audio(short sample) {
+void server_tx_audio(double sample) {
   //
   // This is called in the client and collects data to be
   // sent to the server
@@ -266,15 +266,16 @@ void server_tx_audio(short sample) {
     return;
   }
 
-  static short speak = 0;
+  static double peak = 0.0;
 
   if (cl_sock_tcp < 0) { return; }
 
-  if (sample > speak) { speak = sample; }
+  if (sample > peak) { peak = sample; }
 
-  if (-sample > speak) { speak = -sample; }
+  if (-sample > peak) { peak = -sample; }
 
-  txaudio_data.samples[txaudio_buffer_index++] = to_16(sample);
+  int32_t s = (int32_t)(sample  * 32766.672 + 32767.5) - 32767;
+  txaudio_data.samples[txaudio_buffer_index++] = to_16(s);
 
   if (txaudio_buffer_index >= AUDIO_DATA_SIZE) {
     int txmode = vfo_get_tx_mode();
@@ -302,8 +303,8 @@ void server_tx_audio(short sample) {
       txaudio_buffer_index = (AUDIO_DATA_SIZE / 2);
     }
 
-    vox_update((double)speak * 0.00003051);
-    speak = 0;
+    vox_update(peak);
+    peak = 0.0;
   }
 }
 
@@ -367,7 +368,7 @@ static int check_vfo(gpointer arg) {
 //
 // Called from remote_start_radio() when it is done
 //
-void start_vfo_timer() {
+void start_vfo_timer(void) {
   g_mutex_init(&accumulated_mutex);
   check_vfo_timer_id = gdk_threads_add_timeout_full(G_PRIORITY_HIGH_IDLE, 100, check_vfo, NULL, NULL);
 }
@@ -524,7 +525,7 @@ static int client_spectrum(gpointer ptr) {
 
 gpointer client_udp_thread(gpointer arg) {
   char *buffer;
-  t_print("%s: Starting\n", __FUNCTION__);
+  t_print("%s: Starting\n", __func__);
   buffer = g_new(char, 4096); // large enough
 
   for (;;) {
@@ -569,8 +570,8 @@ gpointer client_udp_thread(gpointer arg) {
       // Note CAPTURing is only done on the server side
       //
       for (int i = 0; i < numsamples; i++) {
-        short left_sample = from_16(rxdata->samples[i]);
-        short right_sample = left_sample;
+        double left_sample = from_16(rxdata->samples[i]) * 0.00003051;
+        double right_sample = left_sample;
 
         if (radio_is_transmitting() && (!duplex || mute_rx_while_transmitting)) {
           left_sample = 0.0;
@@ -578,29 +579,29 @@ gpointer client_udp_thread(gpointer arg) {
         }
 
         if (rx->mute_radio || (rx != active_receiver && rx->mute_when_not_active)) {
-          left_sample = 0;
-          right_sample = 0;
+          left_sample = 0.0;
+          right_sample = 0.0;
         }
 
-        if (rx->audio_channel == LEFT)  { right_sample = 0; }
+        if (rx->audio_channel == LEFT)  { right_sample = 0.0; }
 
-        if (rx->audio_channel == RIGHT) { left_sample  = 0; }
+        if (rx->audio_channel == RIGHT) { left_sample  = 0.0; }
 
         if (rx->local_audio) {
-          audio_write(rx, (float)left_sample / 32767.0, (float)right_sample / 32767.0);
+          audio_write(rx, left_sample, right_sample);
         }
       }
     }
     break;
 
     default:
-      t_print("%s: unkown command\n", __FUNCTION__);
+      t_print("%s: unkown command\n", __func__);
       break;
     }
   }
 
   g_free(buffer);
-  t_print("%s: Terminating\n", __FUNCTION__);
+  t_print("%s: Terminating\n", __func__);
   return NULL;
 }
 
@@ -689,12 +690,12 @@ static gpointer client_tcp_thread(gpointer arg) {
     bytes_read = recv_tcp(cl_sock_tcp, (char *)&header, sizeof(HEADER));
 
     if (bytes_read <= 0) {
-      t_print("%s: ReadErr for HEADER\n", __FUNCTION__);
+      t_print("%s: ReadErr for HEADER\n", __func__);
       return NULL;
     }
 
     if (memcmp(header.sync, syncbytes, sizeof(syncbytes))  != 0) {
-      t_print("%s: header.sync mismatch: %02x %02x %02x %02x\n", __FUNCTION__,
+      t_print("%s: header.sync mismatch: %02x %02x %02x %02x\n", __func__,
               header.sync[0],
               header.sync[1],
               header.sync[2],
@@ -706,7 +707,7 @@ static gpointer client_tcp_thread(gpointer arg) {
         bytes_read = recv_tcp(cl_sock_tcp, (char *)&c, 1);
 
         if (bytes_read <= 0) {
-          t_print("%s: ReadErr for HEADER RESYNC\n", __FUNCTION__);
+          t_print("%s: ReadErr for HEADER RESYNC\n", __func__);
           return NULL;
         }
 
@@ -721,7 +722,7 @@ static gpointer client_tcp_thread(gpointer arg) {
         return NULL;
       }
 
-      t_print("%s: Re-SYNC was successful!\n", __FUNCTION__);
+      t_print("%s: Re-SYNC was successful!\n", __func__);
     }
 
     type = from_16(header.data_type);
@@ -770,14 +771,14 @@ static gpointer client_tcp_thread(gpointer arg) {
       if (recv_tcp(cl_sock_tcp, (char *)&data + sizeof(HEADER), sizeof(BAND_DATA) - sizeof(HEADER)) < 0) { return NULL; }
 
       if (data.band > BANDS + XVTRS) {
-        t_print("%s: WARNING: band data received for b=%d, too large.\n", __FUNCTION__, data.band);
+        t_print("%s: WARNING: band data received for b=%d, too large.\n", __func__, data.band);
         break;
       }
 
       BAND *band = band_get_band(data.band);
 
       if (data.current > band->bandstack->entries) {
-        t_print("%s: WARNING: band stack too large for b=%d, s=%d.\n", __FUNCTION__, data.band, data.current);
+        t_print("%s: WARNING: band stack too large for b=%d, s=%d.\n", __func__, data.band, data.current);
         break;
       }
 
@@ -804,14 +805,14 @@ static gpointer client_tcp_thread(gpointer arg) {
       if (recv_tcp(cl_sock_tcp, (char *)&data + sizeof(HEADER), sizeof(BANDSTACK_DATA) - sizeof(HEADER)) < 0) { return NULL; }
 
       if (data.band > BANDS + XVTRS) {
-        t_print("%s: WARNING: band data received for b=%d, too large.\n", __FUNCTION__, data.band);
+        t_print("%s: WARNING: band data received for b=%d, too large.\n", __func__, data.band);
         break;
       }
 
       BAND *band = band_get_band(data.band);
 
       if (data.stack > band->bandstack->entries) {
-        t_print("%s: WARNING: band stack too large for b=%d, s=%d.\n", __FUNCTION__, data.band, data.stack);
+        t_print("%s: WARNING: band stack too large for b=%d, s=%d.\n", __func__, data.band, data.stack);
         break;
       }
 
@@ -1222,7 +1223,7 @@ static gpointer client_tcp_thread(gpointer arg) {
 
             if (audio_open_output(rx) < 0) {
               rx->local_audio = 0;
-              t_print("%s: Open audio output failed\n", __FUNCTION__);
+              t_print("%s: Open audio output failed\n", __func__);
             } else {
               rx->local_audio = 1;
             }
@@ -1248,7 +1249,7 @@ static gpointer client_tcp_thread(gpointer arg) {
 
             if (audio_open_input(transmitter) < 0) {
               transmitter->local_audio = 0;
-              t_print("%s: Open audio input failed\n", __FUNCTION__);
+              t_print("%s: Open audio input failed\n", __func__);
             } else {
               transmitter->local_audio = 1;
             }
@@ -1413,7 +1414,7 @@ static gpointer client_tcp_thread(gpointer arg) {
     break;
 
     default:
-      t_print("%s: Unknown type=%d\n", __FUNCTION__, from_16(header.data_type));
+      t_print("%s: Unknown type=%d\n", __func__, from_16(header.data_type));
       break;
     }
   }
