@@ -3,7 +3,9 @@
 # This one creates libspecbleach.a intended for static linking
 #
 
-CFLAGS?= -pthread -O3 -D_GNU_SOURCE -Wno-parentheses
+FFTWINCLUDE=`pkg-config --cflags fftw3`
+
+CFLAGS?= -pthread -O3 -D_GNU_SOURCE -Wno-parentheses $(FFTWINCLUDE)
 
 COMPILE=$(CC) $(CFLAGS) -Iinclude -Isrc -Isrc/shared
 
