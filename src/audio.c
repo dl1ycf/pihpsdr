@@ -679,7 +679,7 @@ static gpointer tx_audio_thread(gpointer arg) {
         break;
 
       case SND_PCM_FORMAT_S32_LE:
-        sample = i32_buffer[i] * .0000000004656;
+        sample = i32_buffer[i] * 4.6566E-10;
         break;
 
       case SND_PCM_FORMAT_FLOAT_LE:
