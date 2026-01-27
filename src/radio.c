@@ -294,6 +294,7 @@ double *capture_data = NULL;
 
 int can_transmit = 0;  // This indicates whether "transmitter" exists
 int optimize_for_touchscreen = 0;
+int smeter3dB = 0;  // if set, S meter steps are 3dB instead of 6 dB
 
 int duplex = FALSE;
 int mute_rx_while_transmitting = FALSE;
@@ -3333,6 +3334,7 @@ static void radio_restore_state(void) {
   GetPropI0("rx_stack_horizontal",                           rx_stack_horizontal);
   GetPropI0("display_size",                                  display_size);
   GetPropI0("optimize_touchscreen",                          optimize_for_touchscreen);
+  GetPropI0("smeter3dB",                                     smeter3dB);
   GetPropI0("which_css_font",                                which_css_font);
   GetPropI0("vfo_encoder_divisor",                           vfo_encoder_divisor);
   GetPropI0("vfo_snap",                                      vfo_snap);
@@ -3557,6 +3559,7 @@ void radio_save_state(void) {
   SetPropI0("display_size",                                  display_size);
   SetPropI0("display_width",                                 display_width[1]);
   SetPropI0("optimize_touchscreen",                          optimize_for_touchscreen);
+  SetPropI0("smeter3dB",                                     smeter3dB);
   SetPropI0("which_css_font",                                which_css_font);
   SetPropI0("vfo_encoder_divisor",                           vfo_encoder_divisor);
   SetPropI0("vfo_snap",                                      vfo_snap);

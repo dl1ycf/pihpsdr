@@ -370,6 +370,8 @@ extern int  radio_server_protocol_run(gpointer data);
 extern int  radio_server_protocol_stop(gpointer data);
 
 extern int optimize_for_touchscreen;
+extern int smeter3dB;
+
 extern void my_combo_attach(GtkGrid *grid, GtkWidget *combo, int row, int col, int spanrow, int spancol);
 
 //

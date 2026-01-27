@@ -641,6 +641,11 @@ void radio_menu(GtkWidget *parent) {
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), optimize_for_touchscreen);
   gtk_grid_attach(GTK_GRID(grid), ChkBtn, 0, row, 2, 1);
   g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &optimize_for_touchscreen);
+  ChkBtn = gtk_check_button_new_with_label("Use 3 dB per S-meter step");
+  gtk_widget_set_name(ChkBtn, "boldlabel");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), smeter3dB);
+  gtk_grid_attach(GTK_GRID(grid), ChkBtn, 2, row, 2, 1);
+  g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &smeter3dB);
   row++;
 
   // cppcheck-suppress knownConditionTrueFalse

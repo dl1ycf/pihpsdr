@@ -2389,7 +2389,7 @@ void tx_ps_onoff(TRANSMITTER *tx, int state) {
       RECEIVER *rx_feedback = receiver[PS_RX_FEEDBACK];
 
       if (rx_feedback) {
-        memset(rx_feedback->iq_input_buffer, 0, rx_feedback->buffer_size * sizeof(double));
+        memset(rx_feedback->iq_input_buffer, 0, 2 * rx_feedback->buffer_size * sizeof(double));
 
         //
         // In principle we could call pscc and GetPSINfo and repeat this until
