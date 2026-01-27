@@ -3,14 +3,7 @@
 # This one creates libspecbleach.a intended for static linking
 #
 
-#
-# libspecbleach uses the single-precision variant of FFTW
-# (functions fftw3f_something, libfftw3f) but the
-# include file (fftw3.h) is the same so we can use
-# both the pkg-config file of fftw3 and fftw3f here.
-#
-#
-FFTWINCLUDE=`pkg-config --cflags fftw3`
+FFTWINCLUDE=`pkg-config --cflags fftw3f`
 
 CFLAGS?= -pthread -O3 -D_GNU_SOURCE -Wno-parentheses $(FFTWINCLUDE)
 

@@ -76,7 +76,6 @@ LINK+=-pthread
 PKG_CONFIG = pkg-config
 
 WDSP_INCLUDE=-I./wdsp
-WDSP_LIBS=wdsp/libwdsp.a `$(PKG_CONFIG) --libs fftw3`
 
 ##############################################################################
 # CPP_DEFINES and CPP_SOURCES are "filled" with all  possible options,
@@ -208,7 +207,8 @@ CPP_SOURCES += src/saturnmain.c src/saturn_menu.c
 
 ifeq ($(USBOZY),ON)
 USBOZY_OPTIONS=-D USBOZY
-USBOZY_LIBS=-lusb-1.0
+USBOZY_INCLUDE=`$(PKG_CONFIG) --cflags libusb-1.0`
+USBOZY_LIBS=`$(PKG_CONFIG) --libs libusb-1.0`
 USBOZY_SOURCES= \
 src/ozyio.c
 USBOZY_HEADERS= \
@@ -218,16 +218,29 @@ src/ozyio.o
 endif
 CPP_DEFINES += -DUSBOZY
 CPP_SOURCES += src/ozyio.c
+CPP_INCLUDE += `$(PKG_CONFIG) --cflags libusb-1.0`
 
 ##############################################################################
 #
 # Add libraries for SoapySDR support, if requested
+# On MacOS, SoapySDR libs are installed via homebrew
+# and their correct location can be found via pkg-config.
+# On Linux, we have "manually" compiled+installed Soapy stuff in
+# LINUX/libinstall.sh because some older repsitories still have
+# the v0.7 Soapy libraries which have a different API. This
+# "manual" installation places the Soapy stuff in /usr/local
 #
 ##############################################################################
 
 ifeq ($(SOAPYSDR),ON)
 SOAPYSDR_OPTIONS=-D SOAPYSDR
-SOAPYSDRLIBS=-lSoapySDR
+ifeq ($(UNAME_S), Darwin)
+SOAPYSDR_LIBS=`$(PKG_CONFIG) --libs soapysdr`
+SOAPYSDR_INCLUDE=`$(PKG_CONFIG) --cflags soapysdr`
+else
+SOAPYSDR_INCLUDE= -I/usr/local/include
+SOAPYSDR_LIBS= -L/usr/local/lib -lSoapySDR
+endif
 SOAPYSDR_SOURCES= \
 src/soapy_discovery.c \
 src/soapy_protocol.c
@@ -240,6 +253,11 @@ src/soapy_protocol.o
 endif
 CPP_DEFINES += -DSOAPYSDR
 CPP_SOURCES += src/soapy_discovery.c src/soapy_protocol.c
+ifeq ($(UNAME_S), Darwin)
+CPP_INCLUDE +=`$(PKG_CONFIG) --cflags soapysdr`
+else
+CPP_INCLUDE += -I/usr/local/include
+endif
 
 ##############################################################################
 #
@@ -374,9 +392,9 @@ endif
 #
 ##############################################################################
 
-GTKINCLUDE=`$(PKG_CONFIG) --cflags gtk+-3.0`
-GTKLIBS=`$(PKG_CONFIG) --libs gtk+-3.0`
-CPP_INCLUDE += $(GTKINCLUDE)
+GTK_INCLUDE=`$(PKG_CONFIG) --cflags gtk+-3.0`
+GTK_LIBS=`$(PKG_CONFIG) --libs gtk+-3.0`
+CPP_INCLUDE += $(GTK_INCLUDE)
 
 ##############################################################################
 #
@@ -395,11 +413,11 @@ CPP_INCLUDE += `$(PKG_CONFIG) --cflags openssl`
 ##############################################################################
 
 ifeq ($(UNAME_S), Linux)
-SYSLIBS=-lrt
+SYS_LIBS=-lrt
 endif
 
 ifeq ($(UNAME_S), Darwin)
-SYSLIBS=-framework IOKit
+SYS_LIBS=-framework IOKit
 endif
 
 ##############################################################################
@@ -418,7 +436,9 @@ OPTIONS=$(MIDI_OPTIONS) $(USBOZY_OPTIONS) \
 	$(AUDIO_OPTIONS) $(TCI_OPTIONS) \
 	-D GIT_DATE='"$(GIT_DATE)"' -D GIT_VERSION='"$(GIT_VERSION)"' -D GIT_COMMIT='"$(GIT_COMMIT)"'
 
-INCLUDES=$(GTKINCLUDE) $(WDSP_INCLUDE) $(OPENSSL_INCLUDE) $(AUDIO_INCLUDE) $(STEMLAB_INCLUDE)
+INCLUDES=$(GTK_INCLUDE) $(WDSP_INCLUDE) $(OPENSSL_INCLUDE) $(AUDIO_INCLUDE) \
+	$(STEMLAB_INCLUDE) $(USBOZY_INCLUDE) $(SOAPYSDR_INCLUDE)
+
 COMPILE=$(CC) $(CFLAGS) $(OPTIONS) $(INCLUDES)
 
 .c.o:
@@ -429,12 +449,13 @@ COMPILE=$(CC) $(CFLAGS) $(OPTIONS) $(INCLUDES)
 
 ##############################################################################
 #
-# All the libraries we need to link with (including WDSP, libm, $(SYSLIBS))
+# All the libraries we need to link with (including WDSP, libm, $(SYS_LIBS))
 #
 ##############################################################################
 
-LIBS=	$(LDFLAGS) $(AUDIO_LIBS) $(USBOZY_LIBS) $(GTKLIBS) $(GPIO_LIBS) $(SOAPYSDRLIBS) $(STEMLAB_LIBS) \
-	$(MIDI_LIBS) $(TTS_LIBS) $(OPENSSL_LIBS) $(WDSP_LIBS) -lm $(SYSLIBS)
+LIBS=	$(LDFLAGS) $(AUDIO_LIBS) $(USBOZY_LIBS) $(GTK_LIBS) $(GPIO_LIBS) \
+	$(SOAPYSDR_LIBS) $(STEMLAB_LIBS) $(MIDI_LIBS) $(TTS_LIBS) \
+	$(OPENSSL_LIBS) $(WDSP_LIBS) -lm $(SYS_LIBS)
 
 ##############################################################################
 #
