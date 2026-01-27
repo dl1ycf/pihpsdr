@@ -324,7 +324,7 @@ running on a desktop or laptop computer, then the computer offers no such GPIO l
 
 The most versatile way for providing input lines is certainly to use a small micro-controller (uC) which
 has such lines and which communicates with the computer using MIDI commands over an USB connection.
-Chapter \ref{midimenu} explains in detail how one can ,,teach'' \pH to make use of such MIDI commands
+Chapter \ref{sec:midimenu} explains in detail how one can ,,teach'' \pH to make use of such MIDI commands
 (see also Appendix \ref{sec:ConnectCW}). Personally I use a standard CW keyer software on an ArduinoMicro
 with a small extension that sends MIDI commands for PTT on/off and Key up/down events. A ,,luxury''
 version thereof is described in
@@ -1415,11 +1415,15 @@ an encoder assigned to the \bltt{RIT} command. Note that for the
 size is part of the RX/TX profile (see chapter \ref{sec:rxtxprofiles}) and therefore it is automatically updated
 if you change the mode.
 
-\rett{Region}. Although not obvious, this selects settings for the 60m band. Possible choices are "Other",
-"UK" and "WRC15". The \texttt{Other} and \texttt{UK} choices implement the channel structure of the 60m
-band according to the regulations valid in the USA and Great Britain. "WRC15" gives you a small (15 kHz
+\rett{60m channels}. When operating in the 60m band, the allowed frequency ranges have a reddish
+colour in the RX panadapter. Possible choices are \texttt{USA}, \texttt{UK}, and \texttt{WRC15},
+The \texttt{USA} and \texttt{UK} choices implement the channel structure of the 60m
+band according to the regulations valid in the USA and Great Britain. \texttt{WRC15} gives you a small (15 kHz
 wide) 60m band according to the WRC15 (World Radio Conference 2015) document, which is now implemented in
-many countries.
+many countries. Note that since the end of 2025, FCC regulations have changed such that one of the
+five U.S. channels has been replaced by a band with regulations very similar to WRC15. To my knowledge,
+WRC15 allocation is still not in effect in the U.K. Given to this fairly complicated regulatory
+situation, please inform yourself which regulations apply in your country!
 
 \rett{Sample Rate}. This box does not appear for HPSDR radios running protocol-2, since there each receiver
 has its own sample rate that is therefore set in the \bltt{RX} menu (chapter \ref{sec:rxmenu}). For HPSDR
@@ -1453,7 +1457,9 @@ in combination with a HermesLite-II radio. It is controlled by the OC (open coll
 protocol. This means if you use \texttt{N2ADR}, this will override your OC settings upon program startup.
 It is possible to change the OC settings in the \bltt{OC} menu, and these settings are saved with the
 preferences. Upon next program start, however, these preferences will again be overwritten as long
-as the \texttt{N2ADR} filter board is chosen.
+as the \texttt{N2ADR} filter board is chosen. This means that if you want to use the \texttt{N2ADR}
+board with non-standard settings, you have to choose \texttt{NONE} for the filter board and make
+your settings in the \bltt{OC} menu!
 
 \rett{VFO Enc Div}. This option applies to VFO knobs in front panels, GPIO
 or MIDI controllers. In some cases, these encoders generate too many ticks per revolution,
@@ -1473,16 +1479,24 @@ it with a mouse.
 pop-down menu (such as the \rett{Receivers} button on this screen) is to click
 (and hold) it with a mouse, then drag the mouse to your choice, and then the selection
 is made by releasing the mouse button. This is very difficult to achieve on a touch
-screen. Therefore, if \rett{Optimise for TouchScreen} checkbox is checked, the pop-down
-menus are modified as follows: You click and release on the menu button, then it pops
+screen. Therefore, if \rett{Optimise for TouchScreen} is checked, the behaviour of pop-down
+menus is modified as follows: You click and release on the menu button, then it pops
 down and stays open. Then you make your selection by a second click/release sequence
 on your choice. While this is (only a little bit) more involved than the normal procedure
 when using a mouse, it is a great helper when using a touch screen. Therefore this
 option is set by default, but you can uncheck it here if you prefer normal
 mouse operation. Note that this option becomes effective when the next menu is opened.
 
-The next line with check boxes \rett{Split}, \rett{Duplex}, \rett{Mute RX on TX} and
-\rett{PA enable} is only shown for radios that have a transmitter.
+\rett{3dB/S-mtr step}. There is an IARU recommendation that 1 step on the S-meter
+corresponds to difference in signal level of 6 dB. While the recommendation for the
+S9 level ($-73$ dBm for frequencies up to 30 MHz, and $-93$ dBm for higher frequencies)
+is well respected, some major amateur radio hardware producers have S-meters where
+one S-meter step corresponds to a 3 dB signal level difference. \pH normally follows
+the IARU recommendation but if this box is checked, 3 dB steps are used in the S meter
+scale, that is, $-73$ dBm is shown as S9 and $-76$ dBm as S8, etc.
+
+The next line (below the horizontal line) with check boxes \rett{Split}, \rett{Duplex},
+\rett{Mute RX on TX} and \rett{PA enable} is only shown for radios that have a transmitter.
 
 \rett{Split}. Use this checkbox to enable/disable Split mode. In Split mode, the frequency of
 the non-active receiver (when using two receivers) or the frequency of VFO-B (when using one
@@ -1553,9 +1567,9 @@ four times larger at 28 MHz. Note that for transverter bands, adjusting the freq
 is better done by adjusting the local oscillator frequency (see Sec. \ref{sec:xvtrmenu}).
 
 \rett{RX Gain Calibration} Here you can calibrate your RF front end. To this end, you
-need a highly accurate signal source of, say, -73 dBm. Connect this source to your
+need a highly accurate signal source of, say, $-73$ dBm. Connect this source to your
 radio and tune on the signal. If the signal reported by the meter
-appears too strong (say, at -65 dBm),
+appears too strong (say, at $-65$ dBm),
 \textit{decrease} the
 calibration value with the spin button until the meter shows the correct level.
 The RX gain calibration value can be viewed as the  amplification/attenuation of
@@ -1563,7 +1577,8 @@ a virtual device you
 would need in your RF front end. Therefore, you need a negative calibration value (attenuation)
 if the signal in the meter is too strong. For most HPSDR radios, the default value is
 zero. For the HermesLite-II and other radios using the AD9866 chip, the default
-value is 14, but this may depend on the RF front end.
+value is 14, but this is a rough estimate and certainly depends on details of
+the RF front end.
 
 \subsubsection{Orion/Orion-II/Saturn}
 For these radios, the upper right corner of the radio menu is as shown in

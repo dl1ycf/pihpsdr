@@ -565,13 +565,13 @@ void radio_menu(GtkWidget *parent) {
   if (row > max_row) { max_row = row; }
 
   row = 1;
-  label = gtk_label_new("Region");
+  label = gtk_label_new("60m channels");
   gtk_widget_set_name(label, "boldlabel");
   gtk_widget_set_halign(label, GTK_ALIGN_START);
   gtk_grid_attach(GTK_GRID(grid), label, 2, row, 1, 1);
   row++;
   GtkWidget *region_combo = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(region_combo), NULL, "Other");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(region_combo), NULL, "USA");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(region_combo), NULL, "UK");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(region_combo), NULL, "WRC15");
   gtk_combo_box_set_active(GTK_COMBO_BOX(region_combo), region);
@@ -641,10 +641,10 @@ void radio_menu(GtkWidget *parent) {
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), optimize_for_touchscreen);
   gtk_grid_attach(GTK_GRID(grid), ChkBtn, 0, row, 2, 1);
   g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &optimize_for_touchscreen);
-  ChkBtn = gtk_check_button_new_with_label("Use 3 dB per S-meter step");
+  ChkBtn = gtk_check_button_new_with_label("3dB/S-mtr step");
   gtk_widget_set_name(ChkBtn, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), smeter3dB);
-  gtk_grid_attach(GTK_GRID(grid), ChkBtn, 2, row, 2, 1);
+  gtk_grid_attach(GTK_GRID(grid), ChkBtn, 2, row, 1, 1);
   g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &smeter3dB);
   row++;
 

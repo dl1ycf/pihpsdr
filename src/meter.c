@@ -109,7 +109,7 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
   int txmode = vfo[txvfo].mode;
   int cwmode = (txmode == modeCWU || txmode == modeCWL);
   const BAND *band = band_get_band(vfo[txvfo].band);
-  double smtr, smtr2;
+  double smtr = 0.0, smtr2;
 
   //
   // First, do all the work that  does not depend on whether the
