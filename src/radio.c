@@ -1913,6 +1913,19 @@ void radio_change_sample_rate(int rate) {
 static void rxtx(int state) {
   int i;
 
+//
+// My measurements on the timing within rxtx indicates that
+// the time spent in rxtx() dominated by the WDSP slew-downs.
+// In the RXTX transition, this is the call to rx_off() and
+// in the TXRX transitionb, this is the call to tx_off().
+// The slew-down time is set in the OpenChannel() calls, but
+// this is not a time in seconds but rather has to converted
+// to a number of samples that have to be delivered to the
+// channel before it is completely shut down.
+// In most cases, rxtx() takes about 30 +/- 10 msec.
+// If running duplex, RXTX is faster since there is not
+// receiver slew-down.
+//
   if (!can_transmit) {
     t_print("WARNING: rxtx called but no transmitter!");
     return;
@@ -1955,15 +1968,14 @@ static void rxtx(int state) {
 
     if (!duplex) {
       for (i = 0; i < receivers; i++) {
-        // Delivery of RX samples
-        // to WDSP via fexchange0() may come to an abrupt stop
-        // (especially with PureSignal or DIVERSITY).
-        // Therefore, wait for *all* receivers to complete
-        // their slew-down before going TX.
         receiver[i]->displaying = 0;
 
         if (!radio_is_remote) {
-          rx_off(receiver[i]);
+          //
+          // wait for slew-down only if this is the last receiver
+          // to be switched off
+          //
+          rx_off(receiver[i], SET(i == (receivers - 1)));
           rx_set_displaying(receiver[i]);
         } else {
           send_startstop_rxspectrum(cl_sock_tcp, i, 0);
@@ -2626,12 +2638,10 @@ void radio_set_tune(int state) {
     if (state) {
       if (!duplex) {
         for (int i = 0; i < receivers; i++) {
-          // Delivery of RX samples
-          // to WDSP via fexchange0() may come to an abrupt stop
-          // (especially with PureSignal or DIVERSITY)
-          // Therefore, wait for *all* receivers to complete
-          // their slew-down before going TX.
-          rx_off(receiver[i]);
+          //
+          // wait for slew-down only if this is the last receiver
+          //
+          rx_off(receiver[i], SET(i == (receivers - 1)));
           receiver[i]->displaying = 0;
           rx_set_displaying(receiver[i]);
           schedule_high_priority();

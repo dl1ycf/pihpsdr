@@ -1453,7 +1453,7 @@ void rx_change_sample_rate(RECEIVER *rx, int sample_rate) {
     }
 
     rx->audio_output_buffer = g_new(double, 2 * rx->output_samples);
-    rx_off(rx);
+    rx_off(rx, 1);
     rx_set_analyzer(rx);
     SetInputSamplerate(rx->id, sample_rate);
     SetEXTANBSamplerate (rx->id, sample_rate);
@@ -1634,10 +1634,11 @@ void rx_set_analyzer(RECEIVER *rx) {
   rx->analyzer_initializing = 1;
 }
 
-void rx_off(const RECEIVER *rx) {
+void rx_off(const RECEIVER *rx, int wait) {
   ASSERT_SERVER();
-  // switch receiver OFF, wait until slew-down completet
-  SetChannelState(rx->id, 0, 1);
+  // switch receiver OFF.
+  // if (wait)  wait until slew-down completed; else return immediately
+  SetChannelState(rx->id, 0, wait);
 }
 
 void rx_on(const RECEIVER *rx) {
