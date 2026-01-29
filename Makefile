@@ -45,6 +45,27 @@ TTS=ON
 # AUDIO=ALSA
 #
 #######################################################################################
+# Attention, NR34LIB on Apple Silicon Macs:
+# -----------------------------------------
+#
+# In order to allow for maximum flexibility, if using your own versions of
+# libspecbleach and rnnoise, they are not located, during compilation and linking,
+# via 'pkg-config'. It is rather assumed that both the include file and the
+# libraries can be found in standard locations, that is, /usr or /usr/local.
+#
+# This (only) is a problem on Apple Silicon Macs, where such extension are
+# often installed in /opt/homebrew rather than in /usr/local.
+#
+# The easiest way to solve this problem once and for all, is to establish
+# symbolic links in /usr/local, namely
+#
+# /usr/local/include     -->   /opt/homebrew/include
+# /usr/local/lib         -->   /opt/homebrew/lib
+# /usr/local/bin         -->   /opt/homebrew/bin
+#
+# This will also be useful for several other third-party software packages
+# that make problems with non-standard prefixes.
+#######################################################################################
 
 -include make.config.pihpsdr
 
