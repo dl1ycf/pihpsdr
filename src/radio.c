@@ -1004,7 +1004,7 @@ static void radio_create_visual(void) {
 
     case SOAPYSDR_PROTOCOL:
 #ifdef SOAPYSDR
-      soapy_protocol_init(FALSE);
+      soapy_protocol_init();
 #endif
       break;
     }
