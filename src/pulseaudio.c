@@ -33,17 +33,26 @@
 
 //
 // Latency management:
-// Note latency is higher than for ALSA so no special CW optimisation here.
+// Note latency is higher than for ALSA
 //
-// AUDIO_LAT_HIGH         If this latency is exceeded, audio output is stopped
-// AUDIO_LAT_LOW          If latency is below this, audio output is resumed
+// AUDIO_LAT_MAX          If this latency is exceeded, RX audio output is stopped
+// AUDIO_LAT_TARGET       target RX audio latency
+//
+// CW_LAT_MAX             If this latency is exceeded, TX audio output is stopped
+// CW_LAT_TARGET          target TX audio latency
+// CW_LAT_HIGH            high water for keeping at target filling
+// CW_LAT_LOW             low  water for keeping at target filling
 //
 
-#define AUDIO_LAT_HIGH    500000
-#define AUDIO_LAT_LOW     250000
+#define AUDIO_LAT_MAX     400000
+#define AUDIO_LAT_TARGET  200000
+#define CW_LAT_MAX         60000
+#define CW_LAT_HIGH        35000
+#define CW_LAT_TARGET      30000
+#define CW_LAT_LOW         25000
 
 //
-// ALSA loopback devices, when connected to digimode programs, sometimes
+// Loopback devices, when connected to digimode programs, sometimes
 // deliver audio in large chungs, so we need a large ring buffer as well
 //
 #define MICRINGLEN 6000
@@ -191,9 +200,9 @@ int audio_open_output(RECEIVER *rx) {
   }
 
   g_mutex_lock(&rx->audio_mutex);
-  attr.maxlength = pa_usec_to_bytes(2*AUDIO_LAT_HIGH, &sample_spec);
-  attr.tlength   = pa_usec_to_bytes(AUDIO_LAT_HIGH, &sample_spec);
-  attr.prebuf    = pa_usec_to_bytes(AUDIO_LAT_LOW, &sample_spec);
+  attr.maxlength = pa_usec_to_bytes(2*AUDIO_LAT_MAX, &sample_spec);
+  attr.tlength   = pa_usec_to_bytes(AUDIO_LAT_TARGET, &sample_spec);
+  attr.prebuf    = pa_usec_to_bytes(AUDIO_LAT_TARGET, &sample_spec);
   attr.minreq    = (uint32_t) -1;
   attr.fragsize  = (uint32_t) -1;
   rx->audio_handle = pa_simple_new(NULL, // Use the default server.
@@ -203,7 +212,7 @@ int audio_open_output(RECEIVER *rx) {
                                    stream_id,          // Description of our stream.
                                    &sample_spec,       // Our sample format.
                                    NULL,               // Use default channel map
-                                   &attr,              // Use default attributes
+                                   &attr,              // Latency
                                    &err                // error code if returns NULL
                                   );
 
@@ -213,8 +222,9 @@ int audio_open_output(RECEIVER *rx) {
     return -1;
   }
 
-  rx->cwaudio = 0;
+  rx->cwaudio = 5;
   rx->cwcount = 0;
+  rx->skipcnt = 0;
   rx->audio_buffer_offset = 0;
   rx->audio_buffer = g_new(double, 2 * out_buffer_size);
   g_mutex_unlock(&rx->audio_mutex);
@@ -423,52 +433,192 @@ double audio_get_next_mic_sample(TRANSMITTER *tx) {
 
 //
 // In the PulseAudio module, tx_audio_write() is essentially a copy
-// of audio_write(). Normally we would try here to "rewind" the output
-// buffer and keep it a lower filling while transmitting, but I do now
-// know whether this is possible with the "simple" API.
+// of audio_write(). audio_write() is for RXaudio and called from the
+// receiver thread, while tx_audio_write() is for CW sidetone, TUNE
+// side tone and TX monitor, and is called from the transmitter thread.
 //
-// In principle one can use pa_simple_flush() to flush the entire
-// output buffer, but keeping the buffer at low filling might not
-// be compatible with the buffer attributs set when creating the stream.
+// We want a much smaller latency for TXaudio and therefore close and
+// re-open the audio stream each time we switch between RX and TX
+// audio. Note that when running duplex, or when not doing CW and
+// not using the TX monitor, there is no switching from RX to TX audio.
 //
-// So for the time being, using the internal keyer might not be
-// reasonable when running the PulseAudio module.
+// The variable rx->cwaudio can have four values, indicating four phases:
 //
-int tx_audio_write(RECEIVER *rx, double sample) {
-  int result = 0;
+// cwaudio == 0:  playing RX audio
+// cwaudio == 1:  transition between RX and TX audio, skip samples
+// cwaudio == 2:  TXaudio: play some silence to pre-fill audio buffer
+// cwaudio == 3:  playing TX audio
+// cwaudio == 4:  transition between TX and RX audio, skip samples
+// cwaudio == 5:  RXaudio: play some silence to pre-fill audio buffer
+//
+// During normal RX, cwaudio is zero, and when starting playing TX audio
+// it adpots values 1, 2 for a short time and then 3 during TX audio.
+// On the next TX/RX transition it adopts values 4, 5 for a short time
+// before resuming "normal" RX audio
+//
+static int do_rxtx(gpointer data) {
+  RECEIVER *rx = (RECEIVER *) data;
   int err;
+
+  //
+  // RXTX transition: close stream and re-open with CW latency settings
+  //
+  g_mutex_lock(&rx->audio_mutex);
+
+  if (rx->cwaudio == 1) {
+    pa_sample_spec sample_spec;
+    sample_spec.rate = 48000;
+    sample_spec.channels = 2;
+    sample_spec.format = PA_SAMPLE_FLOAT32NE;
+    char stream_id[16];
+    snprintf(stream_id, sizeof(stream_id), "RX-%d", rx->id);
+    pa_buffer_attr attr;
+    //
+    // Close and re-open stream
+    //
+    if (rx->audio_handle != NULL) {
+      pa_simple_flush(rx->audio_handle, &err);
+      pa_simple_free(rx->audio_handle);
+    }
+
+    attr.maxlength = pa_usec_to_bytes(2 * CW_LAT_MAX, &sample_spec);
+    attr.tlength   = pa_usec_to_bytes(CW_LAT_TARGET,  &sample_spec);
+    attr.prebuf    = pa_usec_to_bytes(CW_LAT_TARGET, &sample_spec);
+    attr.minreq    = (uint32_t) -1;
+    attr.fragsize  = (uint32_t) -1;
+    rx->audio_handle = pa_simple_new(NULL, // Use the default server.
+                                     "piHPSDR",          // Our application's name.
+                                     PA_STREAM_PLAYBACK,
+                                     rx->audio_name,
+                                     stream_id,          // Description of our stream.
+                                     &sample_spec,       // Our sample format.
+                                     NULL,               // Use default channel map
+                                     &attr,              // Latency
+                                     &err                // error code if returns NULL
+                                     );
+
+    if (rx->audio_handle == NULL) {
+      t_print("%s: ERROR pa_simple_new: %s\n", __func__, pa_strerror(err));
+    }
+    rx->cwaudio = 2;
+  }
+  g_mutex_unlock(&rx->audio_mutex);
+
+  return G_SOURCE_REMOVE;
+}
+
+void tx_audio_write(RECEIVER *rx, double sample) {
+  int err;
+
+  //
+  // While audio stream is being re-opened, return
+  //
+  if (rx->cwaudio == 1 || rx->cwaudio == 4) { return; }
+
   g_mutex_lock(&rx->audio_mutex);
 
   if (rx->audio_handle != NULL && rx->audio_buffer != NULL) {
-    //
-    // Since this is mutex-protected, we know that both rx->audio_handle
-    // and rx->audio_buffer will not be destroyed until we
-    // are finished here.
-    //
-    rx->audio_buffer[rx->audio_buffer_offset * 2] = sample;
-    rx->audio_buffer[(rx->audio_buffer_offset * 2) + 1] = sample;
-    rx->audio_buffer_offset++;
+    if (rx->cwaudio == 0) {
+      rx->cwaudio = 1;
+      rx->cwcount = 0;
+      rx->skipcnt = 0;
+      rx->audio_buffer_offset = 0;
+      g_idle_add(do_rxtx, (gpointer) rx);
+      g_mutex_unlock(&rx->audio_mutex);
+      return;
+    }
+
+    if (rx->cwaudio == 2) {
+      //
+      // Insert silence that amounts to 2/3 target filling
+      //
+      float buffer[2 * out_buffer_size];
+      memset(buffer, 0, 2 * out_buffer_size * sizeof(float));
+
+      for (int i = 0; i < CW_LAT_TARGET / (30 * out_buffer_size); i++) {
+        int rc = pa_simple_write(rx->audio_handle, buffer,
+                                 2 * out_buffer_size * sizeof(float),
+                                 &err);
+
+        if (rc < 0) {
+          t_print("%s: ERROR pa_simple_write: %s\n", __func__, pa_strerror(err));
+        }
+      }
+
+      rx->cwaudio = 3;
+      rx->latency = (2 * CW_LAT_TARGET) / 3;
+    }
+
+    int adjust = 1;
+
+    if (sample != 0.0) { rx->cwcount = 0; }
+
+    if (++rx->cwcount >= 16) {
+      rx->cwcount = 0;
+
+      //
+      // We arrive here if we have seen 16 zero samples in a row.
+      //
+      if (rx->latency > CW_LAT_HIGH) { adjust = 0; } // full: we are above high water mark
+
+      if (rx->latency < CW_LAT_LOW ) { adjust = 2; } // low: we are below low water mark
+    }
+
+    switch (adjust) {
+      case 1:
+      //
+      // default case: put sample into buffer and that's it
+      //
+      rx->audio_buffer[rx->audio_buffer_offset * 2] = sample;
+      rx->audio_buffer[rx->audio_buffer_offset * 2 + 1] = sample;
+      rx->audio_buffer_offset++;
+      break;
+
+    case 2:
+      //
+      // write it twice if space permits
+      //
+      rx->audio_buffer[rx->audio_buffer_offset * 2] = sample;
+      rx->audio_buffer[rx->audio_buffer_offset * 2 + 1] = sample;
+      rx->audio_buffer_offset++;
+
+      if (rx->audio_buffer_offset <  out_buffer_size) {
+        rx->audio_buffer[rx->audio_buffer_offset * 2] = sample;
+        rx->audio_buffer[rx->audio_buffer_offset * 2 + 1] = sample;
+        rx->audio_buffer_offset++;
+      }
+
+      break;
+
+    default:
+      //
+      // Skip sample
+      //
+      break;
+    }
 
     if (rx->audio_buffer_offset >= out_buffer_size) {
       rx->latency = pa_simple_get_latency(rx->audio_handle, &err);
 
-      if (rx->latency > AUDIO_LAT_HIGH && rx->cwcount == 0) {
+      if (rx->latency > CW_LAT_MAX && rx->skipcnt == 0) {
         //
         // If the radio is running a a slightly too high clock rate, or if
         // the audio hardware clocks slightly below 48 kHz, then the PA audio
         // buffer will fill up. suppress audio data until the latency is below
-        // AUDIO_LAT_LOW, or until a pre-calculated maximum number of output
+        // TARGET, or until a pre-calculated maximum number of output
         // buffers has been suppressed.
+        // 20 * out_buffer_size is the number of microseconds one buffer
+        // contains.
         //
-        rx->cwcount = (AUDIO_LAT_HIGH - AUDIO_LAT_LOW) / (20 * out_buffer_size);
+        rx->skipcnt = (rx->latency - CW_LAT_TARGET) / (20 * out_buffer_size);
         t_print("%s: suppressing audio block\n", __func__);
       }
 
-      if (rx->cwcount > 0) {
-        rx->cwcount--;
+      if (rx->skipcnt > 0) {
+        rx->skipcnt--;
       }
 
-      if (rx->cwcount == 0 || rx->latency < AUDIO_LAT_LOW) {
+      if (rx->skipcnt == 0 || rx->latency < CW_LAT_TARGET) {
         //
         // Write output buffer. To this end, a C variable length
         // array is allocated to do the conversion from internal (double)
@@ -495,26 +645,107 @@ int tx_audio_write(RECEIVER *rx, double sample) {
   }
 
   g_mutex_unlock(&rx->audio_mutex);
-  return result;
+  return;
 }
 
-int audio_write(RECEIVER *rx, double left, double right) {
-  int result = 0;
+
+static int do_txrx(gpointer data) {
+  RECEIVER *rx = (RECEIVER *) data;
+  int err;
+
+  //
+  // TXRX transition: close stream and re-open with RX latency settings
+  //
+  g_mutex_lock(&rx->audio_mutex);
+
+  if (rx->cwaudio == 4) {
+    pa_sample_spec sample_spec;
+    sample_spec.rate = 48000;
+    sample_spec.channels = 2;
+    sample_spec.format = PA_SAMPLE_FLOAT32NE;
+    char stream_id[16];
+    snprintf(stream_id, sizeof(stream_id), "RX-%d", rx->id);
+    pa_buffer_attr attr;
+    //
+    // Close and re-open stream
+    //
+    if (rx->audio_handle != NULL) {
+      pa_simple_flush(rx->audio_handle, &err);
+      pa_simple_free(rx->audio_handle);
+    }
+
+    attr.maxlength = pa_usec_to_bytes(2 * AUDIO_LAT_MAX, &sample_spec);
+    attr.tlength   = pa_usec_to_bytes(AUDIO_LAT_TARGET,  &sample_spec);
+    attr.prebuf    = pa_usec_to_bytes(AUDIO_LAT_TARGET, &sample_spec);
+    attr.minreq    = (uint32_t) -1;
+    attr.fragsize  = (uint32_t) -1;
+    rx->audio_handle = pa_simple_new(NULL, // Use the default server.
+                                     "piHPSDR",          // Our application's name.
+                                     PA_STREAM_PLAYBACK,
+                                     rx->audio_name,
+                                     stream_id,          // Description of our stream.
+                                     &sample_spec,       // Our sample format.
+                                     NULL,               // Use default channel map
+                                     &attr,              // Latency
+                                     &err                // error code if returns NULL
+                                     );
+
+    if (rx->audio_handle == NULL) {
+      t_print("%s: ERROR pa_simple_new: %s\n", __func__, pa_strerror(err));
+    }
+
+    rx->cwaudio = 5;
+  }
+
+  g_mutex_unlock(&rx->audio_mutex);
+
+  return G_SOURCE_REMOVE;
+}
+
+void audio_write(RECEIVER *rx, double left, double right) {
   int err;
 
   //
   // If transmitting without duplex, quickly return
   //
-  if (rx == active_receiver && radio_is_transmitting() && !duplex) { return 0; }
+  if (rx == active_receiver && radio_is_transmitting() && !duplex) { return; }
+
+  if (rx->cwaudio == 1 || rx->cwaudio == 4) { return; }
 
   g_mutex_lock(&rx->audio_mutex);
 
   if (rx->audio_handle != NULL && rx->audio_buffer != NULL) {
-    //
-    // Since this is mutex-protected, we know that both rx->audio_handle
-    // and rx->audio_buffer will not be destroyes until we
-    // are finished here.
-    //
+    if (rx->cwaudio == 3) {
+      rx->cwaudio = 4;
+      rx->cwcount = 0;
+      rx->skipcnt = 0;
+      rx->latency = 0;
+      rx->audio_buffer_offset = 0;
+      g_idle_add(do_txrx, (gpointer) rx);
+      g_mutex_unlock(&rx->audio_mutex);
+      return;
+    }
+
+    if (rx->cwaudio == 5) {
+      //
+      // Insert silence that amounts to 2/3 target filling
+      //
+      float buffer[2 * out_buffer_size];
+      memset(buffer, 0, 2 * out_buffer_size * sizeof(float));
+
+      for (int i = 0; i < AUDIO_LAT_TARGET / (30 * out_buffer_size); i++) {
+        int rc = pa_simple_write(rx->audio_handle, buffer,
+                                 2 * out_buffer_size * sizeof(float),
+                                 &err);
+
+        if (rc < 0) {
+          t_print("%s: ERROR pa_simple_write: %s\n", __func__, pa_strerror(err));
+        }
+      }
+
+      rx->cwaudio = 0;
+    }
+
     rx->audio_buffer[rx->audio_buffer_offset * 2] = left;
     rx->audio_buffer[(rx->audio_buffer_offset * 2) + 1] = right;
     rx->audio_buffer_offset++;
@@ -522,7 +753,7 @@ int audio_write(RECEIVER *rx, double left, double right) {
     if (rx->audio_buffer_offset >= out_buffer_size) {
       rx->latency = pa_simple_get_latency(rx->audio_handle, &err);
 
-      if (rx->latency > AUDIO_LAT_HIGH && rx->cwcount == 0) {
+      if (rx->latency > AUDIO_LAT_MAX && rx->skipcnt == 0) {
         //
         // If the radio is running a a slightly too high clock rate, or if
         // the audio hardware clocks slightly below 48 kHz, then the PA audio
@@ -530,15 +761,15 @@ int audio_write(RECEIVER *rx, double left, double right) {
         // AUDIO_LAT_LOW, or until a pre-calculated maximum number of output
         // buffers has been suppressed.
         //
-        rx->cwcount = (AUDIO_LAT_HIGH - AUDIO_LAT_LOW) / (20 * out_buffer_size);
+        rx->skipcnt = (rx->latency - AUDIO_LAT_TARGET) / (20 * out_buffer_size);
         t_print("%s: suppressing audio block\n", __func__);
       }
 
-      if (rx->cwcount > 0) {
-        rx->cwcount--;
+      if (rx->skipcnt > 0) {
+        rx->skipcnt--;
       }
 
-      if (rx->cwcount == 0 || rx->latency < AUDIO_LAT_LOW) {
+      if (rx->skipcnt == 0 || rx->latency < AUDIO_LAT_TARGET) {
         //
         // Write output buffer. To this end, a C variable length
         // array is allocated to do the conversion from internal (double)
@@ -564,5 +795,5 @@ int audio_write(RECEIVER *rx, double left, double right) {
   }
 
   g_mutex_unlock(&rx->audio_mutex);
-  return result;
+  return;
 }

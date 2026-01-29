@@ -65,12 +65,12 @@ AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
 //
 // During TX (no duplex), tx_audio_write() is called. If it is called for
 // the first time after a RX/TX transition, most of the pending contents in
-// the ring buffer is cleared and only MY_CW_LOW_WATER (stereo) samples
+// the ring buffer is cleared and only CW_LAT_TARGET (stereo) samples
 // are kept. This is probably the minimum amount necessary to avoid
 // audio underruns which manifest themselves as ugly cracks in the side ton.
 // During the TX phase, each time 16 subsequent zero samples are detected,
 // one of these is deleted or an additional one inserted to keep the output
-// buffer filling between MY_CW_LOW_WATER and MY_CW_HIGH_WATER. This is (only)
+// buffer filling at about CW_LAT_TARGET. This is (only)
 // important for the CW side tone and here we have "real silence" between the
 // dots/dashes. This keeps the CW sidetone latency near the target value.
 //
@@ -89,8 +89,9 @@ AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
 #define MY_RING_BUFFER_SIZE  9600
 #define MY_RING_LOW_WATER     512
 #define MY_RING_HIGH_WATER   9000
-#define MY_CW_LOW_WATER       192
-#define MY_CW_HIGH_WATER      320
+#define CW_LAT_LOW            224
+#define CW_LAT_TARGET         256
+#define CW_LAT_HIGH           288
 
 //
 // AUDIO_GET_CARDS
@@ -569,13 +570,13 @@ void audio_close_output(RECEIVER *rx) {
 // So mutex locking/unlocking should only cost few CPU cycles in
 // normal operation.
 //
-int audio_write (RECEIVER *rx, double left, double right) {
+void audio_write (RECEIVER *rx, double left, double right) {
   double *buffer = rx->audio_buffer;
 
   //
   // If transmitting without duplex, quickly return
   //
-  if (rx == active_receiver && radio_is_transmitting() && !duplex) { return 0; }
+  if (rx == active_receiver && radio_is_transmitting() && !duplex) { return; }
 
   g_mutex_lock(&rx->audio_mutex);
   rx->cwaudio = 0;
@@ -594,11 +595,11 @@ int audio_write (RECEIVER *rx, double left, double right) {
       //
       // This is not always an "error" to be reported and necessarily happens in three cases:
       //  a) we come here for the first time
-      //  b) we come from a TX/RX transition in non-CW mode, and no duplex
-      //  c) we come from a TX/RX transition in CW mode
+      //  b) we come from a TX/RX transition without having a side tone
+      //  c) we come from a TX/RX transition with a side tone or a TX monitor
       //
       // In case a) and b) the buffer will be empty, in c) the buffer will contain "few" samples
-      // because of the "CW audio low latency" strategy.
+      // (about CW_LAT_TARGET)
       //
       int oldpt = rx->audio_buffer_inpt;
 
@@ -653,7 +654,7 @@ int audio_write (RECEIVER *rx, double left, double right) {
   }
 
   g_mutex_unlock(&rx->audio_mutex);
-  return 0;
+  return;
 }
 
 //
@@ -661,11 +662,9 @@ int audio_write (RECEIVER *rx, double left, double right) {
 // do active latency (buffer filling) management:
 // During CW, between the elements the side tone contain "true" silence.
 // We detect a sequence of 16 subsequent zero samples, and insert or delete
-// a zero sample depending on the buffer water mark:
-// If there are more than two portaudio buffers available, delete one sample,
-// if it drops down to less than one portaudio buffer, insert one sample
+// a zero sample to keep the buffer filling at CW_LAT_TARGET.
 //
-int tx_audio_write(RECEIVER *rx, double sample) {
+void tx_audio_write(RECEIVER *rx, double sample) {
   g_mutex_lock(&rx->audio_mutex);
 
   if (rx->audio_handle != NULL && rx->audio_buffer != NULL) {
@@ -678,13 +677,13 @@ int tx_audio_write(RECEIVER *rx, double sample) {
     if (rx->cwaudio == 0) {
       //
       // First time producing CW audio after RX/TX transition:
-      // keep the oldest samples (until MY_CW_LOW_WATER) in the audio buffer
+      // keep the oldest samples (until CW_LAT_TARGET) in the audio buffer
       // and discard the rest. Apply a down-slew on the samples
       // kept.
       //
       double damp = 1.000;
       newpt = rx->audio_buffer_outpt;
-      for (int i = 0; i < MY_CW_LOW_WATER; i++) {
+      for (int i = 0; i < CW_LAT_TARGET; i++) {
         if (i >= avail) {
           rx->audio_buffer[2 * newpt] = 0.0;
           rx->audio_buffer[2 * newpt + 1] = 0.0;
@@ -700,7 +699,7 @@ int tx_audio_write(RECEIVER *rx, double sample) {
       }
       rx->audio_buffer_inpt = newpt;
       MEMORY_BARRIER;
-      avail = MY_CW_LOW_WATER;
+      avail = CW_LAT_TARGET;
       rx->cwcount = 0;
       rx->cwaudio = 1;
     }
@@ -713,9 +712,9 @@ int tx_audio_write(RECEIVER *rx, double sample) {
       //
       // We arrive here if we have seen 16 zero samples in a row.
       //
-      if (avail > MY_CW_HIGH_WATER) { adjust = 2; } // full: we are above high water mark
+      if (avail > CW_LAT_HIGH) { adjust = 2; } // full: we are above high water mark
 
-      if (avail < MY_CW_LOW_WATER ) { adjust = 1; } // low: we are below low water mark
+      if (avail < CW_LAT_LOW)  { adjust = 1; } // low: we are below low water mark
     }
 
     switch (adjust) {
@@ -777,7 +776,7 @@ int tx_audio_write(RECEIVER *rx, double sample) {
   }
 
   g_mutex_unlock(&rx->audio_mutex);
-  return 0;
+  return;
 }
 
 #endif

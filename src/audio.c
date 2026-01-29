@@ -313,7 +313,7 @@ void audio_close_input(TRANSMITTER *tx) {
 // Note that when sending the buffer, delay "jumps" by the buffer size
 //
 
-int tx_audio_write(RECEIVER *rx, double sample) {
+void tx_audio_write(RECEIVER *rx, double sample) {
   snd_pcm_sframes_t delay;
   g_mutex_lock(&rx->audio_mutex);
 
@@ -458,7 +458,7 @@ int tx_audio_write(RECEIVER *rx, double sample) {
               t_print("%s: cannot prepare audio interface for use %ld (%s)\n", __func__, rc, snd_strerror (rc));
               rx->audio_buffer_offset = 0;
               g_mutex_unlock(&rx->audio_mutex);
-              return rc;
+              return;
             }
 
             break;
@@ -477,7 +477,7 @@ int tx_audio_write(RECEIVER *rx, double sample) {
   }
 
   g_mutex_unlock(&rx->audio_mutex);
-  return 0;
+  return;
 }
 
 //
@@ -485,13 +485,13 @@ int tx_audio_write(RECEIVER *rx, double sample) {
 // since tx_audio_write may be active
 //
 
-int audio_write(RECEIVER *rx, double left, double right) {
+void audio_write(RECEIVER *rx, double left, double right) {
   snd_pcm_sframes_t delay;
 
   //
   // When transmitting while not doing duplex, quickly return
   //
-  if (rx == active_receiver && radio_is_transmitting() && !duplex) { return 0; }
+  if (rx == active_receiver && radio_is_transmitting() && !duplex) { return; }
 
   // lock AFTER checking the "quick return" condition but BEFORE checking the pointers
   g_mutex_lock(&rx->audio_mutex);
@@ -609,7 +609,7 @@ int audio_write(RECEIVER *rx, double left, double right) {
               t_print("%s: cannot prepare audio interface for use %ld (%s)\n", __func__, rc, snd_strerror (rc));
               rx->audio_buffer_offset = 0;
               g_mutex_unlock(&rx->audio_mutex);
-              return rc;
+              return;
             }
 
             break;
@@ -628,7 +628,7 @@ int audio_write(RECEIVER *rx, double left, double right) {
   }
 
   g_mutex_unlock(&rx->audio_mutex);
-  return 0;
+  return;
 }
 
 static gpointer tx_audio_thread(gpointer arg) {

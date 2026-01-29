@@ -1333,7 +1333,7 @@ void rx_set_filter(RECEIVER *rx) {
   //
   // - set filter edges and deviation in rx
   // - determine on the use of the CW peak filter
-  // - re-caloc AGC since this depends on the filter width
+  // - re-calc AGC since this depends on the filter width
   //
   int id = rx->id;
   int m = vfo[id].mode;

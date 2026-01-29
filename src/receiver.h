@@ -214,6 +214,7 @@ typedef struct _receiver {
 
   int cwaudio;   // detect RX/TX transitions in CW
   int cwcount;   // for sample insertion and deletion
+  int skipcnt;   // for latency management
 
   int squelch_enable;
   double squelch;
