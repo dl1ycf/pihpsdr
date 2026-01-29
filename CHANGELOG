@@ -4,6 +4,9 @@ LIST OF RECENT PIHPSDR CHANGES
 January 2026:
 -------------
 
+- improved the pulseaudio.c module for a low-latency
+  CW side tone.
+
 - added CW texts that can be changed in the CW menu and
   transmitted upon pushing a (physical) button or clicking a 
   toolbar (on-screen) button.
