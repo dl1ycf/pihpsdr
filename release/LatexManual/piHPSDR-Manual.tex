@@ -197,18 +197,20 @@ Here we list the main new featured introduced in each version.
 
 \textbf{\pH Version 2.6, under development}
 \begin{itemize}
-\item{One serial port can be used for a PTT-input and a PTT-output line.}
-\item{Added CW texts that can be changed in the CW menu and transmitted upon pushing
+\item{Low-latency CW side tone also for the PulseAudio module.}
+\item{One serial port can be used for a PTT-input (DTR/CTS) and a PTT-output (RTS) line.}
+\item{Added CW texts that can be edited in the CW menu, and transmitted upon pushing
 a phyiscal (controller/panel) button or clicking a toolbar (on-screen) button.}
-\item{NR3 (RNNnoise) and NR4 (SpecBleach) noise reduction models fully integrated}
-\item{Performance and Resilience improvement in Client/Server operation}
+\item{NR3 (RNNnoise) and NR4 (SpecBleach) noise reduction models fully integrated.}
+\item{Performance and Resilience improvement in Client/Server operation.}
 \item{RX1 and TX audio settings (audio device, Stereo/Left/Right) are now part of the RX/TX profile
-and automatically switched when changing the mode}
+stored in the props file, and automatically switched when changing the mode.}
 \item{TX audio monitor option: the audio that goes into the TX chain (before being processed
 by the compressor or the equalizer) can be routed
 to the RX audio output.}
+\item{\pH 2.6 will be released when this page is filled.}
 \end{itemize}
-\medskip
+\clearpage
 \textbf{\pH Version 2.5, released October 2025}
 \begin{itemize}
 \item{First complete version of the Client/Server model (including TX and CW).
@@ -249,7 +251,7 @@ by Lukasz).}
 \item{Added a multi-function encoder (Appendix \ref{sec:multiencoder})}
 \end{itemize}
 
-\clearpage
+\medskip
 \textbf{\pH Version 2.2, released October 2023}
 \begin{itemize}
 \item{Support for ANAN-G2 radios}
@@ -1182,14 +1184,20 @@ pixels, the meter automatically widens.
 The design can be switched between digital and analog in the \bltt{Meter}
 menu, which can be accessed quickly just by clicking into the meter area.
 During RX, an S-meter is shown together with the signal level in dBm. Note
-that -73 dBm corresponds to S9 for frequencies up to 30 MHz, while above
-30 MHz, S9 corresponds to -93 dBm. Since the S meter is in steps of
-6 dB, a signal level of S1 (below 30 MHz) corresponds to -121 dBm. In the
+that $-73$ dBm corresponds to S9 for frequencies up to 30 MHz, while above
+30 MHz, S9 corresponds to $-93$ dBm. Normally, one step on the S meter amounts
+to 6 dB, then a signal level of S1 corresponds to $-121$ dBm below 30 MHz
+and to $-141$ dBm above..
+It is possible to choose 3 dB steps in the \bltt{Radio}, in this case an
+S1 signal level indicates $-102$ dBm below 30 MHz and $-122$ dBm above.
+The 3 dB step option has been added because some major hardware producers
+use such steps in their gear (thus violating a long-standing IARU recommendation).
+
+ In the
 meter menu, one can also choose if the S-meter reading corresponds to a peak
 or  an average value. Further info on the meters (e.g. switching between
 ,,peak'' and ,,average'' reporting)
 is described in the \bltt{Meter} menu.
-
 During TX, the output power is displayed, provided that the radio actually
 reports this power. The output power meter can be calibrated (see the \bltt{PA}
 menu). If the SWR exceeds a threshold for SWR warnings (the default is 1:3, but

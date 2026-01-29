@@ -7,6 +7,15 @@ January 2026:
 - improved the pulseaudio.c module for a low-latency
   CW side tone.
 
+- added option for having 3dB per S-meter step
+
+- updated 60m "US channels" according to FCC 25-60
+  (this gives you a WRC15 60m band and 4 domestic
+  channels).
+
+- added PTT-over-serial-port (DTR/CTS) option, this also
+  includes a PTT-out signal on RTS.
+
 - added CW texts that can be changed in the CW menu and
   transmitted upon pushing a (physical) button or clicking a 
   toolbar (on-screen) button.
