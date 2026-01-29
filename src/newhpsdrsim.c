@@ -1659,7 +1659,7 @@ void *send_highprio_thread(void *data) {
         buffer[14] = (rc >> 8) & 0xFF;
         buffer[15] = (rc     ) & 0xFF;
         // ALEX Rev power, make it TX dridve dependent to get a handle to vary the SWR
-        rc = (int) (txdrv_dbl * (4095.0 / c1) * sqrt(maxpwr * txlevel * c2));
+        rc = (int) (0.1*txdrv_dbl * (4095.0 / c1) * sqrt(maxpwr * txlevel * c2));
         buffer[22] = (rc >> 8) & 0xFF;
         buffer[23] = (rc     ) & 0xFF;
       }
