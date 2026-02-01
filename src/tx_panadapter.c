@@ -87,7 +87,7 @@ tx_panadapter_draw_cb (GtkWidget *widget,
 static gboolean tx_panadapter_button_press_event_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   switch (event->button) {
   case GDK_BUTTON_SECONDARY:
-    g_idle_add(ext_start_tx, NULL);
+    g_idle_add(ext_start_tx_menu, NULL);
     break;
 
   default:

@@ -79,7 +79,7 @@ meter_draw_cb (GtkWidget *widget, cairo_t   *cr, gpointer   data) {
 
 // cppcheck-suppress constParameterCallback
 static gboolean meter_press_event_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_meter();
+  start_meter_menu();
   return TRUE;
 }
 

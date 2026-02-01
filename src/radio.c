@@ -345,8 +345,13 @@ gboolean radio_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
   // Everything that is not intercepted is handled downstream.
   //
   // space             ==>  MOX
-  // u                 ==>  active receiver VFO up
-  // d                 ==>  active receiver VFO down
+  // d                 ==>  active  receiver VFO one step down
+  // D                 ==>  "other" receiver VFO ten steps down
+  // I                 ==>  "iconify" window
+  // m,M               ==>  open main menu
+  // u                 ==>  active  receiver VFO one step up
+  // U                 ==>  "other" receiver VFO one step up
+  //
   // Keypad 0..9       ==>  NUMPAD 0 ... 9
   // Keypad Decimal    ==>  NUMPAD DEC
   // Keypad Subtract   ==>  NUMPAD BS
@@ -431,6 +436,10 @@ gboolean radio_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
       new_menu();
     }
 
+    break;
+
+  case GDK_KEY_I:
+    radio_iconify();
     break;
 
   //
@@ -626,6 +635,14 @@ static int set_full_screen(gpointer data) {
   }
 
   return G_SOURCE_REMOVE;
+}
+
+void radio_iconify(void) {
+  //
+  // "Iconifying" the top window does not (always) work when operating in
+  // full-screen mode.
+  //
+  gtk_window_iconify(GTK_WINDOW(top_window));
 }
 
 void radio_reconfigure_screen(void) {

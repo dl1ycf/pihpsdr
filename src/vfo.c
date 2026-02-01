@@ -2276,12 +2276,12 @@ static gboolean vfo_press_event_cb (GtkWidget *widget, GdkEventButton *event, gp
 
     if (event->x >= abs(vfo_layout_list[display_vfobar[display_size]].vfo_b_x)) { v = VFO_B; }
 
-    g_idle_add(ext_start_vfo, GINT_TO_POINTER(v));
+    g_idle_add(ext_start_vfo_menu, GINT_TO_POINTER(v));
     break;
 
   case GDK_BUTTON_SECONDARY:
     // do not discriminate between A and B
-    g_idle_add(ext_start_band, NULL);
+    g_idle_add(ext_start_band_menu, NULL);
     break;
   }
 

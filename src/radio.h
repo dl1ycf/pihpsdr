@@ -301,6 +301,7 @@ extern void   radio_shutdown(void);
 extern void   radio_reboot(void);
 extern void   radio_exit_program(void);
 extern void   radio_stop_radio(void);
+extern void   radio_iconify(void);
 extern void   radio_reconfigure(void);
 extern void   radio_reconfigure_screen(void);
 extern void   radio_stop_program(void);

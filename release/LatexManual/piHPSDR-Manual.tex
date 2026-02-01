@@ -375,7 +375,8 @@ Besides stating a version number, and the ID string and the date of latest commi
 applied to the repository from which \pH was built, the list of optional features is
 documented (compile-time options,
 in this case  GPIO, MIDI, SATURN) as well as the audio module used (here: PulseAudio) for attaching headphones
-or microphones to the host computer running \pH. Information about  compile-time options and how to add
+or microphones (via a sound card)
+to the host computer running \pH. Information about  compile-time options and how to add
 or remove them, and on the available audio modules,
 are given in Appendix \ref{sec:compiletime}.
 
@@ -4807,36 +4808,33 @@ SDRs, latencies are usually larger, mostly for a good reason (see below). So let
 types of latencies we are talking about:
 
 \begin{itemize}
-\item[RX latency]
-{This is the time difference between a signal arriving at the antenna input, and the (demodulated) audio
+\item[RX]
+{The RX latency is the time difference between a signal arriving at the antenna input, and the (demodulated) audio
 playing in the headphone. It could be measured by connecting the (strongly attenuated) output of a
 second transmitter to the antenna input, sending a stream of CW dashes, and monitoring both the output
-of the second transmitter and the headphone of the first radio on a two-channel oscilloscope}
-\item[TX latency]
+of the second transmitter and the headphone of the first radio on a two-channel oscilloscope. Alternatively,
+one can use a second conventional (analog) receiver with known low latency, feed the antenna signal
+to both devices, tune to a CW signal and compare the audio output of both radios with a two-channel
+oscilloscope.}
+\item[TX]
 {This is the time difference between a signal arriving at the microphone input, and the (modulated)
 RF output at the antenna output of the transmitter. It could be measured by monitoring the microphone
 input and the RF output on a two-channel oscilloscope, and feeding the side tone of a string of dashes
 to the microphone input.}
-\item[RX/TX turnover]
-{This measures how fast the radio can switch from RX to TX. One way to measure is to feed the side tone
-of a CW keyer producing three dashes and three dots to the microphone input while using VOX, and
-measuring the microphone input and the RF output on a two-channel oscilloscope. Here not only the
-delay (latency) is of interest but also to which extent the RX/TX transition "swallows" parts of the
-first dashes sent.}
-\item[TX/RX turnover]
-{This measures how fast the radio can switch from TX to RX. It can be measured by turning the radio
-into TX by shorting the PTT input to ground, and then releasing the PTT button. On a two-channel
-oscilloscope one can measure the PTT and headphone output and see how long it takes to produce
-a stable audio signal.}
-\item[Audio latency]
+
+\item[Audio]
 {The delays mentioned above are only in part caused by the signal processing within \pH.
 There is also a delay between \pH actually sending audio to the radio or to a sound card,
-and the signal appearing in the headphone. The reverse holds for the microphone input signals.}
+and the signal appearing in the headphone. The reverse holds for the microphone input signals.
+Latencies are introduced here on purpose and are a feature rather than a bug: Because of
+CPU stalling and many other reasons, it may happen that RX audio samples are produced in
+bursts with pauses in between, so one needs a buffer with variable filling to eliminate
+sample over- und underruns.}
 \end{itemize}
 
 \section{RF (base band) latencies}
 The notion of what is an acceptable RF delay very much depends on the kind of operation. In a
-rag-chew QSO, large delays (several hundred milliseconds) are not really harmful, but in a
+rag-chew QSO, large delays (few hundred milliseconds) are not really harmful, but in a
 contest or DX pileup situation, it may be detrimental if your RF signal comes late. But is makes
 not much sense to try reducing the delay to, say, below 10 ms simply because the travel time
 of the RF signal between you and your QSO partner is already
@@ -4856,11 +4854,13 @@ samples in smaller numbers, but then the overhead associated with ,,dispatching'
 When baseband data is fed to the input side of the
 digital signal processing (DSP) engine, it takes some time before the
 audio data appears at the output side. How long this is, is not primarily determined by
-how fast the CPU is, but by how many ,,taps'' the signal processing chain contains. The number
+by how many ,,taps'' the signal processing chain contains. The number
 of taps required, for example, in filtering depends on the shape factor of the filter.
 The minimum value for the filters used in \pH is 2048 taps (this can be increases in the \bltt{Filter}
-menu) which corresponds to 43 ms at 48 kHz which is the (fixed) DSP rate in the RX engine. If
-using additional processing (equalisers, noise reduction, etc.) the number of taps will be longer.
+menu) which corresponds to 43 ms at 48 kHz which is the (fixed) DSP rate in the RX engine. Any
+additional processing (equalisers, noise reduction, notch filter, etc.) will increase
+the DSP processing time. Faster CPUs do not decrease the latency because the samples come out
+of the DSP chain in the same pace they enter.
 
 After having retrieved the audio signal from the DSP processing, it can be sent to the audio hardware.
 For radios having a built-on codec (that is, radios with a headphone jack), the audio data is sent
@@ -4889,11 +4889,12 @@ rate in the TX chain is usually 96 kHz in Protocol 2). But again, the data that 
 the DSP processor may not arrive at a constant pace. Therefore, a certain amount of ,,RF silence''
 is sent to the radio upon a RX/TX transition to pre-fill the outgoing TX data buffer. While not necessary
 for many radios (they do not start transmitting before the TX data buffer is sufficiently filled),
-this should make underruns of the TX data buffer in the FPGA less likely.
+this should make under-runs of the TX data buffer in the FPGA less likely.
 
 The bottom line of this section is, that a certain amount of latency cannot be avoided
 because it is inherent in the digital signal processing, but that this latency is further
-increased on purpose to establish a resilience against small ,,hangs'' in the data flow,
+increased on purpose to establish a resilience against jitters (bursts and pauses)
+in the data flow,
 that may e.g. be caused by the signal processing thread getting no CPU cycles for a small
 amount of time etc.
 
@@ -4907,17 +4908,19 @@ using a paddle. If the side tone arrives a little bit late at your ear, then the
 may have advanced to the point where it sends the fourth dot before you have heard
 the third dot. Such a delay then leads to keying errors, e.g. sending a number '4' where
 one wants to send a letter 'V'. Since the length of a dot is 50 ms at a CW speed of 24 wpm,
-an audio delay of more than 100 ms is certainly not acceptable when doing CW. For the
-PORTAUDIO and ALSA audio modules, \pH has a built-in mechanism to remedy this situation.
+an audio delay of 100 ms (or even more) is certainly not acceptable when doing CW.
+In the audio modules (for ALSA, PortAudio and PulseAudio/PipeWire),
+ \pH has a built-in mechanism to remedy this situation.
 
 This is possible since when generating the CW side tone, audio samples come at a regular
-and predictable pace, such that we do not need latency to cope with jitters in the audio
+and predictable pace, such that we do not need a large latency to cope with small pauses
+and bursts of samples in the audio
 stream. Upon a RX/TX transition, most pending audio samples in the audio output buffer
-are discarded such that the latency is small again. Furthermore, \pH very slightly
+are discarded and the audio stream is re-started with a small latency.
+Furthermore, \pH monitors the latancy and very slightly
 increases or decreases the pauses between the dots or dashes to keep the audio output
 buffer at the desired filling level. This way, a \pH generated side tone can be used for
-CW speeds up to 25 wpm. Unfortunately, this only applies to the ALSA and PORTAUDIO
-audio module but not to PULSEAUDIO.
+CW speeds up to about 25 wpm.
 
 \begin{figure}[h!]
 \center
@@ -4927,7 +4930,8 @@ Yellow trace (top): signal at the headphone.}
 \label{fig:SideToneALSA}
 \end{figure}
 
-To demonstrate this, the side tone latency has been measured with a two-channel oscilloscope,
+To demonstrate this, the side tone latency has been measured with a two-channel oscilloscope
+with \pH running on a RaspPi5 with a USB sound card attached,
 see Fig. \ref{fig:SideToneALSA}.
 An external keyer was used that both sends MIDI key-up/down events to \pH and has a
 hardware output (active low)
@@ -4935,13 +4939,12 @@ that was connected to channel 2 (blue trace)
 of the oscilloscope and was used for triggering.
 Channel 1 (yellow trace) then displays the signal at the headphone. Hitting the dot paddle then
 produces a string of dots, a CW speed of 24 wpm (dot length 50 ms) was used.
-For PulseAudio, the observed latency
-was about 200 ms which makes this completely unusable for CW: when you hear the first dot,
-the third dot is already being sent. For ALSA (see Fig. \ref{fig:SideToneALSA})
+\pH was compiled with the AUDIO=ALSA compile-time option (see Appendix \ref{sec:compiletime}.
+With the ALSA audio module (see Fig. \ref{fig:SideToneALSA})
 the measured delay is 30 ms, slightly more than half the dot length. This is not optimal
 but still usable for doing CW at 24 wpm. On a Macintosh (using the PortAudio module), the
 delay was even slightly smaller (20 ms). For 24 wpm, this is usable but not optimal, and
-high-speed CW operators certainly want delays smaller than 10 ms.
+high-speed CW operators certainly want delays smaller than 10 ms (see next section).
 
 
 \section{External solution to CW side tone latency}
@@ -4957,7 +4960,7 @@ tone at one of the uC output pins. This square wave side tone is not pleasant to
 the harmonics
 contained in the square wave do not sound nice to operators expecting a clean sine-shaped
 signal, but the real problem is the audio clicks
-that result from the sharp rise and fall of the side tone pulses. Both problems are eliminated
+that result from the sharp rise and fall of the side tone pulse envelopes. Both problems are eliminated
 if one routes the side tone through a narrow audio band pass filter, that is easily realised with
 a single OP amp.
 

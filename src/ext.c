@@ -86,27 +86,27 @@ int ext_radio_set_vox(gpointer data) {
 }
 
 // cppcheck-suppress constParameterPointer
-int ext_start_band(gpointer data) {
-  start_band();
+int ext_start_band_menu(gpointer data) {
+  start_band_menu();
   return G_SOURCE_REMOVE;
 }
 
 // cppcheck-suppress constParameterPointer
-int ext_start_vfo(gpointer data) {
+int ext_start_vfo_menu(gpointer data) {
   int val = GPOINTER_TO_INT(data);
-  start_vfo(val);
+  start_vfo_menu(val);
   return G_SOURCE_REMOVE;
 }
 
 // cppcheck-suppress constParameterPointer
-int ext_start_rx(gpointer data) {
-  start_rx();
+int ext_start_rx_menu(gpointer data) {
+  start_rx_menu();
   return G_SOURCE_REMOVE;
 }
 
 // cppcheck-suppress constParameterPointer
-int ext_start_tx(gpointer data) {
-  start_tx();
+int ext_start_tx_menu(gpointer data) {
+  start_tx_menu();
   return G_SOURCE_REMOVE;
 }
 

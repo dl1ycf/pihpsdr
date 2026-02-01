@@ -130,6 +130,7 @@ ACTION_TABLE ActionTable[] = {
   {MENU_FILTER,         "Filter\nMenu",         "FILT",         AT_BTN},
   {FUNCTION,            "Function",             "FUNC",         AT_BTN},
   {FUNCTIONREV,         "FuncRev",              "FUNC-",        AT_BTN},
+  {ICONIFY,             "Iconify",              "ICON",         AT_BTN},
   {IF_SHIFT,            "IF Shift",             "IFSHFT",       AT_ENC},
   {IF_SHIFT_RX1,        "IF Shift\nRX1",        "IFSHFT1",      AT_ENC},
   {IF_SHIFT_RX2,        "IF Shift\nRX2",        "IFSHFT2",      AT_ENC},
@@ -180,6 +181,7 @@ ACTION_TABLE ActionTable[] = {
   {PS,                  "PS On/Off",            "PST",          AT_BTN},
   {MENU_PS,             "PS Menu",              "PS",           AT_BTN},
   {PTT,                 "PTT",                  "PTT",          AT_BTN},
+  {MENU_RADIO,          "Radio\nMenu",          "RADIO",        AT_BTN},
   {RCL0,                "Rcl 0",                "RCL0",         AT_BTN},
   {RCL1,                "Rcl 1",                "RCL1",         AT_BTN},
   {RCL2,                "Rcl 2",                "RCL2",         AT_BTN},
@@ -743,6 +745,7 @@ int process_action(gpointer data) {
           //
           // Hitting "Capture" or "Replay" when nothing has ever been
           // recorded moves us to CAP_AVAIL with an empty buffer.
+          // Note we come here never or once
           //
           capture_data = g_new(double, capture_max);
           capture_record_pointer = 0;
@@ -998,6 +1001,12 @@ int process_action(gpointer data) {
 
     break;
 
+  case ICONIFY:
+    if (a->mode == PRESSED) {
+      radio_iconify();
+    }
+    break;
+
   case IF_SHIFT:
     filter_shift_changed(active_receiver->id, a->val);
     break;
@@ -1041,42 +1050,42 @@ int process_action(gpointer data) {
 
   case MENU_AGC:
     if (a->mode == PRESSED) {
-      start_agc();
+      start_agc_menu();
     }
 
     break;
 
   case MENU_BAND:
     if (a->mode == PRESSED) {
-      start_band();
+      start_band_menu();
     }
 
     break;
 
   case MENU_BANDSTACK:
     if (a->mode == PRESSED) {
-      start_bandstack();
+      start_bandstack_menu();
     }
 
     break;
 
   case MENU_DIVERSITY:
     if (a->mode == PRESSED && RECEIVERS == 2 && n_adc > 1) {
-      start_diversity();
+      start_diversity_menu();
     }
 
     break;
 
   case MENU_FILTER:
     if (a->mode == PRESSED) {
-      start_filter();
+      start_filter_menu();
     }
 
     break;
 
   case MENU_FREQUENCY:
     if (a->mode == PRESSED) {
-      start_vfo(active_receiver->id);
+      start_vfo_menu(active_receiver->id);
     }
 
     break;
@@ -1090,42 +1099,49 @@ int process_action(gpointer data) {
 
   case MENU_MEMORY:
     if (a->mode == PRESSED) {
-      start_store();
+      start_store_menu();
     }
 
     break;
 
   case MENU_MODE:
     if (a->mode == PRESSED) {
-      start_mode();
+      start_mode_menu();
     }
 
     break;
 
   case MENU_NOISE:
     if (a->mode == PRESSED) {
-      start_noise();
+      start_noise_menu();
     }
 
     break;
 
   case MENU_PS:
     if (a->mode == PRESSED) {
-      start_ps();
+      start_ps_menu();
+    }
+
+    break;
+
+  case MENU_RADIO:
+    if (a->mode == PRESSED) {
+      start_radio_menu();
     }
 
     break;
 
   case MENU_RX:
     if (a->mode == PRESSED) {
-      start_rx();
+      start_rx_menu();
     }
 
     break;
 
   case MENU_TX:
     if (a->mode == PRESSED) {
-      start_tx();
+      start_tx_menu();
     }
 
     break;

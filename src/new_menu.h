@@ -27,24 +27,23 @@ extern GtkWidget *main_menu;
 
 extern void new_menu(void);
 
-extern void start_meter(void);
-extern void start_step(void);
-extern void start_band(void);
-extern void start_bandstack(void);
-extern void start_mode(void);
-extern void start_filter(void);
-extern void start_noise(void);
-extern void start_encoder(void);
-extern void start_vfo(int vfo);
-extern void start_agc(void);
-extern void start_store(void);
-extern void start_rx(void);
-extern void start_tx(void);
-extern void start_diversity(void);
-extern void start_ps(void);
-extern void start_server(void);
-
-extern void encoder_step(int encoder, int step);
+extern void start_meter_menu(void);
+extern void start_step_menu(void);
+extern void start_band_menu(void);
+extern void start_bandstack_menu(void);
+extern void start_mode_menu(void);
+extern void start_filter_menu(void);
+extern void start_noise_menu(void);
+extern void start_encoder_menu(void);
+extern void start_vfo_menu(int vfo);
+extern void start_agc_menu(void);
+extern void start_store_menu(void);
+extern void start_rx_menu(void);
+extern void start_radio_menu(void);
+extern void start_tx_menu(void);
+extern void start_diversity_menu(void);
+extern void start_ps_menu(void);
+extern void start_server_menu(void);
 
 extern int menu_active_receiver_changed(void *data);
 

@@ -129,7 +129,7 @@ static gboolean restart_cb (GtkWidget *widget, GdkEventButton *event, gpointer d
 //
 static gboolean minimize_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
-  gtk_window_iconify(GTK_WINDOW(top_window));
+  radio_iconify();
   return TRUE;
 }
 
@@ -156,14 +156,13 @@ static gboolean exit_cb (GtkWidget *widget, GdkEventButton *event, gpointer data
 }
 
 static gboolean radio_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  cleanup();
-  radio_menu(top_window);
+  start_radio_menu();
   return TRUE;
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean rx_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_rx();
+  start_rx_menu();
   return TRUE;
 }
 
@@ -248,23 +247,28 @@ static gboolean equaliser_cb (GtkWidget *widget, GdkEventButton *event, gpointer
   return TRUE;
 }
 
-void start_rx(void) {
+void start_radio_menu(void) {
+  cleanup();
+  radio_menu(top_window);
+}
+
+void start_rx_menu(void) {
   cleanup();
   rx_menu(top_window);
 }
 
-void start_meter(void) {
+void start_meter_menu(void) {
   cleanup();
   meter_menu(top_window);
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean meter_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_meter();
+  start_meter_menu();
   return TRUE;
 }
 
-void start_band(void) {
+void start_band_menu(void) {
   int old_menu = active_menu;
   cleanup();
 
@@ -274,7 +278,7 @@ void start_band(void) {
   }
 }
 
-void start_bandstack(void) {
+void start_bandstack_menu(void) {
   int old_menu = active_menu;
   cleanup();
 
@@ -284,7 +288,7 @@ void start_bandstack(void) {
   }
 }
 
-void start_mode(void) {
+void start_mode_menu(void) {
   int old_menu = active_menu;
   cleanup();
 
@@ -294,7 +298,7 @@ void start_mode(void) {
   }
 }
 
-void start_filter(void) {
+void start_filter_menu(void) {
   int old_menu = active_menu;
   cleanup();
 
@@ -306,47 +310,47 @@ void start_filter(void) {
 
 // cppcheck-suppress constParameterCallback
 static gboolean mode_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_mode();
+  start_mode_menu();
   return TRUE;
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean filter_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_filter();
+  start_filter_menu();
   return TRUE;
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean noise_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_noise();
+  start_noise_menu();
   return TRUE;
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean vfo_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_vfo(active_receiver->id);
+  start_vfo_menu(active_receiver->id);
   return TRUE;
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean band_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_band();
+  start_band_menu();
   return TRUE;
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean bstk_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_bandstack();
+  start_bandstack_menu();
   return TRUE;
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean store_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_store();
+  start_store_menu();
   return TRUE;
 }
 
-void start_noise(void) {
+void start_noise_menu(void) {
   int old_menu = active_menu;
   cleanup();
 
@@ -358,11 +362,11 @@ void start_noise(void) {
 
 // cppcheck-suppress constParameterCallback
 static gboolean agc_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_agc();
+  start_agc_menu();
   return TRUE;
 }
 
-void start_agc(void) {
+void start_agc_menu(void) {
   int old_menu = active_menu;
   cleanup();
 
@@ -372,29 +376,29 @@ void start_agc(void) {
   }
 }
 
-static void start_vox(void) {
+static void start_vox_menu(void) {
   cleanup();
   vox_menu(top_window);
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean vox_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_vox();
+  start_vox_menu();
   return TRUE;
 }
 
-static void start_dsp(void) {
+static void start_dsp_menu(void) {
   cleanup();
   fft_menu(top_window);
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean dsp_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_dsp();
+  start_dsp_menu();
   return TRUE;
 }
 
-void start_diversity(void) {
+void start_diversity_menu(void) {
   cleanup();
   diversity_menu(top_window);
 }
@@ -407,11 +411,11 @@ static gboolean screen_cb (GtkWidget *widget, GdkEventButton *event, gpointer da
 
 // cppcheck-suppress constParameterCallback
 static gboolean diversity_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_diversity();
+  start_diversity_menu();
   return TRUE;
 }
 
-void start_vfo(int vfo) {
+void start_vfo_menu(int vfo) {
   int old_menu = active_menu;
   cleanup();
 
@@ -421,7 +425,7 @@ void start_vfo(int vfo) {
   }
 }
 
-void start_store(void) {
+void start_store_menu(void) {
   int old_menu = active_menu;
   cleanup();
 
@@ -431,7 +435,7 @@ void start_store(void) {
   }
 }
 
-void start_tx(void) {
+void start_tx_menu(void) {
   cleanup();
 
   if (can_transmit) {
@@ -441,11 +445,11 @@ void start_tx(void) {
 
 // cppcheck-suppress constParameterCallback
 static gboolean tx_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_tx();
+  start_tx_menu();
   return TRUE;
 }
 
-void start_ps(void) {
+void start_ps_menu(void) {
   cleanup();
 
   if (can_transmit) {
@@ -455,30 +459,30 @@ void start_ps(void) {
 
 // cppcheck-suppress constParameterCallback
 static gboolean ps_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_ps();
+  start_ps_menu();
   return TRUE;
 }
 
-void start_server(void) {
+void start_server_menu(void) {
   cleanup();
   server_menu(top_window);
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean server_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_server();
+  start_server_menu();
   return TRUE;
 }
 
 #ifdef MIDI
-static void start_midi(void) {
+static void start_midi_menu(void) {
   cleanup();
   midi_menu(top_window);
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean midi_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  start_midi();
+  start_midi_menu();
   return TRUE;
 }
 

@@ -78,7 +78,7 @@ gboolean rx_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointe
       has_moved = FALSE;
       pressed = TRUE;
     } else if (event->button == GDK_BUTTON_SECONDARY) {
-      g_idle_add(ext_start_rx, NULL);
+      g_idle_add(ext_start_rx_menu, NULL);
     }
   } else {
     making_active = TRUE;
@@ -123,7 +123,7 @@ gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpoin
     rx_set_active(rx);
 
     if (event->button == GDK_BUTTON_SECONDARY) {
-      g_idle_add(ext_start_rx, NULL);
+      g_idle_add(ext_start_rx_menu, NULL);
     }
   } else {
     if (pressed) {
