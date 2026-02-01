@@ -1116,7 +1116,7 @@ void radio_reboot(void) {
 void radio_start_radio(void) {
   //
   // Debug code. Placed here at the start of the program. piHPSDR  implicitly assumes
-  //             that the entires in the action table (actions.c) are sorted by their
+  //             that the entries in the action table (actions.c) are sorted by their
   //             action enum values (actions.h).
   //             This will produce no output if the ActionTable is sorted correctly.
   //             If the warning appears, correct the order of actions in actions.h

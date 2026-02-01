@@ -5812,6 +5812,11 @@ that CW handling in the radio is temporarily disabled (thus, CW handling in \pH 
 to have, e.g. a paddle attached
 to the radio while a contest logging program ,,talks'' to \pH.}
 
+\phcommand{Speed (Keyer)}{CWKySpd}{P}{This is very similar to the \texttt{CW Speed} command, except that the
+MIDI values 1-127 are directly mapped onto the speed (only values from 1-60 are accepted).
+This command is not meant for physical knobs, but to
+be sent by CW keyers.}
+
 \phcommand{CW Left}{CWL}{B}
 {This command indicates the closure/opening of the left paddle of a CW key. It is usually assigned to a GPIO
 line or a MIDI
@@ -5904,7 +5909,7 @@ This change is temporary, see the remark in the \bltt{Filter Cut Low} command.}
 
 \phcommand{Filter Menu}{FILT}{B}{This opens the \texttt{Filter} menu.}
 
-\phcommand{VFO Menu}{FREQ}{B}{This opens the \texttt{FREQ} (VFO) menu.}
+\phcommand{Freq Menu}{FREQ}{B}{This opens the \texttt{FREQ} menu.}
 
 \phcommand{Function}{FUNC}{B}{Cycle through the six toolbar sets. For the \pH GPIO Controller1, where
 the eight switches follow the toolbar buttons, this also affects the function
@@ -5914,6 +5919,8 @@ of the switches. Note that this command is \textit{always} connected with the ri
 where the eight switches follow the toolbar buttons, this also affects the function
 of the switches. When using a mouse, this command can be invoked by a secondary mouse click
 on the rightmost toolbar button.}
+
+\phcommand{Iconify}{ICON}{b}{Minimise (,,Iconify'') the \pH window.}
 
 \phcommand{IF Shift}{IFSHFT}{E}{This command shifts the filter edges of the active receiver, that is,
 it affects  the low and high cut in the same way.
@@ -5973,7 +5980,7 @@ when pressed.}
 \phcommand{Multi}{MULTI}{E}{This is the multi-function encoder. It executes the encoder command it is
 currently assigned to.}
 
-\phcommand{Multi Select}{MULTISEL}{E}{With this encoder, one cycles through the list of commands
+\phcommand{Multi Action Select}{MULTISEL}{E}{With this encoder, one cycles through the list of commands
 assigned to the multi-function encoder. The currently active command is displayed in the VFO bar.
 For examples, if the \bltt{AFGAIN} command (change audio volume of the current receiver) is assigned
 to the multi-function encoder, it will change the AF gain. This command it used if one used two
@@ -6073,10 +6080,17 @@ a GPIO line for this purpose, take care of proper denouncing, since \pH is not g
 switches where both
 the press and release events are significant.}
 
+\phcommand{Radio Menu}{RADIO}{B}{Open the \bltt{Radio} menu.}
+
 \phcommand{Rcl 0}{RCL0}{B}{Recall (restore) data from the memory slot 0 (see the \bltt{Memory} menu, Chapter \ref{sec:memmenu}).}
 
 \phcommand{Rcl 1$\ldots$Rcl 9}{RCL1$\ldots$RCL9}{B}{The same as \bltt{Rcl 0}, except that memory slots 1 through 9
 are referred to.}
+
+\phcommand{Replay}{REPLAY}{B}{If there is captured RX audio (see the \bltt{Capture} command) and while RXing,
+the captured data is replayed in the RX audio of the active receiver. If transmitting, \bltt{Replay} and
+\bltt{Capture} are the same. The procedure for audio recording and replay is described
+in detail in chapter \ref{sec:capture}.}
 
 \phcommand{RF Gain}{RFGAIN}{PSE}{
 Set the gain of the RF front end of the active receiver. Only effective for
@@ -6202,22 +6216,6 @@ enabled (disabled) if the resulting value  is non-zero (zero).}
 {This is the same as \bltt{ToolBar1}, except that one of the  buttons following in the row is referred to.
 Note that there is no command referring to the eighth (rightmost) toolbar button, since this
 is hard-wired to the \bltt{Function} command.}
-
-\phcommand{ToolBar3}{TBAR3}{B}{Pressing/Releasing this button is equivalent to pressing the third
-(from the left) of the eight toolbar buttons on the screen.}
-
-\phcommand{ToolBar4}{TBAR4}{B}{Pressing/Releasing this button is equivalent to pressing the fourth
-(from the left) of the eight toolbar buttons on the screen.}
-
-\phcommand{ToolBar5}{TBAR5}{B}{Pressing/Releasing this button is equivalent to pressing the fifth
-(from the left) of the eight toolbar buttons on the screen.}
-
-\phcommand{ToolBar6}{TBAR6}{B}{Pressing/Releasing this button is equivalent to pressing the sixth
-(from the left) of the eight toolbar buttons on the screen.}
-
-\phcommand{ToolBar7}{TBAR7}{B}{Pressing/Releasing this button is equivalent to pressing the seventh
-(from the left) of the eight toolbar buttons on the screen.}
-
 
 \phcommand{Tune}{TUNE}{B}{Toggle (on/off) TUNE. If \texttt{TuneBits} are checked in the \bltt{OC} menu,
 the corresponding open collector outputs will become active
@@ -6478,6 +6476,8 @@ then copy the VFO of the active receiver to the other one using \bltt{A>B} or \b
 one can  move the TX frequency (in split mode) using \rett{U,D} in large steps.}
 
 \item[\rett{m}, \rett{M}]{ opens the main menu.}
+
+\item[\rett{I}]{ minimises (iconifies) the \pH window.}
 
 \item[\rett{KP 0-9}]{ Hitting a digit on the numerical keypad executes one of the
 \bltt{NumPad 0} to \bltt{NumPad 9} commands. This can be used for direct frequency entry
