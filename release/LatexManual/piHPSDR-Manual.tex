@@ -24,7 +24,7 @@
 \includegraphics[scale=0.75]{piHPSDR_logo.png}
 \end{figure}
 User's Manual \\
-\small{\pH post-2.5 development Version}
+\small{\pH Version 2.6}
 }
 \author{
 Christoph van W\"ullen, DL1YCF \\
@@ -34,7 +34,7 @@ email: \texttt{dl1ycf@darc.de}
 \maketitle
 \textbf{Copyright Notice:}
 
-Copyright (C) 2023--2025 Christoph van W\"ullen, DL1YCF.
+Copyright (C) 2023--2026 Christoph van W\"ullen, DL1YCF.
 
 This work is licensed under
 the Creative Commons license CC BY-SA, version 4 or later, so it can be freely distributed.
@@ -194,21 +194,21 @@ compression, these functions are tied together in \pH.
 \section{Version history}
 \label{sec:versionhistory}
 Here we list the main new featured introduced in each version.
+\bigskip
 
-\textbf{\pH Version 2.6, under development}
+\textbf{\pH Version 2.6, released February 2026}
 \begin{itemize}
 \item{Low-latency CW side tone also for the PulseAudio module.}
 \item{One serial port can be used for a PTT-input (DTR/CTS) and a PTT-output (RTS) line.}
 \item{Added CW texts that can be edited in the CW menu, and transmitted upon pushing
 a phyiscal (controller/panel) button or clicking a toolbar (on-screen) button.}
-\item{NR3 (RNNnoise) and NR4 (SpecBleach) noise reduction models fully integrated.}
+\item{NR3 (RNNnoise) and NR4 (LibSpecBleach) noise reduction models fully integrated.}
 \item{Performance and Resilience improvement in Client/Server operation.}
 \item{RX1 and TX audio settings (audio device, Stereo/Left/Right) are now part of the RX/TX profile
 stored in the props file, and automatically switched when changing the mode.}
 \item{TX audio monitor option: the audio that goes into the TX chain (before being processed
 by the compressor or the equalizer) can be routed
 to the RX audio output.}
-\item{\pH 2.6 will be released when this page is filled.}
 \end{itemize}
 \clearpage
 \textbf{\pH Version 2.5, released October 2025}
@@ -8585,10 +8585,10 @@ To get the release version, you must, after typing in the the command \texttt{cd
 insert the command
 
 \vskip0.2cm
-\grtt{git checkout Rel-2.5}
+\grtt{git checkout Rel-2.6}
 
 \vskip0.2cm
-and this will then switch your local repository to the release version 2.5. No more details on how
+and this will then switch your local repository to the release version 2.6. No more details on how
 to switch between versions with the \texttt{git} command can be given in this manual, since these
 are standard procedures with git.
 }
@@ -8816,14 +8816,15 @@ On my computer the output is
   Rel-2.3
   Rel-2.4
   Rel-2.5
+  Rel-2.6
 * master
   ...
 \end{verbatim}
 
 You can ignore lines starting with \texttt{remotes/}. The first lines display the names of all
 existing branches, and the line starting with a star indicates the branch you are currently on.
-Older branches such as \texttt{Rel-2.3} are meanwhile outdated, the previous
-release branch is named \texttt{Rel-2.4} and the current one, at the time of this writing, is \texttt{Rel-2.5}.
+Older branches up to \texttt{Rel-2.4} are meanwhile outdated, the previous
+release branch is named \texttt{Rel-2.5} and the current one, at the time of this writing, is \texttt{Rel-2.6}.
 
 \medskip
 \textbf{Which version do I have?}
@@ -8843,14 +8844,14 @@ Your branch is up to date with 'origin/master'.
 \end{verbatim}
 
 then you are using the ``current version'' (that is, the master branch). If you are using a release
-version, then the output reads (for the v2.5 release)
+version, then the output reads (for the v2.6 release)
 
 \begin{verbatim}
-On branch Rel-2.5
-Your branch is up to date with 'origin/Rel-2.5'.
+On branch Rel-2.6
+Your branch is up to date with 'origin/Rel-2.6'.
 \end{verbatim}
 
-which tells you you are on the Rel-2.5 branch. Note that if you committed local modifications,
+which tells you you are on the Rel-2.6 branch. Note that if you committed local modifications,
 your branch will not be up to date with the repository as indicated in the outputs shown above,
 and in this case this whole section does  not apply  to you. But if you have committed  local
 modifications, this usually means you are an expert and know what to do.
@@ -8888,10 +8889,10 @@ latest ``current'' version, that is, the latest version of the master branch:
 \textbf{Switching to a release branch}
 
 No matter whether your starting point is the master branch or another release branch, the following
-commands will bring you to  the v2.5 release branch:
+commands will bring you to  the v2.6 release branch:
 
 \grtt{cd \$HOME/pihpsdr} \\
-\grtt{git checkout Rel-2.5} \\
+\grtt{git checkout Rel-2.6} \\
 \grtt{git pull} \\
 \grtt{make clean} \\
 \grtt{LINUX/libinstall.sh} \\
@@ -9004,20 +9005,20 @@ procedure works in this case as well and does no harm. In addition to
 Proceeding as shown above will provide an up-to-date ,,snap shot'' of the \pH repository.
 This ensures that you have the latest (development) version which corresponds to the present
 version of the manual, but there is a chance that there is a recently introduced bug
-which has not yet been found and fixed. Currently, the development version has version number 2.5.
+which has not yet been found and fixed.
 
 There is also a ,,release'' version which is the previous version. The ,,release'' version lags
-behind the current development since new features are not included there. This means that any
+behind the current development since the very latest features are not included there. This means that any
 ,,release'' version is stable at least from the end user's view point (bug fixes are still
 occasionally made).
 To get the release version, you must, after typing in the the command \grtt{cd pihpsdr},
 insert the command
 
 \vskip0.2cm
-\grtt{git checkout Rel-2.5}
+\grtt{git checkout Rel-2.6}
 
 \vskip0.2cm
-and this will then switch your local repository to the release version 2.5. No more details on how
+and this will then switch your local repository to the release version 2.6. No more details on how
 to switch between version with the \texttt{git} command can be given in this manual.
 }
 }
@@ -9170,6 +9171,7 @@ On my computer the output is
   Rel-2.3
   Rel-2.4
   Rel-2.5
+  Rel-2.6
 * master
   remotes/origin/HEAD -> origin/master
   remotes/origin/Rel-2.3
@@ -9180,8 +9182,8 @@ On my computer the output is
 
 You can ignore the  lines starting with \texttt{remotes}. The other lines display the names of all
 existing branches, and the line starting with a star indicates the branch you are currently on.
-Older branches such as \texttt{Rel-2.3} are meanwhile outdated, the previous
-release branch is named \texttt{Rel-2.4} and the current one, at the time of this writing, is \texttt{Rel-2.5}.
+Older branches up to \texttt{Rel-2.4} are meanwhile outdated, the previous
+release branch is named \texttt{Rel-2.5} and the current one, at the time of this writing, is \texttt{Rel-2.6}.
 
 \medskip
 \textbf{Which version do I have?}
@@ -9201,14 +9203,14 @@ Your branch is up to date with 'origin/master'.
 \end{verbatim}
 
 then you are using the ``current version'' (that is, the master branch). If you are using a release
-version, then the output reads (for the v2.5 release)
+version, then the output reads (for the v2.6 release)
 
 \begin{verbatim}
-On branch Rel-2.5
-Your branch is up to date with 'origin/Rel-2.5'.
+On branch Rel-2.6
+Your branch is up to date with 'origin/Rel-2.6'.
 \end{verbatim}
 
-which tells you you are on the Rel-2.5 branch. Note that if you committed local modifications,
+which tells you you are on the Rel-2.6 branch. Note that if you committed local modifications,
 your branch will not be up to date with the repository as indicated in the outputs shown above,
 and in this case this whole section does  not apply  to you. But if you have committed  local
 modifications, this usually means you are an expert and know what to do.
@@ -9249,10 +9251,10 @@ Note the command \texttt{libinstall.sh} will take some time and is not necessary
 \textbf{Switching to a release branch}
 
 No matter whether your starting point is the master branch or another release branch, the following
-commmands will bring you to  the v2.5 release branch:
+commmands will bring you to  the v2.6 release branch:
 
 \grtt{cd \$HOME/pihpsdr} \\
-\grtt{git checkout Rel-2.5} \\
+\grtt{git checkout Rel-2.6} \\
 \grtt{git pull} \\
 \grtt{make clean} \\
 \grtt{MacOS/libinstall.sh} \\
