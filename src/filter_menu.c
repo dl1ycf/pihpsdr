@@ -90,15 +90,15 @@ static gboolean default_cb (GtkWidget *widget, GdkEventButton *event, gpointer d
   case filterVar1:
     spinlow = var1_spin_low;
     spinhigh = var1_spin_high;
-    low = var1_default_low[mode];
-    high = var1_default_high[mode];
+    low = var_default_low[mode];
+    high = var_default_high[mode];
     break;
 
   case filterVar2:
     spinlow = var2_spin_low;
     spinhigh = var2_spin_high;
-    low = var2_default_low[mode];
-    high = var2_default_high[mode];
+    low = var_default_low[mode];
+    high = var_default_high[mode];
     break;
 
   default:
