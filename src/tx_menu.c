@@ -88,7 +88,8 @@ enum _tx_choices {
   TX_FM_EMP,
   TX_AUDIO_MON,
   TX_SWRTUNE,
-  TX_SWRTUNE_VOLUME
+  TX_SWRTUNE_VOLUME,
+  TX_ADD_HPSDR_MIC_SAMPLES
 };
 
 enum _dexp_choices {
@@ -423,6 +424,10 @@ static void chkbtn_cb(GtkWidget *widget, gpointer data) {
       gtk_widget_set_sensitive (tx_spin_high, NOT(v));
       break;
 
+    case TX_ADD_HPSDR_MIC_SAMPLES:
+      transmitter->add_hpsdr_mic_samples = v;
+      break;
+
     case TX_AUDIO_MON:
       transmitter->audiomonitor = v;
       break;
@@ -677,6 +682,11 @@ void tx_menu(GtkWidget *parent) {
     gtk_combo_box_set_active(GTK_COMBO_BOX(btn), pos);
     my_combo_attach(GTK_GRID(tx_grid), btn, col++, row, 1, 1);
     g_signal_connect(btn, "changed", G_CALLBACK(mic_in_cb), NULL);
+    btn = gtk_check_button_new_with_label("Add Mic Samples");
+    gtk_widget_set_name(btn, "boldlabel");
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), transmitter->add_hpsdr_mic_samples);
+    gtk_grid_attach(GTK_GRID(tx_grid), btn, col, row, 1, 1);
+    g_signal_connect(btn, "toggled", G_CALLBACK(chkbtn_cb), GINT_TO_POINTER(TX_ADD_HPSDR_MIC_SAMPLES));
     col++;
     label = gtk_label_new("LineIn Lvl (dB)");
     gtk_widget_set_name(label, "boldlabel");
