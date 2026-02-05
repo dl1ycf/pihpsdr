@@ -256,9 +256,6 @@ static pthread_mutex_t tx_spec_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t hi_prio_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t general_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int radio_dash = 0;
-static int radio_dot = 0;
-
 static void new_protocol_high_priority(void);
 static void new_protocol_general(void);
 static void new_protocol_receive_specific(void);
@@ -717,9 +714,9 @@ static void new_protocol_high_priority(void) {
   //
   // If piHPSDR is not (yet) transmitting, but a PTT signal came from the
   // radio, set HighPrio data accoring to the TX state as early as possible.
-  // To this end, radio_is_transmitting() is ORed with radio_ptt.
+  // To this end, radio_is_transmitting() is ORed with hpsdr_ptt.
   //
-  int xmit     = radio_is_transmitting() | radio_ptt;
+  int xmit     = radio_is_transmitting() | hpsdr_ptt;
   int txvfo    = vfo_get_tx_vfo();    // VFO governing the TX frequency
   int rxvfo    = active_receiver->id; // id of the active receiver
   int othervfo = 1 - rxvfo;           // id of the "other" receiver (only valid if receivers > 1)
@@ -747,7 +744,7 @@ static void new_protocol_high_priority(void) {
           || MIDI_cw_is_active
           || !cw_keyer_internal
           || transmitter->twotone
-          || radio_ptt) {
+          || hpsdr_ptt) {
         high_priority_buffer_to_radio[4] |= 0x02;
       }
     } else {
@@ -2464,7 +2461,9 @@ static void process_high_priority(void) {
   int previous_dash;
   unsigned int val;
   int data;
-  int radio_cw;
+  int hpsdr_cw;
+  static int hpsdr_dot = 0;
+  static int hpsdr_dash = 0;
   //
   // variable used to manage analog inputs. The accumulators
   // record the value*16
@@ -2484,12 +2483,12 @@ static void process_high_priority(void) {
   }
 
   highprio_rcvd_sequence++;
-  previous_ptt = radio_ptt;
-  previous_dot = radio_dot;
-  previous_dash = radio_dash;
-  radio_ptt  = (buffer[4]     ) & 0x01;
-  radio_dot  = (buffer[4] >> 1) & 0x01;
-  radio_dash = (buffer[4] >> 2) & 0x01;
+  previous_ptt = hpsdr_ptt;
+  previous_dot = hpsdr_dot;
+  previous_dash = hpsdr_dash;
+  hpsdr_ptt  = (buffer[4]     ) & 0x01;
+  hpsdr_dot  = (buffer[4] >> 1) & 0x01;
+  hpsdr_dash = (buffer[4] >> 2) & 0x01;
 
   //
   // Do this as fast as possible in case of a RX/TX  transition
@@ -2499,7 +2498,7 @@ static void process_high_priority(void) {
   // the this mechanism is kept for all those radios which do not yet
   // have an updated firmware.
   //
-  if (previous_ptt == 0 && radio_ptt == 1) {
+  if (previous_ptt == 0 && hpsdr_ptt == 1) {
     new_protocol_high_priority();
   }
 
@@ -2533,16 +2532,16 @@ static void process_high_priority(void) {
   //
   // Stops CAT cw transmission if radio reports "CW action"
   //
-  radio_cw = 0;
+  hpsdr_cw = 0;
 
   if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN) {
     //
     // These devices reflect a "keyer CW input" in bit 3 of byte59
     // and this is active-high (!)
-    radio_cw = buffer[59] & 0x08;
+    hpsdr_cw = buffer[59] & 0x08;
   }
 
-  if (radio_dash || radio_dot || radio_cw) {
+  if (hpsdr_dash || hpsdr_dot || hpsdr_cw) {
     //
     // If currently a CAT or Keyer CW transmission is running,
     // clear CAT/MIDI_cw_is_active to re-enable "CW handled in radio"
@@ -2557,13 +2556,13 @@ static void process_high_priority(void) {
   }
 
   if (!cw_keyer_internal) {
-    if (radio_dash != previous_dash) { keyer_event(0, radio_dash); }
+    if (hpsdr_dash != previous_dash) { keyer_event(0, hpsdr_dash); }
 
-    if (radio_dot  != previous_dot ) { keyer_event(1, radio_dot ); }
+    if (hpsdr_dot  != previous_dot ) { keyer_event(1, hpsdr_dot ); }
   }
 
-  if (previous_ptt != radio_ptt) {
-    g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(radio_ptt));
+  if (previous_ptt != hpsdr_ptt) {
+    g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(hpsdr_ptt));
   }
 
   if (enable_tx_inhibit) {

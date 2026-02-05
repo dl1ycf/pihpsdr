@@ -698,7 +698,12 @@ static gpointer rigctl_cw_thread(gpointer data) {
 
       if (!radio_is_remote) { schedule_transmit_specific(); }
 
-      if (!cw_key_hit && !radio_ptt) {
+      //
+      // Buffer completely sent: remove PTT.
+      // However, if CAT-CW was cancelled due to hitting a
+      // Morse key, then continue transmitting.
+      //
+      if (!cw_key_hit && !hpsdr_ptt) {
         g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(0));
         // wait up to 500 msec for MOX having gone
         // otherwise there might be a race condition when sending

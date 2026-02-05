@@ -1911,7 +1911,7 @@ int process_action(gpointer data) {
     // radio. piHPSDR then goes RX unless "Radio PTT" is seen, which indicates that either
     // a footswitch has been pushed, or that the radio went TX due to operating a Morse key
     // attached to the radio.
-    // In both cases, piHPSDR stays TX and the radio will induce the TX/RX transition by removing radio_ptt.
+    // In both cases, piHPSDR stays TX and the radio will induce the TX/RX transition by removing hpsdr_ptt.
     //
     switch (a->mode) {
     case PRESSED:
@@ -1936,7 +1936,7 @@ int process_action(gpointer data) {
       } else {
         schedule_transmit_specific();
 
-        if (!radio_ptt) { radio_set_mox(0); }
+        if (!hpsdr_ptt) { radio_set_mox(0); }
       }
 
       break;

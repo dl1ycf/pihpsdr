@@ -84,6 +84,11 @@ typedef struct _transmitter {
   // everything related to local (TX input) audio
   //
   int local_audio;
+  //
+  // if add_hpsdr_mic_samples && local_audio && hpsdr_ptt, add the
+  // mic samples from the HPSDR radio to the local audio TX input stream
+  //
+  int add_hpsdr_mic_samples;
   char audio_name[128];
   GMutex audio_mutex;
   GThread * audio_thread_id;

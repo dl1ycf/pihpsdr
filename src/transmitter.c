@@ -329,6 +329,7 @@ void tx_save_state(const TRANSMITTER *tx) {
   SetPropI1("transmitter.%d.panadapter_peaks_in_passband_filled", tx->id,    tx->panadapter_peaks_in_passband_filled);
   SetPropI1("transmitter.%d.audiomonitor",                        tx->id,    tx->audiomonitor);
   SetPropI1("transmitter.%d.local_audio",                         tx->id,    tx->local_audio);
+  SetPropI1("transmitter.%d.add_hpsdr_mic_samples",               tx->id,    tx->add_hpsdr_mic_samples);
   SetPropS1("transmitter.%d.audio_name",                          tx->id,    tx->audio_name);
   SetPropI1("transmitter.%d.dialog_x",                            tx->id,    tx->dialog_x);
   SetPropI1("transmitter.%d.dialog_y",                            tx->id,    tx->dialog_y);
@@ -417,11 +418,12 @@ void tx_restore_state(TRANSMITTER *tx) {
   GetPropI1("transmitter.%d.panadapter_ignore_noise_percentile",  tx->id,    tx->panadapter_ignore_noise_percentile);
   GetPropI1("transmitter.%d.panadapter_hide_noise_filled",        tx->id,    tx->panadapter_hide_noise_filled);
   GetPropI1("transmitter.%d.panadapter_peaks_in_passband_filled", tx->id,    tx->panadapter_peaks_in_passband_filled);
-  // next two lines for backwards compatibility
+  // BACKWARDS: next two lines
   GetPropI1("transmitter.%d.local_microphone",                    tx->id,    tx->local_audio);
   GetPropS1("transmitter.%d.microphone_name",                     tx->id,    tx->audio_name);
   GetPropI1("transmitter.%d.audiomonitor",                        tx->id,    tx->audiomonitor);
   GetPropI1("transmitter.%d.local_audio",                         tx->id,    tx->local_audio);
+  GetPropI1("transmitter.%d.add_hpsdr_mic_samples",               tx->id,    tx->add_hpsdr_mic_samples);
   GetPropS1("transmitter.%d.audio_name",                          tx->id,    tx->audio_name);
   GetPropI1("transmitter.%d.dialog_x",                            tx->id,    tx->dialog_x);
   GetPropI1("transmitter.%d.dialog_y",                            tx->id,    tx->dialog_y);
@@ -1078,6 +1080,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->dexp_filter_low  =    1000;
   tx->dexp_filter_high =    2000;
   tx->local_audio = 0;
+  tx->add_hpsdr_mic_samples = 0;
   tx->audiomonitor = 0;
   tx->audio_flag = 0;
   g_mutex_init(&tx->audio_mutex);
@@ -1789,14 +1792,20 @@ void tx_add_mic_sample(TRANSMITTER *tx, double mic_sample) {
   ASSERT_SERVER();
   int txmode = vfo_get_tx_mode();
 
-  //
-  // Since we now have mode-dependent audio settings, we no longer add
-  // local TX audio to the samples from the radio if PTT is pressed.
-  // local_audio now again means to *replace* the microphone samples from
-  // the radio by those from the local audio input device.
-  //
   if (tx->local_audio) {
-    mic_sample = audio_get_next_mic_sample(tx);
+    //
+    // ADD HPSDR MIC SAMPLES option:
+    // As long as the PTT line *from* the (HPSDR) radio is active, add the mic_sample
+    // (which comes from the radio) to the sample from the sound card.
+    // The main use of this feature is to use a microphone attached to the
+    // radio together with a voice keyer delivering audio data via a
+    // sound card or a virtual audio cable.
+    //
+    if (hpsdr_ptt && tx->add_hpsdr_mic_samples) {
+      mic_sample += audio_get_next_mic_sample(tx);
+    } else {
+      mic_sample = audio_get_next_mic_sample(tx);
+    }
   }
 
   //

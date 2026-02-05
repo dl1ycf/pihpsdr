@@ -126,9 +126,6 @@ static int current_rx = 0;
 static int mic_samples = 0;
 static int mic_sample_divisor = 1;
 
-static int radio_dash = 0;
-static int radio_dot = 0;
-
 static int command = 1;
 
 static gpointer receive_thread(gpointer arg);
@@ -1126,6 +1123,8 @@ static void process_control_bytes(void) {
   int previous_ptt;
   int previous_dot;
   int previous_dash;
+  static int hpsdr_dot = 0;
+  static int hpsdr_dash = 0;
   int data;
   unsigned int val;
   //
@@ -1137,11 +1136,11 @@ static void process_control_bytes(void) {
   static unsigned int ex_acc = 0;
   static unsigned int adc0_acc = 0;
   static unsigned int adc1_acc = 0;
-  previous_ptt = radio_ptt;
-  radio_ptt  = (control_in[0]     ) & 0x01;
+  previous_ptt = hpsdr_ptt;
+  hpsdr_ptt  = (control_in[0]     ) & 0x01;
 
-  if (previous_ptt != radio_ptt) {
-    g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(radio_ptt));
+  if (previous_ptt != hpsdr_ptt) {
+    g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(hpsdr_ptt));
   }
 
   if ((device == DEVICE_HERMES_LITE2) && (control_in[0] & 0x80)) {
@@ -1170,22 +1169,22 @@ static void process_control_bytes(void) {
     return;
   }
 
-  previous_dot = radio_dot;
-  previous_dash = radio_dash;
-  radio_dash = (control_in[0] >> 1) & 0x01;
-  radio_dot  = (control_in[0] >> 2) & 0x01;
+  previous_dot = hpsdr_dot;
+  previous_dash = hpsdr_dash;
+  hpsdr_dash = (control_in[0] >> 1) & 0x01;
+  hpsdr_dot  = (control_in[0] >> 2) & 0x01;
 
   // Stops CAT cw transmission if radio reports "CW action"
-  if (radio_dash || radio_dot) {
+  if (hpsdr_dash || hpsdr_dot) {
     CAT_cw_is_active = 0;
     MIDI_cw_is_active = 0;
     cw_key_hit = 1;
   }
 
   if (!cw_keyer_internal) {
-    if (radio_dash != previous_dash) { keyer_event(0, radio_dash); }
+    if (hpsdr_dash != previous_dash) { keyer_event(0, hpsdr_dash); }
 
-    if (radio_dot  != previous_dot ) { keyer_event(1, radio_dot ); }
+    if (hpsdr_dot  != previous_dot ) { keyer_event(1, hpsdr_dot ); }
   }
 
   switch ((control_in[0] >> 3) & 0x1F) {
@@ -2036,7 +2035,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
     // and this should be
     //  enough.
     //
-    if (radio_is_transmitting() || radio_ptt) {
+    if (radio_is_transmitting() || hpsdr_ptt) {
       i = transmitter->antenna;
 
       //
@@ -2750,7 +2749,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
           || MIDI_cw_is_active
           || !cw_keyer_internal
           || transmitter->twotone
-          || radio_ptt) {
+          || hpsdr_ptt) {
         buffer[C0] |= 0x01;
       }
     } else {

@@ -2851,6 +2851,9 @@ will choose a device connected to a microphone for SSB, while choosing a virtual
 cable or a sound card connected to another computer running the digi mode program when doing
 digi. \pH then automatically switches the audio input device when switching modes.
 
+The next line only appears for HPSDR radios which have a built-in audio codec and thus
+can send either microphone or line-in audio in the HPSDR data stream.
+
 \rett{Radio Mic}. The pop-down menu to the right of this text
 lets you choose between \rett{Mic In} which means
 that a microphone can be connected to the microphone input jack, \rett{Mic Boost}, which
@@ -2860,6 +2863,20 @@ host computer. This is part of the HPSDR protocol, it may well happen that your 
 microphone jack but no line-in input. The optional 20 dB preamp may be necessary when connecting
 a dynamic microphone whose input level (few mV) is considerably lower that that of a
 condenser (electret) microphone, or a dynamic microphone with built-in preamp.
+
+\rett{Add Mic Samples}. This option only has an effect if the TX input audio comes from a
+soundcard or a virtual audio cable, as selected in the \rett{TX Audio In} pop-down menu.
+Checking \rett{Add Mic Samples} then \textit{adds} the audio samples from the HPSDR data
+stream to the TX audio in sample, but only when there is a hardware PTT signal from a
+switch connected to the radio, e.g. the PTT button of a microphone or a PTT foot switch.
+This option has been added to support voice keyers, that is, to allow logbook or contest
+programs to send TX audio, usually via a virtual audio cable. For such a setup, choose that virtual
+audio cable in the \rett{TX Audio In} menu. As long as you press the PTT button at
+a microphone connected to the radio, you can use that microphone for transmitting. It is
+assumed that in this setup, you do not use the voice keyer for transmitting while you press PTT.
+Note that VOX cannot be used with this setup, since the audio data from the microphone is not
+used if PTT is not pressed. This is to prevent your microphone picking up noise and adding
+this to the TX audio data while running digi mode.
 
 \rett{LineIn Lvl (dB)}. Here you can adjust the line-in level of the radio, if it
 has one and if \rett{LineIn} is selected with the \rett{Radio Mic} check box.
