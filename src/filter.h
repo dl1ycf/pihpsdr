@@ -47,10 +47,8 @@ enum {
 };
 
 extern FILTER *filters[MODES];
-extern const int var1_default_low[MODES];
-extern const int var1_default_high[MODES];
-extern const int var2_default_low[MODES];
-extern const int var2_default_high[MODES];
+extern const int var_default_low[MODES];
+extern const int var_default_high[MODES];
 
 extern void filter_save_state(void);
 extern void filter_restore_state(void);

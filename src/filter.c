@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include "actions.h"
 #include "ext.h"
@@ -36,50 +37,28 @@
 // These are now stored separately to allow for a
 // "set variable filters to default" action
 //
-#define  LSB_VAR1_DEFAULT_LOW  -2850
-#define  LSB_VAR1_DEFAULT_HIGH  -150
-#define  LSB_VAR2_DEFAULT_LOW  -2850
-#define  LSB_VAR2_DEFAULT_HIGH  -150
-#define DIGL_VAR1_DEFAULT_LOW  -3000
-#define DIGL_VAR1_DEFAULT_HIGH     0
-#define DIGL_VAR2_DEFAULT_LOW  -2000
-#define DIGL_VAR2_DEFAULT_HIGH -1000
-#define  USB_VAR1_DEFAULT_LOW    150
-#define  USB_VAR1_DEFAULT_HIGH  2850
-#define  USB_VAR2_DEFAULT_LOW    150
-#define  USB_VAR2_DEFAULT_HIGH  2850
-#define DIGU_VAR1_DEFAULT_LOW      0
-#define DIGU_VAR1_DEFAULT_HIGH  3000
-#define DIGU_VAR2_DEFAULT_LOW   1000
-#define DIGU_VAR2_DEFAULT_HIGH  2000
-#define  CWL_VAR1_DEFAULT_LOW   -125
-#define  CWL_VAR1_DEFAULT_HIGH   125
-#define  CWL_VAR2_DEFAULT_LOW   -250
-#define  CWL_VAR2_DEFAULT_HIGH   250
-#define  CWU_VAR1_DEFAULT_LOW   -125
-#define  CWU_VAR1_DEFAULT_HIGH   125
-#define  CWU_VAR2_DEFAULT_LOW   -250
-#define  CWU_VAR2_DEFAULT_HIGH   250
-#define   AM_VAR1_DEFAULT_LOW  -3300
-#define   AM_VAR1_DEFAULT_HIGH  3300
-#define   AM_VAR2_DEFAULT_LOW  -3300
-#define   AM_VAR2_DEFAULT_HIGH  3300
-#define  SAM_VAR1_DEFAULT_LOW  -3300
-#define  SAM_VAR1_DEFAULT_HIGH  3300
-#define  SAM_VAR2_DEFAULT_LOW  -3300
-#define  SAM_VAR2_DEFAULT_HIGH  3300
-#define  DSB_VAR1_DEFAULT_LOW  -3300
-#define  DSB_VAR1_DEFAULT_HIGH  3300
-#define  DSB_VAR2_DEFAULT_LOW  -3300
-#define  DSB_VAR2_DEFAULT_HIGH  3300
-#define SPEC_VAR1_DEFAULT_LOW  -3300
-#define SPEC_VAR1_DEFAULT_HIGH  3300
-#define SPEC_VAR2_DEFAULT_LOW  -3300
-#define SPEC_VAR2_DEFAULT_HIGH  3300
-#define  DRM_VAR1_DEFAULT_LOW  -3300
-#define  DRM_VAR1_DEFAULT_HIGH  3300
-#define  DRM_VAR2_DEFAULT_LOW  -3300
-#define  DRM_VAR2_DEFAULT_HIGH  3300
+#define  LSB_VAR_DEFAULT_LOW  -2850
+#define  LSB_VAR_DEFAULT_HIGH  -150
+#define DIGL_VAR_DEFAULT_LOW  -3000
+#define DIGL_VAR_DEFAULT_HIGH     0
+#define  USB_VAR_DEFAULT_LOW    150
+#define  USB_VAR_DEFAULT_HIGH  2850
+#define DIGU_VAR_DEFAULT_LOW      0
+#define DIGU_VAR_DEFAULT_HIGH  3000
+#define  CWL_VAR_DEFAULT_LOW   -125
+#define  CWL_VAR_DEFAULT_HIGH   125
+#define  CWU_VAR_DEFAULT_LOW   -125
+#define  CWU_VAR_DEFAULT_HIGH   125
+#define   AM_VAR_DEFAULT_LOW  -3300
+#define   AM_VAR_DEFAULT_HIGH  3300
+#define  SAM_VAR_DEFAULT_LOW  -3300
+#define  SAM_VAR_DEFAULT_HIGH  3300
+#define  DSB_VAR_DEFAULT_LOW  -3300
+#define  DSB_VAR_DEFAULT_HIGH  3300
+#define SPEC_VAR_DEFAULT_LOW  -3300
+#define SPEC_VAR_DEFAULT_HIGH  3300
+#define  DRM_VAR_DEFAULT_LOW  -3300
+#define  DRM_VAR_DEFAULT_HIGH  3300
 
 static FILTER filterLSB[FILTERS] = {
   {-5150, -150, "5.0k"},
@@ -92,8 +71,8 @@ static FILTER filterLSB[FILTERS] = {
   {-2250, -150, "2.1k"},
   {-1950, -150, "1.8k"},
   {-1150, -150, "1.0k"},
-  {LSB_VAR1_DEFAULT_LOW, LSB_VAR1_DEFAULT_HIGH, "Var1"},
-  {LSB_VAR2_DEFAULT_LOW, LSB_VAR2_DEFAULT_HIGH, "Var2"}
+  {LSB_VAR_DEFAULT_LOW, LSB_VAR_DEFAULT_HIGH, "Var1"},
+  {LSB_VAR_DEFAULT_LOW, LSB_VAR_DEFAULT_HIGH, "Var2"}
 };
 
 static FILTER filterUSB[FILTERS] = {
@@ -107,8 +86,8 @@ static FILTER filterUSB[FILTERS] = {
   {150, 2250, "2.1k"},
   {150, 1950, "1.8k"},
   {150, 1150, "1.0k"},
-  {USB_VAR1_DEFAULT_LOW, USB_VAR1_DEFAULT_HIGH, "Var1"},
-  {USB_VAR2_DEFAULT_LOW, USB_VAR2_DEFAULT_HIGH, "Var2"}
+  {USB_VAR_DEFAULT_LOW, USB_VAR_DEFAULT_HIGH, "Var1"},
+  {USB_VAR_DEFAULT_LOW, USB_VAR_DEFAULT_HIGH, "Var2"}
 };
 
 //
@@ -127,8 +106,8 @@ static FILTER filterDIGL[FILTERS] = {
   {-1875, -1125, "750"},
   {-1750, -1250, "500"},
   {-1625, -1375, "250"},
-  {DIGL_VAR1_DEFAULT_LOW, DIGL_VAR1_DEFAULT_HIGH, "Var1"},
-  {DIGL_VAR2_DEFAULT_LOW, DIGL_VAR2_DEFAULT_HIGH, "Var2"}
+  {DIGL_VAR_DEFAULT_LOW, DIGL_VAR_DEFAULT_HIGH, "Var1"},
+  {DIGL_VAR_DEFAULT_LOW, DIGL_VAR_DEFAULT_HIGH, "Var2"}
 };
 
 static FILTER filterDIGU[FILTERS] = {
@@ -142,8 +121,8 @@ static FILTER filterDIGU[FILTERS] = {
   {1125, 1875, "750"},
   {1250, 1750, "500"},
   {1375, 1625, "250"},
-  {DIGU_VAR1_DEFAULT_LOW, DIGU_VAR1_DEFAULT_HIGH, "Var1"},
-  {DIGU_VAR2_DEFAULT_LOW, DIGU_VAR2_DEFAULT_HIGH, "Var2"}
+  {DIGU_VAR_DEFAULT_LOW, DIGU_VAR_DEFAULT_HIGH, "Var1"},
+  {DIGU_VAR_DEFAULT_LOW, DIGU_VAR_DEFAULT_HIGH, "Var2"}
 };
 
 //
@@ -160,8 +139,8 @@ static FILTER filterCWL[FILTERS] = {
   {-50, 50, "100"},
   {-25, 25, "50"},
   {-13, 13, "25"},
-  {CWL_VAR1_DEFAULT_LOW, CWL_VAR1_DEFAULT_HIGH, "Var1"},
-  {CWL_VAR2_DEFAULT_LOW, CWL_VAR2_DEFAULT_HIGH, "Var2"}
+  {CWL_VAR_DEFAULT_LOW, CWL_VAR_DEFAULT_HIGH, "Var1"},
+  {CWL_VAR_DEFAULT_LOW, CWL_VAR_DEFAULT_HIGH, "Var2"}
 };
 
 static FILTER filterCWU[FILTERS] = {
@@ -175,8 +154,8 @@ static FILTER filterCWU[FILTERS] = {
   {-50, 50, "100"},
   {-25, 25, "50"},
   {-13, 13, "25"},
-  {CWU_VAR1_DEFAULT_LOW, CWU_VAR1_DEFAULT_HIGH, "Var1"},
-  {CWU_VAR2_DEFAULT_LOW, CWU_VAR2_DEFAULT_HIGH, "Var2"}
+  {CWU_VAR_DEFAULT_LOW, CWU_VAR_DEFAULT_HIGH, "Var1"},
+  {CWU_VAR_DEFAULT_LOW, CWU_VAR_DEFAULT_HIGH, "Var2"}
 };
 
 //
@@ -194,8 +173,8 @@ static FILTER filterDSB[FILTERS] = {
   {-1550, 1550, "3.1k"},
   {-1450, 1450, "2.9k"},
   {-1200, 1200, "2.4k"},
-  {DSB_VAR1_DEFAULT_LOW, DSB_VAR1_DEFAULT_HIGH, "Var1"},
-  {DSB_VAR2_DEFAULT_LOW, DSB_VAR2_DEFAULT_HIGH, "Var2"}
+  {DSB_VAR_DEFAULT_LOW, DSB_VAR_DEFAULT_HIGH, "Var1"},
+  {DSB_VAR_DEFAULT_LOW, DSB_VAR_DEFAULT_HIGH, "Var2"}
 };
 
 static FILTER filterAM[FILTERS] = {
@@ -209,8 +188,8 @@ static FILTER filterAM[FILTERS] = {
   {-1550, 1550, "3.1k"},
   {-1450, 1450, "2.9k"},
   {-1200, 1200, "2.4k"},
-  {AM_VAR1_DEFAULT_LOW, AM_VAR1_DEFAULT_HIGH, "Var1"},
-  {AM_VAR2_DEFAULT_LOW, AM_VAR2_DEFAULT_HIGH, "Var2"}
+  {AM_VAR_DEFAULT_LOW, AM_VAR_DEFAULT_HIGH, "Var1"},
+  {AM_VAR_DEFAULT_LOW, AM_VAR_DEFAULT_HIGH, "Var2"}
 };
 
 static FILTER filterSAM[FILTERS] = {
@@ -224,8 +203,8 @@ static FILTER filterSAM[FILTERS] = {
   {-1550, 1550, "3.1k"},
   {-1450, 1450, "2.9k"},
   {-1200, 1200, "2.4k"},
-  {SAM_VAR1_DEFAULT_LOW, SAM_VAR1_DEFAULT_HIGH, "Var1"},
-  {SAM_VAR2_DEFAULT_LOW, SAM_VAR2_DEFAULT_HIGH, "Var2"}
+  {SAM_VAR_DEFAULT_LOW, SAM_VAR_DEFAULT_HIGH, "Var1"},
+  {SAM_VAR_DEFAULT_LOW, SAM_VAR_DEFAULT_HIGH, "Var2"}
 };
 
 static FILTER filterSPEC[FILTERS] = {
@@ -239,8 +218,8 @@ static FILTER filterSPEC[FILTERS] = {
   {-1550, 1550, "3.1k"},
   {-1450, 1450, "2.9k"},
   {-1200, 1200, "2.4k"},
-  {SPEC_VAR1_DEFAULT_LOW, SPEC_VAR1_DEFAULT_HIGH, "Var1"},
-  {SPEC_VAR2_DEFAULT_LOW, SPEC_VAR2_DEFAULT_HIGH, "Var2"}
+  {SPEC_VAR_DEFAULT_LOW, SPEC_VAR_DEFAULT_HIGH, "Var1"},
+  {SPEC_VAR_DEFAULT_LOW, SPEC_VAR_DEFAULT_HIGH, "Var2"}
 };
 
 static FILTER filterDRM[FILTERS] = {
@@ -254,8 +233,8 @@ static FILTER filterDRM[FILTERS] = {
   {-1550, 1550, "3.1k"},
   {-1450, 1450, "2.9k"},
   {-1200, 1200, "2.4k"},
-  {DRM_VAR1_DEFAULT_LOW, DRM_VAR1_DEFAULT_HIGH, "Var1"},
-  {DRM_VAR2_DEFAULT_LOW, DRM_VAR2_DEFAULT_HIGH, "Var2"}
+  {DRM_VAR_DEFAULT_LOW, DRM_VAR_DEFAULT_HIGH, "Var1"},
+  {DRM_VAR_DEFAULT_LOW, DRM_VAR_DEFAULT_HIGH, "Var2"}
 };
 
 //
@@ -303,143 +282,72 @@ FILTER *filters[MODES] = {
 // default.
 // The order of modes must be exactly as in the mode_list enum.
 //
-const int var1_default_low[MODES] = {
-  LSB_VAR1_DEFAULT_LOW,
-  USB_VAR1_DEFAULT_LOW,
-  DSB_VAR1_DEFAULT_LOW,
-  CWL_VAR1_DEFAULT_LOW,
-  CWU_VAR1_DEFAULT_LOW,
+const int var_default_low[MODES] = {
+  LSB_VAR_DEFAULT_LOW,
+  USB_VAR_DEFAULT_LOW,
+  DSB_VAR_DEFAULT_LOW,
+  CWL_VAR_DEFAULT_LOW,
+  CWU_VAR_DEFAULT_LOW,
   0,
-  AM_VAR1_DEFAULT_LOW,
-  DIGU_VAR1_DEFAULT_LOW,
-  SPEC_VAR1_DEFAULT_LOW,
-  DIGL_VAR1_DEFAULT_LOW,
-  SAM_VAR1_DEFAULT_LOW,
-  DRM_VAR1_DEFAULT_LOW
+  AM_VAR_DEFAULT_LOW,
+  DIGU_VAR_DEFAULT_LOW,
+  SPEC_VAR_DEFAULT_LOW,
+  DIGL_VAR_DEFAULT_LOW,
+  SAM_VAR_DEFAULT_LOW,
+  DRM_VAR_DEFAULT_LOW
 };
 
-const int var1_default_high[MODES] = {
-  LSB_VAR1_DEFAULT_HIGH,
-  USB_VAR1_DEFAULT_HIGH,
-  DSB_VAR1_DEFAULT_HIGH,
-  CWL_VAR1_DEFAULT_HIGH,
-  CWU_VAR1_DEFAULT_HIGH,
+const int var_default_high[MODES] = {
+  LSB_VAR_DEFAULT_HIGH,
+  USB_VAR_DEFAULT_HIGH,
+  DSB_VAR_DEFAULT_HIGH,
+  CWL_VAR_DEFAULT_HIGH,
+  CWU_VAR_DEFAULT_HIGH,
   0,
-  AM_VAR1_DEFAULT_HIGH,
-  DIGU_VAR1_DEFAULT_HIGH,
-  SPEC_VAR1_DEFAULT_HIGH,
-  DIGL_VAR1_DEFAULT_HIGH,
-  SAM_VAR1_DEFAULT_HIGH,
-  DRM_VAR1_DEFAULT_HIGH
-};
-
-const int var2_default_low[MODES] = {
-  LSB_VAR2_DEFAULT_LOW,
-  USB_VAR2_DEFAULT_LOW,
-  DSB_VAR2_DEFAULT_LOW,
-  CWL_VAR2_DEFAULT_LOW,
-  CWU_VAR2_DEFAULT_LOW,
-  0,
-  AM_VAR2_DEFAULT_LOW,
-  DIGU_VAR2_DEFAULT_LOW,
-  SPEC_VAR2_DEFAULT_LOW,
-  DIGL_VAR2_DEFAULT_LOW,
-  SAM_VAR2_DEFAULT_LOW,
-  DRM_VAR2_DEFAULT_LOW
-};
-
-const int var2_default_high[MODES] = {
-  LSB_VAR2_DEFAULT_HIGH,
-  USB_VAR2_DEFAULT_HIGH,
-  DSB_VAR2_DEFAULT_HIGH,
-  CWL_VAR2_DEFAULT_HIGH,
-  CWU_VAR2_DEFAULT_HIGH,
-  0,
-  AM_VAR2_DEFAULT_HIGH,
-  DIGU_VAR2_DEFAULT_HIGH,
-  SPEC_VAR2_DEFAULT_HIGH,
-  DIGL_VAR2_DEFAULT_HIGH,
-  SAM_VAR2_DEFAULT_HIGH,
-  DRM_VAR2_DEFAULT_HIGH
+  AM_VAR_DEFAULT_HIGH,
+  DIGU_VAR_DEFAULT_HIGH,
+  SPEC_VAR_DEFAULT_HIGH,
+  DIGL_VAR_DEFAULT_HIGH,
+  SAM_VAR_DEFAULT_HIGH,
+  DRM_VAR_DEFAULT_HIGH
 };
 
 void filter_save_state(void) {
-  // save the Var1 and Var2 settings
-  SetPropI0("filter.lsb.var1.low",            filterLSB[filterVar1].low);
-  SetPropI0("filter.lsb.var1.high",           filterLSB[filterVar1].high);
-  SetPropI0("filter.lsb.var2.low",            filterLSB[filterVar2].low);
-  SetPropI0("filter.lsb.var2.high",           filterLSB[filterVar2].high);
-  SetPropI0("filter.digl.var1.low",           filterDIGL[filterVar1].low);
-  SetPropI0("filter.digl.var1.high",          filterDIGL[filterVar1].high);
-  SetPropI0("filter.digl.var2.low",           filterDIGL[filterVar2].low);
-  SetPropI0("filter.digl.var2.high",          filterDIGL[filterVar2].high);
-  SetPropI0("filter.cwl.var1.low",            filterCWL[filterVar1].low);
-  SetPropI0("filter.cwl.var1.high",           filterCWL[filterVar1].high);
-  SetPropI0("filter.cwl.var2.low",            filterCWL[filterVar2].low);
-  SetPropI0("filter.cwl.var2.high",           filterCWL[filterVar2].high);
-  SetPropI0("filter.usb.var1.low",            filterUSB[filterVar1].low);
-  SetPropI0("filter.usb.var1.high",           filterUSB[filterVar1].high);
-  SetPropI0("filter.usb.var2.low",            filterUSB[filterVar2].low);
-  SetPropI0("filter.usb.var2.high",           filterUSB[filterVar2].high);
-  SetPropI0("filter.digu.var1.low",           filterDIGU[filterVar1].low);
-  SetPropI0("filter.digu.var1.high",          filterDIGU[filterVar1].high);
-  SetPropI0("filter.digu.var2.low",           filterDIGU[filterVar2].low);
-  SetPropI0("filter.digu.var2.high",          filterDIGU[filterVar2].high);
-  SetPropI0("filter.cwu.var1.low",            filterCWU[filterVar1].low);
-  SetPropI0("filter.cwu.var1.high",           filterCWU[filterVar1].high);
-  SetPropI0("filter.cwu.var2.low",            filterCWU[filterVar2].low);
-  SetPropI0("filter.cwu.var2.high",           filterCWU[filterVar2].high);
-  SetPropI0("filter.am.var1.low",             filterAM[filterVar1].low);
-  SetPropI0("filter.am.var1.high",            filterAM[filterVar1].high);
-  SetPropI0("filter.am.var2.low",             filterAM[filterVar2].low);
-  SetPropI0("filter.am.var2.high",            filterAM[filterVar2].high);
-  SetPropI0("filter.sam.var1.low",            filterSAM[filterVar1].low);
-  SetPropI0("filter.sam.var1.high",           filterSAM[filterVar1].high);
-  SetPropI0("filter.sam.var2.low",            filterSAM[filterVar2].low);
-  SetPropI0("filter.sam.var2.high",           filterSAM[filterVar2].high);
-  SetPropI0("filter.dsb.var1.low",            filterDSB[filterVar1].low);
-  SetPropI0("filter.dsb.var1.high",           filterDSB[filterVar1].high);
-  SetPropI0("filter.dsb.var2.low",            filterDSB[filterVar2].low);
-  SetPropI0("filter.dsb.var2.high",           filterDSB[filterVar2].high);
+  //
+  // Modes and filter names are converted to lower case 
+  // simply for backwards compatibility
+  //
+  for (int m = 0; m < MODES; m++) {
+    FILTER *filter = filters[m];
+    for (int i = 0; i < FILTERS; i++) {
+      char txt[128];
+      snprintf(txt, sizeof(txt), "filter.%s.%s.low", mode_string[m], filter[i].title);
+      for (char *cp = txt; *cp != 0; cp++) { *cp = tolower(*cp); }
+      SetPropI0(txt, filter[i].low);
+      snprintf(txt, sizeof(txt), "filter.%s.%s.high", mode_string[m], filter[i].title);
+      for (char *cp = txt; *cp != 0; cp++) { *cp = tolower(*cp); }
+      SetPropI0(txt, filter[i].high);
+    }
+  }
 }
 
 void filter_restore_state(void) {
-  GetPropI0("filter.lsb.var1.low",            filterLSB[filterVar1].low);
-  GetPropI0("filter.lsb.var1.high",           filterLSB[filterVar1].high);
-  GetPropI0("filter.lsb.var2.low",            filterLSB[filterVar2].low);
-  GetPropI0("filter.lsb.var2.high",           filterLSB[filterVar2].high);
-  GetPropI0("filter.digl.var1.low",           filterDIGL[filterVar1].low);
-  GetPropI0("filter.digl.var1.high",          filterDIGL[filterVar1].high);
-  GetPropI0("filter.digl.var2.low",           filterDIGL[filterVar2].low);
-  GetPropI0("filter.digl.var2.high",          filterDIGL[filterVar2].high);
-  GetPropI0("filter.cwl.var1.low",            filterCWL[filterVar1].low);
-  GetPropI0("filter.cwl.var1.high",           filterCWL[filterVar1].high);
-  GetPropI0("filter.cwl.var2.low",            filterCWL[filterVar2].low);
-  GetPropI0("filter.cwl.var2.high",           filterCWL[filterVar2].high);
-  GetPropI0("filter.usb.var1.low",            filterUSB[filterVar1].low);
-  GetPropI0("filter.usb.var1.high",           filterUSB[filterVar1].high);
-  GetPropI0("filter.usb.var2.low",            filterUSB[filterVar2].low);
-  GetPropI0("filter.usb.var2.high",           filterUSB[filterVar2].high);
-  GetPropI0("filter.digu.var1.low",           filterDIGU[filterVar1].low);
-  GetPropI0("filter.digu.var1.high",          filterDIGU[filterVar1].high);
-  GetPropI0("filter.digu.var2.low",           filterDIGU[filterVar2].low);
-  GetPropI0("filter.digu.var2.high",          filterDIGU[filterVar2].high);
-  GetPropI0("filter.cwu.var1.low",            filterCWU[filterVar1].low);
-  GetPropI0("filter.cwu.var1.high",           filterCWU[filterVar1].high);
-  GetPropI0("filter.cwu.var2.low",            filterCWU[filterVar2].low);
-  GetPropI0("filter.cwu.var2.high",           filterCWU[filterVar2].high);
-  GetPropI0("filter.am.var1.low",             filterAM[filterVar1].low);
-  GetPropI0("filter.am.var1.high",            filterAM[filterVar1].high);
-  GetPropI0("filter.am.var2.low",             filterAM[filterVar2].low);
-  GetPropI0("filter.am.var2.high",            filterAM[filterVar2].high);
-  GetPropI0("filter.sam.var1.low",            filterSAM[filterVar1].low);
-  GetPropI0("filter.sam.var1.high",           filterSAM[filterVar1].high);
-  GetPropI0("filter.sam.var2.low",            filterSAM[filterVar2].low);
-  GetPropI0("filter.sam.var2.high",           filterSAM[filterVar2].high);
-  GetPropI0("filter.dsb.var1.low",            filterDSB[filterVar1].low);
-  GetPropI0("filter.dsb.var1.high",           filterDSB[filterVar1].high);
-  GetPropI0("filter.dsb.var2.low",            filterDSB[filterVar2].low);
-  GetPropI0("filter.dsb.var2.high",           filterDSB[filterVar2].high);
+  //
+  // Modes and filter names are converted to lower case 
+  // simply for backwards compatibility
+  //
+  for (int m = 0; m < MODES; m++) {
+    FILTER *filter = filters[m];
+    for (int i = 0; i < FILTERS; i++) {
+      char txt[128];
+      snprintf(txt, sizeof(txt), "filter.%s.%s.low", mode_string[m], filter[i].title);
+      for (char *cp = txt; *cp != 0; cp++) { *cp = tolower(*cp); }
+      GetPropI0(txt, filter[i].low);
+      snprintf(txt, sizeof(txt), "filter.%s.%s.high", mode_string[m], filter[i].title);
+      for (char *cp = txt; *cp != 0; cp++) { *cp = tolower(*cp); }
+      GetPropI0(txt, filter[i].high);
+    }
+  }
 }
 
 //
