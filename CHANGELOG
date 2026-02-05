@@ -1,6 +1,20 @@
 LIST OF RECENT PIHPSDR CHANGES
 ==============================
 
+Feburary 2026:
+-------------
+
+- New Release branch Rel-2.6 (Release 2.6)
+  created, master branch will be advanced to
+  v2.7 soon
+
+- Allow changing "fixed" filters via hand-editing
+  the props file
+
+- Added "Add Mic Sample" option in the TX menu
+  (HPSDR radios only), this support use of logbook
+  programs with voice keyer functions
+
 January 2026:
 -------------
 
