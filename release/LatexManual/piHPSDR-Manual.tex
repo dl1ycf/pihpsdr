@@ -506,7 +506,8 @@ largely equivalent to quitting and restarting \pH but much more convenient.
 If \pH is compiled with GPIO support, there is a
 combo-box (pop-down menu) to the left of the \rett{Discover} button lets you choose which type of GPIO
 based controller you
-have attached to the computer.  The possible choices are
+have attached to the computer. Note this menu does not appear on SATURN (Anan G2) radios,
+since here the correct choice is made automatically. The possible choices are
 
 \begin{itemize}[font=\texttt, left=80pt]
 \item[No Controller]{Choose this if no GPIO controller is wired to your Raspberry Pi. This is the default
@@ -520,8 +521,6 @@ single encoders. This special case is not covered in this manual.}
 \item[Controller2 V2]{Choose this if you have a "version 2" \pH controller from ApacheLabs (with double encoders
 on a single shaft), or a clone thereof.
 This controller is denoted Controller2 in the rest of this manual.}
-\item[G2V1 Front Panel]{Choose this if you have a first-generation (7-inch screen) Anan G2
- radio with a built-in controller.}
 \end{itemize}
 
 \begin{center}
@@ -534,12 +533,6 @@ Be sure to choose a controller only if such a controller is actually connected t
 Raspberry Pi. Unexpected things can happen if you chose one type of controller here but have totally different
 hardware connected to the GPIO. For example, if you have a so-called ,,audio hat'' attached to the RaspPi
 GPIO, then it is safest to compile \pH without GPIO support.
-
-For an Anan G2 radio, only the first item (which then reads \rett{G2V2}) and the last item are available.
-For second-generation G2 radios (8-inch screen with LEDs) the \rett{G2V2} option (which is identical
-to \rett{No Controller}) has to be chosen since for these radios, the front panel is not
-controlled via GPIO. To avoid confusion on the user's side, \pH on second-generation G2 radios
-should be compiled without GPIO support.
 }
 }
 \end{center}
@@ -865,7 +858,7 @@ a small check-box to enable or disable that function.
 
 \textbf{Pop-up sliders}
 
-If using an external controller (GPIO, MIDI, G2 V1 or V2 front panel, ANDROMEDA), one can
+If using an external controller (GPIO, MIDI, G2 front panel, ANDROMEDA), one can
 assign \pH functions to knobs (rotary encoders) of that controller. Just to give
 an example, suppose you can change the RF front end attenuation with such a knob.
 If you have a slider executing that function on-screen, it will auto-magically
@@ -4171,7 +4164,7 @@ for each of the serial CAT connections, and for the PTT in/out serial port.
 
 \rett{Andromeda}. (For TCP and serial CAT only)
 This checkbox enables the TCP or  serial CAT connection for use with ANDROMEDA consoles
-of the G2-MkII front panel. Serial lines are
+or the G2-Ultra front panel. Serial lines are
 forced to 9600 baud if enabled for ANDROMEDA. Furthermore, status changes of \pH (e.g. RIT on/off) are
 automatically reported via ZZZI CAT commands (see Appendix \ref{sec:catcommands}). These messages are
 used by the ANDROMEDA console or the G2-MkII front panel

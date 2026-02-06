@@ -43,8 +43,7 @@
 #include "vfo.h"
 
 char *i2c_device = "/dev/i2c-1";
-unsigned int i2c_address_1 = 0X20;
-unsigned int i2c_address_2 = 0X23;
+unsigned int i2c_address = 0X20;
 
 static int i2cfd;
 //
@@ -86,10 +85,42 @@ static int write_byte_data(unsigned char reg, unsigned char data) {
   int rc;
 
   if ((rc = i2c_smbus_write_byte_data(i2cfd, reg, data & 0xFF)) < 0) {
-    t_print("%s: write REG_GCONF config failed: addr=%02X %s\n", __func__, i2c_address_1, g_strerror(errno));
+    t_print("%s: write REG_GCONF config failed: addr=%02X %s\n", __func__, i2c_address, g_strerror(errno));
   }
 
   return rc;
+}
+
+int i2c_check_presence() {
+  //
+  // Only used on G2 machines to check whether an i2c is present.
+  // This is used to discriminate G2V1 from later versions.
+  // Note that this is done before i2c_init() is called, even
+  // before the GPIO lines are set up (thus no mutex here).
+  //
+  int fd = open(i2c_device, O_RDWR);
+
+  if (fd < 0 ) {
+    //
+    // No I2C device found
+    //
+    return 0;
+  }
+
+  if (ioctl(fd, I2C_SLAVE, i2c_address) < 0) {
+    //
+    // No device with correct address found
+    //
+    close(fd);
+    return 0;
+  }
+
+  //
+  // Try a read from address 0, if it succeeds, we have a G2V1
+  //
+  __s32 data = i2c_smbus_read_byte_data(fd, 0);
+  close(fd);
+  return data < 0 ? 0 : 1;
 }
 
 #if 0
@@ -160,8 +191,8 @@ void i2c_init() {
 
   t_print("%s: i2c device %s fd=%d\n", __func__, i2c_device, i2cfd);
 
-  if (ioctl(i2cfd, I2C_SLAVE, i2c_address_1) < 0) {
-    t_print("%s: ioctl i2c slave %ud failed: %s\n", __func__, i2c_address_1, g_strerror(errno));
+  if (ioctl(i2cfd, I2C_SLAVE, i2c_address) < 0) {
+    t_print("%s: ioctl i2c slave %ud failed: %s\n", __func__, i2c_address, g_strerror(errno));
     return;
   }
 
