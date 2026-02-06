@@ -34,6 +34,9 @@
 #include "discovered.h"
 #include "ext.h"
 #include "gpio.h"
+#ifdef GPIO
+  #include "i2c.h"
+#endif
 #include "main.h"
 #include "message.h"
 #include "new_discovery.h"
@@ -184,16 +187,10 @@ static gboolean protocols_cb (GtkWidget *widget, GdkEventButton *event, gpointer
 static void gpio_changed_cb(GtkWidget *widget, gpointer data) {
   controller = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
   //
-  // On a G2, we can only have "G2V1 Front Panel" or no controller
-  //
-  if (saturn_found && controller != G2V1_PANEL) {
-    controller = NO_CONTROLLER;
-    gtk_combo_box_set_active(GTK_COMBO_BOX(widget), controller);
-  }
-  //
   // This will generate a new gpio.props from scratch,
   // all existing entries there are lost when changing the
-  // controller.
+  // controller. Note: this will never be called on SATURNs, here
+  // piHPSDR makes the controller choice.
   //
   gpio_set_defaults(controller);
   gpio_save_state();
@@ -926,19 +923,23 @@ static void discovery(void) {
   gtk_grid_attach(GTK_GRID(grid), toggle_button, 3, row, 1, 1);
   row++;
 #ifdef GPIO
-  gpio_restore_state();
-  if (saturn_found && controller != G2V1_PANEL) {
-    controller = NO_CONTROLLER;
-  }
-  GtkWidget *gpio = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, saturn_found ? "G2V2" : "No Controller");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, saturn_found ? "---"  : "Controller1");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, saturn_found ? "---"  : "Controller2 V1");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, saturn_found ? "---"  : "Controller2 V2");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "G2V1 Front Panel");
-  my_combo_attach(GTK_GRID(grid), gpio, 0, row, 1, 1);
-  gtk_combo_box_set_active(GTK_COMBO_BOX(gpio), controller);
-  g_signal_connect(gpio, "changed", G_CALLBACK(gpio_changed_cb), NULL);
+    gpio_restore_state();
+    if (saturn_found) {
+      //
+      // On a Saturn, do not even show the menu but make the choice
+      // depending on the presence of the i2c expander
+      //
+      controller = i2c_check_presence() ? NO_CONTROLLER : G2V1_PANEL;
+    } else {
+      GtkWidget *gpio = gtk_combo_box_text_new();
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "No Controller");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller1");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller2 V1");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller2 V2");
+      my_combo_attach(GTK_GRID(grid), gpio, 0, row, 1, 1);
+      gtk_combo_box_set_active(GTK_COMBO_BOX(gpio), controller);
+      g_signal_connect(gpio, "changed", G_CALLBACK(gpio_changed_cb), NULL);
+    }
 #endif
   GtkWidget *discover_b = gtk_button_new_with_label("Discover");
   g_signal_connect (discover_b, "button-press-event", G_CALLBACK(discover_cb), NULL);

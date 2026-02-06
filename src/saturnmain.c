@@ -70,6 +70,9 @@ static bool Exiting = false;
 // With each firmware update, the "minor" version is increased (it is not reset upon advancing the major)
 // The "major" version is increased if piHPSDR compatibility is broken
 //
+// So piHPSDR will run will all FPGA versions with (major == 0) and (MIN_MINOR <= minor <= MAX_MINOR)
+//                    *and* all FPGA versions with (MIN_MAJOR <= major <= MAX_MAJOR)
+//
 #define FIRMWARE_MIN_MINOR            8          // Minimum FPGA "minor" software version that this software can run
 #define FIRMWARE_MAX_MINOR            18         // Maximum FPGA "minor" software version that this software can run
 #define FIRMWARE_MIN_MAJOR            1          // Minimum FPGA "major" software version that this software can run
