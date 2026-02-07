@@ -923,14 +923,16 @@ static void discovery(void) {
   gtk_grid_attach(GTK_GRID(grid), toggle_button, 3, row, 1, 1);
   row++;
 #ifdef GPIO
-    gpio_restore_state();
     if (saturn_found) {
       //
-      // On a Saturn, do not even show the menu but make the choice
+      // On a Saturn, do not read the gpio.props file and do not
+      // show the "Controller" menu, but make the choice automatic,
       // depending on the presence of the i2c expander
       //
       controller = i2c_check_presence() ? NO_CONTROLLER : G2V1_PANEL;
+      gpio_set_defaults(controller);
     } else {
+      gpio_restore_state();
       GtkWidget *gpio = gtk_combo_box_text_new();
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "No Controller");
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller1");
