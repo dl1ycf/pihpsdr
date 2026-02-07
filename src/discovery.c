@@ -929,7 +929,7 @@ static void discovery(void) {
       // show the "Controller" menu, but make the choice automatic,
       // depending on the presence of the i2c expander
       //
-      controller = i2c_check_presence() ? NO_CONTROLLER : G2V1_PANEL;
+      controller = i2c_check_presence() ? G2V1_PANEL : NO_CONTROLLER;
       gpio_set_defaults(controller);
     } else {
       gpio_restore_state();
