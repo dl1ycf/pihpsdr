@@ -78,11 +78,6 @@ static gulong     host_combo_signal_id = 0;
 
 static int        discovery_state = 0;
 
-#ifdef GPIO
-static int        saturn_found = 0;
-#endif
-
-
 GtkWidget *tcpaddr;
 char ipaddr_radio[128] = { 0 };
 int tcp_enable = 0;
@@ -637,14 +632,6 @@ static void discovery(void) {
   if (enable_saturn_xdma && !discover_only_stemlab) {
     status_text("Looking for /dev/xdma* based saturn devices");
     saturn_discovery();
-#ifdef GPIO
-    //
-    // Check if a SATURN board has been found
-    //
-    for (int i = 0; i < devices; i++) {
-      if (discovered[i].device == NEW_DEVICE_SATURN) { saturn_found = 1; }
-    }
-#endif
   }
 
 #endif
@@ -922,27 +909,54 @@ static void discovery(void) {
   g_signal_connect(toggle_button, "toggled", G_CALLBACK(password_visibility_cb), host_pwd);
   gtk_grid_attach(GTK_GRID(grid), toggle_button, 3, row, 1, 1);
   row++;
+
+  //
+  // Check if we have "discovered" SATURN device via XDMA. Note if compiled *without* GPIO.
+  // a G2V2 is assumed. If compiled *with* GPIO support, a G2V1 is assumed if the
+  // MCP23017 expander on the front panel is detected via i2c_check_presence().
+  //
+
+#ifdef SATURN
+  for (int i = 0; i < devices; i++) {
+    if (discovered[i].device == NEW_DEVICE_SATURN &&
+        !strcmp(discovered[i].network.interface_name, "XDMA")) {
+
 #ifdef GPIO
-    if (saturn_found) {
-      //
-      // On a Saturn, do not read the gpio.props file and do not
-      // show the "Controller" menu, but make the choice automatic,
-      // depending on the presence of the i2c expander
-      //
-      controller = i2c_check_presence() ? G2V1_PANEL : NO_CONTROLLER;
-      gpio_set_defaults(controller);
-    } else {
-      gpio_restore_state();
-      GtkWidget *gpio = gtk_combo_box_text_new();
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "No Controller");
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller1");
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller2 V1");
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller2 V2");
-      my_combo_attach(GTK_GRID(grid), gpio, 0, row, 1, 1);
-      gtk_combo_box_set_active(GTK_COMBO_BOX(gpio), controller);
-      g_signal_connect(gpio, "changed", G_CALLBACK(gpio_changed_cb), NULL);
-    }
+      if (i2c_check_presence()) {
+        have_g2v1 = 1;
+      }
 #endif
+
+      if (!have_g2v1) { have_g2v2 = 1; }
+    }
+  }
+#endif
+
+#ifdef GPIO
+  //
+  // Even if compiled with GPIO support, do *not* show the "controller"
+  // menu on a G2. Instead, default to NO_CONTROLLER for G2-ultra and to
+  // G2V1_PANEL for first-generation G2s with the CONTROLLER2V2 clone.
+  //
+  if (have_g2v2) {
+    controller = NO_CONTROLLER;
+    gpio_set_defaults(controller);
+  } else if (have_g2v1) {
+    controller = G2V1_PANEL;
+    gpio_set_defaults(controller);
+  } else {
+    gpio_restore_state();
+    GtkWidget *gpio = gtk_combo_box_text_new();
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "No Controller");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller1");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller2 V1");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller2 V2");
+    my_combo_attach(GTK_GRID(grid), gpio, 0, row, 1, 1);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(gpio), controller);
+    g_signal_connect(gpio, "changed", G_CALLBACK(gpio_changed_cb), NULL);
+  }
+#endif
+
   GtkWidget *discover_b = gtk_button_new_with_label("Discover");
   g_signal_connect (discover_b, "button-press-event", G_CALLBACK(discover_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), discover_b, 1, row, 1, 1);

@@ -244,8 +244,9 @@ int have_rx_att = 0;
 int have_alex_att = 0;
 int have_preamp = 0;
 int have_dither = 0;
-int have_saturn_xdma = 0;
-int have_g2_v2 = 0;
+int have_saturn_xdma = 0;              // We are running on a G2 *and* the radio is via XDMA
+int have_g2v1 = 0;                     // We are running on a G2V1
+int have_g2v2 = 0;                     // We are running on a G2V2
 int have_lime = 0;
 int have_radioberry1 = 0;
 int have_radioberry2 = 0;
@@ -1169,6 +1170,10 @@ void radio_start_radio(void) {
   }
 
   if (device == NEW_DEVICE_SATURN && (strcmp(radio->network.interface_name, "XDMA") == 0)) {
+    //
+    // Note this is different from have_g2v1 and have_g2v2 since have_saturn_xdma is only
+    // set if we are actually running the radio via XDMA.
+    //
     have_saturn_xdma = 1;
   }
 
@@ -1177,6 +1182,9 @@ void radio_start_radio(void) {
   // Post-pone GPIO initialization until here.
   // We must first set the RadioBerry/XDMA flags from
   // which gpio_init() deduces which GPIO lines NOT to use.
+  //
+  // Note gpio_init() is a no-op if have_g2v2.
+  //
   gpio_init();
 #endif
 
@@ -1199,9 +1207,11 @@ void radio_start_radio(void) {
   // USB connection. We go through a list of "bona fide" device names
   // and take the first "match".
   //
+  // This list is *only* queried
+  //
   // Note any serial setting set by this mechanism now is read-only
   //
-  if (have_saturn_xdma) {
+  if (have_g2v2) {
     for (SaturnSerialPort *ChkSerial = SaturnSerialPortsList; ChkSerial->port != NULL; ChkSerial++) {
       const char *cp = realpath(ChkSerial->port, NULL);
 

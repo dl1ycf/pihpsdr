@@ -205,11 +205,13 @@ static gboolean switch_cb (GtkWidget *widget, GdkEventButton *event, gpointer da
 
 #endif
 
+#ifdef SATURN
 static gboolean g2panel_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   g2panel_menu(top_window);
   return TRUE;
 }
+#endif
 
 static gboolean toolbar_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
@@ -558,7 +560,10 @@ void new_menu(void) {
     row++;
 #ifdef SATURN
 
-    if (have_saturn_xdma) { // only display on the xdma client
+    //
+    // This button only exists if we are running a radio via XDMA
+    //
+    if (have_saturn_xdma) {
       GtkWidget *saturn_b = gtk_button_new_with_label("Saturn");
       g_signal_connect (saturn_b, "button-press-event", G_CALLBACK(saturn_cb), NULL);
       gtk_grid_attach(GTK_GRID(grid), saturn_b, col, row, 1, 1);
@@ -743,16 +748,14 @@ void new_menu(void) {
 
 #endif
 
-    if (have_g2_v2) {
-      //
-      // This button will only be shown when an ANDROMEDA id string
-      // for the G2V2 has been received in rigctl.
-      //
+#ifdef SATURN
+    if (have_g2v2) {
       GtkWidget *g2panel_b = gtk_button_new_with_label("G2 Panel");
       g_signal_connect (g2panel_b, "button-press-event", G_CALLBACK(g2panel_cb), NULL);
       gtk_grid_attach(GTK_GRID(grid), g2panel_b, col, row, 1, 1);
       row++;
     }
+#endif
 
     // cppcheck-suppress redundantAssignment
     row = maxrow;
