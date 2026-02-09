@@ -244,22 +244,23 @@ extern double *capture_data;
 
 extern int can_transmit;
 
-extern int have_rx_gain;         // programmable RX gain available
-extern int have_rx_att;          // step attenuator available -31 ... 0 dB
-extern int have_preamp;          // switchable preamp
-extern int have_dither;          // Dither bit can be used
-extern int have_alex_att;        // ALEX board does have 0/10/20/30 dB attenuator
-extern int have_saturn_xdma;     // Saturn can use Network or XDMA interface
-extern int have_g2_v2;           // G2V2 ANDROMEDA message read
-extern int have_lime;            // The radio is a LIME-SDR
-extern int have_radioberry1;     // RadioBerry with first-generation  firmware
-extern int have_radioberry2;     // RadioBerry with second-generation firmware
-extern int have_radioberry3;   // RadioBerry with third-generation firmware (pio support)
-extern int rx_gain_calibration;  // used to calibrate the input signal
+extern int have_rx_gain;               // programmable RX gain available
+extern int have_rx_att;                // step attenuator available -31 ... 0 dB
+extern int have_preamp;                // switchable preamp
+extern int have_dither;                // Dither bit can be used
+extern int have_alex_att;              // ALEX board does have 0/10/20/30 dB attenuator
+extern int have_saturn_xdma;           // Running inside a G2 *and* using XDMA interface
+extern int have_g2v1;                  // Running inside a G2V1
+extern int have_g2v2;                  // Running inside a G2V2
+extern int have_lime;                  // The radio is a LIME-SDR
+extern int have_radioberry1;           // RadioBerry with first-generation  firmware
+extern int have_radioberry2;           // RadioBerry with second-generation firmware
+extern int have_radioberry3;           // RadioBerry with third-generation firmware (pio support)
+extern int rx_gain_calibration;        // used to calibrate the input signal
 
-extern double drive_min;         // minimum value of the drive slider
-extern double drive_max;         // maximum value of the drive slider
-extern double drive_digi_max;    // maximum value allowed in DIGU/DIGL
+extern double drive_min;               // minimum value of the drive slider
+extern double drive_max;               // maximum value of the drive slider
+extern double drive_digi_max;          // maximum value allowed in DIGU/DIGL
 
 extern int display_warnings;
 extern int display_pacurr;

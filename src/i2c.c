@@ -104,6 +104,7 @@ int i2c_check_presence() {
     //
     // No I2C device found
     //
+    t_print("%s: could not open %s\n", __func__, i2c_device);
     return 0;
   }
 
@@ -111,6 +112,7 @@ int i2c_check_presence() {
     //
     // No device with correct address found
     //
+    t_print("%s: ioctl failed\n", __func__);
     close(fd);
     return 0;
   }
@@ -120,7 +122,13 @@ int i2c_check_presence() {
   //
   __s32 data = i2c_smbus_read_byte_data(fd, 0);
   close(fd);
-  return data < 0 ? 0 : 1;
+  if (data < 0) {
+    t_print("%s: i2c read failed.\n", __func__);
+    return 0;
+  } else {
+    t_print("%s: G2V1/Controller2 I2C device detected.\n", __func__);
+    return 1;
+  }
 }
 
 #if 0

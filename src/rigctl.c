@@ -3547,10 +3547,6 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           client->buttonvec  = g2panel_default_buttons(client->andromeda_type);
           client->encodervec = g2panel_default_encoders(client->andromeda_type);
           g2panel_restore_state(client->andromeda_type, client->buttonvec, client->encodervec);
-          //
-          // This takes care the G2panel menu is shown in the main menu
-          //
-          have_g2_v2 = 1;
         }
       }
 

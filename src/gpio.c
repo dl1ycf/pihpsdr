@@ -1254,19 +1254,16 @@ void gpio_init() {
     }
   }
 
-  if (have_saturn_xdma) {
+  if (have_g2v2) {
     //
-    // Check for the I2C chip on the front panel board, to
-    // tell a G2V1 from later models. On later models, do
-    // not use the GPIO. This means, gpio_init() is a no-op
-    // and the program behaves as if not compiled with GPIO support.
+    // One G2V2, do not even init the GPIO system
     //
-    if (!i2c_check_presence()) {
-      return;
-    }
+    return;
+  }
 
+  if (have_g2v1) {
     //
-    // No "extra" GPIO lines for G2-internal CM cards
+    // No "extra" GPIO lines for G2V1
     //
     CWL_LINE = -1;
     CWR_LINE = -1;
