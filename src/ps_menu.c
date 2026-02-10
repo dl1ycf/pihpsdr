@@ -541,7 +541,7 @@ static void resume_cb(GtkWidget *widget, gpointer data) {
   // If not auto-adjusting, do not change attenuation value.
   //
   if (transmitter->puresignal) {
-    if (transmitter->auto_on) {
+    if (transmitter->twotone && transmitter->auto_on) {
       transmitter->attenuation = 0;
 
       if (radio_is_remote) {
