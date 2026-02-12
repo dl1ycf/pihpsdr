@@ -23,6 +23,7 @@
 #include "client_server.h"
 #include "discovered.h"
 #include "ext.h"
+#include "gpio.h"
 #include "main.h"
 #include "message.h"
 #include "new_menu.h"
@@ -115,6 +116,11 @@ static void agc_changed_cb(GtkWidget *widget, gpointer data) {
 static void calibration_value_changed_cb(GtkWidget *widget, gpointer data) {
   double f = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
 
+  //
+  // In order to do the calibration in integer arithmetics,
+  // the ppm value is multiplied by 10 and rounded to the next
+  // integer.
+  //
   if (f >= 0) {
     frequency_calibration = (int) (10.0 * f + 0.5);
   } else {
@@ -150,11 +156,31 @@ static void vfo_divisor_value_changed_cb(GtkWidget *widget, gpointer data) {
   vfo_encoder_divisor = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
 }
 
-static void ptt_cb(GtkWidget *widget, gpointer data) {
-  mic_ptt_tip = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
+static void localtoggle_cb(GtkWidget *widget, gpointer data) {
+  int *value = (int *) data;
+  *value = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  //
+  // This is for "Orion/G2" changes which are executed locally on a client, e.g.
+  // microphone options etc.
+  //
+  if (radio_is_remote) {
+#ifdef GPIO
+    gpio_set_orion_options();
+#endif
+  } else {
+    schedule_general();
+    schedule_transmit_specific();
+    schedule_high_priority();
+  }
+}
+
+static void orion_mic_ptt_cb(GtkWidget *widget, gpointer data) {
+  orion_mic_ptt_tip = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
 
   if (radio_is_remote) {
-    send_radiomenu(cl_sock_tcp);
+#ifdef GPIO
+    gpio_set_orion_options();
+#endif
   } else {
     schedule_transmit_specific();
   }
@@ -163,7 +189,10 @@ static void ptt_cb(GtkWidget *widget, gpointer data) {
 static void toggle_cb(GtkWidget *widget, gpointer data) {
   int *value = (int *) data;
   *value = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-
+  //
+  // This is for changes which are just sent from the client to
+  // the server but involve no immediate "local" actions
+  //
   if (radio_is_remote) {
     send_radiomenu(cl_sock_tcp);
   } else {
@@ -274,22 +303,24 @@ static void speaker_cb(GtkWidget *widget, gpointer data) {
   }
 }
 
-static void mic_input_cb(GtkWidget *widget, gpointer data) {
+static void orion_mic_input_cb(GtkWidget *widget, gpointer data) {
   int val = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
 
   switch (val) {
   case 0:
   default:
-    mic_input_xlr = MIC3P55MM;
+    g2_mic_input_xlr = MIC3P55MM;
     break;
 
   case 1:
-    mic_input_xlr = MICXLR;
+    g2_mic_input_xlr = MICXLR;
     break;
   }
 
   if (radio_is_remote) {
-    send_radiomenu(cl_sock_tcp);
+#ifdef GPIO
+    gpio_set_orion_options();
+#endif
   } else {
     schedule_transmit_specific();
   }
@@ -789,9 +820,9 @@ void radio_menu(GtkWidget *parent) {
     GtkWidget *ptt_combo = gtk_combo_box_text_new();
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(ptt_combo), NULL, "Ring");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(ptt_combo), NULL, "Tip");
-    gtk_combo_box_set_active(GTK_COMBO_BOX(ptt_combo), SET(mic_ptt_tip));
+    gtk_combo_box_set_active(GTK_COMBO_BOX(ptt_combo), SET(orion_mic_ptt_tip));
     my_combo_attach(GTK_GRID(grid), ptt_combo, 4, row, 1, 1);
-    g_signal_connect(ptt_combo, "changed", G_CALLBACK(ptt_cb), NULL);
+    g_signal_connect(ptt_combo, "changed", G_CALLBACK(orion_mic_ptt_cb), NULL);
     row++;
 
     if (device == NEW_DEVICE_SATURN) {
@@ -803,7 +834,7 @@ void radio_menu(GtkWidget *parent) {
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(mic_input_combo), NULL, "3.5mm");
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(mic_input_combo), NULL, "XLR");
 
-      switch (mic_input_xlr) {
+      switch (g2_mic_input_xlr) {
       case MIC3P55MM:
         gtk_combo_box_set_active(GTK_COMBO_BOX(mic_input_combo), 0);
         break;
@@ -814,7 +845,7 @@ void radio_menu(GtkWidget *parent) {
       }
 
       my_combo_attach(GTK_GRID(grid), mic_input_combo, 4, row, 1, 1);
-      g_signal_connect(mic_input_combo, "changed", G_CALLBACK(mic_input_cb), NULL);
+      g_signal_connect(mic_input_combo, "changed", G_CALLBACK(orion_mic_input_cb), NULL);
       row++;
     }
 
@@ -842,16 +873,16 @@ void radio_menu(GtkWidget *parent) {
     ChkBtn = gtk_check_button_new_with_label("Mic PTT enabled");
     gtk_widget_set_name(ChkBtn, "boldlabel");
     gtk_widget_set_halign(ChkBtn, GTK_ALIGN_END);
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), mic_ptt_enabled);
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), orion_mic_ptt_enabled);
     gtk_grid_attach(GTK_GRID(grid), ChkBtn, 3, row, 2, 1);
-    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &mic_ptt_enabled);
+    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(localtoggle_cb), &orion_mic_ptt_enabled);
     row++;
     ChkBtn = gtk_check_button_new_with_label("Mic Bias enabled");
     gtk_widget_set_name(ChkBtn, "boldlabel");
     gtk_widget_set_halign(ChkBtn, GTK_ALIGN_END);
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), mic_bias_enabled);
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), orion_mic_bias_enabled);
     gtk_grid_attach(GTK_GRID(grid), ChkBtn, 3, row, 2, 1);
-    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &mic_bias_enabled);
+    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(localtoggle_cb), &orion_mic_bias_enabled);
     row++;
     break;
 

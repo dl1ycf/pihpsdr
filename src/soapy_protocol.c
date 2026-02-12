@@ -789,8 +789,7 @@ void soapy_protocol_set_rx_frequency(const int id) {
 
   if (soapy_device != NULL) {
     int rc;
-    long long f = vfo[id].frequency - vfo[id].lo;
-    f = (f * (10000000LL+ frequency_calibration)) / 10000000LL;
+    long long f = calibrated_frequency(vfo[id].frequency - vfo[id].lo);
 
     if (have_lime) {
       //
@@ -820,8 +819,7 @@ void soapy_protocol_set_rx_frequency(const int id) {
         // be compatible with both RX. If this is not possible (RX1 and RX2 frequency more
         // than 10 MHz apart) mute RX2.
         //
-        long long f2 = vfo[sid].frequency - vfo[sid].lo;
-        f2 = (f2 * (10000000LL+frequency_calibration)) / 10000000LL;
+        long long f2 = calibrated_frequency(vfo[sid].frequency - vfo[sid].lo);
         fd2 = (double) f2;
 
         if (fabs(fd - fd2) > 10.0e6) {
@@ -910,8 +908,7 @@ void soapy_protocol_set_tx_frequency(void) {
       f += vfo[v].xit;
     }
 
-    f -= vfo[v].lo;
-    f = (f * (10000000LL + frequency_calibration)) / 10000000LL;
+    f = calibrated_frequency(f - vfo[v].lo);
 
     if (have_lime) {
       //

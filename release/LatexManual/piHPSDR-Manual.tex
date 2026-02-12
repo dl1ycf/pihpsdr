@@ -8378,8 +8378,8 @@ other single-board computers with a GPIO.
 
 \begin{figure}[ht!]
 \center
-\includegraphics[scale=0.6]{GPIO.pdf}
-\caption{GPIO lines used with various controllers. Note that Controller2V2 and the G2 front panel
+\includegraphics[scale=0.8]{GPIO.pdf}
+\caption{GPIO lines used with various controllers. Note that Controller2V2 and the G2V1 front panel
 share the used GPIO lines. The assignment is different for a RadioBerry, see chapter \ref{sec:radioberry}.
 None of the GPIO lines printed in blue are used on Anan-G2 radios.}
 \label{fig:GPIO}
@@ -8393,26 +8393,25 @@ an auxiliary connector that carries pins one should normally not use (like those
 devices). The four last columns indicate the use of this GPIO pin in four different setups, namely
 with no controller, with the Controller1, with the Controller2 equipped with single encoders, and
 finally with the Controller2 equipped with double encoders. The last case is electrically identical to
-the G2 front panel. In red, with the string \texttt{do not use!}, GPIO pins are marked which one should
-not use from within \pH for the case at hand. For the controllers, these are the pins associated
-with the I2C interface(s). If there is no controller, we could, in principle, use all GPIO pins at our
-discretion, but all those often used by other hardware are marked as not to use. This ensures that,
+the first-generation G2 front panel. In red, with the string \texttt{do not use!},
+ GPIO pins are marked which one should
+not use from within \pH for the case at hand, since they are often use for other purposes (for example,
+I2C interfaces). This ensures that,
 for example, \pH even if compiled with the GPIO option will run smoothly together with additional
-hardware such as ,,audio hats''. Note only two GPIO lines are available if using a RadioBerry
-directly attached to the RaspPi, as detailed in chapter \ref{sec:radioberry}.
+hardware such as ,,audio hats''. Note the for some special radios (e.g. the RadioBerry), the
+default ,,No Controller'' assignment is different due to the lack of available GPIO lines.
+The function of GPIO lines actually used by the controllers are indicated in black colour. These
+assignements can be changed via the \texttt{gpio.props} file to support home-brewn clones of these
+controllers with a different wiring.
 
-The function of GPIO lines actually used by the controllers are indicated in black colour. No detailed
-explanation is needed since these are hard wired and one therefore should not change this assignment.
-
-Lines which are available but are not used by \pH are marked as \texttt{available} in blue colour.
-{\color{red} Note that no GPIO lines are accessible and available if \pH runs inside the Saturn G2 radios.}
-Then there are up to four input lines (\texttt{CWL}, \texttt{CWR}, \texttt{CWKEY}, and \texttt{PTTIN})
-and two output lined (\texttt{PTTOUT}, \texttt{CWOUT}) which can be assigned to available (blue-coloured)
-GPIO lines. Shown in Fig. \ref{fig:GPIO} is the default assignment done in the program, but any of the
-six mentioned functions (to be explained below) can be mapped on any of the available (blue coloured)
-GPIO lines. Unfortunately, there is only a single unused GPIO line for the Controller2 with double
-encoders and the G2 front panel, and only five unused GPIO lines for Controller1, so it is not possible
-to assign all six possible functions to GPIO lines. The six additional functions are
+Lines which are available since they are not used by the controller are marked in blue colour.
+{\color{red} Note that no such additional ,,blue'' GPIO
+ lines are accessible and available if \pH runs inside the Saturn G2 radios.}
+\pH supports up to four input lines (\texttt{CWL}, \texttt{CWR}, \texttt{CWKEY}, and \texttt{PTTIN})
+and up to six output lines (\texttt{PTTOUT}, \texttt{CWOUT}, \texttt{MICboost}, \texttt{MICsel}, \texttt{MICbias}
+and \texttt{MICptt}). Fig. \ref{fig:GPIO} shows the default assignment which can, however be different
+for specific radios and which can be overriden via the \texttt{gpio.props} file.
+The function of these additional lines is
 
 \rett{CWL} (Input with pull-up, active low). This input triggers a "left paddle pressed/
 released" event for the
@@ -8441,18 +8440,37 @@ one needs both a KEY and PTT connection to the keyer. To avoid chopping of the f
 lead-in time''). This lead-in time can normally be adjusted for external CW keyers, I mostly use
 150 msec to be on the safe side.
 
-\rett{PTTOUT} (Output, active low). This output indicates with a low level that \pH is in the
+\rett{PTTOUT} (Output, active low). This output indicates that \pH is in the
 TX state. This output is typically used together with radios such as the Adalm Pluto to activate
 a RF amplifier, because there is no hardware output at the Adalm which indicates that the device
 transmits. The output can also be used to activate an external power amplifier if the radio has
 not PTT output.
 
 \rett{CWOUT} (Output, active low). This output monitors the state of the built-in iambic keyer
-(low = key down, high = key up), and can be used to drive external hardware with a tone generator
+(low = key down, high = key up). This can be used to drive external hardware with a tone generator
 that generates a low-latency side tone, mixes it with the RX audio output, and feeds the combined
 signal to the head phone. For direct keying (using the CWKEY line or the \bltt{CW KEY (keyer)}
 command via MIDI) this output also
 follows the key-down/up state.
+
+\rett{MICboost} (Output, active low) This output indicates that the microphone preamp should have
+some additional gain, e.g. when connecting dynamic microphones. For HPSDR radio, it follows the
+"MIC boost" setting in the TX menu. For non-HPSDR radios, the state of MIC boost can be manually
+specifies via the props file. This GPIO output line can be used in controllers which have an audio codec.
+
+\rett{MICsel} (Output, active low) This output can be used in controllers with an audio codec and
+a TRS microphone jack, to reproduce the behaviour of Orion-II radios such as the Anan 7000DLE or
+the Anan G2 series. If the output is active, the tip of the jack is connected to PTT and the ring
+to Mic and Bias, if it is inactive, it is the other way round.
+
+\rett{MICbias} (Output, active low) This output can be used in controllers with an audio codec and
+a TRS microphone jack, to reproduce the behaviour of Orion-II radios such as the Anan 7000DLE or
+the Anan G2 series. If the output is active, a bias voltage is applied to the contact (tip or ring)
+connected to Mic input.
+
+\rett{MICptt} Output, active low) This output can be used in controllers with an audio codec and
+a TRS microphone jack, to reproduce the behaviour of Orion-II radios such as the Anan 7000DLE or
+the Anan G2 series. If the output is active, the PTT input at the Mic/PTT jack is disabled.  
 
 The reason for choosing ,,active low'' for the output lines is that in the default setup,
 the GPIO lines are switched

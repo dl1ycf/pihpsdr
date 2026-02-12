@@ -105,6 +105,14 @@ enum _display_enum {
 extern int frequency_calibration;
 extern int region;
 
+static inline long long calibrated_frequency(long long f) {
+  //
+  // Assuming long long is 64 bit and can hold number up to 2^63,
+  // the following does not overflow for frequencies up to 750 GHz.
+  //
+  return (f * (10000000LL + frequency_calibration)) / 10000000LL;
+}
+
 extern int RECEIVERS;
 extern int PS_TX_FEEDBACK;
 extern int PS_RX_FEEDBACK;
@@ -156,10 +164,10 @@ extern int toolbar_rows;
 extern int mic_linein;
 extern double linein_gain;
 extern int mic_boost;
-extern int mic_bias_enabled;
-extern int mic_ptt_enabled;
-extern int mic_ptt_tip;
-extern int mic_input_xlr;
+extern int orion_mic_bias_enabled;
+extern int orion_mic_ptt_enabled;
+extern int orion_mic_ptt_tip;
+extern int g2_mic_input_xlr;
 
 extern int receivers;
 

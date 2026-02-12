@@ -759,7 +759,7 @@ static void new_protocol_high_priority(void) {
   for (int id = 0; id < 2; id++) {
     // apply *relative* frequency calibration to the DDC frequency
     freq = vfo[id].frequency - vfo[id].lo;  // uncorrected DDC freq
-    DDCfrequency[id] = (freq * (10000000LL + frequency_calibration)) / 10000000LL;
+    DDCfrequency[id] = calibrated_frequency(freq);
   }
 
   // CW mode from the Host; disabled since pihpsdr does not use this CW option.
@@ -818,7 +818,7 @@ static void new_protocol_high_priority(void) {
 
   // apply *relative* frequency calibration to the DUC frequency
   freq = txfreq - vfo[txvfo].lo;  // uncorrected DUC freq
-  DUCfrequency = (freq * (10000000LL + frequency_calibration)) / 10000000LL;
+  DUCfrequency = calibrated_frequency(freq);
   phase = (uint32_t)(((double)DUCfrequency) * 34.952533333333333333333333333333);
 
   if (xmit && transmitter->puresignal) {
@@ -1475,19 +1475,19 @@ static void new_protocol_transmit_specific(void) {
     transmit_specific_buffer[50] |= 0x02;
   }
 
-  if (mic_ptt_enabled == 0) { // set if disabled
+  if (orion_mic_ptt_enabled == 0) { // set if disabled
     transmit_specific_buffer[50] |= 0x04;
   }
 
-  if (mic_ptt_tip) {
+  if (orion_mic_ptt_tip) {
     transmit_specific_buffer[50] |= 0x08;
   }
 
-  if (mic_bias_enabled) {
+  if (orion_mic_bias_enabled) {
     transmit_specific_buffer[50] |= 0x10;
   }
 
-  if (mic_input_xlr) {
+  if (g2_mic_input_xlr) {
     transmit_specific_buffer[50] |= 0x20;
   }
 

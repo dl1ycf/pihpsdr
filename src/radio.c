@@ -182,10 +182,10 @@ int toolbar_rows = 2;
 int mic_linein = 0;        // Use microphone rather than linein in radio's audio codec
 double linein_gain = 0.0;  // -34.0 ... +12.5 in steps of 1.5 dB
 int mic_boost = 0;
-int mic_bias_enabled = 0;
-int mic_ptt_enabled = 0;
-int mic_ptt_tip = 0;
-int mic_input_xlr = 0;
+int orion_mic_bias_enabled = 0;
+int orion_mic_ptt_enabled = 0;
+int orion_mic_ptt_tip = 0;
+int g2_mic_input_xlr = 0;
 
 int receivers;
 
@@ -3397,6 +3397,10 @@ static void radio_restore_state(void) {
   GetPropI0("cw_keyer_ptt_delay",                            cw_keyer_ptt_delay);
   GetPropI0("cw_keyer_hang_time",                            cw_keyer_hang_time);
   GetPropI0("cw_breakin",                                    cw_breakin);
+  GetPropI0("mic_ptt_enabled",                               orion_mic_ptt_enabled);
+  GetPropI0("mic_bias_enabled",                              orion_mic_bias_enabled);
+  GetPropI0("mic_ptt_tip_bias_ring",                         orion_mic_ptt_tip);
+  GetPropI0("mic_input_xlr",                                 g2_mic_input_xlr);
 
   for (int i = 0; i < 6; i++) {
     GetPropI1("display_vfobar[%d]", i,                       display_vfobar[i]);
@@ -3429,10 +3433,6 @@ static void radio_restore_state(void) {
     GetPropI0("mic_boost",                                   mic_boost);
     GetPropI0("mic_linein",                                  mic_linein);
     GetPropF0("linein_gain",                                 linein_gain);
-    GetPropI0("mic_ptt_enabled",                             mic_ptt_enabled);
-    GetPropI0("mic_bias_enabled",                            mic_bias_enabled);
-    GetPropI0("mic_ptt_tip_bias_ring",                       mic_ptt_tip);
-    GetPropI0("mic_input_xlr",                               mic_input_xlr);
     GetPropI0("cw_keyer_sidetone_frequency",                 cw_keyer_sidetone_frequency);
     GetPropI0("OCtune",                                      OCtune);
     GetPropI0("OCfull_tune_time",                            OCfull_tune_time);
@@ -3622,6 +3622,10 @@ void radio_save_state(void) {
   SetPropI0("cw_keyer_ptt_delay",                            cw_keyer_ptt_delay);
   SetPropI0("cw_keyer_hang_time",                            cw_keyer_hang_time);
   SetPropI0("cw_breakin",                                    cw_breakin);
+  SetPropI0("mic_ptt_enabled",                               orion_mic_ptt_enabled);
+  SetPropI0("mic_bias_enabled",                              orion_mic_bias_enabled);
+  SetPropI0("mic_ptt_tip_bias_ring",                         orion_mic_ptt_tip);
+  SetPropI0("mic_input_xlr",                                 g2_mic_input_xlr);
 
   for (int i = 0; i < 6; i++) {
     SetPropI1("display_vfobar[%d]", i,                       display_vfobar[i]);
@@ -3654,10 +3658,6 @@ void radio_save_state(void) {
     SetPropI0("mic_boost",                                   mic_boost);
     SetPropI0("mic_linein",                                  mic_linein);
     SetPropF0("linein_gain",                                 linein_gain);
-    SetPropI0("mic_ptt_enabled",                             mic_ptt_enabled);
-    SetPropI0("mic_bias_enabled",                            mic_bias_enabled);
-    SetPropI0("mic_ptt_tip_bias_ring",                       mic_ptt_tip);
-    SetPropI0("mic_input_xlr",                               mic_input_xlr);
     SetPropI0("cw_keyer_sidetone_frequency",                 cw_keyer_sidetone_frequency);
     SetPropI0("OCtune",                                      OCtune);
     SetPropI0("OCfull_tune_time",                            OCfull_tune_time);
