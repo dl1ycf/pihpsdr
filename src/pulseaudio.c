@@ -40,16 +40,14 @@
 //
 // CW_LAT_MAX             If this latency is exceeded, TX audio output is stopped
 // CW_LAT_TARGET          target TX audio latency
-// CW_LAT_HIGH            high water for keeping at target filling
 // CW_LAT_LOW             low  water for keeping at target filling
 //
 
 #define AUDIO_LAT_MAX     400000
 #define AUDIO_LAT_TARGET  200000
 #define CW_LAT_MAX         60000
-#define CW_LAT_HIGH        35000
-#define CW_LAT_TARGET      30000
-#define CW_LAT_LOW         25000
+#define CW_LAT_TARGET      20000
+#define CW_LAT_LOW         10000
 
 //
 // Loopback devices, when connected to digimode programs, sometimes
@@ -483,7 +481,7 @@ static int do_rxtx(gpointer data) {
 
     attr.maxlength = pa_usec_to_bytes(2 * CW_LAT_MAX, &sample_spec);
     attr.tlength   = pa_usec_to_bytes(CW_LAT_TARGET,  &sample_spec);
-    attr.prebuf    = pa_usec_to_bytes(CW_LAT_TARGET, &sample_spec);
+    attr.prebuf    = pa_usec_to_bytes(CW_LAT_TARGET,  &sample_spec);
     attr.minreq    = (uint32_t) -1;
     attr.fragsize  = (uint32_t) -1;
     rx->audio_handle = pa_simple_new(NULL, // Use the default server.
@@ -530,12 +528,12 @@ void tx_audio_write(RECEIVER *rx, double sample) {
 
     if (rx->cwaudio == 2) {
       //
-      // Insert silence that amounts to 2/3 target filling
+      // Insert silence that amounts to low-water filling
       //
       float buffer[2 * out_buffer_size];
       memset(buffer, 0, 2 * out_buffer_size * sizeof(float));
 
-      for (int i = 0; i < CW_LAT_TARGET / (30 * out_buffer_size); i++) {
+      for (int i = 0; i < (CW_LAT_LOW + 10 * out_buffer_size) / (20 * out_buffer_size); i++) {
         int rc = pa_simple_write(rx->audio_handle, buffer,
                                  2 * out_buffer_size * sizeof(float),
                                  &err);
@@ -546,7 +544,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       }
 
       rx->cwaudio = 3;
-      rx->latency = (2 * CW_LAT_TARGET) / 3;
+      rx->latency = CW_LAT_LOW; // do not adjust until first measured
     }
 
     int adjust = 1;
@@ -559,7 +557,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       //
       // We arrive here if we have seen 16 zero samples in a row.
       //
-      if (rx->latency > CW_LAT_HIGH) { adjust = 0; } // full: we are above high water mark
+      if (rx->latency > CW_LAT_TARGET) { adjust = 0; } // full: we are above target
 
       if (rx->latency < CW_LAT_LOW ) { adjust = 2; } // low: we are below low water mark
     }
@@ -728,12 +726,12 @@ void audio_write(RECEIVER *rx, double left, double right) {
 
     if (rx->cwaudio == 5) {
       //
-      // Insert silence that amounts to 2/3 target filling
+      // Insert silence that amounts target filling
       //
       float buffer[2 * out_buffer_size];
       memset(buffer, 0, 2 * out_buffer_size * sizeof(float));
 
-      for (int i = 0; i < AUDIO_LAT_TARGET / (30 * out_buffer_size); i++) {
+      for (int i = 0; i < (AUDIO_LAT_TARGET + 10 * out_buffer_size) / (20 * out_buffer_size); i++) {
         int rc = pa_simple_write(rx->audio_handle, buffer,
                                  2 * out_buffer_size * sizeof(float),
                                  &err);
