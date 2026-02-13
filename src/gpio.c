@@ -156,10 +156,10 @@ void gpio_set_cw(int state) {
 }
 
 void gpio_set_orion_options() {
-  gpio_set_output(OUT_MIC_SEL, orion_mic_ptt_tip);
-  gpio_set_output(OUT_MIC_BIAS, orion_mic_bias_enabled);
-  gpio_set_output(OUT_MIC_PTT, orion_mic_ptt_enabled);
-  gpio_set_output(OUT_MIC_BOOST, mic_boost);
+  gpio_set_output(OUT_MIC_SEL, NOT(orion_mic_ptt_tip));
+  gpio_set_output(OUT_MIC_BIAS, NOT(orion_mic_bias_enabled));
+  gpio_set_output(OUT_MIC_PTT, NOT(orion_mic_ptt_enabled));
+  gpio_set_output(OUT_MIC_BOOST, NOT(mic_boost));
 }
 
 #define DIR_NONE 0x0
