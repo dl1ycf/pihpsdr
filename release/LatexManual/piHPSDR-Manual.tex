@@ -4911,54 +4911,69 @@ amount of time etc.
 \section{CW side tone latency}
 The audio latency is of utmost importance when doing CW, no matter whether you use
 the iambic keyer built into \pH is used, or whether you use an external keyer which
-sends key-up and key-down events via MIDI to the computer running \pH. Having low
-latency in the \pH generated side tone is really important:
+sends key-up and key-down events via MIDI to the computer running \pH.
 Imagine you want to sent a letter 'V' in CW,
 using a paddle. If the side tone arrives a little bit late at your ear, then the keyer
 may have advanced to the point where it sends the fourth dot before you have heard
-the third dot. Such a delay then leads to keying errors, e.g. sending a number '4' where
+the third dot. Such a delay then leads to typical keying errors, e.g. sending a number '4' where
 one wants to send a letter 'V'. Since the length of a dot is 50 ms at a CW speed of 24 wpm,
 an audio delay of 100 ms (or even more) is certainly not acceptable when doing CW.
-In the audio modules (for ALSA, PortAudio and PulseAudio/PipeWire),
+In the audio modules (ALSA, PortAudio and PulseAudio/PipeWire),
  \pH has a built-in mechanism to remedy this situation.
 
-This is possible since when generating the CW side tone, audio samples come at a regular
-and predictable pace, such that we do not need a large latency to cope with small pauses
+This is possible since when generating the CW side tone, audio samples come at a
+much more regular
+and predictable pace than when producing RX audio,
+ such that we do not need a large latency to cope with small pauses
 and bursts of samples in the audio
 stream. Upon a RX/TX transition, most pending audio samples in the audio output buffer
 are discarded and the audio stream is re-started with a small latency.
 Furthermore, \pH monitors the latancy and very slightly
 increases or decreases the pauses between the dots or dashes to keep the audio output
 buffer at the desired filling level. This way, a \pH generated side tone can be used for
-CW speeds up to about 25 wpm.
+CW speeds up to 24 wpm.
 
 \begin{figure}[h!]
 \center
-\includegraphics[scale=0.35]{SideToneAlsa.png}
+\includegraphics[scale=0.35]{SidetoneAlsa.png}
 \caption{Side Tone Latency with ALSA. Blue trace (bottom): CW key (active low);
 Yellow trace (top): signal at the headphone.}
 \label{fig:SideToneALSA}
 \end{figure}
 
+\begin{figure}[h!]
+\center
+\includegraphics[scale=0.35]{SidetonePA.png}
+\caption{Side Tone Latency with PulseAudio. Blue trace (bottom): CW key (active low);
+Yellow trace (top): signal at the headphone.}
+\label{fig:SideTonePA}
+\end{figure}
+
 To demonstrate this, the side tone latency has been measured with a two-channel oscilloscope
 with \pH running on a RaspPi5 with a USB sound card attached,
-see Fig. \ref{fig:SideToneALSA}.
-An external keyer was used that both sends MIDI key-up/down events to \pH and has a
-hardware output (active low)
-that was connected to channel 2 (blue trace)
-of the oscilloscope and was used for triggering.
-Channel 1 (yellow trace) then displays the signal at the headphone. Hitting the dot paddle then
-produces a string of dots, a CW speed of 24 wpm (dot length 50 ms) was used.
-\pH was compiled with the AUDIO=ALSA compile-time option (see Appendix \ref{sec:compiletime}.
-With the ALSA audio module (see Fig. \ref{fig:SideToneALSA})
-the measured delay is 30 ms, slightly more than half the dot length. This is not optimal
-but still usable for doing CW at 24 wpm. On a Macintosh (using the PortAudio module), the
-delay was even slightly smaller (20 ms). For 24 wpm, this is usable but not optimal, and
+see Fig. \ref{fig:SideToneALSA}. \pH was compiled with the ALSA sound module,
+and the internal (iambic) keyer was used
+at a speed of 24 wpm (dot length: 50 ms). A GPIO 
+active-low output line (Channel 2, blue trace)
+was used to report the state of the keyer and to trigger the scope.
+Channel 1 (yellow trace) then displays the signal at the headphone. 
+The measured delay is 25 ms, about half the dot length.
+With the PulseAudio module (Fig. \ref{fig:SideTonePA})
+a somewhat larger delay (35 ms) was obtained, while on a Macintosh (using the PortAudio module),
+a slightly smaller delay (20 ms) could be achieved.
+For CW speeds up to 24 wpm, this is usable but not optimal, and
 high-speed CW operators certainly want delays smaller than 10 ms (see next section).
 
+\begin{figure}[h!]
+\center
+\includegraphics[scale=0.35]{SideToneExternal.png}
+\caption{Zero Latency from an ,,external'' side tone.Blue trace (bottom): CW key (active low);
+Yellow trace (top): signal at the headphone.}
+\label{fig:SideToneExternal}
+\end{figure}
 
 \section{External solution to CW side tone latency}
-Reducing the delay below 20 ms is certainly possible with dedicated low-latency audio
+Reducing the delay below 20 ms is probably possible with dedicated low-latency audio
 hardware and specialised audio drivers, but this is beyond the scope of \pH.
 The most stringent solution to the low side tone latency problem is
 to generate the side tone externally, thus \textit{not} using the side tone generated by
@@ -4974,18 +4989,11 @@ that result from the sharp rise and fall of the side tone pulse envelopes. Both 
 if one routes the side tone through a narrow audio band pass filter, that is easily realised with
 a single OP amp.
 
-\begin{figure}[ht!]
-\center
-\includegraphics[scale=0.35]{SideToneExternal.png}
-\caption{Zero Latency from an ,,external'' side tone.Blue trace (bottom): CW key (active low);
-Yellow trace (top): signal at the headphone.}
-\label{fig:SideToneExternal}
-\end{figure}
-
 Using two simple AF transformers, the side tone can then be mixed with the (stereo)
-RX audio: the audio from the sound card goes into the keyer an the headphone is then
-also plugged into the keyer.
-Fig. \ref{fig:SideToneExternal} shows the measured result of such a setup. One immediately
+RX audio from the headphone cable.
+Fig. \ref{fig:SideToneExternal} shows the measured result of such a setup. 
+The blue trace, used for triggering, shows the keying output of the external keyer.
+One immediately
 sees that the side tone latency is virtually zero. The pulse envelope of the signal measured
 at the headphone is characteristic for audio filters realised with OP amps, the envelope
 depends on the chosen bandwidth that can be adjusted: the band width has to bee increased
@@ -5008,8 +5016,8 @@ problem which is built around the powerful Teensy4 uC. It is described in
 
 \texttt{https://github.com/softerhardware/CWKeyer}
 
-(the author of this manual took part in this development). Briefly, the uC is so powerful
-that it can run both a CW keyer software, and act as an external sound card to the
+Briefly, the uC is so powerful
+that it can run both a CW keyer software, and act as a USB sound card to the
 computer running \pH. If one chooses this device for RX audio output, the CW side tone
 from the keyer will be mixed by the keyer software into the RX audio stream in software.
 The side tone latency obtained this way is not zero but very small (about 5 ms).
