@@ -24,6 +24,7 @@
 #include "audio.h"
 #include "ext.h"
 #include "filter.h"
+#include "gpio.h"
 #include "message.h"
 #include "mode.h"
 #include "new_menu.h"
@@ -500,6 +501,9 @@ static void mic_in_cb(GtkWidget *widget, gpointer data) {
   if (radio_is_remote) {
     send_txmenu(cl_sock_tcp);
   } else {
+#ifdef GPIO
+    gpio_set_orion_options();
+#endif
     schedule_transmit_specific();
   }
 }

@@ -108,7 +108,7 @@ enum _output_choice {
 
 #define MAX_LINES 32
 
-static int num_input_lines = 0;
+static int num_gpio_input = 0;
 static int gpio_in[MAX_LINES] = { -1 };
 static int gpio_in_pullup[MAX_LINES] = { -1 };
 static int gpio_in_debounce[MAX_LINES] = { 0 };
@@ -120,7 +120,7 @@ static int CWKEY_LINE = -1;
 static int PTTIN_LINE = -1;
 
 #ifdef GPIOV1
-  static struct gpiod_line *output_line[NUM_OUTPUT_LINES] = { NULL };
+  static struct gpiod_line *output_request[NUM_OUTPUT_LINES] = { NULL };
 #endif
 #ifdef GPIOV2
   static struct gpiod_line_request *output_request[NUM_OUTPUT_LINES] = { NULL };
@@ -130,8 +130,8 @@ static int PTTIN_LINE = -1;
 static void gpio_set_output(int type, int state) {
 #ifdef GPIOV1
 
-  if (output_line[type]) {
-    if (gpiod_line_set_value(output_line[type], NOT(state)) < 0) {
+  if (output_request[type] && gpio_out[type] >= 0) {
+    if (gpiod_line_set_value(output_request[type], NOT(state)) < 0) {
       t_print("%s failed: %s\n", __func__, g_strerror(errno));
     }
   }
@@ -139,8 +139,8 @@ static void gpio_set_output(int type, int state) {
 #endif
 #ifdef GPIOV2
 
-  if (output_request[type] && output_line[type] >= 0) {
-    gpiod_line_request_set_value(output_request[type], output_line[type],
+  if (output_request[type] && gpio_out[type] >= 0) {
+    gpiod_line_request_set_value(output_request[type], gpio_out[type],
                                  state ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE);
   }
 
@@ -1002,9 +1002,9 @@ void gpio_save_actions() {
 static gpointer monitor_thread(gpointer arg) {
   // thread to monitor gpio events
   int ret;
-  t_print("%s: monitoring %d lines.\n", __func__, num_input_lines);
+  t_print("%s: monitoring %d lines.\n", __func__, num_gpio_input);
 
-  for (int i = 0; i < num_input_lines; i++) {
+  for (int i = 0; i < num_gpio_input; i++) {
     t_print("%s: Line=%u Pullup=%d Debounce=%d\n", __func__, gpio_in[i], gpio_in_pullup[i], gpio_in_debounce[i]);
   }
 
@@ -1014,7 +1014,7 @@ static gpointer monitor_thread(gpointer arg) {
   t.tv_nsec = 0;
   ret = gpiod_ctxless_event_monitor_multiple(
           gpio_device, GPIOD_CTXLESS_EVENT_BOTH_EDGES,
-          (unsigned int *)gpio_in, num_input_lines, FALSE,
+          (unsigned int *)gpio_in, num_gpio_input, FALSE,
           consumer, &t, NULL, interrupt_cb, NULL);
 
   if (ret < 0) {
@@ -1067,7 +1067,7 @@ static gpointer monitor_thread(gpointer arg) {
   return NULL;
 }
 
-static void setup_input_lines() {
+static void setup_input_requests() {
   //
   // Set up all input lines. If a line fails, delete entry
   // GPIOV1: release lines thereafter, they will be requested again
@@ -1078,7 +1078,7 @@ static void setup_input_lines() {
   config.consumer = consumer;
   config.request_type = GPIOD_LINE_REQUEST_DIRECTION_INPUT | GPIOD_LINE_REQUEST_EVENT_BOTH_EDGES;
 
-  for (int i = 0; i < num_input_lines; i++) {
+  for (int i = 0; i < num_gpio_input; i++) {
     struct gpiod_line *line = gpiod_chip_get_line(chip, gpio_in[i]);
 
     if (!line) {
@@ -1114,7 +1114,7 @@ static void setup_input_lines() {
     gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_INPUT);
     gpiod_line_settings_set_edge_detection(settings, GPIOD_LINE_EDGE_BOTH);
 
-    for (int i = 0; i < num_input_lines; i++) {
+    for (int i = 0; i < num_gpio_input; i++) {
       if (gpio_in_pullup[i]) {
         gpiod_line_settings_set_bias(settings, GPIOD_LINE_BIAS_PULL_UP);
       } else {
@@ -1145,10 +1145,10 @@ static void setup_input_lines() {
   //
   // Remove any failed lines from gpio_in[]
   //
-  for (int i = 0; i < num_input_lines; i++) {
+  for (int i = 0; i < num_gpio_input; i++) {
     if (gpio_in[i] < 0) {
-      num_input_lines--;
-      gpio_in[i] = gpio_in[num_input_lines];
+      num_gpio_input--;
+      gpio_in[i] = gpio_in[num_gpio_input];
     }
   }
 
@@ -1156,7 +1156,7 @@ static void setup_input_lines() {
 }
 
 #ifdef GPIOV1
-static struct gpiod_line *setup_output_line(unsigned int offset, int initialValue) {
+static struct gpiod_line *setup_output_request(unsigned int offset, int initialValue) {
   //
   // Setup active-high output lines. libgpiod API V1
   //
@@ -1232,7 +1232,7 @@ static int check_line(int line, int seq, char *text) {
     return 0;
   }
 
-  for (int i = 0; i < num_input_lines; i++) {
+  for (int i = 0; i < num_gpio_input; i++) {
     if (gpio_in[i] == line) {
       t_print("WARNING: GPIO input line %d (%s.%d) already in use\n", line, text, seq);
       return 0;
@@ -1240,7 +1240,11 @@ static int check_line(int line, int seq, char *text) {
   }
 
   for (int i = 0; i < NUM_OUTPUT_LINES; i++) {
-    if (gpio_out[i] == line) {
+    //
+    // For output lines seq is the slot number, and we expect to see our GPIO line
+    // in our slot
+    //
+    if (gpio_out[i] == line && i != seq) {
       t_print("WARNING: GPIO output line %d (%s.%d) already in use\n", line, text, seq);
       return 0;
     }
@@ -1338,7 +1342,7 @@ void gpio_init() {
   }
 
   t_print("%s: GPIO device=%s\n", __func__, gpio_device);
-  num_input_lines = 0;
+  num_gpio_input = 0;
 
   for (int i = 0; i < MAX_LINES; i++) {
     LineList[i].action = OffNoAction;
@@ -1357,13 +1361,13 @@ void gpio_init() {
     for (int i = 0; i < MAX_ENCODERS; i++) {
       if (encoders[i].bottom.enabled) {
         if (check_line(encoders[i].bottom.address_a, i, "EncoderBotA")) {
-          gpio_in[num_input_lines] =  encoders[i].bottom.address_a;
-          gpio_in_pullup[num_input_lines] = encoders[i].bottom.pullup;
+          gpio_in[num_gpio_input] =  encoders[i].bottom.address_a;
+          gpio_in_pullup[num_gpio_input] = encoders[i].bottom.pullup;
 
           if (encoders[i].bottom.function == VFO) {
-            gpio_in_debounce[num_input_lines++] = 0;
+            gpio_in_debounce[num_gpio_input++] = 0;
           } else {
-            gpio_in_debounce[num_input_lines++] = 2000;
+            gpio_in_debounce[num_gpio_input++] = 2000;
           }
 
           LineList[encoders[i].bottom.address_a].action = OffBotEncA;
@@ -1371,13 +1375,13 @@ void gpio_init() {
         }
 
         if (check_line(encoders[i].bottom.address_b, i, "EncoderBotB")) {
-          gpio_in[num_input_lines] =  encoders[i].bottom.address_b;
-          gpio_in_pullup[num_input_lines] = encoders[i].bottom.pullup;
+          gpio_in[num_gpio_input] =  encoders[i].bottom.address_b;
+          gpio_in_pullup[num_gpio_input] = encoders[i].bottom.pullup;
 
           if (encoders[i].bottom.function == VFO) {
-            gpio_in_debounce[num_input_lines++] = 0;
+            gpio_in_debounce[num_gpio_input++] = 0;
           } else {
-            gpio_in_debounce[num_input_lines++] = 2000;
+            gpio_in_debounce[num_gpio_input++] = 2000;
           }
 
           LineList[encoders[i].bottom.address_b].action = OffBotEncB;
@@ -1387,13 +1391,13 @@ void gpio_init() {
 
       if (encoders[i].top.enabled) {
         if (check_line(encoders[i].top.address_a, i, "EncoderTopA")) {
-          gpio_in[num_input_lines] =  encoders[i].top.address_a;
-          gpio_in_pullup[num_input_lines] = encoders[i].top.pullup;
+          gpio_in[num_gpio_input] =  encoders[i].top.address_a;
+          gpio_in_pullup[num_gpio_input] = encoders[i].top.pullup;
 
           if (encoders[i].top.function == VFO) {
-            gpio_in_debounce[num_input_lines++] = 0;
+            gpio_in_debounce[num_gpio_input++] = 0;
           } else {
-            gpio_in_debounce[num_input_lines++] = 2000;
+            gpio_in_debounce[num_gpio_input++] = 2000;
           }
 
           LineList[encoders[i].top.address_a].action = OffTopEncA;
@@ -1401,13 +1405,13 @@ void gpio_init() {
         }
 
         if (check_line(encoders[i].top.address_b, i, "EncoderTopB")) {
-          gpio_in[num_input_lines] =  encoders[i].top.address_b;
-          gpio_in_pullup[num_input_lines] = encoders[i].top.pullup;
+          gpio_in[num_gpio_input] =  encoders[i].top.address_b;
+          gpio_in_pullup[num_gpio_input] = encoders[i].top.pullup;
 
           if (encoders[i].top.function == VFO) {
-            gpio_in_debounce[num_input_lines++] = 0;
+            gpio_in_debounce[num_gpio_input++] = 0;
           } else {
-            gpio_in_debounce[num_input_lines++] = 2000;
+            gpio_in_debounce[num_gpio_input++] = 2000;
           }
 
           LineList[encoders[i].top.address_b].action = OffTopEncB;
@@ -1417,9 +1421,9 @@ void gpio_init() {
 
       if (encoders[i].button.enabled) {
         if (check_line(encoders[i].button.address, i, "EncoderBtn")) {
-          gpio_in[num_input_lines] =  encoders[i].button.address;
-          gpio_in_pullup[num_input_lines] = encoders[i].button.pullup;
-          gpio_in_debounce[num_input_lines++] = 25000;
+          gpio_in[num_gpio_input] =  encoders[i].button.address;
+          gpio_in_pullup[num_gpio_input] = encoders[i].button.pullup;
+          gpio_in_debounce[num_gpio_input++] = 25000;
           LineList[encoders[i].button.address].action = OffEncSwitch;
           LineList[encoders[i].button.address].num = i;
         }
@@ -1433,9 +1437,9 @@ void gpio_init() {
     for (int i = 0; i < MAX_SWITCHES; i++) {
       if (switches[i].enabled) {
         if (check_line(switches[i].address, i, "Switch")) {
-          gpio_in[num_input_lines] =  switches[i].address;
-          gpio_in_pullup[num_input_lines] = switches[i].pullup;
-          gpio_in_debounce[num_input_lines++] = 25000;
+          gpio_in[num_gpio_input] =  switches[i].address;
+          gpio_in_pullup[num_gpio_input] = switches[i].pullup;
+          gpio_in_debounce[num_gpio_input++] = 25000;
           LineList[switches[i].address].action = OffSwitch;
           LineList[switches[i].address].num = i;
         }
@@ -1450,9 +1454,9 @@ void gpio_init() {
     i2c_init();
 
     if (check_line(I2C_INTERRUPT, 0, "I2CIRQ")) {
-      gpio_in[num_input_lines] =  I2C_INTERRUPT;
-      gpio_in_pullup[num_input_lines] = TRUE;
-      gpio_in_debounce[num_input_lines++] = 1000;
+      gpio_in[num_gpio_input] =  I2C_INTERRUPT;
+      gpio_in_pullup[num_gpio_input] = TRUE;
+      gpio_in_debounce[num_gpio_input++] = 1000;
       LineList[I2C_INTERRUPT].action = OffI2CIRQ;
       LineList[I2C_INTERRUPT].num = 0;
     }
@@ -1465,9 +1469,9 @@ void gpio_init() {
 
   if (CWL_LINE >= 0) {
     if (check_line(CWL_LINE, 0, "CWL")) {
-      gpio_in[num_input_lines] =  CWL_LINE;
-      gpio_in_pullup[num_input_lines] = TRUE;
-      gpio_in_debounce[num_input_lines++] = 10000;
+      gpio_in[num_gpio_input] =  CWL_LINE;
+      gpio_in_pullup[num_gpio_input] = TRUE;
+      gpio_in_debounce[num_gpio_input++] = 10000;
       LineList[CWL_LINE].action = OffSpecial;
       LineList[CWL_LINE].num = CW_LEFT;
     }
@@ -1475,9 +1479,9 @@ void gpio_init() {
 
   if (CWR_LINE >= 0) {
     if (check_line(CWR_LINE, 0, "CWR")) {
-      gpio_in[num_input_lines] =  CWR_LINE;
-      gpio_in_pullup[num_input_lines] = TRUE;
-      gpio_in_debounce[num_input_lines++] = 10000;
+      gpio_in[num_gpio_input] =  CWR_LINE;
+      gpio_in_pullup[num_gpio_input] = TRUE;
+      gpio_in_debounce[num_gpio_input++] = 10000;
       LineList[CWR_LINE].action = OffSpecial;
       LineList[CWR_LINE].num = CW_RIGHT;
     }
@@ -1485,9 +1489,9 @@ void gpio_init() {
 
   if (CWKEY_LINE >= 0) {
     if (check_line(CWKEY_LINE, 0, "CWKEY")) {
-      gpio_in[num_input_lines] =  CWKEY_LINE;
-      gpio_in_pullup[num_input_lines] = TRUE;
-      gpio_in_debounce[num_input_lines++] = 10000;
+      gpio_in[num_gpio_input] =  CWKEY_LINE;
+      gpio_in_pullup[num_gpio_input] = TRUE;
+      gpio_in_debounce[num_gpio_input++] = 10000;
       LineList[CWKEY_LINE].action = OffSpecial;
       LineList[CWKEY_LINE].num = CW_KEYER_KEYDOWN;
     }
@@ -1495,9 +1499,9 @@ void gpio_init() {
 
   if (PTTIN_LINE >= 0) {
     if (check_line(PTTIN_LINE, 0, "PTTIN")) {
-      gpio_in[num_input_lines] =  PTTIN_LINE;
-      gpio_in_pullup[num_input_lines] = TRUE;
-      gpio_in_debounce[num_input_lines++] = 50000;
+      gpio_in[num_gpio_input] =  PTTIN_LINE;
+      gpio_in_pullup[num_gpio_input] = TRUE;
+      gpio_in_debounce[num_gpio_input++] = 50000;
       LineList[PTTIN_LINE].action = OffSpecial;
       LineList[PTTIN_LINE].num = CW_KEYER_PTT;
     }
@@ -1507,18 +1511,18 @@ void gpio_init() {
   // Configure output lines.
   //
   for (int i = 0; i < NUM_OUTPUT_LINES; i++) {
-    if (check_line(gpio_out[i], 0, "PTTOUT")) {
-#ifdef GPIOV1
-      output_line[i] = setup_output_line(gpio_out[i], 1);
-#endif
-#ifdef GPIOV2
+    if (check_line(gpio_out[i], i, "OUT")) {
       output_request[i] = setup_output_request(gpio_out[i], 1);
-#endif
+      if (output_request[i]) {
+        t_print("GPIO output line %d requested for OUT.%d\n", gpio_out[i], i);
+      } else {
+        t_print("GPIO output line %d for OUT.%d: request failed!\n", gpio_out[i], i);
+      }
     }
   }
 
-  if (num_input_lines > 0) {
-    setup_input_lines();
+  if (num_gpio_input > 0) {
+    setup_input_requests();
     monitor_thread_id = g_thread_new( "gpiod monitor", monitor_thread, NULL);
 
     if (controller != NO_CONTROLLER) {
@@ -1540,9 +1544,9 @@ void gpio_close() {
 
   if (input_request) { gpiod_line_request_release(input_request); }
 
-  if (pttout_request) { gpiod_line_request_release(pttout_request); }
-
-  if (cwout_request) { gpiod_line_request_release(cwout_request); }
+  for (int i = 0; i < NUM_OUTPUT_LINES; i++) {
+    if (output_request[i]) { gpiod_line_request_release(output_request[i]); }
+  }
 
 #endif
 

@@ -1648,6 +1648,10 @@ void radio_start_radio(void) {
   radio_create_visual();
   radio_reconfigure_screen();
 
+#ifdef GPIO
+  gpio_set_orion_options();
+#endif
+
   if (tci_enable) {
     launch_tci();
   }
@@ -3401,6 +3405,7 @@ static void radio_restore_state(void) {
   GetPropI0("mic_bias_enabled",                              orion_mic_bias_enabled);
   GetPropI0("mic_ptt_tip_bias_ring",                         orion_mic_ptt_tip);
   GetPropI0("mic_input_xlr",                                 g2_mic_input_xlr);
+  GetPropI0("mic_boost",                                     mic_boost);
 
   for (int i = 0; i < 6; i++) {
     GetPropI1("display_vfobar[%d]", i,                       display_vfobar[i]);
@@ -3430,7 +3435,6 @@ static void radio_restore_state(void) {
     GetPropI0("filter_board",                                filter_board);
     GetPropI0("pa_enabled",                                  pa_enabled);
     GetPropI0("pa_power",                                    pa_power);
-    GetPropI0("mic_boost",                                   mic_boost);
     GetPropI0("mic_linein",                                  mic_linein);
     GetPropF0("linein_gain",                                 linein_gain);
     GetPropI0("cw_keyer_sidetone_frequency",                 cw_keyer_sidetone_frequency);
@@ -3626,6 +3630,7 @@ void radio_save_state(void) {
   SetPropI0("mic_bias_enabled",                              orion_mic_bias_enabled);
   SetPropI0("mic_ptt_tip_bias_ring",                         orion_mic_ptt_tip);
   SetPropI0("mic_input_xlr",                                 g2_mic_input_xlr);
+  SetPropI0("mic_boost",                                     mic_boost);
 
   for (int i = 0; i < 6; i++) {
     SetPropI1("display_vfobar[%d]", i,                       display_vfobar[i]);
@@ -3655,7 +3660,6 @@ void radio_save_state(void) {
     SetPropI0("filter_board",                                filter_board);
     SetPropI0("pa_enabled",                                  pa_enabled);
     SetPropI0("pa_power",                                    pa_power);
-    SetPropI0("mic_boost",                                   mic_boost);
     SetPropI0("mic_linein",                                  mic_linein);
     SetPropF0("linein_gain",                                 linein_gain);
     SetPropI0("cw_keyer_sidetone_frequency",                 cw_keyer_sidetone_frequency);
@@ -3747,6 +3751,10 @@ int radio_client_start(gpointer data) {
   send_screen(cl_sock_tcp, rx_stack_horizontal, display_width[display_size]);
   radio_create_visual();
   radio_reconfigure_screen();
+
+#ifdef GPIO
+  gpio_set_orion_options();
+#endif
 
   if (tci_enable) {
     launch_tci();
