@@ -164,26 +164,26 @@ static void localtoggle_cb(GtkWidget *widget, gpointer data) {
   // microphone options etc.
   //
   if (radio_is_remote) {
-#ifdef GPIO
-    gpio_set_orion_options();
-#endif
   } else {
     schedule_general();
     schedule_transmit_specific();
     schedule_high_priority();
   }
+#ifdef GPIO
+  gpio_set_orion_options();
+#endif
 }
 
 static void orion_mic_ptt_cb(GtkWidget *widget, gpointer data) {
   orion_mic_ptt_tip = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
 
   if (radio_is_remote) {
-#ifdef GPIO
-    gpio_set_orion_options();
-#endif
   } else {
     schedule_transmit_specific();
   }
+#ifdef GPIO
+  gpio_set_orion_options();
+#endif
 }
 
 static void toggle_cb(GtkWidget *widget, gpointer data) {
@@ -318,12 +318,12 @@ static void orion_mic_input_cb(GtkWidget *widget, gpointer data) {
   }
 
   if (radio_is_remote) {
-#ifdef GPIO
-    gpio_set_orion_options();
-#endif
   } else {
     schedule_transmit_specific();
   }
+#ifdef GPIO
+  gpio_set_orion_options();
+#endif
 }
 
 static void sample_rate_cb(GtkToggleButton *widget, gpointer data) {

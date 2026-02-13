@@ -148,11 +148,11 @@ static void gpio_set_output(int type, int state) {
 }
 
 void gpio_set_ptt(int state) {
-  gpio_set_output(OUT_PTT, state);
+  gpio_set_output(OUT_PTT, NOT(state));
 }
 
 void gpio_set_cw(int state) {
-  gpio_set_output(OUT_CW, state);
+  gpio_set_output(OUT_CW, NOT(state));
 }
 
 void gpio_set_orion_options() {
@@ -1508,7 +1508,8 @@ void gpio_init() {
   }
 
   //
-  // Configure output lines.
+  // Configure output lines. Since all our lines are active-low,
+  // but we use the active-high model, so init with '1'
   //
   for (int i = 0; i < NUM_OUTPUT_LINES; i++) {
     if (check_line(gpio_out[i], i, "OUT")) {
