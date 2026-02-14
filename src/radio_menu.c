@@ -174,18 +174,6 @@ static void localtoggle_cb(GtkWidget *widget, gpointer data) {
 #endif
 }
 
-static void orion_mic_ptt_cb(GtkWidget *widget, gpointer data) {
-  orion_mic_ptt_tip = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
-
-  if (radio_is_remote) {
-  } else {
-    schedule_transmit_specific();
-  }
-#ifdef GPIO
-  gpio_set_orion_options();
-#endif
-}
-
 static void toggle_cb(GtkWidget *widget, gpointer data) {
   int *value = (int *) data;
   *value = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
@@ -822,7 +810,7 @@ void radio_menu(GtkWidget *parent) {
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(ptt_combo), NULL, "Tip");
     gtk_combo_box_set_active(GTK_COMBO_BOX(ptt_combo), SET(orion_mic_ptt_tip));
     my_combo_attach(GTK_GRID(grid), ptt_combo, 4, row, 1, 1);
-    g_signal_connect(ptt_combo, "changed", G_CALLBACK(orion_mic_ptt_cb), NULL);
+    g_signal_connect(ptt_combo, "changed", G_CALLBACK(localtoggle_cb), &orion_mic_ptt_tip);
     row++;
 
     if (device == NEW_DEVICE_SATURN) {

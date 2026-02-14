@@ -156,9 +156,14 @@ void gpio_set_cw(int state) {
 }
 
 void gpio_set_orion_options() {
+  //
+  // our outputs are active low.
+  // The OUT_MIC_PTT output is interpreted as "PTT disabled",
+  // we have to invert.
+  //
   gpio_set_output(OUT_MIC_SEL, NOT(orion_mic_ptt_tip));
   gpio_set_output(OUT_MIC_BIAS, NOT(orion_mic_bias_enabled));
-  gpio_set_output(OUT_MIC_PTT, NOT(orion_mic_ptt_enabled));
+  gpio_set_output(OUT_MIC_PTT, SET(orion_mic_ptt_enabled));
   gpio_set_output(OUT_MIC_BOOST, NOT(mic_boost));
 }
 

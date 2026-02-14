@@ -183,7 +183,7 @@ int mic_linein = 0;        // Use microphone rather than linein in radio's audio
 double linein_gain = 0.0;  // -34.0 ... +12.5 in steps of 1.5 dB
 int mic_boost = 0;
 int orion_mic_bias_enabled = 0;
-int orion_mic_ptt_enabled = 0;
+int orion_mic_ptt_enabled = 1;
 int orion_mic_ptt_tip = 0;
 int g2_mic_input_xlr = 0;
 
