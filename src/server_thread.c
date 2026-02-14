@@ -1999,16 +1999,16 @@ static int server_command(gpointer data) {
 
   case CMD_RADIOMENU: {
     const RADIOMENU_DATA *command = (RADIOMENU_DATA *)data;
-    mic_ptt_tip = command->mic_ptt_tip;
+    orion_mic_ptt_tip = command->mic_ptt_tip;
     sat_mode = command->sat_mode;
-    mic_input_xlr = command->mic_input_xlr;
+    g2_mic_input_xlr = command->mic_input_xlr;
     atlas_clock_source_10mhz = command->atlas_clock_source_10mhz;
     atlas_clock_source_128mhz = command->atlas_clock_source_128mhz;
     atlas_mic_source = command->atlas_mic_source;
     atlas_penelope = command->atlas_penelope;
     atlas_janus = command->atlas_janus;
-    mic_ptt_enabled = command->mic_ptt_enabled;
-    mic_bias_enabled = command->mic_bias_enabled;
+    orion_mic_ptt_enabled = command->mic_ptt_enabled;
+    orion_mic_bias_enabled = command->mic_bias_enabled;
     pa_enabled = command->pa_enabled;
     mute_spkr_amp = command->mute_spkr_amp;
     mute_spkr_xmit = command->mute_spkr_xmit;

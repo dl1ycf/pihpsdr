@@ -857,10 +857,10 @@ static gpointer client_tcp_thread(gpointer arg) {
       pa_enabled = data.pa_enabled;
       mic_boost = data.mic_boost;
       mic_linein = data.mic_linein;
-      mic_ptt_enabled = data.mic_ptt_enabled;
-      mic_bias_enabled = data.mic_bias_enabled;
-      mic_ptt_tip = data.mic_ptt_tip;
-      mic_input_xlr = data.mic_input_xlr;
+      orion_mic_ptt_enabled = data.mic_ptt_enabled;
+      orion_mic_bias_enabled = data.mic_bias_enabled;
+      orion_mic_ptt_tip = data.mic_ptt_tip;
+      g2_mic_input_xlr = data.mic_input_xlr;
       OCtune = data.OCtune;
       mute_rx_while_transmitting = data.mute_rx_while_transmitting;
       mute_spkr_amp = data.mute_spkr_amp;

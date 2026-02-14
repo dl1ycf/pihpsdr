@@ -523,6 +523,15 @@ static void* keyer_thread(void *arg) {
         tx_queue_cw_event (1, 0);            // immediate key-down
         tx_queue_cw_event (0, dot_samples);  // wait dot length, then key-up
         tx_queue_cw_event (0, dot_samples);  // wait dot length, then key-up
+#ifdef GPIO
+        //
+        // Wait until the end of the dot, then de-activate CW GPIO line
+        // This "busy wait" is over long before the clock_nanosleep()
+        // at the end of the loop is due.
+        //
+	usleep((1000L * dot_samples) / 48);
+        gpio_set_cw(0);
+#endif
         //
         // wait for end of inter-element pause
         //
@@ -582,6 +591,15 @@ static void* keyer_thread(void *arg) {
         tx_queue_cw_event (1, 0);              // immediate key-down
         tx_queue_cw_event (0, dash_samples);   // wait dash length, then key-up
         tx_queue_cw_event (0, dot_samples);    // wait dash length, then key-up
+#ifdef GPIO
+        //
+        // Wait until the end of the dot, then de-activate CW GPIO line
+        // This "busy wait" is over long before the clock_nanosleep()
+        // at the end of the loop is due.
+        //
+	usleep((1000L * dash_samples) / 48);
+        gpio_set_cw(0);
+#endif
         loop_delay.tv_nsec += (dash_samples + dot_samples) * 20833;
         key_state = AFTERDASH;
         break;
