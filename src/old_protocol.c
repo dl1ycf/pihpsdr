@@ -1033,11 +1033,7 @@ static long long channel_freq(int chan) {
     freq = vfo[vfonum].frequency - vfo[vfonum].lo;
   }
 
-  //
-  // Apply *relative* frequency calibration
-  //
-  freq = (freq * (10000000LL + frequency_calibration)) / 10000000LL;
-  return freq;
+  return calibrated_frequency(freq);
 }
 
 static int how_many_receivers(void) {
@@ -2210,13 +2206,24 @@ static void ozy_send_buffer(unsigned char *buffer) {
       if (device == DEVICE_HERMES_LITE2) {
         // do not set any Apollo/Alex bits (ADDR=0x09 bits 0:23)
         // ADDR=0x09 bit 19 follows "PA enable" state
-        // ADDR=0x09 bit 20 follows "TUNE" state
-        // ADDR=0x09 bit 18 always cleared (external tuner enabled)
+        // ADDR=0x09 bit 20 follows "TUNE" state if the HL2 AH4 protocol is used
+        // ADDR=0x09 bit 18 is set if PA disabled (TR relay always in RX position)
         buffer[C2] = 0x00;
         buffer[C3] = 0x00;
         buffer[C4] = 0x00;
 
-        if (pa_enabled && !txband->disablePA) { buffer[C2] |= 0x08; }
+        if (pa_enabled && !txband->disablePA) {
+          //
+          // Enable PA
+          //
+          buffer[C2] |= 0x08;
+        } else {
+          //
+          // TR relay in "RX" position *always* since TX signal
+          // is on low-power RF1 output and this allows duplex
+          //
+          buffer[C2] |= 0x04;
+        }
 
         if (transmitter->tune && hl2_ah4_atu) { buffer[C2] |= 0x10; }
       }
@@ -2232,15 +2239,15 @@ static void ozy_send_buffer(unsigned char *buffer) {
         buffer[C1] = adc[0].preamp | (adc[1].preamp << 1);
       }
 
-      if (mic_ptt_enabled == 0) {
+      if (orion_mic_ptt_enabled == 0) {
         buffer[C1] |= 0x40;
       }
 
-      if (mic_bias_enabled) {
+      if (orion_mic_bias_enabled) {
         buffer[C1] |= 0x20;
       }
 
-      if (mic_ptt_tip) {
+      if (orion_mic_ptt_tip) {
         buffer[C1] |= 0x10;
       }
 

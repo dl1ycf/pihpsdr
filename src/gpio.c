@@ -64,8 +64,6 @@
 // with "ifdef GPIOV1" and V2-specific code with "ifdef GPIOV2".
 // "ifdef GPIO" is a synonym for "if defined(GPIOV1) || defined(GPIOV2)"
 //
-// As of now, the code is not yet instrumented to work with GPIOV2
-//
 ///////////////////////////////////////////////////////////////////////////
 //
 // for controllers which have spare GPIO lines,
