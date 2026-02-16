@@ -29,6 +29,7 @@ enum _controller_enum {
   CONTROLLER1,
   CONTROLLER2_V1,
   CONTROLLER2_V2,
+  CONTROLLER3,
   G2V1_PANEL
 };
 

@@ -855,12 +855,8 @@ static gpointer client_tcp_thread(gpointer arg) {
       anan10E = data.anan10E;
       tx_out_of_band_allowed = data.tx_out_of_band_allowed;
       pa_enabled = data.pa_enabled;
-      mic_boost = data.mic_boost;
-      mic_linein = data.mic_linein;
       OCtune = data.OCtune;
       mute_rx_while_transmitting = data.mute_rx_while_transmitting;
-      mute_spkr_amp = data.mute_spkr_amp;
-      mute_spkr_xmit = data.mute_spkr_xmit;
       split = data.split;
       sat_mode = data.sat_mode;
       duplex = data.duplex;

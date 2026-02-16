@@ -2006,8 +2006,6 @@ static int server_command(gpointer data) {
     atlas_penelope = command->atlas_penelope;
     atlas_janus = command->atlas_janus;
     pa_enabled = command->pa_enabled;
-    mute_spkr_amp = command->mute_spkr_amp;
-    mute_spkr_xmit = command->mute_spkr_xmit;
     hl2_audio_codec = command->hl2_audio_codec;
     soapy_iqswap = command->soapy_iqswap;
     enable_tx_inhibit = command->enable_tx_inhibit;
@@ -2133,8 +2131,6 @@ static int server_command(gpointer data) {
       transmitter->tune_use_drive = command->tune_use_drive;
       transmitter->swr_protection = command->swr_protection;
       transmitter->swr_alarm = from_double(command->swr_alarm);
-      mic_boost = command->mic_boost;
-      mic_linein = command->mic_linein;
       linein_gain = from_double(command->linein_gain);
       schedule_transmit_specific();
       send_tx_data(remoteclient.sock_tcp);

@@ -3366,6 +3366,11 @@ static void radio_restore_state(void) {
   // For consistency, all variables should get default values HERE,
   // but this is too much for the moment.
   //
+  // Variables local to the client in client/server operation:
+  // These variables are NOT initialised from the server, and are
+  // NOT sent to the server if they change. Their values can be
+  // different on the client and the server and apply locally.
+  //
   GetPropI0("WindowPositionX",                               window_x_pos);
   GetPropI0("WindowPositionY",                               window_y_pos);
   GetPropI0("slider_rows",                                   slider_rows);
@@ -3406,12 +3411,19 @@ static void radio_restore_state(void) {
   GetPropI0("mic_ptt_tip_bias_ring",                         orion_mic_ptt_tip);
   GetPropI0("mic_input_xlr",                                 g2_mic_input_xlr);
   GetPropI0("mic_boost",                                     mic_boost);
+  GetPropI0("mic_linein",                                    mic_linein);
+  GetPropI0("mute_spkr_amp",                                 mute_spkr_amp);
+  GetPropI0("mute_spkr_xmit",                                mute_spkr_xmit);
 
   for (int i = 0; i < 6; i++) {
     GetPropI1("display_vfobar[%d]", i,                       display_vfobar[i]);
   }
 
   if (!radio_is_remote) {
+    //
+    // These variables are sent from the server to the client upon connection,
+    // and are sent back to the server if they have been changed
+    //
     GetPropI0("enable_auto_tune",                            enable_auto_tune);
     GetPropI0("enable_tx_inhibit",                           enable_tx_inhibit);
     GetPropI0("radio_sample_rate",                           soapy_radio_sample_rate);
@@ -3435,7 +3447,6 @@ static void radio_restore_state(void) {
     GetPropI0("filter_board",                                filter_board);
     GetPropI0("pa_enabled",                                  pa_enabled);
     GetPropI0("pa_power",                                    pa_power);
-    GetPropI0("mic_linein",                                  mic_linein);
     GetPropF0("linein_gain",                                 linein_gain);
     GetPropI0("cw_keyer_sidetone_frequency",                 cw_keyer_sidetone_frequency);
     GetPropI0("OCtune",                                      OCtune);
@@ -3451,8 +3462,6 @@ static void radio_restore_state(void) {
     GetPropI0("sat_mode",                                    sat_mode);
     GetPropI0("radio.display_warnings",                      display_warnings);
     GetPropI0("radio.display_pacurr",                        display_pacurr);
-    GetPropI0("mute_spkr_amp",                               mute_spkr_amp);
-    GetPropI0("mute_spkr_xmit",                              mute_spkr_xmit);
 #ifdef SATURN
     GetPropI0("saturn_server_en",                            saturn_server_en);
 #endif
@@ -3631,6 +3640,9 @@ void radio_save_state(void) {
   SetPropI0("mic_ptt_tip_bias_ring",                         orion_mic_ptt_tip);
   SetPropI0("mic_input_xlr",                                 g2_mic_input_xlr);
   SetPropI0("mic_boost",                                     mic_boost);
+  SetPropI0("mic_linein",                                    mic_linein);
+  SetPropI0("mute_spkr_amp",                                 mute_spkr_amp);
+  SetPropI0("mute_spkr_xmit",                                mute_spkr_xmit);
 
   for (int i = 0; i < 6; i++) {
     SetPropI1("display_vfobar[%d]", i,                       display_vfobar[i]);
@@ -3660,7 +3672,6 @@ void radio_save_state(void) {
     SetPropI0("filter_board",                                filter_board);
     SetPropI0("pa_enabled",                                  pa_enabled);
     SetPropI0("pa_power",                                    pa_power);
-    SetPropI0("mic_linein",                                  mic_linein);
     SetPropF0("linein_gain",                                 linein_gain);
     SetPropI0("cw_keyer_sidetone_frequency",                 cw_keyer_sidetone_frequency);
     SetPropI0("OCtune",                                      OCtune);
@@ -3676,8 +3687,6 @@ void radio_save_state(void) {
     SetPropI0("sat_mode",                                    sat_mode);
     SetPropI0("radio.display_warnings",                      display_warnings);
     SetPropI0("radio.display_pacurr",                        display_pacurr);
-    SetPropI0("mute_spkr_amp",                               mute_spkr_amp);
-    SetPropI0("mute_spkr_xmit",                              mute_spkr_xmit);
 #ifdef SATURN
     SetPropI0("saturn_server_en",                            saturn_server_en);
 #endif

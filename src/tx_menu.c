@@ -498,14 +498,12 @@ static void mic_in_cb(GtkWidget *widget, gpointer data) {
     break;
   }
 
-  if (radio_is_remote) {
-    send_txmenu(cl_sock_tcp);
-  } else {
-#ifdef GPIO
-    gpio_set_orion_options();
-#endif
+  if (!radio_is_remote) {
     schedule_transmit_specific();
   }
+#ifdef GPIO
+  gpio_set_orion_options();
+#endif
 }
 
 static void ctcss_frequency_cb(GtkWidget *widget, gpointer data) {

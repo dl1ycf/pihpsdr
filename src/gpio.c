@@ -103,6 +103,7 @@ enum _output_choice {
  OUT_MIC_BIAS,          // output for orion_mic_bias_enabled
  OUT_MIC_PTT,           // output for orion_mic_ptt_enabled
  OUT_MIC_BOOST,         // output for mic_boost
+ OUT_SPRKR_MUTE,        // output for mute speaker amp
  NUM_OUTPUT_LINES
 };
 
@@ -149,6 +150,18 @@ static void gpio_set_output(int type, int state) {
 
 void gpio_set_ptt(int state) {
   gpio_set_output(OUT_PTT, NOT(state));
+  //
+  // If TX and MuteSpeakerXmit ist set, deactivate AF amp
+  //
+  if (state && mute_spkr_xmit) {
+    gpio_set_output(OUT_SPKRAMP, NOT(state));
+  }
+  //
+  // If RX and MuteSpeakerAmp is NOTSET, activate AF amp
+  //
+  if (!state && !mute_spkr_amp) {
+    gpio_set_output(OUT_SPKRAMP, NOT(state));
+  }
 }
 
 void gpio_set_cw(int state) {
@@ -165,6 +178,11 @@ void gpio_set_orion_options() {
   gpio_set_output(OUT_MIC_BIAS, NOT(orion_mic_bias_enabled));
   gpio_set_output(OUT_MIC_PTT, SET(orion_mic_ptt_enabled));
   gpio_set_output(OUT_MIC_BOOST, NOT(mic_boost));
+  if (isTransmitting()) {
+    gpio_set_output(OUT_SPKRAMP, NOT(mute_spkr_xmit));
+  } else {
+    gpio_set_output(OUT_SPKRAMP, NOT(mute_spkr_amp));
+  }
 }
 
 #define DIR_NONE 0x0
@@ -696,6 +714,7 @@ void gpio_default_encoder_actions(int ctrlr) {
 
   switch (ctrlr) {
   case NO_CONTROLLER:
+  case CONTROLLER3:
   default:
     default_encoders = NULL;
     break;
@@ -735,6 +754,7 @@ void gpio_default_switch_actions(int ctrlr) {
   switch (ctrlr) {
   case NO_CONTROLLER:
   case CONTROLLER1:
+  case CONTROLLER3:
   default:
     default_switches = NULL;
     break;
@@ -832,8 +852,26 @@ void gpio_set_defaults(int ctrlr) {
     memcpy(switches, switches_g2v1_panel, sizeof(switches));
     break;
 
+  case CONTROLLER3:
+    //
+    // This uses lots of GPIO lines but no encoders/switches,
+    // which are on an ANDROMEDA-type  panel
+    //
+    CWL_LINE                = 16;
+    CWR_LINE                = 17;
+    CWKEY_LINE              = 18;
+    PTTIN_LINE              = 19;
+    gpio_out[OUT_MIC_SEL]   = 21;
+    gpio_out[OUT_MIC_BIAS]  = 22;
+    gpio_out[OUT_MIC_BOOST] = 23;
+    gpio_out[OUT_MIC_PTT]   = 24;
+    gpio_out[OUT_SPKRAMP]   = 25;
+    //
+    memcpy(encoders, encoders_no_controller, sizeof(encoders));
+    memcpy(switches, switches_no_controller, sizeof(switches));
+    break;
+
   case NO_CONTROLLER:
-  default:
     //
     // GPIO lines that are not used elsewhere: 5,  6, 12, 16, (17)
     //                                        22, 23, 24, 25, 27
@@ -847,10 +885,13 @@ void gpio_set_defaults(int ctrlr) {
     PTTIN_LINE = 16;
     gpio_out[OUT_PTT] = 22;
     gpio_out[OUT_CW] = 23;
-    gpio_out[OUT_MIC_SEL] = 24;
-    gpio_out[OUT_MIC_BIAS] = 25;
-    gpio_out[OUT_MIC_PTT] = 27;
-    gpio_out[OUT_MIC_BOOST] = 17;
+    memcpy(encoders, encoders_no_controller, sizeof(encoders));
+    memcpy(switches, switches_no_controller, sizeof(switches));
+    break;
+
+  default:
+    // We should not arrive here, but if we do, do not activate
+    // any GPIO lines
     memcpy(encoders, encoders_no_controller, sizeof(encoders));
     memcpy(switches, switches_no_controller, sizeof(switches));
     break;
@@ -1513,7 +1554,7 @@ void gpio_init() {
   }
 
   //
-  // Configure output lines. Since all our lines are active-low,
+  // Configure output lines. All our lines are active-low,
   // but we use the active-high model, so init with '1'
   //
   for (int i = 0; i < NUM_OUTPUT_LINES; i++) {
@@ -1531,9 +1572,10 @@ void gpio_init() {
     setup_input_requests();
     monitor_thread_id = g_thread_new( "gpiod monitor", monitor_thread, NULL);
 
-    if (controller != NO_CONTROLLER) {
-      rotary_encoder_thread_id = g_thread_new( "encoders", rotary_encoder_thread, NULL);
-    }
+    if (controller == CONTROLLER1 || controller == CONTROLLER2_V1 || controller == CONTROLLER2_V2
+       || controller == G2V1_PANEL) {
+        rotary_encoder_thread_id = g_thread_new( "encoders", rotary_encoder_thread, NULL);
+      }
   }
 
 #ifdef GPIOV2

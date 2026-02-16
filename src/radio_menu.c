@@ -282,13 +282,14 @@ static void speaker_cb(GtkWidget *widget, gpointer data) {
     break;
   }
 
-  if (radio_is_remote) {
-    send_radiomenu(cl_sock_tcp);
-  } else {
+  if (!radio_is_remote) {
     schedule_general();
     schedule_transmit_specific();
     schedule_high_priority();
   }
+#ifdef GPIO
+  gpio_set_orion_options();
+#endif
 }
 
 static void orion_mic_input_cb(GtkWidget *widget, gpointer data) {

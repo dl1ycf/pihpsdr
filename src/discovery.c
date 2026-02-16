@@ -946,11 +946,22 @@ static void discovery(void) {
     gpio_set_defaults(controller);
   } else {
     gpio_restore_state();
+
+    if (controller > CONTROLLER3) {
+      //
+      // This should not happen: G2V1_PANEL in the props file but
+      // not running on a G2
+      //
+      controller = NO_CONTROLLER;
+      gpio_set_defaults(controller);
+    }
+
     GtkWidget *gpio = gtk_combo_box_text_new();
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "No Controller");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller1");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller2 V1");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller2 V2");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller3");
     my_combo_attach(GTK_GRID(grid), gpio, 0, row, 1, 1);
     gtk_combo_box_set_active(GTK_COMBO_BOX(gpio), controller);
     g_signal_connect(gpio, "changed", G_CALLBACK(gpio_changed_cb), NULL);
