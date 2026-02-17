@@ -164,7 +164,6 @@ static void localtoggle_cb(GtkWidget *widget, gpointer data) {
   // From the client, these changes are *not* sent to the server.
   //
   // Settings that use localtoggle are
-  // - Orion PTT-to-tip vs. Mic-to-tip selection (orion_mic_ptt_tip)
   // - Orion Mic PTT enable (orion_mic_ptt_enabled)
   // - Orion Mic Bias enable (orion_mic_bias_enabled)
   //
@@ -268,6 +267,22 @@ static void filter_cb(GtkWidget *widget, gpointer data) {
   }
 
   radio_load_filters(fb);
+}
+
+static void orion_mic_ptt_cb(GtkWidget *widget, gpointer data) {
+  orion_mic_ptt_tip = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
+  //
+  // On the client side, changes are not sent to the server
+  // If running a Controller3, the "mute speaker" status
+  // is indicated on a GPIO output line (both if running
+  // local or client)
+  //
+  if (!radio_is_remote) {
+    schedule_transmit_specific();
+  }
+#ifdef GPIO
+  gpio_set_orion_options();
+#endif
 }
 
 static void speaker_cb(GtkWidget *widget, gpointer data) {
@@ -827,7 +842,7 @@ void radio_menu(GtkWidget *parent) {
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(ptt_combo), NULL, "Tip");
     gtk_combo_box_set_active(GTK_COMBO_BOX(ptt_combo), SET(orion_mic_ptt_tip));
     my_combo_attach(GTK_GRID(grid), ptt_combo, 4, row, 1, 1);
-    g_signal_connect(ptt_combo, "changed", G_CALLBACK(localtoggle_cb), &orion_mic_ptt_tip);
+    g_signal_connect(ptt_combo, "changed", G_CALLBACK(orion_mic_ptt_cb), NULL);
     row++;
 
     if (device == NEW_DEVICE_SATURN) {
