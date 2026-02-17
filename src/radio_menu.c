@@ -160,11 +160,18 @@ static void localtoggle_cb(GtkWidget *widget, gpointer data) {
   int *value = (int *) data;
   *value = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   //
-  // This is for "Orion/G2" changes which are executed locally on a client, e.g.
-  // microphone options etc.
+  // This is for "Orion/G2" changes which are executed locally on a client.
+  // From the client, these changes are *not* sent to the server.
   //
-  if (radio_is_remote) {
-  } else {
+  // Settings that use localtoggle are
+  // - Orion PTT-to-tip vs. Mic-to-tip selection (orion_mic_ptt_tip)
+  // - Orion Mic PTT enable (orion_mic_ptt_enabled)
+  // - Orion Mic Bias enable (orion_mic_bias_enabled)
+  //
+  // If running on a Controller3 (no matter local or remote),
+  // these options are "seen" on the GPIO
+  //
+  if (!radio_is_remote) {
     schedule_general();
     schedule_transmit_specific();
     schedule_high_priority();
@@ -265,7 +272,12 @@ static void filter_cb(GtkWidget *widget, gpointer data) {
 
 static void speaker_cb(GtkWidget *widget, gpointer data) {
   int val = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
-
+//
+// On the client side, changes are not sent to the server
+// If running a Controller3, the "mute speaker" status
+// is indicated on a GPIO output line (both if running
+// local or client)
+//
   switch (val) {
   case 0:
   default:
@@ -294,7 +306,12 @@ static void speaker_cb(GtkWidget *widget, gpointer data) {
 
 static void orion_mic_input_cb(GtkWidget *widget, gpointer data) {
   int val = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
-
+//
+// On the client side, changes are not sent to the server
+// If running a Controller3, the "G2 mic input" status
+// is indicated on a GPIO output line (both if running
+// local or client)
+//
   switch (val) {
   case 0:
   default:
@@ -306,8 +323,7 @@ static void orion_mic_input_cb(GtkWidget *widget, gpointer data) {
     break;
   }
 
-  if (radio_is_remote) {
-  } else {
+  if (!radio_is_remote) {
     schedule_transmit_specific();
   }
 #ifdef GPIO
