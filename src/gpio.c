@@ -103,7 +103,7 @@ enum _output_choice {
  OUT_MIC_BIAS,          // output for orion_mic_bias_enabled
  OUT_MIC_PTT,           // output for orion_mic_ptt_enabled
  OUT_MIC_BOOST,         // output for mic_boost
- OUT_SPRKR_MUTE,        // output for mute speaker amp
+ OUT_SPKR_MUTE,         // output for mute speaker amp
  NUM_OUTPUT_LINES
 };
 
@@ -154,13 +154,13 @@ void gpio_set_ptt(int state) {
   // If TX and MuteSpeakerXmit ist set, deactivate AF amp
   //
   if (state && mute_spkr_xmit) {
-    gpio_set_output(OUT_SPKRAMP, NOT(state));
+    gpio_set_output(OUT_SPKR_MUTE, NOT(state));
   }
   //
   // If RX and MuteSpeakerAmp is NOTSET, activate AF amp
   //
   if (!state && !mute_spkr_amp) {
-    gpio_set_output(OUT_SPKRAMP, NOT(state));
+    gpio_set_output(OUT_SPKR_MUTE, NOT(state));
   }
 }
 
@@ -178,10 +178,10 @@ void gpio_set_orion_options() {
   gpio_set_output(OUT_MIC_BIAS, NOT(orion_mic_bias_enabled));
   gpio_set_output(OUT_MIC_PTT, SET(orion_mic_ptt_enabled));
   gpio_set_output(OUT_MIC_BOOST, NOT(mic_boost));
-  if (isTransmitting()) {
-    gpio_set_output(OUT_SPKRAMP, NOT(mute_spkr_xmit));
+  if (radio_is_transmitting()) {
+    gpio_set_output(OUT_SPKR_MUTE, NOT(mute_spkr_xmit));
   } else {
-    gpio_set_output(OUT_SPKRAMP, NOT(mute_spkr_amp));
+    gpio_set_output(OUT_SPKR_MUTE, NOT(mute_spkr_amp));
   }
 }
 
@@ -865,7 +865,7 @@ void gpio_set_defaults(int ctrlr) {
     gpio_out[OUT_MIC_BIAS]  = 22;
     gpio_out[OUT_MIC_BOOST] = 23;
     gpio_out[OUT_MIC_PTT]   = 24;
-    gpio_out[OUT_SPKRAMP]   = 25;
+    gpio_out[OUT_SPKR_MUTE] = 25;
     //
     memcpy(encoders, encoders_no_controller, sizeof(encoders));
     memcpy(switches, switches_no_controller, sizeof(switches));
