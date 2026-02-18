@@ -2013,8 +2013,13 @@ void rx_set_noise(const RECEIVER *rx) {
   //
   // g) NR3
   //
+  // Note using the "vu3rdd" fixed gain is now the default in wdsp,
+  // we include this call (third line) to prepeare for making
+  // his user-settable.
+  //
   SetRXARNNRPosition(rx->id,            rx->nr_agc);
   SetRXARNNRRun(rx->id,                 (rx->nr == 3));
+  SetRXARNNRUseDefaultGain(rx->id,      1);
   //
   // NR4
   //
