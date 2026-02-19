@@ -859,7 +859,7 @@ void gpio_set_defaults(int ctrlr) {
     //
     CWL_LINE                = 16;
     CWR_LINE                = 17;
-    CWKEY_LINE              = 18;
+    CWKEY_LINE              = 15;
     PTTIN_LINE              = 19;
     gpio_out[OUT_MIC_SEL]   = 21;
     gpio_out[OUT_MIC_BIAS]  = 22;
@@ -1302,7 +1302,7 @@ void gpio_init() {
   //
   // GPIO line restrictions for specific hardware.
   // We must do this HERE since the have_radioberry/have_saturn
-  // are not yet set when calling gpio_set_defaults()
+  // are not yet set during discovery
   // (Thanks Yado-San for nailing this down)
   //
   if (have_radioberry1 || have_radioberry2 || have_radioberry3) {
