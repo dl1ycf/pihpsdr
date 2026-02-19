@@ -2289,6 +2289,19 @@ static gpointer iq_thread(gpointer data) {
   return NULL;
 }
 
+//#define RXIQDUMP
+#ifdef RXIQDUMP
+//
+// This is a hook for dumping raw received IQ data to file, for
+// use in the HPSDR simulator etc. We dump IQ samples that
+// cover 2 min at 48k, 60sec at 96k, 30sec at 192k
+// Engaging the ANF is the trigger for starting the dump
+//
+#define NUMDUMP 48000*60
+unsigned char dumpiqbuf[6*NUMDUMP];
+int dump_ptr = 0;
+#endif
+
 static void process_iq_data(const unsigned char *buffer, RECEIVER *rx) {
   ASSERT_SERVER();
   int b;
@@ -2310,10 +2323,27 @@ static void process_iq_data(const unsigned char *buffer, RECEIVER *rx) {
   int bitspersample = ((buffer[12] & 0xFF) << 8) + (buffer[13] & 0xFF);
   t_print("%s: rx=%d bitspersample=%d samplesperframe=%d\n", __func__, rx->id, bitspersample, samplesperframe);
 #endif
-  b = 16;
-  int i;
 
-  for (i = 0; i < samplesperframe; i++) {
+#ifdef RXIQDUMP
+  if (dump_ptr < 6*NUMDUMP && rx->anf == 1) {
+    if (dump_ptr == 0) t_print("Start RXIQ dump.\n");
+    for (int i=16; i < 16 + 6*samplesperframe; i++) {
+      dumpiqbuf[dump_ptr++] = buffer[i];
+      if (dump_ptr >= 6*NUMDUMP) {
+        int fd = open("RXIQDUMP", O_CREAT | O_WRONLY);
+        if (fd >= 0) {
+          write (fd, dumpiqbuf, 6*NUMDUMP);
+        }
+        t_print("RXIQ dumped.\n");
+        break;
+      }
+    }
+  }
+#endif
+
+  b = 16;
+
+  for (int i = 0; i < samplesperframe; i++) {
     leftsample   = (int)((signed char) buffer[b++]) << 16;
     leftsample  |= (int)((((unsigned char)buffer[b++]) << 8) & 0xFF00);
     leftsample  |= (int)((unsigned char)buffer[b++] & 0xFF);
