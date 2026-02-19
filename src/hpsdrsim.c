@@ -281,6 +281,7 @@ int main(int argc, char *argv[]) {
   double run, off, off2, inc;
   struct timeval tvzero = {0, 0};
   fd_set fds;
+  int fd;
   struct sigaction sa;
   struct termios tios_new;
   /*
@@ -573,6 +574,21 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  have_rxiq = 0;
+  fd = open("RXIQDUMP", O_RDONLY);
+  if (fd >= 0) {
+    rxiqdump = malloc(6*NUMDUMP);
+    if (rxiqdump) {
+      size_t ret = read(fd, rxiqdump, 6*NUMDUMP);
+      if (ret == 6*NUMDUMP) {
+        have_rxiq = 1;
+      } else {
+        free(rxiqdump);
+      }
+    }
+    close(fd);
+  }
+  if (have_rxiq) printf("Sample RXIQ data read.\n");
   //
   //      clear TX fifo
   //

@@ -1073,7 +1073,6 @@ void *rx_thread(void *data) {
   unsigned long seqnum;
   unsigned char buffer[1444];
   int yes = 1;
-  int i;
   long wait;
   double i0sample, q0sample;
   double i1sample, q1sample;
@@ -1087,6 +1086,7 @@ void *rx_thread(void *data) {
   int rxptr;
   int divptr;
   int decimation;
+  int dumpptr = 0;
   unsigned int seed;
   double off, tonearg, tonedelta;
   double off2, tonearg2, tonedelta2;
@@ -1097,6 +1097,7 @@ void *rx_thread(void *data) {
   tonearg = 0.0;
   tonearg2 = 0.0;
   t3p = 0;
+  int flg;
   myddc = (int) (uintptr_t) data;
 
   if (myddc < 0 || myddc >= NUMRECEIVERS) { return NULL; }
@@ -1152,7 +1153,12 @@ void *rx_thread(void *data) {
     myadc = adcmap[myddc];
 
     //
-    // IQ frequency of 14.1 MHz signal
+    // Special signals:
+    // at  3.5 MHz: feedbk signal
+    // at  7.1 MHz: weak CW signal
+    // at 14.1 MHz: single-tone -73 dBm
+    // at 21.1 MHz: two-tone signal
+    // at 28.1 MHz: captured IQ
     //
     if (myadc == 0 && labs(7100000L - rxfreq[myddc]) < 500 * myrate) {
       off = (double)(7100000 - rxfreq[myddc]);
@@ -1177,11 +1183,11 @@ void *rx_thread(void *data) {
     // for simplicity, we only allow for a single "synchronized" DDC,
     // this well covers the PureSignal and DIVERSITY cases
     sync = 0;
-    i = syncddc[myddc];
+    flg = syncddc[myddc];
 
-    while (i) {
+    while (flg) {
       sync++;
-      i = i >> 1;
+      flg = flg >> 1;
     }
 
     // sync == 0 means no synchronizatsion
@@ -1236,135 +1242,152 @@ void *rx_thread(void *data) {
       rxptr = NEWRTXLEN / 2 - 8192;
     }
 
-    for (i = 0; i < size; i++) {
+    if (have_rxiq && sync == 0 && myrate == 48 && myddc == 2 && labs(28100000L - rxfreq[myddc]) < 100000) {
       //
-      // produce noise depending on the ADC
+      // for RX0, if using 48k, 10m band, no Diversity: re-play dumped IQ data
+      // in an endles loop
       //
-      i1sample = i0sample = noiseItab[noisept] * p2noisefac[myddc];
-      q1sample = q0sample = noiseQtab[noisept++] * p2noisefac[myddc];
+      for (int i = 0; i < size; i++) {
+        *p++ = rxiqdump[dumpptr++];
+        *p++ = rxiqdump[dumpptr++];
+        *p++ = rxiqdump[dumpptr++];
+        *p++ = rxiqdump[dumpptr++];
+        *p++ = rxiqdump[dumpptr++];
+        *p++ = rxiqdump[dumpptr++];
 
-      if (noisept == LENNOISE) { noisept = rand_r(&seed) / NOISEDIV; }
+         if (dumpptr >= 6*NUMDUMP) { dumpptr = 0; }
+      }
+    } else {
+      for (int i = 0; i < size; i++) {
+        //
+        // produce noise depending on the ADC
+        //
+        i1sample = i0sample = noiseItab[noisept] * p2noisefac[myddc];
+        q1sample = q0sample = noiseQtab[noisept++] * p2noisefac[myddc];
 
-      //
-      // PS: produce sample PAIRS,
-      // a) distorted TX data (with Drive and Attenuation and ADC noise)
-      // b) original TX data (normalised)
-      //
-      // DIV: produce sample PAIRS,
-      // a) add man-made-noise on I-sample of RX channel
-      // b) add man-made-noise on Q-sample of "synced" channel
-      //
-      if (sync && (myrate == 192) && ptt && (syncadc == n_adc)) {
-        irsample = isample[rxptr];
-        qrsample = qsample[rxptr++];
+        if (noisept == LENNOISE) { noisept = rand_r(&seed) / NOISEDIV; }
 
-        if (rxptr >= NEWRTXLEN) { rxptr = 0; }
+        //
+        // PS: produce sample PAIRS,
+        // a) distorted TX data (with Drive and Attenuation and ADC noise)
+        // b) original TX data (normalised)
+        //
+        // DIV: produce sample PAIRS,
+        // a) add man-made-noise on I-sample of RX channel
+        // b) add man-made-noise on Q-sample of "synced" channel
+        //
+        if (sync && (myrate == 192) && ptt && (syncadc == n_adc)) {
+          irsample = isample[rxptr];
+          qrsample = qsample[rxptr++];
 
-        if (myadc == 0) {
-          double fac = txatt0_dbl * txdrv_dbl * (IM3a + IM3b * (irsample * irsample + qrsample * qrsample) * txdrv_dbl *
-                                                 txdrv_dbl);
-          i0sample += irsample * fac;
-          q0sample += qrsample * fac;
+          if (rxptr >= NEWRTXLEN) { rxptr = 0; }
+
+          if (myadc == 0) {
+            double fac = txatt0_dbl * txdrv_dbl * (IM3a + IM3b * (irsample * irsample + qrsample * qrsample) * txdrv_dbl *
+                                                   txdrv_dbl);
+            i0sample += irsample * fac;
+            q0sample += qrsample * fac;
+          }
+
+          if (NEWDEVICE == NDEV_SATURN) {
+            i1sample = irsample * 0.6121;
+            q1sample = qrsample * 0.6121;
+          } else {
+            i1sample = irsample * 0.2899;
+            q1sample = qrsample * 0.2899;
+          }
+        } else if (do_tone == 1) {
+          i0sample += cos(tonearg) * 0.0002239 * rxatt0_dbl;
+          q0sample += sin(tonearg) * 0.0002239 * rxatt0_dbl;
+          tonearg += tonedelta;
+
+          if (tonearg > 6.3) { tonearg -= 6.283185307179586476925286766559; }
+
+          if (tonearg < -6.3) { tonearg += 6.283185307179586476925286766559; }
+        } else if (do_tone == 2) {
+          i0sample += (cos(tonearg) + cos(tonearg2)) * 0.0002239 * rxatt0_dbl;
+          q0sample += (sin(tonearg) + sin(tonearg2)) * 0.0002239 * rxatt0_dbl;
+          tonearg += tonedelta;
+          tonearg2 += tonedelta2;
+
+          if (tonearg > 6.3) { tonearg -= 6.283185307179586476925286766559; }
+
+          if (tonearg2 > 6.3) { tonearg2 -= 6.283185307179586476925286766559; }
+
+          if (tonearg < -6.3) { tonearg += 6.283185307179586476925286766559; }
+
+          if (tonearg2 < -6.3) { tonearg2 += 6.283185307179586476925286766559; }
+        } else if (do_tone == 3) {
+          i0sample += cos(tonearg) * pulseshape[t3p] * rxatt0_dbl;
+          q0sample += sin(tonearg) * pulseshape[t3p] * rxatt0_dbl;
+          tonearg += tonedelta;
+
+          if (tonearg > 6.3) { tonearg -= 6.283185307179586476925286766559; }
+
+          if (tonearg < -6.3) { tonearg += 6.283185307179586476925286766559; }
+
+          if (t3p++ >= 800 * myrate) { t3p = 0; }
+        } else if (do_tone == 4) {
+          irsample = isample[rxptr];
+          qrsample = qsample[rxptr++];
+
+          if (rxptr >= NEWRTXLEN) { rxptr = 0; }
+
+          i0sample += irsample * 0.001;
+          q0sample += qrsample * 0.001;
         }
 
-        if (NEWDEVICE == NDEV_SATURN) {
-          i1sample = irsample * 0.6121;
-          q1sample = qrsample * 0.6121;
+        if (diversity && !sync && myadc == 0) {
+          i0sample += 0.0001 * rxatt0_dbl * divtab[divptr];
+          divptr += decimation;
+
+          if (divptr >= LENDIV) { divptr = 0; }
+        }
+
+        if (diversity && !sync && myadc == 1) {
+          q0sample += 0.0002 * rxatt1_dbl * divtab[divptr];
+          divptr += decimation;
+
+          if (divptr >= LENDIV) { divptr = 0; }
+        }
+
+        if (diversity && sync && !ptt) {
+          if (myadc == 0) { i0sample += 0.0001 * rxatt0_dbl * divtab[divptr]; }
+
+          if (syncadc == 1) { q1sample += 0.0002 * rxatt1_dbl * divtab[divptr]; }
+
+          divptr += decimation;
+
+          if (divptr >= LENDIV) { divptr = 0; }
+        }
+
+        if (sync) {
+          sample = i0sample * 8388607.0;
+          *p++ = (sample >> 16) & 0xFF;
+          *p++ = (sample >>  8) & 0xFF;
+          *p++ = (sample >>  0) & 0xFF;
+          sample = q0sample * 8388607.0;
+          *p++ = (sample >> 16) & 0xFF;
+          *p++ = (sample >>  8) & 0xFF;
+          *p++ = (sample >>  0) & 0xFF;
+          sample = i1sample * 8388607.0;
+          *p++ = (sample >> 16) & 0xFF;
+          *p++ = (sample >>  8) & 0xFF;
+          *p++ = (sample >>  0) & 0xFF;
+          sample = q1sample * 8388607.0;
+          *p++ = (sample >> 16) & 0xFF;
+          *p++ = (sample >>  8) & 0xFF;
+          *p++ = (sample >>  0) & 0xFF;
         } else {
-          i1sample = irsample * 0.2899;
-          q1sample = qrsample * 0.2899;
+          sample = i0sample * 8388607.0;
+          *p++ = (sample >> 16) & 0xFF;
+          *p++ = (sample >>  8) & 0xFF;
+          *p++ = (sample >>  0) & 0xFF;
+          sample = q0sample * 8388607.0;
+          *p++ = (sample >> 16) & 0xFF;
+          *p++ = (sample >>  8) & 0xFF;
+          *p++ = (sample >>  0) & 0xFF;
         }
-      } else if (do_tone == 1) {
-        i0sample += cos(tonearg) * 0.0002239 * rxatt0_dbl;
-        q0sample += sin(tonearg) * 0.0002239 * rxatt0_dbl;
-        tonearg += tonedelta;
-
-        if (tonearg > 6.3) { tonearg -= 6.283185307179586476925286766559; }
-
-        if (tonearg < -6.3) { tonearg += 6.283185307179586476925286766559; }
-      } else if (do_tone == 2) {
-        i0sample += (cos(tonearg) + cos(tonearg2)) * 0.0002239 * rxatt0_dbl;
-        q0sample += (sin(tonearg) + sin(tonearg2)) * 0.0002239 * rxatt0_dbl;
-        tonearg += tonedelta;
-        tonearg2 += tonedelta2;
-
-        if (tonearg > 6.3) { tonearg -= 6.283185307179586476925286766559; }
-
-        if (tonearg2 > 6.3) { tonearg2 -= 6.283185307179586476925286766559; }
-
-        if (tonearg < -6.3) { tonearg += 6.283185307179586476925286766559; }
-
-        if (tonearg2 < -6.3) { tonearg2 += 6.283185307179586476925286766559; }
-      } else if (do_tone == 3) {
-        i0sample += cos(tonearg) * pulseshape[t3p] * rxatt0_dbl;
-        q0sample += sin(tonearg) * pulseshape[t3p] * rxatt0_dbl;
-        tonearg += tonedelta;
-
-        if (tonearg > 6.3) { tonearg -= 6.283185307179586476925286766559; }
-
-        if (tonearg < -6.3) { tonearg += 6.283185307179586476925286766559; }
-
-        if (t3p++ >= 800 * myrate) { t3p = 0; }
-      } else if (do_tone == 4) {
-        irsample = isample[rxptr];
-        qrsample = qsample[rxptr++];
-
-        if (rxptr >= NEWRTXLEN) { rxptr = 0; }
-
-        i0sample += irsample * 0.001;
-        q0sample += qrsample * 0.001;
-      }
-
-      if (diversity && !sync && myadc == 0) {
-        i0sample += 0.0001 * rxatt0_dbl * divtab[divptr];
-        divptr += decimation;
-
-        if (divptr >= LENDIV) { divptr = 0; }
-      }
-
-      if (diversity && !sync && myadc == 1) {
-        q0sample += 0.0002 * rxatt1_dbl * divtab[divptr];
-        divptr += decimation;
-
-        if (divptr >= LENDIV) { divptr = 0; }
-      }
-
-      if (diversity && sync && !ptt) {
-        if (myadc == 0) { i0sample += 0.0001 * rxatt0_dbl * divtab[divptr]; }
-
-        if (syncadc == 1) { q1sample += 0.0002 * rxatt1_dbl * divtab[divptr]; }
-
-        divptr += decimation;
-
-        if (divptr >= LENDIV) { divptr = 0; }
-      }
-
-      if (sync) {
-        sample = i0sample * 8388607.0;
-        *p++ = (sample >> 16) & 0xFF;
-        *p++ = (sample >>  8) & 0xFF;
-        *p++ = (sample >>  0) & 0xFF;
-        sample = q0sample * 8388607.0;
-        *p++ = (sample >> 16) & 0xFF;
-        *p++ = (sample >>  8) & 0xFF;
-        *p++ = (sample >>  0) & 0xFF;
-        sample = i1sample * 8388607.0;
-        *p++ = (sample >> 16) & 0xFF;
-        *p++ = (sample >>  8) & 0xFF;
-        *p++ = (sample >>  0) & 0xFF;
-        sample = q1sample * 8388607.0;
-        *p++ = (sample >> 16) & 0xFF;
-        *p++ = (sample >>  8) & 0xFF;
-        *p++ = (sample >>  0) & 0xFF;
-      } else {
-        sample = i0sample * 8388607.0;
-        *p++ = (sample >> 16) & 0xFF;
-        *p++ = (sample >>  8) & 0xFF;
-        *p++ = (sample >>  0) & 0xFF;
-        sample = q0sample * 8388607.0;
-        *p++ = (sample >> 16) & 0xFF;
-        *p++ = (sample >>  8) & 0xFF;
-        *p++ = (sample >>  0) & 0xFF;
       }
     }
 

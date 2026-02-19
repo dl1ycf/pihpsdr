@@ -84,6 +84,13 @@ EXTERN int nb_pulse, nb_width;
 EXTERN double divtab[LENDIV];
 
 //
+// A table of RX IQ data (60 seconds 48k sample rate)
+// with speech.
+//
+#define NUMDUMP 60*48000
+EXTERN int have_rxiq;
+EXTERN unsigned char *rxiqdump;
+//
 // TX fifo (needed for PureSignal)
 //
 
