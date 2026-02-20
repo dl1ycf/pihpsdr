@@ -241,7 +241,6 @@ typedef struct __attribute__((__packed__)) _rxmenu_data {
 typedef struct __attribute__((__packed__)) _txmenu_data {
   HEADER header;
   //
-  mydouble linein_gain;
   mydouble swr_alarm;
   //
   uint8_t  tune_drive;

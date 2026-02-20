@@ -3406,12 +3406,18 @@ static void radio_restore_state(void) {
   GetPropI0("cw_keyer_ptt_delay",                            cw_keyer_ptt_delay);
   GetPropI0("cw_keyer_hang_time",                            cw_keyer_hang_time);
   GetPropI0("cw_breakin",                                    cw_breakin);
+  //
+  // Client/Server: these are handled on the client or not handled at all.
+  // For some controllers with audio codecs, some of these variable may
+  // affect the behaviour of the controller
+  //
   GetPropI0("mic_ptt_enabled",                               orion_mic_ptt_enabled);
   GetPropI0("mic_bias_enabled",                              orion_mic_bias_enabled);
   GetPropI0("mic_ptt_tip_bias_ring",                         orion_mic_ptt_tip);
   GetPropI0("mic_input_xlr",                                 g2_mic_input_xlr);
   GetPropI0("mic_boost",                                     mic_boost);
   GetPropI0("mic_linein",                                    mic_linein);
+  GetPropF0("linein_gain",                                   linein_gain);
   GetPropI0("mute_spkr_amp",                                 mute_spkr_amp);
   GetPropI0("mute_spkr_xmit",                                mute_spkr_xmit);
 
@@ -3447,7 +3453,6 @@ static void radio_restore_state(void) {
     GetPropI0("filter_board",                                filter_board);
     GetPropI0("pa_enabled",                                  pa_enabled);
     GetPropI0("pa_power",                                    pa_power);
-    GetPropF0("linein_gain",                                 linein_gain);
     GetPropI0("cw_keyer_sidetone_frequency",                 cw_keyer_sidetone_frequency);
     GetPropI0("OCtune",                                      OCtune);
     GetPropI0("OCfull_tune_time",                            OCfull_tune_time);
@@ -3635,12 +3640,18 @@ void radio_save_state(void) {
   SetPropI0("cw_keyer_ptt_delay",                            cw_keyer_ptt_delay);
   SetPropI0("cw_keyer_hang_time",                            cw_keyer_hang_time);
   SetPropI0("cw_breakin",                                    cw_breakin);
+  //
+  // Client/Server: these are handled on the client or not handled at all.
+  // For some controllers with audio codecs, some of these variable may
+  // affect the behaviour of the controller
+  //
   SetPropI0("mic_ptt_enabled",                               orion_mic_ptt_enabled);
   SetPropI0("mic_bias_enabled",                              orion_mic_bias_enabled);
   SetPropI0("mic_ptt_tip_bias_ring",                         orion_mic_ptt_tip);
   SetPropI0("mic_input_xlr",                                 g2_mic_input_xlr);
   SetPropI0("mic_boost",                                     mic_boost);
   SetPropI0("mic_linein",                                    mic_linein);
+  SetPropF0("linein_gain",                                   linein_gain);
   SetPropI0("mute_spkr_amp",                                 mute_spkr_amp);
   SetPropI0("mute_spkr_xmit",                                mute_spkr_xmit);
 
@@ -3672,7 +3683,6 @@ void radio_save_state(void) {
     SetPropI0("filter_board",                                filter_board);
     SetPropI0("pa_enabled",                                  pa_enabled);
     SetPropI0("pa_power",                                    pa_power);
-    SetPropF0("linein_gain",                                 linein_gain);
     SetPropI0("cw_keyer_sidetone_frequency",                 cw_keyer_sidetone_frequency);
     SetPropI0("OCtune",                                      OCtune);
     SetPropI0("OCfull_tune_time",                            OCfull_tune_time);

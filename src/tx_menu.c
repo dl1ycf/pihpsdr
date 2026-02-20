@@ -212,9 +212,7 @@ static void spinbtn_cb(GtkWidget *widget, gpointer data) {
     case TX_LINEIN:
       linein_gain = v;
 
-      if (radio_is_remote) {
-        send_txmenu(cl_sock_tcp);
-      } else {
+      if (!radio_is_remote) {
         schedule_transmit_specific();
       }
 
@@ -659,7 +657,7 @@ void tx_menu(GtkWidget *parent) {
   my_combo_attach(GTK_GRID(tx_grid), input, col, row, 4, 1);
   g_signal_connect(input, "changed", G_CALLBACK(local_input_changed_cb), NULL);
 
-  if (have_mic) {
+  if (have_mic || radio_is_remote) {
     row++;
     col = 0;
     label = gtk_label_new("Radio Mic");
@@ -684,6 +682,9 @@ void tx_menu(GtkWidget *parent) {
     gtk_combo_box_set_active(GTK_COMBO_BOX(btn), pos);
     my_combo_attach(GTK_GRID(tx_grid), btn, col++, row, 1, 1);
     g_signal_connect(btn, "changed", G_CALLBACK(mic_in_cb), NULL);
+  }
+
+  if (have_mic && !radio_is_remote) {
     btn = gtk_check_button_new_with_label("Add Mic Samples");
     gtk_widget_set_name(btn, "boldlabel");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), transmitter->add_hpsdr_mic_samples);

@@ -2131,7 +2131,6 @@ static int server_command(gpointer data) {
       transmitter->tune_use_drive = command->tune_use_drive;
       transmitter->swr_protection = command->swr_protection;
       transmitter->swr_alarm = from_double(command->swr_alarm);
-      linein_gain = from_double(command->linein_gain);
       schedule_transmit_specific();
       send_tx_data(remoteclient.sock_tcp);
     }
