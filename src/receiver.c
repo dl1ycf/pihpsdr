@@ -2019,7 +2019,6 @@ void rx_set_noise(const RECEIVER *rx) {
   //
   SetRXARNNRPosition(rx->id,            rx->nr_agc);
   SetRXARNNRRun(rx->id,                 (rx->nr == 3));
-  SetRXARNNRUseDefaultGain(rx->id,      0);
   //
   // NR4
   //
