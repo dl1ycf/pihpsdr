@@ -2330,7 +2330,7 @@ static void process_iq_data(const unsigned char *buffer, RECEIVER *rx) {
     for (int i=16; i < 16 + 6*samplesperframe; i++) {
       dumpiqbuf[dump_ptr++] = buffer[i];
       if (dump_ptr >= 6*NUMDUMP) {
-        int fd = open("RXIQDUMP", O_CREAT | O_WRONLY);
+        int fd = open("RXIQDUMP", O_CREAT | O_WRONLY, 0600);
         if (fd >= 0) {
           write (fd, dumpiqbuf, 6*NUMDUMP);
         }

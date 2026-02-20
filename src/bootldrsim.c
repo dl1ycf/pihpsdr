@@ -291,7 +291,7 @@ int main(int argc, char **argv) {
           // data is 276 bytes long
           if (outfd < 0 && outfile != NULL) {
             progress = 0;
-            outfd = open(outfile, O_WRONLY | O_CREAT | O_TRUNC);
+            outfd = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0600);
 
             if (outfd < 0) {
               perror("OPEN outfile");
