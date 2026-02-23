@@ -936,16 +936,24 @@ static void discovery(void) {
   //
   // Even if compiled with GPIO support, do *not* show the "controller"
   // menu on a G2. Instead, default to NO_CONTROLLER for G2-ultra and to
-  // G2V1_PANEL for first-generation G2s with the CONTROLLER2V2 clone.
+  // G2V1_PANEL for first-generation G2s with the CONTROLLER2_V2 clone.
   //
+  gpio_restore_state();
   if (have_g2v2) {
-    controller = NO_CONTROLLER;
-    gpio_set_defaults(controller);
+    if (controller != NO_CONTROLLER) {
+      controller = NO_CONTROLLER;
+      gpio_set_defaults(controller);
+    }
   } else if (have_g2v1) {
-    controller = G2V1_PANEL;
-    gpio_set_defaults(controller);
+    if (controller != G2V1_PANEL) {
+      controller = G2V1_PANEL;
+      gpio_set_defaults(controller);
+    }
   } else {
-    gpio_restore_state();
+    if (controller > CONTROLLER2_V2) {
+      controller = NO_CONTROLLER;
+      gpio_set_defaults(controller);
+    }
     GtkWidget *gpio = gtk_combo_box_text_new();
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "No Controller");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller1");
