@@ -1636,9 +1636,17 @@ void rx_set_analyzer(RECEIVER *rx) {
 
 void rx_off(const RECEIVER *rx, int wait) {
   ASSERT_SERVER();
+  //
   // switch receiver OFF.
   // if (wait)  wait until slew-down completed; else return immediately
-  SetChannelState(rx->id, 0, wait);
+  // ATTENTION:
+  // when using 2 RX, it regularly happened that after RX1 being shut down
+  // with wait==0 and RX2 with wait==1, upon restart of the receivers
+  // the WDSP RX1 thread was hanging in wdspmain (waiting for Sem_BuffReady).
+  // Therefore we do the wait in any case until we know what is going on.
+  // This slightly slows down the RX/TX transition when using 2RX.
+  //
+  SetChannelState(rx->id, 0, 1);
 }
 
 void rx_on(const RECEIVER *rx) {
