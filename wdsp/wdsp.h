@@ -857,7 +857,6 @@ extern void* create_rmatchLegacyV(int in_size, int out_size, int nom_inrate, int
 extern void SetRXARNNRRun (int channel, int run);
 extern void RNNRloadModel(const char* file_path);
 extern void SetRXARNNRPosition(int channel, int position);
-extern void SetRXARNNRUseDefaultGain(int channel, int use_default_gain);
 
 //
 // Interfaces from sbnr.c

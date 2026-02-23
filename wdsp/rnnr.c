@@ -5,7 +5,7 @@ This file is part of a program that implements a Software-Defined Radio.
 This code/file can be found on GitHub : https://github.com/ramdor/Thetis
 
 Copyright (C) 2000-2025 Original authors
-Copyright (C) 2020-2026 Richard Samphire MW0LGE
+Copyright (C) 2020-2025 Richard Samphire MW0LGE
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -59,7 +59,6 @@ static inline float lin_to_db(float lin) { return 20.0f * log10f(fmaxf(lin, 1e-1
 #define AGC_RELEASE_MS	(200.0f)
 #define AGC_RMS_FLOOR	(1e-6f)
 #define SAFETY_CEIL		(30000.0f)
-#define VU3RDD_DEFAULT_GAIN (500000.0f)
 
 static float agc_alpha_ms(float ms, float frame_hz) {
 	const float tc = ms / 1000.0f;
@@ -72,17 +71,8 @@ void rnnr_agc_init(RNNR a)
 	const float frame_hz = (a->frame_size > 0) ? ((float)a->rate / (float)a->frame_size) : 100.0f;
 	a->agc_att_a = agc_alpha_ms(AGC_ATTACK_MS, frame_hz);
 	a->agc_rel_a = agc_alpha_ms(AGC_RELEASE_MS, frame_hz);
-
-	if (a->use_default_gain)
-	{
-		a->gain = VU3RDD_DEFAULT_GAIN;
-		a->gain_db = lin_to_db(a->gain);
-	}
-	else
-	{
-		a->gain_db = AGC_TARGET_DB;
-		a->gain = db_to_lin(a->gain_db);
-	}
+	a->gain_db = AGC_TARGET_DB;
+	a->gain = db_to_lin(a->gain_db);
 }
 
 static float frame_rms(const float* x, int n) {
@@ -204,12 +194,11 @@ RNNR create_rnnr(int run, int position, int size, double* in, double* out, int r
 	a->run = run;
 	a->position = position;
 	a->rate = rate; // not used currently, but here for future use
-	a->st = rnnoise_create(_rnnr_model);
+	a->st = rnnoise_create(_rnnr_model);	
 	a->frame_size = rnnoise_get_frame_size();
 	a->in = in;
 	a->out = out;
 	a->buffer_size = size;
-	a->use_default_gain = 1;
 	rnnr_agc_init(a);
 
 	ring_buffer_init(&a->input_ring, a->frame_size + a->buffer_size);
@@ -238,8 +227,8 @@ void xrnnr(RNNR a, int pos)
 {
 	if (a->st && a->run && pos == a->position)
 	{
-		int  bs = a->buffer_size;
-		int  fs = a->frame_size;
+		int	 bs = a->buffer_size;
+		int	 fs = a->frame_size;
 		float* to_process = a->to_process_buffer;
 		float* process_out = a->processed_output_buffer;
 
@@ -252,25 +241,16 @@ void xrnnr(RNNR a, int pos)
 			{
 				ring_buffer_get_bulk(&a->input_ring, to_process, fs);
 
-				if (a->use_default_gain)
-				{
-					a->gain = VU3RDD_DEFAULT_GAIN;
-					//a->gain_db = lin_to_db(a->gain); //done in the setter when changing to off state
-													   //so that gain_db is pre-seeded
-				}
-				else
-				{
-					float rms = frame_rms(to_process, fs);
-					float cur_db = lin_to_db(rms);
-					float desired_db = AGC_TARGET_DB - cur_db;
+				float rms = frame_rms(to_process, fs);
+				float cur_db = lin_to_db(rms);
+				float desired_db = AGC_TARGET_DB - cur_db;
 
-					float alpha = (desired_db > a->gain_db) ? a->agc_att_a : a->agc_rel_a;
-					a->gain_db = alpha * a->gain_db + (1.0f - alpha) * desired_db;
-					if (a->gain_db < AGC_MIN_DB) a->gain_db = AGC_MIN_DB;
-					if (a->gain_db > AGC_MAX_DB) a->gain_db = AGC_MAX_DB;
+				float alpha = (desired_db > a->gain_db) ? a->agc_att_a : a->agc_rel_a;
+				a->gain_db = alpha * a->gain_db + (1.0f - alpha) * desired_db;
+				if (a->gain_db < AGC_MIN_DB) a->gain_db = AGC_MIN_DB;
+				if (a->gain_db > AGC_MAX_DB) a->gain_db = AGC_MAX_DB;
 
-					a->gain = db_to_lin(a->gain_db);
-				}
+				a->gain = db_to_lin(a->gain_db);
 
 				for (int j = 0; j < fs; j++)
 				{
@@ -392,20 +372,3 @@ void SetRXARNNRPosition(int channel, int position)
 	LeaveCriticalSection(&ch[channel].csDSP);
 }
 
-PORT
-void SetRXARNNRUseDefaultGain(int channel, int use_default_gain)
-{
-	EnterCriticalSection(&ch[channel].csDSP);
-
-	RNNR a = rxa[channel].rnnr.p;
-	int old = a->use_default_gain;
-	a->use_default_gain = use_default_gain;
-
-	if (old && !use_default_gain)
-	{
-		a->gain = VU3RDD_DEFAULT_GAIN;
-		a->gain_db = lin_to_db(a->gain);
-	}
-
-	LeaveCriticalSection(&ch[channel].csDSP);
-}
