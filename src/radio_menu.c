@@ -760,7 +760,7 @@ void radio_menu(GtkWidget *parent) {
     // ATLAS systems running P2: choose clock sources, etc.
     //
     row++;
-    label = gtk_label_new("10MHz from");
+    label = gtk_label_new("10MHz src");
     gtk_widget_set_name(label, "boldlabel");
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 5, row, 1, 1);
@@ -772,7 +772,7 @@ void radio_menu(GtkWidget *parent) {
     my_combo_attach(GTK_GRID(grid), ck10mhz_combo, 6, row, 1, 1);
     g_signal_connect(ck10mhz_combo, "changed", G_CALLBACK(ck10mhz_cb), NULL);
     row++;
-    label = gtk_label_new("122M from");
+    label = gtk_label_new("122M src");
     gtk_widget_set_name(label, "boldlabel");
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 5, row, 1, 1);
@@ -783,7 +783,7 @@ void radio_menu(GtkWidget *parent) {
     my_combo_attach(GTK_GRID(grid), ck128mhz_combo, 6, row, 1, 1);
     g_signal_connect(ck128mhz_combo, "changed", G_CALLBACK(ck128mhz_cb), NULL);
     row++;
-    label = gtk_label_new("Mic source");
+    label = gtk_label_new("Mic src");
     gtk_widget_set_name(label, "boldlabel");
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 5, row, 1, 1);
