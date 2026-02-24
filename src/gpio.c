@@ -952,7 +952,7 @@ void gpio_restore_state() {
 
 void gpio_save_state() {
   //
-  // This is ONLY called from the discovery "Controller" callback
+  // This called when the controller changed.
   //
   clearProperties();
   SetPropI0("controller",                                         controller);

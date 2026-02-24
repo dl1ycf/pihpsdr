@@ -939,26 +939,37 @@ static void discovery(void) {
   // G2V1_PANEL for first-generation G2s with the CONTROLLER2_V2 clone.
   //
   // Likewise, when /dev/serial/by-id/Remotehead-9600 exists, also
-  // do not show the "controller" menu but auto-choose CONTROLLER3
+  // do not show the "controller" menu but auto-choose CONTROLLER3.
+  // Even if the controller is not shown, use a "gpio.props" file
+  // such that in special cases, something can be changed manually.
   //
+  gpio_restore_state();
   if (have_g2v2) {
-    controller = NO_CONTROLLER;
-    gpio_set_defaults(controller);
+    if (controller != NO_CONTROLLER) {
+      controller = NO_CONTROLLER;
+      gpio_set_defaults(controller);
+      gpio_save_state();
+    }
   } else if (have_g2v1) {
-    controller = G2V1_PANEL;
-    gpio_set_defaults(controller);
+    if (controller != G2V1_PANEL) {
+      controller = G2V1_PANEL;
+      gpio_set_defaults(controller);
+      gpio_save_state();
+    }
   } else if (realpath("/dev/serial/by-id/Remotehead-9600", NULL) != NULL) {
-    controller = CONTROLLER3;
-    gpio_set_defaults(controller);
+    if (controller != CONTROLLER3) {
+      controller = CONTROLLER3;
+      gpio_set_defaults(controller);
+      gpio_save_state();
+    }
   } else {
-    gpio_restore_state();
-
     if (controller > CONTROLLER3) {
       //
       // This should not happen: auto-detected controller in the props file
       //
       controller = NO_CONTROLLER;
       gpio_set_defaults(controller);
+      gpio_save_state();
     }
 
     GtkWidget *gpio = gtk_combo_box_text_new();
