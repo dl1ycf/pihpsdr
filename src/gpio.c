@@ -478,11 +478,6 @@ static GMutex encoder_mutex;
 static GThread *monitor_thread_id;
 static GThread *rotary_encoder_thread_id;
 
-static int num_input_lines = 0;
-static int input_lines[MAX_LINES];    // GPIO number (offset) of line
-static int input_pullup[MAX_LINES];   // has pullup?
-static int input_debounce[MAX_LINES]; // debouncing time (in microseconds!)
-
 #ifdef GPIOV1
 //
 // All the timing is for the "pedestrian way" debouncing with libgpiod V1
