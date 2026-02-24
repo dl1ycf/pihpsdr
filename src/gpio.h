@@ -20,7 +20,6 @@
 #ifndef _GPIO_H_
 #define _GPIO_H_
 
-#ifdef GPIO
 #include <gtk/gtk.h>
 #include <stdint.h>
 
@@ -29,10 +28,13 @@ enum _controller_enum {
   CONTROLLER1,
   CONTROLLER2_V1,
   CONTROLLER2_V2,
+  CONTROLLER3,
   G2V1_PANEL
 };
 
 extern int controller;
+
+#ifdef GPIO
 
 #define MAX_ENCODERS 5
 #define MAX_SWITCHES 16
@@ -77,6 +79,7 @@ extern void gpio_init(void);
 extern void gpio_close(void);
 extern void gpio_set_ptt(int state);
 extern void gpio_set_cw(int state);
+extern void gpio_set_orion_options();
 
 #endif
 #endif

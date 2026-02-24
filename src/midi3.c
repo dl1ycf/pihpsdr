@@ -39,9 +39,9 @@ struct _vfo_timer {
 
 typedef struct _vfo_timer VFO_TIMER;
 
-VFO_TIMER vfo_timer =  {VFO,  0, 0};
-VFO_TIMER vfoa_timer = {VFOA, 0, 0};
-VFO_TIMER vfob_timer = {VFOB, 0, 0};
+static VFO_TIMER vfo_timer =  {VFO,  0, 0};
+static VFO_TIMER vfoa_timer = {VFOA, 0, 0};
+static VFO_TIMER vfob_timer = {VFOB, 0, 0};
 
 static int vfo_timeout_cb(gpointer data) {
   VFO_TIMER *timer = (VFO_TIMER *)data;

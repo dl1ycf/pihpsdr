@@ -336,6 +336,8 @@ static gpointer p2_discover_receive_thread(gpointer data) {
               break;
 
             case NEW_DEVICE_SATURN:
+            case NEW_DEVICE_SATURN2:
+              discovered[devices].device = NEW_DEVICE_SATURN;
               snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Saturn/G2");
               frequency_min = 0.0;
               frequency_max = 61440000.0;

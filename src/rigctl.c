@@ -5799,7 +5799,8 @@ int launch_serial_rigctl (int id) {
   speed = SerialPorts[id].speed;
 
   //
-  // ANDROMEDA uses a hard-wired baud rate 9600
+  // ANDROMEDA normally uses a hard-wired baud rate 9600, but
+  // autodetected serial ports may differ
   //
   if (SerialPorts[id].andromeda && !SerialPorts[id].g2) {
     speed = B9600;
@@ -5937,7 +5938,7 @@ void rigctl_restore_state(void) {
 
   for (int id = 0; id <= MAX_SERIAL; id++) {
     //
-    // Do not overwrite a "detected" port
+    // Do not overwrite an auto-detected port
     //
     if (!SerialPorts[id].g2) {
       GetPropS1("rigctl_serial_port[%d]", id,                SerialPorts[id].port);
