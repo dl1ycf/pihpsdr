@@ -1401,8 +1401,12 @@ for different radios.
 
 The \bltt{Radio} menu lets you make settings which affect the general setting, and the hardware of the
 radio.
-The following figure (Fig. \ref{fig:RadioMenu}) shows the Radio menu. In the top right corner
-there are radio specific settings that are discussed below. First we go through all the elements we see in Fig. \ref{fig:RadioMenu}.
+The following figure (Fig. \ref{fig:RadioMenu}) shows the Radio menu as it appears on my Anan-7000.
+In the rightmost part of the panel (separated by a thin vertical line), there are hardware-specific
+settings, this part will differ between different radio models and this will be discussed below.
+First we go through all the elements we see in in the left part of Fig. \ref{fig:RadioMenu}.
+
+\subsection{General controls}
 
 \rett{Receivers}. In the pop-down menu (GTK combo-box) below this string, you can select the number
 of receivers that are running (well, you can choose between 1 and 2). When the number of receivers change,
@@ -1427,7 +1431,30 @@ five U.S. channels has been replaced by a band with regulations very similar to 
 WRC15 allocation is still not in effect in the U.K. Given to this fairly complicated regulatory
 situation, please inform yourself which regulations apply in your country!
 
-\rett{Sample Rate}. This box does not appear for HPSDR radios running protocol-2, since there each receiver
+\rett{Split}. (Only shown on radios with a transmitter)
+Use this checkbox to enable/disable Split mode. In Split mode, the frequency of
+the non-active receiver (when using two receivers) or the frequency of VFO-B (when using one
+receiver) controls the TX frequency. In normal (non-Split) mode, it is the frequency of
+the active receiver (2 RX) or the frequency of VFO-A (1 RX) that matters.
+Note that a frequent beginner error is to have, say,
+SSB mode in VFO-A and CW mode in VFO-B. In this case, nothing is
+transmitted when doing split and using the microphone. Normally one
+starts with the \bltt{A>B} command (that is, copy VFO-A to VFO-B), and
+then adjusts the transmit frequency.
+
+\rett{Duplex}. (Only shown on radios with a transmitter)
+Use this checkbox to enable/disable Duplex mode. In Duplex mode, the receiver(s)
+continue working during TX. In normal setup, this is detrimental since the very strong
+signal that originates from the cross-talk at the T/R relay will lead to AGC pumping,
+making your receiver(s) essentially deaf for a short period after TX/RX switching.
+However, when using different and well-decoupled antennas for RX and TX (this is typical
+for some satellite operations), Duplex mode gives you important information, as you can
+see your own down-link signal. In contrast to what is often stated, Duplex mode does not
+affect the data stream between the computer and the radio, it \textit{only} determines
+whether the receivers (within the WDSP library) are shut down during transmit or not.
+
+\rett{Sample Rate}. This box (to the left of the SAT mode controls)
+does not appear for HPSDR radios running protocol-2, since there each receiver
 has its own sample rate that is therefore set in the \bltt{RX} menu (chapter \ref{sec:rxmenu}). For HPSDR
 radios running protocol-1, the available sample rates are between 48 and 384 kHz. For SoapySDR radios the
 sample rate can usually chosen between 48 kHz and the native sample rate of the radio in steps of two, but
@@ -1463,7 +1490,20 @@ as the \texttt{N2ADR} filter board is chosen. This means that if you want to use
 board with non-standard settings, you have to choose \texttt{NONE} for the filter board and make
 your settings in the \bltt{OC} menu!
 
-\rett{VFO Enc Div}. This option applies to VFO knobs in front panels, GPIO
+\rett{Mute RX when TX}. (Only shown on radios with a transmitter)
+Normally, the receivers are shut down while transmitting, except
+in duplex mode. This option (checkbox) mutes the RX audio while transmitting even if running
+Duplex. It is important
+to note that the RX continue to work, so you can see the signals on the RX panel, the
+S-meter works, etc. This option is largely equivalent to moving the AF slider to the
+minimum position while transmitting.
+
+\rett{PA enable}. (Only shown on HPSDR radios with a transmitter)
+This enables/disables the PA in the radio. In addition to this global
+flag, there is a per-band PA enable option for the transverter bands (see the \bltt{XVTR}
+menu).
+
+\rett{VFO Encoder Divisor}. This control applies to VFO knobs in front panels, GPIO
 or MIDI controllers. In some cases, these encoders generate too many ticks per revolution,
 such that it is difficult to fine tune on a signal.
 If the VFO Encoder Divisor, as shown in the example, has a value of
@@ -1471,11 +1511,40 @@ If the VFO Encoder Divisor, as shown in the example, has a value of
 optical encoders found in some of the GPIO controllers. For the default value of 1,
 the divisor has no effect.
 
+\rett{Frequency~Calibr.~(ppm)}. Here you can apply a small correction to the frequencies.
+Typically, all frequencies are derived from a common clock, so any correction must
+be \textit{relative}. For example, if you choose a value of 3.0 here, then the
+TX/RX frequencies at 7 MHz will be increased by 21 Hz, but this increase is
+four times larger at 28 MHz. Note that for transverter bands, adjusting the frequency
+is better done by adjusting the local oscillator frequency (see Sec. \ref{sec:xvtrmenu}).
+
+\rett{RX Gain Calibration} Here you can calibrate your RF front end. To this end, you
+need a highly accurate signal source of, say, $-73$ dBm. Connect this source to your
+radio and tune on the signal. If the signal reported by the meter
+appears too strong (say, at $-65$ dBm),
+\textit{decrease} the
+calibration value with the spin button until the meter shows the correct level.
+The RX gain calibration value can be viewed as the  amplification/attenuation of
+a virtual device you
+would need in your RF front end. Therefore, you need a negative calibration value (attenuation)
+if the signal in the meter is too strong. For most HPSDR radios, the default value is
+zero. For the HermesLite-II and other radios using the AD9866 chip, the default
+value is 14, but this is a rough estimate and certainly depends on details of
+the RF front end.
+
 \rett{VFO snap}. If this box is checked, VFO frequency changes by clicking or dragging in the
 RX panadapter are finally rounded to the nearest multiple of the current VFO step size. This
 option is mostly meant for touch-screens which are usually not very accurate. Note that if
 this option is checked, you may not be able to exactly tune on a signal by clicking on
 it with a mouse.
+
+\rett{3dB/Smtr step}. There is an IARU recommendation that 1 step on the S-meter
+corresponds to difference in signal level of 6 dB. While the recommendation for the
+S9 level ($-73$ dBm for frequencies up to 30 MHz, and $-93$ dBm for higher frequencies)
+is well respected, some major amateur radio hardware producers have S-meters where
+one S-meter step corresponds to a 3 dB signal level difference. \pH normally follows
+the IARU recommendation but if this box is checked, 3 dB steps are used in the S meter
+scale, that is, $-73$ dBm is shown as S9 and $-76$ dBm as S8, etc.
 
 \rett{Optimise for TouchScreen}. The normal procedure to make a selection from a
 pop-down menu (such as the \rett{Receivers} button on this screen) is to click
@@ -1489,50 +1558,9 @@ when using a mouse, it is a great helper when using a touch screen. Therefore th
 option is set by default, but you can uncheck it here if you prefer normal
 mouse operation. Note that this option becomes effective when the next menu is opened.
 
-\rett{3dB/S-mtr step}. There is an IARU recommendation that 1 step on the S-meter
-corresponds to difference in signal level of 6 dB. While the recommendation for the
-S9 level ($-73$ dBm for frequencies up to 30 MHz, and $-93$ dBm for higher frequencies)
-is well respected, some major amateur radio hardware producers have S-meters where
-one S-meter step corresponds to a 3 dB signal level difference. \pH normally follows
-the IARU recommendation but if this box is checked, 3 dB steps are used in the S meter
-scale, that is, $-73$ dBm is shown as S9 and $-76$ dBm as S8, etc.
-
-The next line (below the horizontal line) with check boxes \rett{Split}, \rett{Duplex},
-\rett{Mute RX on TX} and \rett{PA enable} is only shown for radios that have a transmitter.
-
-\rett{Split}. Use this checkbox to enable/disable Split mode. In Split mode, the frequency of
-the non-active receiver (when using two receivers) or the frequency of VFO-B (when using one
-receiver) controls the TX frequency. In normal (non-Split) mode, it is the frequency of
-the active receiver (2 RX) or the frequency of VFO-A (1 RX) that matters.
-Note that a frequent beginner error is to have, say,
-SSB mode in VFO-A and CW mode in VFO-B. In this case, nothing is
-transmitted when doing split and using the microphone. Normally one
-starts with the \bltt{A>B} command (that is, copy VFO-A to VFO-B), and
-then adjusts the transmit frequency.
-
-\rett{Duplex}. Use this checkbox to enable/disable Duplex mode. In Duplex mode, the receiver(s)
-continue working during TX. In normal setup, this is detrimental since the very strong
-signal that originates from the cross-talk at the T/R relay will lead to AGC pumping,
-making your receiver(s) essentially deaf for a short period after TX/RX switching.
-However, when using different and well-decoupled antennas for RX and TX (this is typical
-for some satellite operations), Duplex mode gives you important information, as you can
-see your own down-link signal. In contrast to what is often stated, Duplex mode does not
-affect the data stream between the computer and the radio, it \textit{only} determines
-whether the receivers (within the WDSP library) are shut down during transmit or not.
-
-\rett{Mute RX when TX}. Normally, the receivers are shut down while transmitting, except
-in duplex mode. This option (checkbox) mutes the RX audio while transmitting even if running
-Duplex. It is important
-to note that the RX continue to work, so you can see the signals on the RX panel, the
-S-meter works, etc. This option is largely equivalent to moving the AF slider to the
-minimum position while transmitting.
-
-\rett{PA enable}. This enables/disables the PA in the radio. In addition to this global
-flag, there is a per-band PA enable option for the transverter bands (see the \bltt{XVTR}
-menu).
 
 The controls \rett{Enable TxInhibit Input} and \rett{Enable AutoTune  input}
-only appears for HPSDR (and not for SoapySDR) radios, since it assigns actions to
+in the next row only appear for HPSDR (and not for SoapySDR) radios, since it assigns actions to
 HPSDR user input bits.
 
 \rett{Enable TxInhibit Input}. For  protocol 1, TxInhibit is signalled for most radios by the Hermes IO1 bit being
@@ -1560,48 +1588,15 @@ be pulled down if e.g. a "Tune" button on an external automatic tuner is pressed
 For such a setup, it is usually recommended to use a reduced RF output level while
 \bltt{TUNE}-ing  (see the \bltt{TX} menu, chapter \ref{sec:txmenu}).
 
+\subsection{Hardware specific settings}
 
-\rett{Frequency~Calibr.~(ppm)}. Here you can apply a small correction to the frequencies.
-Typically, all frequencies are derived from a common clock, so any correction must
-be \textit{relative}. For example, if you choose a value of 3.0 here, then the
-TX/RX frequencies at 7 MHz will be increased by 21 Hz, but this increase is
-four times larger at 28 MHz. Note that for transverter bands, adjusting the frequency
-is better done by adjusting the local oscillator frequency (see Sec. \ref{sec:xvtrmenu}).
+In the right part of the \bltt{Radio} menu, a large number of settings may appear,
+but only those for the actual radio are shown.
 
-\rett{RX Gain Calibration} Here you can calibrate your RF front end. To this end, you
-need a highly accurate signal source of, say, $-73$ dBm. Connect this source to your
-radio and tune on the signal. If the signal reported by the meter
-appears too strong (say, at $-65$ dBm),
-\textit{decrease} the
-calibration value with the spin button until the meter shows the correct level.
-The RX gain calibration value can be viewed as the  amplification/attenuation of
-a virtual device you
-would need in your RF front end. Therefore, you need a negative calibration value (attenuation)
-if the signal in the meter is too strong. For most HPSDR radios, the default value is
-zero. For the HermesLite-II and other radios using the AD9866 chip, the default
-value is 14, but this is a rough estimate and certainly depends on details of
-the RF front end.
-
-\subsubsection{Orion/Orion-II/Saturn}
-For these radios, the upper right corner of the radio menu is as shown in
-Fig. \ref{fig:RadioMenuG2}:
-
-\begin{figure}[ht]
-\center
-\includegraphics[scale=0.6]{RadioMenuG2.png}
-\caption{\bltt{Radio} menu settings for Orion/OrionII/Saturn}
-\label{fig:RadioMenuG2}
-\end{figure}
-
-\rett{Mic PTT on} This chooses the wiring of the 3.5 mm TRS microphone jack. The possible choices
-are \rett{Ring} and \rett{Tip}. For \rett{Ring}, the ring connector is used for PTT, while the
-top connector is used for microphone input (and possibly microphone bias). For \rett{Tip}, it
-is the other way round (PTT on tip, Mic/Bias on ring).
-
-\rett{Mic Input}. This is only shown for Anan G2 radios (Saturn boards).
-These radios have two jacks for connecting a
-microphone, either a 3.5mm TRS jack in the front panel, or an XLR connection in the back panel. The pop-down
-menu lets you choose between these two options.
+\subsubsection{Microphone/Speaker settings}
+Most of these sections are relevant for an Anana-7000 and thus shown in Fig. 1. These
+settings are also valid if \pH is running on a controller with an audio codec
+(Controller3). The controls are
 
 \rett{Spkr Amp}. For OrionII and Saturn radios, the headphone output is driven directly by the audio codec
 chip, but additionally there is an AF amplifier that drives the speaker jacks and possibly built-in speakers.
@@ -1613,15 +1608,36 @@ speakers may emit an audible ``plop'' each time the speaker amplifier is muted o
 Some users have reported RFI problems with the speakers (but not with the headphone)
 and this option has been added to make it possible to mute the speakers during transmit only.
 
+\rett{Mic PTT on} This chooses the wiring of the 3.5 mm TRS microphone jack. The possible choices
+are \rett{Ring} and \rett{Tip}. For \rett{Ring}, the ring connector is used for PTT, while the
+top connector is used for microphone input (and possibly microphone bias). For \rett{Tip}, it
+is the other way round (PTT on tip, Mic/Bias on ring).
+
+\rett{Mic PTT enabled} This box enables the PTT contact on the front panel microphone jack. This
+may be either the ring or the tip contact, depending on the choice made with \rett{Mic PTT on}.
+
+\rett{Mic Bias enabled} This box enables a bias on the contact of the front panel microphone
+jack. This may be either the ring or the tip contact, depending on the choice made with \rett{Mic PTT on}.
+A bias is needed for electret microphones, for dynamic microphones one should usually disable the bias.
+
+\rett{Mic Input}. This is only shown for Anan G2 radios (Saturn boards).
+These radios have two jacks for connecting a
+microphone, either a 3.5mm TRS jack in the front panel, or an XLR connection in the back panel. The pop-down
+menu lets you choose between these two options.
+
+
 \subsubsection{ATLAS bus systems}
-The settings for an ATLAS (first-generation HPSDR) system are shown in Fig. \ref{fig:RadioMenuMetis}.
+Lots of additional controls are required for 
+ATLAS (first-generation HPSDR) systems, so we show the \bltt{Radio} menu for such systems 
+in Fig. \ref{fig:RadioMenuMetis}.
 They are only shown if the radio identifies itself as a METIS or OYZ device.
 A characteristic of this bus system is that each receiver and the transmitter are built as individual
-cards that can be plugged into a bus system.
+cards that can be plugged into a bus system. Since these radios usually run protocol-2, the
+\rett{Sample Rate} control appears in the left part of the menu.
 
 \begin{figure}[ht]
 \center
-\includegraphics[scale=0.6]{RadioMenuMetis.png}
+\includegraphics[scale=0.45]{RadioMenuMetis.png}
 \caption{\bltt{Radio} menu settings for ATLAS bus systems}
 \label{fig:RadioMenuMetis}
 \end{figure}
@@ -1631,14 +1647,14 @@ is partly built on speculation (that is, studying the specs) and exchanging e-ma
 people who still run such hardware. If you meet any inconsistencies, please contact
 the author.
 
-\rett{10 MHz source} This selects the 10 MHz master clock, which can be either \texttt{ATLAS}
+\rett{10MHz src} This selects the 10 MHz master clock, which can be either \texttt{ATLAS}
 (the bus itself is the source), \texttt{Penelope} (the transmitter board is the source),
 or \texttt{Mercury} (the receiver board is the source).
 
-\rett{122.88 MHz source} This selects the 122.88 MHz master clock, which can be either
+\rett{122M src} This selects the 122.88 MHz master clock, which can be either
 \texttt{Penelope} or \texttt{Mercury}.
 
-\rett{Mic source} This selects where the microphone samples that are sent to the computer
+\rett{Mic src} This selects where the microphone samples that are sent to the computer
 originate, that is, where your microphone has to be connected. The default is
 \texttt{Penelope}, this means the microphone is connected to the transmitter board. The
 other choice is \texttt{Janus}. The \texttt{Janus} board is simply an ADC/DAC board (not
@@ -1657,18 +1673,33 @@ external hardware such as the SDR-1000 can be connected to the Janus card. If th
 option is checked, \pH assumes that the radio is controlled outside \pH, and
 will thus only process the data stream but not try to send any commands to the radio.
 
+\subsubsection{Anan radios up to the 200D}
+For these radios, there are very few settings to be made:
+
+\rett{Anan-10E/100B}. (Checkbox, only shown on Hermes boards)
+While the Anan-10E and
+the Anan-100B identify themselves as Hermes boards, they differ from standard
+Hermes boards since they have a FPGA with limited
+resources, and this affects the allocation of PureSignal feedback channels. To make
+PureSignal work on these machines, you have to check this box in the \bltt{Radio} menu.
+This also applies to the new ,,revised'' version of the Anan-10E that came out
+in 2025. Note that checking this box for standard Hermes boards will prevent
+PureSignal from working.
+
+\rett{New PA board}. (Checkbox, only shown on Hermes/Angelia/Orion boards)
+This control is relevant for the Anan-100/200 radio family, where the PA board has
+been revised such that there is an ,,old'' (produced up to about February 2015) and
+a ,,new'' PA board (for radios produced after Feb. 2015). Among other differences,
+it seems that  \bltt{Bypass} jack in the rear panel is an output to be connected
+with either EXT1 or EXT2 for the PURESIGNAL feedback path, while for the
+new board, \bltt{Bypass} is an input preferably used for that feedback.
+
 \subsubsection{HermesLite-II}
 
 The HermesLite-II (HL2) specific options are shown in Fig. \ref{fig:RadioMenuHL2}.
 Note that in addition, the \bltt{N2ADR} filter board is chosen by default for this
-radio, and the RX gain calibration defaults to 14 dB.
-
-\begin{figure}[ht]
-\center
-\includegraphics[scale=0.6]{RadioMenuHL2.png}
-\caption{The \bltt{Radio} menu setting for a HermesLite-II.}
-\label{fig:RadioMenuHL2}
-\end{figure}
+radio, and the RX gain calibration defaults to 14 dB. Few checkboxes appear in
+the right part of the menu:
 
  \rett{HL2 audio codec}. Check this box if you have the AK4951 companion board installed.
   \pH then activates the audio codec on that board and includes RX audio samples in the
@@ -1686,36 +1717,8 @@ unwanted side effects. So the standard HL2 tuner support will only be active if 
 is checked, while the HL2 IO-Board tuner register is written upon TUNE-ing if this box
 is un-checked.
 
-\subsubsection{Hermes}
-For these boards, there are normally no specific settings to be made
-(Fig. \ref{fig:RadioMenuHermes}).
-
-\begin{figure}[ht]
-\center
-\includegraphics[scale=0.6]{RadioMenuHermes.png}
-\caption{The \bltt{Radio} menu setting for Hermes boards.}
-\label{fig:RadioMenuHermes}
-\end{figure}
-
-\rett{Anan-10E/100B}. While the Anan-10E and
-the Anan-100B identify themselves as Hermes boards, they differ from standard
-Hermes boards since they have a FPGA with limited
-resources, and this affects the allocation of PureSignal feedback channels. To make
-PureSignal work on these machines, you have to check this box in the \bltt{Radio} menu.
-This also applies to the new ,,revised'' version of the Anan-10E that came out
-in 2025. Note that checking this box for standard Hermes boards will prevent
-PureSignal from working.
-
 \subsubsection{SoapySDR}
-Few check boxes appear in the \bltt{Radio} menu that are specific for SoapySDR radios
-(Fig. \ref{fig:RadioMenuSoapy}).
-
-\begin{figure}[ht]
-\center
-\includegraphics[scale=0.6]{RadioMenuSoapy.png}
-\caption{The \bltt{Radio} menu setting for SoapySDR radios.}
-\label{fig:RadioMenuSoapy}
-\end{figure}
+Few check boxes appear in the \bltt{Radio} menu that are specific for SoapySDR radios:
 
 \rett{Swap IQ} This box only appears for radios connected via the SoapySDR library. If checked
 the I and Q samples are exchanged, both in the receivers and in the transmitter. An indication
@@ -1730,7 +1733,15 @@ Note that in this case S meter readings may be significantly off.
 For SoapySDR radios running two receivers, there is an additional check box
 \rett{HW AGC RX2}.
 
-
+\subsubsection{SoapySDR gain elements at the bottom of the menu}
+If one of the receiver of transmitter channels of the SoapySDR device features more than a
+single gain elements, these elements are displayed at the bottom of the \bltt{Radio} menu,
+separated by a thin horizontal line. Normally the \rett{RF gain} and \rett{TX drive} sliders
+should be enough. However, it can occur that the automatic distribution of the overall gain
+on the individual gain elements, as done by the SoapySDR driver module for that radio, is
+not optimal. In this case, the individual gain elements can be controlled by spin-boxes 
+at the bottom of the \bltt{Radio} menu. If such gain elements are changed, the new resulting
+overall gain is calculated and the \rett{RF gain} slider is re-adjusted if it is on display.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{Screen} Menu}
 \label{sec:screenmenu}
