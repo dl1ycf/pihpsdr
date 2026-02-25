@@ -2344,6 +2344,7 @@ void radio_set_alex_antennas() {
     if (can_transmit) {
       band = band_get_band(vfo[vfo_get_tx_vfo()].band);
       transmitter->alex_antenna = band->alexTxAntenna;
+      radio_calc_drive_level();
     }
   }
 
