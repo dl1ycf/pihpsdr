@@ -1627,8 +1627,8 @@ menu lets you choose between these two options.
 
 
 \subsubsection{ATLAS bus systems}
-Lots of additional controls are required for 
-ATLAS (first-generation HPSDR) systems, so we show the \bltt{Radio} menu for such systems 
+Lots of additional controls are required for
+ATLAS (first-generation HPSDR) systems, so we show the \bltt{Radio} menu for such systems
 in Fig. \ref{fig:RadioMenuMetis}.
 They are only shown if the radio identifies itself as a METIS or OYZ device.
 A characteristic of this bus system is that each receiver and the transmitter are built as individual
@@ -1696,10 +1696,9 @@ new board, \bltt{Bypass} is an input preferably used for that feedback.
 
 \subsubsection{HermesLite-II}
 
-The HermesLite-II (HL2) specific options are shown in Fig. \ref{fig:RadioMenuHL2}.
+There are only three checkboxes in the Hardware Settings for the HermesLite-II.
 Note that in addition, the \bltt{N2ADR} filter board is chosen by default for this
-radio, and the RX gain calibration defaults to 14 dB. Few checkboxes appear in
-the right part of the menu:
+radio, and the RX gain calibration defaults to 14 dB.
 
  \rett{HL2 audio codec}. Check this box if you have the AK4951 companion board installed.
   \pH then activates the audio codec on that board and includes RX audio samples in the
@@ -1739,7 +1738,7 @@ single gain elements, these elements are displayed at the bottom of the \bltt{Ra
 separated by a thin horizontal line. Normally the \rett{RF gain} and \rett{TX drive} sliders
 should be enough. However, it can occur that the automatic distribution of the overall gain
 on the individual gain elements, as done by the SoapySDR driver module for that radio, is
-not optimal. In this case, the individual gain elements can be controlled by spin-boxes 
+not optimal. In this case, the individual gain elements can be controlled by spin-boxes
 at the bottom of the \bltt{Radio} menu. If such gain elements are changed, the new resulting
 overall gain is calculated and the \rett{RF gain} slider is re-adjusted if it is on display.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
