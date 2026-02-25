@@ -3243,7 +3243,7 @@ void radio_apply_band_settings(int flag, int id) {
   // This applies settings stored with the current BAND for
   // the VFO of receiver #id, and the transmitter
   //
-  // flag == 0: RX Antenna, TX Antenna, PA dis/enable status
+  // flag == 0: RX Antenna, TX Antenna, PA dis/enable status, TX drive level
   // flag == 1: in addition, preamp/dither/attenuation/gain status
   //
   // flag is nonzero if called from a "real" band change
@@ -3263,6 +3263,7 @@ void radio_apply_band_settings(int flag, int id) {
     if (can_transmit) {
       const BAND *txband = band_get_band(vfo[vfo_get_tx_vfo()].band);
       transmitter->antenna = txband->TxAntenna;
+      radio_calc_drive_level();
     }
 
     if (flag) {
@@ -3287,7 +3288,8 @@ void radio_apply_band_settings(int flag, int id) {
     }
   }
 
-  schedule_high_priority();         // possibly update RX/TX antennas
+  schedule_high_priority();         // possibly update RX/TX antennas, OC settings, ...
+  schedule_receive_specific();      // possibly update dither
   schedule_general();               // possibly update PA disable
   suppress_popup_sliders--;
 }
