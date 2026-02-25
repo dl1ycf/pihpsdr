@@ -1234,7 +1234,7 @@ static struct gpiod_line *setup_output_line(unsigned int offset, int initialValu
 #endif
 
 #ifdef GPIOV2
-static struct gpiod_line_request *setup_output_request(unsigned int offset, int initialValue) {
+static struct gpiod_line_request *setup_output_line(unsigned int offset, int initialValue) {
   //
   // Setup active-high output lines. libgpiod API V2
   //
@@ -1568,7 +1568,7 @@ void gpio_init() {
   //
   for (int i = 0; i < NUM_OUTPUT_LINES; i++) {
     if (check_line(output_lines[i], i, "OUT")) {
-      output_request[i] = setup_output_request(output_lines[i], 1);
+      output_request[i] = setup_output_line(output_lines[i], 1);
       if (output_request[i]) {
         t_print("GPIO output line %d requested for OUT.%d\n", output_lines[i], i);
       } else {
