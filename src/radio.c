@@ -1283,12 +1283,10 @@ void radio_start_radio(void) {
     break;
 
   case DEVICE_HERMES:
-  case DEVICE_GRIFFIN:
   case DEVICE_ANGELIA:
   case DEVICE_ORION:
   case DEVICE_STEMLAB_Z20:
   case NEW_DEVICE_HERMES:
-  case NEW_DEVICE_HERMES2:
   case NEW_DEVICE_ANGELIA:
   case NEW_DEVICE_ORION:
   case NEW_DEVICE_SATURN:  // make 100W the default for G2
@@ -1330,11 +1328,9 @@ void radio_start_radio(void) {
     break;
 
   case DEVICE_HERMES:
-  case DEVICE_GRIFFIN:
   case DEVICE_ANGELIA:
   case DEVICE_ORION:
   case NEW_DEVICE_HERMES:
-  case NEW_DEVICE_HERMES2:
   case NEW_DEVICE_ANGELIA:
   case NEW_DEVICE_ORION:
     have_dither = 1;
@@ -1537,7 +1533,6 @@ void radio_start_radio(void) {
   case DEVICE_HERMES_LITE2:
   case NEW_DEVICE_ATLAS:
   case NEW_DEVICE_HERMES:
-  case NEW_DEVICE_HERMES2:
   case NEW_DEVICE_HERMES_LITE:
   case NEW_DEVICE_HERMES_LITE2:
     //

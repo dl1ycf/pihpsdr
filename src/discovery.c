@@ -479,11 +479,11 @@ gboolean discovery_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer d
 
       case DEVICE_METIS:
       case NEW_DEVICE_ATLAS:
-      case DEVICE_GRIFFIN:
         r = "Old Metis";
         break;
 
       case DEVICE_HERMES:
+      case DEVICE_HERMES2:
       case NEW_DEVICE_HERMES:
       case NEW_DEVICE_HERMES2:
         r = "Hermes";

@@ -35,7 +35,7 @@
 //
 #define DEVICE_METIS               0
 #define DEVICE_HERMES              1
-#define DEVICE_GRIFFIN             2
+#define DEVICE_HERMES2             2
 #define DEVICE_ANGELIA             4
 #define DEVICE_ORION               5
 #define DEVICE_HERMES_LITE         6
