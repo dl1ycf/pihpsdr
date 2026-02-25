@@ -110,10 +110,9 @@ static void serial_port_cb(GtkWidget *widget, gpointer data) {
   const char *cp = gtk_entry_get_text(GTK_ENTRY(widget));
 
   //
-  // If the serial port is already running, do not allow changes.
-  //
-  // If the last serial port is marked as a G2-internal port,
-  // and if the same port name is used, do not allow changes
+  // - If the serial port is already running, do not allow changes.
+  // - If the name occurs for the "auto-detected" port, do not allow
+  //   to use that name.
   //
   if (SerialPorts[id].enable ||
       (SerialPorts[MAX_SERIAL - 1].g2 && !strcmp(SerialPorts[MAX_SERIAL - 1].port, cp))) {
@@ -331,9 +330,6 @@ void rigctl_menu(GtkWidget *parent) {
     gtk_widget_set_halign(w, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), w, 0, row, 1, 1);
 
-    //
-    // If this serial port is used internally in a G2 simply state port name
-    //
     if (!SerialPorts[i].g2) {
       w = gtk_entry_new();
       gtk_entry_set_text(GTK_ENTRY(w), SerialPorts[i].port);
@@ -391,10 +387,11 @@ void rigctl_menu(GtkWidget *parent) {
       }
     } else {
       //
-      // If the Serial port is used for the G2 panel, just report port name.
-      // If it is not enabled, this means the initial launch_serial() failed.
+      // - If this serial port is auto-detected, simply report name but offer no
+      //   GUI elements for changing things.
+      // - If it is not enabled, this means the initial launch_serial() failed.
       //
-      snprintf (str, sizeof(str), "%s %s for G2-internal communication", SerialPorts[i].port,
+      snprintf (str, sizeof(str), "%s %s for G2/Controller3", SerialPorts[i].port,
                 SerialPorts[i].enable ? "used" : "failed");
       w = gtk_label_new(str);
       gtk_widget_set_name(w, "boldlabel");

@@ -218,7 +218,7 @@ int vfo_snap = 0;
 
 int protocol;
 int device;
-int new_pa_board = 0; // Indicates Rev.24 PA board for HERMES/ANGELIA/ORION
+int new_pa_board = 1; // Indicates Rev.24 PA board for HERMES/ANGELIA/ORION
 
 int tx_fifo_underrun = 0;
 int tx_fifo_overrun = 0;
@@ -1229,6 +1229,23 @@ void radio_start_radio(void) {
         t_print("Serial port %s not found.\n", ChkSerial->port);
       }
     }
+  } else {
+#ifdef GPIO
+    if (controller == CONTROLLER3) {
+      const char *cp = realpath("/dev/serial/by-id/Remotehead-9600", NULL);
+      if (cp != NULL) {
+        SerialPorts[MAX_SERIAL - 1].enable = 1;
+        SerialPorts[MAX_SERIAL - 1].andromeda = 1;
+        SerialPorts[MAX_SERIAL - 1].speed = B9600;
+        SerialPorts[MAX_SERIAL - 1].autoreporting = 0;
+        SerialPorts[MAX_SERIAL - 1].g2 = 1;
+        snprintf(SerialPorts[MAX_SERIAL - 1].port, sizeof(SerialPorts[MAX_SERIAL - 1].port), "%s", cp);
+        t_print("Serial %s used for CONTROLLER3 (9600 baud)\n", cp);
+      } else {
+        t_print("CONTROLLER3: /dev/serial/by-id/Remotehead-9600 not found!\n");
+      }
+    }
+#endif
   }
 
   if (device == DEVICE_METIS || device == DEVICE_OZY || device == NEW_DEVICE_ATLAS) {
@@ -1266,12 +1283,10 @@ void radio_start_radio(void) {
     break;
 
   case DEVICE_HERMES:
-  case DEVICE_GRIFFIN:
   case DEVICE_ANGELIA:
   case DEVICE_ORION:
   case DEVICE_STEMLAB_Z20:
   case NEW_DEVICE_HERMES:
-  case NEW_DEVICE_HERMES2:
   case NEW_DEVICE_ANGELIA:
   case NEW_DEVICE_ORION:
   case NEW_DEVICE_SATURN:  // make 100W the default for G2
@@ -1313,11 +1328,9 @@ void radio_start_radio(void) {
     break;
 
   case DEVICE_HERMES:
-  case DEVICE_GRIFFIN:
   case DEVICE_ANGELIA:
   case DEVICE_ORION:
   case NEW_DEVICE_HERMES:
-  case NEW_DEVICE_HERMES2:
   case NEW_DEVICE_ANGELIA:
   case NEW_DEVICE_ORION:
     have_dither = 1;
@@ -1520,7 +1533,6 @@ void radio_start_radio(void) {
   case DEVICE_HERMES_LITE2:
   case NEW_DEVICE_ATLAS:
   case NEW_DEVICE_HERMES:
-  case NEW_DEVICE_HERMES2:
   case NEW_DEVICE_HERMES_LITE:
   case NEW_DEVICE_HERMES_LITE2:
     //
@@ -1647,6 +1659,10 @@ void radio_start_radio(void) {
   radio_change_region(region);
   radio_create_visual();
   radio_reconfigure_screen();
+
+#ifdef GPIO
+  gpio_set_orion_options();
+#endif
 
   if (tci_enable) {
     launch_tci();
@@ -3227,7 +3243,7 @@ void radio_apply_band_settings(int flag, int id) {
   // This applies settings stored with the current BAND for
   // the VFO of receiver #id, and the transmitter
   //
-  // flag == 0: RX Antenna, TX Antenna, PA dis/enable status
+  // flag == 0: RX Antenna, TX Antenna, PA dis/enable status, TX drive level
   // flag == 1: in addition, preamp/dither/attenuation/gain status
   //
   // flag is nonzero if called from a "real" band change
@@ -3247,6 +3263,7 @@ void radio_apply_band_settings(int flag, int id) {
     if (can_transmit) {
       const BAND *txband = band_get_band(vfo[vfo_get_tx_vfo()].band);
       transmitter->antenna = txband->TxAntenna;
+      radio_calc_drive_level();
     }
 
     if (flag) {
@@ -3271,7 +3288,8 @@ void radio_apply_band_settings(int flag, int id) {
     }
   }
 
-  schedule_high_priority();         // possibly update RX/TX antennas
+  schedule_high_priority();         // possibly update RX/TX antennas, OC settings, ...
+  schedule_receive_specific();      // possibly update dither
   schedule_general();               // possibly update PA disable
   suppress_popup_sliders--;
 }
@@ -3362,6 +3380,11 @@ static void radio_restore_state(void) {
   // For consistency, all variables should get default values HERE,
   // but this is too much for the moment.
   //
+  // Variables local to the client in client/server operation:
+  // These variables are NOT initialised from the server, and are
+  // NOT sent to the server if they change. Their values can be
+  // different on the client and the server and apply locally.
+  //
   GetPropI0("WindowPositionX",                               window_x_pos);
   GetPropI0("WindowPositionY",                               window_y_pos);
   GetPropI0("slider_rows",                                   slider_rows);
@@ -3397,12 +3420,30 @@ static void radio_restore_state(void) {
   GetPropI0("cw_keyer_ptt_delay",                            cw_keyer_ptt_delay);
   GetPropI0("cw_keyer_hang_time",                            cw_keyer_hang_time);
   GetPropI0("cw_breakin",                                    cw_breakin);
+  //
+  // Client/Server: these are handled on the client or not handled at all.
+  // For some controllers with audio codecs, some of these variable may
+  // affect the behaviour of the controller
+  //
+  GetPropI0("mic_ptt_enabled",                               orion_mic_ptt_enabled);
+  GetPropI0("mic_bias_enabled",                              orion_mic_bias_enabled);
+  GetPropI0("mic_ptt_tip_bias_ring",                         orion_mic_ptt_tip);
+  GetPropI0("mic_input_xlr",                                 g2_mic_input_xlr);
+  GetPropI0("mic_boost",                                     mic_boost);
+  GetPropI0("mic_linein",                                    mic_linein);
+  GetPropF0("linein_gain",                                   linein_gain);
+  GetPropI0("mute_spkr_amp",                                 mute_spkr_amp);
+  GetPropI0("mute_spkr_xmit",                                mute_spkr_xmit);
 
   for (int i = 0; i < 6; i++) {
     GetPropI1("display_vfobar[%d]", i,                       display_vfobar[i]);
   }
 
   if (!radio_is_remote) {
+    //
+    // These variables are sent from the server to the client upon connection,
+    // and are sent back to the server if they have been changed
+    //
     GetPropI0("enable_auto_tune",                            enable_auto_tune);
     GetPropI0("enable_tx_inhibit",                           enable_tx_inhibit);
     GetPropI0("radio_sample_rate",                           soapy_radio_sample_rate);
@@ -3426,13 +3467,6 @@ static void radio_restore_state(void) {
     GetPropI0("filter_board",                                filter_board);
     GetPropI0("pa_enabled",                                  pa_enabled);
     GetPropI0("pa_power",                                    pa_power);
-    GetPropI0("mic_boost",                                   mic_boost);
-    GetPropI0("mic_linein",                                  mic_linein);
-    GetPropF0("linein_gain",                                 linein_gain);
-    GetPropI0("mic_ptt_enabled",                             orion_mic_ptt_enabled);
-    GetPropI0("mic_bias_enabled",                            orion_mic_bias_enabled);
-    GetPropI0("mic_ptt_tip_bias_ring",                       orion_mic_ptt_tip);
-    GetPropI0("mic_input_xlr",                               g2_mic_input_xlr);
     GetPropI0("cw_keyer_sidetone_frequency",                 cw_keyer_sidetone_frequency);
     GetPropI0("OCtune",                                      OCtune);
     GetPropI0("OCfull_tune_time",                            OCfull_tune_time);
@@ -3447,8 +3481,6 @@ static void radio_restore_state(void) {
     GetPropI0("sat_mode",                                    sat_mode);
     GetPropI0("radio.display_warnings",                      display_warnings);
     GetPropI0("radio.display_pacurr",                        display_pacurr);
-    GetPropI0("mute_spkr_amp",                               mute_spkr_amp);
-    GetPropI0("mute_spkr_xmit",                              mute_spkr_xmit);
 #ifdef SATURN
     GetPropI0("saturn_server_en",                            saturn_server_en);
 #endif
@@ -3622,6 +3654,20 @@ void radio_save_state(void) {
   SetPropI0("cw_keyer_ptt_delay",                            cw_keyer_ptt_delay);
   SetPropI0("cw_keyer_hang_time",                            cw_keyer_hang_time);
   SetPropI0("cw_breakin",                                    cw_breakin);
+  //
+  // Client/Server: these are handled on the client or not handled at all.
+  // For some controllers with audio codecs, some of these variable may
+  // affect the behaviour of the controller
+  //
+  SetPropI0("mic_ptt_enabled",                               orion_mic_ptt_enabled);
+  SetPropI0("mic_bias_enabled",                              orion_mic_bias_enabled);
+  SetPropI0("mic_ptt_tip_bias_ring",                         orion_mic_ptt_tip);
+  SetPropI0("mic_input_xlr",                                 g2_mic_input_xlr);
+  SetPropI0("mic_boost",                                     mic_boost);
+  SetPropI0("mic_linein",                                    mic_linein);
+  SetPropF0("linein_gain",                                   linein_gain);
+  SetPropI0("mute_spkr_amp",                                 mute_spkr_amp);
+  SetPropI0("mute_spkr_xmit",                                mute_spkr_xmit);
 
   for (int i = 0; i < 6; i++) {
     SetPropI1("display_vfobar[%d]", i,                       display_vfobar[i]);
@@ -3651,13 +3697,6 @@ void radio_save_state(void) {
     SetPropI0("filter_board",                                filter_board);
     SetPropI0("pa_enabled",                                  pa_enabled);
     SetPropI0("pa_power",                                    pa_power);
-    SetPropI0("mic_boost",                                   mic_boost);
-    SetPropI0("mic_linein",                                  mic_linein);
-    SetPropF0("linein_gain",                                 linein_gain);
-    SetPropI0("mic_ptt_enabled",                             orion_mic_ptt_enabled);
-    SetPropI0("mic_bias_enabled",                            orion_mic_bias_enabled);
-    SetPropI0("mic_ptt_tip_bias_ring",                       orion_mic_ptt_tip);
-    SetPropI0("mic_input_xlr",                               g2_mic_input_xlr);
     SetPropI0("cw_keyer_sidetone_frequency",                 cw_keyer_sidetone_frequency);
     SetPropI0("OCtune",                                      OCtune);
     SetPropI0("OCfull_tune_time",                            OCfull_tune_time);
@@ -3672,8 +3711,6 @@ void radio_save_state(void) {
     SetPropI0("sat_mode",                                    sat_mode);
     SetPropI0("radio.display_warnings",                      display_warnings);
     SetPropI0("radio.display_pacurr",                        display_pacurr);
-    SetPropI0("mute_spkr_amp",                               mute_spkr_amp);
-    SetPropI0("mute_spkr_xmit",                              mute_spkr_xmit);
 #ifdef SATURN
     SetPropI0("saturn_server_en",                            saturn_server_en);
 #endif
@@ -3747,6 +3784,10 @@ int radio_client_start(gpointer data) {
   send_screen(cl_sock_tcp, rx_stack_horizontal, display_width[display_size]);
   radio_create_visual();
   radio_reconfigure_screen();
+
+#ifdef GPIO
+  gpio_set_orion_options();
+#endif
 
   if (tci_enable) {
     launch_tci();

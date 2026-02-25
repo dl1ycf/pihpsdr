@@ -214,19 +214,13 @@ void send_radiomenu(int sock) {
   RADIOMENU_DATA data;
   SYNC(data.header.sync);
   data.header.data_type = to_16(CMD_RADIOMENU);
-  data.mic_ptt_tip = orion_mic_ptt_tip;
   data.sat_mode = sat_mode;
-  data.mic_input_xlr = g2_mic_input_xlr;
   data.atlas_clock_source_10mhz = atlas_clock_source_10mhz;
   data.atlas_clock_source_128mhz = atlas_clock_source_128mhz;
   data.atlas_mic_source = atlas_mic_source;
   data.atlas_penelope = atlas_penelope;
   data.atlas_janus = atlas_janus;
-  data.mic_ptt_enabled = orion_mic_ptt_enabled;
-  data.mic_bias_enabled = orion_mic_bias_enabled;
   data.pa_enabled = pa_enabled;
-  data.mute_spkr_amp = mute_spkr_amp;
-  data.mute_spkr_xmit = mute_spkr_xmit;
   data.hl2_audio_codec = hl2_audio_codec;
   data.soapy_iqswap = soapy_iqswap;
   data.enable_tx_inhibit = enable_tx_inhibit;
@@ -341,16 +335,8 @@ void send_radio_data(int sock) {
   data.anan10E = anan10E;
   data.tx_out_of_band_allowed = tx_out_of_band_allowed;
   data.pa_enabled = pa_enabled;
-  data.mic_boost = mic_boost;
-  data.mic_linein = mic_linein;
-  data.mic_ptt_enabled = orion_mic_ptt_enabled;
-  data.mic_bias_enabled = orion_mic_bias_enabled;
-  data.mic_ptt_tip = orion_mic_ptt_tip;
-  data.mic_input_xlr = g2_mic_input_xlr;
   data.OCtune = OCtune;
   data.mute_rx_while_transmitting = mute_rx_while_transmitting;
-  data.mute_spkr_amp = mute_spkr_amp;
-  data.mute_spkr_xmit = mute_spkr_xmit;
   data.split = split;
   data.sat_mode = sat_mode;
   data.duplex = duplex;
@@ -1155,9 +1141,6 @@ void send_txmenu(int s) {
     command.tune_drive = transmitter->tune_drive;
     command.tune_use_drive = transmitter->tune_use_drive;
     command.swr_protection = transmitter->swr_protection;
-    command.mic_boost = mic_boost;
-    command.mic_linein = mic_linein;
-    command.linein_gain = to_double(linein_gain);
     command.swr_alarm = to_double(transmitter->swr_alarm);
     send_tcp(s, (char *)&command, sizeof(TXMENU_DATA));
   }

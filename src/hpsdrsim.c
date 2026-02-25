@@ -336,7 +336,7 @@ int main(int argc, char *argv[]) {
 
     if (!strncmp(argv[i], "-hermes",       7))  {OLDDEVICE = ODEV_HERMES;       NEWDEVICE = NDEV_HERMES;        MAC5 = 0x15;             continue;}
 
-    if (!strncmp(argv[i], "-griffin",      8))  {OLDDEVICE = ODEV_GRIFFIN;      NEWDEVICE = NDEV_HERMES2;       MAC5 = 0x16;             continue;}
+    if (!strncmp(argv[i], "-hermes2",      8))  {OLDDEVICE = ODEV_HERMES2;      NEWDEVICE = NDEV_HERMES2;       MAC5 = 0x16;             continue;}
 
     if (!strncmp(argv[i], "-angelia",      8))  {OLDDEVICE = ODEV_ANGELIA;      NEWDEVICE = NDEV_ANGELIA;       MAC5 = 0x17;             continue;}
 
@@ -375,7 +375,7 @@ int main(int argc, char *argv[]) {
     }
 
     t_print("Unknown option: %s\n", argv[i]);
-    t_print("Valid options are: -atlas | -metis  | -hermes     | -griffin     | -angelia |\n");
+    t_print("Valid options are: -atlas | -metis  | -hermes     | -hermes2     | -angelia |\n");
     t_print("                   -orion | -orion2 | -hermeslite | -hermeslite2 | -c25     |\n");
     t_print("                   -diversity | -P1 | -P2         | -fast        | -slow    |\n");
     t_print("                   -nb <num> <width>\n");
@@ -425,7 +425,7 @@ int main(int argc, char *argv[]) {
     break;
 
   case   NDEV_HERMES2:
-    t_print("DEVICE is HERMES2/GRIFFIN\n");
+    t_print("DEVICE is HERMES2\n");
     c1 = 3.3;
     c2 = 0.095;
     TXDAC = 3;

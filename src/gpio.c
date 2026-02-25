@@ -20,6 +20,9 @@
 // Note that all pin numbers are now "GPIO numbers"
 
 #include <gtk/gtk.h>
+#include "gpio.h"
+
+int controller = NO_CONTROLLER;
 
 #ifdef GPIO
 #include <stdio.h>
@@ -74,75 +77,116 @@
 // CWR:      input:  right paddle for internal (iambic) keyer
 // CWKEY:    input:  key-down from external keyer
 // PTTIN:    input:  PTT from external keyer or microphone
-// PTTOUT:   output: PTT output (indicating TX status)
 //
-// a value < 0 indicates "do not use". All inputs are active-low,
-// but PTTOUT is active-high
+// a value < 0 indicates "do not use". All inputs and outputs are active-low,
 //
-// Avoid using GPIO lines 18, 19, 20, 21 since they are used for I2S
-// by some GPIO-connected audio output "hats"
+// There are also a number of output lines that we can use, see
+// enum _output_choice.
 //
+// RESERVED GPIO LINES:
+//
+// 2, 3            (I2C interface)
+// 18, 19, 20, 21  (I2S interface, e.q. audio hats)
 //
 ///////////////////////////////////////////////////////////////////////////
 
-int controller = NO_CONTROLLER;
+//
+// output lines.
+// OUT_PTT and OUT_CW are for general users
+// OUT_MIC_* is for Controllers with audio codec
+//
+enum _output_choice {
+ OUT_PTT = 0,           // output for PTT status
+ OUT_CW,                // output for CW key-down status
+ OUT_MIC_SEL,           // output for orion_mic_ptt_tip
+ OUT_MIC_BIAS,          // output for orion_mic_bias_enabled
+ OUT_MIC_PTT,           // output for orion_mic_ptt_enabled
+ OUT_MIC_BOOST,         // output for mic_boost
+ OUT_SPKR_MUTE,         // output for mute speaker amp
+ NUM_OUTPUT_LINES
+};
 
+//
+// input lines other than Encoders/Switches
+//
 static int I2C_INTERRUPT = 15;
 static int CWL_LINE = -1;
 static int CWR_LINE = -1;
 static int CWKEY_LINE = -1;
 static int PTTIN_LINE = -1;
-static int PTTOUT_LINE = -1;
-static int CWOUT_LINE = -1;
+
+#define MAX_LINES 32
+
+static int num_input_lines = 0;
+static int input_lines[MAX_LINES] = { -1 };
+static int input_pullup[MAX_LINES] = { -1 };
+static int input_debounce[MAX_LINES] = { 0 };
+static int output_lines[NUM_OUTPUT_LINES] = { -1 };
 
 #ifdef GPIOV1
-  static struct gpiod_line *pttout_line = NULL;
-  static struct gpiod_line *cwout_line = NULL;
+  static struct gpiod_line *output_request[NUM_OUTPUT_LINES] = { NULL };
 #endif
 #ifdef GPIOV2
-  static struct gpiod_line_request *pttout_request = NULL;
-  static struct gpiod_line_request *cwout_request = NULL;
+  static struct gpiod_line_request *output_request[NUM_OUTPUT_LINES] = { NULL };
   static struct gpiod_line_request *input_request = NULL;
 #endif
 
-void gpio_set_ptt(int state) {
+static void gpio_set_output(int type, int state) {
+
 #ifdef GPIOV1
 
-  if (pttout_line) {
-    if (gpiod_line_set_value(pttout_line, NOT(state)) < 0) {
+  if (output_request[type] && output_lines[type] >= 0) {
+    if (gpiod_line_set_value(output_request[type], NOT(state)) < 0) {
       t_print("%s failed: %s\n", __func__, g_strerror(errno));
     }
   }
-
 #endif
+
 #ifdef GPIOV2
 
-  if (pttout_request && PTTOUT_LINE >= 0) {
-    gpiod_line_request_set_value(pttout_request, PTTOUT_LINE,
+  if (output_request[type] && output_lines[type] >= 0) {
+    gpiod_line_request_set_value(output_request[type], output_lines[type],
                                  state ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE);
   }
 
 #endif
 }
 
+void gpio_set_ptt(int state) {
+  gpio_set_output(OUT_PTT, NOT(state));
+  //
+  // If TX and MuteSpeakerXmit ist set, deactivate AF amp
+  //
+  if (state && mute_spkr_xmit) {
+    gpio_set_output(OUT_SPKR_MUTE, NOT(state));
+  }
+  //
+  // If RX and MuteSpeakerAmp is NOTSET, activate AF amp
+  //
+  if (!state && !mute_spkr_amp) {
+    gpio_set_output(OUT_SPKR_MUTE, NOT(state));
+  }
+}
+
 void gpio_set_cw(int state) {
-#ifdef GPIOV1
+  gpio_set_output(OUT_CW, NOT(state));
+}
 
-  if (cwout_line) {
-    if (gpiod_line_set_value(cwout_line, NOT(state)) < 0) {
-      t_print("%s failed: %s\n", __func__, g_strerror(errno));
-    }
+void gpio_set_orion_options() {
+  //
+  // our outputs are active low.
+  // The OUT_MIC_PTT output is interpreted as "PTT disabled",
+  // we have to invert.
+  //
+  gpio_set_output(OUT_MIC_SEL, NOT(orion_mic_ptt_tip));
+  gpio_set_output(OUT_MIC_BIAS, NOT(orion_mic_bias_enabled));
+  gpio_set_output(OUT_MIC_PTT, SET(orion_mic_ptt_enabled));
+  gpio_set_output(OUT_MIC_BOOST, NOT(mic_boost));
+  if (radio_is_transmitting()) {
+    gpio_set_output(OUT_SPKR_MUTE, NOT(mute_spkr_xmit));
+  } else {
+    gpio_set_output(OUT_SPKR_MUTE, NOT(mute_spkr_amp));
   }
-
-#endif
-#ifdef GPIOV2
-
-  if (cwout_request && CWOUT_LINE >= 0) {
-    gpiod_line_request_set_value(cwout_request, CWOUT_LINE,
-                                 state ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE);
-  }
-
-#endif
 }
 
 #define DIR_NONE 0x0
@@ -434,11 +478,6 @@ static GMutex encoder_mutex;
 static GThread *monitor_thread_id;
 static GThread *rotary_encoder_thread_id;
 
-static int num_input_lines = 0;
-static int input_lines[MAX_LINES];    // GPIO number (offset) of line
-static int input_pullup[MAX_LINES];   // has pullup?
-static int input_debounce[MAX_LINES]; // debouncing time (in microseconds!)
-
 #ifdef GPIOV1
 //
 // All the timing is for the "pedestrian way" debouncing with libgpiod V1
@@ -681,6 +720,7 @@ void gpio_default_encoder_actions(int ctrlr) {
 
   switch (ctrlr) {
   case NO_CONTROLLER:
+  case CONTROLLER3:
   default:
     default_encoders = NULL;
     break;
@@ -720,6 +760,7 @@ void gpio_default_switch_actions(int ctrlr) {
   switch (ctrlr) {
   case NO_CONTROLLER:
   case CONTROLLER1:
+  case CONTROLLER3:
   default:
     default_switches = NULL;
     break;
@@ -769,8 +810,8 @@ void gpio_set_defaults(int ctrlr) {
   CWR_LINE = -1;
   CWKEY_LINE = -1;
   PTTIN_LINE = -1;
-  PTTOUT_LINE = -1;
-  CWOUT_LINE = -1;
+
+  for (int i = 0; i < NUM_OUTPUT_LINES; i++) { output_lines[i] = -1; }
 
   switch (ctrlr) {
   case CONTROLLER1:
@@ -781,7 +822,7 @@ void gpio_set_defaults(int ctrlr) {
     CWR_LINE = 11;
     CWKEY_LINE = 10;
     PTTIN_LINE = 14;
-    PTTOUT_LINE = 15;
+    output_lines[OUT_PTT] = 15;
     memcpy(encoders, encoders_controller1, sizeof(encoders));
     memcpy(switches, switches_controller1, sizeof(switches));
     break;
@@ -794,8 +835,8 @@ void gpio_set_defaults(int ctrlr) {
     CWR_LINE = 11;
     CWKEY_LINE = 10;
     PTTIN_LINE = 14;
-    PTTOUT_LINE = 13;
-    CWOUT_LINE = 12;
+    output_lines[OUT_PTT] = 13;
+    output_lines[OUT_CW] = 12;
     memcpy(encoders, encoders_controller2_v1, sizeof(encoders));
     memcpy(switches, switches_controller2_v1, sizeof(switches));
     break;
@@ -817,18 +858,46 @@ void gpio_set_defaults(int ctrlr) {
     memcpy(switches, switches_g2v1_panel, sizeof(switches));
     break;
 
-  case NO_CONTROLLER:
-  default:
+  case CONTROLLER3:
     //
-    // GPIO lines that are not used elsewhere: 5,  6, 12, 16,
+    // This uses lots of GPIO lines but no encoders/switches,
+    // which are on an ANDROMEDA-type  panel
+    //
+    CWL_LINE                    = 16;
+    CWR_LINE                    = 17;
+    CWKEY_LINE                  = 15;
+    PTTIN_LINE                  = 19;
+    output_lines[OUT_MIC_SEL]   = 21;
+    output_lines[OUT_MIC_BIAS]  = 22;
+    output_lines[OUT_MIC_BOOST] = 23;
+    output_lines[OUT_MIC_PTT]   = 24;
+    output_lines[OUT_SPKR_MUTE] = 25;
+    //
+    memcpy(encoders, encoders_no_controller, sizeof(encoders));
+    memcpy(switches, switches_no_controller, sizeof(switches));
+    break;
+
+  case NO_CONTROLLER:
+    //
+    // GPIO lines that are not used elsewhere: 5,  6, 12, 16, (17),
     //                                        22, 23, 24, 25, 27
     //
+    // GPIO17 is connected to the "button" in the WaveShare audio hat,
+    //        but may be used for an active-low output if you
+    //        do not use the button.
     CWL_LINE = 5;
     CWR_LINE = 6;
     CWKEY_LINE = 12;
     PTTIN_LINE = 16;
-    PTTOUT_LINE = 22;
-    CWOUT_LINE = 23;
+    output_lines[OUT_PTT] = 22;
+    output_lines[OUT_CW] = 23;
+    memcpy(encoders, encoders_no_controller, sizeof(encoders));
+    memcpy(switches, switches_no_controller, sizeof(switches));
+    break;
+
+  default:
+    // We should not arrive here, but if we do, do not activate
+    // any GPIO lines
     memcpy(encoders, encoders_no_controller, sizeof(encoders));
     memcpy(switches, switches_no_controller, sizeof(switches));
     break;
@@ -872,14 +941,18 @@ void gpio_restore_state() {
   GetPropI0("cwr_line",                                           CWR_LINE);
   GetPropI0("cwkey_line",                                         CWKEY_LINE);
   GetPropI0("pttin_line",                                         PTTIN_LINE);
-  GetPropI0("pttout_line",                                        PTTOUT_LINE);
-  GetPropI0("cwout_line",                                         CWOUT_LINE);
+  GetPropI0("pttout_line",                                        output_lines[OUT_PTT]);
+  GetPropI0("cwout_line",                                         output_lines[OUT_CW]);
+  GetPropI0("micsel_line",                                        output_lines[OUT_MIC_SEL]);
+  GetPropI0("micbias_line",                                       output_lines[OUT_MIC_BIAS]);
+  GetPropI0("micptt_line",                                        output_lines[OUT_MIC_PTT]);
+  GetPropI0("micboost_line",                                      output_lines[OUT_MIC_BOOST]);
   GetPropI0("i2c_irq_line",                                       I2C_INTERRUPT);
 }
 
 void gpio_save_state() {
   //
-  // This is ONLY called from the discovery "Controller" callback
+  // This called when the controller changed.
   //
   clearProperties();
   SetPropI0("controller",                                         controller);
@@ -908,8 +981,12 @@ void gpio_save_state() {
   SetPropI0("cwr_line",                                           CWR_LINE);
   SetPropI0("cwkey_line",                                         CWKEY_LINE);
   SetPropI0("pttin_line",                                         PTTIN_LINE);
-  SetPropI0("pttout_line",                                        PTTOUT_LINE);
-  SetPropI0("cwout_line",                                         CWOUT_LINE);
+  SetPropI0("pttout_line",                                        output_lines[OUT_PTT]);
+  SetPropI0("cwout_line",                                         output_lines[OUT_CW]);
+  SetPropI0("micsel_line",                                        output_lines[OUT_MIC_SEL]);
+  SetPropI0("micbias_line",                                       output_lines[OUT_MIC_BIAS]);
+  SetPropI0("micptt_line",                                        output_lines[OUT_MIC_PTT]);
+  SetPropI0("micboost_line",                                      output_lines[OUT_MIC_BOOST]);
   SetPropI0("i2c_irq_line",                                       I2C_INTERRUPT);
   saveProperties("gpio.props");
 }
@@ -1157,7 +1234,7 @@ static struct gpiod_line *setup_output_line(unsigned int offset, int initialValu
 #endif
 
 #ifdef GPIOV2
-static struct gpiod_line_request *setup_output_request(unsigned int offset, int initialValue) {
+static struct gpiod_line_request *setup_output_line(unsigned int offset, int initialValue) {
   //
   // Setup active-high output lines. libgpiod API V2
   //
@@ -1197,13 +1274,32 @@ static struct gpiod_line_request *setup_output_request(unsigned int offset, int 
 
 //
 // Utility function to send an error message to the log file
-// if input lines are used for more than one purpose.
+// if GPIO lines are used for more than one purpose.
 // Return value: 0 if already in use
 //
 static int check_line(int line, int seq, char *text) {
+
+  if (line < 0) {
+    // no error message, indicate "do not use"
+    return 0;
+  }
+
+  // check against already requested input lines
   for (int i = 0; i < num_input_lines; i++) {
     if (input_lines[i] == line) {
-      t_print("WARNING: GPIO line %d (%s.%d) already in use\n", line, text, seq);
+      t_print("WARNING: GPIO input line %d (%s.%d) already in use\n", line, text, seq);
+      return 0;
+    }
+  }
+
+  // check against already requested output lines
+  for (int i = 0; i < NUM_OUTPUT_LINES; i++) {
+    //
+    // For output lines seq is the slot number, and we expect to see our GPIO line
+    // in our slot
+    //
+    if (output_lines[i] == line && i != seq) {
+      t_print("WARNING: GPIO output line %d (%s.%d) already in use\n", line, text, seq);
       return 0;
     }
   }
@@ -1215,7 +1311,7 @@ void gpio_init() {
   //
   // GPIO line restrictions for specific hardware.
   // We must do this HERE since the have_radioberry/have_saturn
-  // are not yet set when calling gpio_set_defaults()
+  // flags are not yet set during discovery
   // (Thanks Yado-San for nailing this down)
   //
   if (have_radioberry1 || have_radioberry2 || have_radioberry3) {
@@ -1230,8 +1326,8 @@ void gpio_init() {
     CWR_LINE = -1;
     CWKEY_LINE = -1;
     PTTIN_LINE = -1;
-    PTTOUT_LINE = -1;
-    CWOUT_LINE = -1;
+
+    for (int i = 0; i < NUM_OUTPUT_LINES; i++) { output_lines[i] = -1; }
 
     if (have_radioberry1) {
       CWL_LINE = 14;
@@ -1267,8 +1363,8 @@ void gpio_init() {
     CWR_LINE = -1;
     CWKEY_LINE = -1;
     PTTIN_LINE = -1;
-    PTTOUT_LINE = -1;
-    CWOUT_LINE = -1;
+
+    for (int i = 0; i < NUM_OUTPUT_LINES; i++) { output_lines[i] = -1; }
   }
 
 #ifdef GPIOV1
@@ -1308,10 +1404,11 @@ void gpio_init() {
     LineList[i].num = 0;
   }
 
-  if (controller != NO_CONTROLLER) {
+  if (controller == CONTROLLER1 || controller == CONTROLLER2_V1 || controller == CONTROLLER2_V2 ||
+      controller == G2V1_PANEL) {
     //
     // setup encoders:
-    // For the mechanical encoders, a debouncinc time of 2 msec is fine, but
+    // For the mechanical encoders, a debouncing time of 2 msec is fine, but
     // the opto-encoder used for the VFO knob debouncing must be zero.
     // For the encoder push-buttons, use 25 msec.
     // NOTE input_debounce is in usec.
@@ -1466,32 +1563,17 @@ void gpio_init() {
   }
 
   //
-  // If there are spare GPIO lines: configure up to
-  // two output lines for signaling CW and PTT.
-  // - the CW-out line may be used for a hardware-
-  //   generated low-latency side tone
-  // - the PTT-out line may be useful for radios such
-  //   as the AdalmPluto
+  // Configure output lines. All our lines are active-low,
+  // but we use the active-high model, so init with '1'
   //
-  if (PTTOUT_LINE >= 0) {
-    if (check_line(PTTOUT_LINE, 0, "PTTOUT")) {
-#ifdef GPIOV1
-      pttout_line = setup_output_line(PTTOUT_LINE, 1);
-#endif
-#ifdef GPIOV2
-      pttout_request = setup_output_request(PTTOUT_LINE, 1);
-#endif
-    }
-  }
-
-  if (CWOUT_LINE >= 0) {
-    if (check_line(CWOUT_LINE, 0, "CWOUT") && (CWOUT_LINE != PTTOUT_LINE)) {
-#ifdef GPIOV1
-      cwout_line = setup_output_line(CWOUT_LINE, 1);
-#endif
-#ifdef GPIOV2
-      cwout_request = setup_output_request(CWOUT_LINE, 1);
-#endif
+  for (int i = 0; i < NUM_OUTPUT_LINES; i++) {
+    if (check_line(output_lines[i], i, "OUT")) {
+      output_request[i] = setup_output_line(output_lines[i], 1);
+      if (output_request[i]) {
+        t_print("GPIO output line %d requested for OUT.%d\n", output_lines[i], i);
+      } else {
+        t_print("GPIO output line %d for OUT.%d: request failed!\n", output_lines[i], i);
+      }
     }
   }
 
@@ -1499,8 +1581,9 @@ void gpio_init() {
     setup_input_lines();
     monitor_thread_id = g_thread_new( "gpiod monitor", monitor_thread, NULL);
 
-    if (controller != NO_CONTROLLER) {
-      rotary_encoder_thread_id = g_thread_new( "encoders", rotary_encoder_thread, NULL);
+    if (controller == CONTROLLER1 || controller == CONTROLLER2_V1 || controller == CONTROLLER2_V2 ||
+        controller == G2V1_PANEL) {
+      rotary_encoder_thread_id = g_thread_new("encoders", rotary_encoder_thread, NULL);
     }
   }
 
@@ -1518,9 +1601,9 @@ void gpio_close() {
 
   if (input_request) { gpiod_line_request_release(input_request); }
 
-  if (pttout_request) { gpiod_line_request_release(pttout_request); }
-
-  if (cwout_request) { gpiod_line_request_release(cwout_request); }
+  for (int i = 0; i < NUM_OUTPUT_LINES; i++) {
+    if (output_request[i]) { gpiod_line_request_release(output_request[i]); }
+  }
 
 #endif
 

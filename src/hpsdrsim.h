@@ -37,7 +37,7 @@
 #define ODEV_NONE          999
 #define ODEV_METIS           0
 #define ODEV_HERMES          1
-#define ODEV_GRIFFIN         2
+#define ODEV_HERMES2         2
 #define ODEV_ANGELIA         4
 #define ODEV_ORION           5
 #define ODEV_HERMES_LITE     6

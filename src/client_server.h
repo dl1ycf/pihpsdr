@@ -141,7 +141,7 @@ enum _header_type_enum {
   CLIENT_SERVER_COMMANDS,
 };
 
-#define CLIENT_SERVER_VERSION 0x01260012 // 32-bit version number
+#define CLIENT_SERVER_VERSION 0x01260014 // 32-bit version number
 #define SPECTRUM_DATA_SIZE 4096          // Maximum width of a panadapter
 #define AUDIO_DATA_SIZE 512              // 512 (mono) samples
 
@@ -197,19 +197,13 @@ typedef struct __attribute__((__packed__)) _radiomenu_data {
   uint16_t OCfull_tune_time;
   uint16_t OCmemory_tune_time;
   //
-  uint8_t  mic_ptt_tip;
   uint8_t  sat_mode;
-  uint8_t  mic_input_xlr;
   uint8_t  atlas_clock_source_10mhz;
   uint8_t  atlas_clock_source_128mhz;
   uint8_t  atlas_mic_source;
   uint8_t  atlas_penelope;
   uint8_t  atlas_janus;
-  uint8_t  mic_ptt_enabled;
-  uint8_t  mic_bias_enabled;
   uint8_t  pa_enabled;
-  uint8_t  mute_spkr_amp;
-  uint8_t  mute_spkr_xmit;
   uint8_t  hl2_audio_codec;
   uint8_t  soapy_iqswap;
   uint8_t  enable_tx_inhibit;
@@ -247,14 +241,11 @@ typedef struct __attribute__((__packed__)) _rxmenu_data {
 typedef struct __attribute__((__packed__)) _txmenu_data {
   HEADER header;
   //
-  mydouble linein_gain;
   mydouble swr_alarm;
   //
   uint8_t  tune_drive;
   uint8_t  tune_use_drive;
   uint8_t  swr_protection;
-  uint8_t  mic_boost;
-  uint8_t  mic_linein;
 } TXMENU_DATA;
 
 //
@@ -394,16 +385,8 @@ typedef struct __attribute__((__packed__)) _radio_data {
   uint8_t  anan10E;
   uint8_t  tx_out_of_band_allowed;
   uint8_t  pa_enabled;
-  uint8_t  mic_boost;
-  uint8_t  mic_linein;
-  uint8_t  mic_ptt_enabled;
-  uint8_t  mic_bias_enabled;
-  uint8_t  mic_ptt_tip;
-  uint8_t  mic_input_xlr;
   uint8_t  OCtune;
   uint8_t  mute_rx_while_transmitting;
-  uint8_t  mute_spkr_amp;
-  uint8_t  mute_spkr_xmit;
   uint8_t  adc0_filter_bypass;
   uint8_t  adc1_filter_bypass;
   uint8_t  split;

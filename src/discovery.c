@@ -479,11 +479,11 @@ gboolean discovery_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer d
 
       case DEVICE_METIS:
       case NEW_DEVICE_ATLAS:
-      case DEVICE_GRIFFIN:
         r = "Old Metis";
         break;
 
       case DEVICE_HERMES:
+      case DEVICE_HERMES2:
       case NEW_DEVICE_HERMES:
       case NEW_DEVICE_HERMES2:
         r = "Hermes";
@@ -938,27 +938,46 @@ static void discovery(void) {
   // menu on a G2. Instead, default to NO_CONTROLLER for G2-ultra and to
   // G2V1_PANEL for first-generation G2s with the CONTROLLER2_V2 clone.
   //
+  // Likewise, when /dev/serial/by-id/Remotehead-9600 exists, also
+  // do not show the "controller" menu but auto-choose CONTROLLER3.
+  // Even if the controller is not shown, use a "gpio.props" file
+  // such that in special cases, something can be changed manually.
+  //
   gpio_restore_state();
   if (have_g2v2) {
     if (controller != NO_CONTROLLER) {
       controller = NO_CONTROLLER;
       gpio_set_defaults(controller);
+      gpio_save_state();
     }
   } else if (have_g2v1) {
     if (controller != G2V1_PANEL) {
       controller = G2V1_PANEL;
       gpio_set_defaults(controller);
+      gpio_save_state();
+    }
+  } else if (realpath("/dev/serial/by-id/Remotehead-9600", NULL) != NULL) {
+    if (controller != CONTROLLER3) {
+      controller = CONTROLLER3;
+      gpio_set_defaults(controller);
+      gpio_save_state();
     }
   } else {
-    if (controller > CONTROLLER2_V2) {
+    if (controller > CONTROLLER3) {
+      //
+      // This should not happen: auto-detected controller in the props file
+      //
       controller = NO_CONTROLLER;
       gpio_set_defaults(controller);
+      gpio_save_state();
     }
+
     GtkWidget *gpio = gtk_combo_box_text_new();
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "No Controller");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller1");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller2 V1");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller2 V2");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller3");
     my_combo_attach(GTK_GRID(grid), gpio, 0, row, 1, 1);
     gtk_combo_box_set_active(GTK_COMBO_BOX(gpio), controller);
     g_signal_connect(gpio, "changed", G_CALLBACK(gpio_changed_cb), NULL);

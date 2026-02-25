@@ -35,7 +35,7 @@
 //
 #define DEVICE_METIS               0
 #define DEVICE_HERMES              1
-#define DEVICE_GRIFFIN             2
+#define DEVICE_HERMES2             2
 #define DEVICE_ANGELIA             4
 #define DEVICE_ORION               5
 #define DEVICE_HERMES_LITE         6
@@ -54,6 +54,7 @@
 #define NEW_DEVICE_ORION2       1005
 #define NEW_DEVICE_HERMES_LITE  1006
 #define NEW_DEVICE_SATURN       1010
+#define NEW_DEVICE_SATURN2      1011
 #define NEW_DEVICE_HERMES_LITE2 1506
 
 #define SOAPYSDR_USB_DEVICE     2000

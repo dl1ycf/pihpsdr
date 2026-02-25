@@ -302,20 +302,6 @@ static void xvtr_rb_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) 
   if (hf_container   != NULL) { gtk_widget_hide(hf_container  ); }
 }
 
-static void newpa_cb(GtkWidget *widget, gpointer data) {
-  if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
-    new_pa_board = 1;
-  } else {
-    new_pa_board = 0;
-  }
-
-  if (radio_is_remote) {
-    send_radiomenu(cl_sock_tcp);
-  } else {
-    schedule_high_priority();
-  }
-}
-
 void ant_menu(GtkWidget *parent) {
   dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
@@ -343,20 +329,6 @@ void ant_menu(GtkWidget *parent) {
     gtk_widget_set_name(xvtr_rb, "boldlabel");
     g_signal_connect(xvtr_rb, "toggled", G_CALLBACK(xvtr_rb_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), xvtr_rb, 2, 0, 1, 1);
-  }
-
-  if (device == NEW_DEVICE_HERMES || device == NEW_DEVICE_ANGELIA || device == NEW_DEVICE_ORION ||
-      device == DEVICE_HERMES     || device == DEVICE_ANGELIA     || device == DEVICE_ORION) {
-    //
-    // ANAN-100/200: There is an "old" (Rev. 15/16) and "new" (Rev. 24) PA board
-    //               around which differs in relay settings for using EXT1,2 and
-    //               differs in how to do PS feedback.
-    //
-    GtkWidget *new_pa_b = gtk_check_button_new_with_label("ANAN 100/200 new PA board");
-    gtk_widget_set_name(new_pa_b, "boldlabel");
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(new_pa_b), new_pa_board);
-    gtk_grid_attach(GTK_GRID(grid), new_pa_b, 3, 0, 5, 1);
-    g_signal_connect(new_pa_b, "toggled", G_CALLBACK(newpa_cb), NULL);
   }
 
   if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
