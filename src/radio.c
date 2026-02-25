@@ -3182,6 +3182,7 @@ void radio_apply_band_settings(int flag, int id) {
     if (can_transmit) {
       const BAND *txband = band_get_band(vfo[vfo_get_tx_vfo()].band);
       transmitter->antenna = txband->TxAntenna;
+      radio_calc_drive_level();
     }
 
     if (flag) {
