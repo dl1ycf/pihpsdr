@@ -59,7 +59,8 @@ static void diversity_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void gain_coarse_changed_cb(GtkWidget *widget, gpointer data) {
-  div_gain = gtk_range_get_value(GTK_RANGE(widget)) + gain_fine;
+  gain_coarse = gtk_range_get_value(GTK_RANGE(widget));
+  div_gain = gain_coarse + gain_fine;
 
   if (radio_is_remote) {
     send_diversity(cl_sock_tcp, diversity_enabled, div_gain, div_phase);
@@ -70,7 +71,8 @@ static void gain_coarse_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void gain_fine_changed_cb(GtkWidget *widget, gpointer data) {
-  div_gain = gain_coarse + gtk_range_get_value(GTK_RANGE(widget));
+  gain_fine = gtk_range_get_value(GTK_RANGE(widget));
+  div_gain = gain_coarse + gain_fine;
 
   if (radio_is_remote) {
     send_diversity(cl_sock_tcp, diversity_enabled, div_gain, div_phase);
@@ -81,7 +83,8 @@ static void gain_fine_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void phase_coarse_changed_cb(GtkWidget *widget, gpointer data) {
-  div_phase = gtk_range_get_value(GTK_RANGE(widget)) + phase_fine;
+  phase_coarse = gtk_range_get_value(GTK_RANGE(widget));
+  div_phase = phase_coarse + phase_fine;
 
   if (radio_is_remote) {
     send_diversity(cl_sock_tcp, diversity_enabled, div_gain, div_phase);
@@ -92,7 +95,8 @@ static void phase_coarse_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void phase_fine_changed_cb(GtkWidget *widget, gpointer data) {
-  div_phase = phase_coarse + gtk_range_get_value(GTK_RANGE(widget));
+  phase_fine = gtk_range_get_value(GTK_RANGE(widget));
+  div_phase = phase_coarse + phase_fine;
 
   if (radio_is_remote) {
     send_diversity(cl_sock_tcp, diversity_enabled, div_gain, div_phase);

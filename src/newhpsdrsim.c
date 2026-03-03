@@ -1338,23 +1338,23 @@ void *rx_thread(void *data) {
         }
 
         if (diversity && !sync && myadc == 0) {
-          i0sample += 0.0001 * rxatt0_dbl * divtab[divptr];
+          i0sample += 0.001 * rxatt0_dbl * divtab[divptr];
           divptr += decimation;
 
           if (divptr >= LENDIV) { divptr = 0; }
         }
 
         if (diversity && !sync && myadc == 1) {
-          q0sample += 0.0002 * rxatt1_dbl * divtab[divptr];
+          q0sample += 0.002 * rxatt1_dbl * divtab[divptr];
           divptr += decimation;
 
           if (divptr >= LENDIV) { divptr = 0; }
         }
 
         if (diversity && sync && !ptt) {
-          if (myadc == 0) { i0sample += 0.0001 * rxatt0_dbl * divtab[divptr]; }
+          if (myadc == 0) { i0sample += 0.001 * rxatt0_dbl * divtab[divptr]; }
 
-          if (syncadc == 1) { q1sample += 0.0002 * rxatt1_dbl * divtab[divptr]; }
+          if (syncadc == 1) { q1sample += 0.002 * rxatt1_dbl * divtab[divptr]; }
 
           divptr += decimation;
 
