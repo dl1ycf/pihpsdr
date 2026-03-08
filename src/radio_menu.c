@@ -940,6 +940,8 @@ void radio_menu(GtkWidget *parent) {
     // This option is for HERMES boards with a small FPGA
     // that only support 2 RX channels (this affects the
     // allocation of PURESIGNAL feedback channels).
+    // This should normally not be necessary, as Anan-10E/100B are said
+    // to identify themselves as "HERMES2" boards, but I am not 100% sure
     //
     row++;
     ChkBtn = gtk_check_button_new_with_label("Anan-10E/100B");
@@ -951,12 +953,15 @@ void radio_menu(GtkWidget *parent) {
   }
 
   if (device == DEVICE_HERMES  || device == NEW_DEVICE_HERMES ||
+      device == DEVICE_HERMES2 || device == NEW_DEVICE_HERMES2 ||
       device == DEVICE_ANGELIA || device == NEW_DEVICE_ANGELIA ||
       device == DEVICE_ORION   || device == NEW_DEVICE_ORION) {
     //
     // ANAN-100/200: There is an "old" (Rev. 15/16) and "new" (Rev. 24) PA board
     //               around which differs in relay settings for using EXT1,2 and
     //               differs in how to do PS feedback.
+    //               I guess this cannot happen with HERMES2 but again, I am not
+    //               100% sure.
     //
     row++;
     ChkBtn = gtk_check_button_new_with_label("New PA board");

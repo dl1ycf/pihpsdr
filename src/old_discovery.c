@@ -374,14 +374,13 @@ static gpointer p1_discover_receive_thread(gpointer data) {
             discovered[devices].frequency_max = 61440000.0;
             break;
 
-          case DEVICE_HERMES:
           case DEVICE_HERMES2:
-            //
-            // HERMES2 has been used for the Anan-10E/100B
-            // but we treat it as a HERMES board. Be sure to check "10E/100B"
-            // in the RADIO menu when it comes to using PURESIGNAL!
-            //
-            discovered[devices].device = DEVICE_HERMES;
+            snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Hermes2 (Anan-10E/100B)");
+            discovered[devices].frequency_min = 0.0;
+            discovered[devices].frequency_max = 61440000.0;
+            break;
+
+          case DEVICE_HERMES:
             snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Hermes");
             discovered[devices].frequency_min = 0.0;
             discovered[devices].frequency_max = 61440000.0;

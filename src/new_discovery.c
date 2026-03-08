@@ -305,12 +305,13 @@ static gpointer p2_discover_receive_thread(gpointer data) {
               frequency_max = 61440000.0;
               break;
 
-            case NEW_DEVICE_HERMES:
             case NEW_DEVICE_HERMES2:
-              //
-              // HERMES2 is a stripped-down HERMES board with only two RX
-              //
-              discovered[devices].device = NEW_DEVICE_HERMES;
+              snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Hermes (Anan-10E/100B)");
+              frequency_min = 0.0;
+              frequency_max = 61440000.0;
+              break;
+
+            case NEW_DEVICE_HERMES:
               snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Hermes");
               frequency_min = 0.0;
               frequency_max = 61440000.0;

@@ -904,11 +904,12 @@ static int rx_feedback_channel(void) {
   case DEVICE_METIS:
   case DEVICE_HERMES_LITE:
   case DEVICE_OZY:
+  case DEVICE_HERMES2:
     ret = 0;
     break;
 
   case DEVICE_HERMES:
-    // Note Anan-10E and Anan-100B behave like METIS
+    // Note Anan-10E and Anan-100B behave like HERMES2
     ret = anan10E ? 0 : 2;
     break;
 
@@ -947,11 +948,12 @@ static int tx_feedback_channel(void) {
   case DEVICE_METIS:
   case DEVICE_HERMES_LITE:
   case DEVICE_OZY:
+  case DEVICE_HERMES2:
     ret = 1;
     break;
 
   case DEVICE_HERMES:
-    // Note Anan-10E and Anan-100B behave like METIS
+    // Note Anan-10E and Anan-100B behave like HERMES2
     ret = anan10E ? 1 : 3;
     break;
 
@@ -1067,6 +1069,7 @@ static int how_many_receivers(void) {
     case DEVICE_METIS:
     case DEVICE_HERMES_LITE:
     case DEVICE_OZY:
+    case DEVICE_HERMES2:
       ret = 2; // TX feedback hard-wired to RX2
       break;
 

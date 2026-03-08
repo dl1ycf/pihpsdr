@@ -1279,6 +1279,8 @@ void radio_start_radio(void) {
     break;
 
   case DEVICE_STEMLAB:
+  case DEVICE_HERMES2:      // most likely, this is an Anan-10E
+  case NEW_DEVICE_HERMES2:
     pa_power = PA_10W;
     break;
 
@@ -1322,17 +1324,21 @@ void radio_start_radio(void) {
   case DEVICE_METIS:
   case DEVICE_OZY:
   case NEW_DEVICE_ATLAS:
+    // no step attenuator, but a switchable preamp
     have_alex_att = 1;
     have_preamp = 1;
     have_dither = 1;
     break;
 
   case DEVICE_HERMES:
+  case DEVICE_HERMES2:
   case DEVICE_ANGELIA:
   case DEVICE_ORION:
   case NEW_DEVICE_HERMES:
+  case NEW_DEVICE_HERMES2:
   case NEW_DEVICE_ANGELIA:
   case NEW_DEVICE_ORION:
+    // step attenuator, but preamp is non-switchable
     have_dither = 1;
     have_rx_att = 1;
     have_alex_att = 1;
@@ -1367,6 +1373,8 @@ void radio_start_radio(void) {
     break;
 
   case DEVICE_STEMLAB:
+    // This one has switchable attenuators and preamps
+    // on the CHARLY25 board
     break;
 
   default:
@@ -1529,10 +1537,12 @@ void radio_start_radio(void) {
   case DEVICE_METIS:
   case DEVICE_OZY:
   case DEVICE_HERMES:
+  case DEVICE_HERMES2:
   case DEVICE_HERMES_LITE:
   case DEVICE_HERMES_LITE2:
   case NEW_DEVICE_ATLAS:
   case NEW_DEVICE_HERMES:
+  case NEW_DEVICE_HERMES2:
   case NEW_DEVICE_HERMES_LITE:
   case NEW_DEVICE_HERMES_LITE2:
     //
@@ -3952,6 +3962,7 @@ int radio_max_band(void) {
     break;
 
   default:
+    // nearly all HPSDR radios extend to the 6m band
     max = band6;
     break;
   }
