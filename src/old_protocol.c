@@ -905,6 +905,7 @@ static int rx_feedback_channel(void) {
   case DEVICE_HERMES_LITE:
   case DEVICE_OZY:
   case DEVICE_HERMES2:
+  case DEVICE_G1:
     ret = 0;
     break;
 
@@ -949,6 +950,7 @@ static int tx_feedback_channel(void) {
   case DEVICE_HERMES_LITE:
   case DEVICE_OZY:
   case DEVICE_HERMES2:
+  case DEVICE_G1:
     ret = 1;
     break;
 
@@ -1070,6 +1072,7 @@ static int how_many_receivers(void) {
     case DEVICE_HERMES_LITE:
     case DEVICE_OZY:
     case DEVICE_HERMES2:
+    case DEVICE_G1:
       ret = 2; // TX feedback hard-wired to RX2
       break;
 
@@ -1938,7 +1941,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
     //
     if (radio_is_transmitting() && transmitter->puresignal) { i = adc[2].antenna; }
 
-    if (device == DEVICE_ORION2) {
+    if (device == DEVICE_ORION2 || device == DEVICE_G1) {
       i += 100;
     } else if (new_pa_board) {
       // New-PA setting invalid on ANAN-7000,8000

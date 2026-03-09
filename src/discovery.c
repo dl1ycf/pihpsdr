@@ -504,6 +504,11 @@ gboolean discovery_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer d
         r = "Orion 2";
         break;
 
+      case DEVICE_G1:
+      case NEW_DEVICE_G1:
+        r = "ANAN G1";
+        break;
+
       case DEVICE_STEMLAB:
       case DEVICE_STEMLAB_Z20:
         r = "Red Pitaya StemLab";

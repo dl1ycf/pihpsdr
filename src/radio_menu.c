@@ -903,6 +903,7 @@ void radio_menu(GtkWidget *parent) {
 
   if (device == DEVICE_ORION  || device == NEW_DEVICE_ORION ||
       device == DEVICE_ORION2 || device == NEW_DEVICE_ORION2 ||
+      device == DEVICE_G1     || device == NEW_DEVICE_G1 ||
       device == NEW_DEVICE_SATURN || controller == CONTROLLER3) {
     //
     // Orion/Orion2/Saturn radios have a TRS mic jack which can be

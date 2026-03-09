@@ -694,9 +694,11 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
     case DEVICE_HERMES2:
     case DEVICE_HERMES_LITE:
     case DEVICE_HERMES_LITE2:
+    case DEVICE_G1:
     case NEW_DEVICE_ATLAS:
     case NEW_DEVICE_HERMES:
     case NEW_DEVICE_HERMES2:
+    case NEW_DEVICE_G1:
       //
       // Assume a single adc for these devices.
       // If multiple Mecury cards are detected in old_protocol.c,

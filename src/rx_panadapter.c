@@ -822,8 +822,10 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
       break;
 
     case DEVICE_ORION2:
+    case DEVICE_G1:
     case NEW_DEVICE_ORION2:
     case NEW_DEVICE_SATURN:
+    case NEW_DEVICE_G1:
       // 5 (ADC0_avg / 4095 )* VDiv, VDiv = (22.0 + 1.0) / 1.1
       v = 0.02553 * ADC0;
 
@@ -862,7 +864,9 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
       break;
 
     case DEVICE_ORION2:
+    case DEVICE_G1:
     case NEW_DEVICE_ORION2:
+    case NEW_DEVICE_G1:
       // ((ADC1*5000)/4095 - Voff)/Sens, Voff = 360, Sens = 120
       v = 0.0101750 * ADC1 - 3.0;
 

@@ -1288,10 +1288,12 @@ void radio_start_radio(void) {
   case DEVICE_ANGELIA:
   case DEVICE_ORION:
   case DEVICE_STEMLAB_Z20:
+  case DEVICE_G1:
   case NEW_DEVICE_HERMES:
   case NEW_DEVICE_ANGELIA:
   case NEW_DEVICE_ORION:
   case NEW_DEVICE_SATURN:  // make 100W the default for G2
+  case NEW_DEVICE_G1:
     pa_power = PA_100W;
     break;
 
@@ -1338,16 +1340,18 @@ void radio_start_radio(void) {
   case NEW_DEVICE_HERMES2:
   case NEW_DEVICE_ANGELIA:
   case NEW_DEVICE_ORION:
-    // step attenuator, but preamp is non-switchable
+    // ALEX att, step attenuator, but preamp is non-switchable
     have_dither = 1;
     have_rx_att = 1;
     have_alex_att = 1;
     break;
 
   case DEVICE_ORION2:
+  case DEVICE_G1:
   case NEW_DEVICE_ORION2:
   case NEW_DEVICE_SATURN:
-    // ANAN7000/8000/G2 boards have no ALEX attenuator
+  case NEW_DEVICE_G1:
+    // no ALEX att
     have_dither = 1;
     have_rx_att = 1;
     break;
@@ -1540,11 +1544,13 @@ void radio_start_radio(void) {
   case DEVICE_HERMES2:
   case DEVICE_HERMES_LITE:
   case DEVICE_HERMES_LITE2:
+  case DEVICE_G1:
   case NEW_DEVICE_ATLAS:
   case NEW_DEVICE_HERMES:
   case NEW_DEVICE_HERMES2:
   case NEW_DEVICE_HERMES_LITE:
   case NEW_DEVICE_HERMES_LITE2:
+  case NEW_DEVICE_G1:
     //
     // METIS/OZY: if two mercury cards are detected in old_protocol.c,
     // then RX1 and RX2 are hard-wired to ADC1 and ADC2. We keep

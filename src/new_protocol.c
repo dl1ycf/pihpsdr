@@ -356,6 +356,10 @@ static void update_action_table(void) {
   //
   int flag = 0;
   int xmit = radio_is_transmitting(); // store such that it cannot change while building the flag
+
+  //
+  // newdev means: Use DDC2/3 for normal receive, HERMES/HERMES2/G1 use DDC0/1
+  //
   int newdev = (device == NEW_DEVICE_ANGELIA  || device == NEW_DEVICE_ORION ||
                 device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN);
 
@@ -374,18 +378,18 @@ static void update_action_table(void) {
   // Note further, we do not use the diversity mixer upon transmitting.
   //
   // Therefore, the following 12 values for flag are possible:
-  // flag=     0
-  // flag=     1
-  // flag=   100
-  // flag=   110
-  // flag=  1000
-  // flag=  1001
-  // flag=  1100
-  // flag=  1110
-  // flag= 10100
-  // flag= 10110
-  // flag= 11100
-  // flag= 11110
+  // flag=     0   receive, olddev, no DIVERSITY:  use DDC0 for RX1, DDC1 for RX2
+  // flag=     1   receive , DIVERSITY, olddev:    does not occur, use DDC0/1 pair for DIVERSITY
+  // flag=   100   no DUPLEX, xmit, olddev:        skip samples
+  // flag=   110   no DUPLEX, PS, xmit, olddev:    use DDC0/1 pair for PS
+  // flag=  1000   receive, newdev, no DIVERSITY:  use DDC2 for RX1, DDC3 for RX2
+  // flag=  1001   receive, DIVERSITY, newdev:     use DDC0/1 pair for DIVERSITY
+  // flag=  1100   no DUPLEX, xmit, newdev:        skip samples
+  // flag=  1110   no DUPLEX, PS, xmit, newdev:    use DDC0/1 pair for PS
+  // flag= 10100   DUPLEX, xmit, olddev:           use DDC0 for RX1, DDC1 for RX2
+  // flag= 10110   DUPLEX, PS, xmit, olddev:       ignore DUPLEX and use DDC0/1 pair for PS
+  // flag= 11100   DUPLEX, xmit, newdev:           use DDC2 for RX1, DDC3 for RX2
+  // flag= 11110   DUPLEX, PS, xmit, newdev:       use DDC0/1 pair for PS, DDC2 for RX1, DDC3 for RX2
   //
   // Set up rxcase and rxid for each of the 12 cases
   // note that rxid[i] can be left unspecified if rxcase[i] == RXACTION_SKIP
@@ -414,13 +418,13 @@ static void update_action_table(void) {
     rxcase[0] = RXACTION_DIV;
     break;
 
-  case  100:                                                          // HERMES or ORION, TX, no PureSignal, no DUPLEX
-  case 1100:
+  case  100:                                                          // HERMES, TX, no PureSignal, no DUPLEX
+  case 1100:                                                          // ORION, TX, no PureSignal, no DUPLEX
     // just skip samples
     break;
 
-  case  110:                                                          // HERMES or ORION, TX, PureSignal, no DUPLEX
-  case 1110:
+  case  110:                                                          // HERMES, TX, PureSignal, no DUPLEX
+  case 1110:                                                          // Orion TX, PureSignal, no DUPLEX
   case 10110:                                                         // HERMES, TX, DUPLEX, PS: duplex is ignored
     rxcase[0] = RXACTION_PS;
     break;
@@ -784,8 +788,8 @@ static void new_protocol_high_priority(void) {
     //
     // Set frequencies for all receivers
     //
-    // note that for HERMES, receiver[i] is associated with DDC(i) but beyond
-    // (that is, ANGELIA, ORION, ORION2, SATURN) receiver[i] is associated with DDC(i+2)
+    // HERMES/HERMES2/G1 can only use DDC0/1,
+    // Beyond that, we use DDC2/3 for "normal RX" and DDC0/1 for a DIV/PS pair
     int ddc = 0;
 
     if (device == NEW_DEVICE_ANGELIA  || device == NEW_DEVICE_ORION ||
@@ -998,6 +1002,35 @@ static void new_protocol_high_priority(void) {
   // Set RX filters
   //
   switch (device) {
+  case NEW_DEVICE_G1:
+    //
+    // We only have a single ADC, so this is the simplified
+    // variant of the Saturn/Orion2 case
+    //
+    BPFfreq = DDCfrequency[rxvfo];       // RX frequency of active receiver
+
+    if (adc[0].filter_bypass) {
+      BPFfreq = 0LL;
+    }
+
+    if (BPFfreq < 1500000LL) {
+      alex0 |= ALEX_ANAN7000_RX_BYPASS_BPF;
+    } else if (BPFfreq < 2100000LL) {
+      alex0 |= ALEX_ANAN7000_RX_160_BPF;
+    } else if (BPFfreq < 5500000LL) {
+      alex0 |= ALEX_ANAN7000_RX_80_60_BPF;
+    } else if (BPFfreq < 11000000LL) {
+      alex0 |= ALEX_ANAN7000_RX_40_30_BPF;
+    } else if (BPFfreq < 22000000LL) {
+      alex0 |= ALEX_ANAN7000_RX_20_15_BPF;
+    } else if (BPFfreq < 35000000LL) {
+      alex0 |= ALEX_ANAN7000_RX_12_10_BPF;
+    } else {
+      alex0 |= ALEX_ANAN7000_RX_6_PRE_BPF;
+    }
+
+    break;
+
   case NEW_DEVICE_SATURN:
   case NEW_DEVICE_ORION2:
     //
@@ -1144,10 +1177,14 @@ static void new_protocol_high_priority(void) {
   //                      (receive) frequency while RXing, according  to the Max
   //                      of rx1freq and rx2freq. If TXing, the TX freq governs the LPF
   //                      in either case.
+  //   Newer PA boards:   The RX signal goes through band pass filters, it does *not*
+  //                      go through the TX LPF filters
   //
   LPFfreq = DUCfrequency;
 
-  if (!xmit && (device != NEW_DEVICE_ORION2 && device != NEW_DEVICE_SATURN) && adc[0].antenna < 3) {
+  if (!xmit
+      && (device != NEW_DEVICE_ORION2 && device != NEW_DEVICE_SATURN && device != NEW_DEVICE_G1)
+      && adc[0].antenna < 3) {
     LPFfreq = 40000000LL;  // disable the LPF
 
     if (receiver[0]->adc == 0) {
@@ -1215,7 +1252,7 @@ static void new_protocol_high_priority(void) {
     rxant = adc[2].antenna;     // 0, 6, or 7
   }
 
-  if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN) {
+  if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN || device == NEW_DEVICE_G1) {
     rxant += 100;
   } else if (new_pa_board) {
     // New-PA setting invalid on ANAN-7000,8000
@@ -1231,48 +1268,48 @@ static void new_protocol_high_priority(void) {
   // feedback: EXT1 assumes old PA board and ByPass assumes new PA board.
   //
   switch (rxant) {
-  case 3:           // EXT1 with old pa board
-  case 6:           // EXT1-on-TX: assume old pa board
-  case 1006:
+  case 3:           // HERMES, old PA, no PSTX, EXT1
+  case 6:           // HERMES, old PA, PSTX, EXT1-for-PS
+  case 1006:        // HERMES, new PA, PSTX, EXT1-for-PS
     alex0 |= ALEX_RX_ANTENNA_EXT1 | ALEX_RX_ANTENNA_BYPASS;
     break;
 
-  case 4:           // EXT2 with old pa board
+  case 4:           // HERMES, old PA, no PSTX, EXT2
     alex0 |= ALEX_RX_ANTENNA_EXT2 | ALEX_RX_ANTENNA_BYPASS;
     break;
 
-  case 5:           // XVTR with old pa board
+  case 5:           // HERMES, old PA, no PSTX, XVTR-IN
     alex0 |= ALEX_RX_ANTENNA_XVTR | ALEX_RX_ANTENNA_BYPASS;
     break;
 
-  case 104:         // EXT2 with ANAN-7000: does not exist, use EXT1
-  case 103:         // EXT1 with ANAN-7000
+  case 104:         // ORION2, EXT2, no PSTX: does not exist, fall back to EXT1
+  case 103:         // ORION2, EXT1, no PSTX
     alex0 |= ALEX_RX_ANTENNA_EXT1 | ALEX0_ANAN7000_RX_SELECT;
     break;
 
-  case 105:         // XVTR with ANAN-7000
+  case 105:         // ORION2, no PSTX, XVTR-IN
     alex0 |= ALEX_RX_ANTENNA_XVTR | ALEX0_ANAN7000_RX_SELECT;
     break;
 
-  case 106:         // EXT1-on-TX with ANAN-7000: does not exist, use ByPass
-  case 107:         // Bypass-on-TX with ANAN-7000
+  case 106:         // ORION2, PSTX, EXT1-for-PS: does not exist, fall back to ByPass
+  case 107:         // ORION2, PSTX, Bypass
     alex0 |= ALEX_RX_ANTENNA_BYPASS;
     break;
 
-  case 1003:        // EXT1 with new PA board
+  case 1003:        // HERMES, new PA, no PSTX, EXT1
     alex0 |= ALEX_RX_ANTENNA_EXT1;
     break;
 
-  case 1004:        // EXT2 with new PA board
+  case 1004:        // HERMES, new PA, no PSTX, EXT2
     alex0 |= ALEX_RX_ANTENNA_EXT2;
     break;
 
-  case 1005:        // XVRT with new PA board
+  case 1005:        // HERMES, new PA, no PSTX, XVTR-IN
     alex0 |= ALEX_RX_ANTENNA_XVTR;
     break;
 
-  case 7:           // Bypass-on-TX: assume new PA board
-  case 1007:
+  case 7:           // HERMES, old PA, PSTX, Bypass: does not exist, fall back to new PA board
+  case 1007:        // HERMES, new PA, PSTX, Bypass
     alex0 |= ALEX_RX_ANTENNA_BYPASS;
     break;
   }
@@ -2564,7 +2601,7 @@ static void process_high_priority(void) {
   //
   hpsdr_cw = 0;
 
-  if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN) {
+  if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN || device == NEW_DEVICE_G1) {
     //
     // These devices reflect a "keyer CW input" in bit 3 of byte59
     // and this is active-high (!)
