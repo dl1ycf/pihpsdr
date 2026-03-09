@@ -218,9 +218,7 @@ int radio_connect_remote(char *host, int port, const char *pwd) {
   snprintf(server_host, sizeof(server_host), "%s:%d", host, port);
 
   //
-  // Open UDP socket. To allow debugging with server and client running
-  // on the same machine, we bind the UDP socket to the listen_port
-  // on the client side, and to (listen_port+1) on the server side.
+  // Open UDP socket.
   //
   if ((cl_sock_udp = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
     t_perror("Client: UDP socket");
@@ -232,7 +230,6 @@ int radio_connect_remote(char *host, int port, const char *pwd) {
   // "connect" the UDP socket, that is, associate it with the server addr/port.
   // This implies we must use "send" rather than "sentto" on this socket
   //
-  server_address.sin_port = htons(listen_port);
 
   if (connect(cl_sock_udp, (struct sockaddr *)&server_address, sizeof(server_address)) < 0) {
     t_perror("Client UDP connect");
