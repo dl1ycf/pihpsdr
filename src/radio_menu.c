@@ -450,6 +450,7 @@ static void tx_cb(GtkWidget *widget, gpointer data) {
 
 void radio_menu(GtkWidget *parent) {
   int col;
+  int hwpanel = 0;
   GtkWidget *label;
   GtkWidget *ChkBtn;
   GtkWidget *Separator;
@@ -747,19 +748,16 @@ void radio_menu(GtkWidget *parent) {
 
 
   //
-  // The HPSDR machine-specific stuff is now put in columns 3+4
+  // The HPSDR machine-specific stuff is now put in columns 5+6
   //
   row = 0;
-  label = gtk_label_new("Hardware Settings");
-  gtk_widget_set_name(label, "slider1");
-  gtk_widget_set_halign(label, GTK_ALIGN_CENTER);
-  gtk_grid_attach(GTK_GRID(grid), label, 5, row, 2, 1);
 
   if (device == DEVICE_OZY || device == DEVICE_METIS) {
     //
     // ATLAS systems running P2: choose clock sources, etc.
     //
     row++;
+    hwpanel=1;
     label = gtk_label_new("10MHz src");
     gtk_widget_set_name(label, "boldlabel");
     gtk_widget_set_halign(label, GTK_ALIGN_END);
@@ -815,6 +813,7 @@ void radio_menu(GtkWidget *parent) {
     // It is assumed that the SDR-1000 is controlled outside piHPSDR
     //
     row++;
+    hwpanel=1;
     ChkBtn = gtk_check_button_new_with_label("Janus Only");
     gtk_widget_set_name(ChkBtn, "boldlabel");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), atlas_janus);
@@ -827,6 +826,7 @@ void radio_menu(GtkWidget *parent) {
     // HermesLite-II settings
     //
     row++;
+    hwpanel=1;
     ChkBtn = gtk_check_button_new_with_label("HL2 audio codec");
     gtk_widget_set_name(ChkBtn, "boldlabel");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(ChkBtn), hl2_audio_codec);
@@ -853,6 +853,7 @@ void radio_menu(GtkWidget *parent) {
     // speaker amp.
     //
     row++;
+    hwpanel=1;
     label = gtk_label_new("Spkr Amp");
     gtk_widget_set_name(label, "boldlabel");
     gtk_widget_set_halign(label, GTK_ALIGN_END);
@@ -880,6 +881,7 @@ void radio_menu(GtkWidget *parent) {
     // a XLR mic jack in the back panel, which can be selected.
     //
     row++;
+    hwpanel=1;
     label = gtk_label_new("Mic Input");
     gtk_widget_set_name(label, "boldlabel");
     gtk_widget_set_halign(label, GTK_ALIGN_END);
@@ -904,13 +906,13 @@ void radio_menu(GtkWidget *parent) {
 
   if (device == DEVICE_ORION  || device == NEW_DEVICE_ORION ||
       device == DEVICE_ORION2 || device == NEW_DEVICE_ORION2 ||
-      device == DEVICE_G1     || device == NEW_DEVICE_G1 ||
       device == NEW_DEVICE_SATURN || controller == CONTROLLER3) {
     //
     // Orion/Orion2/Saturn radios have a TRS mic jack which can be
     // configured in software
     //
     row++;
+    hwpanel=1;
     label = gtk_label_new("Mic PTT on");
     gtk_widget_set_name(label, "boldlabel");
     gtk_widget_set_halign(label, GTK_ALIGN_END);
@@ -946,6 +948,7 @@ void radio_menu(GtkWidget *parent) {
     // to identify themselves as "HERMES2" boards, but I am not 100% sure
     //
     row++;
+    hwpanel=1;
     ChkBtn = gtk_check_button_new_with_label("Anan-10E/100B");
     gtk_widget_set_name(ChkBtn, "boldlabel");
     gtk_widget_set_halign(ChkBtn, GTK_ALIGN_END);
@@ -966,6 +969,7 @@ void radio_menu(GtkWidget *parent) {
     //               100% sure.
     //
     row++;
+    hwpanel=1;
     ChkBtn = gtk_check_button_new_with_label("New PA board");
     gtk_widget_set_name(ChkBtn, "boldlabel");
     gtk_widget_set_halign(ChkBtn, GTK_ALIGN_END);
@@ -980,6 +984,7 @@ void radio_menu(GtkWidget *parent) {
     // Hardware AGC for all receivers here
     //
     row++;
+    hwpanel=1;
     ChkBtn = gtk_check_button_new_with_label("Swap IQ");
     gtk_widget_set_name(ChkBtn, "boldlabel");
     gtk_widget_set_halign(ChkBtn, GTK_ALIGN_END);
@@ -1003,12 +1008,19 @@ void radio_menu(GtkWidget *parent) {
   }
 
   if (row > max_row) { max_row = row; }
-  //
-  // Now draw a vertical separator line in column 4
-  //
-  label = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
-  gtk_widget_set_size_request(label, 3, -1);
-  gtk_grid_attach(GTK_GRID(grid), label, 4, 0, 1, max_row + 1);
+
+  if (hwpanel) {
+    label = gtk_label_new("Hardware Settings");
+    gtk_widget_set_name(label, "slider1");
+    gtk_widget_set_halign(label, GTK_ALIGN_CENTER);
+    gtk_grid_attach(GTK_GRID(grid), label, 5, 0, 2, 1);
+    //
+    // Now draw a vertical separator line in column 4
+    //
+    label = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
+    gtk_widget_set_size_request(label, 3, -1);
+    gtk_grid_attach(GTK_GRID(grid), label, 4, 0, 1, max_row + 1);
+  }
 
 
   //
