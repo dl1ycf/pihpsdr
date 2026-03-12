@@ -201,7 +201,6 @@ static void *handler_ep6(void *arg);
 static double  last_i_sample = 0.0;
 static double  last_q_sample = 0.0;
 static int  txptr = -1;
-static int  oldnew = 3;  // 1: only P1, 2: only P2, 3: P1 and P2,
 static int  anan10e = 0; // HERMES with anan10e set behaves like METIS
 int  speed = 0;   // 0: nominal speed, -1: radio is 1% too slow, +1: radio is 1% too fast
 
@@ -322,37 +321,35 @@ int main(int argc, char *argv[]) {
   int MAC5 = 0x10;
   const int MAC6 = 0xDD;  // P1
   const int MAC6N = 0xEE; // P2
-  OLDDEVICE = ODEV_ORION2;
-  NEWDEVICE = NDEV_ORION2;
+  NDEVICE = NDEV_ORION2;
+  ODEVICE = ODEV_ORION2;
 
   for (i = 1; i < argc; i++) {
-    if (!strncmp(argv[i], "-atlas",        6))  {OLDDEVICE = ODEV_METIS;        NEWDEVICE = NDEV_ATLAS;         MAC5 = 0x11;             continue;}
+    if (!strncmp(argv[i], "-atlas",        6))  {ODEVICE = DEV_ATLAS;        NDEVICE = DEV_ATLAS;    MAC5 = 0x11; continue;}
 
-    if (!strncmp(argv[i], "-metis",        6))  {OLDDEVICE = ODEV_METIS;        NEWDEVICE = NDEV_ATLAS;         MAC5 = 0x12;             continue;}
+    if (!strncmp(argv[i], "-metis",        6))  {ODEVICE = DEV_ATLAS;        NDEVICE = DEV_ATLAS;    MAC5 = 0x12; continue;}
 
-    if (!strncmp(argv[i], "-hermeslite2", 12))  {OLDDEVICE = ODEV_HERMES_LITE2; NEWDEVICE = NDEV_HERMES_LITE2;  MAC5 = 0x13; oldnew = 1; continue;}
+    if (!strncmp(argv[i], "-hermeslite2", 12))  {ODEVICE = DEV_HERMES_LITE2; NDEVICE = DEV_NONE;     MAC5 = 0x13; continue;}
 
-    if (!strncmp(argv[i], "-hermeslite",  11))  {OLDDEVICE = ODEV_HERMES_LITE;  NEWDEVICE = NDEV_HERMES_LITE;   MAC5 = 0x14; oldnew = 1; continue;}
+    if (!strncmp(argv[i], "-hermeslite",  11))  {ODEVICE = DEV_HERMES_LITE;  NDEVICE = DEV_NONE;     MAC5 = 0x14; continue;}
 
-    if (!strncmp(argv[i], "-hermes",       7))  {OLDDEVICE = ODEV_HERMES;       NEWDEVICE = NDEV_HERMES;        MAC5 = 0x15;             continue;}
+    if (!strncmp(argv[i], "-hermes",       7))  {ODEVICE = DEV_HERMES;       NDEVICE = DEV_HERMES;   MAC5 = 0x15; continue;}
 
-    if (!strncmp(argv[i], "-hermes2",      8))  {OLDDEVICE = ODEV_HERMES2;      NEWDEVICE = NDEV_HERMES2;       MAC5 = 0x16;             continue;}
+    if (!strncmp(argv[i], "-hermes2",      8))  {ODEVICE = DEV_HERMES2;      NDEVICE = DEV_HERMES2;  MAC5 = 0x16; continue;}
 
-    if (!strncmp(argv[i], "-angelia",      8))  {OLDDEVICE = ODEV_ANGELIA;      NEWDEVICE = NDEV_ANGELIA;       MAC5 = 0x17;             continue;}
+    if (!strncmp(argv[i], "-angelia",      8))  {ODEVICE = ODEV_ANGELIA;     NDEVICE = NDEV_ANGELIA; MAC5 = 0x17; continue;}
 
-    if (!strncmp(argv[i], "-orion2",       7))  {OLDDEVICE = ODEV_ORION2;       NEWDEVICE = NDEV_ORION2;        MAC5 = 0x18;             continue;}
+    if (!strncmp(argv[i], "-orion2",       7))  {ODEVICE = ODEV_ORION2;      NDEVICE = NDEV_ORION2;  MAC5 = 0x18; continue;}
 
-    if (!strncmp(argv[i], "-g2",           3))  {OLDDEVICE = ODEV_NONE;         NEWDEVICE = NDEV_SATURN;        MAC5 = 0x19; oldnew = 2; continue;}
+    if (!strncmp(argv[i], "-g2",           3))  {ODEVICE = DEV_NONE;         NDEVICE = DEV_SATURN;   MAC5 = 0x19; continue;}
 
-    if (!strncmp(argv[i], "-orion",        6))  {OLDDEVICE = ODEV_ORION;        NEWDEVICE = NDEV_ORION;         MAC5 = 0x1A;             continue;}
+    if (!strncmp(argv[i], "-g1",           3))  {ODEVICE = DEV_G1;           NDEVICE = DEV_G1;       MAC5 = 0x19; continue;}
 
-    if (!strncmp(argv[i], "-c25",          4))  {OLDDEVICE = ODEV_C25;          NEWDEVICE = NDEV_C25;           MAC5 = 0x1B; oldnew = 1; continue;}
+    if (!strncmp(argv[i], "-orion",        6))  {ODEVICE = ODEV_ORION;       NDEVICE = NDEV_ORION;   MAC5 = 0x1A; continue;}
+
+    if (!strncmp(argv[i], "-c25",          4))  {ODEVICE = DEV_C25;          NDEVICE = DEV_NONE;     MAC5 = 0x1B; continue;}
 
     if (!strncmp(argv[i], "-diversity",   10))  {diversity = 1; continue;}
-
-    if (!strncmp(argv[i], "-P1",           3))  {oldnew = 1; continue;}
-
-    if (!strncmp(argv[i], "-P2",           3))  {oldnew = 2; continue;}
 
     if (!strncmp(argv[i], "-anan10e",      8))  {anan10e = 1; continue;}
 
@@ -377,7 +374,7 @@ int main(int argc, char *argv[]) {
     t_print("Unknown option: %s\n", argv[i]);
     t_print("Valid options are: -atlas | -metis  | -hermes     | -hermes2     | -angelia |\n");
     t_print("                   -orion | -orion2 | -hermeslite | -hermeslite2 | -c25     |\n");
-    t_print("                   -diversity | -P1 | -P2         | -fast        | -slow    |\n");
+    t_print("                   -diversity | -fast | -slow    |\n");
     t_print("                   -nb <num> <width>\n");
     exit(8);
   }
@@ -399,16 +396,31 @@ int main(int argc, char *argv[]) {
   sigaction(SIGINT, &sa, &sigint_action);
   sigaction(SIGTERM, &sa, &sigterm_action);
 
-  switch (NEWDEVICE) {
-  case   NDEV_ATLAS:
+  if (ODEVICE == DEV_ATLAS) {
     t_print("DEVICE is ATLAS/METIS\n");
     c1 = 3.3;
     c2 = 0.090;
     TXDAC = 1;
     maxpwr = 20.0;
-    break;
+  }
 
-  case   NDEV_HERMES:
+  if (ODEVICE ==  DEV_G1) {
+    t_print("DEVICE is Anan-G1\n");
+    c1 = 3.3;
+    c2 = 0.12;
+    TXDAC = 1;
+    maxpwr = 200.0;
+  }
+
+  if (ODEVICE == DEV_HERMES2) {
+    t_print("DEVICE is HERMES2\n");
+    c1 = 3.3;
+    c2 = 0.095;
+    maxpwr = 20.0;
+    TXDAC = 1;
+  }
+
+  if (ODEVICE == DEV_HERMES) {
     t_print("DEVICE is HERMES\n");
     c1 = 3.3;
     c2 = 0.095;
@@ -421,72 +433,62 @@ int main(int argc, char *argv[]) {
     } else {
       TXDAC = 3;
     }
+  }
 
-    break;
-
-  case   NDEV_HERMES2:
-    t_print("DEVICE is HERMES2\n");
-    c1 = 3.3;
-    c2 = 0.095;
-    TXDAC = 3;
-    maxpwr = 200.0;
-    break;
-
-  case   NDEV_ANGELIA:
+  if (ODEVICE == ODEV_ANGELIA || NDEVICE == NDEV_ANGELIA) {
     t_print("DEVICE is ANGELIA\n");
     c1 = 3.3;
     c2 = 0.095;
     TXDAC = 4;
     maxpwr = 200.0;
-    break;
+  }
 
-  case   NDEV_HERMES_LITE:
+  if (ODEVICE == DEV_HERMES_LITE) {
     t_print("DEVICE is HermesLite V1\n");
     c1 = 3.3;
     c2 = 1.5;
     TXDAC = 1;
     maxpwr = 7.0;
-    break;
+  }
 
-  case   NDEV_HERMES_LITE2:
+  if (ODEVICE == DEV_HERMES_LITE2) {
     t_print("DEVICE is HermesLite V2\n");
     c1 = 3.3;
     c2 = 1.5;
-    TXDAC = 3;
+    TXDAC = 1;
     maxpwr = 7.0;
-    break;
+  }
 
-  case   NDEV_ORION:
+  if (ODEVICE == ODEV_ORION || NDEVICE == NDEV_ORION) {
     t_print("DEVICE is ORION\n");
     c1 = 5.0;
     c2 = 0.108;
     TXDAC = 4;
     maxpwr = 200.0;
-    break;
+  }
 
-  case   NDEV_ORION2:
+  if (ODEVICE == ODEV_ORION2 || NDEVICE == NDEV_ORION2) {
     t_print("DEVICE is ORION MkII\n");
     c1 = 5.0;
     c2 = 0.12;
     TXDAC = 4;
     maxpwr = 500.0;
-    break;
+  }
 
-  case   NDEV_SATURN:
+  if (NDEVICE == DEV_SATURN) {
     t_print("DEVICE is SATURN/G2\n");
     c1 = 5.0;
     c2 = 0.12;
     TXDAC = 4;
     maxpwr = 200.0;
-    break;
+  }
 
-  case   NDEV_C25:
+  if (ODEVICE == DEV_C25) {
     t_print("DEVICE is STEMlab/C25\n");
     c1 = 3.3;
     c2 = 0.090;
     TXDAC = 3;
     maxpwr = 20.0;
-    break;
   }
 
   if (speed == 1) {
@@ -777,7 +779,7 @@ int main(int argc, char *argv[]) {
 
     // If nothing has arrived via UDP for some time, try to open TCP connection.
     // "for some time" means 10 subsequent un-successful UDP rcvmmsg() calls
-    if (sock_TCP_Client < 0 && udp_retries > 10 && oldnew != 2) {
+    if (sock_TCP_Client < 0 && udp_retries > 10 && ODEVICE != DEV_NONE) {
       if ((sock_TCP_Client = accept(sock_TCP_Server, (struct sockaddr *)&addr_from, &lenaddr)) > -1) {
         t_print("sock_TCP_Client: Connected from %s\n", inet_ntoa(addr_from.sin_addr));
       }
@@ -959,7 +961,7 @@ int main(int argc, char *argv[]) {
         break;
       }
 
-      if (oldnew == 2) {
+      if (ODEVICE == DEV_NONE) {
         t_print("OldProtocol detection request from %s IGNORED.\n", inet_ntoa(addr_from.sin_addr));
         break;  // Swallow P1 detection requests
       }
@@ -983,12 +985,12 @@ int main(int argc, char *argv[]) {
       }
 
       buffer[9] = 31; // software version
-      buffer[10] = OLDDEVICE;
+      buffer[10] = ODEVICE;
 
-      if (OLDDEVICE == ODEV_HERMES_LITE2) {
+      if (ODEVICE == DEV_HERMES_LITE2) {
         // use HL1 device ID and new software version
         buffer[9] = 73;
-        buffer[10] = ODEV_HERMES_LITE;
+        buffer[10] = DEV_HERMES_LITE;
         buffer[19] = 4; // number of receivers
         buffer[21] = 2;   // Version 73.2
       }
@@ -1141,7 +1143,7 @@ int main(int argc, char *argv[]) {
       // P2 discovery packet: 60 bytes starting with 00 00 00 00 02
       //
       if (bytes_read == 60 && code == 0 && buffer[4] == 0x02) {
-        if (oldnew == 1) {
+        if (NDEVICE == DEV_NONE) {
           t_print("NewProtocol discovery packet from %s IGNORED.\n", inet_ntoa(addr_from.sin_addr));
           break;
         }
@@ -1156,24 +1158,19 @@ int main(int argc, char *argv[]) {
         buffer[ 8] = MAC4;
         buffer[ 9] = MAC5; // specifies type of radio
         buffer[10] = MAC6N; // encodes new protocol
-        buffer[11] = NEWDEVICE;
+        buffer[11] = NDEVICE;
         buffer[12] = 38;
         buffer[13] = 19;
         buffer[20] = 2;
         buffer[21] = 1;
         buffer[22] = 3;
 
-        // HERMES_LITE2 is a HermesLite with a new software version
-        if (NEWDEVICE == NDEV_HERMES_LITE2) {
-          buffer[11] = NDEV_HERMES_LITE;
-        }
-
         sendto(sock_udp, buffer, 60, 0, (struct sockaddr *)&addr_from, sizeof(addr_from));
         break;
       }
 
       if (bytes_read == 60 && code == 0 && buffer[4] == 0x04) {
-        if (oldnew == 1) {
+        if (NDEVICE == DEV_NONE) {
           t_print("NewProtocol erase packet IGNORED.\n");
           break;
         }
@@ -1187,7 +1184,7 @@ int main(int argc, char *argv[]) {
         buffer[ 8] = MAC4;
         buffer[ 9] = MAC5; // specifies type of radio
         buffer[10] = MAC6N; // encodes new protocol
-        buffer[11] = NEWDEVICE;
+        buffer[11] = NDEVICE;
         buffer[12] = 38;
         buffer[13] = 103;
         buffer[20] = 2;
@@ -1203,7 +1200,7 @@ int main(int argc, char *argv[]) {
       // P2 program packet: 265 bytes starting with xx xx xx xx 05
       //
       if (bytes_read == 265 && buffer[4] == 0x05) {
-        if (oldnew == 1) {
+        if (NDEVICE == DEV_NONE) {
           t_print("NewProtocol program packet IGNORED.\n");
           break;
         }
@@ -1226,7 +1223,7 @@ int main(int argc, char *argv[]) {
         buffer[ 9] = MAC5; // specifies type of radio
         buffer[10] = MAC6N; // encodes new protocol
         buffer[11] = 103;
-        buffer[12] = NEWDEVICE;
+        buffer[12] = NDEVICE;
         buffer[13] = (checksum >> 8) & 0xFF;
         buffer[14] = (checksum     ) & 0xFF;
         sendto(sock_udp, buffer, 60, 0, (struct sockaddr *)&addr_from, sizeof(addr_from));
@@ -1240,7 +1237,7 @@ int main(int argc, char *argv[]) {
       // P2 SetIP packet: 60 bytes starting with 00 00 00 00 06
       //
       if (bytes_read == 60 && code == 0 && buffer[4] == 0x06) {
-        if (oldnew == 1) {
+        if (NDEVICE == DEV_NONE) {
           t_print("NewProtocol SetIP packet IGNORED.\n");
           break;
         }
@@ -1270,7 +1267,7 @@ int main(int argc, char *argv[]) {
         buffer[ 8] = MAC4;
         buffer[ 9] = MAC5; // specifies type of radio
         buffer[10] = MAC6N; // encodes new protocol
-        buffer[11] = NEWDEVICE;
+        buffer[11] = NDEVICE;
         buffer[12] = 38;
         buffer[13] = 103;
         buffer[20] = 2;
@@ -1284,7 +1281,7 @@ int main(int argc, char *argv[]) {
       // P2 General packet: 60 bytes starting with xx xx xx xx 00
       //
       if (bytes_read == 60 && buffer[4] == 0x00) {
-        if (oldnew == 1) {
+        if (NDEVICE == DEV_NONE) {
           t_print("NewProtocol General packet IGNORED.\n");
           break;
         }
@@ -1419,7 +1416,7 @@ void process_ep2(uint8_t *frame) {
 
     if (mod) { t_print("RXout=%d RXant=%d TXrel=%d Duplex=%d\n", alexRXout, alexRXant, AlexTXrel, duplex); }
 
-    if (OLDDEVICE == ODEV_C25) {
+    if (ODEVICE == DEV_C25) {
       // Charly25: has two 18-dB preamps that are switched with "preamp" and "dither"
       //           and two attenuators encoded in Alex-ATT
       //           Both only applies to RX1!
@@ -1477,7 +1474,7 @@ void process_ep2(uint8_t *frame) {
   case 19:
     chk_data(frame[1], txdrive, "TX DRIVE");
 
-    if (OLDDEVICE == ODEV_HERMES_LITE2) {
+    if (ODEVICE == DEV_HERMES_LITE2) {
       chk_data((frame[2] >> 2) & 0x01, hl2_q5, "HermesLite2 Q5 switch");
       chk_data((frame[2] >> 3) & 0x01, hl2_pa, "HermesLite2 PA enable");
       chk_data((frame[2] >> 4) & 0x01, hl2_tune, "HermesLite2 Tune");
@@ -1498,8 +1495,8 @@ void process_ep2(uint8_t *frame) {
     chk_data((frame[3] >> 7) & 0x01, alexTRdisable, "ALEX T/R disable");
     chk_data(frame[4], alex_lpf, "ALEX LPF");
 
-    // reset TX level. Leve a little head-room for noise
-    if (OLDDEVICE == ODEV_HERMES_LITE2) {
+    // reset TX level. Leave a little head-room for noise
+    if (ODEVICE == DEV_HERMES_LITE2) {
       txdrv_dbl = hl2drv[txdrive / 16];
     } else {
       // reset TX level. Leve a little head-room for noise
@@ -1542,7 +1539,7 @@ void process_ep2(uint8_t *frame) {
       // if (!rx1_attE) rx_att[0]=20;
     }
 
-    if (OLDDEVICE != ODEV_C25) {
+    if (ODEVICE != DEV_C25) {
       // Set RX amplification factors. No switchable preamps available normally.
       rxatt_dbl[0] = pow(10.0, -0.05 * (10 * AlexAtt + rx_att[0]));
       rxatt_dbl[1] = pow(10.0, -0.05 * (rx_att[1]));
@@ -1571,7 +1568,7 @@ void process_ep2(uint8_t *frame) {
 
   case 28:
   case 29:
-    if (OLDDEVICE == ODEV_C25) {
+    if (ODEVICE == DEV_C25) {
       // RedPitaya: Hard-wired ADC settings.
       rx_adc[0] = 0;
       rx_adc[1] = 1;
@@ -1797,7 +1794,7 @@ void *handler_ep6(void *arg) {
 
         *(pointer + 4) = C1;
 
-        if (OLDDEVICE == ODEV_HERMES_LITE2) {
+        if (ODEVICE == DEV_HERMES_LITE2) {
           *(pointer + 4) = 0;
           // C2/C3 is TX FIFO count
           *(pointer + 5) = 0;
@@ -1808,7 +1805,7 @@ void *handler_ep6(void *arg) {
         break;
 
       case 8:
-        if (OLDDEVICE == ODEV_HERMES_LITE2) {
+        if (ODEVICE == DEV_HERMES_LITE2) {
           // HL2: temperature
           *(pointer + 4) =  4;
           *(pointer + 5) =  0; // value = 1024, 31.5 degrees
@@ -1879,7 +1876,7 @@ void *handler_ep6(void *arg) {
 
       for (j = 0; j < n; j++) {
         // ADC1: noise + weak tone on RX, feedback sig. on TX (except STEMlab)
-        if (ptt && (OLDDEVICE != ODEV_C25)) {
+        if (ptt && (ODEVICE != DEV_C25)) {
           i1 = isample[rxptr] * txdrv_dbl;
           q1 = qsample[rxptr] * txdrv_dbl;
           fac3 = IM3a + IM3b * (i1 * i1 + q1 * q1);
@@ -1904,7 +1901,7 @@ void *handler_ep6(void *arg) {
         }
 
         // ADC2: noise RX, feedback sig. on TX (only STEMlab)
-        if (ptt && (OLDDEVICE == ODEV_C25)) {
+        if (ptt && (ODEVICE == DEV_C25)) {
           i1 = isample[rxptr] * txdrv_dbl;
           q1 = qsample[rxptr] * txdrv_dbl;
           fac3 = IM3a + IM3b * (i1 * i1 + q1 * q1);
@@ -1922,7 +1919,7 @@ void *handler_ep6(void *arg) {
         //
         // TX signal with peak=0.407
         //
-        if (OLDDEVICE == ODEV_HERMES_LITE2) {
+        if (ODEVICE == DEV_HERMES_LITE2) {
           dacisample = isample[rxptr] * 0.230 * 8388607.0;
           dacqsample = qsample[rxptr] * 0.230 * 8388607.0;
         } else {
