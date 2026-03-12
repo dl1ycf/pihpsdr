@@ -821,11 +821,28 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
       flag = 1;
       break;
 
-    case DEVICE_ORION2:
+    //
+    // The G1 slow ADCs have VADC=3.3Volt, so we use the
+    // ANAN-7000 conversion constants except for changing
+    // VADC from 5 to 3.3 (the same applies to the current
+    // reading below).
+    //
     case DEVICE_G1:
+    case NEW_DEVICE_G1:
+      // 3.3 (ADC0_avg / 4095 )* VDiv, VDiv = (22.0 + 1.0) / 1.1
+      v = 0.0168498 * ADC0;
+
+      if (v < 0) { v = 0; }
+
+      if (count == 0) { max1 = v; }
+
+      snprintf(text, sizeof(text), "%0.1fV", max1);
+      flag = 1;
+      break;
+
+    case DEVICE_ORION2:
     case NEW_DEVICE_ORION2:
     case NEW_DEVICE_SATURN:
-    case NEW_DEVICE_G1:
       // 5 (ADC0_avg / 4095 )* VDiv, VDiv = (22.0 + 1.0) / 1.1
       v = 0.02553 * ADC0;
 
@@ -863,12 +880,23 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
       flag = 1;
       break;
 
-    case DEVICE_ORION2:
     case DEVICE_G1:
-    case NEW_DEVICE_ORION2:
     case NEW_DEVICE_G1:
+      // ((ADC1*3300)/4095 - Voff)/Sens, Voff = 360, Sens = 120
+      v = 0.00671387 * ADC1 - 3.0;
+
+      if (v < 0) { v = 0; }
+
+      if (count == 0) { max2 = v; }
+
+      snprintf(text, sizeof(text), "%0.1fA", max2);
+      flag = 1;
+      break;
+
+    case DEVICE_ORION2:
+    case NEW_DEVICE_ORION2:
       // ((ADC1*5000)/4095 - Voff)/Sens, Voff = 360, Sens = 120
-      v = 0.0101750 * ADC1 - 3.0;
+      v = 0.0101725 * ADC1 - 3.0;
 
       if (v < 0) { v = 0; }
 

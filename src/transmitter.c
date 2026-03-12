@@ -530,6 +530,14 @@ static gboolean tx_update_display(gpointer data) {
     }
 
     tx->alc = tx_get_alc(tx);
+    //
+    // constant1 and the calibration offsets are used to convert
+    // an ADC reading in the range 0-4095 to a voltage level.
+    // (constant1 is the VADC voltage needed to drive the ADC to
+    // full scale): V = C1*(ADC-cal_offset)/4095
+    // (the inverse of) constant2 then converts voltage to power: P = V*V/C2
+    // so it encodes the attenuation of the coupler.
+    //
     double constant1;
     double constant2;
     double rconstant2;  // allow different C2 values for calculating fwd and ref power
@@ -608,11 +616,28 @@ static gboolean tx_update_display(gpointer data) {
       fwd_cal_offset = 4;
       break;
 
-    case DEVICE_ORION2:  // Anan7000/8000/G2
     case DEVICE_G1:
+    case NEW_DEVICE_G1:
+      //
+      // The G1 uses the Anan7000 PA board but
+      // has a Hermes-type FPGA board where the
+      // slow ADCs have VADC=3.3V, so all ADC
+      // readings (in the range 0-4095) are scaled
+      // up by 5.0/3.3.
+      // Therefore we use the Anan7000 constants,
+      // but with constant1=3.3 instead of 5.0,
+      // and the calibration offsets scaled up.
+      //
+      constant1 = 3.3;
+      constant2 = 0.12;
+      rconstant2 = is6m ? 0.7 : 0.15;
+      rev_cal_offset = 42;
+      fwd_cal_offset = 48;
+      break;
+
+    case DEVICE_ORION2:  // Anan7000/8000/G2
     case NEW_DEVICE_ORION2:
     case NEW_DEVICE_SATURN:
-    case NEW_DEVICE_G1:
       if (pa_power == PA_100W) {
         // ANAN-7000  values.
         constant1 = 5.0;
@@ -666,9 +691,9 @@ static gboolean tx_update_display(gpointer data) {
 
     if (rev_power < 0) { rev_power = 0; }
 
-    v1 = ((double)fwd_power / 4095.0) * constant1;
+    v1 = ((double)fwd_power / 4095.0) * constant1; // ADC reading in Volt
     tx->fwd = (v1 * v1) / constant2;
-    v1 = ((double)rev_power / 4095.0) * constant1;
+    v1 = ((double)rev_power / 4095.0) * constant1; // ADC reading in Volt
     tx->rev = (v1 * v1) / rconstant2;
     //
     // compute_power does an interpolation is user-supplied pairs of

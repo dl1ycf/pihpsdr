@@ -2443,10 +2443,12 @@ static void process_div_iq_data(const unsigned char*buffer) {
     rightsample1 |= (int)((unsigned char)buffer[b++] & 0xFF);
     leftsampledouble1 = (double)leftsample1 * 1.1920928955078125E-7;
     rightsampledouble1 = (double)rightsample1 * 1.1920928955078125E-7;
-    rx_add_div_iq_samples(receiver[0], leftsampledouble0, rightsampledouble0, leftsampledouble1, rightsampledouble1);
-
     //
-    // if both receivers share the sample rate, we can feed data to RX2
+    // Feed ADC1 and ADC2 data to the DIVERSITY mixer
+    //
+    rx_add_div_iq_samples(receiver[0], leftsampledouble0, rightsampledouble0, leftsampledouble1, rightsampledouble1);
+    //
+    // if RX2 exists, feed ADC2 data to  RX2
     //
     if (receivers > 1 && (receiver[0]->sample_rate == receiver[1]->sample_rate)) {
       rx_add_iq_samples(receiver[1], leftsampledouble1, rightsampledouble1);
@@ -2601,7 +2603,7 @@ static void process_high_priority(void) {
   //
   hpsdr_cw = 0;
 
-  if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN || device == NEW_DEVICE_G1) {
+  if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN) {
     //
     // These devices reflect a "keyer CW input" in bit 3 of byte59
     // and this is active-high (!)
