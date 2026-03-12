@@ -12,7 +12,7 @@ It runs on Linux (Raspberry Pi but also Desktop or Laptop computers running LINU
 
 **v2.5:** https://github.com/dl1ycf/pihpsdr/releases/download/v2.5/piHPSDR-Manual-v2.5.pdf
 
-**v2.6:** https://github.com/dl1ycf/pihpsdr/releases/download/v2.6/piHPSDR-Manual-v2.6.pdf
+**v2.6:** https://github.com/dl1ycf/pihpsdr/releases/download/v2.5/piHPSDR-Manual-v2.6.pdf
 
 **A manual for the current master branch is updated from time to time here:**
 
