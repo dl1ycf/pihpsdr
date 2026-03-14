@@ -78,7 +78,20 @@ sudo apt-get --yes install libi2c-dev
 sudo apt-get --yes install libgpiod-dev
 sudo apt-get --yes install libpulse-dev
 sudo apt-get --yes install pulseaudio
+sudo apt-get --yes install pipewire-pulse
 sudo apt-get --yes install libpcap-dev
+#
+# We have (tried to) install both pulseaudio and
+# pipewire-pulse. When pipewire-pulse is available,
+# the pulseaudio daemon is not needed so we remove
+# pulseaudio in that case
+#
+
+RES=`sudo apt show pipewire-pulse | grep "^Installed" | wc -l`
+if [ $RES -eq 1 ]; then
+  echo pipewire-pulse found, so removing pulseaudio
+  sudo apt --yes remove pulseaudio
+fi
 
 # ----------------------------------------------
 # Install standard libraries necessary for SOAPY
