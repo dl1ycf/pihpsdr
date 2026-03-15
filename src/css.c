@@ -84,7 +84,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __APPLE__
-char *cssfont[] = {"SF UI Text", "Helvetica Neue", "Monaco", "Geneva" };
+char *cssfont[] = {"system-ui", "Helvetica Neue", "Monaco", "Arial" };
 #else
 char *cssfont[] = {"OpenSans", "Roboto Mono", "Free Sans", "Roboto", "Piboto" };
 #endif
