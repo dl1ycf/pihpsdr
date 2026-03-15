@@ -78,9 +78,16 @@
 // MUST specify the font size. If not, it may happen that the sliders cannot be
 // displayed on a large screen
 //
+// Note "Piboto" is the "Roboto" font before its 2014 re-design. It seems to be
+// available on RaspPis only, therefore I provide the "Roboto" as well.
+//
 //////////////////////////////////////////////////////////////////////////////////////////
 
-char *cssfont[] = {"FreeSans", "Roboto Mono", "Open Sans", "Piboto" };
+#ifdef __APPLE__
+char *cssfont[] = {"SF UI Text", "Helvetica Neue", "Monaco", "Geneva" };
+#else
+char *cssfont[] = {"OpenSans", "Roboto Mono", "Free Sans", "Roboto", "Piboto" };
+#endif
 
 const int num_css_fonts = sizeof(cssfont) / sizeof(char *);
 int which_css_font = 0;
