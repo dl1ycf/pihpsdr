@@ -1093,7 +1093,7 @@ void *rx_thread(void *data) {
   int do_tone, t3p;
   double *pulseshape = NULL;
   int myrate = 0;
-  struct timespec delay;
+  struct timespec tsdelay;
   tonearg = 0.0;
   tonearg2 = 0.0;
   t3p = 0;
@@ -1126,14 +1126,14 @@ void *rx_thread(void *data) {
   }
 
   noisept = 0;
-  clock_gettime(CLOCK_MONOTONIC, &delay);
+  clock_gettime(CLOCK_MONOTONIC, &tsdelay);
   rxptr = NEWRTXLEN / 2 - 8192;
   divptr = 0;
 
   while (run) {
     if (ddcenable[myddc] <= 0 || rxrate[myddc] == 0 || rxfreq[myddc] == 0) {
       usleep(5000);
-      clock_gettime(CLOCK_MONOTONIC, &delay);
+      clock_gettime(CLOCK_MONOTONIC, &tsdelay);
       continue;
     }
 
@@ -1391,14 +1391,14 @@ void *rx_thread(void *data) {
       }
     }
 
-    delay.tv_nsec += wait;
+    tsdelay.tv_nsec += wait;
 
-    while (delay.tv_nsec >= 1000000000) {
-      delay.tv_nsec -= 1000000000;
-      delay.tv_sec++;
+    while (tsdelay.tv_nsec >= 1000000000) {
+      tsdelay.tv_nsec -= 1000000000;
+      tsdelay.tv_sec++;
     }
 
-    clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &delay, NULL);
+    clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &tsdelay, NULL);
 
     if (sendto(sock, buffer, 1444, 0, (struct sockaddr * )&addr_new, sizeof(addr_new)) < 0) {
       t_perror("***** ERROR: RX thread sendto");
@@ -1572,12 +1572,14 @@ void *tx_thread(void * data) {
 
 void *send_highprio_thread(void *data) {
   int sock;
+  struct timespec tsdelay;
   struct sockaddr_in addr;
   unsigned long seqnum;
   unsigned char buffer[60];
   unsigned char uc;
   int yes = 1;
   int rc;
+  int i;
   seqnum = 0;
   sock = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -1600,6 +1602,7 @@ void *send_highprio_thread(void *data) {
   }
 
   seqnum = 0;
+  clock_gettime(CLOCK_MONOTONIC, &tsdelay);
 
   while (1) {
     if (!run) {
@@ -1717,17 +1720,27 @@ void *send_highprio_thread(void *data) {
       t_perror("***** ERROR: HP send thread sendto");
       break;
     }
+    tsdelay.tv_nsec += 1000000;  // 1 msec
+
+    while (tsdelay.tv_nsec >= 1000000000) {
+      tsdelay.tv_nsec -= 1000000000;
+      tsdelay.tv_sec++;
+    }
 
     seqnum++;
+    clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &tsdelay, NULL);
 
-    if (ptt) {
-      usleep(1000);   // send each milli second while transmitting
-    } else {
-      for (int i = 0; i < 50; i++) {
-        usleep(1000);
+    i = 0;
+    while (1) {
+      if (ptt || radio_digi_changed || ++i >= 50) { break; }
+      tsdelay.tv_nsec += 1000000;  // 1 msec
 
-        if (radio_digi_changed) { break; }
+      while (tsdelay.tv_nsec >= 1000000000) {
+        tsdelay.tv_nsec -= 1000000000;
+        tsdelay.tv_sec++;
       }
+
+      clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &tsdelay, NULL);
     }
   }
 
