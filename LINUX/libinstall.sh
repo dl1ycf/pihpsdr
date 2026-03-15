@@ -94,6 +94,24 @@ if [ $RES -eq 1 ]; then
 fi
 
 # ----------------------------------------------
+# Install some fonts. Note that the much
+# beloved "piboto" font, which is the old
+# roboto font before its 2014 redesign,
+# seems to be available on RaspPi only, and
+# there it is pre-installed anyway.
+#
+# By defaults piHPSDR is using
+# FreeSans  (--> fonts-freefont-otf)
+# OpenSans  (--> fonts-open-sans)
+# Roboto    (--> fonts-roboto)
+#
+# ----------------------------------------------
+
+sudo apt-get install --yes fonts-open-sans
+sudo apt-get install --yes fonts-freefont-otf
+sudo apt-get install --yes fonts-roboto
+
+# ----------------------------------------------
 # Install standard libraries necessary for SOAPY
 # ----------------------------------------------
 
