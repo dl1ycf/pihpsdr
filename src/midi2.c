@@ -272,7 +272,6 @@ void midi_save_state(void) {
 
 void midi_restore_state(void) {
   char str[128];
-  int channel;
   int event;
   int type;
   int action;
@@ -312,7 +311,7 @@ void midi_restore_state(void) {
     GetPropI1("midi[%d].entries", i, entries);
 
     for (int entry = 0; entry < entries; entry++) {
-      channel = -1;
+      int channel = -1;
       GetPropI2("midi[%d].entry[%d].channel", i, entry,      channel);
 
       if (channel < 0) { continue; }

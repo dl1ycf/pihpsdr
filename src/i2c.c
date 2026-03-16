@@ -122,6 +122,7 @@ int i2c_check_presence() {
   //
   __s32 data = i2c_smbus_read_byte_data(fd, 0);
   close(fd);
+
   if (data < 0) {
     t_print("%s: i2c read failed.\n", __func__);
     return 0;

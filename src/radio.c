@@ -1231,8 +1231,10 @@ void radio_start_radio(void) {
     }
   } else {
 #ifdef GPIO
+
     if (controller == CONTROLLER3) {
       const char *cp = realpath("/dev/serial/by-id/Remotehead-9600", NULL);
+
       if (cp != NULL) {
         SerialPorts[MAX_SERIAL - 1].enable = 1;
         SerialPorts[MAX_SERIAL - 1].andromeda = 1;
@@ -1245,6 +1247,7 @@ void radio_start_radio(void) {
         t_print("CONTROLLER3: /dev/serial/by-id/Remotehead-9600 not found!\n");
       }
     }
+
 #endif
   }
 
@@ -1675,7 +1678,6 @@ void radio_start_radio(void) {
   radio_change_region(region);
   radio_create_visual();
   radio_reconfigure_screen();
-
 #ifdef GPIO
   gpio_set_orion_options();
 #endif
@@ -1951,6 +1953,7 @@ void radio_change_sample_rate(int rate) {
     break;
 
   case SOAPYSDR_PROTOCOL:
+
     //
     // If there are two SOAPY receivers, we enforce that
     // they share the sample rate.
@@ -1972,19 +1975,19 @@ void radio_change_sample_rate(int rate) {
 static void rxtx(int state) {
   int i;
 
-//
-// My measurements on the timing within rxtx indicates that
-// the time spent in rxtx() dominated by the WDSP slew-downs.
-// In the RXTX transition, this is the call to rx_off() and
-// in the TXRX transitionb, this is the call to tx_off().
-// The slew-down time is set in the OpenChannel() calls, but
-// this is not a time in seconds but rather has to converted
-// to a number of samples that have to be delivered to the
-// channel before it is completely shut down.
-// In most cases, rxtx() takes about 30 +/- 10 msec.
-// If running duplex, RXTX is faster since there is not
-// receiver slew-down.
-//
+  //
+  // My measurements on the timing within rxtx indicates that
+  // the time spent in rxtx() dominated by the WDSP slew-downs.
+  // In the RXTX transition, this is the call to rx_off() and
+  // in the TXRX transitionb, this is the call to tx_off().
+  // The slew-down time is set in the OpenChannel() calls, but
+  // this is not a time in seconds but rather has to converted
+  // to a number of samples that have to be delivered to the
+  // channel before it is completely shut down.
+  // In most cases, rxtx() takes about 30 +/- 10 msec.
+  // If running duplex, RXTX is faster since there is not
+  // receiver slew-down.
+  //
   if (!can_transmit) {
     t_print("WARNING: rxtx called but no transmitter!");
     return;
@@ -3789,7 +3792,6 @@ int radio_client_start(gpointer data) {
 
   gdk_window_set_cursor(gtk_widget_get_window(top_window), gdk_cursor_new(GDK_WATCH));
   rigctl_start_cw_thread(); // do this early and once
-
   radio_is_remote = TRUE;
   optimize_for_touchscreen = 1;
   cw_keyer_internal = 0;
@@ -3800,7 +3802,6 @@ int radio_client_start(gpointer data) {
   send_screen(cl_sock_tcp, rx_stack_horizontal, display_width[display_size]);
   radio_create_visual();
   radio_reconfigure_screen();
-
 #ifdef GPIO
   gpio_set_orion_options();
 #endif
@@ -3884,7 +3885,6 @@ int radio_client_start(gpointer data) {
   }
 
   start_vfo_timer();
-
   remote_started = TRUE;
   //
   // Now the radio is up and running. Connect "Radio" keyboard interceptor

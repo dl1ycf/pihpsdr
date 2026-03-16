@@ -499,6 +499,7 @@ static void mic_in_cb(GtkWidget *widget, gpointer data) {
   if (!radio_is_remote) {
     schedule_transmit_specific();
   }
+
 #ifdef GPIO
   gpio_set_orion_options();
 #endif
@@ -670,9 +671,11 @@ void tx_menu(GtkWidget *parent) {
     btn = gtk_combo_box_text_new();
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Mic In");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Mic Boost");
+
     if (have_mic) {
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Line In");
     }
+
     int pos = 0;
 
     if (mic_linein && have_mic) {
@@ -1210,5 +1213,6 @@ void tx_menu(GtkWidget *parent) {
     gtk_widget_hide(peaks_container);
     break;
   }
+
   gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
 }

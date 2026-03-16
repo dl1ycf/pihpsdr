@@ -8,7 +8,7 @@
 
 #######################################################################################
 #
-# Default Compile-time options
+# Default Compile-time options. Default AUDIO on LINUX is PULSE, on MacOS PORTAUDIO.
 #
 #######################################################################################
 
@@ -18,9 +18,13 @@ SATURN=ON
 USBOZY=OFF
 SOAPYSDR=OFF
 STEMLAB=OFF
-AUDIO=PULSE
 NR34LIB=OFF
 TTS=ON
+ifeq ($(UNAME_S), Darwin)
+AUDIO=PORTAUDIO
+else
+AUDIO=PULSE
+endif
 
 #######################################################################################
 #
@@ -130,13 +134,18 @@ endif
 
 ##############################################################################
 #
-# disable GPIO and SATURN for MacOS, simply because it is not there
+# MacOSX:
+# -disable GPIO and SATURN, simply because it is not there
+# -if AUDIO is ALSA, switch to PORTAUDIO
 #
 ##############################################################################
 
 ifeq ($(UNAME_S), Darwin)
 GPIO=
 SATURN=
+ifeq ($(AUDIO), ALSA)
+AUDIO=PORTAUDIO
+endif
 endif
 
 ##############################################################################
@@ -329,23 +338,6 @@ CPP_INCLUDE += `$(PKG_CONFIG) --cflags libcurl`
 
 ##############################################################################
 #
-# Options for audio module
-#  - MacOS: only PORTAUDIO
-#  - Linux: either PULSEAUDIO (default) or ALSA (upon request)
-#
-##############################################################################
-
-ifeq ($(UNAME_S), Darwin)
-  AUDIO=PORTAUDIO
-endif
-ifeq ($(UNAME_S), Linux)
-  ifneq ($(AUDIO) , ALSA)
-    AUDIO=PULSE
-  endif
-endif
-
-##############################################################################
-#
 # Add libraries for using PulseAudio, if requested
 #
 ##############################################################################
@@ -353,12 +345,7 @@ endif
 ifeq ($(AUDIO), PULSE)
 AUDIO_OPTIONS=-DPULSEAUDIO
 AUDIO_INCLUDE=
-ifeq ($(UNAME_S), Linux)
-  AUDIO_LIBS=-lpulse-simple -lpulse -lpulse-mainloop-glib
-endif
-ifeq ($(UNAME_S), Darwin)
-  AUDIO_LIBS=-lpulse-simple -lpulse
-endif
+AUDIO_LIBS=-lpulse-simple -lpulse -lpulse-mainloop-glib
 AUDIO_SOURCES=src/pulseaudio.c
 AUDIO_OBJS=src/pulseaudio.o
 endif

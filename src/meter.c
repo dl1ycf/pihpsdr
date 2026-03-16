@@ -181,6 +181,7 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
       max_rxlvl = rxlvl;
       max_count = 0;
     }
+
     //
     // Calculate S-meter reflection smtr
     // smtr : goes from  0.0 to  72.0 for S0 ... S9
@@ -192,6 +193,7 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
       } else {
         smtr = 1.33333333 * (fmax(-147.0, max_rxlvl) + 147.0);
       }
+
       smtr2 = 0.7 * (max_rxlvl + 93.0);
     } else {
       if (smeter3dB) {
@@ -199,11 +201,14 @@ void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double
       } else {
         smtr = 1.33333333 * (fmax(-127.0, max_rxlvl) + 127.0);
       }
+
       smtr2 = 0.7 * (max_rxlvl + 73);
     }
 
     if (smtr > 72.0) { smtr = 72.0; }
+
     if (smtr2 <  0.0) { smtr2 =  0.0; }
+
     if (smtr2 > 42.0) { smtr2 = 42.0; }
 
     smtr += smtr2;

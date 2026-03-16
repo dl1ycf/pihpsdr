@@ -195,7 +195,11 @@ compression, these functions are tied together in \pH.
 \label{sec:versionhistory}
 Here we list the main new featured introduced in each version.
 \bigskip
-
+\textbf{\pH development version}
+\begin{itemize}
+\item{Added a manual multi-notch filter (\bltt{Filter} menu).}
+\end{itemize}
+\medskip
 \textbf{\pH Version 2.6, released February 2026}
 \begin{itemize}
 \item{Low-latency CW side tone also for the PulseAudio module.}
@@ -2485,8 +2489,13 @@ to the right lets you adjust the squelch level. Use these functions if you want 
 and do not have the squelch slider on display.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{The \texttt{Filter} menu}
+\section{The \texttt{Filter} menu (including notches)}
 
+
+With the \bltt{Filter} menu, you can change the filter of the active receiver. In addition,
+up to three notches can be added manually to the filter passband.
+
+\subsection{Choosing filters for non-FM modes}
 \begin{figure}[ht]
 \center
 \includegraphics[scale=0.45]{FilterMenuUSB.png}
@@ -2494,11 +2503,12 @@ and do not have the squelch slider on display.
 \label{fig:FilterMenuUSB}
 \end{figure}
 
-With the \bltt{Filter} menu, you can change the filter of the active receiver. For each mode,
+ For each mode (except FM),
 there
 are ten fixed filters and two variable filters, see Fig. \ref{fig:FilterMenuUSB}. It
 depends on the current mode which filters are at your disposal, and Fig. \ref{fig:FilterMenuUSB}
-is what you see for USB and LSB modes. The filter currently active is highlighted, and
+is what you see for USB and LSB modes. The lower part controls the manual multi-notch filter
+and will be discussed below. The filter currently active is highlighted, and
 you can choose another filter simply clicking the button. For USB and LSB, the filters
 are such the low-frequency cut (in the audio domain) is at 150 Hz, so a 2.7k filter
 actually encompasses audio frequencies from 150 to 2850 Hz. With the two variable filters
@@ -2557,8 +2567,17 @@ There is the function \bltt{CW Audio Peak Filter} that can be mapped on toolbar
 buttons or GPIO/MIDI buttons so you can quickly enable/disable the audio peak
 filter.
 
-\textbf{Filter menu and FM mode.} In FM mode, the \bltt{Filter} menu only lets you
-choose between a deviation of 2500 Hz or a deviation of 5000 Hz.
+\subsection{Choosing deviation for FM}
+\begin{figure}[ht]
+\center
+\includegraphics[scale=0.45]{FilterMenuFM.png}
+\caption{The \bltt{Filter} menu for FM.}
+\label{fig:FilterMenuFM}
+\end{figure}
+
+ In FM mode, the \bltt{Filter} menu only lets you
+choose between a deviation of 2500 Hz or a deviation of 5000 Hz
+(see Fig. \ref{fig:FilterMenuFM}).
 Irrespective of whether the box \rett{Use RX Filter} in the TX menu (see
 Chapter \ref{sec:txmenu}) is checked, the deviation setting is used both for RX and TX.
 Filter edges (both for
@@ -2566,6 +2585,39 @@ TX and RX) are then calculated according to Carson's rule. Assuming a maximum au
 frequency of 3000 Hz, a filter width of 11 kHz and 16 kHz result for deviations of 2500
 and 5000 Hz.
 
+\subsection{Manual Multi-Notch Filter}
+\begin{figure}[ht]
+\center
+\includegraphics[scale=0.45]{RXnotch.png}
+\caption{RX panadapter indicating three notches.}
+\label{fig:RXnotch}
+\end{figure}
+
+Now we come to the lower part of the filter menu, where up to three notch filters can be
+engaged. The \rett{Enable} column contains checkboxes for enabling/disabling any of the
+three filters, and the spin buttons in the columns \rett{Notch Center} and \rett{Notch Width}
+define the center frequencies and widths of the notch filters.
+
+The center frequencies are bound to the baseband frequencies, that is, a frequency of zero
+corresponds to the center of the RX panadapter (the VFO dial frequency in non-CTUN mode),
+negative frequencies are in the left, and positive frequencies in the right half of the spectrum.
+So if some source of QRM is notched out, it remains notched out if you change the RIT value or
+if you change the frequency in CTUN mode. But when you change the frequency in non-CTUN mode,
+the notch will move away from the QRM. The active notches are indicated in the RX panadapter
+by transparent yellow areas, as shown in Fig. \ref{fig:RXnotch}. In this example, the first notch
+has a center frequency of 500 Hz and a width of 50 Hz, the second notch a center frequency of
+1250 Hz and a width of 50 Hz, and the third notch has a center frequency of 2500 Hz and a
+width of 100 Hz. Note that in LSB mode, notch frequencies will usually be negative. Notches can be
+outside the filter passband (the area shaded grey in Fig. \ref{fig:RXnotch}) but then they have
+no effect.
+
+The \rett{Default} buttons associated with each notch reset its width to 50 Hz and its center
+frequency to the center of the filter passband. The main use of resetting the notch is
+to quickly get the notch in the middle of the filter passband when using CTUN or large RIT
+values, since then one needs notch center frequencies very far from zero.
+
+Changing the center frequencies and width, and enabling/disabling a notch, can also be
+accomplished with GPIO- or MIDI-based controllers, see the commands starting with \bltt{NOTCH}.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The \texttt{Noise} Menu}
 \label{sec:noisemenu}
@@ -6045,6 +6097,19 @@ This applies both to the audio data stream to the radio and local audio
 (if enabled).}
 
 \phcommand{NB}{NB}{B}{Cycles through the noise blanker states (NB off/NB1/NB2).}
+
+\phcommand{Notch1 Center}{Notch1C}{E}{Change the centre frequency of the first notch
+for the active receiver (see the
+\bltt{Filter} menu). The same commands exists for the other two notches (Notch2 Center/Notch2C
+and Notch3 Center/Notch3C). The change can only be seen on the RX pan-adapter if the notch is active.}
+
+\phcommand{Notch1 Width}{Notch1W}{E}{Change the width of the first notch for the active receiver (see the
+\bltt{Filter} menu). The same commands exists for the other two notches (Notch2 Width/Notch2W
+and Notch3 Width/Notch3W). The change can only be seen on the RX pan-adapter if the notch is active.}
+
+\phcommand{Notch1 Enable}{Notch1E}{B}{Toggles (on/off) the first notch for the active receiver.
+The same commands exists for the other two notches (Notch2 Enable/Notch2E
+and Notch3 Enable/Notch3E).}
 
 \phcommand{NR}{NR}{B}{Cycles through the noise reduction states (NR off/NR1/NR2).}
 

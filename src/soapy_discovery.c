@@ -42,7 +42,6 @@ static void get_info(char *driver) {
   char p_version[32];
   int rxincompatible = 0;
   int txincompatible = 0;
-
   *fw_version = *gw_version = *hw_version = *p_version = 0;
 
   if (devices >= MAX_DEVICES) {
@@ -129,7 +128,6 @@ static void get_info(char *driver) {
   discovered[devices].soapy.rx_channels = rx_channels;
   discovered[devices].supported_receivers = rx_channels;
   discovered[devices].adcs = rx_channels;
-
   size_t tx_channels = SoapySDRDevice_getNumChannels(sdr, SOAPY_SDR_TX);
   t_print("%s: Tx channels: %ld\n", __func__, (long) tx_channels);
 
@@ -190,7 +188,6 @@ static void get_info(char *driver) {
     }
 
     free(bandwidths);  // allocated within SoapySDR so use free() rather than g_free()
-
     ranges = SoapySDRDevice_getFrequencyRange(sdr, SOAPY_SDR_RX, id, &length);
 
     for (size_t i = 0; i < length; i++) {
@@ -246,10 +243,11 @@ static void get_info(char *driver) {
     rc = SoapySDRDevice_hasDCOffsetMode(sdr, SOAPY_SDR_RX, id);
     t_print("%s: RX%d has_automatic_dc_offset_correction=%d\n", __func__, (int)(id + 1), rc);
     formats = SoapySDRDevice_getStreamFormats(sdr, SOAPY_SDR_RX, id, &length);
-
     int foundcf32 = 0;
+
     for (size_t i = 0; i < length; i++) {
       t_print( "%s: RX%d format available: %s\n", __func__, (int)(id + 1), formats[i]);
+
       if (!strcmp(formats[i], SOAPY_SDR_CF32)) { foundcf32 = 1; }
     }
 
@@ -262,7 +260,6 @@ static void get_info(char *driver) {
     }
 
     free(formats);  // allocated within SoapySDR so use free() rather than g_free()
-
     nativeformat = SoapySDRDevice_getNativeStreamFormat(sdr, SOAPY_SDR_RX, id, &scale);
     t_print("%s: RX%d native format: %s (max=%f)\n", __func__,  (int)(id + 1), nativeformat, scale);
   }
@@ -304,7 +301,6 @@ static void get_info(char *driver) {
     }
 
     free(bandwidths);  // allocated within SoapySDR so use free() rather than g_free()
-
     ranges = SoapySDRDevice_getFrequencyRange(sdr, SOAPY_SDR_TX, 0, &length);
 
     for (size_t i = 0; i < length; i++) {
@@ -345,10 +341,11 @@ static void get_info(char *driver) {
     }
 
     formats = SoapySDRDevice_getStreamFormats(sdr, SOAPY_SDR_TX, 0, &length);
-
     int foundcf32 = 0;
+
     for (size_t i = 0; i < length; i++) {
       t_print( "%s: TX format available: %s\n", __func__, formats[i]);
+
       if (!strcmp(formats[i], SOAPY_SDR_CF32)) { foundcf32 = 1; }
     }
 
@@ -361,7 +358,6 @@ static void get_info(char *driver) {
     }
 
     free(formats);  // allocated within SoapySDR so use free() rather than g_free()
-
     nativeformat = SoapySDRDevice_getNativeStreamFormat(sdr, SOAPY_SDR_TX, 0, &scale);
     t_print("%s: TX native format: %s (max=%f)\n", __func__,  nativeformat, scale);
   }
@@ -390,14 +386,11 @@ static void get_info(char *driver) {
 
   discovered[devices].soapy.tx_channels = tx_channels;  // 0 or 1
   discovered[devices].dacs = tx_channels;               // 0 or 1
-
   //
   // The RX is incompatible if one of the RX channels does not support CF32 format
   //
   discovered[devices].status = rxincompatible ? STATE_INCOMPATIBLE : STATE_AVAILABLE;
-
   SoapySDRDevice_unmake(sdr);
-
   t_print("%s: name=%s min=%0.3f MHz max=%0.3f MHz\n", __func__, discovered[devices].name,
           discovered[devices].frequency_min * 1E-6,
           discovered[devices].frequency_max * 1E-6);

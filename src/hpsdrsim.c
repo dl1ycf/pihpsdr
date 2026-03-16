@@ -578,19 +578,25 @@ int main(int argc, char *argv[]) {
 
   have_rxiq = 0;
   fd = open("RXIQDUMP", O_RDONLY);
+
   if (fd >= 0) {
-    rxiqdump = malloc(6*NUMDUMP);
+    rxiqdump = malloc(6 * NUMDUMP);
+
     if (rxiqdump) {
-      size_t ret = read(fd, rxiqdump, 6*NUMDUMP);
-      if (ret == 6*NUMDUMP) {
+      size_t ret = read(fd, rxiqdump, 6 * NUMDUMP);
+
+      if (ret == 6 * NUMDUMP) {
         have_rxiq = 1;
       } else {
         free(rxiqdump);
       }
     }
+
     close(fd);
   }
-  if (have_rxiq) printf("Sample RXIQ data read.\n");
+
+  if (have_rxiq) { printf("Sample RXIQ data read.\n"); }
+
   //
   //      clear TX fifo
   //
@@ -1164,7 +1170,6 @@ int main(int argc, char *argv[]) {
         buffer[20] = 2;
         buffer[21] = 1;
         buffer[22] = 3;
-
         sendto(sock_udp, buffer, 60, 0, (struct sockaddr *)&addr_from, sizeof(addr_from));
         break;
       }

@@ -78,10 +78,12 @@ static void text_cb(GtkWidget *widget, gpointer data) {
   const char *text = gtk_entry_get_text(GTK_ENTRY(widget));
   snprintf(cwtxt, 256, "%s", text);
   char *cp = cwtxt;
+
   while (*cp) {
     *cp = toupper(*cp);
     cp++;
   }
+
   gtk_entry_set_text(GTK_ENTRY(widget), cwtxt);
 }
 
@@ -179,12 +181,12 @@ void cw_menu(GtkWidget *parent) {
   gtk_widget_set_name(btn, "close_button");
   g_signal_connect (btn, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), btn, 0, 0, 1, 1);
-  selbtn = gtk_radio_button_new_with_label_from_widget(NULL,"CW Options");
+  selbtn = gtk_radio_button_new_with_label_from_widget(NULL, "CW Options");
   gtk_widget_set_name(selbtn, "boldlabel");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(selbtn), 1);
   gtk_grid_attach(GTK_GRID(grid), selbtn, 1, 0, 1, 1);
   g_signal_connect(selbtn, "toggled", G_CALLBACK(sel_cb), options_container);
-  btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(selbtn),"CW Texts");
+  btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(selbtn), "CW Texts");
   gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), 0);
   gtk_grid_attach(GTK_GRID(grid), btn, 2, 0, 1,  1);
@@ -198,7 +200,7 @@ void cw_menu(GtkWidget *parent) {
   gtk_grid_set_row_spacing (GTK_GRID(op_grid), 5);
   gtk_grid_set_column_homogeneous (GTK_GRID(op_grid), TRUE);
   gtk_container_add(GTK_CONTAINER(options_container), op_grid);
-  row=0;
+  row = 0;
   lbl = gtk_label_new("CW Speed (WPM)");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
@@ -230,7 +232,6 @@ void cw_menu(GtkWidget *parent) {
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), cw_breakin);
   gtk_grid_attach(GTK_GRID(op_grid), btn, 2, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(cw_breakin_cb), NULL);
-
   row++;
   lbl = gtk_label_new("Sidetone Level");
   gtk_widget_set_name(lbl, "boldlabel");
@@ -245,7 +246,6 @@ void cw_menu(GtkWidget *parent) {
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), cw_keyer_spacing);
   gtk_grid_attach(GTK_GRID(op_grid), btn, 2, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(cw_keyer_spacing_cb), NULL);
-
   row++;
   lbl = gtk_label_new("Sidetone Freq");
   gtk_widget_set_name(lbl, "boldlabel");
@@ -260,7 +260,6 @@ void cw_menu(GtkWidget *parent) {
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), cw_keys_reversed);
   gtk_grid_attach(GTK_GRID(op_grid), btn, 2, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(cw_keys_reversed_cb), NULL);
-
   row++;
   lbl = gtk_label_new("Weight");
   gtk_widget_set_name(lbl, "boldlabel");
@@ -270,7 +269,6 @@ void cw_menu(GtkWidget *parent) {
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), (double)cw_keyer_weight);
   gtk_grid_attach(GTK_GRID(op_grid), btn, 1, row, 1, 1);
   g_signal_connect(btn, "value_changed", G_CALLBACK(cw_keyer_weight_value_changed_cb), NULL);
-
   row++;
   lbl = gtk_label_new("Paddle Mode");
   gtk_widget_set_name(lbl, "boldlabel");
@@ -283,7 +281,6 @@ void cw_menu(GtkWidget *parent) {
   gtk_combo_box_set_active(GTK_COMBO_BOX(btn), cw_keyer_mode);
   my_combo_attach(GTK_GRID(op_grid), btn, 1, row, 1, 1);
   g_signal_connect(btn, "changed", G_CALLBACK(cw_keyer_mode_cb), NULL);
-
   //
   // CW text container, with close button etc.
   //
@@ -302,6 +299,7 @@ void cw_menu(GtkWidget *parent) {
   gtk_entry_set_text(GTK_ENTRY(btn), predef_call);
   gtk_grid_attach(GTK_GRID(cw_grid), btn, 2, 0, 8, 1);
   g_signal_connect(btn, "changed", G_CALLBACK(text_cb), predef_call);
+
   for (int i = 0; i < 5; i++) {
     char text[256];
     lbl = gtk_label_new("");

@@ -1435,8 +1435,8 @@ static double next_cw_sidetone_sample(TRANSMITTER *tx, int rfpos) {
         }
       }
     }
-    g_mutex_unlock(&tx->cw_ramp_mutex);
 
+    g_mutex_unlock(&tx->cw_ramp_mutex);
     int vol = cw_keyer_sidetone_volume;
 
     // Apply a minimum side tone volume for CAT CW messages.
@@ -1458,6 +1458,7 @@ static double next_cw_sidetone_sample(TRANSMITTER *tx, int rfpos) {
       sample = 0.00196 * vol * val * sine_generator(&p1local, &p2local, cw_keyer_sidetone_frequency);
     }
   } // trylock
+
   return sample;
 }
 
@@ -1476,7 +1477,6 @@ static double next_cw_sidetone_sample(TRANSMITTER *tx, int rfpos) {
 gpointer client_sidetone_thread(gpointer arg) {
   TRANSMITTER *tx = (TRANSMITTER *) arg;
   struct timespec ts;
-
   //
   // Do everything done in create_transmitter that we need to produce a side tone
   //
@@ -1485,11 +1485,11 @@ gpointer client_sidetone_thread(gpointer arg) {
   tx->cw_ramp_audio = NULL;
   tx->cw_ramp_rf    = NULL;
   tx_set_ramps(tx);
-
   clock_gettime(CLOCK_MONOTONIC, &ts);
 
   for (;;) {
     int txmode = vfo_get_tx_mode();
+
     if (radio_is_transmitting() && (txmode == modeCWL || txmode == modeCWU)) {
       // ship out 96 audio samples, possibly with side tone
       for (int i = 0; i < 96; i++) {
@@ -1643,6 +1643,7 @@ static void tx_full_buffer(TRANSMITTER *tx) {
   if (radio_is_transmitting()) {
     double gain = 1.0;
     double ggain;
+
     if (tx->do_scale) {
       gain = tx->drive_scale;
     }
@@ -1696,7 +1697,6 @@ static void tx_full_buffer(TRANSMITTER *tx) {
       break;
 
       case NEW_PROTOCOL:
-
         //
         // An inspection of the IQ samples produced by WDSP when TUNEing shows
         // that the amplitude of the pulse is in I (in the range 0.0 - 0.896)
@@ -1707,6 +1707,7 @@ static void tx_full_buffer(TRANSMITTER *tx) {
         // This is why we apply the factor 0.896 HERE.
         //
         ggain = 0.896 * gain;
+
         for (j = 0; j < tx->output_samples; j++) {
           double isample = ggain * tx->cw_sig_rf[j];       // between 0.0 and 0.896
           new_protocol_iq_samples(isample, 0);
@@ -1884,7 +1885,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, double mic_sample) {
   int rfpos = tx->ratio * tx->samples; // pointer into cw_rf_sig
 
   for (int i = 0; i < tx->ratio; i++) {
-    tx->cw_sig_rf[rfpos+i] = 0.0;
+    tx->cw_sig_rf[rfpos + i] = 0.0;
   }
 
   if (protocol == ORIGINAL_PROTOCOL) {
@@ -1900,8 +1901,10 @@ void tx_add_mic_sample(TRANSMITTER *tx, double mic_sample) {
     //
     // Apply volume setting of active receiver
     //
-    double vol = pow(10.0, 0.05*active_receiver -> volume);
-    if (vol > 0.25) vol = 0.25;
+    double vol = pow(10.0, 0.05 * active_receiver -> volume);
+
+    if (vol > 0.25) { vol = 0.25; }
+
     tx_audio_sample = mic_sample * vol;
     did_tx_audio = 1;
   }
@@ -1969,15 +1972,16 @@ void tx_add_mic_sample(TRANSMITTER *tx, double mic_sample) {
     // RF pulse shape into tx->cw_sig_rf[].
     //
     tx_audio_sample = next_cw_sidetone_sample(tx, rfpos);
+
     if (!duplex) { did_tx_audio = 1; }
   } else {
-   //
-   //  If no longer tuning or transmitting in CW: reset pulse shaper
-   //
-   keydown = 0;
-   cw_ring_inpt = cw_ring_outpt = 0;
-   tx->cw_ramp_audio_ptr = 0;
-   tx->cw_ramp_rf_ptr = 0;
+    //
+    //  If no longer tuning or transmitting in CW: reset pulse shaper
+    //
+    keydown = 0;
+    cw_ring_inpt = cw_ring_outpt = 0;
+    tx->cw_ramp_audio_ptr = 0;
+    tx->cw_ramp_rf_ptr = 0;
   }
 
   if (did_tx_audio) {

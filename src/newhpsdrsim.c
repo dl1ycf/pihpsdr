@@ -1140,13 +1140,21 @@ void *rx_thread(void *data) {
     if (myrate != rxrate[myddc]) {
       myrate = rxrate[myddc];
       t3p = 0;
+
       if (pulseshape) { free(pulseshape); }
+
       pulseshape = malloc(800 * myrate * sizeof(double));
-      for (int i =   0 * myrate; i<800 * myrate; i++) { pulseshape[i] = 0.0000; }
-      for (int i = 100 * myrate; i<150 * myrate; i++) { pulseshape[i] = 0.0001; }
-      for (int i = 200 * myrate; i<250 * myrate; i++) { pulseshape[i] = 0.0001; }
-      for (int i = 300 * myrate; i<350 * myrate; i++) { pulseshape[i] = 0.0001; }
-      for (int i = 400 * myrate; i<550 * myrate; i++) { pulseshape[i] = 0.0001; }
+
+      for (int i =   0 * myrate; i < 800 * myrate; i++) { pulseshape[i] = 0.0000; }
+
+      for (int i = 100 * myrate; i < 150 * myrate; i++) { pulseshape[i] = 0.0001; }
+
+      for (int i = 200 * myrate; i < 250 * myrate; i++) { pulseshape[i] = 0.0001; }
+
+      for (int i = 300 * myrate; i < 350 * myrate; i++) { pulseshape[i] = 0.0001; }
+
+      for (int i = 400 * myrate; i < 550 * myrate; i++) { pulseshape[i] = 0.0001; }
+
       decimation = 1536 / myrate;
     }
 
@@ -1255,7 +1263,7 @@ void *rx_thread(void *data) {
         *p++ = rxiqdump[dumpptr++];
         *p++ = rxiqdump[dumpptr++];
 
-         if (dumpptr >= 6*NUMDUMP) { dumpptr = 0; }
+        if (dumpptr >= 6 * NUMDUMP) { dumpptr = 0; }
       }
     } else {
       for (int i = 0; i < size; i++) {
@@ -1685,7 +1693,7 @@ void *send_highprio_thread(void *data) {
         buffer[14] = (rc >> 8) & 0xFF;
         buffer[15] = (rc     ) & 0xFF;
         // ALEX Rev power, make it TX dridve dependent to get a handle to vary the SWR
-        rc = (int) (0.1*txdrv_dbl * (4095.0 / c1) * sqrt(maxpwr * txlevel * c2));
+        rc = (int) (0.1 * txdrv_dbl * (4095.0 / c1) * sqrt(maxpwr * txlevel * c2));
         buffer[22] = (rc >> 8) & 0xFF;
         buffer[23] = (rc     ) & 0xFF;
       }
@@ -1720,6 +1728,7 @@ void *send_highprio_thread(void *data) {
       t_perror("***** ERROR: HP send thread sendto");
       break;
     }
+
     tsdelay.tv_nsec += 1000000;  // 1 msec
 
     while (tsdelay.tv_nsec >= 1000000000) {
@@ -1729,10 +1738,11 @@ void *send_highprio_thread(void *data) {
 
     seqnum++;
     clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &tsdelay, NULL);
-
     i = 0;
+
     while (1) {
       if (ptt || radio_digi_changed || ++i >= 50) { break; }
+
       tsdelay.tv_nsec += 1000000;  // 1 msec
 
       while (tsdelay.tv_nsec >= 1000000000) {

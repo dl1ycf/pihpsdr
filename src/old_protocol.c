@@ -1275,6 +1275,7 @@ static void process_control_bytes(void) {
     }
 
     static int metis_software_version = -1;
+
     if (metis_software_version != control_in[4]) {
       metis_software_version = control_in[4];
       t_print("FPGA firmware version: %d.%d\n", metis_software_version / 10, metis_software_version % 10);
@@ -1622,7 +1623,6 @@ void old_protocol_audio_samples(double left, double right) {
     }
 
     int iptr = txring_inptr + 8 * txring_count;
-
     //
     // The HL2 makes no use of audio samples, but instead
     // uses them to write to extended addrs which we do not
@@ -1631,6 +1631,7 @@ void old_protocol_audio_samples(double left, double right) {
     //
     int32_t ls = (int32_t)(left  * 32766.672 + 32767.5) - 32767;
     int32_t rs = (int32_t)(right * 32766.672 + 32767.5) - 32767;
+
     if (device == DEVICE_HERMES_LITE2 && !hl2_audio_codec) {
       TXRINGBUF[iptr++] = 0;
       TXRINGBUF[iptr++] = 0;
@@ -1698,7 +1699,6 @@ void old_protocol_iq_samples(double isample, double qsample, double side) {
     }
 
     int iptr = txring_inptr + 8 * txring_count;
-
     //
     // In P1, TX samples are signed 16-bit quantities.
     // The following conversion implicitly scales IQ samples with 0.99999,
@@ -1710,6 +1710,7 @@ void old_protocol_iq_samples(double isample, double qsample, double side) {
     int32_t is = (int32_t)(isample * 32766.672 + 32767.5) - 32767;
     int32_t qs = (int32_t)(qsample * 32766.672 + 32767.5) - 32767;
     int32_t sd = (int32_t)(side    * 32766.672 + 32767.5) - 32767;
+
     //
     // The HL2 makes no use of audio samples, but instead
     // uses them to write to extended addrs which we do not
@@ -2549,6 +2550,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
       //
       switch (hl2_command_loop) {
       case 0:
+
         //
         // The default PTThang/TXlatency packet will be sent
         // each time the command loop state is zero
@@ -2567,6 +2569,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
         break;
 
       case 1:
+
         //
         // If there is no HL2 IO board presend, do not query
         // at high rate. We arrive here every 75 msec,
@@ -2734,7 +2737,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
         }
 
         break;
-
       }
 
       //

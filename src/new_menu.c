@@ -127,6 +127,7 @@ static gboolean restart_cb (GtkWidget *widget, GdkEventButton *event, gpointer d
 // This functionality may be useful in full-screen-mode where there is
 // no top bar with an "Iconify" button.
 //
+// cppcheck-suppress constParameterCallback
 static gboolean minimize_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   radio_iconify();
@@ -143,18 +144,21 @@ static gboolean saturn_cb (GtkWidget *widget, GdkEventButton *event, gpointer da
 
 #endif
 
+// cppcheck-suppress constParameterCallback
 static gboolean about_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   about_menu(top_window);
   return TRUE;
 }
 
+// cppcheck-suppress constParameterCallback
 static gboolean exit_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   exit_menu(top_window);
   return TRUE;
 }
 
+// cppcheck-suppress constParameterCallback
 static gboolean radio_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   start_radio_menu();
   return TRUE;
@@ -166,24 +170,28 @@ static gboolean rx_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) 
   return TRUE;
 }
 
+// cppcheck-suppress constParameterCallback
 static gboolean ant_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   ant_menu(top_window);
   return TRUE;
 }
 
+// cppcheck-suppress constParameterCallback
 static gboolean display_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   display_menu(top_window);
   return TRUE;
 }
 
+// cppcheck-suppress constParameterCallback
 static gboolean pa_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   pa_menu(top_window);
   return TRUE;
 }
 
+// cppcheck-suppress constParameterCallback
 static gboolean rigctl_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   rigctl_menu(top_window);
@@ -191,12 +199,14 @@ static gboolean rigctl_cb (GtkWidget *widget, GdkEventButton *event, gpointer da
 }
 
 #ifdef GPIO
+// cppcheck-suppress constParameterCallback
 static gboolean encoder_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   encoder_menu(top_window);
   return TRUE;
 }
 
+// cppcheck-suppress constParameterCallback
 static gboolean switch_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   switch_menu(top_window);
@@ -206,6 +216,7 @@ static gboolean switch_cb (GtkWidget *widget, GdkEventButton *event, gpointer da
 #endif
 
 #ifdef SATURN
+// cppcheck-suppress constParameterCallback
 static gboolean g2panel_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   g2panel_menu(top_window);
@@ -213,36 +224,42 @@ static gboolean g2panel_cb (GtkWidget *widget, GdkEventButton *event, gpointer d
 }
 #endif
 
+// cppcheck-suppress constParameterCallback
 static gboolean toolbar_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   toolbar_menu(top_window);
   return TRUE;
 }
 
+// cppcheck-suppress constParameterCallback
 static gboolean sliders_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   sliders_menu(top_window);
   return TRUE;
 }
 
+// cppcheck-suppress constParameterCallback
 static gboolean cw_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   cw_menu(top_window);
   return TRUE;
 }
 
+// cppcheck-suppress constParameterCallback
 static gboolean oc_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   oc_menu(top_window);
   return TRUE;
 }
 
+// cppcheck-suppress constParameterCallback
 static gboolean xvtr_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   xvtr_menu(top_window);
   return TRUE;
 }
 
+// cppcheck-suppress constParameterCallback
 static gboolean equaliser_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   equalizer_menu(top_window);
@@ -405,6 +422,7 @@ void start_diversity_menu(void) {
   diversity_menu(top_window);
 }
 
+// cppcheck-suppress constParameterCallback
 static gboolean screen_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   screen_menu(top_window);
@@ -747,16 +765,16 @@ void new_menu(void) {
     }
 
 #endif
-
 #ifdef SATURN
+
     if (have_g2v2) {
       GtkWidget *g2panel_b = gtk_button_new_with_label("G2 Panel");
       g_signal_connect (g2panel_b, "button-press-event", G_CALLBACK(g2panel_cb), NULL);
       gtk_grid_attach(GTK_GRID(grid), g2panel_b, col, row, 1, 1);
       row++;
     }
-#endif
 
+#endif
     // cppcheck-suppress redundantAssignment
     row = maxrow;
     //

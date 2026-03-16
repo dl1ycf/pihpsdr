@@ -49,10 +49,9 @@ typedef enum {
 //
 // enum for the different types of codecs we can have on the G2 board
 //
-typedef enum
-{
-    e23b,                               // TLV320AIC23B (now end-of-life)
-    e3204                               // TLV320AIC3204 (replacement in newer boards)
+typedef enum {
+  e23b,                               // TLV320AIC23B (now end-of-life)
+  e3204                               // TLV320AIC3204 (replacement in newer boards)
 } ECodecType;
 
 //

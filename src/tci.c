@@ -120,7 +120,6 @@ void shutdown_tci(void) {
   //
   for (int id = 0; id < MAX_TCI_CLIENTS; id++) {
     CLIENT *client = &tci_client[id];
-
     client->running = 0;
 
     if (client->tci_timer != 0) {
@@ -560,7 +559,6 @@ static gpointer tci_server(gpointer data) {
 
   setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
   setsockopt(server_socket, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
-
   // bind to listening port
   memset(&server_address, 0, sizeof(server_address));
   server_address.sin_family = AF_INET;
@@ -624,7 +622,6 @@ static gpointer tci_server(gpointer data) {
     }
 
     t_print("%s: slot= %d connected with fd=%d\n", __func__, spare, fd);
-
     //
     // Setting TCP_NODELAY may (or may not) improve responsiveness
     // by *disabling* Nagle's algorithm for clustering small packets

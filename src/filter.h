@@ -57,4 +57,7 @@ extern void filter_shift_changed(int id, int increment);
 extern void filter_high_changed(int id, int increment);
 extern void filter_low_changed(int id, int increment);
 extern void filter_cut_default(int id);
+extern void notch_center_changed(int id, int pos, int increment);
+extern void notch_width_changed(int id, int pos, int increment);
+extern void notch_enable_toggled(int id, int pos);
 #endif

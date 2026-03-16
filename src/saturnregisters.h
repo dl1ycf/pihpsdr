@@ -280,7 +280,8 @@ void SetBalancedMicInput(bool Balanced);
 // TXAtten1/2: if true, sets atten to be used during TX
 // (it can be both!)
 //
-void SetADCAttenuator(unsigned int Atten1, bool RXAtten1, bool TXAtten1, unsigned int Atten2, bool RXAtten2, bool TXAtten2);
+void SetADCAttenuator(unsigned int Atten1, bool RXAtten1, bool TXAtten1, unsigned int Atten2, bool RXAtten2,
+                      bool TXAtten2);
 
 //
 //void SetCWIambicKeyer(...)

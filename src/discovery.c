@@ -914,29 +914,29 @@ static void discovery(void) {
   g_signal_connect(toggle_button, "toggled", G_CALLBACK(password_visibility_cb), host_pwd);
   gtk_grid_attach(GTK_GRID(grid), toggle_button, 3, row, 1, 1);
   row++;
-
   //
   // Check if we have "discovered" SATURN device via XDMA. Note if compiled *without* GPIO.
   // a G2V2 is assumed. If compiled *with* GPIO support, a G2V1 is assumed if the
   // MCP23017 expander on the front panel is detected via i2c_check_presence().
   //
-
 #ifdef SATURN
+
   for (int i = 0; i < devices; i++) {
     if (discovered[i].device == NEW_DEVICE_SATURN &&
         !strcmp(discovered[i].network.interface_name, "XDMA")) {
-
 #ifdef GPIO
+
       if (i2c_check_presence()) {
         have_g2v1 = 1;
       }
+
 #endif
 
       if (!have_g2v1) { have_g2v2 = 1; }
     }
   }
-#endif
 
+#endif
 #ifdef GPIO
   //
   // Even if compiled with GPIO support, do *not* show the "controller"
@@ -949,6 +949,7 @@ static void discovery(void) {
   // such that in special cases, something can be changed manually.
   //
   gpio_restore_state();
+
   if (have_g2v2) {
     if (controller != NO_CONTROLLER) {
       controller = NO_CONTROLLER;
@@ -987,8 +988,8 @@ static void discovery(void) {
     gtk_combo_box_set_active(GTK_COMBO_BOX(gpio), controller);
     g_signal_connect(gpio, "changed", G_CALLBACK(gpio_changed_cb), NULL);
   }
-#endif
 
+#endif
   GtkWidget *discover_b = gtk_button_new_with_label("Discover");
   g_signal_connect (discover_b, "button-press-event", G_CALLBACK(discover_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), discover_b, 1, row, 1, 1);

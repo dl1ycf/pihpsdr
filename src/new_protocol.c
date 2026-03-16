@@ -356,7 +356,6 @@ static void update_action_table(void) {
   //
   int flag = 0;
   int xmit = radio_is_transmitting(); // store such that it cannot change while building the flag
-
   //
   // newdev means: Use DDC2/3 for normal receive, HERMES/HERMES2/G1 use DDC0/1
   //
@@ -2213,9 +2212,9 @@ void saturn_post_iq_data(int ddc, mybuffer *mybuf) {
   // Check sequence HERE
   //
   uint32_t sequence = ((uint32_t)(mybuf->buffer[0] & 0xFF) << 24)
-                    + ((uint32_t)(mybuf->buffer[1] & 0xFF) << 16)
-                    + ((uint32_t)(mybuf->buffer[2] & 0xFF) <<  8)
-                    + ((uint32_t)(mybuf->buffer[3] & 0xFF)      );
+                      + ((uint32_t)(mybuf->buffer[1] & 0xFF) << 16)
+                      + ((uint32_t)(mybuf->buffer[2] & 0xFF) <<  8)
+                      + ((uint32_t)(mybuf->buffer[3] & 0xFF)      );
 
   if (ddc_sequence[ddc] != sequence) {
     t_print("%s: DDC(%d) sequence error: expected %lu got %lu\n", __func__, ddc, ddc_sequence[ddc], sequence);
@@ -2328,15 +2327,15 @@ static gpointer iq_thread(gpointer data) {
 
 //#define RXIQDUMP
 #ifdef RXIQDUMP
-//
-// This is a hook for dumping raw received IQ data to file, for
-// use in the HPSDR simulator etc. We dump IQ samples that
-// cover 2 min at 48k, 60sec at 96k, 30sec at 192k
-// Engaging the ANF is the trigger for starting the dump
-//
-#define NUMDUMP 48000*60
-unsigned char dumpiqbuf[6*NUMDUMP];
-int dump_ptr = 0;
+  //
+  // This is a hook for dumping raw received IQ data to file, for
+  // use in the HPSDR simulator etc. We dump IQ samples that
+  // cover 2 min at 48k, 60sec at 96k, 30sec at 192k
+  // Engaging the ANF is the trigger for starting the dump
+  //
+  #define NUMDUMP 48000*60
+  unsigned char dumpiqbuf[6 * NUMDUMP];
+  int dump_ptr = 0;
 #endif
 
 static void process_iq_data(const unsigned char *buffer, RECEIVER *rx) {
@@ -2360,24 +2359,28 @@ static void process_iq_data(const unsigned char *buffer, RECEIVER *rx) {
   int bitspersample = ((buffer[12] & 0xFF) << 8) + (buffer[13] & 0xFF);
   t_print("%s: rx=%d bitspersample=%d samplesperframe=%d\n", __func__, rx->id, bitspersample, samplesperframe);
 #endif
-
 #ifdef RXIQDUMP
-  if (dump_ptr < 6*NUMDUMP && rx->anf == 1) {
-    if (dump_ptr == 0) t_print("Start RXIQ dump.\n");
-    for (int i=16; i < 16 + 6*samplesperframe; i++) {
+
+  if (dump_ptr < 6 * NUMDUMP && rx->anf == 1) {
+    if (dump_ptr == 0) { t_print("Start RXIQ dump.\n"); }
+
+    for (int i = 16; i < 16 + 6 * samplesperframe; i++) {
       dumpiqbuf[dump_ptr++] = buffer[i];
-      if (dump_ptr >= 6*NUMDUMP) {
+
+      if (dump_ptr >= 6 * NUMDUMP) {
         int fd = open("RXIQDUMP", O_CREAT | O_WRONLY, 0600);
+
         if (fd >= 0) {
-          write (fd, dumpiqbuf, 6*NUMDUMP);
+          write (fd, dumpiqbuf, 6 * NUMDUMP);
         }
+
         t_print("RXIQ dumped.\n");
         break;
       }
     }
   }
-#endif
 
+#endif
   b = 16;
 
   for (int i = 0; i < samplesperframe; i++) {
@@ -2447,6 +2450,7 @@ static void process_div_iq_data(const unsigned char*buffer) {
     // Feed ADC1 and ADC2 data to the DIVERSITY mixer
     //
     rx_add_div_iq_samples(receiver[0], leftsampledouble0, rightsampledouble0, leftsampledouble1, rightsampledouble1);
+
     //
     // if RX2 exists, feed ADC2 data to  RX2
     //
@@ -2690,7 +2694,6 @@ static void process_mic_data(const unsigned char *buffer) {
 //
 void new_protocol_tx_audio_samples(double sample) {
   ASSERT_SERVER();
-
   pthread_mutex_lock(&send_rxaudio_mutex);
 
   if (rxaudio_count < 0) {
@@ -2824,7 +2827,6 @@ void new_protocol_iq_samples(double isample, double qsample) {
   }
 
 #endif
-
   int iptr = txiq_inptr + 6 * txiq_count;
   //
   // In P2, samples are signed 24-bit quantities.

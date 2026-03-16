@@ -77,6 +77,7 @@ int OpenXDMADriver(void) {
   // XDMA is opened repeatedly, so close it first
   //
   if (register_fd >= 0) { close(register_fd); }
+
   //
   // Note this fd is used for both pread() and pwrite() so use read-write mode
   //

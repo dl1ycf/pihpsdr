@@ -192,7 +192,6 @@ void soapy_protocol_create_single_receiver(RECEIVER *rx) {
   }
 
   mic_sample_divisor = rx->sample_rate / 48000;
-
   rc = SoapySDRDevice_setSampleRate(soapy_device, SOAPY_SDR_RX, rx->id, (double)soapy_radio_sample_rate);
 
   if (rc != 0) {
@@ -295,7 +294,6 @@ void soapy_protocol_create_dual_receiver(RECEIVER *rx1, RECEIVER *rx2) {
 
   bw = SoapySDRDevice_getBandwidth(soapy_device, SOAPY_SDR_RX, rx1->id);
   t_print("%s: RX1 Bandwidth=%f\n", __func__, bw);
-
   rc = SoapySDRDevice_setSampleRate(soapy_device, SOAPY_SDR_RX, rx1->id, (double)soapy_radio_sample_rate);
 
   if (rc != 0) {
@@ -311,7 +309,6 @@ void soapy_protocol_create_dual_receiver(RECEIVER *rx1, RECEIVER *rx2) {
 
   bw = SoapySDRDevice_getBandwidth(soapy_device, SOAPY_SDR_RX, rx2->id);
   t_print("%s: RX2 Bandwidth=%f\n", __func__, bw);
-
   rc = SoapySDRDevice_setSampleRate(soapy_device, SOAPY_SDR_RX, rx2->id, (double)soapy_radio_sample_rate);
 
   if (rc != 0) {
@@ -1101,7 +1098,6 @@ void soapy_protocol_rxtx(const TRANSMITTER *tx) {
   //
   // This routine is *never* called if there is no transmitter!
   //
-
   if (have_lime) {
     //
     // LIME:
@@ -1138,7 +1134,6 @@ void soapy_protocol_txrx(void) {
   // This routine is *never* called if there is no transmitter!
   //
   //
-
   if (have_lime) {
     //
     // LIME: DO NOT STOP the transmitter, but
@@ -1159,7 +1154,7 @@ void soapy_protocol_txrx(void) {
     }
   }
 
-  for (int id=0; id < RECEIVERS; id++) {
+  for (int id = 0; id < RECEIVERS; id++) {
     soapy_protocol_set_rx_frequency(id);
   }
 }

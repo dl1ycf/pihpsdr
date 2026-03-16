@@ -55,8 +55,8 @@
 //
 #define MICRINGLEN 6000
 
-static const int out_buffer_size = 256;
-static const int inp_buffer_size = 256;
+#define out_buffer_size  256
+#define inp_buffer_size  256
 
 int n_input_devices;
 int n_output_devices;
@@ -131,6 +131,7 @@ static gpointer enumerate_thread(gpointer arg) {
   op = pa_context_get_source_info_list(context, source_list_cb, NULL);
 
   while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) { usleep(100000); }
+
   pa_operation_unref(op);
 
   for (int i = 0; i < n_input_devices; i++) {
@@ -173,7 +174,6 @@ int audio_open_output(RECEIVER *rx) {
   char stream_id[16];
   snprintf(stream_id, sizeof(stream_id), "RX-%d", rx->id);
   pa_buffer_attr attr;
-
   //
   // PulseAudio/Pipewire accept ALSA device names as well. So when changing
   // from ALSA to pulseaudio, a device may be successfully opened although
@@ -181,7 +181,6 @@ int audio_open_output(RECEIVER *rx) {
   // inconsistencies. Therefore, return with error if the name is not
   // registered.
   //
-
   err = 1;
 
   for (int i = 0; i < n_output_devices; i++) {
@@ -198,7 +197,7 @@ int audio_open_output(RECEIVER *rx) {
   }
 
   g_mutex_lock(&rx->audio_mutex);
-  attr.maxlength = pa_usec_to_bytes(2*AUDIO_LAT_MAX, &sample_spec);
+  attr.maxlength = pa_usec_to_bytes(2 * AUDIO_LAT_MAX, &sample_spec);
   attr.tlength   = pa_usec_to_bytes(AUDIO_LAT_TARGET, &sample_spec);
   attr.prebuf    = pa_usec_to_bytes(AUDIO_LAT_TARGET, &sample_spec);
   attr.minreq    = (uint32_t) -1;
@@ -286,7 +285,6 @@ int audio_open_input(TRANSMITTER *tx) {
   pa_sample_spec sample_spec;
   int err;
   pa_buffer_attr attr;
-
   //
   // PulseAudio/Pipewire accept ALSA device names as well. So when changing
   // from ALSA to pulseaudio, a device may be successfully opened although
@@ -294,7 +292,6 @@ int audio_open_input(TRANSMITTER *tx) {
   // inconsistencies. Therefore, return with error if the name is not
   // registered.
   //
-
   err = 1;
 
   for (int i = 0; i < n_input_devices; i++) {
@@ -457,7 +454,6 @@ double audio_get_next_mic_sample(TRANSMITTER *tx) {
 static int do_rxtx(gpointer data) {
   RECEIVER *rx = (RECEIVER *) data;
   int err;
-
   //
   // RXTX transition: close stream and re-open with CW latency settings
   //
@@ -471,6 +467,7 @@ static int do_rxtx(gpointer data) {
     char stream_id[16];
     snprintf(stream_id, sizeof(stream_id), "RX-%d", rx->id);
     pa_buffer_attr attr;
+
     //
     // Close and re-open stream
     //
@@ -493,15 +490,16 @@ static int do_rxtx(gpointer data) {
                                      NULL,               // Use default channel map
                                      &attr,              // Latency
                                      &err                // error code if returns NULL
-                                     );
+                                    );
 
     if (rx->audio_handle == NULL) {
       t_print("%s: ERROR pa_simple_new: %s\n", __func__, pa_strerror(err));
     }
+
     rx->cwaudio = 2;
   }
-  g_mutex_unlock(&rx->audio_mutex);
 
+  g_mutex_unlock(&rx->audio_mutex);
   return G_SOURCE_REMOVE;
 }
 
@@ -563,7 +561,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
     }
 
     switch (adjust) {
-      case 1:
+    case 1:
       //
       // default case: put sample into buffer and that's it
       //
@@ -630,7 +628,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
 
         int rc = pa_simple_write(rx->audio_handle,
                                  buffer,
-                                 2 * out_buffer_size * sizeof(float) ,
+                                 2 * out_buffer_size * sizeof(float),
                                  &err);
 
         if (rc < 0) {
@@ -650,7 +648,6 @@ void tx_audio_write(RECEIVER *rx, double sample) {
 static int do_txrx(gpointer data) {
   RECEIVER *rx = (RECEIVER *) data;
   int err;
-
   //
   // TXRX transition: close stream and re-open with RX latency settings
   //
@@ -664,6 +661,7 @@ static int do_txrx(gpointer data) {
     char stream_id[16];
     snprintf(stream_id, sizeof(stream_id), "RX-%d", rx->id);
     pa_buffer_attr attr;
+
     //
     // Close and re-open stream
     //
@@ -686,7 +684,7 @@ static int do_txrx(gpointer data) {
                                      NULL,               // Use default channel map
                                      &attr,              // Latency
                                      &err                // error code if returns NULL
-                                     );
+                                    );
 
     if (rx->audio_handle == NULL) {
       t_print("%s: ERROR pa_simple_new: %s\n", __func__, pa_strerror(err));
@@ -696,7 +694,6 @@ static int do_txrx(gpointer data) {
   }
 
   g_mutex_unlock(&rx->audio_mutex);
-
   return G_SOURCE_REMOVE;
 }
 

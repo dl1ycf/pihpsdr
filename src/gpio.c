@@ -96,14 +96,14 @@ int controller = NO_CONTROLLER;
 // OUT_MIC_* is for Controllers with audio codec
 //
 enum _output_choice {
- OUT_PTT = 0,           // output for PTT status
- OUT_CW,                // output for CW key-down status
- OUT_MIC_SEL,           // output for orion_mic_ptt_tip
- OUT_MIC_BIAS,          // output for orion_mic_bias_enabled
- OUT_MIC_PTT,           // output for orion_mic_ptt_enabled
- OUT_MIC_BOOST,         // output for mic_boost
- OUT_SPKR_MUTE,         // output for mute speaker amp
- NUM_OUTPUT_LINES
+  OUT_PTT = 0,           // output for PTT status
+  OUT_CW,                // output for CW key-down status
+  OUT_MIC_SEL,           // output for orion_mic_ptt_tip
+  OUT_MIC_BIAS,          // output for orion_mic_bias_enabled
+  OUT_MIC_PTT,           // output for orion_mic_ptt_enabled
+  OUT_MIC_BOOST,         // output for mic_boost
+  OUT_SPKR_MUTE,         // output for mute speaker amp
+  NUM_OUTPUT_LINES
 };
 
 //
@@ -124,15 +124,14 @@ static int input_debounce[MAX_LINES] = { 0 };
 static int output_lines[NUM_OUTPUT_LINES] = { -1 };
 
 #ifdef GPIOV1
-  static struct gpiod_line *output_request[NUM_OUTPUT_LINES] = { NULL };
+static struct gpiod_line *output_request[NUM_OUTPUT_LINES] = { NULL };
 #endif
 #ifdef GPIOV2
-  static struct gpiod_line_request *output_request[NUM_OUTPUT_LINES] = { NULL };
-  static struct gpiod_line_request *input_request = NULL;
+static struct gpiod_line_request *output_request[NUM_OUTPUT_LINES] = { NULL };
+static struct gpiod_line_request *input_request = NULL;
 #endif
 
 static void gpio_set_output(int type, int state) {
-
 #ifdef GPIOV1
 
   if (output_request[type] && output_lines[type] >= 0) {
@@ -140,8 +139,8 @@ static void gpio_set_output(int type, int state) {
       t_print("%s failed: %s\n", __func__, g_strerror(errno));
     }
   }
-#endif
 
+#endif
 #ifdef GPIOV2
 
   if (output_request[type] && output_lines[type] >= 0) {
@@ -154,12 +153,14 @@ static void gpio_set_output(int type, int state) {
 
 void gpio_set_ptt(int state) {
   gpio_set_output(OUT_PTT, NOT(state));
+
   //
   // If TX and MuteSpeakerXmit ist set, deactivate AF amp
   //
   if (state && mute_spkr_xmit) {
     gpio_set_output(OUT_SPKR_MUTE, NOT(state));
   }
+
   //
   // If RX and MuteSpeakerAmp is NOTSET, activate AF amp
   //
@@ -182,6 +183,7 @@ void gpio_set_orion_options() {
   gpio_set_output(OUT_MIC_BIAS, NOT(orion_mic_bias_enabled));
   gpio_set_output(OUT_MIC_PTT, SET(orion_mic_ptt_enabled));
   gpio_set_output(OUT_MIC_BOOST, NOT(mic_boost));
+
   if (radio_is_transmitting()) {
     gpio_set_output(OUT_SPKR_MUTE, NOT(mute_spkr_xmit));
   } else {
@@ -1099,7 +1101,9 @@ static gpointer monitor_thread(gpointer arg) {
 
     for (unsigned long i = 0; i < ret; i++) {
       struct gpiod_edge_event *event = gpiod_edge_event_buffer_get_event(event_buffer, i);
+
       if (!event) { continue; }  // This is paranoia
+
       int offset = gpiod_edge_event_get_line_offset(event);
 
       switch (gpiod_edge_event_get_event_type(event)) {
@@ -1283,7 +1287,6 @@ static struct gpiod_line_request *setup_output_line(unsigned int offset, int ini
 // Return value: 0 if already in use
 //
 static int check_line(int line, int seq, char *text) {
-
   if (line < 0) {
     // no error message, indicate "do not use"
     return 0;
@@ -1574,6 +1577,7 @@ void gpio_init() {
   for (int i = 0; i < NUM_OUTPUT_LINES; i++) {
     if (check_line(output_lines[i], i, "OUT")) {
       output_request[i] = setup_output_line(output_lines[i], 1);
+
       if (output_request[i]) {
         t_print("GPIO output line %d requested for OUT.%d\n", output_lines[i], i);
       } else {

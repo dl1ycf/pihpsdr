@@ -275,7 +275,6 @@ void InitialiseDACAttenROMs(void) {
     double ResidualAtten = DesiredAtten - ((double)StepValue * 0.5);
     // convert to integer
     unsigned int DACDrive = (unsigned int)(255.0 / pow(10.0, (ResidualAtten / 20.0)));
-
     // write data pair to the ROM
     DACCurrentROM[Level] = DACDrive;
     DACStepAttenROM[Level] = StepValue;
@@ -314,9 +313,9 @@ static void ActivateCWKeyer(bool Keyer) {
   uint32_t Register = GCWKeyerSetup;
 
   if (Keyer) {
-    Register |= (1U<<VCWKEYERENABLE);
+    Register |= (1U << VCWKEYERENABLE);
   } else {
-    Register &= ~(1U<<VCWKEYERENABLE);
+    Register &= ~(1U << VCWKEYERENABLE);
   }
 
   if (Register != GCWKeyerSetup) {
@@ -390,12 +389,12 @@ void SetP2SampleRate(unsigned int DDC, bool Enabled, unsigned int SampleRate, bo
   uint32_t Mask;
   ESampleRate Rate;
   Mask = 7 << (DDC * 3);                      // 3 bits in correct position
-
   //
   // Although we do not (yet) write DDCRateReg to the FPGA, we need
   // mutex here to protect the  read-modify-write cycles for GDDCEnabled and DDCRateReg
   //
   pthread_mutex_lock(&DDCRateMutex);
+
   if (!Enabled) {                             // if not enabled, clear sample rate value & enabled flag
     GDDCEnabled &= ~(1 << DDC);               // clear enable bit
     Rate = eDisabled;
@@ -477,7 +476,6 @@ void SetOpenCollectorOutputs(unsigned int bits) {
 //
 void SetADCOptions(bool PGA1, bool Dither1, bool Random1, bool PGA2, bool Dither2, bool Random2) {
   uint32_t Register;                              // FPGA register content
-
   pthread_mutex_lock(&GPIOMutex);
   Register = GPIORegValue;                        // get current settings
   Register &= ~(1 << VADC1RANDBIT);               // strip old bits
@@ -488,10 +486,15 @@ void SetADCOptions(bool PGA1, bool Dither1, bool Random1, bool PGA2, bool Dither
   Register &= ~(1 << VADC2DITHERBIT);
 
   if (PGA1)    { Register |= (1 << VADC1PGABIT); }
+
   if (PGA2)    { Register |= (1 << VADC2PGABIT); }
+
   if (Dither1) { Register |= (1 << VADC1DITHERBIT); }
+
   if (Dither2) { Register |= (1 << VADC2DITHERBIT); }
+
   if (Random1) { Register |= (1 << VADC1RANDBIT); }
+
   if (Random2) { Register |= (1 << VADC2RANDBIT); }
 
   if (Register != GPIORegValue) {
@@ -574,15 +577,16 @@ void SetDUCFrequency(unsigned int Value, bool IsDeltaPhase) { // only accepts DU
   //
   // PCB V3+: now enable high pass filter if above 49MHz
   //
-  if(Saturn_PCB_Version >= 3) {
+  if (Saturn_PCB_Version >= 3) {
     bool NeedsHPF = false;
 
     if (DeltaPhase > DELTAPHIHPFCUTIN) { NeedsHPF = true; }
 
     pthread_mutex_lock(&TXConfigMutex);
     uint32_t Register = TXConfigRegValue;                       // get current settings
-    Register &= ~(1<<VTXCONFIGHPFENABLE);                       // remove old HPF bit
-    if(NeedsHPF) { Register |= (1 << VTXCONFIGHPFENABLE); }     // add new bit if HPF to be enabled
+    Register &= ~(1 << VTXCONFIGHPFENABLE);                     // remove old HPF bit
+
+    if (NeedsHPF) { Register |= (1 << VTXCONFIGHPFENABLE); }    // add new bit if HPF to be enabled
 
     if (Register != TXConfigRegValue) {
       TXConfigRegValue = Register;                                // store it back
@@ -694,7 +698,6 @@ void AlexManualRXFilters(unsigned int Bits, int RX) {
 //
 void AlexManualTXFilters(unsigned int Bits, bool HasTXAntExplicitly) {
   uint32_t Register = Bits;                         // new setting
-
   pthread_mutex_lock(&AlexTXMutex);
 
   if (HasTXAntExplicitly && (Register != GAlexTXAntRegister)) {
@@ -725,7 +728,6 @@ void SetTXDriveLevel(unsigned int Level) {
   RegisterValue |= (DACDrive << 8);               // set drive level when TX
   RegisterValue |= (AttenDrive << 16);            // set step atten when RX
   RegisterValue |= (AttenDrive << 24);            // set step atten when TX
-
   pthread_mutex_lock(&TXdriveMutex);
 
   if (RegisterValue != GTXDACCtrl) {
@@ -748,6 +750,7 @@ void SetTXDriveLevel(unsigned int Level) {
 void SetCodecInputParams(bool EnableLine, bool EnableBoost, int LineInGain) {
   unsigned int Path, Gain;
   pthread_mutex_lock(&CodecMutex);
+
   switch (InstalledCodec) {
   case e23b:
     // Path = Register 4, Gain = Register 0
@@ -759,30 +762,33 @@ void SetCodecInputParams(bool EnableLine, bool EnableBoost, int LineInGain) {
       Gain |= (LineInGain & 0x001F);   // 5-bit value
     } else {
       Path |= 0x04;  // Mic-In, Mic normal (unmuted)
+
       if (EnableBoost) { Path |= 0x0001; } // Set MicBoost bit
     }
 
-    if(Path != GCodecPath) {
+    if (Path != GCodecPath) {
       GCodecPath = Path;
       CodecRegisterWrite(4, Path);
     }
 
-    if(Gain != GCodecGain) {
+    if (Gain != GCodecGain) {
       GCodecGain = Gain;
       CodecRegisterWrite(0, Gain);
     }
 
     break;
+
   case e3204:
+
     // Path = Registers 52/55, Gain = Registers 59/60
     if (EnableLine) {
       // Route LineIn, and set gain
       Path = 0xC0; // IN1 routed to MICPGA with 40k resistance
-      Gain = 3*(LineInGain & 0x001F);  // in 0.5 dB steps, from 0 to 46.5 dB
+      Gain = 3 * (LineInGain & 0x001F); // in 0.5 dB steps, from 0 to 46.5 dB
     } else {
       // Route MicIn, set gain to 23 or 3 dB
       Path = 0x04; // IN3 routed to PGA with 10k resistance
-      Gain = EnableBoost? 46 : 6;
+      Gain = EnableBoost ? 46 : 6;
     }
 
     if (Path != GCodecPath) {
@@ -802,11 +808,14 @@ void SetCodecInputParams(bool EnableLine, bool EnableBoost, int LineInGain) {
       CodecRegisterWrite(59, Gain);
       CodecRegisterWrite(60, Gain);
     }
+
     break;
+
   default:
     t_print("%s: Invalid Installed Codec\n", __func__);
     break;
   }
+
   pthread_mutex_unlock(&CodecMutex);
 }
 
@@ -880,40 +889,40 @@ void SetBalancedMicInput(bool Balanced) {
 // In P2, the RX attenuators are set from the HighPrio handler, while te
 // TX attenuators are set from the DUCspecific handler.
 //
-void SetADCAttenuator(unsigned int Atten1, bool RXAtten1, bool TXAtten1, unsigned int Atten2, bool RXAtten2, bool TXAtten2) {
-
+void SetADCAttenuator(unsigned int Atten1, bool RXAtten1, bool TXAtten1, unsigned int Atten2, bool RXAtten2,
+                      bool TXAtten2) {
   pthread_mutex_lock(&AttenMutex);
   uint32_t Register = GRXADCCtrl;                          // get existing settings
-
   const uint32_t RXMask1 = 0b00000000000000011111;
   const uint32_t TXMask1 = 0b00000000001111100000;
   const uint32_t RXMask2 = 0b00000111110000000000;
   const uint32_t TXMask2 = 0b11111000000000000000;
 
   if (RXAtten1) {
-     Register &=  ~RXMask1;
-     Register |=  (Atten1 & 0x1F);
+    Register &=  ~RXMask1;
+    Register |=  (Atten1 & 0x1F);
   }
 
   if (TXAtten1) {
-     Register &=  ~TXMask1;
-     Register |=  (Atten1 & 0x1F) << 5;
+    Register &=  ~TXMask1;
+    Register |=  (Atten1 & 0x1F) << 5;
   }
 
   if (RXAtten2) {
-     Register &=  ~RXMask2;
-     Register |=  (Atten2 & 0x1F) << 10;
+    Register &=  ~RXMask2;
+    Register |=  (Atten2 & 0x1F) << 10;
   }
 
   if (TXAtten2) {
-     Register &=  ~TXMask2;
-     Register |=  (Atten2 & 0x1F) << 15;
+    Register &=  ~TXMask2;
+    Register |=  (Atten2 & 0x1F) << 15;
   }
 
   if (Register != GRXADCCtrl) {
     GRXADCCtrl = Register;
     RegisterWrite(VADDRADCCTRLREG, Register);      // and write to it
   }
+
   pthread_mutex_unlock(&AttenMutex);
 }
 
@@ -954,6 +963,7 @@ void SetCWIambicKeyer(uint8_t Speed, uint8_t Weight, bool ReverseKeys, bool Mode
     GIambicConfigReg = Register;
     RegisterWrite(VADDRIAMBICCONFIG, Register);
   }
+
   pthread_mutex_unlock(&IambicMutex);
 }
 
@@ -966,7 +976,6 @@ void SetDDCADC(int DDC, EADCSelect ADC) {
   uint32_t Register;
   uint32_t ADCSetting;
   uint32_t Mask;
-
   ADCSetting = ((uint32_t)ADC & 0x3) << (DDC * 2); // 2 bits with ADC setting
   Mask = 0x3 << (DDC * 2);                       // 0,2,4,6,8,10,12,14,16,18 bit positions
   pthread_mutex_lock(&DDCInSelMutex);                       // get protected access
@@ -1024,7 +1033,6 @@ void SetRXDDCEnabled(bool IsEnabled) {
 //       by the KeyerMutex
 //
 static inline void InitialiseCWKeyerRamp(uint8_t Length) {
-
   if (FPGA_MinorVersion >= 14) {
     if (Length > VMAXCWRAMPDURATIONV14PLUS) { Length = VMAXCWRAMPDURATIONV14PLUS; }
   } else {
@@ -1037,7 +1045,6 @@ static inline void InitialiseCWKeyerRamp(uint8_t Length) {
 
   // now apply that ramp length
   if (RampLength != GCWKeyerRampLength) {
-
     // ========================================================================
     //
     // Calculate a "DL1YCF" ramp
@@ -1065,7 +1072,6 @@ static inline void InitialiseCWKeyerRamp(uint8_t Length) {
     // -120 dBc for offsets > 1200 Hz
     //
     // ========================================================================
-
     for (unsigned int Cntr = 0; Cntr < RampLength; Cntr++) {
       uint32_t Sample;
       double y = (double) Cntr / (double) RampLength;     // between 0 and 1
@@ -1159,13 +1165,13 @@ void SetKeyerParams(uint8_t Delay, uint16_t HangTime, uint8_t Ramp) {
   pthread_mutex_lock(&KeyerMutex);
   Register = GCWKeyerSetup;                           // get current settings
   Register &= 0xFFFC0000;                             // remove old bits
-
   Register |= (Delay & 0xFF);
   Register |= (HangTime & 0x3FF) << VCWKEYERHANG;
 
   if (Ramp > 0) {
     InitialiseCWKeyerRamp(Ramp);
     Register &= 0x8003FFFF;                              // strip out ramp bits
+
     if (FPGA_MinorVersion >= 14) {
       Register |= (GCWKeyerRampLength << VCWKEYERRAMP);          // word end address
     } else {
@@ -1364,8 +1370,7 @@ unsigned int GetAnalogueIn(unsigned int AnalogueSelect) {
 // Audio is routed to both headphone and
 // line outputs.
 //
-static void InitialiseTLV320AIC3204(void)
-{
+static void InitialiseTLV320AIC3204(void) {
   pthread_mutex_lock(&CodecMutex);
   GCodecGain = 46;      // Mic Preamp set to 23 dB
   GCodecPath = 0x04;    // IN3 routed to PGA with 10k resistance
@@ -1375,7 +1380,6 @@ static void InitialiseTLV320AIC3204(void)
   CodecRegisterWrite(0, 0x00);
   CodecRegisterWrite(1, 0x01);
   usleep (2000);                                      // 2ms wait for reset to complete
-
   //
   // Clock Settings
   // The codec receives: MCLK = 12.288 MHz, target sample rate is 48 kHz
@@ -1383,20 +1387,15 @@ static void InitialiseTLV320AIC3204(void)
   // and additional divider by 2 (NDAC = 1, MDAC = 2)
   // Need MDAC at least 2 since the resource class of the processing block is 8
   //
-
   //
   // pg0, r11&12: NDAC = 1, MDAC = 2
   CodecRegisterWrite(11, 0x81); // enable NDAC = 1
   CodecRegisterWrite(12, 0x82); // enable MDAC = 1
-
   //
   //pg0 r18, 19: set ADC clock = DAC clock
   CodecRegisterWrite(18, 0x01); // bit7 clear --> ADC_CLK = DAC_CLK
   CodecRegisterWrite(19, 0x02); // bit7 clear --> ADC_MOD_CLK = DAC_MOD_CLK
-
   // Signal Processing Settings
-
-
   //
   // pg0 r60: set the DAC Mode to PRB_P1 (LVB)
   // pg0 r61: set the ADC Mode to PRB_P1 (LVB)
@@ -1405,165 +1404,130 @@ static void InitialiseTLV320AIC3204(void)
   //
   CodecRegisterWrite(60, 0x01);
   CodecRegisterWrite(61, 0x01);
-
   //
   // Initialize Codec
   //
   // Select Page 1
   CodecRegisterWrite(0, 0x01);
-
   //
   // pg1 r1: Disable weak AVDD in presence of external AVDD supply
   CodecRegisterWrite(1, 0x08);
-
   //
   // pg1 r2: Enable Master Analog Power Control (LVB)
   CodecRegisterWrite(2, 0x09); // DVDD = AVDD = 1.75 Volt, analog blocks disabled
-
   //
   // pg1 r123: Set the REF charging time to slow (LVB)
   CodecRegisterWrite(123, 0x00);
-
   //
   // pg1 r1: disable weak AVDD in presence of external AVDD supply
   // DUPLICATE?
   CodecRegisterWrite(1, 0x08);
-
   //
   // pg1 r2: Enable Master Analog Power Control
   CodecRegisterWrite(2, 0x01); // DVDD = AVDD = 1.75 Volt, analog blocks enabled
-
   //
   // pg1 r61: Select ADC PTM_R4 (this is the default)
   CodecRegisterWrite(61, 0x00);
-
   // pg1 r71: Set the input powerup time
   CodecRegisterWrite(71, 0x32);  // 6.4 msec
-
   //
   // Recording Setup
   //
   // Select Page 1
   CodecRegisterWrite(0x00, 0x01);
-
   //
   // pg1 r58: enable analogue inputs (IN1 and IN3)
   //
   CodecRegisterWrite(58, 0x30);
-
   //
   // pg1 r52, r55: route IN1+ or IN3+ to PGA
   CodecRegisterWrite(52, GCodecPath);
   CodecRegisterWrite(55, GCodecPath);
-
   //
   // pg1 r54: Route Common Mode to PGA with 10k resistance
   // pg1 r57: Route Common Mode to PGA with 10k resistance
   CodecRegisterWrite(54, 0x40);
   CodecRegisterWrite(57, 0x40);
-
   //
   // pg1 r71: input powerup time
   CodecRegisterWrite(71, 0x32);  // 6.4 msec
-
   //
   // pg1 r59: Unmute Left MICPGA, Gain selection of 23dB
   // pg1 r60: Unmute Right MICPGA, Gain selection of 23dB
   CodecRegisterWrite(59, GCodecGain);
   CodecRegisterWrite(60, GCodecGain);
-
   //
   // pg1 r51: mic bias
   CodecRegisterWrite(51, 0x68);  // Bias powered up (from LDOIN), max. Voltage
-
   //
   // Select Page 0
   CodecRegisterWrite(0x00, 0x00);
-
   //
   // pg0 r81: Power up LADC/RADC
   CodecRegisterWrite(81, 0xC0);
-
   //
   // pg0 r82: Unmute LADC/RADC
   CodecRegisterWrite(82, 0x00);
-
   //
   // Playback Setup
   //
-
   //
   // Select Page 1
   CodecRegisterWrite(0, 0x01);
-
   //
   // Anti-thump step 1.
   // pg1 r20: De-pop. 6K, 5 time constants -> 300ms; add 100ms soft routing.
   CodecRegisterWrite(20, 0x65); // step time 50 msec, 6 kOhm resistance, 5 time constants, 50 msec soft routing
-
   //
   // anti-thump step 2.
   // pg1 r10: common mode
   CodecRegisterWrite(10, 0x3B); // HP common mode 1.65 V from LDOIN
-
   //
   // anti-thump step 3.
   // pg1 r12, 13: Route LDAC/RDAC to HPL/HPR
   CodecRegisterWrite(12, 0x08);
   CodecRegisterWrite(13, 0x08);
-
   //
   // pg1 r14, 15: Route LDAC/RDAC to LOL/LOR
   CodecRegisterWrite(14, 0x08);
   CodecRegisterWrite(15, 0x08);
-
   // before anti-thump step 4:
   // pg1 r22, 23: in1 to headphone bypass: MUTE
   CodecRegisterWrite(22, 0x72);
   CodecRegisterWrite(23, 0x72);
-
   //
   // anti-thump step 4:
   // pg0 r63: Power up LDAC/RDAC
   CodecRegisterWrite(0x00, 0x00);             // select page 0
   CodecRegisterWrite(0x3F, 0xD6);
-
   //
   // select Page 1
   CodecRegisterWrite(0x00, 0x01);
-
   //
   // anti-thump step 5:
   // pg1 r16, 17: Unmute HPL/HPR driver, 0dB Gain
   CodecRegisterWrite(16, 0x00);
   CodecRegisterWrite(17, 0x00);
-
   //
   // anti-thump step 6:
   // pg1 r9: Power up HPL/HPR and LOL/LOR drivers (LVB)
   CodecRegisterWrite(9, 0x3F);
-
   //
   // pg1 r18, 19: Unmute LOL/LOR driver, 0dB Gain
   CodecRegisterWrite(18, 0x00);
   CodecRegisterWrite(19, 0x00);
-
   //
   // Select Page 0
   CodecRegisterWrite(0x00, 0x00);
-
   //
   // pg0 r65, 66: DAC => 0dB
   CodecRegisterWrite(65, 0x00);
   CodecRegisterWrite(66, 0x00);
-
   //
   // anti-thump step 7: AFTER 300ms DELAY for ramp-up
   usleep(300000);
-
   // pg0 r64: Unmute LDAC/RDAC
   CodecRegisterWrite(64, 0x00);
-
   pthread_mutex_unlock(&CodecMutex);
 }
 
@@ -1597,13 +1561,13 @@ static void InitialiseTLV320AIC23B(void) {
 //
 void CodecInitialise() {
   if (Saturn_PCB_Version >= 3) {
-      t_print("Initialising TLV320AIC3204 codec\n");
-      InstalledCodec = e3204;
-      InitialiseTLV320AIC3204();
+    t_print("Initialising TLV320AIC3204 codec\n");
+    InstalledCodec = e3204;
+    InitialiseTLV320AIC3204();
   } else {
-      t_print("Initialising TLV320AIC23B codec\n");
-      InstalledCodec = e23b;
-      InitialiseTLV320AIC23B();
+    t_print("Initialising TLV320AIC23B codec\n");
+    InstalledCodec = e23b;
+    InitialiseTLV320AIC23B();
   }
 }
 

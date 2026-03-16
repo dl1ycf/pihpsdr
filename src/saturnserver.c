@@ -279,7 +279,6 @@ static void* saturn_server(void *arg) {
   }
 
   pthread_detach(DDCSpecificThread);
-
   MakeSocket(SocketData + VPORTHIGHPRIORITYTOSDR, 0);          // create and bind a socket
 
   if (pthread_create(&HighPriorityToSDRThread, NULL, IncomingHighPriority,
@@ -289,7 +288,6 @@ static void* saturn_server(void *arg) {
   }
 
   pthread_detach(HighPriorityToSDRThread);
-
   //
   // create all the DDC sockets
   //
@@ -354,7 +352,8 @@ static void* saturn_server(void *arg) {
         memset(&server_reply_addr, 0, sizeof(server_reply_addr));
         server_reply_addr.sin_family = AF_INET;
         server_reply_addr.sin_addr.s_addr = addr_from.sin_addr.s_addr;
-        server_reply_addr.sin_port = addr_from.sin_port;                       // (but each outgoing thread needs to set its own sin_port)
+        server_reply_addr.sin_port =
+          addr_from.sin_port;                       // (but each outgoing thread needs to set its own sin_port)
         ReplyAddressSet = true;
 
         if (StartBitReceived) {

@@ -42,7 +42,7 @@ extern char predef_cwtxt[5][256];
 extern char predef_call[256];
 
 #define MAX_SERIAL 3
-extern SERIALPORT SerialPorts[MAX_SERIAL+1];  // one extra for "PTT"
+extern SERIALPORT SerialPorts[MAX_SERIAL + 1]; // one extra for "PTT"
 extern gboolean rigctl_debug;
 
 extern void launch_tcp_rigctl (void);

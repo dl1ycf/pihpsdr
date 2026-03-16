@@ -371,7 +371,6 @@ void saturn_discovery() {
     uint32_t FPGA_MajorVersion   = (SoftwareInformation >> 25) & 0x7F;     //  7 bit major sw version
     uint32_t FPGA_SWID           = (SoftwareInformation >> 20) & 0x1F;     //  5 bit software ID
     uint32_t FPGA_ProdID         = (ProductInformation  >> 16) & 0xFFFF;   // 16 bit product ID
-
     //
     // These two are global
     //
@@ -416,7 +415,6 @@ void saturn_discovery() {
     // STATE_SENDING           Saturn board already in use by another instance of piHPSDR
     // STATE_INCOMPATIBLE      Saturn FPGA version not supported
     //
-
     saturn_register_init();
     discovered[devices].status = (running) ? STATE_SENDING : STATE_AVAILABLE;
 
@@ -548,13 +546,11 @@ static void saturn_init_duc_iq() {
 // Code from P2_app/InDUCIQ.c, IncomingDUCIQ() receive loop
 //
 void saturn_handle_duc_iq(const unsigned char *UDPInBuffer) {
-
   const uint8_t* SrcPtr;                                  // pointer to data from Host
   uint8_t* DestPtr;                                       // pointer to DMA buffer data
   uint32_t DepthDUC = 0;
   unsigned int Current;                                   // current occupied locations in FIFO
   bool FIFODUCOverflow, FIFODUCUnderflow, FIFODUCOverThreshold;
-
   DepthDUC = ReadFIFOMonitorChannel(eTXDUCDMA, &FIFODUCOverflow, &FIFODUCOverThreshold, &FIFODUCUnderflow,
                                     &Current);  // read the FIFO free locations
 #ifdef DISPLAY_OVER_UNDER_FLOWS
@@ -725,8 +721,6 @@ void saturn_exit() {
 // since this is RX only.
 //
 static gpointer saturn_high_priority_thread(gpointer arg) {
-  uint8_t  Byte;                                  // data being encoded
-  uint16_t Word;                                  // data being encoded
   uint8_t  ADCOverflows = 0;                      // set to non-zero if ADC overflows detected
 
   while (!Exiting) {
@@ -744,9 +738,11 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
     // when a DDC becomes enabled, its paired DDC may not know yet and may still be set to interleaved.
     // when a DDC is set to interleaved, the paired DDC may not have been disabled yet.
     //
-    while (SDRActive) {                            // main loop
+    while (SDRActive) {                                         // main loop
       uint16_t SleepCount;                                      // counter for sending next message
       uint8_t PTTBits;                                          // PTT bits - and change means a new message needed
+      uint8_t  Byte;                                            // data being encoded
+      uint16_t Word;                                            // data being encoded
       mybuffer *mybuf = get_my_buffer(HPMYBUF);
       ReadStatusRegister();
       PTTBits = GetP2PTTKeyInputs() & 0xFF;
@@ -774,14 +770,12 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
       Word = GetAnalogueIn(3) & 0xFFFF;                                               // User ADC1
       mybuf->buffer[55] = (Word >> 8) & 0xFF;
       mybuf->buffer[56] = (Word     ) & 0xFF;
-
       mybuf->buffer[0] = (SequenceCounter >> 24) & 0xFF;                            // add seq. count
       mybuf->buffer[1] = (SequenceCounter >> 16) & 0xFF;
       mybuf->buffer[2] = (SequenceCounter >>  8) & 0xFF;
       mybuf->buffer[3] = (SequenceCounter      ) & 0xFF;
       SequenceCounter++;
       saturn_post_high_priority(mybuf);
-
       //
       // now we need to sleep for 1ms (in TX) or 200ms (not in TX)
       // - if any of the PTT or key inputs change, send a message immediately
@@ -850,13 +844,11 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
   struct sockaddr_in DestAddr;
   struct iovec iovecinst;
   struct msghdr datagram;
-
   //
   // The UDP buffer is cleared. Only the sequence number will be
   // updated each time a packet is sent via ethernet
   //
   memset(UDPBuffer, 0, sizeof(UDPBuffer));
-
   //
   // setup DMA buffer
   //
@@ -957,7 +949,6 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
       mybuf->buffer[2] = (SequenceCounter >>  8) & 0xFF;
       mybuf->buffer[3] = (SequenceCounter      ) & 0xFF;
       SequenceCounter++;
-
       memcpy(mybuf->buffer + 4, MicBasePtr, VDMAMICTRANSFERSIZE);  // copy in mic samples
       saturn_post_micaudio(VMICPACKETSIZE, mybuf);
 
@@ -1412,28 +1403,22 @@ void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
              ((UDPInBuffer[331] & 0xFF) <<  8) |
              ((UDPInBuffer[332] & 0xFF)      );
   SetDUCFrequency(LongWord, true);
-
   Byte = UDPInBuffer[345] & 0xFF;
   SetTXDriveLevel(Byte);
-
   //
   // Byte 1398:1399 (CAT port) not used
   //
-
   // transverter, speaker mute, open collector, user outputs
   // open collector data is in bits 7:1; move to 6:0
   //
   Byte = UDPInBuffer[1400] & 0xFF;
   bool XvtEn = Byte & 0x01;
   bool SpkMt = Byte & 0x02;
-
   SetXvtrEnable(XvtEn);
   SetSpkrMute(SpkMt);
-
   // According to  P2, the seven OC bits are b1:7
   Byte = (UDPInBuffer[1401] >> 1) & 0x7F;
   SetOpenCollectorOutputs(Byte);
-
   //
   // Alex behaviour needs to be FPGA version specific: at V12, separate register added for Alex TX antennas
   // - if new FPGA version: we write the word with TX ANT (byte 1428) to a new register,
@@ -1471,7 +1456,6 @@ void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
   }
 
   SetPAEnabled(PAEnable); // activate PA if client app wants it
-
   //
   // RX filters
   //
@@ -1479,20 +1463,17 @@ void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
   AlexManualRXFilters(Word, 2);
   Word = ((UDPInBuffer[1434] & 0xFF) << 8 ) | (UDPInBuffer[1435] & 0xFF);  // Alex0 RX settings
   AlexManualRXFilters(Word, 0);
-
   //
   // RX atten during TX and RX
   //
   Byte  = UDPInBuffer[1442] & 0x1F;      // ADC1 atten
-  Byte2=  UDPInBuffer[1443] & 0x1F;      // ADC0 atten
+  Byte2 =  UDPInBuffer[1443] & 0x1F;     // ADC0 atten
   SetADCAttenuator(Byte2, true, false, Byte, true, false);
-
   return;
 }
 
 void saturn_handle_general_packet(const unsigned char *PacketBuffer) {
   uint8_t Byte;
-
   //
   // ALEX is enabled by default, so *only* the "PA enable" bit is processed.
   //
@@ -1549,6 +1530,7 @@ void saturn_handle_ddc_specific_server(const unsigned char *UDPInBuffer) {
       }
 
       break;
+
     case 1:
       Byte1 = UDPInBuffer[1363] & 0xFF; // DDC0 synch
 
@@ -1608,7 +1590,6 @@ void saturn_handle_ddc_specific(const unsigned char *UDPInBuffer) {
   // Handle DDC-specific packet from XDMA
   //
   uint8_t Byte1, Byte2;                                 // received data
-
   bool Dither1, Random1;                                // ADC1 bits
   bool Dither2, Random2;                                // ADC1 bits
   Byte1 = UDPInBuffer[5] & 0xFF;                        // Dither bits
@@ -1618,7 +1599,6 @@ void saturn_handle_ddc_specific(const unsigned char *UDPInBuffer) {
   Dither2  = (bool)(Byte1 & 2);
   Random2  = (bool)(Byte2 & 2);
   SetADCOptions(false, Dither1, Random1, false, Dither2, Random2);
-
   //
   // main settings for each DDC
   // reuse "dither" for interleaved with next;
@@ -1702,7 +1682,6 @@ void saturn_handle_ddc_specific(const unsigned char *UDPInBuffer) {
 
 void saturn_handle_duc_specific(const unsigned char *UDPInBuffer) {
   uint8_t Byte1, Byte2;
-
   //
   // CW settings
   //
@@ -1714,7 +1693,6 @@ void saturn_handle_duc_specific(const unsigned char *UDPInBuffer) {
   bool IambicModeB     = Byte1 & 0x20;
   bool CWStrictSpacing = Byte1 & 0x40;
   bool CWBreakIn       = Byte1 & 0x80;
-
   uint8_t SideToneVolume = UDPInBuffer[6] & 0xFF;
   uint16_t SideToneFreq  = ((UDPInBuffer[7] & 0xFF) << 8) | (UDPInBuffer[8] & 0xFF);
   uint8_t IambicSpeed = UDPInBuffer[9] & 0xFF;
@@ -1722,20 +1700,15 @@ void saturn_handle_duc_specific(const unsigned char *UDPInBuffer) {
   uint16_t CWHangTime    = ((UDPInBuffer[11] & 0xFF) << 8) | (UDPInBuffer[12] & 0xFF);
   uint8_t CWRFDelay      = UDPInBuffer[13] & 0xFF;
   uint8_t CWRampTime     = UDPInBuffer[17] & 0xFF;
-
   // This goes to VADDRIAMBICCONFIG
   SetCWIambicKeyer(IambicSpeed, IambicWeight, ReverseKeys, IambicModeB, CWStrictSpacing, CWIambic, CWBreakIn);
-
   // This goes to VADDRSIDETONECONFIGREG
   SetCWSideTone(CWSideEnabled, SideToneVolume, SideToneFreq);
-
   // This sets the modulation source (VADDRTXCONFIGREG)
   // and activates the keyer (VADDRKEYERCONFIGREG)
   EnableCW(CWEnabled, CWBreakIn);
-
   // This goes to VADDRKEYERCONFIGREG
   SetKeyerParams(CWRFDelay, CWHangTime, CWRampTime);
-
   //
   // Codec Input and Orion Mic options
   //
@@ -1746,7 +1719,6 @@ void saturn_handle_duc_specific(const unsigned char *UDPInBuffer) {
   bool OrionBiasEnable;
   bool SaturnXLRInput;
   int  LineInGain;
-
   Byte1           = UDPInBuffer[50] & 0xFF;
   LineIn          = Byte1 & 0x01;
   MicBoost        = Byte1 & 0x02;
@@ -1755,11 +1727,9 @@ void saturn_handle_duc_specific(const unsigned char *UDPInBuffer) {
   OrionBiasEnable = Byte1 & 0x10;
   SaturnXLRInput  = Byte1 & 0x20;
   LineInGain      = UDPInBuffer[51] & 0x1F; // restrict to 0-31
-
   SetCodecInputParams(LineIn, MicBoost, LineInGain);
   SetOrionMicOptions(OrionBiasRing, OrionBiasEnable, OrionMicPTT);
   SetBalancedMicInput(SaturnXLRInput);
-
   //
   // RF Attenuator values during transmit
   //

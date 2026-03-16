@@ -193,8 +193,9 @@ void rx_panadapter_update(RECEIVER *rx) {
   //
   for (int i = 0; i < 3; i++) {
     cairo_set_source_rgba (cr, COLOUR_PAN_NOTCH);
+
     if (rx->multi_notch_enable[i]) {
-      double l = rx->cAp * (rx->multi_notch_center[i] - rx->multi_notch_width[i]/2) + rx->cBp;
+      double l = rx->cAp * (rx->multi_notch_center[i] - 0.5 * rx->multi_notch_width[i]) + rx->cBp;
       double w = rx->cAp *  rx->multi_notch_width[i];
       cairo_rectangle(cr, l, 0.0, w, myheight);
       cairo_fill(cr);

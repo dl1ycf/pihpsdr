@@ -335,6 +335,7 @@ void rigctl_menu(GtkWidget *parent) {
       gtk_entry_set_text(GTK_ENTRY(w), SerialPorts[i].port);
       gtk_grid_attach(GTK_GRID(grid), w, 1, row, 2, 1);
       g_signal_connect(w, "changed", G_CALLBACK(serial_port_cb), GINT_TO_POINTER(i));
+
       if (is_ptt) {
         serial_enable[i] = gtk_check_button_new_with_label("Enable (serial port for PTT in/out)");
         gtk_widget_set_name(serial_enable[i], "boldlabel");
@@ -399,6 +400,7 @@ void rigctl_menu(GtkWidget *parent) {
       gtk_grid_attach(GTK_GRID(grid), w, 1, row, 5, 1);
     }
   }
+
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);

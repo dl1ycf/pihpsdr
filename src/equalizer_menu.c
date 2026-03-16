@@ -335,5 +335,6 @@ void equalizer_menu(GtkWidget *parent) {
     gtk_widget_hide(rx2_container);
     break;
   }
+
   gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
 }

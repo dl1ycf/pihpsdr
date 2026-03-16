@@ -683,6 +683,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       //
       double damp = 1.000;
       newpt = rx->audio_buffer_outpt;
+
       for (int i = 0; i < CW_LAT_TARGET; i++) {
         if (i >= avail) {
           rx->audio_buffer[2 * newpt] = 0.0;
@@ -692,11 +693,13 @@ void tx_audio_write(RECEIVER *rx, double sample) {
           rx->audio_buffer[2 * newpt + 1] *= damp;
           damp = damp * 0.975;
         }
-        newpt++;
 
+        newpt++;
         MEMORY_BARRIER;
+
         if (newpt >= MY_RING_BUFFER_SIZE) { newpt = 0; }
       }
+
       rx->audio_buffer_inpt = newpt;
       MEMORY_BARRIER;
       avail = CW_LAT_TARGET;

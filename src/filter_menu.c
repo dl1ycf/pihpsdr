@@ -94,25 +94,11 @@ static gboolean mn_default_cb (GtkWidget *widget, GdkEventButton *event, gpointe
   int n = GPOINTER_TO_INT(data);
   double c;
   double w;
-
   //
   // This is to restore the notch filter to some default value
   //
   w = 50.0;
-  switch(mymode) {
-  case modeCWU:
-  case modeUSB:
-    c = 100.0;
-    break;
-  case modeLSB:
-  case modeCWL:
-    c = -100.0;
-    break;
-  default:
-    c = 0.0;
-    break;
-  }
-
+  c = 0.5 * (myrx->filter_low + myrx->filter_high) + vfo[myrx->id].offset;
   //
   // setting the spin buttons activates the call backs
   //
@@ -230,16 +216,14 @@ static gboolean deviation_select_cb (GtkWidget *widget, gpointer data) {
 
 static void mn_center_cb (GtkWidget *widget, gpointer data) {
   int n = GPOINTER_TO_INT(data);
-  int val = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
-
+  double val = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
   myrx->multi_notch_center[n] = val;
   rx_set_notch(myrx);
 }
 
 static void mn_width_cb (GtkWidget *widget, gpointer data) {
   int n = GPOINTER_TO_INT(data);
-  int val = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
-
+  double val = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
   myrx->multi_notch_width[n] = val;
   rx_set_notch(myrx);
 }
@@ -436,6 +420,7 @@ void filter_menu(GtkWidget *parent) {
     gtk_widget_set_name(w, "boldlabel");
     gtk_widget_set_halign(w, GTK_ALIGN_START);
     gtk_grid_attach(GTK_GRID(grid), w, 1, row, 6, 1);
+    row++;
   } else {
     int col = 0;
     CHOICE *choice;
@@ -628,6 +613,7 @@ void filter_menu(GtkWidget *parent) {
   gtk_widget_set_halign(w, GTK_ALIGN_CENTER);
   gtk_grid_attach(GTK_GRID(grid), w, 5, row, 3, 1);
   row++;
+
   for (int i = 0; i < 3; i++) {
     w = gtk_check_button_new();
     gtk_widget_set_halign(w, GTK_ALIGN_CENTER);
@@ -635,22 +621,21 @@ void filter_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(grid), w, 0, row, 2, 1);
     g_signal_connect(w, "toggled", G_CALLBACK(mn_enable_cb), GINT_TO_POINTER(i));
     w = gtk_spin_button_new_with_range(-24000, 24000.0, 25.0);
-    gtk_spin_button_set_value(GTK_SPIN_BUTTON(w), (double)(myrx->multi_notch_center[i]));
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(w), myrx->multi_notch_center[i]);
     gtk_grid_attach(GTK_GRID(grid), w, 2, row, 3, 1);
     g_signal_connect(w, "value-changed", G_CALLBACK(mn_center_cb), GINT_TO_POINTER(i));
-    mn_center[i]=w;
+    mn_center[i] = w;
     w = gtk_spin_button_new_with_range(0, 1000.0, 25.0);
-    gtk_spin_button_set_value(GTK_SPIN_BUTTON(w), (double)(myrx->multi_notch_width[i]));
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(w), myrx->multi_notch_width[i]);
     gtk_grid_attach(GTK_GRID(grid), w, 5, row, 3, 1);
     g_signal_connect(w, "value-changed", G_CALLBACK(mn_width_cb), GINT_TO_POINTER(i));
-    mn_width[i]=w;
+    mn_width[i] = w;
     w = gtk_button_new_with_label("Default");
     gtk_widget_set_name(w, "small_button");
     g_signal_connect (w, "button-press-event", G_CALLBACK(mn_default_cb), GINT_TO_POINTER(i));
     gtk_grid_attach(GTK_GRID(grid), w, 8, row, 2, 1);
     row++;
   }
-
 
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;

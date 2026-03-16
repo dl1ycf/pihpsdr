@@ -156,8 +156,8 @@ typedef struct _receiver {
   // Manual Multi Notch Filter
   //
   int multi_notch_enable[3];
-  int multi_notch_center[3];
-  int multi_notch_width[3];
+  double multi_notch_center[3];
+  double multi_notch_width[3];
 
   int filter_low;
   int filter_high;

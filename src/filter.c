@@ -314,18 +314,23 @@ const int var_default_high[MODES] = {
 
 void filter_save_state(void) {
   //
-  // Modes and filter names are converted to lower case 
+  // Modes and filter names are converted to lower case
   // simply for backwards compatibility
   //
   for (int m = 0; m < MODES; m++) {
-    FILTER *filter = filters[m];
+    const FILTER *filter = filters[m];
+
     for (int i = 0; i < FILTERS; i++) {
       char txt[128];
       snprintf(txt, sizeof(txt), "filter.%s.%s.low", mode_string[m], filter[i].title);
+
       for (char *cp = txt; *cp != 0; cp++) { *cp = tolower(*cp); }
+
       SetPropI0(txt, filter[i].low);
       snprintf(txt, sizeof(txt), "filter.%s.%s.high", mode_string[m], filter[i].title);
+
       for (char *cp = txt; *cp != 0; cp++) { *cp = tolower(*cp); }
+
       SetPropI0(txt, filter[i].high);
     }
   }
@@ -333,18 +338,23 @@ void filter_save_state(void) {
 
 void filter_restore_state(void) {
   //
-  // Modes and filter names are converted to lower case 
+  // Modes and filter names are converted to lower case
   // simply for backwards compatibility
   //
   for (int m = 0; m < MODES; m++) {
     FILTER *filter = filters[m];
+
     for (int i = 0; i < FILTERS; i++) {
       char txt[128];
       snprintf(txt, sizeof(txt), "filter.%s.%s.low", mode_string[m], filter[i].title);
+
       for (char *cp = txt; *cp != 0; cp++) { *cp = tolower(*cp); }
+
       GetPropI0(txt, filter[i].low);
       snprintf(txt, sizeof(txt), "filter.%s.%s.high", mode_string[m], filter[i].title);
+
       for (char *cp = txt; *cp != 0; cp++) { *cp = tolower(*cp); }
+
       GetPropI0(txt, filter[i].high);
     }
   }
@@ -780,4 +790,32 @@ void filter_shift_changed(int id, int increment) {
   }
 
   g_idle_add(ext_vfo_update, NULL);
+}
+
+void notch_center_changed(int id, int pos, int val) {
+  if (id >= 0 && id < receivers) {
+    RECEIVER *rx = receiver[id];
+    rx->multi_notch_center[pos] += (double) val;
+    rx_set_notch(rx);
+  }
+}
+
+void notch_width_changed(int id, int pos, int val) {
+  if (id >= 0 && id < receivers) {
+    RECEIVER *rx = receiver[id];
+    double w = rx->multi_notch_width[pos] + (double) val;
+
+    if (w < 25.0) { w = 25.0; }
+
+    rx->multi_notch_width[pos] = w;
+    rx_set_notch(rx);
+  }
+}
+
+void notch_enable_toggled(int id, int pos) {
+  if (id >= 0 && id < receivers) {
+    RECEIVER *rx = receiver[id];
+    rx->multi_notch_enable[pos] = NOT(rx->multi_notch_enable[pos]);
+    rx_set_notch(rx);
+  }
 }

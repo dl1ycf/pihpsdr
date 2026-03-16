@@ -662,7 +662,7 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
     rx->audio_channel = mode_settings[m].rx_audio_channel;
 
     if (rx->local_audio != mode_settings[m].rx_local_audio
-                    || strncmp(rx->audio_name, mode_settings[m].rx_audio_name, sizeof(rx->audio_name))) {
+        || strncmp(rx->audio_name, mode_settings[m].rx_audio_name, sizeof(rx->audio_name))) {
       //
       // This is RX1 and local audio settings in mode_settings differ from actual settings
       //
@@ -1236,6 +1236,7 @@ void vfo_id_step(int id, int steps) {
     if (id < receivers) {
       rx_frequency_changed(receiver[id]);
     }
+
     g_idle_add(ext_vfo_update, NULL);
   }
 }

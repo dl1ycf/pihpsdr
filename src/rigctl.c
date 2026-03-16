@@ -194,7 +194,6 @@ void shutdown_tcp_rigctl(void) {
     g_thread_join(rigctl_server_thread_id);
     rigctl_server_thread_id = NULL;
   }
-
 }
 
 //
@@ -1065,7 +1064,6 @@ static gboolean andromeda_oneshot_handler(gpointer data) {
 }
 
 static void queue_cw_char(char c) {
-
   if (c < ' ') { return; } // suppress non-printable characters including \0
 
   int new = cw_buf_in + 1;
@@ -1093,11 +1091,11 @@ void rigctl_send_cw_text(int pos) {
     if (c == '#') {
       for (unsigned int j = 0; j < strlen(predef_call); j++) {
         queue_cw_char(predef_call[j]);
-       }
-     } else {
-       queue_cw_char(c);
-     }
-   }
+      }
+    } else {
+      queue_cw_char(c);
+    }
+  }
 }
 
 void rigctl_start_cw_thread(void) {
@@ -1288,7 +1286,6 @@ static gpointer rigctl_client (gpointer data) {
   // Release the last "command" buffer (that has not yet been used)
   g_free(command);
   t_print("%s: Leaving rigctl_client thread\n", __func__);
-
   //
   // If rigctl is disabled via the GUI, the connections are closed by shutdown_rigctl_ports()
   // but even the we should decrement cat_control
@@ -1296,7 +1293,6 @@ static gpointer rigctl_client (gpointer data) {
   client->running = 0;
 
   if (client->fd != -1) {
-
     if (client->andromeda_timer != 0) {
       g_source_remove(client->andromeda_timer);
       client->andromeda_timer = 0;
@@ -5709,7 +5705,9 @@ static gpointer ptt_server(gpointer data) {
 
   while (client->running) {
     usleep(100000);
+
     if (ioctl(client->fd, TIOCMGET, &status) == -1) { continue; }
+
     int new = SET(status & TIOCM_CTS);
 
     //
@@ -5728,11 +5726,13 @@ static gpointer ptt_server(gpointer data) {
     //
     if (pttout != new) {
       pttout = new;
+
       if (pttout) {
         status |= TIOCM_RTS;
       } else {
         status &= ~TIOCM_RTS;
       }
+
       ioctl(client->fd, TIOCMSET, &status);
     }
   }
@@ -5772,7 +5772,6 @@ int launch_serial_ptt(int id) {
   status &= ~TIOCM_RTS;
   status |=  TIOCM_DTR;
   ioctl(fd, TIOCMSET, &status);
-
   serial_client[id].fd = fd;
   serial_client[id].thread_id = g_thread_new( "PTTserver", ptt_server, (gpointer)&serial_client[id]);
   return 1;
@@ -5983,6 +5982,7 @@ void rigctl_save_state(void) {
   for (int i = 0; i < 5; i++) {
     SetPropS1("rigctl_cw_text[%d]", i,                       predef_cwtxt[i]);
   }
+
   //
   // Save Andromeda controller settings. Only types 4 and 5 are saved.
   // Only the first controller found is saved, and the search order is:

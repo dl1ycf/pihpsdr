@@ -317,8 +317,8 @@ void rx_save_state(const RECEIVER *rx) {
 
     for (int i = 0; i < 3; i++) {
       SetPropI2("receiver.%d.notch[%d].enable", rx->id, i,      rx->multi_notch_enable[i]);
-      SetPropI2("receiver.%d.notch[%d].center", rx->id, i,      rx->multi_notch_center[i]);
-      SetPropI2("receiver.%d.notch[%d].width", rx->id, i,       rx->multi_notch_width[i]);
+      SetPropF2("receiver.%d.notch[%d].center", rx->id, i,      rx->multi_notch_center[i]);
+      SetPropF2("receiver.%d.notch[%d].width", rx->id, i,       rx->multi_notch_width[i]);
     }
 
     for (int i = 0; i < 11; i++) {
@@ -423,8 +423,8 @@ void rx_restore_state(RECEIVER *rx) {
 
     for (int i = 0; i < 3; i++) {
       GetPropI2("receiver.%d.notch[%d].enable", rx->id, i,      rx->multi_notch_enable[i]);
-      GetPropI2("receiver.%d.notch[%d].center", rx->id, i,      rx->multi_notch_center[i]);
-      GetPropI2("receiver.%d.notch[%d].width", rx->id, i,       rx->multi_notch_width[i]);
+      GetPropF2("receiver.%d.notch[%d].center", rx->id, i,      rx->multi_notch_center[i]);
+      GetPropF2("receiver.%d.notch[%d].width", rx->id, i,       rx->multi_notch_width[i]);
     }
 
     for (int i = 0; i < 11; i++) {
@@ -810,11 +810,11 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->nr4_noise_rescale = 2.0;
   rx->nr4_post_threshold = -3.0;
   rx->nr4_noise_scaling_type = 0;
-  
+
   for (int i = 0; i < 3; i++ ) {
     rx->multi_notch_enable[i] = 0;
-    rx->multi_notch_center[0] = 0;
-    rx->multi_notch_width[i] = 100;
+    rx->multi_notch_center[0] = 0.0;
+    rx->multi_notch_width[i] = 100.0;
   }
 
   rx->agc = AGC_MEDIUM;
@@ -1956,31 +1956,37 @@ void rx_set_mode(const RECEIVER *rx) {
 }
 
 void rx_set_notch(const RECEIVER *rx) {
-  int notch =0;
+  int notch = 0;
   int num;
+
+  if (radio_is_remote) {
+    send_notch(cl_sock_tcp, rx);
+    return;
+  }
 
   for (int i = 0; i < 3; i++) { notch |= rx->multi_notch_enable[i]; }
 
   if (notch) {
     //
-    // First, ensure that there are three notches in the database
+    // This only happens in the first call of this receiver:
+    // if there are less than 3 notches, increase number of notches to 3
     //
     RXANBPGetNumNotches(rx->id, &num);
 
     if (num < 3) {
-      // Add "dummy" notches. This is only done upon the very first call
       for (int i = num; i < 3; i++) { RXANBPAddNotch(rx->id, i, 0.0, 50.0, 0); }
     }
 
     //
-    // Set notches
+    // Set enable/center/width
     //
     for (int i = 0; i < 3; i++) {
-      RXANBPEditNotch(rx->id, i, (double)rx->multi_notch_center[i], (double)rx->multi_notch_width[i],
+      RXANBPEditNotch(rx->id, i, rx->multi_notch_center[i], rx->multi_notch_width[i],
                       rx->multi_notch_enable[i]);
     }
   }
 
+  // global enable/disable flag
   RXANBPSetNotchesRun(rx->id, notch);
 }
 

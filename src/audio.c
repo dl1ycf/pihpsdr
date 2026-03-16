@@ -55,8 +55,8 @@
 //
 #define MICRINGLEN 6000
 
-static const int inp_buffer_size = 256;
-static const int out_buffer_size = 256;
+#define inp_buffer_size 256
+#define out_buffer_size 256
 
 static const int out_buflen = 48 * (out_latency / 1000);   // Length of ALSA buffer (200 msec) in samples
 static const int out_maxlen = 44 * (out_latency / 1000);   // High-Water (183 msec) in samples
@@ -92,7 +92,6 @@ int audio_open_output(RECEIVER *rx) {
   unsigned int channels = 2;
   int soft_resample = 1;
   int err;
-
   //
   // Do not try top open if name has not been recorded during startup
   //
@@ -121,7 +120,6 @@ int audio_open_output(RECEIVER *rx) {
   rx->audio_buffer = NULL;
 
   for (int i = 0; i < FORMATS; i++) {
-
     if ((err = snd_pcm_open (&rx->audio_handle, rx->audio_name, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0) {
       t_print("%s: cannot open audio device %s (%s)\n", __func__,
               rx->audio_name,
@@ -172,7 +170,6 @@ int audio_open_input(TRANSMITTER *tx) {
   unsigned int channels = 1;
   int soft_resample = 1;
   int err;
-
   //
   // Do not try top open if name has not been recorded during startup
   //
@@ -191,7 +188,6 @@ int audio_open_input(TRANSMITTER *tx) {
     return -1;
   }
 
-
   tx->audio_format = SND_PCM_FORMAT_UNKNOWN;
   //
   // It must be guaranteed that in case of failure, these three
@@ -204,7 +200,6 @@ int audio_open_input(TRANSMITTER *tx) {
   g_mutex_lock(&tx->audio_mutex);
 
   for (int i = 0; i < FORMATS; i++) {
-
     if ((err = snd_pcm_open (&tx->audio_handle, tx->audio_name, SND_PCM_STREAM_CAPTURE, SND_PCM_ASYNC)) < 0) {
       t_print("%s: cannot open audio device %s (%s)\n", __func__,
               tx->audio_name,
@@ -366,7 +361,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
     }
 
     switch (adjust) {
-      case 1:
+    case 1:
       //
       // default case: put sample into buffer and that's it
       //
@@ -864,6 +859,7 @@ void audio_get_cards() {
             break;
           }
         }
+
         output_devices[n_output_devices].name = g_strdup(text);
         //
         // Copy description and truncate at first newline
@@ -885,6 +881,7 @@ void audio_get_cards() {
     }
 
 #if 0
+
     //
     // (Temporarily) deactivated "dsnoop" devices. Opening them in MONO  (as
     // done by piHPSDR for "microphone" devices) fails on my RaspPi
@@ -903,6 +900,7 @@ void audio_get_cards() {
             break;
           }
         }
+
         input_devices[n_input_devices].name = g_strdup(text);
         //
         // Copy description and truncate at first newline

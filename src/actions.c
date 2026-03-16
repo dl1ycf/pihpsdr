@@ -154,6 +154,15 @@ ACTION_TABLE ActionTable[] = {
   {MUTE_RX1,            "Mute RX1",             "MUTE1",        AT_BTN},
   {MUTE_RX2,            "Mute RX2",             "MUTE2",        AT_BTN},
   {NB,                  "NB",                   "NB",           AT_BTN},
+  {NOTCH1_CEN,          "Notch1\nCenter",       "Notch1C",      AT_ENC},
+  {NOTCH2_CEN,          "Notch2\nCenter",       "Notch2C",      AT_ENC},
+  {NOTCH3_CEN,          "Notch3\nCenter",       "Notch3C",      AT_ENC},
+  {NOTCH1_WID,          "Notch1\nWidth",        "Notch1W",      AT_ENC},
+  {NOTCH2_WID,          "Notch2\nWidth",        "Notch2W",      AT_ENC},
+  {NOTCH3_WID,          "Notch3\nWidth",        "Notch3W",      AT_ENC},
+  {NOTCH1_EN,           "Notch1\nEnable",       "Notch1E",      AT_BTN},
+  {NOTCH2_EN,           "Notch2\nEnable",       "Notch2E",      AT_BTN},
+  {NOTCH3_EN,           "Notch3\nEnable",       "Notch3E",      AT_BTN},
   {NR,                  "NR",                   "NR",           AT_BTN},
   {MENU_NOISE,          "Noise\nMenu",          "NOISE",        AT_BTN},
   {NUMPAD_0,            "NumPad 0",             "0",            AT_BTN},
@@ -1005,6 +1014,7 @@ int process_action(gpointer data) {
     if (a->mode == PRESSED) {
       radio_iconify();
     }
+
     break;
 
   case IF_SHIFT:
@@ -1249,6 +1259,27 @@ int process_action(gpointer data) {
       if (active_receiver->nb > 2) { active_receiver->nb = 0; }
 
       rx_set_noise(active_receiver);
+    }
+
+    break;
+
+  case NOTCH1_CEN:
+  case NOTCH2_CEN:
+  case NOTCH3_CEN:
+    notch_center_changed(active_receiver->id, action - NOTCH1_CEN, 25 * a->val);
+    break;
+
+  case NOTCH1_WID:
+  case NOTCH2_WID:
+  case NOTCH3_WID:
+    notch_width_changed(active_receiver->id, action - NOTCH1_WID, 25 * a->val);
+    break;
+
+  case NOTCH1_EN:
+  case NOTCH2_EN:
+  case NOTCH3_EN:
+    if (a->mode == PRESSED) {
+      notch_enable_toggled(active_receiver->id, action - NOTCH1_EN);
     }
 
     break;

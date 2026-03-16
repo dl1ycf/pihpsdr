@@ -279,7 +279,6 @@ void get_midi_devices(void) {
   int i;
   CFStringRef pname;   // MacOS name of the device
   char name[128];      // C name of the device
-  OSStatus osret;
   static int first = 1;
 
   if (first) {
@@ -313,7 +312,7 @@ void get_midi_devices(void) {
     MIDIEndpointRef dev = MIDIGetSource(i);
 
     if (dev != 0) {
-      osret = MIDIObjectGetStringProperty(dev, kMIDIPropertyName, &pname);
+      OSStatus osret = MIDIObjectGetStringProperty(dev, kMIDIPropertyName, &pname);
 
       if (osret != 0) { break; } // in this case pname is invalid
 

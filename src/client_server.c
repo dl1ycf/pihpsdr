@@ -867,6 +867,25 @@ void send_eq(int s, int id) {
   send_tcp(s, (char *)&command, sizeof(command));
 }
 
+void send_notch(int s, const RECEIVER *rx) {
+  //
+  // The client sends this whenever a notch setting
+  // is changed
+  //
+  NOTCH_COMMAND command;
+  SYNC(command.header.sync);
+  command.header.data_type = to_16(CMD_NOTCH);
+  command.id                        = rx->id;
+
+  for (int i = 0; i < 3; i++) {
+    command.enable[i] = rx->multi_notch_enable[i];
+    command.center[i] = to_double(rx->multi_notch_center[i]);
+    command.width[i] = to_double(rx->multi_notch_width[i]);
+  }
+
+  send_tcp(s, (char *)&command, sizeof(command));
+}
+
 void send_noise(int s, const RECEIVER *rx) {
   //
   // The client sends this whenever a noise reduction

@@ -563,6 +563,16 @@ static void server_loop(void) {
     }
     break;
 
+    case CMD_NOTCH: {
+      NOTCH_COMMAND *command = g_new(NOTCH_COMMAND, 1);
+      command->header = header;
+
+      if (recv_tcp(remoteclient.sock_tcp, (char *)command + sizeof(HEADER), sizeof(NOTCH_COMMAND) - sizeof(HEADER)) > 0) {
+        g_idle_add(server_command, command);
+      }
+    }
+    break;
+
     case CMD_NOISE: {
       NOISE_COMMAND *command = g_new(NOISE_COMMAND, 1);
       command->header = header;
@@ -888,7 +898,6 @@ static gpointer listen_thread(gpointer arg) {
 
     setsockopt(listen_socket, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
     setsockopt(listen_socket, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
-
     // bind to listening port
     memset(&addr, 0, addrlen);
     addr.sin_family = AF_INET;
@@ -981,7 +990,6 @@ static gpointer listen_thread(gpointer arg) {
     timeout.tv_sec =  3;
     timeout.tv_usec = 0;
     setsockopt(remoteclient.sock_udp, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-
     memset(&addr, 0, addrlen);
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -1000,7 +1008,6 @@ static gpointer listen_thread(gpointer arg) {
                   (struct sockaddr *)&remoteclient.address, &addrlen);
 
     if (rc != SHA512_DIGEST_LENGTH) {
-
       if (rc < 0) {
         t_perror("Server: UDP read test");
       } else {
@@ -1508,6 +1515,24 @@ static int server_command(gpointer data) {
   }
   break;
 
+  case CMD_NOTCH: {
+    const NOTCH_COMMAND *command = (NOTCH_COMMAND *)data;
+    int id = command->id;
+
+    if (id < receivers) {
+      RECEIVER *rx = receiver[id];
+
+      for (int i = 0; i < 3; i++) {
+        rx->multi_notch_enable[i] = command->enable[i];
+        rx->multi_notch_center[i] = command->center[i];
+        rx->multi_notch_width[i] = command->width[i];
+      }
+
+      rx_set_notch(rx);
+    }
+  }
+  break;
+
   case CMD_NOISE: {
     const NOISE_COMMAND *command = (NOISE_COMMAND *)data;
     int id = command->id;
@@ -1540,7 +1565,7 @@ static int server_command(gpointer data) {
       rx->nr4_noise_rescale      = from_double(command->nr4_noise_rescale);
       rx->nr4_post_threshold     = from_double(command->nr4_post_threshold);
       rx_set_noise(rx);
-      send_rx_data(remoteclient.sock_tcp, id);
+      //send_rx_data(remoteclient.sock_tcp, id);  // NOT NEEDED?
     }
   }
   break;
@@ -2029,15 +2054,18 @@ static int server_command(gpointer data) {
     schedule_transmit_specific();
     schedule_general();
     schedule_high_priority();
+
     //
     // For SoapySDR, the frequency calibration does not become effective
     // until the frequency is explititly set.
     //
     if (device == SOAPYSDR_USB_DEVICE) {
 #ifdef SOAPYSDR
-      for (int id=0; id < RECEIVERS; id++) {
+
+      for (int id = 0; id < RECEIVERS; id++) {
         soapy_protocol_set_rx_frequency(id);
       }
+
       soapy_protocol_set_tx_frequency();
 #endif
     }
