@@ -24,6 +24,7 @@ piHPSDR should be compiled from the sources, consult the Manual (**link given ab
 
 Latest features:
 
+- manual multi notch filter (in the FILTER menu)
 - NR3/NR4 noise reduction models (RNNnoise and libspecbleach) fully integrated
 - client/server model for remote operation (including transmitting in phone and CW)
 - fully configurable Slider and Toolbar area
