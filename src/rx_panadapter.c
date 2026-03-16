@@ -188,6 +188,19 @@ void rx_panadapter_update(RECEIVER *rx) {
   cairo_rectangle(cr, filter_left, 0.0, filter_right - filter_left, myheight);
   cairo_fill(cr);
 
+  //
+  // (Multi-) Notches
+  //
+  for (int i = 0; i < 3; i++) {
+    cairo_set_source_rgba (cr, COLOUR_PAN_NOTCH);
+    if (rx->multi_notch_enable[i]) {
+      double l = rx->cAp * (rx->multi_notch_center[i] - rx->multi_notch_width[i]/2) + rx->cBp;
+      double w = rx->cAp *  rx->multi_notch_width[i];
+      cairo_rectangle(cr, l, 0.0, w, myheight);
+      cairo_fill(cr);
+    }
+  }
+
   // plot the levels
   if (active) {
     cairo_set_source_rgba(cr, COLOUR_PAN_LINE);

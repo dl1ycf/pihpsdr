@@ -315,6 +315,12 @@ void rx_save_state(const RECEIVER *rx) {
     SetPropI1("receiver.%d.pan", rx->id,                        rx->pan);
     SetPropI1("receiver.%d.eq_enable", rx->id,                  rx->eq_enable);
 
+    for (int i = 0; i < 3; i++) {
+      SetPropI2("receiver.%d.notch[%d].enable", rx->id, i,      rx->multi_notch_enable[i]);
+      SetPropI2("receiver.%d.notch[%d].center", rx->id, i,      rx->multi_notch_center[i]);
+      SetPropI2("receiver.%d.notch[%d].width", rx->id, i,       rx->multi_notch_width[i]);
+    }
+
     for (int i = 0; i < 11; i++) {
       SetPropF2("receiver.%d.eq_freq[%d]", rx->id, i,           rx->eq_freq[i]);
       SetPropF2("receiver.%d.eq_gain[%d]", rx->id, i,           rx->eq_gain[i]);
@@ -414,6 +420,12 @@ void rx_restore_state(RECEIVER *rx) {
     GetPropI1("receiver.%d.zoom", rx->id,                       rx->zoom);
     GetPropI1("receiver.%d.pan", rx->id,                        rx->pan);
     GetPropI1("receiver.%d.eq_enable", rx->id,                  rx->eq_enable);
+
+    for (int i = 0; i < 3; i++) {
+      GetPropI2("receiver.%d.notch[%d].enable", rx->id, i,      rx->multi_notch_enable[i]);
+      GetPropI2("receiver.%d.notch[%d].center", rx->id, i,      rx->multi_notch_center[i]);
+      GetPropI2("receiver.%d.notch[%d].width", rx->id, i,       rx->multi_notch_width[i]);
+    }
 
     for (int i = 0; i < 11; i++) {
       GetPropF2("receiver.%d.eq_freq[%d]", rx->id, i,            rx->eq_freq[i]);
@@ -798,6 +810,13 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->nr4_noise_rescale = 2.0;
   rx->nr4_post_threshold = -3.0;
   rx->nr4_noise_scaling_type = 0;
+  
+  for (int i = 0; i < 3; i++ ) {
+    rx->multi_notch_enable[i] = 0;
+    rx->multi_notch_center[0] = 0;
+    rx->multi_notch_width[i] = 100;
+  }
+
   rx->agc = AGC_MEDIUM;
   rx->agc_gain = 80.0;
   rx->agc_slope = 35.0;
@@ -911,6 +930,7 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   // Apply initial settings
   //
   rx_set_noise(rx);
+  rx_set_notch(rx);
   rx_set_fft_size(rx);
   rx_set_fft_latency(rx);
   rx_set_offset(rx);
@@ -1933,6 +1953,35 @@ void rx_set_mode(const RECEIVER *rx) {
   //
   SetRXAMode(rx->id, vfo[rx->id].mode);
   rx_set_squelch(rx);
+}
+
+void rx_set_notch(const RECEIVER *rx) {
+  int notch =0;
+  int num;
+
+  for (int i = 0; i < 3; i++) { notch |= rx->multi_notch_enable[i]; }
+
+  if (notch) {
+    //
+    // First, ensure that there are three notches in the database
+    //
+    RXANBPGetNumNotches(rx->id, &num);
+
+    if (num < 3) {
+      // Add "dummy" notches. This is only done upon the very first call
+      for (int i = num; i < 3; i++) { RXANBPAddNotch(rx->id, i, 0.0, 50.0, 0); }
+    }
+
+    //
+    // Set notches
+    //
+    for (int i = 0; i < 3; i++) {
+      RXANBPEditNotch(rx->id, i, (double)rx->multi_notch_center[i], (double)rx->multi_notch_width[i],
+                      rx->multi_notch_enable[i]);
+    }
+  }
+
+  RXANBPSetNotchesRun(rx->id, notch);
 }
 
 void rx_set_noise(const RECEIVER *rx) {

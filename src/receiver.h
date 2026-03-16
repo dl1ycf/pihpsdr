@@ -152,6 +152,13 @@ typedef struct _receiver {
   double nr4_post_threshold;
   int    nr4_noise_scaling_type;
 
+  //
+  // Manual Multi Notch Filter
+  //
+  int multi_notch_enable[3];
+  int multi_notch_center[3];
+  int multi_notch_width[3];
+
   int filter_low;
   int filter_high;
 
@@ -337,6 +344,7 @@ extern void   rx_set_framerate(RECEIVER *rx);
 extern void   rx_set_frequency(const RECEIVER *rx, long long frequency);
 extern void   rx_set_mode(const RECEIVER* rx);
 extern void   rx_set_noise(const RECEIVER *rx);
+extern void   rx_set_notch(const RECEIVER *rx);
 extern void   rx_set_offset(const RECEIVER *rx);
 extern void   rx_set_squelch(const RECEIVER *rx);
 

@@ -57,10 +57,11 @@
 // lines in the panadapters, and indicating filter passbands and
 // 60m band segments.
 //
-// The PAN_FILTER must be somewhat transparent, such that it does not hide a PAN_LINE.
+// The PAN_FILTER and PAN_NOTCH must be somewhat transparent, such that it does not hide a PAN_LINE.
 //
 
 #define COLOUR_PAN_FILTER    0.30, 0.30, 0.30, 0.66
+#define COLOUR_PAN_NOTCH     0.60, 0.60, 0.00, 0.66
 #define COLOUR_PAN_LINE      0.00, 1.00, 1.00, 1.00
 #define COLOUR_PAN_LINE_WEAK 0.00, 0.50, 0.50, 1.00
 #define COLOUR_PAN_60M       0.60, 0.30, 0.30, 1.00

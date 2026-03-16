@@ -46,6 +46,7 @@ struct _CHOICE {
 typedef struct _CHOICE CHOICE;
 
 static RECEIVER *myrx;
+static int mymode;
 
 static struct _CHOICE *first = NULL;
 static struct _CHOICE *current = NULL;
@@ -54,6 +55,8 @@ static GtkWidget *var1_spin_low;
 static GtkWidget *var1_spin_high;
 static GtkWidget *var2_spin_low;
 static GtkWidget *var2_spin_high;
+static GtkWidget *mn_center[3];
+static GtkWidget *mn_width[3];
 
 static void cleanup(void) {
   if (dialog != NULL) {
@@ -74,14 +77,51 @@ static void cleanup(void) {
   }
 }
 
+static void mn_enable_cb(GtkWidget *widget, gpointer data) {
+  int n = GPOINTER_TO_INT(data);
+  int v = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  myrx->multi_notch_enable[n] = v;
+  rx_set_notch(myrx);
+}
+
 static void cw_peak_cb(GtkWidget *widget, gpointer data) {
   int id = myrx->id;
   int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   vfo_id_cwpeak_changed(id, val);
 }
 
-static gboolean default_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  int mode = vfo[myrx->id].mode;
+static gboolean mn_default_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
+  int n = GPOINTER_TO_INT(data);
+  double c;
+  double w;
+
+  //
+  // This is to restore the notch filter to some default value
+  //
+  w = 50.0;
+  switch(mymode) {
+  case modeCWU:
+  case modeUSB:
+    c = 100.0;
+    break;
+  case modeLSB:
+  case modeCWL:
+    c = -100.0;
+    break;
+  default:
+    c = 0.0;
+    break;
+  }
+
+  //
+  // setting the spin buttons activates the call backs
+  //
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(mn_center[n]), c);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(mn_width[n]), w);
+  return FALSE;
+}
+
+static gboolean var_default_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   int f = GPOINTER_TO_INT(data);
   int low, high;
   GtkWidget *spinlow, *spinhigh;
@@ -90,15 +130,15 @@ static gboolean default_cb (GtkWidget *widget, GdkEventButton *event, gpointer d
   case filterVar1:
     spinlow = var1_spin_low;
     spinhigh = var1_spin_high;
-    low = var_default_low[mode];
-    high = var_default_high[mode];
+    low = var_default_low[mymode];
+    high = var_default_high[mymode];
     break;
 
   case filterVar2:
     spinlow = var2_spin_low;
     spinhigh = var2_spin_high;
-    low = var_default_low[mode];
-    high = var_default_high[mode];
+    low = var_default_low[mymode];
+    high = var_default_high[mymode];
     break;
 
   default:
@@ -107,7 +147,7 @@ static gboolean default_cb (GtkWidget *widget, GdkEventButton *event, gpointer d
     break;
   }
 
-  switch (mode) {
+  switch (mymode) {
   case modeCWL:
   case modeCWU:
   case modeAM:
@@ -188,19 +228,33 @@ static gboolean deviation_select_cb (GtkWidget *widget, gpointer data) {
   return FALSE;
 }
 
+static void mn_center_cb (GtkWidget *widget, gpointer data) {
+  int n = GPOINTER_TO_INT(data);
+  int val = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
+
+  myrx->multi_notch_center[n] = val;
+  rx_set_notch(myrx);
+}
+
+static void mn_width_cb (GtkWidget *widget, gpointer data) {
+  int n = GPOINTER_TO_INT(data);
+  int val = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
+
+  myrx->multi_notch_width[n] = val;
+  rx_set_notch(myrx);
+}
+
 //
 // var_spin_low controls the width for modes that ajust width/shift
 //
 static void var_spin_low_cb (GtkWidget *widget, gpointer data) {
   int f = GPOINTER_TO_UINT(data);
-  int id = myrx->id;
-  int m = vfo[id].mode;
-  FILTER *mode_filters = filters[m];
+  FILTER *mode_filters = filters[mymode];
   FILTER *filter = &mode_filters[f];
   int val = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
   int shift;
 
-  switch (m) {
+  switch (mymode) {
   case modeCWL:
   case modeCWU:
   case modeDSB:
@@ -231,7 +285,7 @@ static void var_spin_low_cb (GtkWidget *widget, gpointer data) {
   }
 
   if (radio_is_remote) {
-    send_filter_var(cl_sock_tcp, m, f);
+    send_filter_var(cl_sock_tcp, mymode, f);
   }
 
   //
@@ -239,7 +293,7 @@ static void var_spin_low_cb (GtkWidget *widget, gpointer data) {
   // use THIS filter.
   //
   for (int v = 0; v < receivers; v++) {
-    if ((vfo[v].mode == m) && (vfo[v].filter == f)) {
+    if ((vfo[v].mode == mymode) && (vfo[v].filter == f)) {
       vfo_id_filter_changed(v, f);
     }
   }
@@ -253,11 +307,10 @@ static void var_spin_high_cb (GtkWidget *widget, gpointer data) {
   int id = myrx->id;
   FILTER *mode_filters = filters[vfo[id].mode];
   FILTER *filter = &mode_filters[f];
-  int m = vfo[id].mode;
   int val = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
   int width;
 
-  switch (m) {
+  switch (mymode) {
   case modeCWL:
     //
     // Set new shift but keep the current width.
@@ -297,7 +350,7 @@ static void var_spin_high_cb (GtkWidget *widget, gpointer data) {
   }
 
   if (radio_is_remote) {
-    send_filter_var(cl_sock_tcp, m, f);
+    send_filter_var(cl_sock_tcp, mymode, f);
   }
 
   //
@@ -305,7 +358,7 @@ static void var_spin_high_cb (GtkWidget *widget, gpointer data) {
   // use THIS filter.
   //
   for (int v = 0; v < receivers; v++) {
-    if ((vfo[v].mode == m) && (vfo[v].filter == f)) {
+    if ((vfo[v].mode == mymode) && (vfo[v].filter == f)) {
       vfo_id_filter_changed(v, f);
     }
   }
@@ -320,8 +373,8 @@ void filter_menu(GtkWidget *parent) {
   // This guards against changing the active receiver while the menu is open
   //
   myrx = active_receiver;
+  mymode = vfo[myrx->id].mode;
   int f = vfo[myrx->id].filter;
-  int m = vfo[myrx->id].mode;
   snprintf(title, sizeof(title), "piHPSDR - Filter (RX%d VFO-%s)", myrx->id + 1, myrx->id == 0 ? "A" : "B");
   GtkWidget *headerbar = gtk_header_bar_new();
   gtk_window_set_titlebar(GTK_WINDOW(dialog), headerbar);
@@ -339,9 +392,10 @@ void filter_menu(GtkWidget *parent) {
   gtk_widget_set_name(w, "close_button");
   g_signal_connect (w, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), w, 0, 0, 4, 1);
-  FILTER* band_filters = filters[m];
+  FILTER* band_filters = filters[mymode];
+  int row = 1;
 
-  if (m == modeFMN) {
+  if (mymode == modeFMN) {
     CHOICE *choice;
     w = gtk_toggle_button_new_with_label("11k");
     gtk_widget_set_name(w, "small_toggle_button");
@@ -357,11 +411,11 @@ void filter_menu(GtkWidget *parent) {
     }
 
     choice->signal = g_signal_connect(w, "toggled", G_CALLBACK(deviation_select_cb), choice);
-    gtk_grid_attach(GTK_GRID(grid), w, 0, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), w, 0, row, 1, 1);
     w = gtk_label_new(" (Deviation=2.5k, use for 12.5 kHz raster)");
     gtk_widget_set_name(w, "boldlabel");
     gtk_widget_set_halign(w, GTK_ALIGN_START);
-    gtk_grid_attach(GTK_GRID(grid), w, 1, 1, 6, 1);
+    gtk_grid_attach(GTK_GRID(grid), w, 1, row, 6, 1);
     w = gtk_toggle_button_new_with_label("16k");
     gtk_widget_set_name(w, "small_toggle_button");
     choice = g_new(CHOICE, 1);
@@ -375,15 +429,15 @@ void filter_menu(GtkWidget *parent) {
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w), TRUE);
     }
 
+    row++;
     choice->signal = g_signal_connect(w, "toggled", G_CALLBACK(deviation_select_cb), choice);
-    gtk_grid_attach(GTK_GRID(grid), w, 0, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), w, 0, row, 1, 1);
     w = gtk_label_new(" (Deviation=5.0k, use for 25.0 kHz raster)");
     gtk_widget_set_name(w, "boldlabel");
     gtk_widget_set_halign(w, GTK_ALIGN_START);
-    gtk_grid_attach(GTK_GRID(grid), w, 1, 2, 6, 1);
+    gtk_grid_attach(GTK_GRID(grid), w, 1, row, 6, 1);
   } else {
-    int row = 0;
-    int col = 10;
+    int col = 0;
     CHOICE *choice;
 
     for (int i = 0; i < filterVar1; i++) {
@@ -414,9 +468,9 @@ void filter_menu(GtkWidget *parent) {
     //
     // Var1 and Var2 separated by a small horizontal line
     //
-    GtkWidget *line = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-    gtk_widget_set_size_request(line, -1, 3);
-    gtk_grid_attach(GTK_GRID(grid), line, 0, row++, 10, 1);
+    w = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+    gtk_widget_set_size_request(w, -1, 3);
+    gtk_grid_attach(GTK_GRID(grid), w, 0, row++, 10, 1);
     //
     // Place Var1 and Var2 buttons in row+1, row+2
     //
@@ -456,7 +510,7 @@ void filter_menu(GtkWidget *parent) {
     //
     // The spin buttons either control low/high or width/shift
     //
-    switch (m) {
+    switch (mymode) {
     case modeCWL:
     case modeCWU:
     case modeDSB:
@@ -507,11 +561,11 @@ void filter_menu(GtkWidget *parent) {
     case modeDIGU:
       w = gtk_label_new("Filter Cut Low");
       gtk_widget_set_name(w, "boldlabel");
-      gtk_widget_set_halign(w, GTK_ALIGN_START);
+      gtk_widget_set_halign(w, GTK_ALIGN_CENTER);
       gtk_grid_attach(GTK_GRID(grid), w, 2, row, 3, 1);
       w = gtk_label_new("Filter Cut High");
       gtk_widget_set_name(w, "boldlabel");
-      gtk_widget_set_halign(w, GTK_ALIGN_START);
+      gtk_widget_set_halign(w, GTK_ALIGN_CENTER);
       gtk_grid_attach(GTK_GRID(grid), w, 5, row, 3, 1);
       var1_spin_low = gtk_spin_button_new_with_range(-8000, 8000.0, 5.0);
       gtk_spin_button_set_value(GTK_SPIN_BUTTON(var1_spin_low), (double)(filter1->low));
@@ -534,25 +588,69 @@ void filter_menu(GtkWidget *parent) {
     g_signal_connect(var2_spin_high, "value-changed", G_CALLBACK(var_spin_high_cb), GINT_TO_POINTER(filterVar2));
     GtkWidget *var1_default_b = gtk_button_new_with_label("Default");
     gtk_widget_set_name(var1_default_b, "small_button");
-    g_signal_connect (var1_default_b, "button-press-event", G_CALLBACK(default_cb), GINT_TO_POINTER(filterVar1));
+    g_signal_connect (var1_default_b, "button-press-event", G_CALLBACK(var_default_cb), GINT_TO_POINTER(filterVar1));
     gtk_grid_attach(GTK_GRID(grid), var1_default_b, 8, row + 1, 2, 1);
     GtkWidget *var2_default_b = gtk_button_new_with_label("Default");
     gtk_widget_set_name(var2_default_b, "small_button");
-    g_signal_connect (var2_default_b, "button-press-event", G_CALLBACK(default_cb), GINT_TO_POINTER(filterVar2));
+    g_signal_connect (var2_default_b, "button-press-event", G_CALLBACK(var_default_cb), GINT_TO_POINTER(filterVar2));
     gtk_grid_attach(GTK_GRID(grid), var2_default_b, 8, row + 2, 2, 1);
+    row += 3;
 
     //
     // Add a checkbox for the CW audio peak filter, if the mode is CWU/CWL
     //
-    if (m == modeCWU || m == modeCWL) {
-      GtkWidget *cw_peak_b = gtk_check_button_new_with_label("Enable additional CW Audio peak filter");
-      gtk_widget_set_name(cw_peak_b, "boldlabel");
-      gtk_widget_set_halign(cw_peak_b, GTK_ALIGN_START);
-      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (cw_peak_b), vfo[myrx->id].cwAudioPeakFilter);
-      gtk_grid_attach(GTK_GRID(grid), cw_peak_b, 4, 0, 6, 1);
-      g_signal_connect(cw_peak_b, "toggled", G_CALLBACK(cw_peak_cb), NULL);
+    if (mymode == modeCWU || mymode == modeCWL) {
+      w = gtk_check_button_new_with_label("Enable additional CW Audio peak filter");
+      gtk_widget_set_name(w, "boldlabel");
+      gtk_widget_set_halign(w, GTK_ALIGN_START);
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), vfo[myrx->id].cwAudioPeakFilter);
+      gtk_grid_attach(GTK_GRID(grid), w, 4, 0, 6, 1);
+      g_signal_connect(w, "toggled", G_CALLBACK(cw_peak_cb), NULL);
     }
   }
+
+  //
+  // Add manual multi notch area
+  //
+  w = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+  gtk_widget_set_size_request(w, -1, 3);
+  gtk_grid_attach(GTK_GRID(grid), w, 0, row++, 10, 1);
+  w = gtk_label_new("Enable");
+  gtk_widget_set_name(w, "boldlabel");
+  gtk_widget_set_halign(w, GTK_ALIGN_CENTER);
+  gtk_grid_attach(GTK_GRID(grid), w, 0, row, 2, 1);
+  w = gtk_label_new("Notch Center");
+  gtk_widget_set_name(w, "boldlabel");
+  gtk_widget_set_halign(w, GTK_ALIGN_CENTER);
+  gtk_grid_attach(GTK_GRID(grid), w, 2, row, 3, 1);
+  w = gtk_label_new("Notch Width");
+  gtk_widget_set_name(w, "boldlabel");
+  gtk_widget_set_halign(w, GTK_ALIGN_CENTER);
+  gtk_grid_attach(GTK_GRID(grid), w, 5, row, 3, 1);
+  row++;
+  for (int i = 0; i < 3; i++) {
+    w = gtk_check_button_new();
+    gtk_widget_set_halign(w, GTK_ALIGN_CENTER);
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), myrx->multi_notch_enable[i]);
+    gtk_grid_attach(GTK_GRID(grid), w, 0, row, 2, 1);
+    g_signal_connect(w, "toggled", G_CALLBACK(mn_enable_cb), GINT_TO_POINTER(i));
+    w = gtk_spin_button_new_with_range(-24000, 24000.0, 25.0);
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(w), (double)(myrx->multi_notch_center[i]));
+    gtk_grid_attach(GTK_GRID(grid), w, 2, row, 3, 1);
+    g_signal_connect(w, "value-changed", G_CALLBACK(mn_center_cb), GINT_TO_POINTER(i));
+    mn_center[i]=w;
+    w = gtk_spin_button_new_with_range(0, 1000.0, 25.0);
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(w), (double)(myrx->multi_notch_width[i]));
+    gtk_grid_attach(GTK_GRID(grid), w, 5, row, 3, 1);
+    g_signal_connect(w, "value-changed", G_CALLBACK(mn_width_cb), GINT_TO_POINTER(i));
+    mn_width[i]=w;
+    w = gtk_button_new_with_label("Default");
+    gtk_widget_set_name(w, "small_button");
+    g_signal_connect (w, "button-press-event", G_CALLBACK(mn_default_cb), GINT_TO_POINTER(i));
+    gtk_grid_attach(GTK_GRID(grid), w, 8, row, 2, 1);
+    row++;
+  }
+
 
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
