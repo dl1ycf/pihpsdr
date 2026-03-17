@@ -617,6 +617,7 @@ static gpointer client_tcp_thread(gpointer arg) {
   PS_TX_FEEDBACK = 2;
   PS_RX_FEEDBACK = 3;
   can_transmit = 0;  // will be set when receiving an INFO_TRANSMITTER
+  radio->network.address = server_address;
 
   for (int i = 0; i < 2; i++) {
     RECEIVER *rx = receiver[i] = g_new(RECEIVER, 1);

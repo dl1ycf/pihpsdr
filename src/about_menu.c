@@ -97,52 +97,58 @@ void about_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), label, 1, row, 19, 1);
   row++;
 
-  switch (radio->protocol) {
-  case ORIGINAL_PROTOCOL:
-  case NEW_PROTOCOL:
-    if (device == DEVICE_OZY) {
-      snprintf(text, sizeof(text), "Device:  OZY (via USB)  Protocol %s v%d.%d",
-               radio->protocol == ORIGINAL_PROTOCOL ? "1" : "2",
-               radio->software_version / 10, radio->software_version % 10);
-    } else {
-      char interface_addr[128];
-      char addr[128];
-      snprintf(addr, sizeof(addr), "%s", inet_ntoa(radio->network.address.sin_addr));
-      snprintf(interface_addr, sizeof(interface_addr), " (%s)", inet_ntoa(radio->network.interface_address.sin_addr));
-
-      if (!strcmp(interface_addr, " (0.0.0.0)")) { *interface_addr = 0; }
-
-      if (have_saturn_xdma) {
-        snprintf(text, sizeof(text), "Device: Saturn (via XDMA), Protocol %s, v%d.%d\n",
+  if (radio_is_remote) {
+    snprintf(text, sizeof(text), "Device: %s, Protocol %s, running remote at %s\n",
+             radio->name, radio->protocol == ORIGINAL_PROTOCOL ? "1" : "2",
+             inet_ntoa(radio->network.address.sin_addr));
+  } else {
+    switch (radio->protocol) {
+    case ORIGINAL_PROTOCOL:
+    case NEW_PROTOCOL:
+      if (device == DEVICE_OZY) {
+        snprintf(text, sizeof(text), "Device:  OZY (via USB)  Protocol %s v%d.%d",
                  radio->protocol == ORIGINAL_PROTOCOL ? "1" : "2",
                  radio->software_version / 10, radio->software_version % 10);
       } else {
-        snprintf(text, sizeof(text), "Device: %s, Protocol %s, v%d.%d\n"
-                                     "  Mac Address: %02X:%02X:%02X:%02X:%02X:%02X\n"
-                                     "  IP Address: %s via %s%s",
-                 radio->name, radio->protocol == ORIGINAL_PROTOCOL ? "1" : "2",
-                 radio->software_version / 10, radio->software_version % 10,
-                 radio->network.mac_address[0],
-                 radio->network.mac_address[1],
-                 radio->network.mac_address[2],
-                 radio->network.mac_address[3],
-                 radio->network.mac_address[4],
-                 radio->network.mac_address[5],
-                 addr,
-                 radio->network.interface_name,
-                 interface_addr);
-      }
-    }
+        char interface_addr[128];
+        char addr[128];
+        snprintf(addr, sizeof(addr), "%s", inet_ntoa(radio->network.address.sin_addr));
+        snprintf(interface_addr, sizeof(interface_addr), " (%s)", inet_ntoa(radio->network.interface_address.sin_addr));
 
-    break;
+        if (!strcmp(interface_addr, " (0.0.0.0)")) { *interface_addr = 0; }
+
+        if (have_saturn_xdma) {
+          snprintf(text, sizeof(text), "Device: Saturn (via XDMA), Protocol %s, v%d.%d\n",
+                 radio->protocol == ORIGINAL_PROTOCOL ? "1" : "2",
+                 radio->software_version / 10, radio->software_version % 10);
+        } else {
+          snprintf(text, sizeof(text), "Device: %s, Protocol %s, v%d.%d\n"
+                                       "  Mac Address: %02X:%02X:%02X:%02X:%02X:%02X\n"
+                                       "  IP Address: %s via %s%s",
+                   radio->name, radio->protocol == ORIGINAL_PROTOCOL ? "1" : "2",
+                   radio->software_version / 10, radio->software_version % 10,
+                   radio->network.mac_address[0],
+                   radio->network.mac_address[1],
+                   radio->network.mac_address[2],
+                   radio->network.mac_address[3],
+                   radio->network.mac_address[4],
+                   radio->network.mac_address[5],
+                   addr,
+                   radio->network.interface_name,
+                   interface_addr);
+        }
+      }
+
+      break;
 #ifdef SOAPYSDR
 
-  case SOAPYSDR_PROTOCOL:
-    snprintf(text, sizeof(text), "Device: %s (via SoapySDR)\n"
-                                 "  %s (%s)",
-             radio->name, radio->soapy.hardware_key, radio->soapy.driver_key);
-    break;
+    case SOAPYSDR_PROTOCOL:
+      snprintf(text, sizeof(text), "Device: %s (via SoapySDR)\n"
+                                   "  %s (%s)",
+               radio->name, radio->soapy.hardware_key, radio->soapy.driver_key);
+      break;
 #endif
+    }
   }
 
   label = gtk_label_new(text);
