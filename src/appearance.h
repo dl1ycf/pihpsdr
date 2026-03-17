@@ -62,6 +62,7 @@
 
 #define COLOUR_PAN_FILTER    0.30, 0.30, 0.30, 0.66
 #define COLOUR_PAN_NOTCH     0.60, 0.60, 0.00, 0.66
+#define COLOUR_PAN_NOTCHLINE 0.80, 0.80, 0.00, 1.00
 #define COLOUR_PAN_LINE      0.00, 1.00, 1.00, 1.00
 #define COLOUR_PAN_LINE_WEAK 0.00, 0.50, 0.50, 1.00
 #define COLOUR_PAN_60M       0.60, 0.30, 0.30, 1.00

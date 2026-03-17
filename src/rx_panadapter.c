@@ -188,20 +188,6 @@ void rx_panadapter_update(RECEIVER *rx) {
   cairo_rectangle(cr, filter_left, 0.0, filter_right - filter_left, myheight);
   cairo_fill(cr);
 
-  //
-  // (Multi-) Notches
-  //
-  for (int i = 0; i < 3; i++) {
-    cairo_set_source_rgba (cr, COLOUR_PAN_NOTCH);
-
-    if (rx->multi_notch_enable[i]) {
-      double l = rx->cAp * (rx->multi_notch_center[i] - 0.5 * rx->multi_notch_width[i]) + rx->cBp;
-      double w = rx->cAp *  rx->multi_notch_width[i];
-      cairo_rectangle(cr, l, 0.0, w, myheight);
-      cairo_fill(cr);
-    }
-  }
-
   // plot the levels
   if (active) {
     cairo_set_source_rgba(cr, COLOUR_PAN_LINE);
@@ -323,6 +309,37 @@ void rx_panadapter_update(RECEIVER *rx) {
         cairo_set_line_width(cr, PAN_LINE_EXTRA);
         cairo_stroke(cr);
       }
+    }
+  }
+
+  //
+  // (Multi-) Notches
+  //
+  for (int i = 0; i < 3; i++) {
+
+    if (rx->multi_notch_enable[i]) {
+      double l = rx->cAp * (rx->multi_notch_center[i] - 0.5 * rx->multi_notch_width[i]) + rx->cBp;
+      double w = rx->cAp *  rx->multi_notch_width[i];
+      cairo_set_source_rgba (cr, COLOUR_PAN_NOTCH);
+      cairo_rectangle(cr, l, 0.0, w, myheight);
+      cairo_fill(cr);
+#if 0
+      if (w < 10.0) {
+        //
+        // If the width of the notch area is less than 10 pixels,
+        // draw a vertical yellow line to help guiding the eye
+        //
+        const double dash[] ={ 12.0, 24.0 };
+        double c = rx->cAp * rx->multi_notch_center[i] + rx->cBp;
+        cairo_set_source_rgba (cr, COLOUR_PAN_NOTCHLINE);
+        cairo_set_line_width(cr, PAN_LINE_THICK);
+        cairo_set_dash(cr, dash, 2, 0.0);
+        cairo_move_to(cr, c, 0.0);
+        cairo_line_to(cr, c, myheight);
+        cairo_stroke(cr);
+        cairo_set_dash(cr, dash, 0, 0.0);
+      }
+#endif
     }
   }
 
