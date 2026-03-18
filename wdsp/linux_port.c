@@ -194,12 +194,14 @@ HANDLE _beginthread( void( __cdecl *start_address )( void * ), unsigned stack_si
 	}
 
 	//pthread_attr_destroy(&attr);
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(NO_PTHREAD_SETNAME_NP)
 	//
-	// pthread_setname_np does not exist, or exists with
-	// different semantics, on MacOS (you can only name "yourself")
-	// To aid analyzing CPU times, we name each thread with its
-	// function.
+	// pthread_setname_np does not exist (or exists with
+	// different semantics) on MacOS and on certain
+    // lightweight LINUX variants such as "DietPi".
+    // Using pthread_setname_np() serves no function except that
+	// one sees what the individual threads are doing when
+	// watching the system via "top -h"
 	//
 	void sendbuf(void *arg); // declared in analyzer.c but not in header file
 	char tname[64];
