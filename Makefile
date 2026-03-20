@@ -1,10 +1,32 @@
 #######################################################################################
 # IMPORTANT NOTE:
 # This file is no longer meant to be changed by the end user.
-# To use non-default compile-time options please create a file4
+# To use non-default compile-time options please create a file
 # make.config.pihpsdr (see below)
 #
 #######################################################################################
+
+#######################################################################################
+#
+# Get info about the operating system
+#
+#######################################################################################
+
+UNAME_S := $(shell uname -s)
+UNAME_R := $(shell uname -r)
+
+MACOS:=NO
+LINUX:=NO
+
+ifeq ($(findstring Darwin, $(UNAME_S)), Darwin)
+ MACOS:=YES
+endif
+
+ifeq ($(findstring Linux, $(UNAME_S)), Linux)
+ LINUX:=YES
+ ifeq ($(findstring 6.12., $(UNAME_R)), 6.12.)
+ endif
+endif
 
 #######################################################################################
 #
@@ -20,9 +42,10 @@ SOAPYSDR=OFF
 STEMLAB=OFF
 NR34LIB=OFF
 TTS=ON
-ifeq ($(UNAME_S), Darwin)
+ifeq ($(MACOS), YES)
 AUDIO=PORTAUDIO
-else
+endif
+ifeq ($(LINUX), YES)
 AUDIO=PULSE
 endif
 
@@ -38,7 +61,7 @@ endif
 # STEMLAB      | If ON, piHPSDR can start SDR app on RedPitay via Web interface (needs libcurl)
 # NR34LIB      | If ON, an installed version of rnnoise and libspecbleach are used,
 #              | If Off, rnnoise and libspecbleach as distributed with piHPSDR are used
-# AUDIO        | If AUDIO=ALSA, use ALSA rather than PulseAudio on Linux
+# AUDIO        | Select audio module (ALSA, PULSE, PORTAUDO)
 #
 # If you want to use a non-default compile time option, write them
 # into a file "make.config.pihpsdr". So, for example, if you want to
@@ -72,10 +95,6 @@ endif
 #######################################################################################
 
 -include make.config.pihpsdr
-
-# get the OS Name
-UNAME_S := $(shell uname -s)
-UNAME_R := $(shell uname -r)
 
 # Get git commit version and date
 GIT_DATE := $(firstword $(shell git --no-pager show --date=short --format="%ai" --name-only))
@@ -140,7 +159,7 @@ endif
 #
 ##############################################################################
 
-ifeq ($(UNAME_S), Darwin)
+ifeq ($(MACOS), YES)
 GPIO=
 SATURN=
 ifeq ($(AUDIO), ALSA)
@@ -151,19 +170,19 @@ endif
 ##############################################################################
 #
 # Add modules for MIDI if requested.
-# Note these are different for Linux/MacOS
+# Note these are different for LINUX/MACOS
 #
 ##############################################################################
 
 ifeq ($(MIDI),ON)
 MIDI_OPTIONS=-D MIDI
 MIDI_HEADERS= src/midi.h src/midi_menu.h
-ifeq ($(UNAME_S), Darwin)
+ifeq ($(MACOS), YES)
 MIDI_SOURCES= src/mac_midi.c src/midi2.c src/midi3.c src/midi_menu.c
 MIDI_OBJS= src/mac_midi.o src/midi2.o src/midi3.o src/midi_menu.o
 MIDI_LIBS= -framework CoreMIDI -framework Foundation
 endif
-ifeq ($(UNAME_S), Linux)
+ifeq ($(LINUX), YES)
 MIDI_SOURCES= src/alsa_midi.c src/midi2.c src/midi3.c src/midi_menu.c
 MIDI_OBJS= src/alsa_midi.o src/midi2.o src/midi3.o src/midi_menu.o
 MIDI_LIBS= -lasound
@@ -182,12 +201,12 @@ CPP_SOURCES += src/alsa_midi.c src/midi2.c src/midi3.c src/midi_menu.c
 ifeq ($(TTS),ON)
 TTS_OPTIONS=-D TTS
 TTS_HEADERS= src/tts.h src/MacTTS.h
-ifeq ($(UNAME_S), Darwin)
+ifeq ($(MACOS), YES)
 TTS_SOURCES= src/tts.c src/MacTTS.m
 TTS_OBJS= src/tts.o src/MacTTS.o
 TTS_LIBS= -framework Foundation -framework AVFoundation
 endif
-ifeq ($(UNAME_S), Linux)
+ifeq ($(LINUX), YES)
 TTS_OPTIONS=-D TTS
 TTS_HEADERS= src/tts.h src/MacTTS.h
 TTS_SOURCES= src/tts.c
@@ -255,7 +274,7 @@ CPP_INCLUDE += `$(PKG_CONFIG) --cflags libusb-1.0`
 # Add libraries for SoapySDR support, if requested
 # On MacOS, SoapySDR libs are installed via homebrew
 # and their correct location can be found via pkg-config.
-# On Linux, we have "manually" compiled+installed Soapy stuff in
+# On LINUX, we have "manually" compiled+installed Soapy stuff in
 # LINUX/libinstall.sh because some older repsitories still have
 # the v0.7 Soapy libraries which have a different API. This
 # "manual" installation places the Soapy stuff in /usr/local
@@ -264,10 +283,11 @@ CPP_INCLUDE += `$(PKG_CONFIG) --cflags libusb-1.0`
 
 ifeq ($(SOAPYSDR),ON)
 SOAPYSDR_OPTIONS=-D SOAPYSDR
-ifeq ($(UNAME_S), Darwin)
+ifeq ($(MACOS), YES)
 SOAPYSDR_LIBS=`$(PKG_CONFIG) --libs soapysdr`
 SOAPYSDR_INCLUDE=`$(PKG_CONFIG) --cflags soapysdr`
-else
+endif
+ifeq ($(LINUX), YES)
 SOAPYSDR_INCLUDE= -I/usr/local/include
 SOAPYSDR_LIBS= -L/usr/local/lib -lSoapySDR
 endif
@@ -283,9 +303,10 @@ src/soapy_protocol.o
 endif
 CPP_DEFINES += -DSOAPYSDR
 CPP_SOURCES += src/soapy_discovery.c src/soapy_protocol.c
-ifeq ($(UNAME_S), Darwin)
+ifeq ($(MACOS), YES)
 CPP_INCLUDE +=`$(PKG_CONFIG) --cflags soapysdr`
-else
+endif
+ifeq ($(LINUX), YES)
 CPP_INCLUDE += -I/usr/local/include
 endif
 
@@ -383,8 +404,8 @@ AUDIO_OBJS=src/portaudio.o
 endif
 CPP_DEFINES += -DPORTAUDIO
 CPP_SOURCES += src/portaudio.c
-ifeq ($(UNAME_S), Darwin)
-# does not exist on RaspPi
+ifeq ($(MACOS), YES)
+# PortAudio on Linux does not have/need pkg-config.
 CPP_INCLUDE += `$(PKG_CONFIG) --cflags portaudio-2.0`
 endif
 
@@ -420,11 +441,11 @@ CPP_INCLUDE += `$(PKG_CONFIG) --cflags openssl`
 #
 ##############################################################################
 
-ifeq ($(UNAME_S), Linux)
+ifeq ($(LINUX), YES)
 SYS_LIBS=-lrt
 endif
 
-ifeq ($(UNAME_S), Darwin)
+ifeq ($(MACOS), YES)
 SYS_LIBS=-framework IOKit
 endif
 
@@ -786,16 +807,14 @@ CPP_INCLUDE:=$(shell echo $(CPP_INCLUDE) | sed -e "s/ -pthread/ /" )
 
 CPP_OPTIONS= --inline-suppr --enable=all --suppress=unmatchedSuppression
 
-TRIXIE=$(UNAME_R:6.12.%=YES)
-
-ifeq ($(UNAME_S), Darwin)
+ifeq ($(MACOS), YES)
 CPP_OPTIONS += -D__APPLE__
 CPP_OPTIONS += --check-level=exhaustive
-else
-CPP_OPTIONS += -D__linux__
-ifeq ($(TRIXIE), YES)
-CPP_OPTIONS += --check-level=exhaustive
 endif
+ifeq ($(LINUX), YES)
+CPP_OPTIONS += -D__linux__
+# there are "old" versions of cppcheck around which do not yet have
+# check-level=exhaustive. So we do not do this check on LINUX.
 endif
 
 CPP_OPTIONS += --suppress=missingIncludeSystem
