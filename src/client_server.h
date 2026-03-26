@@ -142,7 +142,7 @@ enum _header_type_enum {
   CLIENT_SERVER_COMMANDS,
 };
 
-#define CLIENT_SERVER_VERSION 0x01270001 // 32-bit version number
+#define CLIENT_SERVER_VERSION 0x01270002 // 32-bit version number
 #define SPECTRUM_DATA_SIZE 4096          // Maximum width of a panadapter
 #define AUDIO_DATA_SIZE 512              // 512 (mono) samples
 
@@ -586,6 +586,9 @@ typedef struct __attribute__((__packed__)) _receiver_data {
   mydouble nr4_post_threshold;
   mydouble eq_freq[11];
   mydouble eq_gain[11];
+  mydouble multi_notch_center[3];
+  mydouble multi_notch_width[3];
+  mydouble notch_min_width;
   //
   uint32_t fft_size;
   uint32_t sample_rate;
@@ -622,6 +625,7 @@ typedef struct __attribute__((__packed__)) _receiver_data {
   uint8_t smetermode;
   uint8_t low_latency;
   uint8_t pan;
+  uint8_t multi_notch_enable[3];
 } RECEIVER_DATA;
 
 //
@@ -832,7 +836,8 @@ typedef struct __attribute__((__packed__)) _equalizer_command {
 
 //
 // Data to be sent by the client if a notch has been
-// changed
+// changed. Note "minwidth" is never changed on the
+// client side since it is computed by WDSP.
 //
 typedef struct __attribute__((__packed__)) _notch_command {
   HEADER header;

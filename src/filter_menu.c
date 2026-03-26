@@ -95,9 +95,11 @@ static gboolean mn_default_cb (GtkWidget *widget, GdkEventButton *event, gpointe
   double c;
   double w;
   //
-  // This is to restore the notch filter to some default value
+  // This is to restore the notch filter to some default value:
+  // place notch in the center of the current pass-band, and
+  // set its width to the minimum
   //
-  w = 50.0;
+  w = myrx->notch_min_width;
   c = 0.5 * (myrx->filter_low + myrx->filter_high) + vfo[myrx->id].offset;
   //
   // setting the spin buttons activates the call backs
@@ -625,7 +627,7 @@ void filter_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(grid), w, 2, row, 3, 1);
     g_signal_connect(w, "value-changed", G_CALLBACK(mn_center_cb), GINT_TO_POINTER(i));
     mn_center[i] = w;
-    w = gtk_spin_button_new_with_range(0, 1000.0, 25.0);
+    w = gtk_spin_button_new_with_range(myrx->notch_min_width, 1000.0, 25.0);
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(w), myrx->multi_notch_width[i]);
     gtk_grid_attach(GTK_GRID(grid), w, 5, row, 3, 1);
     g_signal_connect(w, "value-changed", G_CALLBACK(mn_width_cb), GINT_TO_POINTER(i));

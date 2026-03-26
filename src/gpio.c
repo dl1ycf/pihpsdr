@@ -1099,7 +1099,7 @@ static gpointer monitor_thread(gpointer arg) {
       continue;
     }
 
-    for (unsigned long i = 0; i < ret; i++) {
+    for (unsigned long i = 0; i < (unsigned long) ret; i++) {
       struct gpiod_edge_event *event = gpiod_edge_event_buffer_get_event(event_buffer, i);
 
       if (!event) { continue; }  // This is paranoia

@@ -1524,8 +1524,8 @@ static int server_command(gpointer data) {
 
       for (int i = 0; i < 3; i++) {
         rx->multi_notch_enable[i] = command->enable[i];
-        rx->multi_notch_center[i] = command->center[i];
-        rx->multi_notch_width[i] = command->width[i];
+        rx->multi_notch_center[i] = from_double(command->center[i]);
+        rx->multi_notch_width[i] = from_double(command->width[i]);
       }
 
       rx_set_notch(rx);
@@ -2272,11 +2272,17 @@ static int server_command(gpointer data) {
 
   case CMD_RXFFT: {
     const U32_COMMAND *command = (U32_COMMAND *)data;
-    RECEIVER *rx = receiver[command->header.b1];
+    int id = command->header.b1;
+    RECEIVER *rx = receiver[id];
     rx->low_latency = command->header.b2;
     rx->fft_size = from_32(command->u32);
     rx_set_fft_latency(rx);
     rx_set_fft_size(rx);
+    //
+    // Changing FFT size may change other things as well
+    // (e.g. notch widths), so send back rx data
+    //
+    send_rx_data(remoteclient.sock_tcp, id);
   }
   break;
 

@@ -814,7 +814,6 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   for (int i = 0; i < 3; i++ ) {
     rx->multi_notch_enable[i] = 0;
     rx->multi_notch_center[0] = 0.0;
-    rx->multi_notch_width[i] = 100.0;
   }
 
   rx->agc = AGC_MEDIUM;
@@ -926,12 +925,13 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   SetRXAAMDSBMode(rx->id, 0);         // use both sidebands in SAM
   SetRXAPanelRun(rx->id, 1);          // turn on RXA panel
   SetRXAPanelSelect(rx->id, 3);       // use both I and Q input
+
   //
   // Apply initial settings
   //
+  rx_set_fft_size(rx);  // This will adjust min notch width
   rx_set_noise(rx);
   rx_set_notch(rx);
-  rx_set_fft_size(rx);
   rx_set_fft_latency(rx);
   rx_set_offset(rx);
   rx_set_af_gain(rx);
@@ -1936,13 +1936,28 @@ void rx_set_fft_latency(const RECEIVER *rx) {
   RXASetMP(rx->id, rx->low_latency);
 }
 
-void rx_set_fft_size(const RECEIVER *rx) {
+void rx_set_fft_size(RECEIVER *rx) {
   if (radio_is_remote) {
     send_rx_fft(cl_sock_tcp, rx);
     return;
   }
 
   RXASetNC(rx->id, rx->fft_size);
+  //
+  // Increase notch widths if they are too small
+  //
+  double w;
+  RXANBPSetAutoIncrease(rx->id, 1);
+  RXANBPGetMinNotchWidth(rx->id, &w);
+  w = 25.0 * round(w * 0.04);
+  rx->notch_min_width = w;
+
+  for (int i = 0; i < 3; i++) {
+    if (rx->multi_notch_width[i] < rx->notch_min_width) {
+      rx->multi_notch_width[i] = rx->notch_min_width;
+    }
+  }
+  rx_set_notch(rx);
 }
 
 void rx_set_mode(const RECEIVER *rx) {
@@ -1980,6 +1995,7 @@ void rx_set_notch(const RECEIVER *rx) {
     //
     // Set enable/center/width
     //
+
     for (int i = 0; i < 3; i++) {
       RXANBPEditNotch(rx->id, i, rx->multi_notch_center[i], rx->multi_notch_width[i],
                       rx->multi_notch_enable[i]);

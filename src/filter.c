@@ -804,9 +804,12 @@ void notch_width_changed(int id, int pos, int val) {
   if (id >= 0 && id < receivers) {
     RECEIVER *rx = receiver[id];
     double w = rx->multi_notch_width[pos] + (double) val;
-
-    if (w < 25.0) { w = 25.0; }
-
+    w = 25.0 * (w * 0.04);
+ 
+    if (w < rx->notch_min_width) {
+      w = rx->notch_min_width;
+    }
+    
     rx->multi_notch_width[pos] = w;
     rx_set_notch(rx);
   }

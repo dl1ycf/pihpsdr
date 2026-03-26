@@ -154,7 +154,11 @@ typedef struct _receiver {
 
   //
   // Manual Multi Notch Filter
+  // The "minimum" width is 200 Hz for an RX filter with 2048 taps
+  // (which is the default), and becomes smaller/larger if the filter
+  // tap size is increased/decreased
   //
+  double notch_min_width;
   int multi_notch_enable[3];
   double multi_notch_center[3];
   double multi_notch_width[3];
@@ -338,7 +342,7 @@ extern void   rx_set_deviation(const RECEIVER *rx);
 extern void   rx_set_displaying(RECEIVER *rx);
 extern void   rx_set_equalizer(RECEIVER *rx);
 extern void   rx_set_fft_latency(const RECEIVER *rx);
-extern void   rx_set_fft_size(const RECEIVER *rx);
+extern void   rx_set_fft_size(RECEIVER *rx);
 extern void   rx_set_filter(RECEIVER *rx);
 extern void   rx_set_framerate(RECEIVER *rx);
 extern void   rx_set_frequency(const RECEIVER *rx, long long frequency);
