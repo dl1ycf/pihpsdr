@@ -78,15 +78,21 @@
 // MUST specify the font size. If not, it may happen that the sliders cannot be
 // displayed on a large screen
 //
-// Note "Piboto" is the "Roboto" font before its 2014 re-design. It seems to be
-// available on RaspPis only, therefore I provide the "Roboto" as well.
+// APPLE fonts:
+// Now we have switched to fonts which should be available on all MacOS boces
+//
+// LINUX fonts:
+// LINUX/libinstall.sh now explicitly loads the "Open Sans" and "FreeSans" fonts
+// (it seems the former has a blank in its name and the latter not).
+// NunitoSans is the new default system font on RaspPi, starting with "Trixie",
+// where "Piboto" has been removed. It may not exist on other LINUX systems.
 //
 //////////////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __APPLE__
 char *cssfont[] = {"system-ui", "Helvetica Neue", "Monaco", "Arial" };
 #else
-char *cssfont[] = {"OpenSans", "Roboto Mono", "Free Sans", "Roboto", "Piboto" };
+char *cssfont[] = {"Open Sans", "Roboto Mono", "FreeSans", "Roboto", "NunitoSans" };
 #endif
 
 const int num_css_fonts = sizeof(cssfont) / sizeof(char *);
