@@ -373,12 +373,12 @@ void ReadStatusRegister(void);
 unsigned int GetP2PTTKeyInputs(void);
 
 //
-// GetADCOverflow(void)
 // return true if ADC overflow has occurred since last read.
 // the overflow stored state is reset when this is read.
 // returns bit0: 1 if ADC1 overflow; bit1: 1 if ADC2 overflow
+// In addition, record peak values
 //
-unsigned int GetADCOverflow(void);
+unsigned int GetADCOverflow(uint16_t *ADC1max, uint16_t *ADC2max);
 
 //
 // GetUserIOBits(void)

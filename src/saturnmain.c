@@ -722,6 +722,10 @@ void saturn_exit() {
 //
 static gpointer saturn_high_priority_thread(gpointer arg) {
   uint8_t  ADCOverflows = 0;                      // set to non-zero if ADC overflows detected
+  uint16_t ADC1MaxAmpl;                           // max ADC amplitude in period where overflows clecked
+  uint16_t ADC2MaxAmpl;                           // max ADC amplitude in period where overflows clecked
+  uint16_t PeakADC1MaxAmpl = 0;                   // max hold ADC amplitude in period of message
+  uint16_t PeakADC2MaxAmpl = 0;                   // max hold ADC amplitude in period of message
 
   while (!Exiting) {
     uint32_t SequenceCounter = 0;                       // sequence count for pihpsdr
@@ -747,10 +751,22 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
       ReadStatusRegister();
       PTTBits = GetP2PTTKeyInputs() & 0xFF;
       mybuf->buffer[4] = PTTBits;
-      ADCOverflows |= (GetADCOverflow() & 0xFF);
+      //
+      // Reporting the peak values in byte39:40 and 41:42 is a protocol extension
+      // currently not used by piHPSDR
+      //
+      ADCOverflows |= (GetADCOverflow(&ADC1MaxAmpl, &ADC2MaxAmpl) & 0xFF);            // add in any new overflows
+      if (ADC1MaxAmpl > PeakADC1MaxAmpl) { PeakADC1MaxAmpl = ADC1MaxAmpl; }           // get peak hold
+      if (ADC2MaxAmpl > PeakADC2MaxAmpl) { PeakADC2MaxAmpl = ADC2MaxAmpl; }           // get peak hold
+      mybuf->buffer[39] = (PeakADC1MaxAmpl >> 8) & 0xFF;                              // ADC1 peak hold
+      mybuf->buffer[40] = (PeakADC1MaxAmpl     ) & 0xFF;
+      mybuf->buffer[41] = (PeakADC2MaxAmpl >> 8) & 0xFF;                              // ADC2 peak hold
+      mybuf->buffer[42] = (PeakADC2MaxAmpl     ) & 0xFF;
+      PeakADC1MaxAmpl = 0;
+      PeakADC2MaxAmpl = 0;
       mybuf->buffer[5] = ADCOverflows;
-      ADCOverflows = 0;                                                                // clear it once reported
-      Byte = GetUserIOBits() & 0xFF;                                                   // user I/O bits
+      ADCOverflows = 0;                                                               // clear it once reported
+      Byte = GetUserIOBits() & 0xFF;                                                  // user I/O bits
       mybuf->buffer[59] = Byte;
       Word = GetAnalogueIn(4) & 0xFFFF;                                               // exciter power
       mybuf->buffer[6] = (Word >> 8) & 0xFF;
@@ -770,7 +786,7 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
       Word = GetAnalogueIn(3) & 0xFFFF;                                               // User ADC1
       mybuf->buffer[55] = (Word >> 8) & 0xFF;
       mybuf->buffer[56] = (Word     ) & 0xFF;
-      mybuf->buffer[0] = (SequenceCounter >> 24) & 0xFF;                            // add seq. count
+      mybuf->buffer[0] = (SequenceCounter >> 24) & 0xFF;                              // add seq. count
       mybuf->buffer[1] = (SequenceCounter >> 16) & 0xFF;
       mybuf->buffer[2] = (SequenceCounter >>  8) & 0xFF;
       mybuf->buffer[3] = (SequenceCounter      ) & 0xFF;
@@ -797,7 +813,9 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
         // take care that a HighPrio packet is sent "soon" after
         // a new ADC overflow has been detected.
         //
-        ADCOverflows |= (GetADCOverflow() & 0xFF);
+        ADCOverflows |= (GetADCOverflow(&ADC1MaxAmpl, &ADC2MaxAmpl) & 0xFF);
+        if (ADC1MaxAmpl > PeakADC1MaxAmpl) { PeakADC1MaxAmpl = ADC1MaxAmpl; }
+        if (ADC2MaxAmpl > PeakADC2MaxAmpl) { PeakADC2MaxAmpl = ADC2MaxAmpl; }
 
         if (ADCOverflows != 0 && SleepCount > 100)  {
           // We come here during RX only
