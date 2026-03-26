@@ -829,7 +829,7 @@ clean:
 	rm -f src/*.o
 	rm -f $(PROGRAM) hpsdrsim bootloader
 	rm -rf $(PROGRAM).app
-	yes | rm -r LINUX/SoapySDR
+	yes | rm -rf LINUX/SoapySDR
 	@make -C libspecbleach clean
 	@make -C rnnoise clean
 	@make -C wdsp clean
