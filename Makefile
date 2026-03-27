@@ -761,7 +761,6 @@ clean:
 	rm -f src/*.o
 	rm -f $(PROGRAM) hpsdrsim bootloader
 	rm -rf $(PROGRAM).app
-	@make -C release/LatexManual clean
 	@make -C wdsp clean
 
 #############################################################################
