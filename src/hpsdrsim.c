@@ -357,6 +357,10 @@ int main(int argc, char *argv[]) {
 
     if (!strncmp(argv[i], "-slow",         5))  {speed = -1; continue;}
 
+    if (!strncmp(argv[i], "-P1",           5))  { NDEVICE = DEV_NONE; continue; }
+
+    if (!strncmp(argv[i], "-P2",           5))  { ODEVICE = DEV_NONE; continue; }
+
     if (!strncmp(argv[i], "-nb",           3))  {
       noiseblank = 1;
 

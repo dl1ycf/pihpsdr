@@ -1085,11 +1085,11 @@ void *rx_thread(void *data) {
   int myadc, syncadc;
   int rxptr;
   int divptr;
-  int decimation;
+  int decimation = 1;
   int dumpptr = 0;
   unsigned int seed;
-  double off, tonearg, tonedelta;
-  double off2, tonearg2, tonedelta2;
+  double off, tonearg, tonedelta = 0.0;
+  double off2, tonearg2, tonedelta2 = 0.0;
   int do_tone, t3p;
   double *pulseshape = NULL;
   int myrate = 0;
@@ -1098,6 +1098,7 @@ void *rx_thread(void *data) {
   tonearg2 = 0.0;
   t3p = 0;
   int flg;
+
   myddc = (int) (uintptr_t) data;
 
   if (myddc < 0 || myddc >= NUMRECEIVERS) { return NULL; }
