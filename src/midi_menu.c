@@ -859,6 +859,7 @@ static int updatePanel(int state) {
       thisType = AT_ENC;
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, ActionType2String(AT_ENC));
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, ActionType2String(AT_KNB));
+      updateEncoderParams();
       gtk_widget_set_sensitive(newType, TRUE);
       break;
 
