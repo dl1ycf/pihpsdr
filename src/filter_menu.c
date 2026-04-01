@@ -616,13 +616,18 @@ void filter_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), w, 5, row, 3, 1);
   row++;
 
+  //
+  // It is not meant to "spin" until the maxoffset, but the
+  // "Default" button should allow this
+  //
+  double maxoffset = 0.5 * (double)myrx->sample_rate;
   for (int i = 0; i < 3; i++) {
     w = gtk_check_button_new();
     gtk_widget_set_halign(w, GTK_ALIGN_CENTER);
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), myrx->multi_notch_enable[i]);
     gtk_grid_attach(GTK_GRID(grid), w, 0, row, 2, 1);
     g_signal_connect(w, "toggled", G_CALLBACK(mn_enable_cb), GINT_TO_POINTER(i));
-    w = gtk_spin_button_new_with_range(-24000, 24000.0, 25.0);
+    w = gtk_spin_button_new_with_range(-maxoffset, maxoffset, 25.0);
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(w), myrx->multi_notch_center[i]);
     gtk_grid_attach(GTK_GRID(grid), w, 2, row, 3, 1);
     g_signal_connect(w, "value-changed", G_CALLBACK(mn_center_cb), GINT_TO_POINTER(i));
