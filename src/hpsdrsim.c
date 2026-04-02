@@ -513,8 +513,8 @@ int main(int argc, char *argv[]) {
   // sqrt(sample_rate/48k)
   //
   for (i = 0; i < LENNOISE; i++) {
-    noiseItab[i] = ((double) rand_r(&seed) / j - 1.0) * 1.41421E-5;
-    noiseQtab[i] = ((double) rand_r(&seed) / j - 1.0) * 1.41421E-5;
+    noiseItab[i] = ((double) rand_r(&seed) / j - 1.0) * 1.41421E-6;
+    noiseQtab[i] = ((double) rand_r(&seed) / j - 1.0) * 1.41421E-6;
   }
 
   //
