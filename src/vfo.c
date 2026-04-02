@@ -2525,6 +2525,19 @@ void vfo_id_ctun_update(int id, int state) {
     }
   } else {
     // CTUN turned ON->OFF: keep frequency
+    if (id < receivers) {
+      //
+      // If the RX has active notches, move them such that
+      // they stay in the same place of the passband
+      //
+      RECEIVER *rx = receiver[id];
+      for (int i = 0; i < 3; i++) {
+        if (rx->multi_notch_enable[i]) {
+          rx->multi_notch_center[i] -= vfo[id].offset;
+        }
+      }
+    }
+
     vfo[id].frequency = vfo[id].ctun_frequency;
     vfo[id].offset = 0;
     vfo_id_adjust_band(id, vfo[id].frequency);
