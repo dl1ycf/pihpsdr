@@ -2528,12 +2528,14 @@ void vfo_id_ctun_update(int id, int state) {
     if (id < receivers) {
       //
       // If the RX has active notches, move them such that
-      // they stay in the same place of the passband
+      // they stay in the same place of the passband. Note that
+      // vfo[id].offset need not match the difference of freq and
+      // ctun_freq since it may contain contributions from RIT.
       //
       RECEIVER *rx = receiver[id];
       for (int i = 0; i < 3; i++) {
         if (rx->multi_notch_enable[i]) {
-          rx->multi_notch_center[i] -= vfo[id].offset;
+          rx->multi_notch_center[i] += (vfo[id].frequency - vfo[id].ctun_frequency);
         }
       }
     }
