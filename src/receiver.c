@@ -1689,8 +1689,10 @@ void rx_set_af_binaural(const RECEIVER *rx) {
 }
 
 void rx_set_af_gain(const RECEIVER *rx) {
+  int id = rx->id;
+
   if (radio_is_remote) {
-    send_volume(cl_sock_tcp, rx->id, rx->volume);
+    send_volume(cl_sock_tcp, id, rx->volume);
     return;
   }
 
@@ -1712,7 +1714,16 @@ void rx_set_af_gain(const RECEIVER *rx) {
     amplitude = pow(10.0, 0.05 * volume);
   }
 
-  SetRXAPanelGain1 (rx->id, amplitude);
+  SetRXAPanelGain1 (id, amplitude);
+
+  //
+  // Update mode settings, if this is RX1
+  //
+  if (id == 0) {
+    int mode = vfo[id].mode;
+    mode_settings[mode].rxvolume = rx->volume;
+    copy_mode_settings(mode);
+  }
 }
 
 void rx_set_agc(RECEIVER *rx) {

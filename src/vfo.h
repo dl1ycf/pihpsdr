@@ -94,6 +94,7 @@ struct _mode_settings {
   //
   // RX (noise, EQ, AGC mode) settings
   //
+  double rxvolume;                  // in dB, -40 .. 0
   int    nb;                        // Noise blanker (0..2)
   double nb_tau;                    // NB parameters
   double nb_hang;

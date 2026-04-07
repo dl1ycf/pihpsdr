@@ -106,6 +106,7 @@ void modesettings_save_state(void) {
     SetPropI1("modeset.%d.cwPeak", i,                 mode_settings[i].cwPeak);
     SetPropI1("modeset.%d.step", i,                   mode_settings[i].step);
     SetPropI1("modeset.%d.rit_step", i,               mode_settings[i].rit_step);
+    SetPropF1("modeset.%d.rxvolume", i,               mode_settings[i].rxvolume);
     SetPropI1("modeset.%d.nb", i,                     mode_settings[i].nb);
     SetPropF1("modeset.%d.nb_tau", i,                 mode_settings[i].nb_tau);
     SetPropF1("modeset.%d.nb_hang", i,                mode_settings[i].nb_hang);
@@ -221,6 +222,7 @@ void modesettings_restore_state(void) {
     // set defaults that are the same  for all modes
     //
     mode_settings[i].cwPeak = 0;
+    mode_settings[i].rxvolume = -20.0;
     mode_settings[i].nb = 0;
     mode_settings[i].nb_tau = 0.00001;
     mode_settings[i].nb_advtime = 0.00001;
@@ -319,6 +321,7 @@ void modesettings_restore_state(void) {
     GetPropI1("modeset.%d.cwPeak", i,                 mode_settings[i].cwPeak);
     GetPropI1("modeset.%d.step", i,                   mode_settings[i].step);
     GetPropI1("modeset.%d.rit_step", i,               mode_settings[i].rit_step);
+    GetPropF1("modeset.%d.rxvolume", i,               mode_settings[i].rxvolume);
     GetPropI1("modeset.%d.nb", i,                     mode_settings[i].nb);
     GetPropF1("modeset.%d.nb_tau", i,                 mode_settings[i].nb_tau);
     GetPropF1("modeset.%d.nb_hang", i,                mode_settings[i].nb_hang);
@@ -618,6 +621,7 @@ void vfo_apply_mode_settings(RECEIVER *rx) {
   //
   // Apply noise and EQ settings to the receiver
   //
+  radio_set_af_gain(id, mode_settings[m].rxvolume);
   rx->nb                        = mode_settings[m].nb;
   rx->nb2_mode                  = mode_settings[m].nb2_mode;
   rx->nb_tau                    = mode_settings[m].nb_tau;
