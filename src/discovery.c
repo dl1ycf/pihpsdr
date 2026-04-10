@@ -943,8 +943,9 @@ static void discovery(void) {
   // menu on a G2. Instead, default to NO_CONTROLLER for G2-ultra and to
   // G2V1_PANEL for first-generation G2s with the CONTROLLER2_V2 clone.
   //
-  // Likewise, when /dev/serial/by-id/Remotehead-9600 exists, also
-  // do not show the "controller" menu but auto-choose CONTROLLER3.
+  // If /dev/serial/by-id/g2-front-9600 exists but there is no XMDA-detected
+  // G2, do not show the "controller" menu but auto-choose CONTROLLER3.
+  //
   // Even if the controller is not shown, use a "gpio.props" file
   // such that in special cases, something can be changed manually.
   //
@@ -962,7 +963,7 @@ static void discovery(void) {
       gpio_set_defaults(controller);
       gpio_save_state();
     }
-  } else if (realpath("/dev/serial/by-id/Remotehead-9600", NULL) != NULL) {
+  } else if (realpath("/dev/serial/by-id/g2-front-9600", NULL) != NULL) {
     if (controller != CONTROLLER3) {
       controller = CONTROLLER3;
       gpio_set_defaults(controller);

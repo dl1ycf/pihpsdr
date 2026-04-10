@@ -1233,7 +1233,7 @@ void radio_start_radio(void) {
 #ifdef GPIO
 
     if (controller == CONTROLLER3) {
-      const char *cp = realpath("/dev/serial/by-id/Remotehead-9600", NULL);
+      const char *cp = realpath("/dev/serial/by-id/g2-front-9600", NULL);
 
       if (cp != NULL) {
         SerialPorts[MAX_SERIAL - 1].enable = 1;
@@ -1244,7 +1244,7 @@ void radio_start_radio(void) {
         snprintf(SerialPorts[MAX_SERIAL - 1].port, sizeof(SerialPorts[MAX_SERIAL - 1].port), "%s", cp);
         t_print("Serial %s used for CONTROLLER3 (9600 baud)\n", cp);
       } else {
-        t_print("CONTROLLER3: /dev/serial/by-id/Remotehead-9600 not found!\n");
+        t_print("CONTROLLER3: /dev/serial/by-id/g2-front-9600 not found!\n");
       }
     }
 
