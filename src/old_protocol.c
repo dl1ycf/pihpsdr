@@ -905,7 +905,6 @@ static int rx_feedback_channel(void) {
   case DEVICE_HERMES_LITE:
   case DEVICE_OZY:
   case DEVICE_HERMES2:
-  case DEVICE_G1:
     ret = 0;
     break;
 
@@ -914,6 +913,7 @@ static int rx_feedback_channel(void) {
     ret = anan10E ? 0 : 2;
     break;
 
+  case DEVICE_G1:
   case DEVICE_STEMLAB:
   case DEVICE_STEMLAB_Z20:
   case DEVICE_HERMES_LITE2:
@@ -950,7 +950,6 @@ static int tx_feedback_channel(void) {
   case DEVICE_HERMES_LITE:
   case DEVICE_OZY:
   case DEVICE_HERMES2:
-  case DEVICE_G1:
     ret = 1;
     break;
 
@@ -959,6 +958,7 @@ static int tx_feedback_channel(void) {
     ret = anan10E ? 1 : 3;
     break;
 
+  case DEVICE_G1:
   case DEVICE_STEMLAB:
   case DEVICE_STEMLAB_Z20:
   case DEVICE_HERMES_LITE2:
@@ -1072,7 +1072,6 @@ static int how_many_receivers(void) {
     case DEVICE_HERMES_LITE:
     case DEVICE_OZY:
     case DEVICE_HERMES2:
-    case DEVICE_G1:
       ret = 2; // TX feedback hard-wired to RX2
       break;
 
@@ -1081,6 +1080,7 @@ static int how_many_receivers(void) {
       ret = anan10E ? 2 : 4;
       break;
 
+    case DEVICE_G1:
     case DEVICE_STEMLAB:
     case DEVICE_STEMLAB_Z20:
     case DEVICE_HERMES_LITE2:
