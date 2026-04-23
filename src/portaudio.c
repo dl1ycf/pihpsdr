@@ -118,14 +118,15 @@ void audio_get_cards(void) {
 
   for (int  i = 0; i < numDevices; i++ ) {
     const PaDeviceInfo *deviceInfo = Pa_GetDeviceInfo( i );
-    inputParameters.device = i;
-    inputParameters.channelCount = 1;  // Microphone samples are mono
-    inputParameters.sampleFormat = paFloat32;
-    inputParameters.suggestedLatency = 0; /* ignored by Pa_IsFormatSupported() */
-    inputParameters.hostApiSpecificStreamInfo = NULL;
 
-    if (Pa_IsFormatSupported(&inputParameters, NULL, 48000.0) == paFormatIsSupported) {
-      if (n_input_devices < MAX_AUDIO_DEVICES) {
+    if (deviceInfo->maxInputChannels > 0 && n_input_devices < MAX_AUDIO_DEVICES) {
+      inputParameters.device = i;
+      inputParameters.channelCount = 1;
+      inputParameters.sampleFormat = paFloat32;
+      inputParameters.suggestedLatency = 0; /* ignored by Pa_IsFormatSupported() */
+      inputParameters.hostApiSpecificStreamInfo = NULL;
+
+      if (Pa_IsFormatSupported(&inputParameters, NULL, 48000.0) == paFormatIsSupported) {
         //
         // probably not necessary with portaudio, but to be on the safe side,
         // we copy the device name to local storage. This is referenced both
@@ -133,29 +134,36 @@ void audio_get_cards(void) {
         //
         input_devices[n_input_devices].name = g_strdup(deviceInfo->name);
         input_devices[n_input_devices].description = g_strdup(deviceInfo->name);
-        input_devices[n_input_devices].index = i;
+        input_devices[n_input_devices].PortAudioDevice = i;
+        input_devices[n_input_devices].channels = 1;
         n_input_devices++;
       }
-
-      t_print("%s: INPUT DEVICE, No=%d, Name=%s\n", __func__, i, deviceInfo->name);
     }
 
-    outputParameters.device = i;
-    outputParameters.channelCount = 2;  // audio output samples are stereo
-    outputParameters.sampleFormat = paFloat32;
-    outputParameters.suggestedLatency = 0; /* ignored by Pa_IsFormatSupported() */
-    outputParameters.hostApiSpecificStreamInfo = NULL;
+    if (deviceInfo->maxOutputChannels > 0 && n_output_devices < MAX_AUDIO_DEVICES) {
+      outputParameters.device = i;
+      outputParameters.channelCount = (deviceInfo->maxOutputChannels > 1) ? 2 : 1;
+      outputParameters.sampleFormat = paFloat32;
+      outputParameters.suggestedLatency = 0; /* ignored by Pa_IsFormatSupported() */
+      outputParameters.hostApiSpecificStreamInfo = NULL;
 
-    if (Pa_IsFormatSupported(NULL, &outputParameters, 48000.0) == paFormatIsSupported) {
-      if (n_output_devices < MAX_AUDIO_DEVICES) {
+      if (Pa_IsFormatSupported(NULL, &outputParameters, 48000.0) == paFormatIsSupported) {
         output_devices[n_output_devices].name = g_strdup(deviceInfo->name);
         output_devices[n_output_devices].description = g_strdup(deviceInfo->name);
-        output_devices[n_output_devices].index = i;
+        output_devices[n_output_devices].PortAudioDevice = i;
+        output_devices[n_output_devices].channels = outputParameters.channelCount;
         n_output_devices++;
       }
-
-      t_print("%s: OUTPUT DEVICE, No=%d, Name=%s\n", __func__, i, deviceInfo->name);
     }
+  }
+
+  // log all devices to output
+  for (int i = 0; i < n_input_devices; i++) {
+    t_print("Audio  Input: No=%d C=%d Name=%s\n", i, input_devices[i].channels, input_devices[i].name);
+  }
+
+  for (int i = 0; i < n_output_devices; i++) {
+    t_print("Audio Output: No=%d C=%d Name=%s\n", i, output_devices[i].channels, output_devices[i].name);
   }
 }
 
@@ -182,7 +190,7 @@ int audio_open_input(TRANSMITTER *tx) {
   for (i = 0; i < n_input_devices; i++) {
     if (!strcmp(tx->audio_name, input_devices[i].name)) {
       t_print("%s TX:%s\n", __func__, input_devices[i].description);
-      padev = input_devices[i].index;
+      padev = input_devices[i].PortAudioDevice;
       break;
     }
   }
@@ -203,6 +211,7 @@ int audio_open_input(TRANSMITTER *tx) {
   inputParameters.sampleFormat = paFloat32;
   inputParameters.suggestedLatency = Pa_GetDeviceInfo(padev)->defaultLowInputLatency ;
   inputParameters.hostApiSpecificStreamInfo = NULL; //See you specific host's API docs for info on using this field
+
   err = Pa_OpenStream(&tx->audio_handle, &inputParameters, NULL, 48000.0, MY_AUDIO_BUFFER_SIZE,
                       paNoFlag, pa_in_cb, tx);
 
@@ -268,20 +277,39 @@ static int pa_out_cb(const void *inputBuffer, void *outputBuffer, unsigned long 
     //
     int newpt = rx->audio_buffer_outpt;
 
-    for (unsigned int i = 0; i < framesPerBuffer; i++) {
-      if (rx->audio_buffer_inpt == newpt) {
-        // Ring buffer empty, send zero sample
-        *out++ = 0.0;
-        *out++ = 0.0;
-      } else {
-        *out++ = (float) rx->audio_buffer[2 * newpt];
-        *out++ = (float) rx->audio_buffer[2 * newpt + 1];
-        newpt++;
+    if (rx->local_audio_channels == 1) {
+      // device is MONO, pass only left channel
+      for (unsigned int i = 0; i < framesPerBuffer; i++) {
+        if (rx->audio_buffer_inpt == newpt) {
+          // Ring buffer empty, send zero sample
+          *out++ = 0.0;
+        } else {
+          *out++ = (float) rx->audio_buffer[newpt];
+          newpt++;
 
-        if (newpt >= MY_RING_BUFFER_SIZE) { newpt = 0; }
+          if (newpt >= MY_RING_BUFFER_SIZE) { newpt = 0; }
 
-        MEMORY_BARRIER;
-        rx->audio_buffer_outpt = newpt;
+          MEMORY_BARRIER;
+          rx->audio_buffer_outpt = newpt;
+        }
+      }
+    } else {
+      // device is STEREO, pass both channels
+      for (unsigned int i = 0; i < framesPerBuffer; i++) {
+        if (rx->audio_buffer_inpt == newpt) {
+          // Ring buffer empty, send zero sample
+          *out++ = 0.0;
+          *out++ = 0.0;
+        } else {
+          *out++ = (float) rx->audio_buffer[2 * newpt];
+          *out++ = (float) rx->audio_buffer[2 * newpt + 1];
+          newpt++;
+
+          if (newpt >= MY_RING_BUFFER_SIZE) { newpt = 0; }
+
+          MEMORY_BARRIER;
+          rx->audio_buffer_outpt = newpt;
+        }
       }
     }
   }
@@ -312,6 +340,7 @@ static int pa_in_cb(const void *inputBuffer, void *outputBuffer, unsigned long f
   // to the server without any buffering
   //
   if (radio_is_remote) {
+
     for (unsigned int i = 0; i < framesPerBuffer; i++) {
       server_tx_audio((double) in[i]);
     }
@@ -413,6 +442,7 @@ int audio_open_output(RECEIVER *rx) {
   PaError err;
   PaStreamParameters outputParameters;
   int padev;
+  int channels;
   int i;
   //
   // Look up device name and determine device ID
@@ -421,8 +451,9 @@ int audio_open_output(RECEIVER *rx) {
 
   for (i = 0; i < n_output_devices; i++) {
     if (!strcmp(rx->audio_name, output_devices[i].name)) {
-      t_print("%s RX%d:%s\n", __func__, rx->id + 1, output_devices[i].description);
-      padev = output_devices[i].index;
+      padev = output_devices[i].PortAudioDevice;
+      channels = output_devices[i].channels;
+      t_print("%s RX%d:%s (C=%d)\n", __func__, rx->id + 1, output_devices[i].description, channels);
       break;
     }
   }
@@ -437,13 +468,15 @@ int audio_open_output(RECEIVER *rx) {
 
   g_mutex_lock(&rx->audio_mutex);
   bzero(&outputParameters, sizeof(outputParameters)); //not necessary if you are filling in all the fields
-  outputParameters.channelCount = 2;   // audio output is stereo
   outputParameters.device = padev;
   outputParameters.hostApiSpecificStreamInfo = NULL;
   outputParameters.sampleFormat = paFloat32;
   // use a zero for the latency to get the minimum value
   outputParameters.suggestedLatency = 0.0; //Pa_GetDeviceInfo(padev)->defaultLowOutputLatency ;
   outputParameters.hostApiSpecificStreamInfo = NULL; //See you specific host's API docs for info on using this field
+  outputParameters.channelCount = channels;
+  rx->local_audio_channels = channels;
+
   err = Pa_OpenStream(&(rx->audio_handle), NULL, &outputParameters, 48000.0, MY_AUDIO_BUFFER_SIZE,
                       paNoFlag, pa_out_cb, rx);
 
@@ -457,7 +490,7 @@ int audio_open_output(RECEIVER *rx) {
   //
   // This is now a ring buffer much larger than a single audio buffer
   //
-  rx->audio_buffer = g_new(double, 2 * MY_RING_BUFFER_SIZE);
+  rx->audio_buffer = g_new(double, rx->local_audio_channels * MY_RING_BUFFER_SIZE);
   rx->audio_buffer_inpt = 0;
   rx->audio_buffer_outpt = 0;
 
@@ -603,12 +636,21 @@ void audio_write (RECEIVER *rx, double left, double right) {
       //
       int oldpt = rx->audio_buffer_inpt;
 
-      for (int i = 0; i < MY_RING_BUFFER_SIZE / 2 - avail; i++) {
-        buffer[2 * oldpt] = 0.0;
-        buffer[2 * oldpt + 1] = 0.0;
-        oldpt++;
+      if (rx->local_audio_channels == 1) {
+        for (int i = 0; i < MY_RING_BUFFER_SIZE / 2 - avail; i++) {
+          buffer[oldpt] = 0.0;
+          oldpt++;
 
-        if (oldpt >= MY_RING_BUFFER_SIZE) { oldpt = 0; }
+          if (oldpt >= MY_RING_BUFFER_SIZE) { oldpt = 0; }
+        }
+      } else {
+        for (int i = 0; i < MY_RING_BUFFER_SIZE / 2 - avail; i++) {
+          buffer[2 * oldpt] = 0.0;
+          buffer[2 * oldpt + 1] = 0.0;
+          oldpt++;
+
+          if (oldpt >= MY_RING_BUFFER_SIZE) { oldpt = 0; }
+        }
       }
 
       MEMORY_BARRIER;
@@ -646,8 +688,14 @@ void audio_write (RECEIVER *rx, double left, double right) {
       // buffer space available
       //
       MEMORY_BARRIER;
-      buffer[2 * oldpt] = left;
-      buffer[2 * oldpt + 1] = right;
+
+      if (rx->local_audio_channels == 1) {
+        buffer[oldpt] = 0.5 * (left + right);
+      } else {
+        buffer[2 * oldpt] = left;
+        buffer[2 * oldpt + 1] = right;
+      }
+
       MEMORY_BARRIER;
       rx->audio_buffer_inpt = newpt;
     }
@@ -684,20 +732,36 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       double damp = 1.000;
       newpt = rx->audio_buffer_outpt;
 
-      for (int i = 0; i < CW_LAT_TARGET; i++) {
-        if (i >= avail) {
-          rx->audio_buffer[2 * newpt] = 0.0;
-          rx->audio_buffer[2 * newpt + 1] = 0.0;
-        } else {
-          rx->audio_buffer[2 * newpt] *= damp;
-          rx->audio_buffer[2 * newpt + 1] *= damp;
-          damp = damp * 0.975;
+      if (rx->local_audio_channels == 1) {
+        for (int i = 0; i < CW_LAT_TARGET; i++) {
+          if (i >= avail) {
+            rx->audio_buffer[newpt] = 0.0;
+          } else {
+            rx->audio_buffer[newpt] *= damp;
+            damp = damp * 0.975;
+          }
+
+          newpt++;
+          MEMORY_BARRIER;
+
+          if (newpt >= MY_RING_BUFFER_SIZE) { newpt = 0; }
         }
+      } else {
+        for (int i = 0; i < CW_LAT_TARGET; i++) {
+          if (i >= avail) {
+            rx->audio_buffer[2 * newpt] = 0.0;
+            rx->audio_buffer[2 * newpt + 1] = 0.0;
+          } else {
+            rx->audio_buffer[2 * newpt] *= damp;
+            rx->audio_buffer[2 * newpt + 1] *= damp;
+            damp = damp * 0.975;
+          }
 
-        newpt++;
-        MEMORY_BARRIER;
+          newpt++;
+          MEMORY_BARRIER;
 
-        if (newpt >= MY_RING_BUFFER_SIZE) { newpt = 0; }
+          if (newpt >= MY_RING_BUFFER_SIZE) { newpt = 0; }
+        }
       }
 
       rx->audio_buffer_inpt = newpt;
@@ -720,14 +784,53 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       if (avail < CW_LAT_LOW)  { adjust = 1; } // low: we are below low water mark
     }
 
+    adjust += 4*rx->local_audio_channels;
+
     switch (adjust) {
-    case 0:
+    case 4:
       //
-      // default case:
-      //               put sample into ring buffer.
-      //               since the side tone is mono put it into
-      //               both the left and right channel with the
-      //               same phase.
+      // put mono sample into ring buffer
+      //
+      oldpt = rx->audio_buffer_inpt;
+      newpt = oldpt + 1;
+
+      if (newpt >= MY_RING_BUFFER_SIZE) { newpt = 0; }
+
+      if (newpt != rx->audio_buffer_outpt) {
+        //
+        // buffer space available
+        //
+        MEMORY_BARRIER;
+        rx->audio_buffer[oldpt] = sample;
+        MEMORY_BARRIER;
+        rx->audio_buffer_inpt = newpt;
+      }
+
+      break;
+
+    case 5:
+      //
+      // we just saw 16 samples of silence and buffer filling is low:
+      // insert one extra mono sample
+      //
+      oldpt = rx->audio_buffer_inpt;
+      rx->audio_buffer[oldpt] = 0.0;
+      oldpt++;
+
+      if (oldpt >= MY_RING_BUFFER_SIZE) { oldpt = 0; }
+
+      rx->audio_buffer[oldpt] = 0.0;
+      oldpt++;
+
+      if (oldpt >= MY_RING_BUFFER_SIZE) { oldpt = 0; }
+
+      MEMORY_BARRIER;
+      rx->audio_buffer_inpt = oldpt;
+      break;
+
+    case 8:
+      //
+      // put stereo sample into ring buffer
       //
       oldpt = rx->audio_buffer_inpt;
       newpt = oldpt + 1;
@@ -747,10 +850,10 @@ void tx_audio_write(RECEIVER *rx, double sample) {
 
       break;
 
-    case 1:
+    case 9:
       //
       // we just saw 16 samples of silence and buffer filling is low:
-      // insert one extra silence sample
+      // insert one extra stereo sample
       //
       oldpt = rx->audio_buffer_inpt;
       rx->audio_buffer[2 * oldpt] = 0.0;
@@ -769,7 +872,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       rx->audio_buffer_inpt = oldpt;
       break;
 
-    case 2:
+    default:
       //
       // we just saw 16 samples of silence and buffer filling is high:
       // just skip the current "silent" sample, that is, do nothing.

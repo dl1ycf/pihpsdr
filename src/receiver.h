@@ -195,14 +195,15 @@ typedef struct _receiver {
   //
   // Everything related to audio
   //
-  int audio_channel; // STEREO or LEFT or RIGHT
-  int local_audio;
-  char audio_name[128];
-  GMutex audio_mutex;
-  double *audio_buffer;
-  int audio_buffer_offset;
-  volatile int audio_buffer_inpt;    // pointer in audio ring-buffer
-  volatile int audio_buffer_outpt;   // pointer in audio ring-buffer
+  int audio_channel;                 // STEREO or LEFT or RIGHT
+  int local_audio;                   // RX audio to sound card is active
+  int local_audio_channels;          // 1 or 2, indicates mono or stereo.
+  char audio_name[128];              // name of currently used sound card
+  GMutex audio_mutex;                // Mutex that can be used for soundcard output
+  double *audio_buffer;              // Buffer that can be used for soundcard output
+  int audio_buffer_offset;           // pointer for audio buffer
+  volatile int audio_buffer_inpt;    // pointer for audio buffer
+  volatile int audio_buffer_outpt;   // pointer for audio_buffer
 
 #if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA)
   // this is only possible for "cppcheck" runs

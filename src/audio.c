@@ -73,9 +73,9 @@ static const int cw_high_water = 1104;                     // high water mark fo
 //
 #define FORMATS 3
 static snd_pcm_format_t formats[4] = {
+  SND_PCM_FORMAT_S16_LE,
   SND_PCM_FORMAT_FLOAT_LE,
   SND_PCM_FORMAT_S32_LE,
-  SND_PCM_FORMAT_S16_LE,
   SND_PCM_FORMAT_UNKNOWN
 };
 
@@ -88,9 +88,7 @@ AUDIO_DEVICE input_devices[MAX_AUDIO_DEVICES];
 AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
 
 int audio_open_output(RECEIVER *rx) {
-  unsigned int rate = 48000;
-  unsigned int channels = 2;
-  int soft_resample = 1;
+  int soft_resample;
   int err;
   //
   // Do not try top open if name has not been recorded during startup
@@ -100,6 +98,9 @@ int audio_open_output(RECEIVER *rx) {
   for (int i = 0; i < n_output_devices; i++) {
     if (!strcmp(rx->audio_name, output_devices[i].name)) {
       t_print("%s RX%d:%s\n", __func__, rx->id + 1, output_devices[i].description);
+      rx->audio_format = output_devices[i].format;
+      rx->local_audio_channels = output_devices[i].channels;
+      soft_resample = output_devices[i].soft_resample;
       err = 0;
       break;
     }
@@ -111,7 +112,6 @@ int audio_open_output(RECEIVER *rx) {
   }
 
   g_mutex_lock(&rx->audio_mutex);
-  rx->audio_format = SND_PCM_FORMAT_UNKNOWN;
   //
   // Upon unsuccessful return, these variables must be NULL
   // such that audio_close_output() can safely be called
@@ -119,38 +119,24 @@ int audio_open_output(RECEIVER *rx) {
   rx->audio_handle = NULL;
   rx->audio_buffer = NULL;
 
-  for (int i = 0; i < FORMATS; i++) {
-    if ((err = snd_pcm_open (&rx->audio_handle, rx->audio_name, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0) {
-      t_print("%s: cannot open audio device %s (%s)\n", __func__,
-              rx->audio_name,
-              snd_strerror (err));
-      break;
-    }
-
-    if ((err = snd_pcm_set_params (rx->audio_handle, formats[i], SND_PCM_ACCESS_RW_INTERLEAVED, channels, rate,
-                                   soft_resample, out_latency)) < 0) {
-      t_print("%s: could not set params for %s (%s)\n", __func__,
-              snd_pcm_format_name(formats[i]),
-              snd_strerror (err));
-      snd_pcm_close(rx->audio_handle);
-      continue;
-    }
-
-    t_print("%s: using format %s (%s)\n", __func__, snd_pcm_format_name(formats[i]),
-            snd_pcm_format_description(formats[i]));
-    rx->audio_format = formats[i];
-    break;
-  }
-
-  if (rx->audio_format == SND_PCM_FORMAT_UNKNOWN) {
-    t_print("%s: Device cannot be used\n", __func__);
-    rx->audio_handle = NULL;
+  if ((err = snd_pcm_open (&rx->audio_handle, rx->audio_name, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0) {
+    t_print("%s: cannot open audio device %s (%s)\n", __func__, rx->audio_name, snd_strerror (err));
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
   }
 
+  err = snd_pcm_set_params (rx->audio_handle, rx->audio_format, SND_PCM_ACCESS_RW_INTERLEAVED, rx->local_audio_channels,
+                            48000, soft_resample,  out_latency);
+
+  if (err < 0) {
+      t_print("%s: cannot set format for %s (%s)\n", __func__, rx->audio_name, snd_strerror (err));
+      snd_pcm_close(rx->audio_handle);
+      g_mutex_unlock(&rx->audio_mutex);
+      return -1;
+  }
+
   rx->audio_buffer_offset = 0;
-  rx->audio_buffer = g_new(double, 2 * out_buffer_size);
+  rx->audio_buffer = g_new(double, rx->local_audio_channels * out_buffer_size);
 
   if (rx->audio_buffer == NULL) {
     snd_pcm_close(rx->audio_handle);
@@ -166,10 +152,8 @@ int audio_open_output(RECEIVER *rx) {
 }
 
 int audio_open_input(TRANSMITTER *tx) {
-  unsigned int rate = 48000;
-  unsigned int channels = 1;
-  int soft_resample = 1;
   int err;
+  int soft_resample;
   //
   // Do not try top open if name has not been recorded during startup
   //
@@ -179,6 +163,8 @@ int audio_open_input(TRANSMITTER *tx) {
     if (!strcmp(tx->audio_name, input_devices[i].name)) {
       t_print("%s TX:%s\n", __func__, input_devices[i].description);
       err = 0;
+      tx->audio_format = input_devices[i].format;
+      soft_resample = input_devices[i].soft_resample;
       break;
     }
   }
@@ -188,7 +174,6 @@ int audio_open_input(TRANSMITTER *tx) {
     return -1;
   }
 
-  tx->audio_format = SND_PCM_FORMAT_UNKNOWN;
   //
   // It must be guaranteed that in case of failure, these three
   // variables are NULL such that audio_close_input() can safely
@@ -199,38 +184,20 @@ int audio_open_input(TRANSMITTER *tx) {
   tx->audio_handle = NULL;
   g_mutex_lock(&tx->audio_mutex);
 
-  for (int i = 0; i < FORMATS; i++) {
-    if ((err = snd_pcm_open (&tx->audio_handle, tx->audio_name, SND_PCM_STREAM_CAPTURE, SND_PCM_ASYNC)) < 0) {
-      t_print("%s: cannot open audio device %s (%s)\n", __func__,
-              tx->audio_name,
-              snd_strerror (err));
-      break;
-    }
-
-    if ((err = snd_pcm_set_params (tx->audio_handle, formats[i], SND_PCM_ACCESS_RW_INTERLEAVED, channels, rate,
-                                   soft_resample,
-                                   inp_latency)) < 0) {
-      t_print("%s: could not set params for %s (%s)\n", __func__,
-              snd_pcm_format_name(formats[i]),
-              snd_strerror (err));
-      snd_pcm_close(tx->audio_handle);
-      continue;
-    }
-
-    t_print("%s: using format %s (%s)\n", __func__, snd_pcm_format_name(formats[i]),
-            snd_pcm_format_description(formats[i]));
-    tx->audio_format = formats[i];
-    break;
-  }
-
-  if (tx->audio_format == SND_PCM_FORMAT_UNKNOWN) {
-    t_print("%s: device cannot be used\n", __func__);
-    tx->audio_handle = NULL;
+  if ((err = snd_pcm_open (&tx->audio_handle, tx->audio_name, SND_PCM_STREAM_CAPTURE, SND_PCM_ASYNC)) < 0) {
+    t_print("%s: cannot open audio device %s (%s)\n", __func__, tx->audio_name, snd_strerror (err));
     g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
 
-  t_print("%s: format=%d\n", __func__, tx->audio_format);
+  if ((err = snd_pcm_set_params (tx->audio_handle, tx->audio_format, SND_PCM_ACCESS_RW_INTERLEAVED, 1, 48000,
+                                 soft_resample, inp_latency)) < 0) {
+    t_print("%s: could not set params for %s (%s)\n", __func__, tx->audio_name, snd_strerror (err));
+    snd_pcm_close(tx->audio_handle);
+    g_mutex_unlock(&tx->audio_mutex);
+    return -1;
+  }
+
   t_print("%s: allocating ring buffer\n", __func__);
   tx->audio_buffer = g_new(double, MICRINGLEN);
   tx->audio_buffer_outpt = tx->audio_buffer_inpt = 0;
@@ -360,19 +327,41 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       }
     }
 
-    switch (adjust) {
-    case 1:
+    switch (4*rx->local_audio_channels + adjust) {
+    case 5:
       //
-      // default case: put sample into buffer and that's it
+      // put mono sample into buffer and that's it
+      //
+      rx->audio_buffer[rx->audio_buffer_offset] = sample;
+      rx->audio_buffer_offset++;
+      break;
+
+    case 6:
+      //
+      // write mono sample twice if space permits
+      //
+      rx->audio_buffer[rx->audio_buffer_offset] = sample;
+      rx->audio_buffer_offset++;
+
+      if (rx->audio_buffer_offset <  out_buffer_size) {
+        rx->audio_buffer[rx->audio_buffer_offset] = sample;
+        rx->audio_buffer_offset++;
+      }
+
+      break;
+
+    case 9:
+      //
+      // put stero sample into buffer and that's it
       //
       rx->audio_buffer[rx->audio_buffer_offset * 2] = sample;
       rx->audio_buffer[rx->audio_buffer_offset * 2 + 1] = sample;
       rx->audio_buffer_offset++;
       break;
 
-    case 2:
+    case 10:
       //
-      // write it twice if space permits
+      // write stereo sample twice if space permits
       //
       rx->audio_buffer[rx->audio_buffer_offset * 2] = sample;
       rx->audio_buffer[rx->audio_buffer_offset * 2 + 1] = sample;
@@ -388,7 +377,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
 
     default:
       //
-      // Skip sample
+      // Skip (zero) sample
       //
       break;
     }
@@ -404,9 +393,9 @@ void tx_audio_write(RECEIVER *rx, double sample) {
 
       switch (rx->audio_format) {
       case SND_PCM_FORMAT_S16_LE: {
-        int16_t buffer[2 * out_buffer_size];
+        int16_t buffer[rx->local_audio_channels * out_buffer_size];
 
-        for (int i = 0; i < 2 * out_buffer_size; i++) {
+        for (int i = 0; i < rx->local_audio_channels * out_buffer_size; i++) {
           buffer[i] = rx->audio_buffer[i] * 32767.0;
         }
 
@@ -415,9 +404,9 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       break;
 
       case SND_PCM_FORMAT_S32_LE: {
-        int32_t buffer[2 * out_buffer_size];
+        int32_t buffer[rx->local_audio_channels * out_buffer_size];
 
-        for (int i = 0; i < 2 * out_buffer_size; i++) {
+        for (int i = 0; i < rx->local_audio_channels * out_buffer_size; i++) {
           buffer[i] = rx->audio_buffer[i] * 2147483647.0;
         }
 
@@ -426,9 +415,9 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       break;
 
       case SND_PCM_FORMAT_FLOAT_LE: {
-        float buffer[2 * out_buffer_size];
+        float buffer[rx->local_audio_channels * out_buffer_size];
 
-        for (int i = 0; i < 2 * out_buffer_size; i++) {
+        for (int i = 0; i < rx->local_audio_channels * out_buffer_size; i++) {
           buffer[i] = (float) rx->audio_buffer[i];
         }
 
@@ -492,9 +481,15 @@ void audio_write(RECEIVER *rx, double left, double right) {
   g_mutex_lock(&rx->audio_mutex);
 
   if (rx->audio_handle != NULL && rx->audio_buffer != NULL) {
-    rx->audio_buffer[rx->audio_buffer_offset * 2] = left;
-    rx->audio_buffer[rx->audio_buffer_offset * 2 + 1] = right;
-    rx->audio_buffer_offset++;
+
+    if (rx->local_audio_channels == 1) {
+      rx->audio_buffer[rx->audio_buffer_offset] = 0.5 * (left + right);
+      rx->audio_buffer_offset++;
+    } else {
+      rx->audio_buffer[rx->audio_buffer_offset * 2] = left;
+      rx->audio_buffer[rx->audio_buffer_offset * 2 + 1] = right;
+      rx->audio_buffer_offset++;
+    }
 
     if (rx->audio_buffer_offset >= out_buffer_size) {
       snd_pcm_sframes_t rc;
@@ -517,22 +512,22 @@ void audio_write(RECEIVER *rx, double left, double right) {
 
         switch (rx->audio_format) {
         case SND_PCM_FORMAT_S16_LE: {
-          int16_t silence[2 * num];
-          memset(silence, 0, 2 * num * sizeof(int16_t));
+          int16_t silence[rx->local_audio_channels * num];
+          memset(silence, 0, rx->local_audio_channels * num * sizeof(int16_t));
           snd_pcm_writei (rx->audio_handle, silence, num);
         }
         break;
 
         case SND_PCM_FORMAT_S32_LE: {
-          int32_t silence[2 * num];
-          memset(silence, 0, 2 * num * sizeof(int32_t));
+          int32_t silence[rx->local_audio_channels * num];
+          memset(silence, 0, rx->local_audio_channels * num * sizeof(int32_t));
           snd_pcm_writei (rx->audio_handle, silence, num);
         }
         break;
 
         case SND_PCM_FORMAT_FLOAT_LE: {
-          float silence[2 * num];
-          memset(silence, 0, 2 * num * sizeof(float));
+          float silence[rx->local_audio_channels * num];
+          memset(silence, 0, rx->local_audio_channels * num * sizeof(float));
           snd_pcm_writei (rx->audio_handle, silence, num);
         }
         break;
@@ -558,9 +553,9 @@ void audio_write(RECEIVER *rx, double left, double right) {
       //
       switch (rx->audio_format) {
       case SND_PCM_FORMAT_S16_LE: {
-        int16_t buffer[2 * out_buffer_size];
+        int16_t buffer[rx->local_audio_channels * out_buffer_size];
 
-        for (int i = 0; i < 2 * out_buffer_size; i++) {
+        for (int i = 0; i < rx->local_audio_channels * out_buffer_size; i++) {
           buffer[i] = rx->audio_buffer[i] * 32767.0;
         }
 
@@ -569,9 +564,9 @@ void audio_write(RECEIVER *rx, double left, double right) {
       break;
 
       case SND_PCM_FORMAT_S32_LE: {
-        int32_t buffer[2 * out_buffer_size];
+        int32_t buffer[rx->local_audio_channels * out_buffer_size];
 
-        for (int i = 0; i < 2 * out_buffer_size; i++) {
+        for (int i = 0; i < rx->local_audio_channels * out_buffer_size; i++) {
           buffer[i] = rx->audio_buffer[i] * 2147483647.0;
         }
 
@@ -580,9 +575,9 @@ void audio_write(RECEIVER *rx, double left, double right) {
       break;
 
       case SND_PCM_FORMAT_FLOAT_LE: {
-        float buffer[2 * out_buffer_size];
+        float buffer[rx->local_audio_channels * out_buffer_size];
 
-        for (int i = 0; i < 2 * out_buffer_size; i++) {
+        for (int i = 0; i < rx->local_audio_channels * out_buffer_size; i++) {
           buffer[i] = (float) rx->audio_buffer[i];
         }
 
@@ -749,7 +744,6 @@ double audio_get_next_mic_sample(TRANSMITTER *tx) {
 void audio_get_cards() {
   snd_ctl_card_info_t *info;
   snd_pcm_info_t *pcminfo;
-  char text[256];
   snd_ctl_card_info_alloca(&info);
   snd_pcm_info_alloca(&pcminfo);
   int card = -1;
@@ -764,10 +758,10 @@ void audio_get_cards() {
   //
   while (snd_card_next(&card) >= 0 && card >= 0) {
     snd_ctl_t *handle;
-    char name[20];
-    snprintf(name, sizeof(name), "hw:%d", card);
+    char card_name[20];
+    snprintf(card_name, sizeof(card_name), "hw:%d", card);
 
-    if (snd_ctl_open(&handle, name, 0) < 0) {
+    if (snd_ctl_open(&handle, card_name, 0) < 0) {
       continue;
     }
 
@@ -778,48 +772,107 @@ void audio_get_cards() {
 
     int dev = -1;
 
+    //
+    // Loop through all devices of the current card
+    // for all devices, loop through all combinations of
+    // input/output, hw:x,y/plughw:x,y, resample off/on, stereo/mono, format
+    // and log the first combination that works.
+    //
     while (snd_ctl_pcm_next_device(handle, &dev) >= 0 && dev >= 0) {
       snd_pcm_info_set_device(pcminfo, dev);
       snd_pcm_info_set_subdevice(pcminfo, 0);
-      // input devices
-      snd_pcm_info_set_stream(pcminfo, SND_PCM_STREAM_CAPTURE);
 
-      if (snd_ctl_pcm_info(handle, pcminfo) == 0) {
+      for (int i = 0; i < 2; i++) {    // i loop: input and output devices
+        snd_pcm_t *audio_handle;
+        snd_pcm_format_t audio_format;
         char device_name[256];
         char device_desc[256];
-        //
-        // name is plughw:x,y and can be used for opening the device
-        // desc contains human-readable description and will be used in the GUI
-        //
-        snprintf(device_name, sizeof(device_name), "plughw:%d,%d", card, dev);
-        snprintf(device_desc, sizeof(device_desc), "(%d,%d):%s", card, dev, snd_ctl_card_info_get_name(info));
+        int err;
+        snd_pcm_stream_t direction;
 
-        if (n_input_devices < MAX_AUDIO_DEVICES) {
-          // the two allocated strings will never be free'd
-          input_devices[n_input_devices].name = g_strdup(device_name);
-          input_devices[n_input_devices].description = g_strdup(device_desc);
-          input_devices[n_input_devices].index = 0; // not used
-          n_input_devices++;
-          t_print("%s: input_device: %s\n", device_desc, __func__);
+        // release slot for this (card, dev, direction) combination
+        audio_format = SND_PCM_FORMAT_UNKNOWN;
+
+        if (i == 0) {
+          direction = SND_PCM_STREAM_CAPTURE;
+        } else {
+          direction = SND_PCM_STREAM_PLAYBACK;
         }
-      }
 
-      // ouput devices
-      snd_pcm_info_set_stream(pcminfo, SND_PCM_STREAM_PLAYBACK);
+        snd_pcm_info_set_stream(pcminfo, direction);
 
-      if (snd_ctl_pcm_info(handle, pcminfo) == 0) {
-        char device_name[256];
-        char device_desc[256];
-        snprintf(device_name, sizeof(device_name), "plughw:%d,%d", card, dev);
-        snprintf(device_desc, sizeof(device_desc), "(%d,%d):%s", card, dev, snd_ctl_card_info_get_name(info));
+        if (snd_ctl_pcm_info(handle, pcminfo) < 0) {
+          continue;
+        }
 
-        if (n_output_devices < MAX_AUDIO_DEVICES) {
-          // the two allocated strings will never be free'd
-          output_devices[n_output_devices].name = g_strdup(device_name);
-          output_devices[n_output_devices].description = g_strdup(device_desc);
-          output_devices[n_output_devices].index = 0; // not used
-          n_output_devices++;
-          t_print("%s: output_device: %s\n", __func__, device_desc);
+        //
+        // For hw:x,y devices, the device *must* be mono to be used as input
+        // and stereo when used as output, the sample rate *must* be 48000 Hz, and
+        // one *must* use the native format (in most cases, signed 16 bit) of the
+        // device.
+        // plughw:x,y devices, on the other hand, may do format conversion,
+        // resampling to the native sample rate, and have a mono/stereo fallback.
+        //
+        // Therefore, we try hw:x,y first, and then plughw:x,y
+        // For each device, we first try to use it without resampling and then with,
+        // and with 2 channels first and then with 1 channel.
+        // The first 'hit' is then recorded in the database (only input devices that
+        // support mono are allowed).
+        //
+        // j loop: hw/plughw
+        for (int j = 0; j < 2; j++) {
+          if (j == 0) {
+            snprintf(device_name, sizeof(device_name), "hw:%d,%d", card, dev);
+          } else {
+            snprintf(device_name, sizeof(device_name), "plughw:%d,%d", card, dev);
+          }
+          snprintf(device_desc, sizeof(device_desc), "(%d,%d):%s", card, dev, snd_ctl_card_info_get_name(info));
+
+          if (snd_pcm_open (&audio_handle, device_name, direction, SND_PCM_ASYNC) < 0) {
+            continue;
+          }
+
+          // reample off/on
+          for (int soft_resample = 0; soft_resample < 2; soft_resample++) {
+             // stereo/mono
+            for (unsigned int channels = 2; channels > 0; channels--) {
+              // loop through formats
+              for (int f = 0; f < FORMATS; f++) {
+                err = snd_pcm_set_params(audio_handle, formats[f], SND_PCM_ACCESS_RW_INTERLEAVED,
+                                         channels, 48000, soft_resample, inp_latency);
+                if (err == 0) {
+                  //
+                  // Found a working device. Include it in database if this is the first time
+                  // for a given (card,dev,direction) combination
+                  //
+                  if (audio_format == SND_PCM_FORMAT_UNKNOWN) {
+                    if (direction == SND_PCM_STREAM_CAPTURE && channels == 1 && n_input_devices < MAX_AUDIO_DEVICES) {
+                      // found a working input device
+                      audio_format = formats[f]; // lock slot
+                      input_devices[n_input_devices].name = g_strdup(device_name);
+                      input_devices[n_input_devices].description = g_strdup(device_desc);
+                      input_devices[n_input_devices].format = audio_format;
+                      input_devices[n_input_devices].channels = channels;
+                      input_devices[n_input_devices].soft_resample = soft_resample;
+                      n_input_devices++;
+                    }
+                    if (direction == SND_PCM_STREAM_PLAYBACK && n_input_devices < MAX_AUDIO_DEVICES) {
+                      // found a working output device
+                      audio_format = formats[f]; // lock slot
+                      output_devices[n_output_devices].name = g_strdup(device_name);
+                      output_devices[n_output_devices].description = g_strdup(device_desc);
+                      output_devices[n_output_devices].format = audio_format;
+                      output_devices[n_output_devices].channels = channels;
+                      output_devices[n_output_devices].soft_resample = soft_resample;
+                      n_output_devices++;
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          snd_pcm_close(audio_handle);
         }
       }
     }
@@ -828,9 +881,9 @@ void audio_get_cards() {
   }
 
   //
-  // look for dmix and dsnoop
+  // look for dmix
   // We can get a very long list of names here, so only watch out
-  // for those starting with dmix: or dsnoop:
+  // for those starting with dmix:
   // Furthermore, truncate the description at the first newline
   //
   void **hints, **n;
@@ -847,81 +900,53 @@ void audio_get_cards() {
     descr = snd_device_name_get_hint(*n, "DESC");
 
     if (strncmp("dmix:", name, 5) == 0) {
-      if (n_output_devices < MAX_AUDIO_DEVICES) {
-        //
-        // copy name and truncate at first space
-        //
-        snprintf(text, sizeof(text), "%s", name);
+      //
+      // Determine capabilities (resample off/on, stereo/mono, formats)
+      // Note it seems that resampling never works for dmix devices,
+      // so the loop with "soft_resample" is perhaps not necessary but
+      // also does no harm.
+      //
+      snd_pcm_t *audio_handle;
+      snd_pcm_format_t audio_format;
+      int err;
 
-        for (unsigned int i = 0; i < strlen(text); i++) {
-          if (text[i] == ' ') {
-            text[i] = '\0';
-            break;
+      if (snd_pcm_open (&audio_handle, name, SND_PCM_STREAM_PLAYBACK, SND_PCM_ASYNC) == 0) {
+        // release slot
+        audio_format = SND_PCM_FORMAT_UNKNOWN;
+        for (int soft_resample = 0; soft_resample < 2; soft_resample++) {
+          for (unsigned int channels = 2; channels > 0; channels--) {
+            for (int f = 0; f < FORMATS; f++) {
+              err = snd_pcm_set_params(audio_handle, formats[f], SND_PCM_ACCESS_RW_INTERLEAVED,
+                                       channels, 48000, soft_resample, inp_latency);
+              if (err == 0) {
+                //
+                // Found a working device. Include it in database if this is the first time
+                // for a given (card,dev,direction) combination
+                //
+                if (audio_format == SND_PCM_FORMAT_UNKNOWN &&  n_output_devices < MAX_AUDIO_DEVICES) {
+                  char device_desc[256];
+                  char *cp;
+                  audio_format = formats[f]; // lock slot
+                  snprintf(device_desc,sizeof(device_desc),"dmix:%s",descr);
+                  // truncate at newline
+                  cp = strchr(device_desc, '\n');
+
+                  if (cp) { *cp = '\0'; }
+
+                  output_devices[n_output_devices].name = g_strdup(name);
+                  output_devices[n_output_devices].description = g_strdup(device_desc);
+                  output_devices[n_output_devices].format = audio_format;
+                  output_devices[n_output_devices].channels = channels;
+                  output_devices[n_output_devices].soft_resample = soft_resample;
+                  n_output_devices++;
+                }
+              }
+            }
           }
         }
-
-        output_devices[n_output_devices].name = g_strdup(text);
-        //
-        // Copy description and truncate at first newline
-        //
-        snprintf(text, sizeof(text), "dmix:%s", descr);
-
-        for (unsigned int i = 0; i < strlen(text); i++) {
-          if (text[i] == '\n') {
-            text[i] = '\0';
-            break;
-          }
-        }
-
-        output_devices[n_output_devices].description = g_strdup(text);
-        output_devices[n_output_devices].index = 0; // not used
-        n_output_devices++;
-        t_print("%s: output_device: name=%s descr=%s\n", __func__, name, descr);
+        snd_pcm_close(audio_handle);
       }
     }
-
-#if 0
-
-    //
-    // (Temporarily) deactivated "dsnoop" devices. Opening them in MONO  (as
-    // done by piHPSDR for "microphone" devices) fails on my RaspPi
-    // (channels == 1 not supported)
-    //
-    if (strncmp("dsnoop:", name, 6) == 0) {
-      if (n_input_devices < MAX_AUDIO_DEVICES) {
-        //
-        // copy name and truncate at first space
-        //
-        snprintf(text, sizeof(text), "%s", name);
-
-        for (unsigned int i = 0; i < strlen(text); i++) {
-          if (text[i] == ' ') {
-            text[i] = '\0';
-            break;
-          }
-        }
-
-        input_devices[n_input_devices].name = g_strdup(text);
-        //
-        // Copy description and truncate at first newline
-        //
-        snprintf(text, sizeof(text), "snoop:%s", descr);
-
-        for (unsigned int i = 0; i < strlen(text); i++) {
-          if (text[i] == '\n') {
-            text[i] = '\0';
-            break;
-          }
-        }
-
-        input_devices[n_input_devices].description = g_strdup(text);
-        input_devices[n_input_devices].index = 0; // not used
-        n_input_devices++;
-        t_print("%s: input_device: name=%s descr=%s\n", __func__, name, descr);
-      }
-    }
-
-#endif
 
     if (name != NULL) {
       free(name);   // allocated inside ALSA so use free() and not g_free()
@@ -935,4 +960,18 @@ void audio_get_cards() {
   }
 
   snd_device_name_free_hint(hints);
+
+  //
+  // Print audio devices to log file
+  //
+  for (int i = 0; i < n_input_devices; i++) {
+    t_print("Audio Input: %s(%s) R=%d Format=%s\n", input_devices[i].name, input_devices[i].description,
+            input_devices[i].soft_resample, snd_pcm_format_description(input_devices[i].format));
+  }
+
+  for (int i = 0; i < n_output_devices; i++) {
+    t_print("Audio Output: %s(%s) C=%d R=%d Format=%s\n", output_devices[i].name, output_devices[i].description,
+            output_devices[i].channels, output_devices[i].soft_resample,
+            snd_pcm_format_description(output_devices[i].format));
+  }
 }

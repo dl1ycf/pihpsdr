@@ -73,7 +73,6 @@ static void source_list_cb(pa_context *context, const pa_source_info *s, int eol
   if (n_input_devices < MAX_AUDIO_DEVICES) {
     input_devices[n_input_devices].name = g_strdup(s->name);
     input_devices[n_input_devices].description = g_strdup(s->description);
-    input_devices[n_input_devices].index = s->index;
     n_input_devices++;
   }
 }
@@ -84,7 +83,6 @@ static void sink_list_cb(pa_context *context, const pa_sink_info *s, int eol, vo
   if (n_output_devices < MAX_AUDIO_DEVICES) {
     output_devices[n_output_devices].name = g_strdup(s->name);
     output_devices[n_output_devices].description = g_strdup(s->description);
-    output_devices[n_output_devices].index = s->index;
     n_output_devices++;
   }
 }
@@ -135,11 +133,11 @@ static gpointer enumerate_thread(gpointer arg) {
   pa_operation_unref(op);
 
   for (int i = 0; i < n_input_devices; i++) {
-    t_print("Input: %d: %s\n", input_devices[i].index, input_devices[i].description);
+    t_print("PulseAudio Input: %s\n", input_devices[i].description);
   }
 
   for (int i = 0; i < n_output_devices; i++) {
-    t_print("Output: %d: %s\n", output_devices[i].index, output_devices[i].description);
+    t_print("PulseAudio Output: %s\n", output_devices[i].description);
   }
 
   return NULL;
@@ -169,11 +167,16 @@ int audio_open_output(RECEIVER *rx) {
   pa_sample_spec sample_spec;
   int err;
   sample_spec.rate = 48000;
-  sample_spec.channels = 2;
   sample_spec.format = PA_SAMPLE_FLOAT32NE;
   char stream_id[16];
   snprintf(stream_id, sizeof(stream_id), "RX-%d", rx->id);
   pa_buffer_attr attr;
+  //
+  // My experiments indicate that opening a MONO device while setting
+  // the number of channes to 2 is OK with PulseAudio (there is a
+  // "mono-fallback" device), so no need to handle this case.
+  //
+  sample_spec.channels = 2;
   //
   // PulseAudio/Pipewire accept ALSA device names as well. So when changing
   // from ALSA to pulseaudio, a device may be successfully opened although
@@ -314,8 +317,11 @@ int audio_open_input(TRANSMITTER *tx) {
   attr.minreq = (uint32_t) -1;
   attr.fragsize = 512;
   sample_spec.rate = 48000;
-  sample_spec.channels = 1;
   sample_spec.format = PA_SAMPLE_FLOAT32NE;
+  //
+  // It is no problem to open stereo input devices as MONO.
+  //
+  sample_spec.channels = 1;
   tx->audio_handle = pa_simple_new(NULL,      // Use the default server.
                                    "piHPSDR",                   // Our application's name.
                                    PA_STREAM_RECORD,
@@ -384,6 +390,7 @@ void audio_close_input(TRANSMITTER *tx) {
     // wait for the mic read thread to terminate,
     // then destroy the stream and the buffers
     // This way, the buffers cannot "vanish" in the mic read thread
+    // BUT the mic read thread must not block in pa_simple_read() !
     //
     g_thread_join(tx->audio_thread_id);
     tx->audio_thread_id = NULL;

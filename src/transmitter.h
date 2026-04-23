@@ -83,20 +83,20 @@ typedef struct _transmitter {
   //
   // everything related to local (TX input) audio
   //
-  int local_audio;
+  int local_audio;                    // sound card input is active
   //
   // if add_hpsdr_mic_samples && local_audio && hpsdr_ptt, add the
   // mic samples from the HPSDR radio to the local audio TX input stream
   //
-  int add_hpsdr_mic_samples;
-  char audio_name[128];
-  GMutex audio_mutex;
-  GThread * audio_thread_id;
+  int add_hpsdr_mic_samples;          // use both HPSDR and sound card
+  char audio_name[128];               // Name of sound card device
+  GMutex audio_mutex;                 // Mutex to be used with sound card input
+  GThread * audio_thread_id;          // Microphone reading thread
   int audio_flag;
-  volatile int audio_buffer_inpt;
-  volatile int audio_buffer_outpt;
-  volatile int audio_running;
-  double *audio_buffer;
+  volatile int audio_buffer_inpt;     // pointer for audio buffer
+  volatile int audio_buffer_outpt;    // pointer for audio buffer
+  volatile int audio_running;         // used in mic thread to see whether input is still running
+  double *audio_buffer;               // audio buffer for sound card input
 
 #if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA)
   // this is only possible for "cppcheck" runs

@@ -27,8 +27,15 @@
 
 typedef struct _audio_devices {
   char *name;
-  int index;
   char *description;
+  int channels;
+#ifdef PORTAUDIO
+  int PortAudioDevice;
+#endif
+#ifdef ALSA
+  snd_pcm_format_t format;
+  int soft_resample;
+#endif
 } AUDIO_DEVICE;
 
 extern int n_input_devices;
