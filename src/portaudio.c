@@ -85,6 +85,7 @@ AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
 //
 //
 
+#ifdef __APPLE__
 #define MY_AUDIO_BUFFER_SIZE  128
 #define MY_RING_BUFFER_SIZE  9600
 #define MY_RING_LOW_WATER     512
@@ -92,6 +93,20 @@ AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
 #define CW_LAT_LOW            224
 #define CW_LAT_TARGET         256
 #define CW_LAT_HIGH           288
+#else
+//
+// It seems that PortAudio under LINUX needs somewhat higher
+// low-water marks, but there is little point in using
+// PortAudio under LINUX anyway.
+//
+#define MY_AUDIO_BUFFER_SIZE  256
+#define MY_RING_BUFFER_SIZE  9600
+#define MY_RING_LOW_WATER    2000
+#define MY_RING_HIGH_WATER   9000
+#define CW_LAT_LOW            224
+#define CW_LAT_TARGET         256
+#define CW_LAT_HIGH           288
+#endif
 
 //
 // AUDIO_GET_CARDS
@@ -263,6 +278,12 @@ static int pa_out_cb(const void *inputBuffer, void *outputBuffer, unsigned long 
   float *out = (float *)outputBuffer;
   RECEIVER *rx = (RECEIVER *)userdata;
 
+  if (rx->local_audio == 0) {
+    // This usually means we are in audio_close_output() and then
+    // we should not hit the mutex
+    return paContinue;
+  }
+
   if (out == NULL) {
     t_print("%s: bogus audio buffer in callback\n", __func__);
     return paContinue;
@@ -328,6 +349,12 @@ static int pa_in_cb(const void *inputBuffer, void *outputBuffer, unsigned long f
   // Assume paFloat32 is represented as "float" in C
   const float *in = (float *)inputBuffer;
   TRANSMITTER *tx = (TRANSMITTER *)userdata;
+
+  if (tx->local_audio == 0) {
+    // This usually means we are in audio_close_input() and then
+    // we should not hit the mutex
+    return paContinue;
+  }
 
   if (in == NULL) {
     // This should not happen, so we do not send silence etc.
@@ -447,6 +474,7 @@ int audio_open_output(RECEIVER *rx) {
   //
   // Look up device name and determine device ID
   //
+  channels = 0;
   padev = -1;
 
   for (i = 0; i < n_output_devices; i++) {
@@ -530,6 +558,7 @@ int audio_open_output(RECEIVER *rx) {
 //
 void audio_close_input(TRANSMITTER *tx) {
   t_print("%s: TX:%s\n", __func__, tx->audio_name);
+  tx->local_audio = 0;
   g_mutex_lock(&tx->audio_mutex);
 
   if (tx->audio_handle != NULL) {
@@ -563,12 +592,8 @@ void audio_close_input(TRANSMITTER *tx) {
 //
 void audio_close_output(RECEIVER *rx) {
   t_print("%s: RX%d:%s\n", __func__, rx->id + 1, rx->audio_name);
+  rx->local_audio = 0;
   g_mutex_lock(&rx->audio_mutex);
-
-  if (rx->audio_buffer != NULL) {
-    g_free(rx->audio_buffer);
-    rx->audio_buffer = NULL;
-  }
 
   if (rx->audio_handle != NULL) {
     PaError err = Pa_StopStream(rx->audio_handle);
@@ -582,8 +607,12 @@ void audio_close_output(RECEIVER *rx) {
     if (err != paNoError) {
       t_print("%s: close stream error %s\n", __func__, Pa_GetErrorText(err));
     }
-
     rx->audio_handle = NULL;
+  }
+
+  if (rx->audio_buffer != NULL) {
+    g_free(rx->audio_buffer);
+    rx->audio_buffer = NULL;
   }
 
   g_mutex_unlock(&rx->audio_mutex);

@@ -887,7 +887,6 @@ void audio_get_cards() {
   // Furthermore, truncate the description at the first newline
   //
   void **hints, **n;
-  char *name, *descr;
 
   if (snd_device_name_hint(-1, "pcm", &hints) < 0) {
     return;
@@ -896,8 +895,10 @@ void audio_get_cards() {
   n = hints;  // must not touch "hints" since it will be freed
 
   while (*n != NULL) {
-    name = snd_device_name_get_hint(*n, "NAME");
-    descr = snd_device_name_get_hint(*n, "DESC");
+    char *name = snd_device_name_get_hint(*n, "NAME");
+    char *descr = snd_device_name_get_hint(*n, "DESC");
+
+    if (name == NULL || descr == NULL) { continue; }
 
     if (strncmp("dmix:", name, 5) == 0) {
       //
@@ -907,16 +908,12 @@ void audio_get_cards() {
       // also does no harm.
       //
       snd_pcm_t *audio_handle;
-      snd_pcm_format_t audio_format;
-      int err;
-
       if (snd_pcm_open (&audio_handle, name, SND_PCM_STREAM_PLAYBACK, SND_PCM_ASYNC) == 0) {
-        // release slot
-        audio_format = SND_PCM_FORMAT_UNKNOWN;
+        snd_pcm_format_t audio_format = SND_PCM_FORMAT_UNKNOWN;
         for (int soft_resample = 0; soft_resample < 2; soft_resample++) {
           for (unsigned int channels = 2; channels > 0; channels--) {
             for (int f = 0; f < FORMATS; f++) {
-              err = snd_pcm_set_params(audio_handle, formats[f], SND_PCM_ACCESS_RW_INTERLEAVED,
+              int err = snd_pcm_set_params(audio_handle, formats[f], SND_PCM_ACCESS_RW_INTERLEAVED,
                                        channels, 48000, soft_resample, inp_latency);
               if (err == 0) {
                 //
@@ -948,15 +945,9 @@ void audio_get_cards() {
       }
     }
 
-    if (name != NULL) {
-      free(name);   // allocated inside ALSA so use free() and not g_free()
-    }
-
-    if (descr != NULL) {
-      free(descr);  // allocated inside ALSA so use free() and not g_free()
-    }
-
-    n++;
+    free(name);   // allocated inside ALSA so use free() and not g_free()
+    free(descr);  // allocated inside ALSA so use free() and not g_free()
+    n++;          // cycle to next device in 'hints'
   }
 
   snd_device_name_free_hint(hints);

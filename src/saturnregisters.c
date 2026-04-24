@@ -1318,22 +1318,21 @@ unsigned int GetP2PTTKeyInputs(void) {
 // returns bit0: 1 if ADC1 overflow; bit1: 1 if ARC2 overflow
 // for FPGA version >27, returns the unsigned max amplitude from each ADC as parameters
 //
+// Note the "#if 0": since piHPDR currently does not use the value,
+// save the two register reads.
+//
 unsigned int GetADCOverflow(uint16_t *ADC1Max, uint16_t *ADC2Max) {
   unsigned int Result = 0;
   Result = RegisterRead(VADDRADCOVERFLOWBASE);
 
+  *ADC1Max = 0;
+  *ADC2Max = 0;
+
 #if 0
-   //
-   // Currently disabled since it is not used in piHPSDR and
-   // "costs" two register reads
-   //
    if(FPGA_MinorVersion >= 27) {
      // for FPGAs with code, read the ADC1 & 2 max amplitude
      *ADC1Max = RegisterRead(VADDRADCOVERFLOWBASE+4);
      *ADC2Max = RegisterRead(VADDRADCOVERFLOWBASE+8);
-   } else {
-     *ADC1Max = 0;
-     *ADC2Max = 0;
    }
 #endif
 

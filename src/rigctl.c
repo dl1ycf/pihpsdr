@@ -3339,6 +3339,31 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 
   case 'Z': //ZZZx
     switch (command[3]) {
+    case 'A': //ZZZA
+
+      //CATDEF    ZZZA
+      //DESCR     Warning from a PA
+      //SET       ZZZDxx;
+      //NOTE      ANDROMEDA extension (Ganymed PAs only).
+      //NOTE      xx is error condition (0 for no error).
+      //CONT      A warning message window may pop up.
+      //ENDDEF
+      if (command[6] == ';') {
+        static int pastate = 0;
+        int x = 10 * (command[4] - '0') + (command[5] - '0');
+        if (x == 0) {
+          pastate = 0;
+        } else if ( x == 64) {
+          // pop up window
+        } else {
+          pastate |= x;
+        }
+      } else {
+        // unexpected command format
+        implemented = FALSE;
+      }
+      break;
+
     case 'D': //ZZZD
 
       //CATDEF    ZZZD
