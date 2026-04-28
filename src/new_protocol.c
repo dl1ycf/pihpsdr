@@ -541,7 +541,7 @@ void new_protocol_init(void) {
     //
     // UDP RaspPi default values: RCVBUF: 0x34000, SNDBUF: 0x34000
     //            we set them to: RCVBUF: 0x80000, SNDBUF: 0x20000
-    // then getsockopt() returns: RCVBUF: 0x68000, SNDBUF: 0x20000
+    // then getsockopt() returns: RCVBUF: 0x68000, SNDBUF: 0x40000
     //
     // UDP MacOS  default values: RCVBUF: 0xC01D0, SNDBUF: 0x02400
     //            we set them to: RCVBUF: 0x80000, SNDBUF: 0x20000
@@ -564,7 +564,7 @@ void new_protocol_init(void) {
     if (getsockopt(data_socket, SOL_SOCKET, SO_RCVBUF, &optval, &optlen) < 0) {
       t_perror("data_socket: get SO_RCVBUF");
     } else {
-      if (optlen == sizeof(optval)) { t_print("UDP Socket RCV buf size=%x\n", optval); }
+      if (optlen == sizeof(optval)) { t_print("%s: UDP Socket RCV buf size=%x\n", __func__, optval); }
     }
 
     optlen = sizeof(optval);
@@ -572,7 +572,7 @@ void new_protocol_init(void) {
     if (getsockopt(data_socket, SOL_SOCKET, SO_SNDBUF, &optval, &optlen) < 0) {
       t_perror("data_socket: get SO_SNDBUF");
     } else {
-      if (optlen == sizeof(optval)) { t_print("UDP Socket SND buf size=%x\n", optval); }
+      if (optlen == sizeof(optval)) { t_print("%s: UDP Socket SND buf size=%x\n", __func__, optval); }
     }
 
     optlen = sizeof(optval);
