@@ -452,6 +452,7 @@ static void update_action_table(void) {
 
 void new_protocol_init(void) {
   ASSERT_SERVER();
+  struct timeval tv;
   int i;
 
   //
@@ -535,23 +536,24 @@ void new_protocol_init(void) {
     // program explicitly specify the buffer sizes. What I  do here
     // is to query the buffer sizes after they have been set.
     // Note in the UDP case one normally does not need a large
-    // send buffer because data is sent immediately.
+    // send buffer because data is sent immediately, but this may not
+    // hold for WLAN connections (which are not recommended anyway)
     //
     // UDP RaspPi default values: RCVBUF: 0x34000, SNDBUF: 0x34000
-    //            we set them to: RCVBUF: 0x40000, SNDBUF: 0x10000
+    //            we set them to: RCVBUF: 0x80000, SNDBUF: 0x20000
     // then getsockopt() returns: RCVBUF: 0x68000, SNDBUF: 0x20000
     //
     // UDP MacOS  default values: RCVBUF: 0xC01D0, SNDBUF: 0x02400
-    //            we set them to: RCVBUF: 0x40000, SNDBUF: 0x10000
-    // then getsockopt() returns: RCVBUF: 0x40000, SNDBUF: 0x10000
+    //            we set them to: RCVBUF: 0x80000, SNDBUF: 0x20000
+    // then getsockopt() returns: RCVBUF: 0x80000, SNDBUF: 0x20000
     //
-    optval = 0x40000;
+    optval = 0x80000;
 
     if (setsockopt(data_socket, SOL_SOCKET, SO_RCVBUF, &optval, optlen) < 0) {
       t_perror("data_socket: set SO_RCVBUF");
     }
 
-    optval = 0x10000;
+    optval = 0x20000;
 
     if (setsockopt(data_socket, SOL_SOCKET, SO_SNDBUF, &optval, optlen) < 0) {
       t_perror("data_socket: set SO_SNDBUF");
@@ -562,7 +564,7 @@ void new_protocol_init(void) {
     if (getsockopt(data_socket, SOL_SOCKET, SO_RCVBUF, &optval, &optlen) < 0) {
       t_perror("data_socket: get SO_RCVBUF");
     } else {
-      if (optlen == sizeof(optval)) { t_print("UDP Socket RCV buf size=%d\n", optval); }
+      if (optlen == sizeof(optval)) { t_print("UDP Socket RCV buf size=%x\n", optval); }
     }
 
     optlen = sizeof(optval);
@@ -570,7 +572,7 @@ void new_protocol_init(void) {
     if (getsockopt(data_socket, SOL_SOCKET, SO_SNDBUF, &optval, &optlen) < 0) {
       t_perror("data_socket: get SO_SNDBUF");
     } else {
-      if (optlen == sizeof(optval)) { t_print("UDP Socket SND buf size=%d\n", optval); }
+      if (optlen == sizeof(optval)) { t_print("UDP Socket SND buf size=%x\n", optval); }
     }
 
     optlen = sizeof(optval);
@@ -594,6 +596,17 @@ void new_protocol_init(void) {
              radio->network.interface_length) < 0) {
       t_perror("bind socket failed for data_socket");
       g_idle_add(fatal_error, "FATAL: P2 Bind failed for data socket");
+    }
+
+    //
+    // Set a time-out on the data_socket, so we will not be trapped "forever"
+    // in rcvfrom()
+    //
+    tv.tv_sec = 0;
+    tv.tv_usec = 100000;
+
+    if (setsockopt(data_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+      t_perror("Set RCVTIMEO on data_socket");
     }
 
     t_print("new_protocol_init: data_socket %d bound to interface %s:%d\n", data_socket,
@@ -1679,9 +1692,6 @@ static void new_protocol_receive_specific(void) {
 //
 void new_protocol_menu_stop(void) {
   ASSERT_SERVER();
-  fd_set fds;
-  struct timeval tv;
-  char *buffer;
   P2running = 0;
   //
   // Wait 100 msec so we know that the TX IQ and RX audio
@@ -1715,22 +1725,30 @@ void new_protocol_menu_stop(void) {
   // let the FPGA rest a while
   usleep(200000); // 200 ms
 
-  if (!have_saturn_xdma) {
+  if (data_socket >= 0) {
     //
     // drain all data that might still wait in the data_socket.
     // (use select() and read until nothing is left)
+    // Note (tnx Heiko) that select() changes fds
     //
-    FD_ZERO(&fds);
-    FD_SET(data_socket, &fds);
+    struct timeval tv;
+    fd_set fds;
+    char *buffer = g_new(char, NET_BUFFER_SIZE);
     tv.tv_usec = 50000;
     tv.tv_sec = 0;
-    buffer = g_new(char, NET_BUFFER_SIZE);
 
-    while (select(data_socket + 1, &fds, NULL, NULL, &tv) > 0) {
-      recvfrom(data_socket, buffer, NET_BUFFER_SIZE, 0, (struct sockaddr*)&addr, &length);
+    if (buffer != NULL) {
+      while (1) {
+        FD_ZERO(&fds);
+        FD_SET(data_socket, &fds);
+
+        if (select(data_socket + 1, &fds, NULL, NULL, &tv) <=  0) { break; }
+
+        recvfrom(data_socket, buffer, NET_BUFFER_SIZE, 0, (struct sockaddr*)&addr, &length);
+      }
+
+      g_free(buffer);
     }
-
-    g_free(buffer);
   }
 }
 
@@ -2028,6 +2046,12 @@ static gpointer new_protocol_thread(gpointer data) {
     }
 
     if (bytesread < 0) {
+
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        mybuf->free = 1;
+        continue;
+      }
+
       t_perror("recvfrom socket failed for new_protocol_thread");
       g_idle_add(fatal_error, "FATAL: P2 receive (Network problem?)");
       P2running = 0;
