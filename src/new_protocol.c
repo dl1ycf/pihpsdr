@@ -535,9 +535,9 @@ void new_protocol_init(void) {
     // My personal feeling is to let the kernel decide, but other
     // program explicitly specify the buffer sizes. What I  do here
     // is to query the buffer sizes after they have been set.
-    // Note in the UDP case one normally does not need a large
-    // send buffer because data is sent immediately, but this may not
-    // hold for WLAN connections (which are not recommended anyway)
+    //
+    // The large sizes chosen here are probably not needed for wired
+    // connections, but they may be helpful for WLAN connections.
     //
     // UDP RaspPi default values: RCVBUF: 0x34000, SNDBUF: 0x34000
     //            we set them to: RCVBUF: 0x80000, SNDBUF: 0x20000
@@ -600,7 +600,7 @@ void new_protocol_init(void) {
 
     //
     // Set a time-out on the data_socket, so we will not be trapped "forever"
-    // in rcvfrom()
+    // in rcvfrom(). Note EAGAIN errors from rcvfrom() are then non-fatal.
     //
     tv.tv_sec = 0;
     tv.tv_usec = 100000;
