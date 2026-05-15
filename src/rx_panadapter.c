@@ -410,7 +410,7 @@ void rx_panadapter_update(RECEIVER *rx) {
 
   cairo_move_to(cr, rxpos, 0.0);
   cairo_line_to(cr, rxpos, myheight);
-  cairo_set_line_width(cr, PAN_LINE_THIN);
+  cairo_set_line_width(cr, PAN_LINE_THICK);
   cairo_stroke(cr);
 
   if (rx->pixels_available) {
@@ -474,12 +474,16 @@ void rx_panadapter_update(RECEIVER *rx) {
       //
       if (active) {
         if (!rx->display_filled) {
-          cairo_set_source_rgba(cr, COLOUR_PAN_FILL3);
+          cairo_set_source_rgba(cr, COLOUR_PAN_LINE1);
+        } else {
+          cairo_set_source_rgba(cr, COLOUR_PAN_FILL1);
+        }
+      } else {
+        if (!rx->display_filled) {
+          cairo_set_source_rgba(cr, COLOUR_PAN_LINE2);
         } else {
           cairo_set_source_rgba(cr, COLOUR_PAN_FILL2);
         }
-      } else {
-        cairo_set_source_rgba(cr, COLOUR_PAN_FILL1);
       }
     }
 

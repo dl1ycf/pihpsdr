@@ -96,17 +96,22 @@
 #define COLOUR_GRAD4_WEAK    0.50, 0.00, 0.00, 1.00
 
 //
-// Settings for a "black and white" spectrum (note the TX spectrum is always B&W).
+// Settings for a "non gradient" spectrum (note the TX spectrum never has a gradient).
+// To increase visibility in the region of the (gray) filter area, the filled spectrum
+// is made slightly red-ish, while the lines are made slightly yellow-ish
 //
-// FILL1 is used for a filled spectrum of a non-active receiver
-// FILL2 is used for a filled spectrum of an active receiver,
-//           and for a line spectrum of a non-active receiver
-// FILL3 is used for a line spectrum of an active receiver
+//
+// COLOUR_PAN_LINE1  is used for the line spectrum of the active RX and the TX
+// COLOUR_PAN_LINE2  is used for the line spectrum of the non-active RX
+// COLOUR_PAN_FILL1  is used for the filled spectrum of the active RX and the TX
+// COLOUR_PAN_FILL2  is used for the filled spectrum of the non-active RX
 //
 
-#define COLOUR_PAN_FILL1     1.00, 1.00, 1.00, 0.25
-#define COLOUR_PAN_FILL2     1.00, 1.00, 1.00, 0.50
-#define COLOUR_PAN_FILL3     1.00, 1.00, 1.00, 0.75
+#define COLOUR_PAN_LINE1     0.80, 1.00, 0.80, 0.75
+#define COLOUR_PAN_LINE2     0.80, 1.00, 0.80, 0.50
+
+#define COLOUR_PAN_FILL1     1.00, 0.80, 0.80, 0.50
+#define COLOUR_PAN_FILL2     1.00, 0.80, 0.80, 0.25
 
 //
 // thin and thick line widths in the panadapers

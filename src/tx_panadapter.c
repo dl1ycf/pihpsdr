@@ -296,7 +296,7 @@ void tx_panadapter_update(TRANSMITTER *tx) {
       cairo_fill_preserve (cr);
       cairo_set_line_width(cr, PAN_LINE_THIN);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_PAN_FILL3);
+      cairo_set_source_rgba(cr, COLOUR_PAN_LINE1);
       cairo_set_line_width(cr, PAN_LINE_THICK);
     }
 
