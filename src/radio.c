@@ -1381,7 +1381,7 @@ void radio_start_radio(void) {
 
   case DEVICE_STEMLAB:
     // This one has switchable attenuators and preamps
-    // on the CHARLY25 board
+    // if filter_board == CHARLY25
     break;
 
   default:
@@ -3335,7 +3335,7 @@ void radio_tx_vfo_changed(void) {
 }
 
 void radio_set_alex_attenuation(int v) {
-  if (!have_alex_att) { return; }
+  if (!have_alex_att || filter_board != ALEX) { return; }
 
   //
   // Change the value of the ALEX attenuator. Store it

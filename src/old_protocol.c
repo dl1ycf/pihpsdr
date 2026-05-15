@@ -1903,7 +1903,9 @@ static void ozy_send_buffer(unsigned char *buffer) {
       buffer[C2] |= rxband->OCrx << 1;
     }
 
-    buffer[C3] = adc[0].alex_attenuation & 0x03;
+    if ((have_alex_att && filter_board == ALEX) || filter_board == CHARLY25) {
+      buffer[C3] = adc[0].alex_attenuation & 0x03;
+    }
 
     //
     // The protocol does not have different random/dither bits for different Mercury

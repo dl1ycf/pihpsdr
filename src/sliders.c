@@ -395,7 +395,7 @@ int sliders_att_type_changed(gpointer data) {
 
     if (!have_dither) { adc[0].dither = 0; }
 
-    if (!have_alex_att) { adc[0].alex_attenuation = 0; }
+    if (!have_alex_att || filter_board != ALEX) { adc[0].alex_attenuation = 0; }
 
     if (attenuation_scale) {
       gtk_widget_show(attenuation_label);
