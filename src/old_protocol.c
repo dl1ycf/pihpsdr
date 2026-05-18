@@ -1882,6 +1882,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
 
 #endif
     buffer[C2] = 0x00;
+    buffer[C3] = 0x00;
 
     if (radio_is_transmitting()) {
       buffer[C2] |= txband->OCtx << 1;
