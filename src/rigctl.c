@@ -4718,38 +4718,41 @@ static int parse_cmd(gpointer data) {
       //ENDDEF
       // set/read Attenuator function
       if (command[2] == ';') {
-        int att = 0;
+        int result = 0;
 
         if (have_rx_gain) {
           // map gain value -12...48 to 0...99
-          att = (int)(adc[receiver[0]->adc].attenuation + 12);
-          att = (int)(((double)att / 60.0) * 99.0);
+          // note adc.gain is double
+          double val = adc[receiver[0]->adc].gain + 12.0;
+          result = (int)((val / 60.0) * 99.0);
         }
 
         if (have_rx_att) {
           // map att value -31 ... 0 to 0...99
-          att = (int)(adc[receiver[0]->adc].attenuation);
-          att = (int)(((double)att / 31.0) * 99.0);
+          // note adc.attenuation is integer
+          double val = (double)(adc[receiver[0]->adc].attenuation);
+          result = (int)((val / 31.0) * 99.0);
         }
 
-        snprintf(reply,  sizeof(reply), "RA%02d00;", att);
+        if (result < 0) { result = 0; }
+
+        snprintf(reply,  sizeof(reply), "RA%02d00;", result);
         send_resp(client->fd, reply);
       } else if (command[4] == ';') {
-        int att = atoi(&command[2]);
+        double val = (double)(atoi(&command[2])) / 99.0;    // 0.00 ... 1.00
 
         if (have_rx_gain) {
-          // map 0...99 scale to -12...48
-          att = (int)((((double)att / 99.0) * 60.0) - 12.0);
+          val = (val * 60.0) - 12.0;                        // -12.0 ... 48.00
           suppress_popup_sliders++;
-          radio_set_rf_gain(VFO_A, (double)att);
+          radio_set_rf_gain(VFO_A, val);
           suppress_popup_sliders--;
         }
 
         if (have_rx_att) {
           // mapp 0...99 scale to 0...31
-          att = (int)(((double)att / 99.0) * 31.0);
+          val = (val * 31.0);                               // 0.0 ... 31.0
           suppress_popup_sliders++;
-          radio_set_attenuation(VFO_A, (double)att);
+          radio_set_attenuation(VFO_A, val);
           suppress_popup_sliders--;
         }
       }
