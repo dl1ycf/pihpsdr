@@ -27,7 +27,7 @@ warren@pratt.one
 
 #include "comm.h"
 
-static int calc_size (int nc)
+static int calc_size (int nc, int size)
 {
 	// round up to a power of two
 	nc--;
@@ -37,11 +37,11 @@ static int calc_size (int nc)
 	nc |= nc >> 8;
 	nc |= nc >> 16;
 	nc++;
-	if (nc < 1024) nc = 1024;
+	if (nc < size) nc = size;
 	return nc;
 }
 
-double* build_matched(int* imp_size, double rate, double f, double fwhm, double scale, int imp_pos)
+double* build_matched(int* imp_size, int size, double rate, double f, double fwhm, double scale, int imp_pos)
 {
 	// *imp_size - number of impulse response values, POWER OF TWO; Computed in this function!
 	//	   NOT to be confused with 'nc', the number of non-zero impulse response values needed
@@ -53,7 +53,7 @@ double* build_matched(int* imp_size, double rate, double f, double fwhm, double 
 	//	  '1' centers the impulse response in the output field
 	double nc_d = 1.2067 * rate / fwhm;
 	int nc = (int)(round (nc_d * 0.5) * 2.0);
-	int fsize = calc_size (nc);
+	int fsize = calc_size (nc, size);
 	double* c_impulse = (double*)malloc0 (fsize * sizeof(complex));
 	double w_osc = -2.0 * PI * f / rate;
 	double m = 0.5 * (double)(fsize - 1);
@@ -136,7 +136,7 @@ MATCHED create_matched (int run, int position, int size, double* in, double* out
 	a->gain = gain;
 	a->scale = a->gain / (double)(2 * a->size);
 	a->mode = mode;
-	impulse = build_matched (&a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale, 0);
+	impulse = build_matched (&a->nc, a->size, a->samplerate, a->f_center, a->bandwidth, a->scale, 0);
 	a->p = create_fircore (a->size, a->in, a->out, a->nc, 0, impulse);
 	_aligned_free (impulse);
 	return a;
@@ -186,7 +186,7 @@ void setSamplerate_matched (MATCHED a, int rate)
 	double* impulse;
 	int nc = a->nc;
 	a->samplerate = rate;
-	impulse = build_matched (&a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale, 0);
+	impulse = build_matched (&a->nc, a->size, a->samplerate, a->f_center, a->bandwidth, a->scale, 0);
 	if (nc == a->nc)
 		setImpulse_fircore (a->p, impulse, 1);
 	else
@@ -201,7 +201,7 @@ void setSize_matched (MATCHED a, int size)
 	setSize_fircore (a->p, a->size);
 	// recalc impulse because scale factor is a function of size
 	a->scale = a->gain / (double)(2 * a->size);
-	double* impulse = build_matched (&a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale, 0);
+	double* impulse = build_matched (&a->nc, a->size, a->samplerate, a->f_center, a->bandwidth, a->scale, 0);
 	setImpulse_fircore (a->p, impulse, 1);
 	_aligned_free (impulse);
 }
@@ -211,7 +211,7 @@ void setGain_matched (MATCHED a, double gain)
 	double* impulse;
 	a->gain = gain;
 	a->scale = a->gain / (double)(2 * a->size);
-	impulse = build_matched (&a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale, 0);
+	impulse = build_matched (&a->nc, a->size, a->samplerate, a->f_center, a->bandwidth, a->scale, 0);
 	setImpulse_fircore (a->p, impulse, 1);
 	_aligned_free (impulse);
 }
@@ -226,7 +226,7 @@ void CalcMatchedFilter (MATCHED a, double f_center, double bandwidth, double gai
 		a->bandwidth = bandwidth;
 		a->gain = gain;
 		a->scale = a->gain / (double)(2 * a->size);
-		impulse = build_matched (&a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale, 0);
+		impulse = build_matched (&a->nc, a->size, a->samplerate, a->f_center, a->bandwidth, a->scale, 0);
 		if (nc == a->nc)
 			setImpulse_fircore (a->p, impulse, 1);
 		else

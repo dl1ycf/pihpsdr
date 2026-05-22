@@ -27,7 +27,7 @@ warren@pratt.one
 
 #include "comm.h"
 
-static int calc_nc (double sigma, double nsigma, double rate)
+static int calc_nc (double sigma, double nsigma, double rate, int size)
 {
 	int nc;
 	nc = (int)ceil(2.0 * nsigma * sigma * rate);
@@ -38,11 +38,11 @@ static int calc_nc (double sigma, double nsigma, double rate)
 	nc |= nc >> 8;
 	nc |= nc >> 16;
 	nc++;
-	if (nc < 1024) nc = 1024;
+	if (nc < size) nc = size;
 	return nc;
 }
 
-double* build_gaussian(int* pnc, double rate, double f, double fwhm, double scale, double nsigma)
+double* build_gaussian(int* pnc, int size, double rate, double f, double fwhm, double scale, double nsigma)
 {
 	// nc - number of impulse response values, IS EVEN FOR THE FOLLOWING CODE
 	//		IF 'nc' is entered as zero, it will be computed below.
@@ -54,7 +54,7 @@ double* build_gaussian(int* pnc, double rate, double f, double fwhm, double scal
 	int nc = *pnc;
 	double fsigma = fwhm / 2.35482;
 	double sigma = 1.0 / (2.0 * PI * fsigma);
-	if (nc == 0) nc = calc_nc(sigma, nsigma, rate);
+	if (nc == 0) nc = calc_nc(sigma, nsigma, rate, size);
 	double* impulse = (double*)malloc0(nc * sizeof(double));
 	double delta = 1.0 / rate;
 	int i, j;
@@ -123,7 +123,7 @@ GAUSSIAN create_gaussian (int run, int position, int size, int nc, double* in, d
 	a->mode = mode;
 	if (a->nc == 0) a->nc_var = 1;
 	else			a->nc_var = 0;
-	impulse = build_gaussian (&a->nc, (double)a->samplerate, a->f_center, a->bandwidth, a->scale, a->nsigma);
+	impulse = build_gaussian (&a->nc, a->size, (double)a->samplerate, a->f_center, a->bandwidth, a->scale, a->nsigma);
 	a->p = create_fircore (a->size, a->in, a->out, a->nc, 0, impulse);
 	_aligned_free (impulse);
 	return a;
@@ -175,7 +175,7 @@ void setSamplerate_gaussian (GAUSSIAN a, int rate)
 	a->samplerate = rate;
 	// if 'nc_var' is set, set 'nc' to '0' so that 'nc' will be re-calculated in 'build_gaussian()'
 	if (a->nc_var) a->nc = 0;
-	impulse = build_gaussian (&a->nc, (double)a->samplerate, a->f_center, a->bandwidth, a->scale, a->nsigma);
+	impulse = build_gaussian (&a->nc, a->size, (double)a->samplerate, a->f_center, a->bandwidth, a->scale, a->nsigma);
 	if (nc == a->nc)
 		setImpulse_fircore (a->p, impulse, 1);
 	else
@@ -190,7 +190,7 @@ void setSize_gaussian (GAUSSIAN a, int size)
 	setSize_fircore (a->p, a->size);
 	// recalc impulse because scale factor is a function of size
 	a->scale = a->gain / (double)(2 * a->size);
-	double* impulse = build_gaussian (&a->nc, (double)a->samplerate, a->f_center, a->bandwidth, a->scale, a->nsigma);
+	double* impulse = build_gaussian (&a->nc, a->size, (double)a->samplerate, a->f_center, a->bandwidth, a->scale, a->nsigma);
 	setImpulse_fircore (a->p, impulse, 1);
 	_aligned_free (impulse);
 }
@@ -200,7 +200,7 @@ void setGain_gaussian (GAUSSIAN a, double gain)
 	double* impulse;
 	a->gain = gain;
 	a->scale = a->gain / (double)(2 * a->size);
-	impulse = build_gaussian (&a->nc, (double)a->samplerate, a->f_center, a->bandwidth, a->scale, a->nsigma);
+	impulse = build_gaussian (&a->nc, a->size, (double)a->samplerate, a->f_center, a->bandwidth, a->scale, a->nsigma);
 	setImpulse_fircore (a->p, impulse, 1);
 	_aligned_free (impulse);
 }
@@ -216,7 +216,7 @@ void CalcGaussianFilter (GAUSSIAN a, double f_center, double bandwidth, double g
 		a->gain = gain;
 		a->scale = a->gain / (double)(2 * a->size);
 		if (a->nc_var) a->nc = 0;
-		impulse = build_gaussian (&a->nc, (double)a->samplerate, a->f_center, a->bandwidth, a->scale, a->nsigma);
+		impulse = build_gaussian (&a->nc, a->size, (double)a->samplerate, a->f_center, a->bandwidth, a->scale, a->nsigma);
 		if (nc == a->nc)
 			setImpulse_fircore (a->p, impulse, 1);
 		else
@@ -270,7 +270,7 @@ void SetRXAGaussianNC (int channel, int nc)
 		a->nc = nc;
 		if (a->nc == 0) a->nc_var = 1;
 		else			a->nc_var = 0;
-		impulse = build_gaussian (&a->nc, (double)a->samplerate, a->f_center, a->bandwidth, a->scale, a->nsigma);
+		impulse = build_gaussian (&a->nc, a->size, (double)a->samplerate, a->f_center, a->bandwidth, a->scale, a->nsigma);
 		setNc_fircore (a->p, a->nc, impulse);
 		_aligned_free (impulse);
 	}
