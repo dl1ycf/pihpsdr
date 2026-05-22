@@ -1335,7 +1335,7 @@ void *rx_thread(void *data) {
 
           if (tonearg < -6.3) { tonearg += 6.283185307179586476925286766559; }
 
-          if (t3p++ >= 800 * myrate) { t3p = 0; }
+          if (++t3p >= 800 * myrate) { t3p = 0; }
         } else if (do_tone == 4) {
           irsample = isample[rxptr];
           qrsample = qsample[rxptr++];
