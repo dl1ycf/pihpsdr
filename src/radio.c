@@ -2311,6 +2311,18 @@ void radio_set_mox(int state) {
     return;
   }
 
+  //
+  // This is an exception of the general rule:
+  // if MOX state changes, the server reports this to the client.
+  // Reason: MOX state changes may be caused by TxInhibit events, PTT buttons,
+  // etc. For example (Thans GJ for pointing this out) an auto-tuner may
+  // signal end-of-tune by activating TxInhibit, and then the client should be
+  // informed.
+  //
+  if (remoteclient.running) {
+    send_mox(remoteclient.sock_tcp, state);
+  }
+
   if (!can_transmit) { return; }
 
   if (state && !TransmitAllowed()) {
