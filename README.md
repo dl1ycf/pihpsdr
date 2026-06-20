@@ -1,5 +1,5 @@
 <p align="center">
-<img src="release/LatexManual/figures/piHPSDR_logo.png" width="300" height="300">
+<img src="release/pihpsdr/piHPSDR_logo.png" width="300" height="300">
 </p>
 
 **SDR host program**,
