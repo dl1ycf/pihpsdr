@@ -125,6 +125,7 @@ fi
 # cppcheck are useful for maintainers)
 #
 ################################################################
+$BREW update
 $BREW install gtk+3
 $BREW install librsvg
 $BREW install pkg-config

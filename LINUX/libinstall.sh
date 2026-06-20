@@ -41,6 +41,8 @@ echo "... installing LOTS OF compiles/libraries/helpers"
 echo
 echo "=============================================================="
 
+sudo apt-get update
+
 # ------------------------------------
 # Install standard tools and compilers
 # ------------------------------------
