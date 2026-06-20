@@ -55,7 +55,10 @@ extern void  shutdown_tcp_rigctl(void);
 extern void rigctl_save_state(void);
 extern void rigctl_restore_state(void);
 extern void rigctl_start_cw_thread(void);
-extern void rigctl_send_cw_text(int pos);
+extern void rigctl_purge_cw();
+extern void rigctl_queue_cw_text(const int pos);
+extern void rigctl_queue_cw_char(const char c);
+extern void rigctl_queue_cw_string(const char *str);
 
 extern int cat_control;
 extern unsigned int rigctl_tcp_port;

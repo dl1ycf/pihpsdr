@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2016 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2016 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@ static RECEIVER *myrx;
 static GtkWidget *nb_container;
 static GtkWidget *nr2_container;
 static GtkWidget *nr4_container;
+static GtkWidget *anf_container;
 
 static void cleanup(void) {
   if (dialog != NULL) {
@@ -68,6 +69,25 @@ static void nr_cb(GtkToggleButton *widget, gpointer data) {
 
 static void anf_cb(GtkWidget *widget, gpointer data) {
   myrx->anf = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
+  rx_set_noise(myrx);
+}
+
+static void anf_taps_cb(GtkWidget *w, gpointer data) {
+  myrx->anf_taps = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(w));
+  rx_set_noise(myrx);
+}
+
+static void anf_delay_cb(GtkWidget *w, gpointer data) {
+  myrx->anf_delay = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(w));
+  rx_set_noise(myrx);
+}
+
+static void anf_gain_cb(GtkWidget *w, gpointer data) {
+  myrx->anf_gain = gtk_spin_button_get_value(GTK_SPIN_BUTTON(w));
+  rx_set_noise(myrx);
+}
+static void anf_leakage_cb(GtkWidget *w, gpointer data) {
+  myrx->anf_leakage = gtk_spin_button_get_value(GTK_SPIN_BUTTON(w));
   rx_set_noise(myrx);
 }
 
@@ -156,6 +176,16 @@ static void thresh_cb(GtkWidget *widget, gpointer data) {
   rx_set_noise(myrx);
 }
 
+static void anf_sel_changed(GtkWidget *widget, gpointer data) {
+  // show or hide all controls for ANF settings
+  if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
+    gtk_widget_show(anf_container);
+    gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
+  } else {
+    gtk_widget_hide(anf_container);
+  }
+}
+
 static void nr2_sel_changed(GtkWidget *widget, gpointer data) {
   // show or hide all controls for NR settings
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
@@ -241,13 +271,11 @@ void noise_menu(GtkWidget *parent) {
   // First row: SNB/ANF/NR method
   //
   btn = gtk_check_button_new_with_label("SNB");
-  gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), myrx->snb);
   gtk_grid_attach(GTK_GRID(grid), btn, 0, 1, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(snb_cb), NULL);
   //
   btn = gtk_check_button_new_with_label("ANF");
-  gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), myrx->anf);
   gtk_grid_attach(GTK_GRID(grid), btn, 1, 1, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(anf_cb), NULL);
@@ -297,22 +325,24 @@ void noise_menu(GtkWidget *parent) {
   // Third row: select settings: NB, NR2, NR4 settings
   //
   GtkWidget *nb_sel = gtk_radio_button_new_with_label_from_widget(NULL, "NB Settings");
-  gtk_widget_set_name(nb_sel, "boldlabel");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(nb_sel), 1);
   gtk_grid_attach(GTK_GRID(grid), nb_sel, 0, 4, 1, 1);
   g_signal_connect(nb_sel, "toggled", G_CALLBACK(nb_sel_changed), NULL);
   //
   btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(nb_sel), "NR2 Settings");
-  gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), 0);
   gtk_grid_attach(GTK_GRID(grid), btn, 1, 4, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(nr2_sel_changed), NULL);
   //
   btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(nb_sel), "NR4 Settings");
-  gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), 0);
   gtk_grid_attach(GTK_GRID(grid), btn, 2, 4, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(nr4_sel_changed), NULL);
+  //
+  btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(nb_sel), "ANF Settings");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), 0);
+  gtk_grid_attach(GTK_GRID(grid), btn, 3, 4, 1, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(anf_sel_changed), NULL);
   //
   // Hiding/Showing ComboBoxes optimized for Touch-Screens does not
   // work. Therefore, we have to group the NR, NB, and NR4 controls
@@ -374,7 +404,6 @@ void noise_menu(GtkWidget *parent) {
   g_signal_connect(btn, "changed", G_CALLBACK(trained_t2_cb), NULL);
   //
   btn = gtk_check_button_new_with_label("NR2 Post-Processing");
-  gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), myrx->nr2_post);
   gtk_grid_attach(GTK_GRID(nr2_grid), btn, 0, 3, 2, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(post_cb), NULL);
@@ -540,8 +569,53 @@ void noise_menu(GtkWidget *parent) {
   gtk_spin_button_set_value (GTK_SPIN_BUTTON(btn), myrx->nr4_post_threshold);
   gtk_grid_attach(GTK_GRID(nr4_grid), btn, 3, 2, 1, 1);
   g_signal_connect(G_OBJECT(btn), "changed", G_CALLBACK(nr4_threshold_cb), NULL);
-  //
   gtk_container_add(GTK_CONTAINER(nr4_container), nr4_grid);
+  //
+  // ANF controls starting on row 4
+  //
+  anf_container = gtk_fixed_new();
+  gtk_grid_attach(GTK_GRID(grid), anf_container, 0, 5, 4, 3);
+  GtkWidget *anf_grid = gtk_grid_new();
+  gtk_grid_set_column_homogeneous(GTK_GRID(anf_grid), TRUE);
+  gtk_grid_set_row_homogeneous(GTK_GRID(anf_grid), FALSE);
+  gtk_grid_set_column_spacing (GTK_GRID(anf_grid), 5);
+  gtk_grid_set_row_spacing (GTK_GRID(anf_grid), 5);
+  lbl = gtk_label_new("FIR Taps:");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(anf_grid), lbl, 0, 0, 1, 1);
+  btn = gtk_spin_button_new_with_range(16, 256, 8);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), myrx->anf_taps);
+  gtk_grid_attach(GTK_GRID(anf_grid), btn, 1, 0, 1, 1);
+  g_signal_connect(btn, "value-changed", G_CALLBACK(anf_taps_cb), NULL);
+  lbl = gtk_label_new("Tap Delay:");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(anf_grid), lbl, 2, 0, 1, 1);
+  btn = gtk_spin_button_new_with_range(1, 64, 1);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), myrx->anf_delay);
+  gtk_grid_attach(GTK_GRID(anf_grid), btn, 3, 0, 1, 1);
+  g_signal_connect(btn, "value-changed", G_CALLBACK(anf_delay_cb), NULL);
+  lbl = gtk_label_new("Gain (dB):");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(anf_grid), lbl, 0, 1, 1, 1);
+  btn = gtk_spin_button_new_with_range(-122, -59, 3);  // This is in dB!
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), myrx->anf_gain);
+  gtk_grid_attach(GTK_GRID(anf_grid), btn, 1, 1, 1, 1);
+  g_signal_connect(btn, "value-changed", G_CALLBACK(anf_gain_cb), NULL);
+  lbl = gtk_label_new("Leakage (dB):");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(anf_grid), lbl, 2, 1, 1, 1);
+  btn = gtk_spin_button_new_with_range(-62, -2, 3);  // This is in dB!
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), myrx->anf_leakage);
+  gtk_grid_attach(GTK_GRID(anf_grid), btn, 3, 1, 1, 1);
+  g_signal_connect(btn, "value-changed", G_CALLBACK(anf_leakage_cb), NULL);
+  gtk_container_add(GTK_CONTAINER(anf_container), anf_grid);
+  //
+  // All containers done
+  //
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
@@ -555,7 +629,9 @@ void noise_menu(GtkWidget *parent) {
   gtk_widget_set_size_request(nb_grid, width, -1);
   gtk_widget_set_size_request(nr2_grid, width, -1);
   gtk_widget_set_size_request(nr4_grid, width, -1);
+  gtk_widget_set_size_request(anf_grid, width, -1);
   gtk_widget_hide(nr2_container);
   gtk_widget_hide(nr4_container);
+  gtk_widget_hide(anf_container);
   gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
 }

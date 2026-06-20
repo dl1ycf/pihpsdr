@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@
 #include "client_server.h"
 #include "css.h"
 #include "discovered.h"
+#include "dxcluster.h"
 #include "ext.h"
 #include "filter.h"
 #include "g2panel.h"
@@ -52,24 +53,22 @@
 #include "new_menu.h"
 #include "new_protocol.h"
 #include "old_protocol.h"
+#include "profiles.h"
 #include "property.h"
 #include "radio.h"
 #include "receiver.h"
 #include "rigctl.h"
 #include "rx_panadapter.h"
+#include "server_menu.h"
 #include "sliders.h"
 #include "tci.h"
 #include "test_menu.h"
+#include "theme.h"
 #include "toolbar.h"
 #include "transmitter.h"
-#ifdef TTS
-  #include "tts.h"
-#endif
+#include "tts.h"
 #include "tx_panadapter.h"
-#ifdef SATURN
-  #include "saturnmain.h"
-  #include "saturnserver.h"
-#endif
+#include "saturnmain.h"
 #ifdef SOAPYSDR
   #include "soapy_protocol.h"
 #endif
@@ -81,12 +80,15 @@
 #define min(x,y) (x<y?x:y)
 #define max(x,y) (x<y?y:x)
 
-const int MIN_METER_WIDTH = 200;  // nowhere changed
-const int MENU_WIDTH = 65;        // nowhere changed
+const int MIN_METER_WIDTH = 160;
+const int MIN_ADD_METER_WIDTH =  75;
+const int MENU_WIDTH = 60;
 
-int VFO_HEIGHT = 60;              // taken from the current VFO bar layout
+int METER_WIDTH = 160;            // re-calculated for the current VFO bar layout
+int ADD_METER_WIDTH = 0;          // re-calculated for the current VFO bar layout
+
+int VFO_HEIGHT = 80;              // taken from the current VFO bar layout
 int VFO_WIDTH = 530;              // taken from the current VFO bar layout
-int METER_WIDTH = 200;            // dynamically set in choose_vfo_layout
 
 static int SLIDERS_HEIGHT = 50;   // dynamically adjusted to the display height
 static int TOOLBAR_HEIGHT = 30;   // dynamically adjusted to the display height
@@ -232,6 +234,7 @@ int high_swr_seen = 0;
 // depending on the radio model
 //
 unsigned int exciter_power = 0;
+unsigned int alex_forward_max = 0;
 unsigned int alex_forward_power = 0;
 unsigned int alex_reverse_power = 0;
 unsigned int ADC1 = 0;
@@ -262,7 +265,7 @@ int OCfull_tune_time = 3000;  // ms
 int OCmemory_tune_time = 500; // ms
 long long tune_timeout;
 
-int analog_meter = 0;
+int analog_meter = 1;
 
 static int pre_tune_mode;
 static int pre_tune_cw_internal;
@@ -371,8 +374,6 @@ gboolean radio_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
   // F6                ==>  Attenuation/Preamp
   //
   switch (event->keyval) {
-#ifdef TTS
-
   case GDK_KEY_F1:
     tts_freq();
     break;
@@ -396,7 +397,6 @@ gboolean radio_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
   case GDK_KEY_F6:
     tts_atten();
     break;
-#endif
 
   case GDK_KEY_space:
     radio_toggle_mox();
@@ -532,18 +532,18 @@ void radio_stop_radio(void) {
   ASSERT_SERVER();
 
   if (can_transmit) {
-    t_print("radio_stop: TX: stop display update\n");
+    t_print("%s: TX: stop display update\n", __func__);
     transmitter->displaying = 0;
     tx_set_displaying(transmitter);
-    t_print("radio_stop: TX id=%d: close\n", transmitter->id);
+    t_print("%s: TX id=%d: close\n", __func__, transmitter->id);
     tx_close(transmitter);
   }
 
   for (int i = 0; i < RECEIVERS; i++) {
-    t_print("radio_stop: RX id=%d: stop display update\n", receiver[i]->id);
+    t_print("%s: RX id=%d: stop display update\n", __func__, receiver[i]->id);
     receiver[i]->displaying = 0;
     rx_set_displaying(receiver[i]);
-    t_print("radio_stop: RX id=%d: close\n", receiver[i]->id);
+    t_print("%s: RX id=%d: close\n", __func__, receiver[i]->id);
     rx_close(receiver[i]);
   }
 }
@@ -572,16 +572,14 @@ static void choose_vfo_layout(void) {
     layout = 0;
   }
 
-  METER_WIDTH = MIN_METER_WIDTH;
-  VFO_WIDTH = display_width[display_size];
-  VFO_WIDTH -= (MENU_WIDTH + METER_WIDTH);
+  int avail = display_width[display_size] - MENU_WIDTH - MIN_METER_WIDTH;
 
   //
   // If chosen layout does not fit:
   // Choose the first largest layout that fits
   // with a minimum-width meter
   //
-  if (vfo_layout_list[layout].width > VFO_WIDTH) {
+  if (vfo_layout_list[layout].width > avail) {
     vfl = vfo_layout_list;
 
     for (;;) {
@@ -590,26 +588,50 @@ static void choose_vfo_layout(void) {
         break;
       }
 
-      if (vfl->width <= VFO_WIDTH) { break; }
+      if (vfl->width <= avail) { break; }
 
       vfl++;
     }
 
     layout = vfl - vfo_layout_list;
-    //t_print("%s: vfo_layout changed (width=%d)\n", __func__, vfl->width);
-  }
-
-  //
-  // If chosen layout leaves at least 50 pixels unused:
-  // give 50 extra pixels to the meter
-  //
-  if (vfo_layout_list[layout].width < VFO_WIDTH - 50) {
-    VFO_WIDTH -= 50;
-    METER_WIDTH += 50;
   }
 
   VFO_HEIGHT = vfo_layout_list[layout].height;
   display_vfobar[display_size] = layout;
+  int spare = avail - vfo_layout_list[layout].width;
+  METER_WIDTH = MIN_METER_WIDTH;
+  ADD_METER_WIDTH = 0;
+
+  //
+  // If space permits, first add the extended metering
+  //
+  if (spare >= MIN_ADD_METER_WIDTH) {
+    ADD_METER_WIDTH = MIN_ADD_METER_WIDTH;
+    spare -= ADD_METER_WIDTH;
+  }
+
+  //
+  // If there is more space, extend both meters
+  //
+  if (spare > 0) {
+    if (ADD_METER_WIDTH > 0) {
+      METER_WIDTH += (2 * spare / 3);
+      ADD_METER_WIDTH += (spare / 3);
+    } else {
+      METER_WIDTH += spare;
+    }
+  }
+
+  //
+  // If there was *much* horizontal space, meters may have become too large
+  //
+  if (METER_WIDTH > 2 * VFO_HEIGHT) { METER_WIDTH = 2 * VFO_HEIGHT; }
+
+  if (ADD_METER_WIDTH > VFO_HEIGHT) { ADD_METER_WIDTH = VFO_HEIGHT; }
+
+  METER_WIDTH += ADD_METER_WIDTH;
+  VFO_WIDTH = display_width[display_size] - MENU_WIDTH - METER_WIDTH;
+  t_print("%s: VFO width = %d, Meter width=%d, extra width=%d\n", __func__, VFO_WIDTH, METER_WIDTH, ADD_METER_WIDTH);
 }
 
 static guint full_screen_timeout = 0;
@@ -696,8 +718,8 @@ void radio_reconfigure_screen(void) {
   //
   // Move Hide and Menu buttons, meter to new position
   //
-  gtk_fixed_move(GTK_FIXED(fixed), hide_b, VFO_WIDTH + METER_WIDTH, 0);
-  gtk_fixed_move(GTK_FIXED(fixed), menu_b, VFO_WIDTH + METER_WIDTH, VFO_HEIGHT / 2);
+  gtk_fixed_move(GTK_FIXED(fixed), menu_b, VFO_WIDTH + METER_WIDTH, 0);
+  gtk_fixed_move(GTK_FIXED(fixed), hide_b, VFO_WIDTH + METER_WIDTH, VFO_HEIGHT / 2);
   gtk_fixed_move(GTK_FIXED(fixed), meter, VFO_WIDTH, 0);
 
   //
@@ -886,17 +908,17 @@ static void radio_create_visual(void) {
   gtk_fixed_put(GTK_FIXED(fixed), vfo_panel, 0, y);
   meter = meter_init(METER_WIDTH, VFO_HEIGHT);
   gtk_fixed_put(GTK_FIXED(fixed), meter, VFO_WIDTH, y);
-  hide_b = gtk_button_new_with_label("Hide");
-  gtk_widget_set_name(hide_b, "boldlabel");
-  gtk_widget_set_size_request (hide_b, MENU_WIDTH, VFO_HEIGHT / 2);
-  g_signal_connect(hide_b, "button-press-event", G_CALLBACK(hideall_cb), NULL);
-  gtk_fixed_put(GTK_FIXED(fixed), hide_b, VFO_WIDTH + METER_WIDTH, y);
-  y += VFO_HEIGHT / 2;
   menu_b = gtk_button_new_with_label("Menu");
-  gtk_widget_set_name(menu_b, "boldlabel");
+  gtk_widget_set_name(menu_b, "menubutton");
   gtk_widget_set_size_request (menu_b, MENU_WIDTH, VFO_HEIGHT / 2);
   g_signal_connect (menu_b, "button-press-event", G_CALLBACK(menu_cb), NULL) ;
   gtk_fixed_put(GTK_FIXED(fixed), menu_b, VFO_WIDTH + METER_WIDTH, y);
+  y += VFO_HEIGHT / 2;
+  hide_b = gtk_button_new_with_label("Hide");
+  gtk_widget_set_name(hide_b, "hidebutton");
+  gtk_widget_set_size_request (hide_b, MENU_WIDTH, VFO_HEIGHT / 2);
+  g_signal_connect(hide_b, "button-press-event", G_CALLBACK(hideall_cb), NULL);
+  gtk_fixed_put(GTK_FIXED(fixed), hide_b, VFO_WIDTH + METER_WIDTH, y);
   y += VFO_HEIGHT / 2;
   rx_height = my_height - VFO_HEIGHT;
   rx_height -= SLIDERS_HEIGHT * slider_rows;
@@ -1006,7 +1028,7 @@ static void radio_create_visual(void) {
 
   // init local keyer if enabled
   if (cw_keyer_internal == 0) {
-    t_print("Initialise keyer.....\n");
+    t_print("%s: initialise keyer\n", __func__);
     keyer_update();
   }
 
@@ -1045,7 +1067,7 @@ static void radio_create_visual(void) {
   // the number of receivers otherwise radio_change_receivers
   // will do nothing.
   //
-  t_print("radio_create_visual: receivers=%d RECEIVERS=%d\n", receivers, RECEIVERS);
+  t_print("%s: receivers=%d RECEIVERS=%d\n", __func__, receivers, RECEIVERS);
 
   if (receivers != RECEIVERS) {
     int r = receivers;
@@ -1067,6 +1089,8 @@ void radio_stop_program(void) {
   gpio_close();
   t_print("%s: GPIO closed\n", __func__);
 #endif
+  dxcluster_shutdown(); // save spots, close sqLITE
+  t_print("%s: DX Cluster closed\n", __func__);
 
   if (!radio_is_remote) {
     radio_protocol_stop();
@@ -1075,10 +1099,12 @@ void radio_stop_program(void) {
     t_print("%s: radio stopped\n", __func__);
 
     if (have_saturn_xdma) {
-#ifdef SATURN
       saturn_exit();
-#endif
     }
+
+#ifdef TCI
+    shutdown_tci();
+#endif
   }
 
   radio_save_state();
@@ -1125,8 +1151,9 @@ void radio_start_radio(void) {
   //
   for (enum ACTION i = 0; i < ACTIONS; i++) {
     if (i != ActionTable[i].action) {
-      t_print("WARNING: action table messed up\n");
-      t_print("WARNING: Position %d Action=%d str=%s\n", i, ActionTable[i].action, ActionTable[i].button_str);
+      t_print("%s: WARNING: action table messed up\n", __func__);
+      t_print("%s: WARNING: Position %d Action=%d str=%s\n", __func__, i,
+              ActionTable[i].action, ActionTable[i].button_str);
     }
   }
 
@@ -1222,11 +1249,11 @@ void radio_start_radio(void) {
         SerialPorts[MAX_SERIAL - 1].autoreporting = 0;
         SerialPorts[MAX_SERIAL - 1].g2 = 1;
         snprintf(SerialPorts[MAX_SERIAL - 1].port, sizeof(SerialPorts[MAX_SERIAL - 1].port), "%s", cp);
-        t_print("Serial port %s ==> %s used for G2 panel with %d baud\n",
+        t_print("%s: serial port %s ==> %s used for G2 panel with %d baud\n", __func__,
                 ChkSerial->port, cp, ChkSerial->baud_as_integer);
         break;
       } else {
-        t_print("Serial port %s not found.\n", ChkSerial->port);
+        t_print("%s: serial port %s not found.\n", __func__, ChkSerial->port);
       }
     }
   } else {
@@ -1242,9 +1269,9 @@ void radio_start_radio(void) {
         SerialPorts[MAX_SERIAL - 1].autoreporting = 0;
         SerialPorts[MAX_SERIAL - 1].g2 = 1;
         snprintf(SerialPorts[MAX_SERIAL - 1].port, sizeof(SerialPorts[MAX_SERIAL - 1].port), "%s", cp);
-        t_print("Serial %s used for CONTROLLER3 (9600 baud)\n", cp);
+        t_print("%s: serial %s used for CONTROLLER3 (9600 baud)\n", __func__, cp);
       } else {
-        t_print("CONTROLLER3: /dev/serial/by-id/g2-front-9600 not found!\n");
+        t_print("%s: CONTROLLER3: /dev/serial/by-id/g2-front-9600 not found!\n", __func__);
       }
     }
 
@@ -1302,7 +1329,7 @@ void radio_start_radio(void) {
 
   case DEVICE_ORION2:
   case NEW_DEVICE_ORION2:
-    pa_power = PA_200W; // So ANAN-8000 is the default, not ANAN-7000
+    pa_power = PA_100W; // Anan-800 needs to update this in the RADIO menu
     break;
 
   case SOAPYSDR_USB_DEVICE:
@@ -1681,10 +1708,13 @@ void radio_start_radio(void) {
 #ifdef GPIO
   gpio_set_orion_options();
 #endif
+#ifdef TCI
 
   if (tci_enable) {
     launch_tci();
   }
+
+#endif
 
   if (rigctl_tcp_enable) {
     launch_tcp_rigctl();
@@ -1807,17 +1837,13 @@ void radio_start_radio(void) {
   }
 
 #endif
-#ifdef SATURN
-
-  if (have_saturn_xdma && saturn_server_en) {
-    start_saturn_server();
-  }
-
-#endif
+  dxcluster_init();
 
   if (hpsdr_server) {
     create_hpsdr_server();
   }
+
+  start_network_helper();
 
   if (open_test_menu) {
     test_menu(top_window);
@@ -1875,7 +1901,7 @@ int radio_client_change_receivers(gpointer data) {
 
 void radio_change_receivers(int r) {
   ASSERT_SERVER();
-  t_print("radio_change_receivers: from %d to %d\n", receivers, r);
+  t_print("%s: from %d to %d\n", __func__, receivers, r);
 
   // The button in the radio menu will call this function even if the
   // number of receivers has not changed.
@@ -1989,7 +2015,7 @@ static void rxtx(int state) {
   // receiver slew-down.
   //
   if (!can_transmit) {
-    t_print("WARNING: rxtx called but no transmitter!");
+    t_print("%s: WARNING: rxtx called but no transmitter!", __func__);
     return;
   }
 
@@ -2026,6 +2052,8 @@ static void rxtx(int state) {
       if (rx_feedback) { rx_feedback->samples = 0; }
 
       if (tx_feedback) { tx_feedback->samples = 0; }
+
+      alex_forward_max = 0;
     }
 
     if (!duplex) {
@@ -2141,41 +2169,25 @@ static void rxtx(int state) {
 
       if (!radio_is_remote) {
         //
-        // Set parameters for the "silence first RXIQ samples after TX/RX transition" feature
-        // the default is "no silence", that is, fastest turnaround.
-        // Seeing "tails" of the own TX signal (from crosstalk at the T/R relay) has been observed
-        // for RedPitayas (the identify themself as STEMlab or HERMES) and HermesLite2 devices,
-        // we also include the original HermesLite in this list (which can be enlarged if necessary).
+        // One might get a significant "tail" of the crosstalk at the TRX relay into the RX after TX/RX,
+        // leading to AGC pumping. The problem is most severe if there is a carrier until the end of
+        // the TX phase (TUNE, AM, FM), the problem much less severe for CW.
+        // Having a long "silence" here makes the TX/RX turnaround a little bit slower.
         //
-        if (device == DEVICE_HERMES_LITE2 || device == DEVICE_HERMES_LITE ||
-            device == DEVICE_HERMES || device == DEVICE_STEMLAB || device == DEVICE_STEMLAB_Z20) {
-          //
-          // These systems get a significant "tail" of the RX feedback signal into the RX after TX/RX,
-          // leading to AGC pumping. The problem is most severe if there is a carrier until the end of
-          // the TX phase (TUNE, AM, FM), the problem is virtually non-existent for CW, and of medium
-          // importance in SSB. On the other hand, one wants a very fast turnaround in CW.
-          // So there is no "muting" for CW, 31 msec "muting" for TUNE/AM/FM, and 16 msec for other modes.
-          //
-          // Note that for doing "TwoTone" the silence is built into tx_set_twotone().
-          //
-          switch (vfo_get_tx_mode()) {
-          case modeCWU:
-          case modeCWL:
-            do_silence = 0; // no "silence"
-            break;
+        // Note that for doing "TwoTone" the silence is built into tx_set_twotone().
+        //
+        switch (vfo_get_tx_mode()) {
+        case modeCWU:
+        case modeCWL:
+          do_silence = 0; // leads to 16 ms "silence"
+          break;
 
-          case modeAM:
-          case modeFMN:
-            do_silence = 5; // leads to 31 ms "silence"
-            break;
-
-          default:
-            do_silence = 6; // leads to 16 ms "silence"
-            break;
-          }
-
-          if (transmitter->tune) { do_silence = 5; } // 31 ms "silence" for TUNEing in any mode
+        default:
+          do_silence = 5; // leads to 31 ms "silence"
+          break;
         }
+
+        if (transmitter->tune) { do_silence = 5; } // 31 ms "silence" for TUNEing in any mode
       }
 
       for (i = 0; i < receivers; i++) {
@@ -3129,6 +3141,13 @@ void radio_set_random(int id, int value) {
   schedule_receive_specific();
 }
 
+void radio_toggle_preamp(int id) {
+  if (id >= receivers) { return; }
+
+  int rxadc = receiver[id]->adc;
+  radio_set_preamp(id, NOT(adc[rxadc].preamp));
+}
+
 void radio_set_preamp(int id, int value) {
   if (id >= receivers) { return; }
 
@@ -3426,6 +3445,8 @@ static void radio_restore_state(void) {
   GetPropI0("display_size",                                  display_size);
   GetPropI0("optimize_touchscreen",                          optimize_for_touchscreen);
   GetPropI0("smeter3dB",                                     smeter3dB);
+  GetPropI0("active_theme_index",                            active_theme_index);
+  GetPropI0("gtk_dark_theme",                                gtk_dark_theme);
   GetPropI0("which_css_font",                                which_css_font);
   GetPropI0("vfo_encoder_divisor",                           vfo_encoder_divisor);
   GetPropI0("vfo_snap",                                      vfo_snap);
@@ -3438,9 +3459,14 @@ static void radio_restore_state(void) {
   GetPropI0("radio.server_stops_protocol",                   server_stops_protocol);
   GetPropS0("radio.hpsdr_pwd",                               hpsdr_pwd);
   GetPropI0("radio.hpsdr_server.listen_port",                listen_port);
+  GetPropI0("radio.server_duckdns",                          server_duckdns);
+  GetPropS0("radio.duckdns_host",                            duckdns_host);
+  GetPropS0("radio.duckdns_token",                           duckdns_token);
+  GetPropI0("radio.server_port_fwd",                         server_port_fwd);
+#ifdef TCI
   GetPropI0("tci_enable",                                    tci_enable);
   GetPropI0("tci_port",                                      tci_port);
-  GetPropI0("tci_txonly",                                    tci_txonly);
+#endif
   GetPropI0("cw_keys_reversed",                              cw_keys_reversed);
   GetPropI0("cw_keyer_speed",                                cw_keyer_speed);
   GetPropI0("cw_keyer_mode",                                 cw_keyer_mode);
@@ -3512,9 +3538,6 @@ static void radio_restore_state(void) {
     GetPropI0("sat_mode",                                    sat_mode);
     GetPropI0("radio.display_warnings",                      display_warnings);
     GetPropI0("radio.display_pacurr",                        display_pacurr);
-#ifdef SATURN
-    GetPropI0("saturn_server_en",                            saturn_server_en);
-#endif
 
     for (int i = 0; i < 11; i++) {
       GetPropF1("pa_trim[%d]", i,                            pa_trim[i]);
@@ -3543,10 +3566,10 @@ static void radio_restore_state(void) {
   }
 
   //
-  // ModeSettings are needed on the client side as well,
+  // RX/TX profiles are needed on the client side as well,
   // since we store mode-dependent audio settings there
   //
-  modesettings_restore_state();
+  profiles_restore_state();
   //
   // GPIO, rigctl and MIDI should be
   // read from the local file on the client side
@@ -3560,6 +3583,7 @@ static void radio_restore_state(void) {
 #ifdef MIDI
   midi_restore_state();
 #endif
+  dxcluster_restore_state();
   t_print("%s: radio state (except receiver/transmitter) restored.\n", __func__);
 
   //
@@ -3617,9 +3641,8 @@ static void radio_restore_state(void) {
     radio_n2adr_oc_settings(); // Apply default OC settings for N2ADR board
   }
 
-  //
-  // Activate the font as read from the props file
-  //
+  // Activate font/theme
+  theme_set();
   load_font(which_css_font);
   g_mutex_unlock(&property_mutex);
 }
@@ -3660,6 +3683,8 @@ void radio_save_state(void) {
   SetPropI0("display_width",                                 display_width[1]);
   SetPropI0("optimize_touchscreen",                          optimize_for_touchscreen);
   SetPropI0("smeter3dB",                                     smeter3dB);
+  SetPropI0("active_theme_index",                            active_theme_index);
+  SetPropI0("gtk_dark_theme",                                gtk_dark_theme);
   SetPropI0("which_css_font",                                which_css_font);
   SetPropI0("vfo_encoder_divisor",                           vfo_encoder_divisor);
   SetPropI0("vfo_snap",                                      vfo_snap);
@@ -3672,9 +3697,14 @@ void radio_save_state(void) {
   SetPropI0("radio.server_stops_protocol",                   server_stops_protocol);
   SetPropS0("radio.hpsdr_pwd",                               hpsdr_pwd);
   SetPropI0("radio.hpsdr_server.listen_port",                listen_port);
+  SetPropI0("radio.server_duckdns",                          server_duckdns);
+  SetPropI0("radio.server_port_fwd",                         server_port_fwd);
+  SetPropS0("radio.duckdns_host",                            duckdns_host);
+  SetPropS0("radio.duckdns_token",                           duckdns_token);
+#ifdef TCI
   SetPropI0("tci_enable",                                    tci_enable);
   SetPropI0("tci_port",                                      tci_port);
-  SetPropI0("tci_txonly",                                    tci_txonly);
+#endif
   SetPropI0("cw_keys_reversed",                              cw_keys_reversed);
   SetPropI0("cw_keyer_speed",                                cw_keyer_speed);
   SetPropI0("cw_keyer_mode",                                 cw_keyer_mode);
@@ -3742,9 +3772,6 @@ void radio_save_state(void) {
     SetPropI0("sat_mode",                                    sat_mode);
     SetPropI0("radio.display_warnings",                      display_warnings);
     SetPropI0("radio.display_pacurr",                        display_pacurr);
-#ifdef SATURN
-    SetPropI0("saturn_server_en",                            saturn_server_en);
-#endif
 
     for (int i = 0; i < 11; i++) {
       SetPropF1("pa_trim[%d]", i,                            pa_trim[i]);
@@ -3777,7 +3804,7 @@ void radio_save_state(void) {
   // GPIO, TCI/CAT, MIDI
   // are handled on the client side in client/server operation
   //
-  modesettings_save_state();
+  profiles_save_state();
   toolbar_save_state();
   sliders_save_state();
 #ifdef GPIO
@@ -3787,6 +3814,7 @@ void radio_save_state(void) {
 #ifdef MIDI
   midi_save_state();
 #endif
+  dxcluster_save_state();
   saveProperties(property_path);
   g_mutex_unlock(&property_mutex);
 }
@@ -3817,10 +3845,13 @@ int radio_client_start(gpointer data) {
 #ifdef GPIO
   gpio_set_orion_options();
 #endif
+#ifdef TCI
 
   if (tci_enable) {
     launch_tci();
   }
+
+#endif
 
   if (rigctl_tcp_enable) {
     launch_tcp_rigctl();
@@ -3852,7 +3883,7 @@ int radio_client_start(gpointer data) {
 
     if (transmitter->local_audio) {
       if (audio_open_input(transmitter) != 0) {
-        t_print("audio_open_input failed\n");
+        t_print("%s: audio_open_input failed\n", __func__);
         transmitter->local_audio = 0;
       }
     }
@@ -3887,6 +3918,7 @@ int radio_client_start(gpointer data) {
   }
 
 #endif
+  dxcluster_init();
 
   for (int i = 0; i < receivers; i++) {
     send_startstop_rxspectrum(cl_sock_tcp, i, 1);

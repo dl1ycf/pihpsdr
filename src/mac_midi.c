@@ -1,5 +1,5 @@
 /* Copyright (C)
-* 2019 - Christoph van Wüllen, Dl1YCF
+*  2019 - Christoph van Wüllen, Dl1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -383,8 +383,8 @@ void get_midi_devices(void) {
   }
 }
 
-void configure_midi_device(gboolean state) {
-  configure = state;
+void configure_midi_device(gboolean st) {
+  configure = st;
 }
 
 #endif

@@ -18,6 +18,4 @@
 */
 
 void p1_discovery(void);
-#ifdef STEMLAB_DISCOVERY
-  int  stemlab_get_info(int id);
-#endif
+int  stemlab_get_info(int id);

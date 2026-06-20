@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2021 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2021 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -454,17 +454,23 @@ int process_action(gpointer data) {
     break;
 
   case AF_GAIN:
-    value = KnobOrWheel(a, active_receiver->volume, -40.0, 0.0, 1.0);
-    radio_set_af_gain(active_receiver->id, value);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, active_receiver->volume, -40.0, 0.0, 1.0);
+      radio_set_af_gain(active_receiver->id, value);
+    }
+
     break;
 
   case AF_GAIN_RX1:
-    value = KnobOrWheel(a, receiver[0]->volume, -40.0, 0.0, 1.0);
-    radio_set_af_gain(0, value);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, receiver[0]->volume, -40.0, 0.0, 1.0);
+      radio_set_af_gain(0, value);
+    }
+
     break;
 
   case AF_GAIN_RX2:
-    if (receivers == 2) {
+    if (receivers == 2 && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       value = KnobOrWheel(a, receiver[1]->volume, -40.0, 0.0, 1.0);
       radio_set_af_gain(1, value);
     }
@@ -473,12 +479,15 @@ int process_action(gpointer data) {
 
   case AGC:
     if (a->mode == PRESSED) {
-      active_receiver->agc++;
+      int new = active_receiver->agc + 1;
 
-      if (active_receiver->agc >= AGC_LAST) {
-        active_receiver->agc = 0;
-      }
+      // Do not apply AGC_FIXED when cycling through, this may
+      // blow off your ears
+      if (new == AGC_FIXED) { new++; }
 
+      if (new >= AGC_LAST) { new = 0; }
+
+      active_receiver->agc = new;
       rx_set_agc(active_receiver);
       g_idle_add(ext_vfo_update, NULL);
     }
@@ -486,17 +495,23 @@ int process_action(gpointer data) {
     break;
 
   case AGC_GAIN:
-    value = KnobOrWheel(a, active_receiver->agc_gain, -20.0, 120.0, 1.0);
-    radio_set_agc_gain(active_receiver->id, value);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, active_receiver->agc_gain, -20.0, 120.0, 1.0);
+      radio_set_agc_gain(active_receiver->id, value);
+    }
+
     break;
 
   case AGC_GAIN_RX1:
-    value = KnobOrWheel(a, receiver[0]->agc_gain, -20.0, 120.0, 1.0);
-    radio_set_agc_gain(0, value);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, receiver[0]->agc_gain, -20.0, 120.0, 1.0);
+      radio_set_agc_gain(0, value);
+    }
+
     break;
 
   case AGC_GAIN_RX2:
-    if (receivers == 2) {
+    if (receivers == 2 && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       value = KnobOrWheel(a, receiver[1]->agc_gain, -20.0, 120.0, 1.0);
       radio_set_agc_gain(1, value);
     }
@@ -512,7 +527,7 @@ int process_action(gpointer data) {
     break;
 
   case ATTENUATION:
-    if (have_rx_att) {
+    if (have_rx_att && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       value = KnobOrWheel(a, adc[active_receiver->adc].attenuation,   0.0, 31.0, 1.0);
       radio_set_attenuation(active_receiver->id, value);
     }
@@ -847,7 +862,7 @@ int process_action(gpointer data) {
     break;
 
   case COMPRESSION:
-    if (can_transmit) {
+    if (can_transmit && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       value = KnobOrWheel(a, transmitter->compressor_level, 0.0, 20.0, 1.0);
       transmitter->compressor = SET(value > 0.5);
       transmitter->compressor_level = value;
@@ -874,13 +889,19 @@ int process_action(gpointer data) {
     break;
 
   case CW_FREQUENCY:
-    value = KnobOrWheel(a, (double)cw_keyer_sidetone_frequency, 300.0, 1000.0, 10.0);
-    radio_set_sidetone_freq((int) value);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, (double)cw_keyer_sidetone_frequency, 300.0, 1000.0, 10.0);
+      radio_set_sidetone_freq((int) value);
+    }
+
     break;
 
   case CW_SPEED:
-    value = KnobOrWheel(a, (double)cw_keyer_speed, 1.0, 60.0, 1.0);
-    radio_set_cw_speed((int) value);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, (double)cw_keyer_speed, 1.0, 60.0, 1.0);
+      radio_set_cw_speed((int) value);
+    }
+
     break;
 
   case CW_TXT_1:
@@ -889,7 +910,7 @@ int process_action(gpointer data) {
   case CW_TXT_4:
   case CW_TXT_5:
     if (a->mode == PRESSED) {
-      rigctl_send_cw_text(action - CW_TXT_1);
+      rigctl_queue_cw_text(action - CW_TXT_1);
     }
 
     break;
@@ -902,32 +923,53 @@ int process_action(gpointer data) {
     break;
 
   case DIV_GAIN:
-    radio_set_diversity_gain(div_gain + (double)a->val * 0.05);
+    if (a->mode == RELATIVE) {
+      radio_set_diversity_gain(div_gain + (double)a->val * 0.05);
+    }
+
     break;
 
   case DIV_GAIN_COARSE:
-    radio_set_diversity_gain(div_gain + (double)a->val * 0.25);
+    if (a->mode == RELATIVE) {
+      radio_set_diversity_gain(div_gain + (double)a->val * 0.25);
+    }
+
     break;
 
   case DIV_GAIN_FINE:
-    radio_set_diversity_gain(div_gain + (double)a->val * 0.01);
+    if (a->mode == RELATIVE) {
+      radio_set_diversity_gain(div_gain + (double)a->val * 0.01);
+    }
+
     break;
 
   case DIV_PHASE:
-    radio_set_diversity_phase(div_phase + (double)a->val * 0.5);
+    if (a->mode == RELATIVE) {
+      radio_set_diversity_phase(div_phase + (double)a->val * 0.5);
+    }
+
     break;
 
   case DIV_PHASE_COARSE:
-    radio_set_diversity_phase(div_phase + (double)a->val * 2.5);
+    if (a->mode == RELATIVE) {
+      radio_set_diversity_phase(div_phase + (double)a->val * 2.5);
+    }
+
     break;
 
   case DIV_PHASE_FINE:
-    radio_set_diversity_phase(div_phase + (double)a->val * 0.1);
+    if (a->mode == RELATIVE) {
+      radio_set_diversity_phase(div_phase + (double)a->val * 0.1);
+    }
+
     break;
 
   case DRIVE:
-    value = KnobOrWheel(a, radio_get_drive(), 0.0, drive_max, 1.0);
-    radio_set_drive(value);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, radio_get_drive(), 0.0, drive_max, 1.0);
+      radio_set_drive(value);
+    }
+
     break;
 
   case DUPLEX:
@@ -970,11 +1012,17 @@ int process_action(gpointer data) {
     break;
 
   case FILTER_CUT_HIGH:
-    filter_high_changed(active_receiver->id, a->val);
+    if (a->mode == RELATIVE) {
+      filter_high_changed(active_receiver->id, a->val);
+    }
+
     break;
 
   case FILTER_CUT_LOW:
-    filter_low_changed(active_receiver->id, a->val);
+    if (a->mode == RELATIVE) {
+      filter_low_changed(active_receiver->id, a->val);
+    }
+
     break;
 
   case FILTER_CUT_DEFAULT:
@@ -1018,32 +1066,53 @@ int process_action(gpointer data) {
     break;
 
   case IF_SHIFT:
-    filter_shift_changed(active_receiver->id, a->val);
+    if (a->mode == RELATIVE) {
+      filter_shift_changed(active_receiver->id, a->val);
+    }
+
     break;
 
   case IF_SHIFT_RX1:
-    filter_shift_changed(0, a->val);
+    if (a->mode == RELATIVE) {
+      filter_shift_changed(0, a->val);
+    }
+
     break;
 
   case IF_SHIFT_RX2:
-    filter_shift_changed(1, a->val);
+    if (a->mode == RELATIVE) {
+      filter_shift_changed(1, a->val);
+    }
+
     break;
 
   case IF_WIDTH:
-    filter_width_changed(active_receiver->id, a->val);
+    if (a->mode == RELATIVE) {
+      filter_width_changed(active_receiver->id, a->val);
+    }
+
     break;
 
   case IF_WIDTH_RX1:
-    filter_width_changed(0, a->val);
+    if (a->mode == RELATIVE) {
+      filter_width_changed(0, a->val);
+    }
+
     break;
 
   case IF_WIDTH_RX2:
-    filter_width_changed(1, a->val);
+    if (a->mode == RELATIVE) {
+      filter_width_changed(1, a->val);
+    }
+
     break;
 
   case LINEIN_GAIN:
-    value = KnobOrWheel(a, linein_gain, -34.0, 12.5, 1.5);
-    radio_set_linein_gain(value);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, linein_gain, -34.0, 12.5, 1.5);
+      radio_set_linein_gain(value);
+    }
+
     break;
 
   case LOCK:
@@ -1067,7 +1136,7 @@ int process_action(gpointer data) {
 
   case MENU_BAND:
     if (a->mode == PRESSED) {
-      start_band_menu();
+      start_band_menu(active_receiver->id);
     }
 
     break;
@@ -1088,7 +1157,7 @@ int process_action(gpointer data) {
 
   case MENU_FILTER:
     if (a->mode == PRESSED) {
-      start_filter_menu();
+      start_filter_menu(active_receiver->id);
     }
 
     break;
@@ -1116,7 +1185,7 @@ int process_action(gpointer data) {
 
   case MENU_MODE:
     if (a->mode == PRESSED) {
-      start_mode_menu();
+      start_mode_menu(active_receiver->id);
     }
 
     break;
@@ -1157,7 +1226,7 @@ int process_action(gpointer data) {
     break;
 
   case MIC_GAIN:
-    if (can_transmit) {
+    if (can_transmit && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       value = KnobOrWheel(a, transmitter->mic_gain, -12.0, 50.0, 1.0);
       radio_set_mic_gain(value);
     }
@@ -1209,7 +1278,7 @@ int process_action(gpointer data) {
   case MULTI_ENC:
     multi_first = FALSE;
 
-    if (multi_select_active) {
+    if (multi_select_active && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       multi_action = KnobOrWheel(a, multi_action, 0, VMAXMULTIACTION - 1, 1);
       g_idle_add(ext_vfo_update, NULL);
     } else {
@@ -1226,9 +1295,12 @@ int process_action(gpointer data) {
 
   // choose an action for a multifunction encoder
   case MULTI_SELECT:
-    multi_first = FALSE;
-    multi_action = KnobOrWheel(a, multi_action, 0, VMAXMULTIACTION - 1, 1);
-    g_idle_add(ext_vfo_update, NULL);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      multi_first = FALSE;
+      multi_action = KnobOrWheel(a, multi_action, 0, VMAXMULTIACTION - 1, 1);
+      g_idle_add(ext_vfo_update, NULL);
+    }
+
     break;
 
   case MUTE:
@@ -1266,13 +1338,19 @@ int process_action(gpointer data) {
   case NOTCH1_CEN:
   case NOTCH2_CEN:
   case NOTCH3_CEN:
-    notch_center_changed(active_receiver->id, action - NOTCH1_CEN, 25 * a->val);
+    if (a->mode == RELATIVE) {
+      notch_center_changed(active_receiver->id, action - NOTCH1_CEN, 25 * a->val);
+    }
+
     break;
 
   case NOTCH1_WID:
   case NOTCH2_WID:
   case NOTCH3_WID:
-    notch_width_changed(active_receiver->id, action - NOTCH1_WID, 25 * a->val);
+    if (a->mode == RELATIVE) {
+      notch_width_changed(active_receiver->id, action - NOTCH1_WID, 25 * a->val);
+    }
+
     break;
 
   case NOTCH1_EN:
@@ -1408,8 +1486,11 @@ int process_action(gpointer data) {
     break;
 
   case PAN:
-    value = KnobOrWheel(a, active_receiver->pan, -100.0, 100.0, 1.0);
-    radio_set_pan(active_receiver->id,  (int) value);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, active_receiver->pan, -100.0, 100.0, 1.0);
+      radio_set_pan(active_receiver->id,  (int) value);
+    }
+
     break;
 
   case PAN_MINUS:
@@ -1427,21 +1508,34 @@ int process_action(gpointer data) {
     break;
 
   case PANADAPTER_HIGH:
-    value = KnobOrWheel(a, active_receiver->panadapter_high, -60.0, 20.0, 1.0);
-    radio_set_panhigh(active_receiver->id, (int) value);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, active_receiver->panadapter_high, -60.0, 20.0, 1.0);
+      radio_set_panhigh(active_receiver->id, (int) value);
+    }
+
     break;
 
   case PANADAPTER_LOW:
-    value = KnobOrWheel(a, active_receiver->panadapter_low, -160.0, -60.0, 1.0);
-    radio_set_panlow(active_receiver->id, (int) value);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, active_receiver->panadapter_low, -160.0, -60.0, 1.0);
+      radio_set_panlow(active_receiver->id, (int) value);
+    }
+
     break;
 
   case PANADAPTER_STEP:
-    value = KnobOrWheel(a, active_receiver->panadapter_step, 5.0, 30.0, 5.0);
-    radio_set_panstep(active_receiver->id, (int) value);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, active_receiver->panadapter_step, 5.0, 30.0, 5.0);
+      radio_set_panstep(active_receiver->id, (int) value);
+    }
+
     break;
 
   case PREAMP:
+    if (a->mode == PRESSED) {
+      radio_toggle_preamp(active_receiver->id);
+    }
+
     break;
 
   case PS:
@@ -1481,7 +1575,7 @@ int process_action(gpointer data) {
     break;
 
   case RF_GAIN:
-    if (have_rx_gain) {
+    if (have_rx_gain && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       value = KnobOrWheel(a, adc[active_receiver->adc].gain, adc[active_receiver->adc].min_gain,
                           adc[active_receiver->adc].max_gain, 1.0);
       radio_set_rf_gain(active_receiver->id, value);
@@ -1490,7 +1584,7 @@ int process_action(gpointer data) {
     break;
 
   case RF_GAIN_RX1:
-    if (have_rx_gain) {
+    if (have_rx_gain && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       value = KnobOrWheel(a, adc[receiver[0]->adc].gain, adc[receiver[0]->adc].min_gain, adc[receiver[0]->adc].max_gain, 1.0);
       radio_set_rf_gain(0, value);
     }
@@ -1498,7 +1592,7 @@ int process_action(gpointer data) {
     break;
 
   case RF_GAIN_RX2:
-    if (have_rx_gain && receivers == 2) {
+    if (have_rx_gain && receivers == 2 && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       value = KnobOrWheel(a, adc[receiver[1]->adc].gain, adc[receiver[1]->adc].min_gain, adc[receiver[1]->adc].max_gain, 1.0);
       radio_set_rf_gain(1, value);
     }
@@ -1537,7 +1631,7 @@ int process_action(gpointer data) {
         repeat_timer = g_timeout_add(250, repeat_cb, NULL);
         repeat_timer_released = FALSE;
       }
-    } else {
+    } else if (a->mode == RELEASED) {
       repeat_timer_released = TRUE;
     }
 
@@ -1553,18 +1647,24 @@ int process_action(gpointer data) {
         repeat_timer = g_timeout_add(250, repeat_cb, NULL);
         repeat_timer_released = FALSE;
       }
-    } else {
+    } else if (a->mode == RELEASED) {
       repeat_timer_released = TRUE;
     }
 
     break;
 
   case RIT_RX1:
-    vfo_id_rit_incr(0, vfo[0].rit_step * a->val);
+    if (a->mode == RELATIVE) {
+      vfo_id_rit_incr(0, vfo[0].rit_step * a->val);
+    }
+
     break;
 
   case RIT_RX2:
-    vfo_id_rit_incr(1, vfo[1].rit_step * a->val);
+    if (a->mode == RELATIVE) {
+      vfo_id_rit_incr(1, vfo[1].rit_step * a->val);
+    }
+
     break;
 
   case RIT_STEP:
@@ -1678,17 +1778,23 @@ int process_action(gpointer data) {
     break;
 
   case SQUELCH:
-    value = KnobOrWheel(a, active_receiver->squelch, 0.0, 100.0, 1.0);
-    radio_set_squelch(active_receiver->id, value);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, active_receiver->squelch, 0.0, 100.0, 1.0);
+      radio_set_squelch(active_receiver->id, value);
+    }
+
     break;
 
   case SQUELCH_RX1:
-    value = KnobOrWheel(a, receiver[0]->squelch, 0.0, 100.0, 1.0);
-    radio_set_squelch(0, value);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, receiver[0]->squelch, 0.0, 100.0, 1.0);
+      radio_set_squelch(0, value);
+    }
+
     break;
 
   case SQUELCH_RX2:
-    if (receivers == 2) {
+    if (receivers == 2 && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       value = KnobOrWheel(a, receiver[1]->squelch, 0.0, 100.0, 1.0);
       radio_set_squelch(1, value);
     }
@@ -1710,20 +1816,22 @@ int process_action(gpointer data) {
   case TOOLBAR4:
   case TOOLBAR5:
   case TOOLBAR6:
-  case TOOLBAR7: {
-    //
-    // The TOOLBARn actions simply schedule the action currently associated
-    // with the n-th toolbar button
-    // NOTE: this gives a circular dependency if any of the toolbar buttons
-    // is TOOLBARn, so filter this out!
-    //
-    int tbaction = tb_actions[tb_function[0]][action - TOOLBAR1];
+  case TOOLBAR7:
+    if (a->mode == PRESSED || a->mode == RELEASED) {
+      //
+      // The TOOLBARn actions simply schedule the action currently associated
+      // with the n-th toolbar button
+      // NOTE: this gives a circular dependency if any of the toolbar buttons
+      // is TOOLBARn, so filter this out!
+      //
+      int tbaction = tb_actions[tb_function[0]][action - TOOLBAR1];
 
-    if (tbaction < TOOLBAR1 || tbaction > TOOLBAR7) {
-      schedule_action(tbaction, a->mode, a->val);
+      if (tbaction < TOOLBAR1 || tbaction > TOOLBAR7) {
+        schedule_action(tbaction, a->mode, a->val);
+      }
     }
-  }
-  break;
+
+    break;
 
   case TUNE:
     if (a->mode == PRESSED) {
@@ -1735,7 +1843,7 @@ int process_action(gpointer data) {
     break;
 
   case TUNE_DRIVE:
-    if (can_transmit) {
+    if (can_transmit && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       value = KnobOrWheel(a, (double) transmitter->tune_drive, 0.0, 100.0, 1.0);
       transmitter->tune_drive = (int) value;
       transmitter->tune_use_drive = 0;
@@ -1844,24 +1952,36 @@ int process_action(gpointer data) {
     break;
 
   case VOXLEVEL:
-    value = KnobOrWheel(a, vox_threshold, 0.0, 1.0, 0.01);
-    radio_set_voxlevel(value);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, vox_threshold, 0.0, 1.0, 0.01);
+      radio_set_voxlevel(value);
+    }
+
     break;
 
   case WATERFALL_HIGH:
-    value = KnobOrWheel(a, active_receiver->waterfall_high, -100.0, 0.0, 1.0);
-    active_receiver->waterfall_high = (int)value;
-    queue_popup_slider(WATERFALL_HIGH, active_receiver->id + 1, -100.0, 0.0, 1.0, value, "WFALL HIGH RX");
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, active_receiver->waterfall_high, -100.0, 0.0, 1.0);
+      active_receiver->waterfall_high = (int)value;
+      queue_popup_slider(WATERFALL_HIGH, active_receiver->id + 1, -100.0, 0.0, 1.0, value, "WFALL HIGH RX");
+    }
+
     break;
 
   case WATERFALL_LOW:
-    value = KnobOrWheel(a, active_receiver->waterfall_low, -150.0, -50.0, 1.0);
-    active_receiver->waterfall_low = (int)value;
-    queue_popup_slider(WATERFALL_HIGH, active_receiver->id + 1, -150.0, -50.0, 1.0, value, "WFALL LOW RX");
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, active_receiver->waterfall_low, -150.0, -50.0, 1.0);
+      active_receiver->waterfall_low = (int)value;
+      queue_popup_slider(WATERFALL_HIGH, active_receiver->id + 1, -150.0, -50.0, 1.0, value, "WFALL LOW RX");
+    }
+
     break;
 
   case XIT:
-    vfo_xit_incr(vfo[vfo_get_tx_vfo()].rit_step * a->val);
+    if (a->mode == RELATIVE) {
+      vfo_xit_incr(vfo[vfo_get_tx_vfo()].rit_step * a->val);
+    }
+
     break;
 
   case XIT_CLEAR:
@@ -1902,15 +2022,18 @@ int process_action(gpointer data) {
         repeat_timer = g_timeout_add(250, repeat_cb, NULL);
         repeat_timer_released = FALSE;
       }
-    } else {
+    } else if (a->mode == RELEASED) {
       repeat_timer_released = TRUE;
     }
 
     break;
 
   case ZOOM:
-    value = KnobOrWheel(a, active_receiver->zoom, 1.0, MAX_ZOOM, 1.0);
-    radio_set_zoom(active_receiver->id, (int)  value);
+    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
+      value = KnobOrWheel(a, active_receiver->zoom, 1.0, MAX_ZOOM, 1.0);
+      radio_set_zoom(active_receiver->id, (int)  value);
+    }
+
     break;
 
   case ZOOM_MINUS:
@@ -1944,8 +2067,7 @@ int process_action(gpointer data) {
     // attached to the radio.
     // In both cases, piHPSDR stays TX and the radio will induce the TX/RX transition by removing hpsdr_ptt.
     //
-    switch (a->mode) {
-    case PRESSED:
+    if (a->mode == PRESSED) {
       MIDI_cw_is_active = 1;         // disable "CW handled in radio"
       cw_key_hit = 1;                // this tells rigctl to abort CAT CW
 
@@ -1955,10 +2077,7 @@ int process_action(gpointer data) {
         schedule_transmit_specific();
         radio_set_mox(1);
       }
-
-      break;
-
-    case RELEASED:
+    } else if (a->mode == RELEASED) {
       MIDI_cw_is_active = 0;         // enable "CW handled in radio", if it was selected
 
       if (radio_is_remote) {
@@ -1969,24 +2088,21 @@ int process_action(gpointer data) {
 
         if (!hpsdr_ptt) { radio_set_mox(0); }
       }
-
-      break;
-
-    default:
-      // should not happen
-      break;
     }
 
     break;
 
   case CW_KEYER_SPEED:
+
     //
     // This is a MIDI message from a CW keyer. The MIDI controller
     // value maps 1:1 to the speed, but we keep it within limits.
     //
-    i = a->val;
+    if (a->mode == ABSOLUTE) {
+      i = a->val;
 
-    if (i >= 1 && i <= 60) { radio_set_cw_speed(i); }
+      if (i >= 1 && i <= 60) { radio_set_cw_speed(i); }
+    }
 
     break;
 

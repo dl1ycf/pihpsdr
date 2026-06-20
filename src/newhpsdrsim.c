@@ -1,5 +1,5 @@
 /* Copyright (C)
-* 2019 - Christoph van Wüllen, DL1YCF
+*  2019 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -1098,7 +1098,6 @@ void *rx_thread(void *data) {
   tonearg2 = 0.0;
   t3p = 0;
   int flg;
-
   myddc = (int) (uintptr_t) data;
 
   if (myddc < 0 || myddc >= NUMRECEIVERS) { return NULL; }
@@ -1434,7 +1433,6 @@ void *tx_thread(void * data) {
   unsigned char *p;
   int samp1, samp2;
   double di, dq;
-  double sum;
 #ifdef TXIQ_FIFO
   double  FIFO = 0.0;
   double last = -9999.9;
@@ -1513,7 +1511,7 @@ void *tx_thread(void * data) {
     }
 
     p = buffer + 4;
-    sum = 0.0;
+    double txmax = 0.0;
 
     for (i = 0; i < 240; i++) {
       // process 240 TX iq samples
@@ -1555,24 +1553,26 @@ void *tx_thread(void * data) {
       di *= 1.116;
       dq *= 1.116;
       //
+      // TX power
+      //
+      double actmax = di * di + dq * dq;
+
+      if (actmax > txmax) { txmax = actmax; }
+
+      //
       //      put TX samples into ring buffer
       //
       isample[txptr] = di;
       qsample[txptr++] = dq;
 
       if (txptr >= NEWRTXLEN) { txptr = 0; }
-
-      //
-      //      accumulate TX power
-      //
-      sum += (di * di + dq * dq);
     }
 
     //
     // For a full-amplitude signal (e.g. TUNE), sum is 240
     // and thus txlevel = txdrv_dbl^2
     //
-    txlevel = sum * txdrv_dbl * txdrv_dbl * 0.0041667;
+    txlevel = txmax * txdrv_dbl * txdrv_dbl;
   }
 
   close(sock);

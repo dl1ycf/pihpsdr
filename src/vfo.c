@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@
 #include "filter.h"
 #include "bandstack.h"
 #include "band.h"
+#include "profiles.h"
 #include "property.h"
 #include "radio.h"
 #include "receiver.h"
@@ -55,6 +56,7 @@
 #include "actions.h"
 #include "message.h"
 #include "sliders.h"
+#include "theme.h"
 
 static int my_width;
 static int my_height;
@@ -81,7 +83,6 @@ static inline long long ROUND(long long freq, int nsteps, int step) {
 }
 
 struct _vfo vfo[MAX_VFOS];
-struct _mode_settings mode_settings[MODES];
 
 static void vfo_save_bandstack(void) {
   BANDSTACK *bandstack = bandstack_get_bandstack(vfo[0].band);
@@ -97,329 +98,6 @@ static void vfo_save_bandstack(void) {
   if (can_transmit) {
     entry->ctcss_enabled = transmitter->ctcss_enabled;
     entry->ctcss = transmitter->ctcss;
-  }
-}
-
-void modesettings_save_state(void) {
-  for (int i = 0; i < MODES; i++) {
-    SetPropI1("modeset.%d.filter", i,                 mode_settings[i].filter);
-    SetPropI1("modeset.%d.cwPeak", i,                 mode_settings[i].cwPeak);
-    SetPropI1("modeset.%d.step", i,                   mode_settings[i].step);
-    SetPropI1("modeset.%d.rit_step", i,               mode_settings[i].rit_step);
-    SetPropF1("modeset.%d.rxvolume", i,               mode_settings[i].rxvolume);
-    SetPropI1("modeset.%d.nb", i,                     mode_settings[i].nb);
-    SetPropF1("modeset.%d.nb_tau", i,                 mode_settings[i].nb_tau);
-    SetPropF1("modeset.%d.nb_hang", i,                mode_settings[i].nb_hang);
-    SetPropF1("modeset.%d.nb_advtime", i,             mode_settings[i].nb_advtime);
-    SetPropF1("modeset.%d.nb_thresh", i,              mode_settings[i].nb_thresh);
-    SetPropI1("modeset.%d.nb2_mode", i,               mode_settings[i].nb2_mode);
-    SetPropI1("modeset.%d.nr", i,                     mode_settings[i].nr);
-    SetPropI1("modeset.%d.nr_agc", i,                 mode_settings[i].nr_agc);
-    SetPropI1("modeset.%d.nr2_gain_method", i,        mode_settings[i].nr2_gain_method);
-    SetPropI1("modeset.%d.nr2_npe_method", i,         mode_settings[i].nr2_npe_method);
-    SetPropF1("modeset.%d.nr2_trained_threshold", i,  mode_settings[i].nr2_trained_threshold);
-    SetPropF1("modeset.%d.nr2_trained_t2", i,         mode_settings[i].nr2_trained_t2);
-    SetPropI1("modeset.%d.nr2_post", i,               mode_settings[i].nr2_post);
-    SetPropI1("modeset.%d.nr2_post_taper", i,         mode_settings[i].nr2_post_taper);
-    SetPropI1("modeset.%d.nr2_post_nlevel", i,        mode_settings[i].nr2_post_nlevel);
-    SetPropI1("modeset.%d.nr2_post_factor", i,        mode_settings[i].nr2_post_factor);
-    SetPropI1("modeset.%d.nr2_post_rate", i,          mode_settings[i].nr2_post_rate);
-    SetPropF1("modeset.%d.nr4_reduction_amount", i,   mode_settings[i].nr4_reduction_amount);
-    SetPropF1("modeset.%d.nr4_smoothing_factor", i,   mode_settings[i].nr4_smoothing_factor);
-    SetPropF1("modeset.%d.nr4_whitening_factor", i,   mode_settings[i].nr4_whitening_factor);
-    SetPropF1("modeset.%d.nr4_noise_rescale", i,      mode_settings[i].nr4_noise_rescale);
-    SetPropF1("modeset.%d.nr4_post_threshold", i,     mode_settings[i].nr4_post_threshold);
-    SetPropI1("modeset.%d.nr4_noise_scaling_type", i, mode_settings[i].nr4_noise_scaling_type);
-    SetPropI1("modeset.%d.en_squelch", i,             mode_settings[i].squelch_enable);
-    SetPropF1("modeset.%d.squelch", i,                mode_settings[i].squelch);
-    SetPropI1("modeset.%d.anf", i,                    mode_settings[i].anf);
-    SetPropI1("modeset.%d.snb", i,                    mode_settings[i].snb);
-    SetPropI1("modeset.%d.agc", i,                    mode_settings[i].agc);
-    SetPropI1("modeset.%d.en_rxeq", i,                mode_settings[i].en_rxeq);
-    SetPropI1("modeset.%d.en_txeq", i,                mode_settings[i].en_txeq);
-    SetPropI1("modeset.%d.compressor", i,             mode_settings[i].compressor);
-    SetPropF1("modeset.%d.compressor_level", i,       mode_settings[i].compressor_level);
-    SetPropF1("modeset.%d.mic_gain", i,               mode_settings[i].mic_gain);
-    SetPropI1("modeset.%d.dexp", i,                   mode_settings[i].dexp);
-    SetPropI1("modeset.%d.dexp_trigger", i,           mode_settings[i].dexp_trigger);
-    SetPropF1("modeset.%d.dexp_tau", i,               mode_settings[i].dexp_tau);
-    SetPropF1("modeset.%d.dexp_attack", i,            mode_settings[i].dexp_attack);
-    SetPropF1("modeset.%d.dexp_release", i,           mode_settings[i].dexp_release);
-    SetPropF1("modeset.%d.dexp_hold", i,              mode_settings[i].dexp_hold);
-    SetPropI1("modeset.%d.dexp_exp", i,               mode_settings[i].dexp_exp);
-    SetPropF1("modeset.%d.dexp_hyst", i,              mode_settings[i].dexp_hyst);
-    SetPropI1("modeset.%d.dexp_filter", i,            mode_settings[i].dexp_filter);
-    SetPropI1("modeset.%d.dexp_filter_low", i,        mode_settings[i].dexp_filter_low);
-    SetPropI1("modeset.%d.dexp_filter_high", i,       mode_settings[i].dexp_filter_high);
-    SetPropI1("modeset.%d.cfc", i,                    mode_settings[i].cfc);
-    SetPropI1("modeset.%d.cfc_eq", i,                 mode_settings[i].cfc_eq);
-    SetPropI1("modeset.%d.tx_default_filter_low", i,  mode_settings[i].tx_default_filter_low);
-    SetPropI1("modeset.%d.tx_default_filter_high", i, mode_settings[i].tx_default_filter_high);
-    SetPropI1("modeset.%d.use_rx_filter", i,          mode_settings[i].use_rx_filter);
-
-    for (int j = 0; j < 11; j++) {
-      SetPropF2("modeset.%d.txeq.%d", i, j,           mode_settings[i].tx_eq_gain[j]);
-      SetPropF2("modeset.%d.txeqfrq.%d", i, j,        mode_settings[i].tx_eq_freq[j]);
-      SetPropF2("modeset.%d.rxeq.%d", i, j,           mode_settings[i].rx_eq_gain[j]);
-      SetPropF2("modeset.%d.rxeqfrq.%d", i, j,        mode_settings[i].rx_eq_freq[j]);
-      SetPropF2("modeset.%d.cfc_frq.%d", i, j,        mode_settings[i].cfc_freq[j]);
-      SetPropF2("modeset.%d.cfc_lvl.%d", i, j,        mode_settings[i].cfc_lvl[j]);
-      SetPropF2("modeset.%d.cfc_post.%d", i, j,       mode_settings[i].cfc_post[j]);
-    }
-
-    SetPropI1("modeset.%d.rx_audio_channel", i,       mode_settings[i].rx_audio_channel);
-    SetPropI1("modeset.%d.rx_local_audio", i,         mode_settings[i].rx_local_audio);
-    SetPropI1("modeset.%d.tx_local_audio", i,         mode_settings[i].tx_local_audio);
-    SetPropS1("modeset.%d.rx_audio_name", i,          mode_settings[i].rx_audio_name);
-    SetPropS1("modeset.%d.tx_audio_name", i,          mode_settings[i].tx_audio_name);
-  }
-}
-
-void modesettings_restore_state(void) {
-  for (int i = 0; i < MODES; i++) {
-    //
-    // set defaults that depend on  the mode: filter, agc, step
-    //
-    switch (i) {
-    case modeLSB:
-    case modeUSB:
-    case modeDSB:
-      mode_settings[i].agc      = AGC_MEDIUM;
-      mode_settings[i].filter   = filterF5; //  2700 Hz
-      mode_settings[i].step     = 100;
-      mode_settings[i].rit_step = 100;
-      break;
-
-    case modeDIGL:
-    case modeDIGU:
-      mode_settings[i].agc      = AGC_FAST;
-      mode_settings[i].filter   = filterF6; //  1000 Hz
-      mode_settings[i].step     = 50;
-      mode_settings[i].rit_step = 100;
-      break;
-
-    case modeCWL:
-    case modeCWU:
-      mode_settings[i].agc      = AGC_FAST;
-      mode_settings[i].filter   = filterF4; //   500 Hz
-      mode_settings[i].step     = 25;
-      mode_settings[i].rit_step = 10;
-      break;
-
-    case modeAM:
-    case modeSAM:
-    case modeSPEC:
-    case modeDRM:
-    case modeFMN:  // nowhere used for FM
-      mode_settings[i].agc      = AGC_MEDIUM;
-      mode_settings[i].filter   = filterF3; //  8000 Hz
-      mode_settings[i].step     = 100;
-      mode_settings[i].rit_step = 100;
-      break;
-    }
-
-    //
-    // set defaults that are the same  for all modes
-    //
-    mode_settings[i].cwPeak = 0;
-    mode_settings[i].rxvolume = -20.0;
-    mode_settings[i].nb = 0;
-    mode_settings[i].nb_tau = 0.00001;
-    mode_settings[i].nb_advtime = 0.00001;
-    mode_settings[i].nb_hang = 0.00001;
-    mode_settings[i].nb_thresh = 4.95;
-    mode_settings[i].nb2_mode = 0;
-    mode_settings[i].nr = 0;
-    mode_settings[i].nr_agc = 0;
-    mode_settings[i].nr2_gain_method = 0;
-    mode_settings[i].nr2_npe_method = 0;
-    mode_settings[i].nr2_post = 0;
-    mode_settings[i].nr2_post_taper = 12;
-    mode_settings[i].nr2_post_nlevel = 15;
-    mode_settings[i].nr2_post_factor = 15;
-    mode_settings[i].nr2_post_rate = 5;
-    mode_settings[i].nr2_trained_threshold = -0.5;
-    mode_settings[i].nr2_trained_t2 = 0.2;
-    mode_settings[i].nr4_reduction_amount = 10.0;
-    mode_settings[i].nr4_smoothing_factor = 20.0;
-    mode_settings[i].nr4_whitening_factor = 0.0;
-    mode_settings[i].nr4_noise_rescale = 2.0;
-    mode_settings[i].nr4_post_threshold = -3.0;
-    mode_settings[i].nr4_noise_scaling_type = 0;
-    mode_settings[i].squelch_enable = 0;
-    mode_settings[i].squelch = 0.0;
-    mode_settings[i].anf = 0;
-    mode_settings[i].snb = 0;
-    mode_settings[i].en_rxeq = 0;
-    mode_settings[i].en_txeq = 0;
-    mode_settings[i].compressor = 0;
-    mode_settings[i].compressor_level = 0.0;
-    mode_settings[i].mic_gain = 0.0;
-    mode_settings[i].dexp = 0;
-    mode_settings[i].dexp_trigger = -25;
-    mode_settings[i].dexp_tau = 0.01;
-    mode_settings[i].dexp_attack = 0.025;
-    mode_settings[i].dexp_release = 0.100;
-    mode_settings[i].dexp_hold = 0.800;
-    mode_settings[i].dexp_exp = 20;
-    mode_settings[i].dexp_hyst = 0.75;
-    mode_settings[i].dexp_filter = 0;
-    mode_settings[i].dexp_filter_low = 1000;
-    mode_settings[i].dexp_filter_high = 2000;
-    mode_settings[i].cfc = 0;
-    mode_settings[i].cfc_eq = 0;
-    mode_settings[i].tx_default_filter_low = 150;
-    mode_settings[i].tx_default_filter_high = 2850;
-    mode_settings[i].use_rx_filter  = 0;
-
-    for (int j = 0; j < 11; j++) {
-      mode_settings[i].tx_eq_gain[j] = 0;
-      mode_settings[i].rx_eq_gain[j] = 0;
-      mode_settings[i].cfc_lvl   [j] = 0;
-      mode_settings[i].cfc_post  [j] = 0;
-    }
-
-    mode_settings[i].tx_eq_freq[0]  =     0.0;
-    mode_settings[i].rx_eq_freq[0]  =     0.0;
-    mode_settings[i].cfc_freq  [0]  =     0.0;
-    mode_settings[i].tx_eq_freq[1]  =    50.0;
-    mode_settings[i].rx_eq_freq[1]  =    50.0;
-    mode_settings[i].cfc_freq  [1]  =    50.0;
-    mode_settings[i].tx_eq_freq[2]  =   100.0;
-    mode_settings[i].rx_eq_freq[2]  =   100.0;
-    mode_settings[i].cfc_freq  [2]  =   100.0;
-    mode_settings[i].tx_eq_freq[3]  =   200.0;
-    mode_settings[i].rx_eq_freq[3]  =   200.0;
-    mode_settings[i].cfc_freq  [3]  =   200.0;
-    mode_settings[i].tx_eq_freq[4]  =   500.0;
-    mode_settings[i].rx_eq_freq[4]  =   500.0;
-    mode_settings[i].cfc_freq  [4]  =   500.0;
-    mode_settings[i].tx_eq_freq[5]  =  1000.0;
-    mode_settings[i].rx_eq_freq[5]  =  1000.0;
-    mode_settings[i].cfc_freq  [5]  =  1000.0;
-    mode_settings[i].tx_eq_freq[6]  =  1500.0;
-    mode_settings[i].rx_eq_freq[6]  =  1500.0;
-    mode_settings[i].cfc_freq  [6]  =  1500.0;
-    mode_settings[i].tx_eq_freq[7]  =  2000.0;
-    mode_settings[i].rx_eq_freq[7]  =  2000.0;
-    mode_settings[i].cfc_freq  [7]  =  2000.0;
-    mode_settings[i].tx_eq_freq[8]  =  2500.0;
-    mode_settings[i].rx_eq_freq[8]  =  2500.0;
-    mode_settings[i].cfc_freq  [8]  =  2500.0;
-    mode_settings[i].tx_eq_freq[9]  =  3000.0;
-    mode_settings[i].rx_eq_freq[9]  =  3000.0;
-    mode_settings[i].cfc_freq  [9]  =  3000.0;
-    mode_settings[i].tx_eq_freq[10] =  5000.0;
-    mode_settings[i].rx_eq_freq[10] =  5000.0;
-    mode_settings[i].cfc_freq  [10] =  5000.0;
-    mode_settings[i].rx_audio_channel =  STEREO;
-    mode_settings[i].rx_local_audio =  0;
-    mode_settings[i].tx_local_audio =  0;
-    snprintf(mode_settings[i].rx_audio_name, sizeof(mode_settings[i].rx_audio_name), "%s", "NO AUDIO");
-    snprintf(mode_settings[i].tx_audio_name, sizeof(mode_settings[i].tx_audio_name), "%s", "NO AUDIO");
-    GetPropI1("modeset.%d.filter", i,                 mode_settings[i].filter);
-    GetPropI1("modeset.%d.cwPeak", i,                 mode_settings[i].cwPeak);
-    GetPropI1("modeset.%d.step", i,                   mode_settings[i].step);
-    GetPropI1("modeset.%d.rit_step", i,               mode_settings[i].rit_step);
-    GetPropF1("modeset.%d.rxvolume", i,               mode_settings[i].rxvolume);
-    GetPropI1("modeset.%d.nb", i,                     mode_settings[i].nb);
-    GetPropF1("modeset.%d.nb_tau", i,                 mode_settings[i].nb_tau);
-    GetPropF1("modeset.%d.nb_hang", i,                mode_settings[i].nb_hang);
-    GetPropF1("modeset.%d.nb_advtime", i,             mode_settings[i].nb_advtime);
-    GetPropF1("modeset.%d.nb_thresh", i,              mode_settings[i].nb_thresh);
-    GetPropI1("modeset.%d.nb2_mode", i,               mode_settings[i].nb2_mode);
-    GetPropI1("modeset.%d.nr", i,                     mode_settings[i].nr);
-    GetPropI1("modeset.%d.nr_agc", i,                 mode_settings[i].nr_agc);
-    GetPropI1("modeset.%d.nr2_gain_method", i,        mode_settings[i].nr2_gain_method);
-    GetPropI1("modeset.%d.nr2_npe_method", i,         mode_settings[i].nr2_npe_method);
-    GetPropF1("modeset.%d.nr2_trained_threshold", i,  mode_settings[i].nr2_trained_threshold);
-    GetPropF1("modeset.%d.nr2_trained_t2", i,         mode_settings[i].nr2_trained_t2);
-    GetPropI1("modeset.%d.nr2_post", i,               mode_settings[i].nr2_post);
-    GetPropI1("modeset.%d.nr2_post_taper", i,         mode_settings[i].nr2_post_taper);
-    GetPropI1("modeset.%d.nr2_post_nlevel", i,        mode_settings[i].nr2_post_nlevel);
-    GetPropI1("modeset.%d.nr2_post_factor", i,        mode_settings[i].nr2_post_factor);
-    GetPropI1("modeset.%d.nr2_post_rate", i,          mode_settings[i].nr2_post_rate);
-    GetPropF1("modeset.%d.nr4_reduction_amount", i,   mode_settings[i].nr4_reduction_amount);
-    GetPropF1("modeset.%d.nr4_smoothing_factor", i,   mode_settings[i].nr4_smoothing_factor);
-    GetPropF1("modeset.%d.nr4_whitening_factor", i,   mode_settings[i].nr4_whitening_factor);
-    GetPropF1("modeset.%d.nr4_noise_rescale", i,      mode_settings[i].nr4_noise_rescale);
-    GetPropF1("modeset.%d.nr4_post_threshold", i,     mode_settings[i].nr4_post_threshold);
-    GetPropI1("modeset.%d.nr4_noise_scaling_type", i, mode_settings[i].nr4_noise_scaling_type);
-    GetPropI1("modeset.%d.en_squelch", i,             mode_settings[i].squelch_enable);
-    GetPropF1("modeset.%d.squelch", i,                mode_settings[i].squelch);
-    GetPropI1("modeset.%d.anf", i,                    mode_settings[i].anf);
-    GetPropI1("modeset.%d.snb", i,                    mode_settings[i].snb);
-    GetPropI1("modeset.%d.agc", i,                    mode_settings[i].agc);
-    GetPropI1("modeset.%d.en_rxeq", i,                mode_settings[i].en_rxeq);
-    GetPropI1("modeset.%d.en_txeq", i,                mode_settings[i].en_txeq);
-    GetPropI1("modeset.%d.compressor", i,             mode_settings[i].compressor);
-    GetPropF1("modeset.%d.compressor_level", i,       mode_settings[i].compressor_level);
-    GetPropF1("modeset.%d.mic_gain", i,               mode_settings[i].mic_gain);
-    GetPropI1("modeset.%d.dexp", i,                   mode_settings[i].dexp);
-    GetPropI1("modeset.%d.dexp_trigger", i,           mode_settings[i].dexp_trigger);
-    GetPropF1("modeset.%d.dexp_tau", i,               mode_settings[i].dexp_tau);
-    GetPropF1("modeset.%d.dexp_attack", i,            mode_settings[i].dexp_attack);
-    GetPropF1("modeset.%d.dexp_release", i,           mode_settings[i].dexp_release);
-    GetPropF1("modeset.%d.dexp_hold", i,              mode_settings[i].dexp_hold);
-    GetPropI1("modeset.%d.dexp_exp", i,               mode_settings[i].dexp_exp);
-    GetPropF1("modeset.%d.dexp_hyst", i,              mode_settings[i].dexp_hyst);
-    GetPropI1("modeset.%d.dexp_filter", i,            mode_settings[i].dexp_filter);
-    GetPropI1("modeset.%d.dexp_filter_low", i,        mode_settings[i].dexp_filter_low);
-    GetPropI1("modeset.%d.dexp_filter_high", i,       mode_settings[i].dexp_filter_high);
-    GetPropI1("modeset.%d.cfc", i,                    mode_settings[i].cfc);
-    GetPropI1("modeset.%d.cfc_eq", i,                 mode_settings[i].cfc_eq);
-    GetPropI1("modeset.%d.tx_default_filter_low", i,  mode_settings[i].tx_default_filter_low);
-    GetPropI1("modeset.%d.tx_default_filter_high", i, mode_settings[i].tx_default_filter_high);
-    GetPropI1("modeset.%d.use_rx_filter", i,          mode_settings[i].use_rx_filter);
-
-    for (int j = 0; j < 11; j++) {
-      GetPropF2("modeset.%d.txeq.%d", i, j,           mode_settings[i].tx_eq_gain[j]);
-      GetPropF2("modeset.%d.txeqfrq.%d", i, j,        mode_settings[i].tx_eq_freq[j]);
-      GetPropF2("modeset.%d.rxeq.%d", i, j,           mode_settings[i].rx_eq_gain[j]);
-      GetPropF2("modeset.%d.rxeqfrq.%d", i, j,        mode_settings[i].rx_eq_freq[j]);
-      GetPropF2("modeset.%d.cfc_frq.%d", i, j,        mode_settings[i].cfc_freq[j]);
-      GetPropF2("modeset.%d.cfc_lvl.%d", i, j,        mode_settings[i].cfc_lvl[j]);
-      GetPropF2("modeset.%d.cfc_post.%d", i, j,       mode_settings[i].cfc_post[j]);
-    }
-
-    GetPropI1("modeset.%d.rx_audio_channel", i,       mode_settings[i].rx_audio_channel);
-    GetPropI1("modeset.%d.rx_local_audio", i,         mode_settings[i].rx_local_audio);
-    GetPropI1("modeset.%d.tx_local_audio", i,         mode_settings[i].tx_local_audio);
-    GetPropS1("modeset.%d.rx_audio_name", i,          mode_settings[i].rx_audio_name);
-    GetPropS1("modeset.%d.tx_audio_name", i,          mode_settings[i].tx_audio_name);
-  }
-}
-
-void copy_mode_settings(int mode) {
-  //
-  // The client may call this, if local audio settings have been changed
-  //
-
-  //
-  // If mode is USB or LSB or DSB, copy settings of that mode to USB and LSB and DSB
-  // If mode is CWU or CWL       , copy settings of that mode to CWL and CWU
-  // If mode is DIGU or DIGL     , copy settings of that mode to DIGL and DIGU
-  //
-  switch (mode) {
-  case modeCWU:
-  case modeCWL:
-    mode_settings[modeCWU] = mode_settings[mode];
-    mode_settings[modeCWL] = mode_settings[mode];
-    break;
-
-  case modeDIGU:
-  case modeDIGL:
-    mode_settings[modeDIGU] = mode_settings[mode];
-    mode_settings[modeDIGL] = mode_settings[mode];
-    break;
-
-  case modeLSB:
-  case modeUSB:
-  case modeDSB:
-    mode_settings[modeLSB] = mode_settings[mode];
-    mode_settings[modeUSB] = mode_settings[mode];
-    mode_settings[modeDSB] = mode_settings[mode];
-    break;
   }
 }
 
@@ -605,155 +283,6 @@ void vfo_xvtr_changed(void) {
   g_idle_add(ext_vfo_update, NULL);
 }
 
-void vfo_apply_mode_settings(RECEIVER *rx) {
-  ASSERT_SERVER();
-  int id, m;
-  id = rx->id;
-  m = vfo[id].mode;
-  suppress_popup_sliders++;
-  //
-  // Apply VFO settings to VFO controlling the receiver
-  //
-  vfo[id].filter                = mode_settings[m].filter;
-  vfo[id].cwAudioPeakFilter     = mode_settings[m].cwPeak;
-  vfo[id].step                  = mode_settings[m].step;
-  vfo[id].rit_step              = mode_settings[m].rit_step;
-  //
-  // Apply noise and EQ settings to the receiver
-  //
-  radio_set_af_gain(id, mode_settings[m].rxvolume);
-  rx->nb                        = mode_settings[m].nb;
-  rx->nb2_mode                  = mode_settings[m].nb2_mode;
-  rx->nb_tau                    = mode_settings[m].nb_tau;
-  rx->nb_hang                   = mode_settings[m].nb_hang;
-  rx->nb_advtime                = mode_settings[m].nb_advtime;
-  rx->nb_thresh                 = mode_settings[m].nb_thresh;
-  //
-  rx->nr                        = mode_settings[m].nr;
-  rx->nr_agc                    = mode_settings[m].nr_agc;
-  rx->nr2_gain_method           = mode_settings[m].nr2_gain_method;
-  rx->nr2_npe_method            = mode_settings[m].nr2_npe_method;
-  rx->nr2_trained_threshold     = mode_settings[m].nr2_trained_threshold;
-  rx->nr2_trained_t2            = mode_settings[m].nr2_trained_t2;
-  rx->nr2_post                  = mode_settings[m].nr2_post;
-  rx->nr2_post_taper            = mode_settings[m].nr2_post_taper;
-  rx->nr2_post_nlevel           = mode_settings[m].nr2_post_nlevel;
-  rx->nr2_post_factor           = mode_settings[m].nr2_post_factor;
-  rx->nr2_post_rate             = mode_settings[m].nr2_post_rate;
-  rx->nr4_reduction_amount      = mode_settings[m].nr4_reduction_amount;
-  rx->nr4_smoothing_factor      = mode_settings[m].nr4_smoothing_factor;
-  rx->nr4_whitening_factor      = mode_settings[m].nr4_whitening_factor;
-  rx->nr4_noise_rescale         = mode_settings[m].nr4_noise_rescale;
-  rx->nr4_post_threshold        = mode_settings[m].nr4_post_threshold;
-  rx->nr4_noise_scaling_type    = mode_settings[m].nr4_noise_scaling_type;
-  rx->anf                       = mode_settings[m].anf;
-  rx->snb                       = mode_settings[m].snb;
-  rx->agc                       = mode_settings[m].agc;
-  rx->eq_enable                 = mode_settings[m].en_rxeq;
-
-  for (int i = 0; i < 11; i++) {
-    rx->eq_gain[i] = mode_settings[m].rx_eq_gain[i];
-    rx->eq_freq[i] = mode_settings[m].rx_eq_freq[i];
-  }
-
-  rx_set_agc(rx);
-  rx_set_equalizer(rx);
-  rx_set_noise(rx);
-  radio_set_squelch       (rx->id, mode_settings[m].squelch);
-  radio_set_squelch_enable(rx->id, mode_settings[m].squelch_enable);
-
-  if (rx->id == 0) {
-    rx->audio_channel = mode_settings[m].rx_audio_channel;
-
-    if (rx->local_audio != mode_settings[m].rx_local_audio
-        || strncmp(rx->audio_name, mode_settings[m].rx_audio_name, sizeof(rx->audio_name))) {
-      //
-      // This is RX1 and local audio settings in mode_settings differ from actual settings
-      //
-      if (rx->local_audio) {
-        rx->local_audio = 0;
-        audio_close_output(rx);
-      }
-
-      if (mode_settings[m].rx_local_audio) {
-        snprintf(rx->audio_name, sizeof(rx->audio_name), "%s", mode_settings[m].rx_audio_name);
-
-        if (audio_open_output(rx) < 0) {
-          rx->local_audio = 0;
-          t_print("%s: Open audio output failed\n", __func__);
-        } else {
-          rx->local_audio = 1;
-        }
-      }
-    }
-  }
-
-  //
-  // Transmitter-specific settings: TXEQ, CMRP, DEXP, CFC
-  // only changed if this VFO controls the TX
-  //
-  if ((id == vfo_get_tx_vfo()) && can_transmit) {
-    transmitter->eq_enable        = mode_settings[m].en_txeq;
-    transmitter->compressor       = mode_settings[m].compressor;
-    transmitter->compressor_level = mode_settings[m].compressor_level;
-    transmitter->dexp             = mode_settings[m].dexp;
-    transmitter->dexp_trigger     = mode_settings[m].dexp_trigger;
-    transmitter->dexp_tau         = mode_settings[m].dexp_tau;
-    transmitter->dexp_attack      = mode_settings[m].dexp_attack;
-    transmitter->dexp_release     = mode_settings[m].dexp_release;
-    transmitter->dexp_hold        = mode_settings[m].dexp_hold;
-    transmitter->dexp_exp         = mode_settings[m].dexp_exp;
-    transmitter->dexp_hyst        = mode_settings[m].dexp_hyst;
-    transmitter->dexp_filter      = mode_settings[m].dexp_filter;
-    transmitter->dexp_filter_low  = mode_settings[m].dexp_filter_low;
-    transmitter->dexp_filter_high = mode_settings[m].dexp_filter_high;
-    transmitter->cfc              = mode_settings[m].cfc;
-    transmitter->cfc_eq           = mode_settings[m].cfc_eq;
-
-    for (int i = 0; i < 11; i++) {
-      transmitter->eq_gain[i]  = mode_settings[m].tx_eq_gain[i];
-      transmitter->eq_freq[i]  = mode_settings[m].tx_eq_freq[i];
-      transmitter->cfc_freq[i] = mode_settings[m].cfc_freq[i];
-      transmitter->cfc_lvl[i]  = mode_settings[m].cfc_lvl[i];
-      transmitter->cfc_post[i] = mode_settings[m].cfc_post[i];
-    }
-
-    transmitter->use_rx_filter = mode_settings[m].use_rx_filter;
-    transmitter->default_filter_low = mode_settings[m].tx_default_filter_low;
-    transmitter->default_filter_high = mode_settings[m].tx_default_filter_high;
-    tx_set_filter(transmitter);
-    tx_set_compressor(transmitter);
-    tx_set_dexp(transmitter);
-    tx_set_equalizer(transmitter);
-    radio_set_mic_gain(mode_settings[m].mic_gain);
-
-    if (transmitter->local_audio != mode_settings[m].tx_local_audio ||
-        strncmp(transmitter->audio_name, mode_settings[m].tx_audio_name, sizeof(transmitter->audio_name))) {
-      //
-      // TX local audio settings in mode_settings differ from local settings:
-      //
-      if (transmitter->local_audio) {
-        transmitter->local_audio = 0;
-        audio_close_input(transmitter);
-      }
-
-      if (mode_settings[m].tx_local_audio) {
-        snprintf(transmitter->audio_name, sizeof(transmitter->audio_name), "%s", mode_settings[m].tx_audio_name);
-
-        if (audio_open_input(transmitter) < 0) {
-          transmitter->local_audio = 0;
-          t_print("%s: Open audio input failed\n", __func__);
-        } else {
-          transmitter->local_audio = 1;
-        }
-      }
-    }
-  }
-
-  g_idle_add(ext_vfo_update, NULL);
-  suppress_popup_sliders--;
-}
-
 void vfo_id_band_changed(int id, int b) {
   if (radio_is_remote) {
     send_band(cl_sock_tcp, id, b);
@@ -831,7 +360,7 @@ void vfo_id_band_changed(int id, int b) {
   }
 
   if (id < receivers && oldmode != vfo[id].mode) {
-    vfo_apply_mode_settings(receiver[id]);
+    profiles_load_rxtx_profile(receiver[id]);
   }
 
   if (oldband != vfo[id].band) {
@@ -889,7 +418,7 @@ void vfo_id_bandstack_changed(int id, int b) {
   }
 
   if (id < receivers && oldmode != vfo[id].mode) {
-    vfo_apply_mode_settings(receiver[id]);
+    profiles_load_rxtx_profile(receiver[id]);
   }
 
   vfo_vfos_changed();
@@ -909,7 +438,7 @@ void vfo_id_mode_changed(int id, int m) {
   vfo[id].mode = m;
 
   if (id < receivers) {
-    vfo_apply_mode_settings(receiver[id]);
+    profiles_load_rxtx_profile(receiver[id]);
     rx_mode_changed(receiver[id]);
     rx_filter_changed(receiver[id]);
   }
@@ -955,8 +484,8 @@ void vfo_id_cwpeak_changed(int id, int p) {
   } else {
     if (id == 0) {
       int mode = vfo[id].mode;
-      mode_settings[mode].cwPeak = p;
-      copy_mode_settings(mode);
+      RXTXprofile[mode].rx.cwPeak = p;
+      profiles_copy_rxtxprofile(mode);
     }
 
     if (id < receivers) {
@@ -982,8 +511,8 @@ void vfo_id_filter_changed(int id, int f) {
   // store changed filter in the mode settings
   if (id == 0) {
     int mode = vfo[id].mode;
-    mode_settings[mode].filter = f;
-    copy_mode_settings(mode);
+    RXTXprofile[mode].rx.filter = f;
+    profiles_copy_rxtxprofile(mode);
   }
 
   //
@@ -1037,7 +566,7 @@ void vfo_a_to_b(void) {
   vfo[VFO_B] = vfo[VFO_A];
 
   if (vfo[VFO_B].mode != oldmode && receivers == 2) {
-    vfo_apply_mode_settings(receiver[1]);
+    profiles_load_rxtx_profile(receiver[1]);
   }
 
   vfo_vfos_changed();
@@ -1053,7 +582,7 @@ void vfo_b_to_a(void) {
   vfo[VFO_A] = vfo[VFO_B];
 
   if (vfo[VFO_A].mode != oldmode) {
-    vfo_apply_mode_settings(receiver[0]);
+    profiles_load_rxtx_profile(receiver[0]);
   }
 
   vfo_vfos_changed();
@@ -1071,10 +600,10 @@ void vfo_a_swap_b(void) {
   vfo[VFO_B]        = temp;
 
   if (vfo[VFO_A].mode != vfo[VFO_B].mode) {
-    vfo_apply_mode_settings(receiver[0]);
+    profiles_load_rxtx_profile(receiver[0]);
 
     if (receivers == 2) {
-      vfo_apply_mode_settings(receiver[1]);
+      profiles_load_rxtx_profile(receiver[1]);
     }
   }
 
@@ -1135,26 +664,26 @@ void vfo_id_set_step_from_index(int id, int index) {
   } else {
     if (id == 0) {
       int mode = vfo[id].mode;
-      mode_settings[mode].step = step;
-      copy_mode_settings(mode);
+      RXTXprofile[mode].rx.step = step;
+      profiles_copy_rxtxprofile(mode);
     }
   }
 }
 
-void vfo_step(int steps) {
+void vfo_step(int st) {
   int id = active_receiver->id;
 
   if (radio_is_remote) {
-    update_vfo_step(id, steps);
+    update_vfo_step(id, st);
     return;
   }
 
-  vfo_id_step(id, steps);
+  vfo_id_step(id, st);
 }
 
-void vfo_id_step(int id, int steps) {
+void vfo_id_step(int id, int st) {
   if (radio_is_remote) {
-    update_vfo_step(id, steps);
+    update_vfo_step(id, st);
     return;
   }
 
@@ -1173,8 +702,8 @@ void vfo_id_step(int id, int steps) {
       }
 
       long long frequency = vfo[id].frequency;
-      long long rx_low = ROUND(vfo[id].ctun_frequency, steps, vfo[id].step) + myrx->filter_low;
-      long long rx_high = ROUND(vfo[id].ctun_frequency, steps, vfo[id].step) + myrx->filter_high;
+      long long rx_low = ROUND(vfo[id].ctun_frequency, st, vfo[id].step) + myrx->filter_low;
+      long long rx_high = ROUND(vfo[id].ctun_frequency, st, vfo[id].step) + myrx->filter_high;
       long long half = (long long)myrx->sample_rate / 2LL;
       long long min_freq = frequency - half;
       long long max_freq = frequency + half;
@@ -1186,12 +715,12 @@ void vfo_id_step(int id, int steps) {
       }
 
       delta = vfo[id].ctun_frequency;
-      vfo[id].ctun_frequency = ROUND(vfo[id].ctun_frequency, steps, vfo[id].step);
+      vfo[id].ctun_frequency = ROUND(vfo[id].ctun_frequency, st, vfo[id].step);
       delta = vfo[id].ctun_frequency - delta;
       vfo_id_adjust_band(id, vfo[id].ctun_frequency);
     } else {
       delta = vfo[id].frequency;
-      vfo[id].frequency = ROUND(vfo[id].frequency, steps, vfo[id].step);
+      vfo[id].frequency = ROUND(vfo[id].frequency, st, vfo[id].step);
       delta = vfo[id].frequency - delta;
       vfo_id_adjust_band(id, vfo[id].frequency);
     }
@@ -1266,8 +795,8 @@ void vfo_id_set_rit_step(int id, int step) {
 
   if (id == 0) {
     int mode = vfo[id].mode;
-    mode_settings[mode].rit_step = step;
-    copy_mode_settings(mode);
+    RXTXprofile[mode].rx.rit_step = step;
+    profiles_copy_rxtxprofile(mode);
   }
 
   g_idle_add(ext_vfo_update, NULL);
@@ -1467,20 +996,21 @@ void vfo_id_move_to(int id, long long f, int round) {
 
 // cppcheck-suppress constParameterCallback
 static gboolean vfo_scroll_event_cb (GtkWidget *widget, GdkEventScroll *event, gpointer data) {
-  return rx_scroll_event(widget, event, data);
+  return rx_scroll_event(widget, event, data, 2);
 }
 
-static gboolean vfo_configure_event_cb (GtkWidget         *widget,
-                                        GdkEventConfigure *event,
-                                        gpointer           data) {
+static gboolean vfo_configure_event_cb (GtkWidget *widget, GdkEventConfigure *event, gpointer data) {
   if (vfo_surface) {
     cairo_surface_destroy (vfo_surface);
   }
 
-  vfo_surface = gdk_window_create_similar_surface (gtk_widget_get_window (widget),
-                CAIRO_CONTENT_COLOR,
+  vfo_surface = cairo_image_surface_create(CAIRO_FORMAT_RGB24,
                 gtk_widget_get_allocated_width (widget),
                 gtk_widget_get_allocated_height (widget));
+  //vfo_surface = gdk_window_create_similar_surface (gtk_widget_get_window (widget),
+  //              CAIRO_CONTENT_COLOR,
+  //              gtk_widget_get_allocated_width (widget),
+  //              gtk_widget_get_allocated_height (widget));
   /* Initialise the surface to black */
   cairo_t *cr;
   cr = cairo_create (vfo_surface);
@@ -1507,6 +1037,7 @@ static gboolean vfo_draw_cb (GtkWidget *widget,
 //
 void vfo_update(void) {
   char wid[6];
+  cairo_text_extents_t extents;
 
   if (!vfo_surface) { return; }
 
@@ -1607,6 +1138,17 @@ void vfo_update(void) {
     cairo_stroke(cr);
   }
 
+#if 0
+  //
+  // Only for debugging: mark right edge
+  //
+  cairo_set_line_width(cr, 3.0);
+  cairo_set_source_rgba(cr, COLOUR_OK);
+  cairo_move_to(cr, vfl->width, 0);
+  cairo_line_to(cr, vfl->width, vfl->height);
+  cairo_stroke(cr);
+#endif
+
   // -----------------------------------------------------------
   //
   // Draw a string specifying the mode, the filter width
@@ -1703,8 +1245,8 @@ void vfo_update(void) {
   // Draw VFO A Dial.
   //
   // -----------------------------------------------------------
-  if (vfl->vfo_a_x != 0) {
-    cairo_move_to(cr, abs(vfl->vfo_a_x), vfl->vfo_a_y);
+  if (vfl->vfo_a_l >= 0) {
+    cairo_move_to(cr, vfl->vfo_a_l, vfl->vfo_a_y);
 
     if (txvfo == 0 && (radio_is_transmitting() || oob)) {
       cairo_set_source_rgba(cr, COLOUR_ALARM);
@@ -1730,28 +1272,23 @@ void vfo_update(void) {
       cairo_show_text(cr, temp_text);
     } else {
       //
-      // poor man's right alignment:
-      // If the frequency is small, print some zeroes
-      // with the background colour
+      // Draw the "Hz" with three figures at the end of the dial,
       //
-      cairo_save(cr);
-      cairo_set_source_rgba(cr, COLOUR_VFO_BACKGND);
-
-      if (f_m < 10) {
-        cairo_show_text(cr, "0000");
-      } else if (f_m < 100) {
-        cairo_show_text(cr, "000");
-      } else if (f_m < 1000) {
-        cairo_show_text(cr, "00");
-      } else if (f_m < 10000) {
-        cairo_show_text(cr, "0");
-      }
-
-      cairo_restore(cr);
-      snprintf(temp_text, sizeof(temp_text), "%0d.%03d", f_m, f_k);
-      cairo_show_text(cr, temp_text);
+      int pos = vfl->vfo_a_r;
       cairo_set_font_size(cr, vfl->size2);
       snprintf(temp_text, sizeof(temp_text), "%03d", f_h);
+      cairo_text_extents(cr, temp_text, &extents);
+      pos -= (extents.width + 6);
+      cairo_move_to(cr, pos, vfl->vfo_a_y);
+      cairo_show_text(cr, temp_text);
+      //
+      // Draw the kHz before that
+      //
+      cairo_set_font_size(cr, vfl->size3);
+      snprintf(temp_text, sizeof(temp_text), "%0d.%03d", f_m, f_k);
+      cairo_text_extents(cr, temp_text, &extents);
+      pos -= (extents.width + (vfl->size2 / 3));
+      cairo_move_to(cr, pos, vfl->vfo_a_y);
       cairo_show_text(cr, temp_text);
     }
   }
@@ -1761,8 +1298,8 @@ void vfo_update(void) {
   // Draw VFO B Dial.
   //
   // -----------------------------------------------------------
-  if (vfl->vfo_b_x != 0) {
-    cairo_move_to(cr, abs(vfl->vfo_b_x), abs(vfl->vfo_b_y));
+  if (vfl->vfo_b_l >= 0) {
+    cairo_move_to(cr, vfl->vfo_b_l, vfl->vfo_b_y);
 
     if (txvfo == 1 && (radio_is_transmitting() || oob)) {
       cairo_set_source_rgba(cr, COLOUR_ALARM);
@@ -1788,28 +1325,23 @@ void vfo_update(void) {
       cairo_show_text(cr, temp_text);
     } else {
       //
-      // poor man's right alignment:
-      // If the frequency is small, print some zeroes
-      // with the background colour
+      // Draw the "Hz" with three figures at the end of the dial,
       //
-      cairo_save(cr);
-      cairo_set_source_rgba(cr, COLOUR_VFO_BACKGND);
-
-      if (f_m < 10) {
-        cairo_show_text(cr, "0000");
-      } else if (f_m < 100) {
-        cairo_show_text(cr, "000");
-      } else if (f_m < 1000) {
-        cairo_show_text(cr, "00");
-      } else if (f_m < 10000) {
-        cairo_show_text(cr, "0");
-      }
-
-      cairo_restore(cr);
-      snprintf(temp_text, sizeof(temp_text), "%0d.%03d", f_m, f_k);
-      cairo_show_text(cr, temp_text);
+      int pos = vfl->vfo_b_r;
       cairo_set_font_size(cr, vfl->size2);
       snprintf(temp_text, sizeof(temp_text), "%03d", f_h);
+      cairo_text_extents(cr, temp_text, &extents);
+      pos -= (extents.width + 6);
+      cairo_move_to(cr, pos, vfl->vfo_b_y);
+      cairo_show_text(cr, temp_text);
+      //
+      // Draw the kHz before that
+      //
+      cairo_set_font_size(cr, vfl->size3);
+      snprintf(temp_text, sizeof(temp_text), "%0d.%03d", f_m, f_k);
+      cairo_text_extents(cr, temp_text, &extents);
+      pos -= (extents.width + (vfl->size2 / 3));
+      cairo_move_to(cr, pos, vfl->vfo_b_y);
       cairo_show_text(cr, temp_text);
     }
   }
@@ -1866,7 +1398,14 @@ void vfo_update(void) {
       cairo_set_source_rgba(cr, COLOUR_ATTN);
     }
 
-    snprintf(temp_text, sizeof(temp_text), "RIT %lldHz", vfo[id].rit);
+    int val = vfo[id].rit;
+
+    if (val < 0) {
+      snprintf(temp_text, sizeof(temp_text), "RIT%d", val);
+    } else {
+      snprintf(temp_text, sizeof(temp_text), "RIT %d", val);
+    }
+
     cairo_move_to(cr, vfl->rit_x, vfl->rit_y);
     cairo_show_text(cr, temp_text);
   }
@@ -1883,7 +1422,14 @@ void vfo_update(void) {
       cairo_set_source_rgba(cr, COLOUR_ATTN);
     }
 
-    snprintf(temp_text, sizeof(temp_text), "XIT %lldHz", vfo[txvfo].xit);
+    int val = vfo[txvfo].xit;
+
+    if (val < 0) {
+      snprintf(temp_text, sizeof(temp_text), "XIT%d", val);
+    } else {
+      snprintf(temp_text, sizeof(temp_text), "XIT %d", val);
+    }
+
     cairo_move_to(cr, vfl->xit_x, vfl->xit_y);
     cairo_show_text(cr, temp_text);
   }
@@ -2033,6 +1579,16 @@ void vfo_update(void) {
     case AGC_FAST:
       cairo_set_source_rgba(cr, COLOUR_ATTN);
       cairo_show_text(cr, "AGC fast");
+      break;
+
+    case AGC_CUSTOM:
+      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_show_text(cr, "AGC cstm");
+      break;
+
+    case AGC_FIXED:
+      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_show_text(cr, "AGC fix");
       break;
     }
   }
@@ -2267,26 +1823,71 @@ void vfo_update(void) {
     cairo_show_text(cr, temp_text);
   }
 
+  // -----------------------------------------------------------
+  //
+  // Client-Server: draw latency indicator
+  //
+  // -----------------------------------------------------------
+
+  if (radio_is_remote && vfl->lat_x != 0) {
+    int lat = remote_latency_ms;
+
+    if (lat < 50)  {
+      cairo_set_source_rgba(cr, COLOUR_OK);
+    } else if (lat < 150) {
+      cairo_set_source_rgba(cr, COLOUR_ATTN);
+    } else {
+      cairo_set_source_rgba(cr, COLOUR_ALARM);
+    }
+
+    if (lat < 0 ) { lat = 0; }
+
+    if (lat > 999) { lat = 999; }
+
+    snprintf(temp_text, sizeof(temp_text), "%d ms", lat);
+    cairo_move_to(cr, vfl->lat_x, vfl->lat_y);
+    cairo_show_text(cr, temp_text);
+  }
+
   cairo_destroy (cr);
   gtk_widget_queue_draw (vfo_panel);
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean vfo_press_event_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  int v;
-
   switch (event->button) {
   case GDK_BUTTON_PRIMARY:
-    v = VFO_A;
 
-    if (event->x >= abs(vfo_layout_list[display_vfobar[display_size]].vfo_b_x)) { v = VFO_B; }
+    //
+    // click on VFO-A dial: open band menu for VFO-A
+    // click on VFO-B dial: open band menu for VFO-B
+    // click between VFO-A and VFO-B: open mode menu for VFO-A
+    //
+    if (event->x <= vfo_layout_list[display_vfobar[display_size]].vfo_a_r) {
+      g_idle_add(ext_start_band_menu, GINT_TO_POINTER(VFO_A));
+    } else if (event->x >= vfo_layout_list[display_vfobar[display_size]].vfo_b_l) {
+      g_idle_add(ext_start_band_menu, GINT_TO_POINTER(VFO_B));
+    } else {
+      g_idle_add(ext_start_mode_menu, GINT_TO_POINTER(VFO_A));
+    }
 
-    g_idle_add(ext_start_vfo_menu, GINT_TO_POINTER(v));
     break;
 
   case GDK_BUTTON_SECONDARY:
-    // do not discriminate between A and B
-    g_idle_add(ext_start_band_menu, NULL);
+
+    //
+    // click on VFO-A dial: open filter menu for VFO-A
+    // click on VFO-B dial: open filter menu for VFO-B
+    // click between VFO-A and VFO-B: open filter menu for VFO-B
+    //
+    if (event->x <= vfo_layout_list[display_vfobar[display_size]].vfo_a_r) {
+      g_idle_add(ext_start_filter_menu, GINT_TO_POINTER(VFO_A));
+    } else if (event->x >= vfo_layout_list[display_vfobar[display_size]].vfo_b_l) {
+      g_idle_add(ext_start_filter_menu, GINT_TO_POINTER(VFO_B));
+    } else {
+      g_idle_add(ext_start_mode_menu, GINT_TO_POINTER(VFO_B));
+    }
+
     break;
   }
 
@@ -2298,10 +1899,8 @@ GtkWidget* vfo_init(int width, int height) {
   my_height = height;
   vfo_panel = gtk_drawing_area_new ();
   gtk_widget_set_size_request (vfo_panel, width, height);
-  g_signal_connect (vfo_panel, "configure-event",
-                    G_CALLBACK (vfo_configure_event_cb), NULL);
-  g_signal_connect (vfo_panel, "draw",
-                    G_CALLBACK (vfo_draw_cb), NULL);
+  g_signal_connect (vfo_panel, "configure-event", G_CALLBACK (vfo_configure_event_cb), NULL);
+  g_signal_connect (vfo_panel, "draw", G_CALLBACK (vfo_draw_cb), NULL);
   /* Event signals */
   g_signal_connect (vfo_panel, "button-press-event", G_CALLBACK (vfo_press_event_cb), NULL);
   //
@@ -2537,6 +2136,7 @@ void vfo_id_ctun_update(int id, int state) {
       // ctun_freq since it may contain contributions from RIT.
       //
       RECEIVER *rx = receiver[id];
+
       for (int i = 0; i < 3; i++) {
         if (rx->multi_notch_enable[i]) {
           rx->multi_notch_center[i] += (vfo[id].frequency - vfo[id].ctun_frequency);

@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2017 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2017 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -69,30 +69,25 @@
 //
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// Note on font sizes:
+// Note on cssfonts[]:
 //
-// A RaspPi has different default settings whether you have a small screen, a medium
-// screen or a large screen (RaspBerry Menu ==> Preferences ==> Appearances Settings).
+// Many fonts have a wider spacing than those listed below. These have been tested
+// and it has been verified that they do not mess up the VFO bar layout.
+// Most critical is the "extended meter" whose minimum width has been chosen as
+// small as possible simply to fit on small screens.
+// So when adding fonts to the list below, DOUBLE CHECK whether the VFO bar and the
+// extended meter still looks good.
 //
-// For a fixed size such as the height of the Sliders or Zoompan area, we therefore
-// MUST specify the font size. If not, it may happen that the sliders cannot be
-// displayed on a large screen
-//
-// APPLE fonts:
-// Now we have switched to fonts which should be available on all MacOS boces
-//
-// LINUX fonts:
-// LINUX/libinstall.sh now explicitly loads the "Open Sans" and "FreeSans" fonts
-// (it seems the former has a blank in its name and the latter not).
-// NunitoSans is the new default system font on RaspPi, starting with "Trixie",
-// where "Piboto" has been removed. It may not exist on other LINUX systems.
+// ATTN: Nunito Sans is the "default" font on Raspi for the lastest systems
+//       (from "Trixie" onwards) but not availabler on older OS versions.
+//       It is possible to choose, but it will not look good since you get "something".
 //
 //////////////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __APPLE__
-char *cssfont[] = {"system-ui", "Helvetica Neue", "Monaco", "Arial" };
+char *cssfont[] = {"system-ui", "Helvetica Neue", "Monaco", "Arial", "Geneva" };
 #else
-char *cssfont[] = {"Open Sans", "Roboto Mono", "FreeSans", "Roboto", "NunitoSans" };
+char *cssfont[] = {"Open Sans", "Nunito Sans", "FreeSans", "Roboto", "Roboto Mono", "Piboto" };
 #endif
 
 const int num_css_fonts = sizeof(cssfont) / sizeof(char *);
@@ -101,15 +96,32 @@ int which_css_font = 0;
 char *css =
   "  combobox { font-size: 15px; }\n"
   "  button   { font-size: 15px; }\n"
+  "  #redbutton   { background-image: none; background-color: rgb(100%, 20%, 20%); color: rgb(100%,100%,100%);}\n"
+  "  #orangebutton   { background-image: none; background-color: rgb(100%, 50%, 20%); color: rgb(0%,0%,0%);}\n"
+  "  #yellowbutton   { background-image: none; background-color: rgb(100%, 100%, 20%); color: rgb(0%,0%,0%);}\n"
+  "  #greenbutton { background-image: none; background-color: rgb(20%, 100%, 20%); color: rgb(0%,0%,0%);}\n"
   "  checkbutton label { font-size: 15px; }\n"
   "  spinbutton { font-size: 15px; }\n"
   "  radiobutton label  { font-size: 15px; }\n"
   "  scale { font-size: 15px; }\n"
   "  entry { font-size: 15px; }\n"
   "  notebook { font-size: 15px; }\n"
+  "  #hidebutton {\n"
+  "    padding: 0px;\n"
+  "    border: 0px;\n"
+  "    font-weight: bold;\n"
+  "    font-size: 15px;\n"
+  "  }\n"
+  "  #menubutton {\n"
+  "  background-image:none; background-color: rgb(100%, 50%, 20%); color: rgb(0%, 0%, 0%); \n"
+  "    padding: 0px;\n"
+  "    border: 0px;\n"
+  "    font-weight: bold;\n"
+  "    font-size: 15px;\n"
+  "  }\n"
   "  #boldlabel {\n"
   "    padding: 3px;\n"
-  "    font-weight: bold;\n"
+  "    font-weight: 500;\n"
   "    font-size: 15px;\n"
   "  }\n"
   "  #slider1   {\n"
@@ -217,6 +229,31 @@ void load_font(int font) {
 
   if (font >= num_css_fonts) { font = num_css_fonts - 1; }
 
+  //
+  // Typeset the sample string "CWU 500P 16 wpm 800 Hz" with 13.0 point font size,
+  // and look whether it fits within 180.0 pixels (this is already generous).
+  // Reject fonts wider than that.
+  // The main reason to do so is to prevent that a broad fall-back font is used
+  // in case one of the fonts in cssfonts[] is not available.
+  // In case of failure, take the first font in the list.
+  // For example, the "Nunito Sans" font is a good one if it is installed, but
+  // on older systems it is just not present and then replaced by an unsuitable one.
+  //
+  // In the "Screen" menu, check which_css_font after calling load_font() and
+  // set the font selection combobox to the "selected" font.
+  //
+  cairo_text_extents_t extents;
+  cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_RGB24, 250, 50);
+  cairo_t *cr = cairo_create(surface);
+  cairo_select_font_face(cr, cssfont[font], CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  cairo_set_font_size(cr, 13.0);
+  cairo_text_extents(cr, "CWU 500P 16 wpm 800 Hz", &extents);
+  t_print("%s: %s: Width=%5.1f Height=%5.1f\n", __func__, cssfont[font], extents.width, extents.height);
+
+  if (extents.width >= 180.0) { font = 0; }
+
+  cairo_destroy(cr);
+  cairo_surface_destroy(surface);
   which_css_font = font;
   provider = gtk_css_provider_new ();
   display = gdk_display_get_default ();
@@ -262,7 +299,7 @@ void load_css(void) {
     // the following error message will always appear although this does
     // not indicate a problem.
     //
-    t_print("%s: %s\n", __func__, error->message);
+    t_print("%s: No default.css file\n", __func__);
     g_clear_error(&error);
     (void) gtk_css_provider_load_from_data(provider, css, -1, &error);
 

@@ -1,5 +1,5 @@
 /* Copyright (C)
-* 2019 - Christoph van Wüllen, DL1YCF
+*  2019 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -86,26 +86,26 @@ AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
 //
 
 #ifdef __APPLE__
-#define MY_AUDIO_BUFFER_SIZE  128
-#define MY_RING_BUFFER_SIZE  9600
-#define MY_RING_LOW_WATER     512
-#define MY_RING_HIGH_WATER   9000
-#define CW_LAT_LOW            224
-#define CW_LAT_TARGET         256
-#define CW_LAT_HIGH           288
+  #define MY_AUDIO_BUFFER_SIZE  128
+  #define MY_RING_BUFFER_SIZE  9600
+  #define MY_RING_LOW_WATER     512
+  #define MY_RING_HIGH_WATER   9000
+  #define CW_LAT_LOW            224
+  #define CW_LAT_TARGET         256
+  #define CW_LAT_HIGH           288
 #else
-//
-// It seems that PortAudio under LINUX needs somewhat higher
-// low-water marks, but there is little point in using
-// PortAudio under LINUX anyway.
-//
-#define MY_AUDIO_BUFFER_SIZE  256
-#define MY_RING_BUFFER_SIZE  9600
-#define MY_RING_LOW_WATER    2000
-#define MY_RING_HIGH_WATER   9000
-#define CW_LAT_LOW            224
-#define CW_LAT_TARGET         256
-#define CW_LAT_HIGH           288
+  //
+  // It seems that PortAudio under LINUX needs somewhat higher
+  // low-water marks, but there is little point in using
+  // PortAudio under LINUX anyway.
+  //
+  #define MY_AUDIO_BUFFER_SIZE  256
+  #define MY_RING_BUFFER_SIZE  9600
+  #define MY_RING_LOW_WATER    2000
+  #define MY_RING_HIGH_WATER   9000
+  #define CW_LAT_LOW            224
+  #define CW_LAT_TARGET         256
+  #define CW_LAT_HIGH           288
 #endif
 
 //
@@ -226,7 +226,6 @@ int audio_open_input(TRANSMITTER *tx) {
   inputParameters.sampleFormat = paFloat32;
   inputParameters.suggestedLatency = Pa_GetDeviceInfo(padev)->defaultLowInputLatency ;
   inputParameters.hostApiSpecificStreamInfo = NULL; //See you specific host's API docs for info on using this field
-
   err = Pa_OpenStream(&tx->audio_handle, &inputParameters, NULL, 48000.0, MY_AUDIO_BUFFER_SIZE,
                       paNoFlag, pa_in_cb, tx);
 
@@ -367,7 +366,6 @@ static int pa_in_cb(const void *inputBuffer, void *outputBuffer, unsigned long f
   // to the server without any buffering
   //
   if (radio_is_remote) {
-
     for (unsigned int i = 0; i < framesPerBuffer; i++) {
       server_tx_audio((double) in[i]);
     }
@@ -504,7 +502,6 @@ int audio_open_output(RECEIVER *rx) {
   outputParameters.hostApiSpecificStreamInfo = NULL; //See you specific host's API docs for info on using this field
   outputParameters.channelCount = channels;
   rx->local_audio_channels = channels;
-
   err = Pa_OpenStream(&(rx->audio_handle), NULL, &outputParameters, 48000.0, MY_AUDIO_BUFFER_SIZE,
                       paNoFlag, pa_out_cb, rx);
 
@@ -607,6 +604,7 @@ void audio_close_output(RECEIVER *rx) {
     if (err != paNoError) {
       t_print("%s: close stream error %s\n", __func__, Pa_GetErrorText(err));
     }
+
     rx->audio_handle = NULL;
   }
 
@@ -813,7 +811,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       if (avail < CW_LAT_LOW)  { adjust = 1; } // low: we are below low water mark
     }
 
-    adjust += 4*rx->local_audio_channels;
+    adjust += 4 * rx->local_audio_channels;
 
     switch (adjust) {
     case 4:

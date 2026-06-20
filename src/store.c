@@ -1,7 +1,7 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2016 - Steve Wilson, KA6S
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2016 - Steve Wilson, KA6S
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #include "filter.h"
 #include "message.h"
 #include "mode.h"
+#include "profiles.h"
 #include "property.h"
 #include "radio.h"
 #include "store.h"
@@ -132,7 +133,7 @@ void recall_memory_slot(int index) {
     vfo[id].mode           = mem[index].mode;
 
     if (oldmode != vfo[id].mode) {
-      vfo_apply_mode_settings(active_receiver);
+      profiles_load_rxtx_profile(active_receiver);
       vfo[id].filter = mem[index].filter;
     }
 
@@ -152,7 +153,7 @@ void recall_memory_slot(int index) {
     vfo[VFO_A].mode        = mem[index].mode;
 
     if (oldmode != vfo[VFO_A].mode) {
-      vfo_apply_mode_settings(receiver[0]);
+      profiles_load_rxtx_profile(receiver[0]);
     }
 
     const BAND *band = band_get_band(b);
@@ -170,7 +171,7 @@ void recall_memory_slot(int index) {
     vfo[VFO_B].mode           = mem[index].alt_mode;
 
     if (oldmode != vfo[VFO_B].mode && receivers > 1) {
-      vfo_apply_mode_settings(receiver[1]);
+      profiles_load_rxtx_profile(receiver[1]);
     }
 
     band = band_get_band(b);

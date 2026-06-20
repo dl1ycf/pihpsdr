@@ -21,11 +21,13 @@
 #define _AGC_H_
 
 enum _agc_enum {
-  AGC_OFF = 0,
-  AGC_LONG,
-  AGC_SLOW,
-  AGC_MEDIUM,
-  AGC_FAST,
+  AGC_OFF = 0,   // AGC off with fixed gain 0dB
+  AGC_LONG,      // Attack=2ms, Hang=2000ms, Decay=2000ms, slope=0.35, hang_threshold from UI
+  AGC_SLOW,      // Attack=2ms, Hang=1000ms, Decay=500ms,  slope=0.35, hang_threshold from UI
+  AGC_MEDIUM,    // Attack=2ms, Hang=0ms,    Decay=250ms,  slope=0.35, hang_threshold 100ms
+  AGC_FAST,      // Attack=2ms, Hang=0ms,    Decay=50ms,   slope=0.35, hang_threshold 100ms
+  AGC_CUSTOM,    // Attack, Hang, Decay, Slope, hang_threshold from UI
+  AGC_FIXED,     // AGC off with fixed gain from AGC slider
   AGC_LAST
 };
 

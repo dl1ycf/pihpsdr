@@ -52,6 +52,7 @@ extern const int var_default_high[MODES];
 
 extern void filter_save_state(void);
 extern void filter_restore_state(void);
+extern void filter_edges_changed(int id, int low, int high);
 extern void filter_width_changed(int id, int increment);
 extern void filter_shift_changed(int id, int increment);
 extern void filter_high_changed(int id, int increment);

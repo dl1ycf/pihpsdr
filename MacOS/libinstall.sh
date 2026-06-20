@@ -134,6 +134,10 @@ $BREW install libusb
 $BREW install makedepend
 $BREW install cppcheck
 $BREW install openssl@3
+$BREW install opus
+$BREW install miniupnpc
+$BREW install libwebsockets
+$BREW install zlib
 
 ################################################################
 #

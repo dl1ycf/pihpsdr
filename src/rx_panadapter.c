@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@
 #include "band.h"
 #include "client_server.h"
 #include "discovered.h"
+#include "dxcluster_popup.h"
 #include "gpio.h"
 #include "message.h"
 #include "mode.h"
@@ -41,14 +42,12 @@
 #endif
 #include "receiver.h"
 #include "rx_panadapter.h"
+#include "theme.h"
 #include "transmitter.h"
 #include "vfo.h"
 
 /* Create a new surface of the appropriate size to store our scribbles */
-static gboolean
-panadapter_configure_event_cb (GtkWidget         *widget,
-                               GdkEventConfigure *event,
-                               gpointer           data) {
+static gboolean panadapter_configure_event_cb (GtkWidget *widget, GdkEventConfigure *event, gpointer data) {
   RECEIVER *rx = (RECEIVER *)data;
   int mywidth = gtk_widget_get_allocated_width (widget);
   int myheight = gtk_widget_get_allocated_height (widget);
@@ -57,9 +56,7 @@ panadapter_configure_event_cb (GtkWidget         *widget,
     cairo_surface_destroy (rx->panadapter_surface);
   }
 
-  rx->panadapter_surface = gdk_window_create_similar_surface (gtk_widget_get_window (widget),
-                           CAIRO_CONTENT_COLOR,
-                           mywidth, myheight);
+  rx->panadapter_surface = cairo_image_surface_create (CAIRO_FORMAT_RGB24, mywidth, myheight);
   cairo_t *cr = cairo_create(rx->panadapter_surface);
   cairo_set_source_rgba(cr, COLOUR_PAN_BACKGND);
   cairo_paint(cr);
@@ -86,23 +83,53 @@ panadapter_draw_cb (GtkWidget *widget,
 }
 
 static gboolean panadapter_button_press_event_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  return rx_button_press_event(widget, event, data);
+  const RECEIVER *rx = (RECEIVER *)data;
+
+  /*
+   * DX cluster spot click?
+   * Spots are drawn between y≈20 and y≈38.
+   */
+
+  if (event->button == GDK_BUTTON_PRIMARY && (int)event->y <= 40) {
+    DX_SPOT hit_spots[DXC_MAX_GROUP];
+    int n = 0;
+
+    if (dxcluster_hit_test(rx->id, (int)event->x, (int)event->y, hit_spots, &n)) {
+      /* Compute screen coords for the popup */
+      GdkWindow *win = gtk_widget_get_window(widget);
+      int wx = 0, wy = 0;
+
+      if (win) { gdk_window_get_origin(win, &wx, &wy); }
+
+      int sx = wx + (int)event->x + 12;
+      int sy = wy + (int)event->y + 12;
+
+      if (n > 1) { dxcluster_popup_show_group(hit_spots, n, sx, sy); }
+      else { dxcluster_popup_show_single(&hit_spots[0], sx, sy); }
+
+      return TRUE;
+    }
+  }
+
+  return rx_button_press_event(widget, event, data, 0);
 }
 
 static gboolean panadapter_button_release_event_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  return rx_button_release_event(widget, event, data);
+  return rx_button_release_event(widget, event, data, 0);
 }
 
 static gboolean panadapter_motion_notify_event_cb(GtkWidget *widget, GdkEventMotion *event, gpointer data) {
-  return rx_motion_notify_event(widget, event, data);
+  return rx_motion_notify_event(widget, event, data, 0);
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean panadapter_scroll_event_cb(GtkWidget *widget, GdkEventScroll *event, gpointer data) {
-  return rx_scroll_event(widget, event, data);
+  return rx_scroll_event(widget, event, data, 0);
 }
 
 void rx_panadapter_update(RECEIVER *rx) {
+  if (!rx || !rx->panadapter_surface) { return; }
+
   float *samples;
   cairo_text_extents_t extents;
   long long f;
@@ -111,6 +138,7 @@ void rx_panadapter_update(RECEIVER *rx) {
   int active = (active_receiver == rx);
   int mywidth = gtk_widget_get_allocated_width (rx->panadapter);
   int myheight = gtk_widget_get_allocated_height (rx->panadapter);
+  double scalfac = sqrt(mywidth * 0.00125);
   samples = rx->pixel_samples;
   cairo_t *cr;
   cr = cairo_create (rx->panadapter_surface);
@@ -200,7 +228,7 @@ void rx_panadapter_update(RECEIVER *rx) {
   double dbm_per_line = (double)myheight / ((double)(panhi - panlo));
   cairo_set_line_width(cr, PAN_LINE_THIN);
   cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-  cairo_set_font_size(cr, DISPLAY_FONT_SIZE2);
+  cairo_set_font_size(cr, 12.0 * scalfac);
   char v[32];
 
   for (int i = panhi; i >= panlo; i--) {
@@ -224,7 +252,7 @@ void rx_panadapter_update(RECEIVER *rx) {
   // pixels distance between frequency markers,
   // and then round upwards to the  next 1/2/5 seris
   //
-  divisor = 65 * rx->cB;
+  divisor = 65 * scalfac * rx->cB;
 
   if (divisor > 500000LL) { divisor = 1000000LL; }
   else if (divisor > 200000LL) { divisor = 500000LL; }
@@ -248,7 +276,7 @@ void rx_panadapter_update(RECEIVER *rx) {
   // If space is available, increase font size of freq. labels a bit
   //
   int marker_extra = (marker_distance > 100) ? 2 : 0;
-  cairo_set_font_size(cr, DISPLAY_FONT_SIZE2 + marker_extra);
+  cairo_set_font_size(cr, (12 + marker_extra) * scalfac);
 
   for (;;) {
     f += divisor;
@@ -278,7 +306,7 @@ void rx_panadapter_update(RECEIVER *rx) {
 
       // center text at "x" position
       cairo_text_extents(cr, v, &extents);
-      cairo_move_to(cr, x - (extents.width / 2.0), 10 + marker_extra);
+      cairo_move_to(cr, x - (extents.width / 2.0), (10 + marker_extra) * scalfac);
       cairo_show_text(cr, v);
     }
   }
@@ -316,7 +344,6 @@ void rx_panadapter_update(RECEIVER *rx) {
   // (Multi-) Notches
   //
   for (int i = 0; i < 3; i++) {
-
     if (rx->multi_notch_enable[i]) {
       double l = rx->cAp * (rx->multi_notch_center[i] - 0.5 * rx->multi_notch_width[i]) + rx->cBp;
       double w = rx->cAp *  rx->multi_notch_width[i];
@@ -324,12 +351,13 @@ void rx_panadapter_update(RECEIVER *rx) {
       cairo_rectangle(cr, l, 0.0, w, myheight);
       cairo_fill(cr);
 #if 0
+
       if (w < 10.0) {
         //
         // If the width of the notch area is less than 10 pixels,
         // draw a vertical yellow line to help guiding the eye
         //
-        const double dash[] ={ 12.0, 24.0 };
+        const double dash[] = { 12.0, 24.0 };
         double c = rx->cAp * rx->multi_notch_center[i] + rx->cBp;
         cairo_set_source_rgba (cr, COLOUR_PAN_NOTCHLINE);
         cairo_set_line_width(cr, PAN_LINE_THICK);
@@ -339,6 +367,7 @@ void rx_panadapter_update(RECEIVER *rx) {
         cairo_stroke(cr);
         cairo_set_dash(cr, dash, 0, 0.0);
       }
+
 #endif
     }
   }
@@ -347,7 +376,7 @@ void rx_panadapter_update(RECEIVER *rx) {
     char text[64];
     cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_source_rgba(cr, COLOUR_SHADE);
-    cairo_set_font_size(cr, DISPLAY_FONT_SIZE4);
+    cairo_set_font_size(cr, 20.0 * scalfac);
     inet_ntop(AF_INET, &(((struct sockaddr_in *)&remoteclient.address)->sin_addr), text, 64);
     cairo_text_extents(cr, text, &extents);
     cairo_move_to(cr, ((double)mywidth / 2.0) - (extents.width / 2.0), (double)myheight / 2.0);
@@ -355,7 +384,7 @@ void rx_panadapter_update(RECEIVER *rx) {
   }
 
   // agc
-  if (rx->agc != AGC_OFF) {
+  if (rx->agc != AGC_OFF && rx->agc != AGC_FIXED) {
     cairo_set_line_width(cr, PAN_LINE_THICK);
     double knee_y = rx->agc_thresh + soffset;
     knee_y = floor((panhi - knee_y)
@@ -608,7 +637,7 @@ void rx_panadapter_update(RECEIVER *rx) {
       // Draw peak values on the chart
       cairo_set_source_rgba(cr, COLOUR_PAN_TEXT); // Set text color
       cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-      cairo_set_font_size(cr, DISPLAY_FONT_SIZE2);
+      cairo_set_font_size(cr, 12.0 * scalfac);
       double previous_text_positions[num_peaks][2]; // Store previous text positions (x, y)
 
       for (int j = 0; j < num_peaks; j++) {
@@ -693,6 +722,11 @@ void rx_panadapter_update(RECEIVER *rx) {
     cairo_stroke(cr);
   }
 
+  //
+  // DX cluster spots overlay
+  // drawn last so it sits on top of trace + grid
+  //
+  dxcluster_draw_spots(cr, rx->id, frequency, rx->cAp, rx->cBp, mywidth, myheight);
   cairo_destroy (cr);
   gtk_widget_queue_draw (rx->panadapter);
 }
@@ -727,6 +761,7 @@ void rx_panadapter_init(RECEIVER *rx, int width, int height) {
 
 void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
   char text[64];
+  double scalfac = sqrt(width * 0.00125);
 
   if (display_warnings || remoteclient.running) {
     //
@@ -743,11 +778,11 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
     // will be FALSE if we are the client)
     //
     cairo_set_source_rgba(cr, COLOUR_ALARM);
-    cairo_set_font_size(cr, DISPLAY_FONT_SIZE2);
+    cairo_set_font_size(cr, 12.0 * scalfac);
 
     if (sequence_errors != 0) {
       static unsigned int sequence_error_count = 0;
-      cairo_move_to(cr, 100.0, 50.0);
+      cairo_move_to(cr, 100.0 * scalfac, 50.0 * scalfac);
       cairo_show_text(cr, "Sequence Error");
       sequence_error_count++;
 
@@ -759,7 +794,7 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
 
     if (adc[0].overload || adc[1].overload) {
       static unsigned int adc_error_count = 0;
-      cairo_move_to(cr, 100.0, 70.0);
+      cairo_move_to(cr, 100.0 * scalfac, 70.0 * scalfac);
 
       if (adc[0].overload && !adc[1].overload) {
         cairo_show_text(cr, "ADC0 overload");
@@ -788,7 +823,7 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
 
     if (high_swr_seen) {
       static unsigned int swr_protection_count = 0;
-      cairo_move_to(cr, 100.0, 90.0);
+      cairo_move_to(cr, 100.0 * scalfac, 90.0 * scalfac);
       snprintf(text, sizeof(text), "! High SWR");
       cairo_show_text(cr, text);
       swr_protection_count++;
@@ -802,13 +837,13 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
     static unsigned int tx_fifo_count = 0;
 
     if (tx_fifo_underrun) {
-      cairo_move_to(cr, 100.0, 110.0);
+      cairo_move_to(cr, 100.0 * scalfac, 110.0 * scalfac);
       cairo_show_text(cr, "TX Underrun");
       tx_fifo_count++;
     }
 
     if (tx_fifo_overrun) {
-      cairo_move_to(cr, 100.0, 130.0);
+      cairo_move_to(cr, 100.0 * scalfac, 130.0 * scalfac);
       cairo_show_text(cr, "TX Overrun");
       tx_fifo_count++;
     }
@@ -822,8 +857,8 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
 
   if (TxInhibit) {
     cairo_set_source_rgba(cr, COLOUR_ALARM);
-    cairo_set_font_size(cr, DISPLAY_FONT_SIZE3);
-    cairo_move_to(cr, 100.0, 30.0);
+    cairo_set_font_size(cr, 16.0 * scalfac);
+    cairo_move_to(cr, 100.0 * scalfac, 30.0 * scalfac);
     cairo_show_text(cr, "TX Inhibit");
   }
 
@@ -838,7 +873,7 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
     static double max1 = 0.0;
     static double max2 = 0.0;
     cairo_set_source_rgba(cr, COLOUR_ATTN);
-    cairo_set_font_size(cr, DISPLAY_FONT_SIZE3);
+    cairo_set_font_size(cr, 16.0 * scalfac);
 
     //
     // Supply voltage or PA temperature
@@ -895,7 +930,7 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
     }
 
     if (flag) {
-      cairo_move_to(cr, 100.0, 30.0);
+      cairo_move_to(cr, 100.0 * scalfac, 30.0 * scalfac);
       cairo_show_text(cr, text);
     }
 
@@ -959,7 +994,7 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
     }
 
     if (flag) {
-      cairo_move_to(cr, 160.0, 30.0);
+      cairo_move_to(cr, 160.0 * scalfac, 30.0 * scalfac);
       cairo_show_text(cr, text);
     }
 
@@ -970,20 +1005,20 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
       || capture_state == CAP_REPLAY
       || capture_state == CAP_AVAIL) {
     static unsigned int cap_count = 0;
-    double cx = (double) width - 100.0;
-    double cy = 30.0;
+    double cx = (double) width - 100.0 * scalfac;
+    double cy = 30.0 * scalfac;
     cairo_set_source_rgba(cr, COLOUR_ATTN);
-    cairo_set_font_size(cr, DISPLAY_FONT_SIZE3);
+    cairo_set_font_size(cr, 16.0 * scalfac);
     cairo_set_line_width(cr, 2.0);
     cairo_move_to(cr, cx, cy +  5.0);
-    cairo_line_to(cr, cx + 90.0, cy +  5.0);
-    cairo_line_to(cr, cx + 90.0, cy + 20.0);
-    cairo_line_to(cr, cx, cy + 20.0);
-    cairo_line_to(cr, cx, cy +  5.0);
+    cairo_line_to(cr, cx + 90.0 * scalfac, cy +  5.0 * scalfac);
+    cairo_line_to(cr, cx + 90.0 * scalfac, cy + 20.0 * scalfac);
+    cairo_line_to(cr, cx, cy + 20.0 * scalfac);
+    cairo_line_to(cr, cx, cy +  5.0 * scalfac);
 
     if (capture_state == CAP_XMIT || capture_state == CAP_REPLAY) {
-      cairo_move_to(cr, cx + (90.0 * capture_record_pointer) / capture_max, cy +  5.0);
-      cairo_line_to(cr, cx + (90.0 * capture_record_pointer) / capture_max, cy + 20.0);
+      cairo_move_to(cr, cx + (90.0 * scalfac * capture_record_pointer) / capture_max, cy +  5.0 * scalfac);
+      cairo_line_to(cr, cx + (90.0 * scalfac * capture_record_pointer) / capture_max, cy + 20.0 * scalfac);
     }
 
     cairo_stroke(cr);
@@ -992,7 +1027,7 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
     switch (capture_state) {
     case CAP_RECORDING:
       cairo_show_text(cr, "Record");
-      cairo_rectangle(cr, cx, cy + 5.0, (90.0 * capture_record_pointer) / capture_max, 15.0);
+      cairo_rectangle(cr, cx, cy + 5.0, (90.0 * scalfac * capture_record_pointer) / capture_max, 15.0 * scalfac);
       cairo_fill(cr);
       break;
 
@@ -1006,13 +1041,13 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
         cairo_show_text(cr, "Transmit");
       }
 
-      cairo_rectangle(cr, cx + 1.0, cy + 6.0, (90.0 * capture_replay_pointer) / capture_max - 1.0, 13.0);
+      cairo_rectangle(cr, cx + 1.0, cy + 6.0, (90.0 * scalfac * capture_replay_pointer) / capture_max - 1.0, 13.0 * scalfac);
       cairo_fill(cr);
       break;
 
     case CAP_AVAIL:
       cairo_show_text(cr, "Available");
-      cairo_rectangle(cr, cx, cy + 5.0, (90.0 * capture_record_pointer) / capture_max, 15.0);
+      cairo_rectangle(cr, cx, cy + 5.0, (90.0 * scalfac * capture_record_pointer) / capture_max, 15.0 * scalfac);
       cairo_fill(cr);
       cap_count++;
 

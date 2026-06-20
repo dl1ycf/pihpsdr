@@ -29,10 +29,17 @@ extern int display_height[6];
 extern int display_vfobar[6];  // Store VFO bar last used with this slot
 extern int this_monitor;
 
+extern char client_pgm[256];
+extern char client_host[128];
+extern char client_pwd[64];
+extern int  client_port;
+extern int  do_client;
+
 extern GtkWidget *top_window;
 extern GtkWidget *topgrid;
 extern void status_text(const char *text);
 
 extern gulong keypress_signal_id;
 extern int fatal_error(gpointer data);
+extern int run_curl(const char *url, char *buf, size_t buflen, int time);
 #endif

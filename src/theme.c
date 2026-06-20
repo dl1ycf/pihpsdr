@@ -1,0 +1,605 @@
+/* Copyright (C)
+*  2026 - piHPSDR Modernisation, contribution from AL
+*
+*   This program is free software: you can redistribute it and/or modify
+*   it under the terms of the GNU General Public License as published by
+*   the Free Software Foundation, either version 3 of the License, or
+*   (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*   GNU General Public License for more details.
+*
+*   You should have received a copy of the GNU General Public License
+*   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*
+*/
+
+#include "ext.h"
+#include "theme.h"
+
+int active_theme_index = 0;
+int gtk_dark_theme = 0;
+
+const THEME themes[] = {
+
+  // ── piHPSDR ──
+  // This is the "legacy" color scheme
+  {
+    .name       = "piHPSDR",
+    .pan_backgnd = TC(0.15, 0.15, 0.15, 1.00),
+    .vfo_backgnd = TC(0.15, 0.15, 0.15, 1.00),
+    .shade      = TC(0.75, 0.75, 0.60, 1.00),
+    .meter      = TC(1.00, 1.00, 1.00, 1.00),
+    .ok         = TC(0.00, 1.00, 0.00, 1.00),
+    .attn       = TC(1.00, 1.00, 0.00, 1.00),
+    .alarm      = TC(1.00, 0.00, 0.00, 1.00),
+    .grad1      = TC(0.00, 1.00, 0.00, 1.00),
+    .grad2      = TC(1.00, 0.66, 0.00, 1.00),
+    .grad3      = TC(1.00, 1.00, 0.00, 1.00),
+    .grad4      = TC(1.00, 0.00, 0.00, 1.00),
+    .grad1w     = TC(0.00, 0.50, 0.00, 1.00),
+    .grad2w     = TC(0.50, 0.33, 0.00, 1.00),
+    .grad3w     = TC(0.50, 0.50, 0.00, 1.00),
+    .grad4w     = TC(0.50, 0.00, 0.00, 1.00),
+    .pan_line1  = TC(0.80, 1.00, 0.80, 0.75),
+    .pan_line2  = TC(0.80, 1.00, 0.80, 0.50),
+    .pan_fill1  = TC(1.00, 0.70, 0.70, 0.67),
+    .pan_fill2  = TC(1.00, 0.70, 0.70, 0.33),
+    .okw        = TC(0.00, 0.50, 0.00, 1.00),
+    .attnw      = TC(0.50, 0.50, 0.00, 1.00),
+    .alarmw     = TC(0.50, 0.00, 0.00, 1.00),
+    .pan_filter = TC(0.33, 0.33, 0.33, 0.66),
+    .pan_line   = TC(0.00, 1.00, 1.00, 1.00),
+    .pan_linew  = TC(0.00, 0.50, 0.50, 1.00),
+    .pan_text   = TC(1.00, 1.00, 1.00, 1.00),
+    .pan_notch  = TC(0.60, 0.60, 0.00, 0.66),
+    .pan_60m    = TC(0.60, 0.30, 0.30, 1.00),
+    .dxspot     = TC(1.00, 1.00, 0.15, 1.00),
+  },
+
+  // ── Bright ──
+  // This is the legacy color scheme but
+  // without "weak" colours, meant for those
+  // with impaired vision
+  {
+    .name       = "Bright",
+    .pan_backgnd = TC(0.15, 0.15, 0.15, 1.00),
+    .vfo_backgnd = TC(0.15, 0.15, 0.15, 1.00),
+    .shade      = TC(0.75, 0.75, 0.60, 1.00),
+    .meter      = TC(1.00, 1.00, 1.00, 1.00),
+    .ok         = TC(0.00, 1.00, 0.00, 1.00),
+    .attn       = TC(1.00, 1.00, 0.00, 1.00),
+    .alarm      = TC(1.00, 0.00, 0.00, 1.00),
+    .grad1      = TC(0.00, 1.00, 0.00, 1.00),
+    .grad2      = TC(1.00, 0.66, 0.00, 1.00),
+    .grad3      = TC(1.00, 1.00, 0.00, 1.00),
+    .grad4      = TC(1.00, 0.00, 0.00, 1.00),
+    .grad1w     = TC(0.00, 1.00, 0.00, 1.00),
+    .grad2w     = TC(1.00, 0.66, 0.00, 1.00),
+    .grad3w     = TC(1.00, 1.00, 0.00, 1.00),
+    .grad4w     = TC(1.00, 0.00, 0.00, 1.00),
+    .pan_line1  = TC(0.80, 1.00, 0.80, 0.75),
+    .pan_line2  = TC(0.80, 1.00, 0.80, 0.75),
+    .pan_fill1  = TC(1.00, 0.70, 0.70, 0.67),
+    .pan_fill2  = TC(1.00, 0.70, 0.70, 0.67),
+    .okw        = TC(0.00, 1.00, 0.00, 1.00),
+    .attnw      = TC(1.00, 1.00, 0.00, 1.00),
+    .alarmw     = TC(1.00, 0.00, 0.00, 1.00),
+    .pan_filter = TC(0.33, 0.33, 0.33, 0.66),
+    .pan_line   = TC(0.00, 1.00, 1.00, 1.00),
+    .pan_linew  = TC(0.00, 0.50, 0.50, 1.00),
+    .pan_text   = TC(1.00, 1.00, 1.00, 1.00),
+    .pan_notch  = TC(0.60, 0.60, 0.00, 0.66),
+    .pan_60m    = TC(0.60, 0.30, 0.30, 1.00),
+    .dxspot     = TC(1.00, 1.00, 0.15, 1.00),
+  },
+
+  // ── Navy/Cyan ──
+  // Dark navy background, cyan signal, amber peaks — high contrast, easy on eyes
+  {
+    .name       = "Navy/Cyan",
+    .pan_backgnd = TC(0.102, 0.122, 0.149, 1.00),
+    .vfo_backgnd = TC(0.122, 0.145, 0.173, 1.00),
+    .shade      = TC(0.302, 0.337, 0.400, 1.00),
+    .meter      = TC(0.780, 0.820, 0.870, 1.00),
+    .ok         = TC(0.000, 0.831, 1.000, 1.00),
+    .attn       = TC(0.941, 0.647, 0.000, 1.00),
+    .alarm      = TC(0.973, 0.318, 0.286, 1.00),
+    .grad1      = TC(0.000, 0.831, 1.000, 1.00),
+    .grad2      = TC(0.000, 0.647, 0.600, 1.00),
+    .grad3      = TC(0.941, 0.647, 0.000, 1.00),
+    .grad4      = TC(0.973, 0.318, 0.286, 1.00),
+    .grad1w     = TC(0.000, 0.416, 0.500, 1.00),
+    .grad2w     = TC(0.000, 0.323, 0.300, 1.00),
+    .grad3w     = TC(0.470, 0.323, 0.000, 1.00),
+    .grad4w     = TC(0.486, 0.159, 0.143, 1.00),
+    .pan_line1  = TC(0.00, 0.83, 1.00, 0.80),
+    .pan_line2  = TC(0.00, 0.42, 0.50, 0.60),
+    .pan_fill1  = TC(0.00, 0.83, 1.00, 0.35),
+    .pan_fill2  = TC(0.00, 0.42, 0.50, 0.20),
+    .okw        = TC(0.000, 0.415, 0.500, 1.00),
+    .attnw      = TC(0.470, 0.324, 0.000, 1.00),
+    .alarmw     = TC(0.486, 0.159, 0.143, 1.00),
+    .pan_filter = TC(0.282, 0.302, 0.329, 0.66),
+    .pan_line   = TC(0.250, 0.873, 1.000, 1.00),
+    .pan_linew  = TC(0.125, 0.436, 0.500, 1.00),
+    .pan_text   = TC(0.950, 0.950, 0.950, 1.00),
+    .pan_notch  = TC(0.659, 0.453, 0.000, 0.50),
+    .pan_60m    = TC(0.494, 0.210, 0.211, 1.00),
+    .dxspot     = TC(0.950, 0.700, 0.150, 1.00),
+  },
+
+  // ── Classic ──
+  // Pure black background, traditional green/amber/red — like an old oscilloscope
+  {
+    .name       = "Classic",
+    .pan_backgnd = TC(0.00, 0.00, 0.00, 1.00),
+    .vfo_backgnd = TC(0.00, 0.00, 0.00, 1.00),
+    .shade      = TC(0.60, 0.60, 0.60, 1.00),
+    .meter      = TC(0.90, 0.90, 0.90, 1.00),
+    .ok         = TC(0.00, 1.00, 0.00, 1.00),
+    .attn       = TC(1.00, 0.65, 0.00, 1.00),
+    .alarm      = TC(1.00, 0.00, 0.00, 1.00),
+    .grad1      = TC(0.00, 1.00, 0.00, 1.00),
+    .grad2      = TC(1.00, 0.65, 0.00, 1.00),
+    .grad3      = TC(1.00, 1.00, 0.00, 1.00),
+    .grad4      = TC(1.00, 0.00, 0.00, 1.00),
+    .grad1w     = TC(0.00, 0.50, 0.00, 1.00),
+    .grad2w     = TC(0.50, 0.32, 0.00, 1.00),
+    .grad3w     = TC(0.50, 0.50, 0.00, 1.00),
+    .grad4w     = TC(0.50, 0.00, 0.00, 1.00),
+    .pan_line1  = TC(0.80, 1.00, 0.80, 0.75),
+    .pan_line2  = TC(0.80, 1.00, 0.80, 0.50),
+    .pan_fill1  = TC(1.00, 0.80, 0.80, 0.50),
+    .pan_fill2  = TC(1.00, 0.80, 0.80, 0.25),
+    .okw        = TC(0.000, 0.500, 0.000, 1.00),
+    .attnw      = TC(0.500, 0.325, 0.000, 1.00),
+    .alarmw     = TC(0.500, 0.000, 0.000, 1.00),
+    .pan_filter = TC(0.180, 0.180, 0.180, 0.66),
+    .pan_line   = TC(0.250, 1.000, 0.250, 1.00),
+    .pan_linew  = TC(0.125, 0.500, 0.125, 1.00),
+    .pan_text   = TC(0.950, 0.950, 0.950, 1.00),
+    .pan_notch  = TC(0.700, 0.455, 0.000, 0.50),
+    .pan_60m    = TC(0.450, 0.000, 0.000, 1.00),
+    .dxspot     = TC(1.000, 0.703, 0.150, 1.00),
+  },
+
+  // ── Amber ──
+  // Warm amber glow — inspired by vintage Heathkit displays
+  {
+    .name       = "Amber",
+    .pan_backgnd = TC(0.06, 0.04, 0.01, 1.00),
+    .vfo_backgnd = TC(0.09, 0.06, 0.02, 1.00),
+    .shade      = TC(0.60, 0.50, 0.30, 1.00),
+    .meter      = TC(1.00, 0.85, 0.50, 1.00),
+    .ok         = TC(0.00, 0.80, 0.40, 1.00),
+    .attn       = TC(1.00, 0.65, 0.00, 1.00),
+    .alarm      = TC(1.00, 0.20, 0.10, 1.00),
+    .grad1      = TC(0.40, 0.20, 0.00, 1.00),
+    .grad2      = TC(0.80, 0.40, 0.00, 1.00),
+    .grad3      = TC(1.00, 0.65, 0.00, 1.00),
+    .grad4      = TC(1.00, 0.95, 0.60, 1.00),
+    .grad1w     = TC(0.20, 0.10, 0.00, 1.00),
+    .grad2w     = TC(0.40, 0.20, 0.00, 1.00),
+    .grad3w     = TC(0.50, 0.32, 0.00, 1.00),
+    .grad4w     = TC(0.50, 0.47, 0.30, 1.00),
+    .pan_line1  = TC(1.00, 0.65, 0.00, 0.80),
+    .pan_line2  = TC(0.50, 0.32, 0.00, 0.55),
+    .pan_fill1  = TC(1.00, 0.65, 0.00, 0.30),
+    .pan_fill2  = TC(0.50, 0.32, 0.00, 0.18),
+    .okw        = TC(0.000, 0.400, 0.200, 1.00),
+    .attnw      = TC(0.500, 0.325, 0.000, 1.00),
+    .alarmw     = TC(0.500, 0.000, 0.000, 1.00),
+    .pan_filter = TC(0.240, 0.220, 0.190, 0.66),
+    .pan_line   = TC(0.250, 0.850, 0.550, 1.00),
+    .pan_linew  = TC(0.125, 0.425, 0.275, 1.00),
+    .pan_text   = TC(0.950, 0.950, 0.950, 1.00),
+    .pan_notch  = TC(0.700, 0.455, 0.000, 0.50),
+    .pan_60m    = TC(0.483, 0.022, 0.006, 1.00),
+    .dxspot     = TC(1.000, 0.703, 0.150, 1.00),
+  },
+
+  // ── Phosphor ──
+  // Old P31 CRT green phosphor — evocative of cold-war era spectrum analysers
+  {
+    .name       = "Phosphor",
+    .pan_backgnd = TC(0.01, 0.05, 0.02, 1.00),
+    .vfo_backgnd = TC(0.02, 0.07, 0.03, 1.00),
+    .shade      = TC(0.20, 0.60, 0.25, 1.00),
+    .meter      = TC(0.22, 1.00, 0.28, 1.00),
+    .ok         = TC(0.22, 1.00, 0.28, 1.00),
+    .attn       = TC(0.80, 1.00, 0.75, 1.00),
+    .alarm      = TC(1.00, 0.30, 0.30, 1.00),
+    .grad1      = TC(0.10, 0.45, 0.12, 1.00),
+    .grad2      = TC(0.18, 0.75, 0.22, 1.00),
+    .grad3      = TC(0.22, 1.00, 0.28, 1.00),
+    .grad4      = TC(0.80, 1.00, 0.75, 1.00),
+    .grad1w     = TC(0.05, 0.22, 0.06, 1.00),
+    .grad2w     = TC(0.09, 0.37, 0.11, 1.00),
+    .grad3w     = TC(0.11, 0.50, 0.14, 1.00),
+    .grad4w     = TC(0.40, 0.50, 0.37, 1.00),
+    .pan_line1  = TC(0.22, 1.00, 0.28, 0.80),
+    .pan_line2  = TC(0.11, 0.50, 0.14, 0.55),
+    .pan_fill1  = TC(0.22, 1.00, 0.28, 0.28),
+    .pan_fill2  = TC(0.11, 0.50, 0.14, 0.16),
+    .okw        = TC(0.110, 0.500, 0.140, 1.00),
+    .attnw      = TC(0.400, 0.500, 0.375, 1.00),
+    .alarmw     = TC(0.500, 0.150, 0.150, 1.00),
+    .pan_filter = TC(0.190, 0.230, 0.200, 0.66),
+    .pan_line   = TC(0.415, 1.000, 0.460, 1.00),
+    .pan_linew  = TC(0.207, 0.500, 0.230, 1.00),
+    .pan_text   = TC(0.950, 0.950, 0.950, 1.00),
+    .pan_notch  = TC(0.560, 0.700, 0.525, 0.50),
+    .pan_60m    = TC(0.456, 0.163, 0.146, 1.00),
+    .dxspot     = TC(0.830, 1.000, 0.787, 1.00),
+  },
+
+  // ── Steel Blue ──
+  // Deep ocean blue — cool, professional, easy on the eyes for long sessions
+  {
+    .name       = "Steel Blue",
+    .pan_backgnd = TC(0.04, 0.06, 0.10, 1.00),
+    .vfo_backgnd = TC(0.06, 0.09, 0.15, 1.00),
+    .shade      = TC(0.40, 0.55, 0.70, 1.00),
+    .meter      = TC(0.80, 0.90, 1.00, 1.00),
+    .ok         = TC(0.40, 0.80, 1.00, 1.00),
+    .attn       = TC(1.00, 0.80, 0.20, 1.00),
+    .alarm      = TC(1.00, 0.30, 0.30, 1.00),
+    .grad1      = TC(0.00, 0.20, 0.55, 1.00),
+    .grad2      = TC(0.10, 0.50, 0.90, 1.00),
+    .grad3      = TC(0.40, 0.80, 1.00, 1.00),
+    .grad4      = TC(0.90, 0.97, 1.00, 1.00),
+    .grad1w     = TC(0.00, 0.10, 0.27, 1.00),
+    .grad2w     = TC(0.05, 0.25, 0.45, 1.00),
+    .grad3w     = TC(0.20, 0.40, 0.50, 1.00),
+    .grad4w     = TC(0.45, 0.48, 0.50, 1.00),
+    .pan_line1  = TC(0.40, 0.80, 1.00, 0.80),
+    .pan_line2  = TC(0.20, 0.40, 0.50, 0.55),
+    .pan_fill1  = TC(0.40, 0.80, 1.00, 0.28),
+    .pan_fill2  = TC(0.20, 0.40, 0.50, 0.16),
+    .okw        = TC(0.200, 0.400, 0.500, 1.00),
+    .attnw      = TC(0.500, 0.400, 0.100, 1.00),
+    .alarmw     = TC(0.500, 0.150, 0.150, 1.00),
+    .pan_filter = TC(0.220, 0.240, 0.280, 0.66),
+    .pan_line   = TC(0.550, 0.850, 1.000, 1.00),
+    .pan_linew  = TC(0.275, 0.425, 0.500, 1.00),
+    .pan_text   = TC(0.950, 0.950, 0.950, 1.00),
+    .pan_notch  = TC(0.700, 0.560, 0.140, 0.50),
+    .pan_60m    = TC(0.472, 0.168, 0.190, 1.00),
+    .dxspot     = TC(1.000, 0.830, 0.320, 1.00),
+  },
+
+  // ── Sunrise ──
+  // Purple-to-gold gradient — dramatic, inspired by atmospheric propagation
+  {
+    .name       = "Sunrise",
+    .pan_backgnd = TC(0.05, 0.02, 0.06, 1.00),
+    .vfo_backgnd = TC(0.08, 0.04, 0.09, 1.00),
+    .shade      = TC(0.70, 0.45, 0.30, 1.00),
+    .meter      = TC(1.00, 0.90, 0.80, 1.00),
+    .ok         = TC(0.40, 0.90, 0.50, 1.00),
+    .attn       = TC(1.00, 0.65, 0.00, 1.00),
+    .alarm      = TC(1.00, 0.20, 0.10, 1.00),
+    .grad1      = TC(0.15, 0.00, 0.30, 1.00),
+    .grad2      = TC(0.80, 0.10, 0.10, 1.00),
+    .grad3      = TC(1.00, 0.50, 0.00, 1.00),
+    .grad4      = TC(1.00, 0.95, 0.40, 1.00),
+    .grad1w     = TC(0.07, 0.00, 0.15, 1.00),
+    .grad2w     = TC(0.40, 0.05, 0.05, 1.00),
+    .grad3w     = TC(0.50, 0.25, 0.00, 1.00),
+    .grad4w     = TC(0.50, 0.47, 0.20, 1.00),
+    .pan_line1  = TC(1.00, 0.50, 0.00, 0.80),
+    .pan_line2  = TC(0.50, 0.25, 0.00, 0.55),
+    .pan_fill1  = TC(1.00, 0.50, 0.00, 0.28),
+    .pan_fill2  = TC(0.50, 0.25, 0.00, 0.16),
+    .okw        = TC(0.200, 0.450, 0.250, 1.00),
+    .attnw      = TC(0.500, 0.325, 0.000, 1.00),
+    .alarmw     = TC(0.500, 0.100, 0.050, 1.00),
+    .pan_filter = TC(0.230, 0.200, 0.240, 0.66),
+    .pan_line   = TC(0.550, 0.925, 0.625, 1.00),
+    .pan_linew  = TC(0.275, 0.463, 0.312, 1.00),
+    .pan_text   = TC(0.950, 0.950, 0.950, 1.00),
+    .pan_notch  = TC(0.700, 0.455, 0.000, 0.50),
+    .pan_60m    = TC(0.478, 0.101, 0.078, 1.00),
+    .dxspot     = TC(1.000, 0.703, 0.150, 1.00),
+  },
+
+  // ── Midnight ──
+  // Very dark slate with electric violet accents — night session theme
+  {
+    .name       = "Midnight",
+    .pan_backgnd = TC(0.04, 0.04, 0.08, 1.00),
+    .vfo_backgnd = TC(0.06, 0.06, 0.12, 1.00),
+    .shade      = TC(0.35, 0.30, 0.55, 1.00),
+    .meter      = TC(0.75, 0.70, 1.00, 1.00),
+    .ok         = TC(0.55, 0.40, 1.00, 1.00),
+    .attn       = TC(1.00, 0.85, 0.20, 1.00),
+    .alarm      = TC(1.00, 0.25, 0.45, 1.00),
+    .grad1      = TC(0.12, 0.05, 0.35, 1.00),
+    .grad2      = TC(0.35, 0.10, 0.75, 1.00),
+    .grad3      = TC(0.65, 0.30, 1.00, 1.00),
+    .grad4      = TC(1.00, 0.55, 1.00, 1.00),
+    .grad1w     = TC(0.06, 0.02, 0.17, 1.00),
+    .grad2w     = TC(0.17, 0.05, 0.37, 1.00),
+    .grad3w     = TC(0.32, 0.15, 0.50, 1.00),
+    .grad4w     = TC(0.50, 0.27, 0.50, 1.00),
+    .pan_line1  = TC(0.65, 0.30, 1.00, 0.85),
+    .pan_line2  = TC(0.32, 0.15, 0.50, 0.55),
+    .pan_fill1  = TC(0.55, 0.20, 0.90, 0.30),
+    .pan_fill2  = TC(0.27, 0.10, 0.45, 0.16),
+    .okw        = TC(0.275, 0.200, 0.500, 1.00),
+    .attnw      = TC(0.500, 0.425, 0.100, 1.00),
+    .alarmw     = TC(0.500, 0.125, 0.225, 1.00),
+    .pan_filter = TC(0.220, 0.220, 0.260, 0.66),
+    .pan_line   = TC(0.663, 0.550, 1.000, 1.00),
+    .pan_linew  = TC(0.332, 0.275, 0.500, 1.00),
+    .pan_text   = TC(0.950, 0.950, 0.950, 1.00),
+    .pan_notch  = TC(0.700, 0.595, 0.140, 0.50),
+    .pan_60m    = TC(0.472, 0.135, 0.247, 1.00),
+    .dxspot     = TC(1.000, 0.872, 0.320, 1.00),
+  },
+
+  // ── Arctic ──
+  // Ice white/silver background, deep blue signal — like a frozen polar sky
+  {
+    .name       = "Arctic",
+    .pan_backgnd = TC(0.06, 0.08, 0.12, 1.00),
+    .vfo_backgnd = TC(0.08, 0.10, 0.16, 1.00),
+    .shade      = TC(0.55, 0.70, 0.85, 1.00),
+    .meter      = TC(0.85, 0.92, 1.00, 1.00),
+    .ok         = TC(0.55, 0.95, 1.00, 1.00),
+    .attn       = TC(1.00, 0.90, 0.50, 1.00),
+    .alarm      = TC(1.00, 0.35, 0.35, 1.00),
+    .grad1      = TC(0.00, 0.45, 0.75, 1.00),
+    .grad2      = TC(0.00, 0.70, 0.95, 1.00),
+    .grad3      = TC(0.55, 0.92, 1.00, 1.00),
+    .grad4      = TC(0.95, 1.00, 1.00, 1.00),
+    .grad1w     = TC(0.00, 0.22, 0.37, 1.00),
+    .grad2w     = TC(0.00, 0.35, 0.47, 1.00),
+    .grad3w     = TC(0.27, 0.46, 0.50, 1.00),
+    .grad4w     = TC(0.47, 0.50, 0.50, 1.00),
+    .pan_line1  = TC(0.55, 0.92, 1.00, 0.85),
+    .pan_line2  = TC(0.27, 0.46, 0.60, 0.55),
+    .pan_fill1  = TC(0.40, 0.80, 1.00, 0.30),
+    .pan_fill2  = TC(0.20, 0.40, 0.55, 0.16),
+    .okw        = TC(0.275, 0.475, 0.500, 1.00),
+    .attnw      = TC(0.500, 0.450, 0.250, 1.00),
+    .alarmw     = TC(0.500, 0.175, 0.175, 1.00),
+    .pan_filter = TC(0.240, 0.260, 0.300, 0.66),
+    .pan_line   = TC(0.663, 0.962, 1.000, 1.00),
+    .pan_linew  = TC(0.332, 0.481, 0.500, 1.00),
+    .pan_text   = TC(0.950, 0.950, 0.950, 1.00),
+    .pan_notch  = TC(0.700, 0.630, 0.350, 0.50),
+    .pan_60m    = TC(0.483, 0.202, 0.224, 1.00),
+    .dxspot     = TC(1.000, 0.915, 0.575, 1.00),
+  },
+
+  // ── Desert ──
+  // Warm terracotta and sand — earthy, easy on the eyes at sunset
+  {
+    .name       = "Desert",
+    .pan_backgnd = TC(0.10, 0.07, 0.04, 1.00),
+    .vfo_backgnd = TC(0.14, 0.09, 0.05, 1.00),
+    .shade      = TC(0.65, 0.50, 0.30, 1.00),
+    .meter      = TC(1.00, 0.88, 0.70, 1.00),
+    .ok         = TC(0.30, 0.85, 0.50, 1.00),
+    .attn       = TC(1.00, 0.75, 0.20, 1.00),
+    .alarm      = TC(1.00, 0.25, 0.10, 1.00),
+    .grad1      = TC(0.55, 0.25, 0.05, 1.00),
+    .grad2      = TC(0.85, 0.45, 0.10, 1.00),
+    .grad3      = TC(1.00, 0.72, 0.28, 1.00),
+    .grad4      = TC(1.00, 0.95, 0.75, 1.00),
+    .grad1w     = TC(0.27, 0.12, 0.02, 1.00),
+    .grad2w     = TC(0.42, 0.22, 0.05, 1.00),
+    .grad3w     = TC(0.50, 0.36, 0.14, 1.00),
+    .grad4w     = TC(0.50, 0.47, 0.37, 1.00),
+    .pan_line1  = TC(1.00, 0.72, 0.28, 0.80),
+    .pan_line2  = TC(0.55, 0.36, 0.14, 0.55),
+    .pan_fill1  = TC(1.00, 0.65, 0.20, 0.30),
+    .pan_fill2  = TC(0.50, 0.30, 0.08, 0.16),
+    .attnw      = TC(0.500, 0.375, 0.100, 1.00),
+    .alarmw     = TC(0.500, 0.125, 0.050, 1.00),
+    .pan_filter = TC(0.280, 0.250, 0.220, 0.66),
+    .pan_line   = TC(0.475, 0.887, 0.625, 1.00),
+    .pan_linew  = TC(0.237, 0.444, 0.312, 1.00),
+    .pan_text   = TC(0.950, 0.950, 0.950, 1.00),
+    .pan_notch  = TC(0.700, 0.525, 0.140, 0.50),
+    .pan_60m    = TC(0.505, 0.151, 0.067, 1.00),
+    .dxspot     = TC(1.000, 0.787, 0.320, 1.00),
+  },
+
+  // ── Neon ──
+  // Cyberpunk neon pink/green on near-black — high energy, high contrast
+  {
+    .name       = "Neon",
+    .pan_backgnd = TC(0.02, 0.02, 0.04, 1.00),
+    .vfo_backgnd = TC(0.03, 0.03, 0.06, 1.00),
+    .shade      = TC(0.50, 0.05, 0.50, 1.00),
+    .meter      = TC(0.00, 1.00, 0.70, 1.00),
+    .ok         = TC(0.00, 1.00, 0.55, 1.00),
+    .attn       = TC(1.00, 0.90, 0.00, 1.00),
+    .alarm      = TC(1.00, 0.05, 0.55, 1.00),
+    .grad1      = TC(0.00, 0.60, 0.20, 1.00),
+    .grad2      = TC(0.00, 0.90, 0.45, 1.00),
+    .grad3      = TC(0.80, 0.00, 0.70, 1.00),
+    .grad4      = TC(1.00, 0.05, 0.55, 1.00),
+    .grad1w     = TC(0.00, 0.30, 0.10, 1.00),
+    .grad2w     = TC(0.00, 0.45, 0.22, 1.00),
+    .grad3w     = TC(0.40, 0.00, 0.35, 1.00),
+    .grad4w     = TC(0.50, 0.02, 0.27, 1.00),
+    .pan_line1  = TC(0.00, 1.00, 0.55, 0.85),
+    .pan_line2  = TC(0.00, 0.50, 0.27, 0.55),
+    .pan_fill1  = TC(0.00, 0.90, 0.45, 0.30),
+    .pan_fill2  = TC(0.00, 0.45, 0.22, 0.16),
+    .okw        = TC(0.000, 0.500, 0.275, 1.00),
+    .attnw      = TC(0.500, 0.450, 0.000, 1.00),
+    .alarmw     = TC(0.500, 0.025, 0.275, 1.00),
+    .pan_filter = TC(0.200, 0.200, 0.220, 0.66),
+    .pan_line   = TC(0.250, 1.000, 0.663, 1.00),
+    .pan_linew  = TC(0.125, 0.500, 0.332, 1.00),
+    .pan_text   = TC(0.950, 0.950, 0.950, 1.00),
+    .pan_notch  = TC(0.700, 0.630, 0.000, 0.50),
+    .pan_60m    = TC(0.461, 0.034, 0.270, 1.00),
+    .dxspot     = TC(1.000, 0.915, 0.150, 1.00),
+  },
+
+  // ── Military ──
+  // Dark olive/green tactical display — subdued, field-ready aesthetic
+  {
+    .name       = "Military",
+    .pan_backgnd = TC(0.05, 0.07, 0.03, 1.00),
+    .vfo_backgnd = TC(0.07, 0.09, 0.04, 1.00),
+    .shade      = TC(0.35, 0.42, 0.20, 1.00),
+    .meter      = TC(0.70, 0.82, 0.45, 1.00),
+    .ok         = TC(0.55, 0.80, 0.20, 1.00),
+    .attn       = TC(0.90, 0.82, 0.10, 1.00),
+    .alarm      = TC(0.90, 0.20, 0.10, 1.00),
+    .grad1      = TC(0.15, 0.25, 0.05, 1.00),
+    .grad2      = TC(0.30, 0.50, 0.10, 1.00),
+    .grad3      = TC(0.55, 0.78, 0.18, 1.00),
+    .grad4      = TC(0.85, 0.95, 0.40, 1.00),
+    .grad1w     = TC(0.07, 0.12, 0.02, 1.00),
+    .grad2w     = TC(0.15, 0.25, 0.05, 1.00),
+    .grad3w     = TC(0.27, 0.39, 0.09, 1.00),
+    .grad4w     = TC(0.42, 0.47, 0.20, 1.00),
+    .pan_line1  = TC(0.55, 0.78, 0.18, 0.85),
+    .pan_line2  = TC(0.27, 0.39, 0.09, 0.55),
+    .pan_fill1  = TC(0.45, 0.68, 0.14, 0.28),
+    .pan_fill2  = TC(0.22, 0.32, 0.06, 0.16),
+    .okw        = TC(0.275, 0.400, 0.100, 1.00),
+    .attnw      = TC(0.450, 0.410, 0.050, 1.00),
+    .alarmw     = TC(0.450, 0.100, 0.050, 1.00),
+    .pan_filter = TC(0.230, 0.250, 0.210, 0.66),
+    .pan_line   = TC(0.663, 0.850, 0.400, 1.00),
+    .pan_linew  = TC(0.332, 0.425, 0.200, 1.00),
+    .pan_text   = TC(0.950, 0.950, 0.950, 1.00),
+    .pan_notch  = TC(0.630, 0.574, 0.070, 0.50),
+    .pan_60m    = TC(0.433, 0.129, 0.062, 1.00),
+    .dxspot     = TC(0.915, 0.847, 0.235, 1.00),
+  },
+
+  // ── Solarized ──
+  // Ethan Schoonover Solarized palette — scientifically balanced, reduced eye fatigue
+  {
+    .name       = "Solarized",
+    .pan_backgnd = TC(0.000, 0.169, 0.212, 1.00),  // base03 #002b36
+    .vfo_backgnd = TC(0.027, 0.212, 0.259, 1.00),  // base02 #073642
+    .shade      = TC(0.396, 0.482, 0.514, 1.00),   // base1  #657b83
+    .meter      = TC(0.514, 0.580, 0.588, 1.00),   // base0  #839496
+    .ok         = TC(0.522, 0.600, 0.000, 1.00),   // green  #859900
+    .attn       = TC(0.710, 0.537, 0.000, 1.00),   // yellow #b58900
+    .alarm      = TC(0.863, 0.196, 0.184, 1.00),   // red    #dc322f
+    .grad1      = TC(0.149, 0.545, 0.824, 1.00),   // blue   #268bd2
+    .grad2      = TC(0.522, 0.600, 0.000, 1.00),   // green  #859900
+    .grad3      = TC(0.710, 0.537, 0.000, 1.00),   // yellow #b58900
+    .grad4      = TC(0.863, 0.196, 0.184, 1.00),   // red    #dc322f
+    .grad1w     = TC(0.074, 0.272, 0.412, 1.00),
+    .grad2w     = TC(0.261, 0.300, 0.000, 1.00),
+    .grad3w     = TC(0.355, 0.268, 0.000, 1.00),
+    .grad4w     = TC(0.431, 0.098, 0.092, 1.00),
+    .pan_line1  = TC(0.149, 0.545, 0.824, 0.85),
+    .pan_line2  = TC(0.074, 0.272, 0.412, 0.55),
+    .pan_fill1  = TC(0.149, 0.545, 0.824, 0.30),
+    .pan_fill2  = TC(0.074, 0.272, 0.412, 0.16),
+    .okw        = TC(0.261, 0.300, 0.000, 1.00),
+    .attnw      = TC(0.355, 0.269, 0.000, 1.00),
+    .alarmw     = TC(0.431, 0.098, 0.092, 1.00),
+    .pan_filter = TC(0.180, 0.349, 0.392, 0.66),
+    .pan_line   = TC(0.641, 0.700, 0.250, 1.00),
+    .pan_linew  = TC(0.321, 0.350, 0.125, 1.00),
+    .pan_text   = TC(0.950, 0.950, 0.950, 1.00),
+    .pan_notch  = TC(0.497, 0.376, 0.000, 0.50),
+    .pan_60m    = TC(0.388, 0.181, 0.199, 1.00),
+    .dxspot     = TC(0.753, 0.606, 0.150, 1.00),
+  },
+
+  // ── Crimson ──
+  // Dark red/maroon tones — dramatic, good for darkroom operation
+  {
+    .name       = "Crimson",
+    .pan_backgnd = TC(0.08, 0.02, 0.02, 1.00),
+    .vfo_backgnd = TC(0.12, 0.03, 0.03, 1.00),
+    .shade      = TC(0.55, 0.20, 0.20, 1.00),
+    .meter      = TC(1.00, 0.75, 0.75, 1.00),
+    .ok         = TC(0.30, 0.90, 0.40, 1.00),
+    .attn       = TC(1.00, 0.70, 0.20, 1.00),
+    .alarm      = TC(1.00, 0.10, 0.10, 1.00),
+    .grad1      = TC(0.35, 0.03, 0.03, 1.00),
+    .grad2      = TC(0.70, 0.07, 0.07, 1.00),
+    .grad3      = TC(0.95, 0.18, 0.12, 1.00),
+    .grad4      = TC(1.00, 0.65, 0.55, 1.00),
+    .grad1w     = TC(0.17, 0.01, 0.01, 1.00),
+    .grad2w     = TC(0.35, 0.03, 0.03, 1.00),
+    .grad3w     = TC(0.47, 0.09, 0.06, 1.00),
+    .grad4w     = TC(0.50, 0.32, 0.27, 1.00),
+    .pan_line1  = TC(0.95, 0.25, 0.18, 0.85),
+    .pan_line2  = TC(0.50, 0.12, 0.09, 0.55),
+    .pan_fill1  = TC(0.85, 0.15, 0.10, 0.30),
+    .pan_fill2  = TC(0.42, 0.06, 0.04, 0.16),
+    .okw        = TC(0.150, 0.450, 0.200, 1.00),
+    .attnw      = TC(0.500, 0.350, 0.100, 1.00),
+    .alarmw     = TC(0.500, 0.050, 0.050, 1.00),
+    .pan_filter = TC(0.260, 0.200, 0.200, 0.66),
+    .pan_line   = TC(0.475, 0.925, 0.550, 1.00),
+    .pan_linew  = TC(0.237, 0.463, 0.275, 1.00),
+    .pan_text   = TC(0.950, 0.950, 0.950, 1.00),
+    .pan_notch  = TC(0.700, 0.490, 0.140, 0.50),
+    .pan_60m    = TC(0.494, 0.056, 0.056, 1.00),
+    .dxspot     = TC(1.000, 0.745, 0.320, 1.00),
+  },
+
+  // ── Aurora ──
+  // Northern lights — shifting cyan-green-magenta gradient, deep black sky
+  {
+    .name       = "Aurora",
+    .pan_backgnd = TC(0.01, 0.02, 0.05, 1.00),
+    .vfo_backgnd = TC(0.02, 0.04, 0.08, 1.00),
+    .shade      = TC(0.20, 0.55, 0.50, 1.00),
+    .meter      = TC(0.55, 1.00, 0.90, 1.00),
+    .ok         = TC(0.20, 0.95, 0.75, 1.00),
+    .attn       = TC(0.85, 0.90, 0.20, 1.00),
+    .alarm      = TC(1.00, 0.20, 0.50, 1.00),
+    .grad1      = TC(0.00, 0.55, 0.45, 1.00),
+    .grad2      = TC(0.00, 0.85, 0.65, 1.00),
+    .grad3      = TC(0.55, 0.30, 0.90, 1.00),
+    .grad4      = TC(1.00, 0.20, 0.65, 1.00),
+    .grad1w     = TC(0.00, 0.27, 0.22, 1.00),
+    .grad2w     = TC(0.00, 0.42, 0.32, 1.00),
+    .grad3w     = TC(0.27, 0.15, 0.45, 1.00),
+    .grad4w     = TC(0.50, 0.10, 0.32, 1.00),
+    .pan_line1  = TC(0.20, 0.95, 0.75, 0.85),
+    .pan_line2  = TC(0.10, 0.47, 0.37, 0.55),
+    .pan_fill1  = TC(0.00, 0.85, 0.65, 0.28),
+    .pan_fill2  = TC(0.00, 0.42, 0.32, 0.16),
+    .attnw      = TC(0.425, 0.450, 0.100, 1.00),
+    .alarmw     = TC(0.500, 0.100, 0.250, 1.00),
+    .pan_filter = TC(0.190, 0.200, 0.230, 0.66),
+    .pan_line   = TC(0.400, 0.962, 0.812, 1.00),
+    .pan_linew  = TC(0.200, 0.481, 0.406, 1.00),
+    .pan_text   = TC(0.950, 0.950, 0.950, 1.00),
+    .pan_notch  = TC(0.595, 0.630, 0.140, 0.50),
+    .pan_60m    = TC(0.456, 0.101, 0.253, 1.00),
+    .dxspot     = TC(0.872, 0.915, 0.320, 1.00),
+  },
+
+};
+
+const int num_themes = (int)(sizeof(themes) / sizeof(themes[0]));
+
+const THEME *theme_get_active(void) {
+  if (active_theme_index < 0 || active_theme_index >= num_themes) {
+    active_theme_index = 0;
+  }
+
+  return &themes[active_theme_index];
+}
+
+void theme_set() {
+  if (active_theme_index < 0 || active_theme_index >= num_themes) { active_theme_index = 0; }
+
+  GtkSettings *settings = gtk_settings_get_default();
+  g_object_set(settings, "gtk-application-prefer-dark-theme", gtk_dark_theme, NULL);
+  g_idle_add(ext_vfo_update, NULL);
+}

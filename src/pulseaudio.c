@@ -238,12 +238,16 @@ static gpointer tx_audio_thread(gpointer arg) {
 
   if (!buffer) { return NULL; }
 
+  /* audio_close_input now joins this thread BEFORE freeing the handle,
+   * so we can use tx->audio_handle directly without snapshotting under
+   * the mutex. The handle is valid for the entire lifetime of this thread. */
   while (tx->audio_running) {
-    //
-    // It is guaranteed that tx->audio_buffer, and audio_handle
-    // will not be destroyed until this thread has terminated (and waited for via thread joining)
-    //
-    int rc = pa_simple_read(tx->audio_handle,
+    if (tx->audio_handle == NULL) {
+      tx->audio_running = FALSE;
+      break;
+    }
+
+    int rc = pa_simple_read((pa_simple *)tx->audio_handle,
                             buffer,
                             inp_buffer_size * sizeof(float),
                             &err);
@@ -356,6 +360,7 @@ int audio_open_input(TRANSMITTER *tx) {
     }
   } else {
     t_print("%s: ERROR pa_simple_new: %s\n", __func__, pa_strerror(err));
+    g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
 
@@ -381,28 +386,33 @@ void audio_close_output(RECEIVER *rx) {
 }
 
 void audio_close_input(TRANSMITTER *tx) {
-  tx->audio_running = FALSE;
   t_print("%s: TX:%s\n", __func__, tx->audio_name);
-  g_mutex_lock(&tx->audio_mutex);
+  /* Signal the audio thread to stop. The thread polls audio_running between
+   * each pa_simple_read(), which returns roughly every fragsize/48000 s
+   * (~10 ms for our 512-byte fragsize), so it will see the flag promptly. */
+  tx->audio_running = FALSE;
 
+  /* Join the thread BEFORE freeing the PulseAudio handle. Freeing the
+   * handle while the thread is still in pa_simple_read() triggers an
+   * assertion inside PulseAudio (pa_mutex_destroy fails because the
+   * mutex is held). The thread can safely finish its current read using
+   * the handle — closure happens only after it exits. */
   if (tx->audio_thread_id != NULL) {
-    //
-    // wait for the mic read thread to terminate,
-    // then destroy the stream and the buffers
-    // This way, the buffers cannot "vanish" in the mic read thread
-    // BUT the mic read thread must not block in pa_simple_read() !
-    //
     g_thread_join(tx->audio_thread_id);
     tx->audio_thread_id = NULL;
   }
 
+  /* Now safe to free the handle and buffer. */
+  g_mutex_lock(&tx->audio_mutex);
+
   if (tx->audio_handle != NULL) {
-    pa_simple_free(tx->audio_handle);
+    pa_simple_free((pa_simple *)tx->audio_handle);
     tx->audio_handle = NULL;
   }
 
   if (tx->audio_buffer != NULL) {
     g_free(tx->audio_buffer);
+    tx->audio_buffer = NULL;
   }
 
   g_mutex_unlock(&tx->audio_mutex);

@@ -80,6 +80,11 @@ sudo apt-get --yes install libpulse-dev
 sudo apt-get --yes install pulseaudio
 sudo apt-get --yes install pipewire-pulse
 sudo apt-get --yes install libpcap-dev
+sudo apt-get --yes install libopus-dev
+sudo apt-get --yes install libminiupnpc-dev
+sudo apt-get --yes install libsqlite3-dev
+sudo apt-get --yes install libwebsockets-dev
+sudo apt-get --yes install zlib1g-dev
 #
 # We have (tried to) install both pulseaudio and
 # pipewire-pulse. When pipewire-pulse is available,

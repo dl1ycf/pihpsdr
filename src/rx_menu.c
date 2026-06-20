@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@
 #include "message.h"
 #include "new_menu.h"
 #include "new_protocol.h"
+#include "profiles.h"
 #include "radio.h"
 #include "receiver.h"
 #include "rx_menu.h"
@@ -108,6 +109,21 @@ static void adc_cb(GtkToggleButton *widget, gpointer data) {
   rx_change_adc(myrx);
 }
 
+static void sam_sb_cb(GtkWidget *widget, gpointer data) {
+  myrx->sam_sb_mode = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  rx_set_sam_mode(myrx);
+}
+
+static void fm_limiter_cb(GtkWidget *widget, gpointer data) {
+  myrx->fm_limiter = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  rx_set_fm_limiter(myrx);
+}
+
+static void fm_lim_gain_cb(GtkWidget *widget, gpointer data) {
+  myrx->fm_limiter_gain = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+  rx_set_fm_limiter(myrx);
+}
+
 static void squelch_value_cb(GtkWidget *widget, gpointer data) {
   double value = gtk_range_get_value(GTK_RANGE(widget));
   suppress_popup_sliders++;
@@ -175,13 +191,13 @@ static void local_output_changed_cb(GtkWidget *widget, gpointer data) {
   //
   if (myid == 0) {
     int mode = vfo[myid].mode;
-    mode_settings[mode].rx_local_audio = myrx->local_audio;
+    RXTXprofile[mode].rx.local_audio = myrx->local_audio;
 
     if (myrx->local_audio) {
-      snprintf(mode_settings[mode].rx_audio_name, sizeof(mode_settings[mode].rx_audio_name), "%s", myrx->audio_name);
+      snprintf(RXTXprofile[mode].rx.audio_name, sizeof(RXTXprofile[mode].rx.audio_name), "%s", myrx->audio_name);
     }
 
-    copy_mode_settings(mode);
+    profiles_copy_rxtxprofile(mode);
   }
 }
 
@@ -204,8 +220,8 @@ static void audio_channel_cb(GtkWidget *widget, gpointer data) {
 
   if (myid == 0) {
     int mode = vfo[myid].mode;
-    mode_settings[mode].rx_audio_channel = myrx->audio_channel;
-    copy_mode_settings(mode);
+    RXTXprofile[mode].rx.audio_channel = myrx->audio_channel;
+    profiles_copy_rxtxprofile(mode);
   }
 }
 
@@ -234,10 +250,10 @@ void rx_menu(GtkWidget *parent) {
   gtk_grid_set_column_spacing (GTK_GRID(grid), 10);
   gtk_grid_set_row_homogeneous(GTK_GRID(grid), FALSE);
   gtk_grid_set_column_homogeneous(GTK_GRID(grid), FALSE);
-  GtkWidget *close_b = gtk_button_new_with_label("Close");
-  gtk_widget_set_name(close_b, "close_button");
-  g_signal_connect (close_b, "button_press_event", G_CALLBACK(close_cb), NULL);
-  gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 1, 1);
+  btn = gtk_button_new_with_label("Close");
+  gtk_widget_set_name(btn, "close_button");
+  g_signal_connect (btn, "button_press_event", G_CALLBACK(close_cb), NULL);
+  gtk_grid_attach(GTK_GRID(grid), btn, 0, 0, 1, 1);
   int row = 1;
 
   if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
@@ -336,12 +352,10 @@ void rx_menu(GtkWidget *parent) {
     if (have_dither) {
       // We assume  Dither/Random are either both available or both not available
       btn = gtk_check_button_new_with_label("Dither");
-      gtk_widget_set_name(btn, "boldlabel");
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), adc[myadc].dither);
       gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 1, 1);
       g_signal_connect(btn, "toggled", G_CALLBACK(dither_cb), NULL);
       btn = gtk_check_button_new_with_label("Random");
-      gtk_widget_set_name(btn, "boldlabel");
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), adc[myadc].random);
       gtk_grid_attach(GTK_GRID(grid), btn, 1, row, 1, 1);
       g_signal_connect(btn, "toggled", G_CALLBACK(random_cb), NULL);
@@ -350,7 +364,6 @@ void rx_menu(GtkWidget *parent) {
 
     if (have_preamp) {
       btn = gtk_check_button_new_with_label("Preamp");
-      gtk_widget_set_name(btn, "boldlabel");
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), adc[myadc].preamp);
       gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 1, 1);
       g_signal_connect(btn, "toggled", G_CALLBACK(preamp_cb), NULL);
@@ -361,12 +374,10 @@ void rx_menu(GtkWidget *parent) {
   if (row < 4) { row = 4;}
 
   btn = gtk_check_button_new_with_label("Mute when not active");
-  gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), myrx->mute_when_not_active);
   gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 2, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(mute_audio_cb), NULL);
   btn = gtk_check_button_new_with_label("Mute Receiver");
-  gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), myrx->mute_radio);
   gtk_grid_attach(GTK_GRID(grid), btn, 2, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(mute_radio_cb), NULL);
@@ -374,14 +385,12 @@ void rx_menu(GtkWidget *parent) {
 
   if (filter_board == ALEX) {
     btn = gtk_check_button_new_with_label("Bypass ADC1 RX filters");
-    gtk_widget_set_name(btn, "boldlabel");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), adc[0].filter_bypass);
     gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 2, 1);
     g_signal_connect(btn, "toggled", G_CALLBACK(adc_filter_bypass_cb), GINT_TO_POINTER(0));
 
     if (device == DEVICE_ORION2 || device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN) {
       btn = gtk_check_button_new_with_label("Bypass ADC2 RX filters");
-      gtk_widget_set_name(btn, "boldlabel");
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), adc[1].filter_bypass);
       gtk_grid_attach(GTK_GRID(grid), btn, 2, row, 1, 1);
       g_signal_connect(btn, "toggled", G_CALLBACK(adc_filter_bypass_cb), GINT_TO_POINTER(1));
@@ -391,7 +400,6 @@ void rx_menu(GtkWidget *parent) {
   }
 
   btn = gtk_check_button_new_with_label("Squelch");
-  gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), myrx->squelch_enable);
   gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(squelch_enable_cb), NULL);
@@ -400,6 +408,33 @@ void rx_menu(GtkWidget *parent) {
   gtk_range_set_value (GTK_RANGE(btn), myrx->squelch);
   gtk_grid_attach(GTK_GRID(grid), btn, 1, row, 3, 1);
   g_signal_connect(G_OBJECT(btn), "value_changed", G_CALLBACK(squelch_value_cb), NULL);
+  row++;
+  lbl = gtk_label_new("SAM Sideband:");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), lbl, 1, row, 1, 1);
+  btn = gtk_combo_box_text_new();
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "Both Sidebands");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "LSB Only");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "USB Only");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(btn), myrx->sam_sb_mode);
+  gtk_grid_attach(GTK_GRID(grid), btn, 2, row, 1, 1);
+  g_signal_connect(btn, "changed", G_CALLBACK(sam_sb_cb), NULL);
+  row++;
+  btn = gtk_check_button_new_with_label("FM Volume Limiter");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), myrx->fm_limiter);
+  gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 1, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(fm_limiter_cb), NULL);
+  lbl = gtk_label_new("Limiter Gain (dB):");
+  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), lbl, 1, row, 1, 1);
+  btn = gtk_spin_button_new_with_range(0.0, 30.0, 1.0);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), myrx->fm_limiter_gain);
+  gtk_grid_attach(GTK_GRID(grid), btn, 2, row, 1, 1);
+  g_signal_connect(btn, "value-changed", G_CALLBACK(fm_lim_gain_cb), NULL);
+  //
+  // RX Audio options, hard-wired to rows 1-3 in columns
   lbl = gtk_label_new("RX Audio Out");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_CENTER);
@@ -422,27 +457,27 @@ void rx_menu(GtkWidget *parent) {
 
   my_combo_attach(GTK_GRID(grid), output, 2, 2, 1, 1);
   g_signal_connect(output, "changed", G_CALLBACK(local_output_changed_cb), NULL);
-  GtkWidget *channel = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(channel), NULL, "Stereo");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(channel), NULL, "Left");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(channel), NULL, "Right");
+  btn = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Stereo");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Left");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Right");
 
   switch (myrx->audio_channel) {
   case STEREO:
-    gtk_combo_box_set_active(GTK_COMBO_BOX(channel), 0);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 0);
     break;
 
   case LEFT:
-    gtk_combo_box_set_active(GTK_COMBO_BOX(channel), 1);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 1);
     break;
 
   case RIGHT:
-    gtk_combo_box_set_active(GTK_COMBO_BOX(channel), 2);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 2);
     break;
   }
 
-  my_combo_attach(GTK_GRID(grid), channel, 2, 3, 1, 1);
-  g_signal_connect(channel, "changed", G_CALLBACK(audio_channel_cb), NULL);
+  my_combo_attach(GTK_GRID(grid), btn, 2, 3, 1, 1);
+  g_signal_connect(btn, "changed", G_CALLBACK(audio_channel_cb), NULL);
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);

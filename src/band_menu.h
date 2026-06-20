@@ -18,4 +18,4 @@
 */
 
 #include <gtk/gtk.h>
-extern void band_menu(GtkWidget *parent);
+extern void band_menu(GtkWidget *parent, int id);

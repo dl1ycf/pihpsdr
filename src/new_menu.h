@@ -29,10 +29,10 @@ extern void new_menu(void);
 
 extern void start_meter_menu(void);
 extern void start_step_menu(void);
-extern void start_band_menu(void);
+extern void start_band_menu(int vfo);
 extern void start_bandstack_menu(void);
-extern void start_mode_menu(void);
-extern void start_filter_menu(void);
+extern void start_mode_menu(int vfo);
+extern void start_filter_menu(int vfo);
 extern void start_noise_menu(void);
 extern void start_encoder_menu(void);
 extern void start_vfo_menu(int vfo);

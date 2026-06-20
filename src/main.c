@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 *
 */
 #include <gtk/gtk.h>
+#include <curl/curl.h>
 #include <locale.h>
 #include <math.h>
 #include <sys/socket.h>
@@ -44,6 +45,7 @@
 #include "new_menu.h"
 #include "new_protocol.h"
 #include "old_protocol.h"
+#include "property.h"
 #include "radio.h"
 #ifdef SATURN
   #include "saturnmain.h"
@@ -60,8 +62,8 @@ struct utsname unameData;
 
 GdkScreen *screen;
 int display_size;
-int display_width[6] = {0, 0, 640, 800, 1024, 1280};
-int display_height[6] = {0, 0, 400, 480, 600, 720};
+int display_width[6] = {0, 0, 640, 832, 1024, 1280};
+int display_height[6] = {0, 0, 400, 500, 600, 720};
 int display_vfobar[6] = {0, 0, 0, 0, 0, 0};
 int this_monitor;
 
@@ -71,6 +73,15 @@ static GdkCursor *cursor_watch;
 GtkWidget *top_window = NULL;
 GtkWidget *topgrid;
 gulong keypress_signal_id = 0;
+
+//
+// data for automatic client start
+//
+char client_pgm[256];
+char client_host[128];
+char client_pwd[64];
+int  client_port;
+int  do_client = 0;
 
 static GtkWidget *status_label;
 
@@ -148,6 +159,24 @@ static int init(gpointer data) {
   }
 
   //
+  // If requested, try to quickly start in client mode
+  // Get audio compression and reconnection options from props file first,
+  // since we are by-passing the Discovery screen.
+  // If no success after 15 seconds, give up and start "normal" Discovery
+  //
+  if (do_client) {
+    loadProperties("remote.props");
+    GetPropI0("audio_compression", audio_compression);
+    GetPropI0("auto_reconnect", remote_auto_reconnect);
+
+    for (int i = 0; i < 60; i++) {
+      if (radio_connect_remote(client_host, client_port, client_pwd) == 0) { return 0; }
+
+      usleep(250000);
+    }
+  }
+
+  //
   // When widsom plans are complete, start discovery process
   //
   g_timeout_add(100, delayed_discovery, NULL);
@@ -163,7 +192,6 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   t_print("%s: sysname=  %s\n", __func__, unameData.sysname);
   t_print("%s: nodename= %s\n", __func__, unameData.nodename);
   t_print("%s: release=  %s\n", __func__, unameData.release);
-  t_print("%s: version=  %s\n", __func__, unameData.version);
   t_print("%s: machine=  %s\n", __func__, unameData.machine);
   load_css();
   //
@@ -207,7 +235,7 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   // Get the position of the top window, and then determine
   // to which monitor this position belongs.
   //
-  int x, y;
+  gint x, y;
   gtk_window_get_position(GTK_WINDOW(top_window), &x, &y);
   this_monitor = gdk_screen_get_monitor_at_point(screen, x, y);
   t_print("%s: Monitor Number within Screen=%d\n", __func__, this_monitor);
@@ -216,20 +244,19 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   //
   GdkRectangle rect;
   gdk_screen_get_monitor_geometry(screen, this_monitor, &rect);
-  // Start with 800x480, since this width is required for the "discovery" screen.
-  // Go to "full screen" mode if display nearly matches 800x480
+  // Start with 832x500 (default size)
   // This is all overridden later for the radio from the props file
   display_width[0] = rect.width;
   display_height[0] = rect.height;
-  display_width[1]  = 800;
-  display_height[1] = 480;
+  display_width[1]  = 832;
+  display_height[1] = 500;
   display_size   = 1;  // Custom
   t_print("%s: Monitor: width=%d height=%d\n", __func__, display_width[0], display_height[0]);
 
   //
-  // Go to full-screen mode by default, if the screen size is approx. 800*480
+  // Go to full-screen mode for screens smaller than 832x500
   //
-  if (display_width[0] > 780 && display_width[0] < 820 && display_height[0] > 460 && display_height[0] < 500) {
+  if (display_width[0] < 850 && display_height[0] < 500) {
     display_size = 0;   // FullScreen
   }
 
@@ -258,29 +285,30 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   GtkWidget *image = piHPSDR_logo();
 
   if (image) {
-    gtk_grid_attach(GTK_GRID(topgrid), image, 0, 0, 1, 3);
+    gtk_grid_attach(GTK_GRID(topgrid), image, 0, 0, 1, 10);
+    gtk_widget_set_valign(image, GTK_ALIGN_FILL | GTK_ALIGN_START);
   }
 
-  label = gtk_label_new("piHPSDR");
-  gtk_widget_set_name(label, "big_txt");
+  int row = 0;
+  label = gtk_label_new("piHPSDR V3");
   gtk_widget_set_halign(label, GTK_ALIGN_START);
-  gtk_grid_attach(GTK_GRID(topgrid), label, 1, 0, 3, 1);
+  gtk_widget_set_name(label, "big_txt");
+  gtk_grid_attach(GTK_GRID(topgrid), label, 1, row++, 4, 1);
   label = gtk_label_new("Originally written by John Melton (G0ORX/N6LYT)\n"
                         "Extended and maintained by Christoph van Wüllen (DL1YCF)");
   gtk_widget_set_name(label, "med_txt");
   gtk_widget_set_halign(label, GTK_ALIGN_START);
-  gtk_widget_set_halign(label, GTK_ALIGN_START);
-  gtk_grid_attach(GTK_GRID(topgrid), label, 1, 1, 3, 1);
+  gtk_grid_attach(GTK_GRID(topgrid), label, 1, row++, 1, 1);
   snprintf(text, sizeof(text), "Version %s (Commit: %s, Date: %s)\nOptions: %s\nAudio Module: %s",
            build_version, build_commit, build_date, build_options, build_audio);
   label = gtk_label_new(text);
   gtk_widget_set_name(label, "med_txt");
   gtk_widget_set_halign(label, GTK_ALIGN_START);
-  gtk_grid_attach(GTK_GRID(topgrid), label, 1, 2, 3, 1);
+  gtk_grid_attach(GTK_GRID(topgrid), label, 1, row++, 1, 1);
   status_label = gtk_label_new(NULL);
   gtk_widget_set_name(status_label, "med_txt");
   gtk_widget_set_halign(status_label, GTK_ALIGN_START);
-  gtk_grid_attach(GTK_GRID(topgrid), status_label, 1, 3, 3, 1);
+  gtk_grid_attach(GTK_GRID(topgrid), status_label, 1, row++, 1, 1);
   gtk_widget_show_all(top_window);
   g_idle_add(init, NULL);
 }
@@ -306,14 +334,31 @@ int main(int argc, char **argv) {
   if (argc >= 2 && !strcmp("-TestMenu", argv[1])) {
     open_test_menu = 1;
 
-    //
-    // remove this argument from the list since GTK cannot handle it
-    //
-    for (int i = 2; i < argc; i++) {
-      argv[i - 1] = argv[i];
-    }
+    for (int i = 2; i < argc; i++) { argv[i - 1] = argv[i]; }
 
     argc--;
+  }
+
+  snprintf(client_pgm, sizeof(client_pgm), "%s", argv[0]);
+
+  if (argc >= 5 && !strcmp("-client", argv[1])) {
+    do_client = 1;
+    snprintf(client_host, sizeof(client_host), "%s", argv[2]);
+    snprintf(client_pwd, sizeof(client_pwd), "%s", argv[4]);
+    client_port = atoi(argv[3]);
+
+    for (int i = 5; i < argc; i++) { argv[i - 4] = argv[i]; }
+
+    argc -= 4;
+
+    //
+    // PARANOIA: if we come from an exexle(), file descriptors may
+    //           still be open (BUT, this applies to many other things)
+    //
+    for (int i = 3; i < 99; i++) {
+      shutdown(i, SHUT_RDWR);
+      close(i);
+    }
   }
 
   //
@@ -379,4 +424,62 @@ int fatal_error(gpointer data) {
 
   quit = 0;
   return G_SOURCE_REMOVE;
+}
+
+//
+// run_curl() runs a "curl" and returns the result in a buffer.
+// The result may be stripped to fit but contains a trailing zero.
+//
+struct _curlbuf {
+  char *buf;
+  size_t len;
+  size_t pos;
+};
+
+//cppcheck-suppress constParameterCallback
+static size_t curl_cb(char *ptr, size_t size, size_t nmemb, void *data) {
+  struct _curlbuf *result = (struct _curlbuf *) data;
+
+  //
+  // copy all into our result buffer until it is (nearly full)
+  //
+  while (result->pos < result->len - 1) { result->buf[result->pos++] = *ptr++; }
+
+  //
+  // Add a trailing zero, but this is overwritten when the next chunk comes
+  //
+  result->buf[result->pos] = 0;
+  return size * nmemb;
+}
+
+int run_curl(const char *url, char*buf, size_t buflen, int time) {
+  int ret;
+  CURL *curl_handle = curl_easy_init();
+  struct _curlbuf curlbuf;
+  curlbuf.buf = buf;
+  curlbuf.len = buflen;
+  curlbuf.pos = 0;
+  *buf = 0;
+
+  if (!curl_handle) { return -1; }
+
+  ret = -1;
+
+  do {
+    curl_easy_setopt(curl_handle, CURLOPT_URL, url);
+    curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, (long) time);
+    curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, &curlbuf);
+    curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, curl_cb);
+    CURLcode cerr = curl_easy_perform(curl_handle);
+
+    if (cerr  != CURLE_OK) {
+      t_print("%s: %s\n", __func__, curl_easy_strerror(ret));
+      break;
+    }
+
+    ret = 0;
+  } while (0);
+
+  curl_easy_cleanup(curl_handle);
+  return ret;
 }

@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2020 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2020 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -211,9 +211,8 @@ static gboolean action_cb(GtkWidget *widget, gpointer data) {
   return TRUE;
 }
 
-static void row_inserted_cb(GtkTreeModel *tree_model, GtkTreePath *path, GtkTreeIter *iter, gpointer user_data) {
-  //t_print("%s\n",__func__);
-  gtk_tree_view_set_cursor(GTK_TREE_VIEW(view), path, NULL, FALSE);
+static void row_inserted_cb(GtkTreeModel *tree_model, GtkTreePath *gpath, GtkTreeIter *giter, gpointer user_data) {
+  gtk_tree_view_set_cursor(GTK_TREE_VIEW(view), gpath, NULL, FALSE);
 }
 
 static void tree_selection_changed_cb (GtkTreeSelection *sel, gpointer data) {
@@ -500,13 +499,13 @@ static void updateDescription(void) {
   }
 }
 
-static void delete_cb(GtkButton *widget, GdkEventButton *event, gpointer user_data) {
+static gboolean delete_cb(GtkButton *widget, GdkEventButton *event, gpointer user_data) {
   struct desc *previous_cmd;
   struct desc *next_cmd;
 
   if (current_cmd == NULL) {
     t_print("%s: current_cmd is NULL!\n", __func__);
-    return;
+    return FALSE;
   }
 
   // remove from MidiCommandsTable
@@ -533,6 +532,7 @@ static void delete_cb(GtkButton *widget, GdkEventButton *event, gpointer user_da
 
   // remove from list store. This triggers "tree selection changed"
   gtk_list_store_remove(store, &iter);
+  return FALSE;
 }
 
 void midi_menu(GtkWidget *parent) {
@@ -676,7 +676,6 @@ void midi_menu(GtkWidget *parent) {
   g_signal_connect(delete_b, "button-press-event", G_CALLBACK(delete_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), delete_b, 1, row, 1, 1);
   GtkWidget *ignore_b = gtk_check_button_new_with_label("Ignore Controller Pairs");
-  gtk_widget_set_name(ignore_b, "boldlabel");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(ignore_b), midiIgnoreCtrlPairs);
   gtk_grid_attach(GTK_GRID(grid), ignore_b, 3, row, 3, 1);
   g_signal_connect(ignore_b, "toggled", G_CALLBACK(ignore_cb), NULL);

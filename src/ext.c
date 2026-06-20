@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2017 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2017 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -38,21 +38,19 @@ int ext_start_radio(gpointer data) {
 
 //
 // ALL calls to vfo_update should go through g_idle_add(ext_vfo_update)
-// Here we take care that vfo_update() is called at most every 100 msec,
-// but that also after a g_idle_add(ext_vfo_update) the vfo_update is
-// called in the next 100 msec.
+// The first call starts a periodic GTK task that updates the VFO bar.
+// (so it will be redrawn even if one forgets the vfo_update()
 //
 static guint vfo_timeout = 0;
 
 // cppcheck-suppress constParameterCallback
 static int vfo_timeout_cb(gpointer data) {
-  if (vfo_timeout > 0) {
-    g_source_remove(vfo_timeout);
-    vfo_timeout = 0;
-  }
-
+  //if (vfo_timeout > 0) {
+  //  g_source_remove(vfo_timeout);
+  //  vfo_timeout = 0;
+  // }
   vfo_update();
-  return G_SOURCE_REMOVE;
+  return G_SOURCE_CONTINUE;
 }
 
 int ext_vfo_update(gpointer data) {
@@ -87,14 +85,22 @@ int ext_radio_set_vox(gpointer data) {
 
 // cppcheck-suppress constParameterPointer
 int ext_start_band_menu(gpointer data) {
-  start_band_menu();
+  int v = GPOINTER_TO_INT(data);
+  start_band_menu(v);
   return G_SOURCE_REMOVE;
 }
 
 // cppcheck-suppress constParameterPointer
-int ext_start_vfo_menu(gpointer data) {
-  int val = GPOINTER_TO_INT(data);
-  start_vfo_menu(val);
+int ext_start_mode_menu(gpointer data) {
+  int v = GPOINTER_TO_INT(data);
+  start_mode_menu(v);
+  return G_SOURCE_REMOVE;
+}
+
+// cppcheck-suppress constParameterPointer
+int ext_start_filter_menu(gpointer data) {
+  int v = GPOINTER_TO_INT(data);
+  start_filter_menu(v);
   return G_SOURCE_REMOVE;
 }
 

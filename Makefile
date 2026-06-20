@@ -36,12 +36,10 @@ endif
 
 GPIO=ON
 MIDI=ON
-SATURN=ON
 USBOZY=OFF
 SOAPYSDR=OFF
-STEMLAB=OFF
-NR34LIB=OFF
-TTS=ON
+PORTFORWARD=ON
+TCI=ON
 ifeq ($(MACOS), YES)
 AUDIO=PORTAUDIO
 endif
@@ -54,13 +52,10 @@ endif
 # Explanation of compile time options
 #
 # GPIO         | If ON, compile with GPIO support (RaspPi only, needs libgpiod)
-# MIDI         | If ON, compile with MIDI support
-# SATURN       | If ON, compile with native SATURN/G2 XDMA support
+# MIDI         | If ON, compile with MIDI support (needs support from operating system)
 # USBOZY       | If ON, piHPSDR can talk to legacy USB OZY radios (needs  libusb-1.0)
 # SOAPYSDR     | If ON, piHPSDR can talk to radios via SoapySDR library
-# STEMLAB      | If ON, piHPSDR can start SDR app on RedPitay via Web interface (needs libcurl)
-# NR34LIB      | If ON, an installed version of rnnoise and libspecbleach are used,
-#              | If Off, rnnoise and libspecbleach as distributed with piHPSDR are used
+# TCI          | If ON, activate TCI server (needs libwebsockets)
 # AUDIO        | Select audio module (ALSA, PULSE, PORTAUDO)
 #
 # If you want to use a non-default compile time option, write them
@@ -71,27 +66,6 @@ endif
 # GPIO=OFF
 # AUDIO=ALSA
 #
-#######################################################################################
-# Attention, NR34LIB on Apple Silicon Macs:
-# -----------------------------------------
-#
-# In order to allow for maximum flexibility, if using your own versions of
-# libspecbleach and rnnoise, they are not located, during compilation and linking,
-# via 'pkg-config'. It is rather assumed that both the include file and the
-# libraries can be found in standard locations, that is, /usr or /usr/local.
-#
-# This (only) is a problem on Apple Silicon Macs, where such extension are
-# often installed in /opt/homebrew rather than in /usr/local.
-#
-# The easiest way to solve this problem once and for all, is to establish
-# symbolic links in /usr/local, namely
-#
-# /usr/local/include     -->   /opt/homebrew/include
-# /usr/local/lib         -->   /opt/homebrew/lib
-# /usr/local/bin         -->   /opt/homebrew/bin
-#
-# This will also be useful for several other third-party software packages
-# that make problems with non-standard prefixes.
 #######################################################################################
 
 -include make.config.pihpsdr
@@ -137,13 +111,8 @@ CPP_INCLUDE= $(WDSP_INCLUDE)
 #
 ##############################################################################
 
-ifeq ($(NR34LIB), ON)
-WDSP_LIBS=wdsp/libwdsp.a -lrnnoise -lspecbleach \
-	`$(PKG_CONFIG) --libs fftw3` `$(PKG_CONFIG) --libs fftw3f`
-else
 WDSP_LIBS=wdsp/libwdsp.a rnnoise/librnnoise.a libspecbleach/libspecbleach.a \
 	`$(PKG_CONFIG) --libs fftw3` `$(PKG_CONFIG) --libs fftw3f`
-endif
 
 ##############################################################################
 #
@@ -154,14 +123,13 @@ endif
 ##############################################################################
 #
 # MacOSX:
-# -disable GPIO and SATURN, simply because it is not there
+# -disable GPIO, simply because it is not there
 # -if AUDIO is ALSA, switch to PORTAUDIO
 #
 ##############################################################################
 
 ifeq ($(MACOS), YES)
-GPIO=
-SATURN=
+GPIO=OFF
 ifeq ($(AUDIO), ALSA)
 AUDIO=PORTAUDIO
 endif
@@ -169,21 +137,17 @@ endif
 
 ##############################################################################
 #
-# Add modules for MIDI if requested.
-# Note these are different for LINUX/MACOS
+# Add modules for MIDI [optional, requires OS support]
 #
 ##############################################################################
 
 ifeq ($(MIDI),ON)
 MIDI_OPTIONS=-D MIDI
-MIDI_HEADERS= src/midi.h src/midi_menu.h
 ifeq ($(MACOS), YES)
-MIDI_SOURCES= src/mac_midi.c src/midi2.c src/midi3.c src/midi_menu.c
 MIDI_OBJS= src/mac_midi.o src/midi2.o src/midi3.o src/midi_menu.o
 MIDI_LIBS= -framework CoreMIDI -framework Foundation
 endif
 ifeq ($(LINUX), YES)
-MIDI_SOURCES= src/alsa_midi.c src/midi2.c src/midi3.c src/midi_menu.c
 MIDI_OBJS= src/alsa_midi.o src/midi2.o src/midi3.o src/midi_menu.o
 MIDI_LIBS= -lasound
 endif
@@ -194,63 +158,7 @@ CPP_SOURCES += src/alsa_midi.c src/midi2.c src/midi3.c src/midi_menu.c
 
 ##############################################################################
 #
-# Stuff for text-to-speech, if requested
-#
-##############################################################################
-
-ifeq ($(TTS),ON)
-TTS_OPTIONS=-D TTS
-TTS_HEADERS= src/tts.h src/MacTTS.h
-ifeq ($(MACOS), YES)
-TTS_SOURCES= src/tts.c src/MacTTS.m
-TTS_OBJS= src/tts.o src/MacTTS.o
-TTS_LIBS= -framework Foundation -framework AVFoundation
-endif
-ifeq ($(LINUX), YES)
-TTS_OPTIONS=-D TTS
-TTS_HEADERS= src/tts.h src/MacTTS.h
-TTS_SOURCES= src/tts.c
-TTS_OBJS= src/tts.o
-endif
-endif
-CPP_DEFINES += -DTTS
-CPP_SOURCES += src/tts.c
-
-##############################################################################
-#
-# Add libraries for Saturn support, if requested
-#
-##############################################################################
-
-ifeq ($(SATURN),ON)
-SATURN_OPTIONS=-D SATURN
-SATURN_SOURCES= \
-src/saturndrivers.c \
-src/saturnregisters.c \
-src/saturnserver.c \
-src/saturnmain.c \
-src/saturn_menu.c
-SATURN_HEADERS= \
-src/saturndrivers.h \
-src/saturnregisters.h \
-src/saturnserver.h \
-src/saturnmain.h \
-src/saturn_menu.h
-SATURN_OBJS= \
-src/saturndrivers.o \
-src/saturnregisters.o \
-src/saturnserver.o \
-src/saturnmain.o \
-src/saturn_menu.o
-endif
-CPP_DEFINES += -DSATURN
-CPP_SOURCES += src/saturndrivers.c  src/saturnregisters.c src/saturnserver.c
-CPP_SOURCES += src/saturnmain.c src/saturn_menu.c
-
-
-##############################################################################
-#
-# Add libraries for USB OZY support, if requested
+# Add libraries for USB OZY support [optional, requires libusb-1.0]
 #
 ##############################################################################
 
@@ -258,10 +166,6 @@ ifeq ($(USBOZY),ON)
 USBOZY_OPTIONS=-D USBOZY
 USBOZY_INCLUDE=`$(PKG_CONFIG) --cflags libusb-1.0`
 USBOZY_LIBS=`$(PKG_CONFIG) --libs libusb-1.0`
-USBOZY_SOURCES= \
-src/ozyio.c
-USBOZY_HEADERS= \
-src/ozyio.h
 USBOZY_OBJS= \
 src/ozyio.o
 endif
@@ -271,7 +175,8 @@ CPP_INCLUDE += `$(PKG_CONFIG) --cflags libusb-1.0`
 
 ##############################################################################
 #
-# Add libraries for SoapySDR support, if requested
+# Add libraries for SoapySDR support [optional, requires SOAPY drivers]
+#
 # On MacOS, SoapySDR libs are installed via homebrew
 # and their correct location can be found via pkg-config.
 # On LINUX, we have "manually" compiled+installed Soapy stuff in
@@ -291,12 +196,6 @@ ifeq ($(LINUX), YES)
 SOAPYSDR_INCLUDE= -I/usr/local/include
 SOAPYSDR_LIBS= -L/usr/local/lib -lSoapySDR
 endif
-SOAPYSDR_SOURCES= \
-src/soapy_discovery.c \
-src/soapy_protocol.c
-SOAPYSDR_HEADERS= \
-src/soapy_discovery.h \
-src/soapy_protocol.h
 SOAPYSDR_OBJS= \
 src/soapy_discovery.o \
 src/soapy_protocol.o
@@ -312,7 +211,7 @@ endif
 
 ##############################################################################
 #
-# Add libraries for GPIO support, if requested
+# Add libraries for GPIO support [optional, requires OS and hardware support]
 #
 # use -DGPIOV1 b default, but
 # use -DGPIOV2 if libgpiod with V2 API has been detected,
@@ -337,29 +236,8 @@ CPP_DEFINES += -D GPIO -DGPIOV1 -DGPIOV2
 
 ##############################################################################
 #
-# Activate code for RedPitaya (Stemlab/Hamlab/plain vanilla), if requested
-# This code detects the RedPitaya by its WWW interface and starts the SDR
-# application.
-# If the RedPitaya auto-starts the SDR application upon system start,
-# this option is not needed!
-#
-##############################################################################
-
-ifeq ($(STEMLAB), ON)
-STEMLAB_OPTIONS=-D STEMLAB_DISCOVERY
-STEMLAB_INCLUDE=`$(PKG_CONFIG) --cflags libcurl`
-STEMLAB_LIBS=`$(PKG_CONFIG) --libs libcurl`
-STEMLAB_SOURCES=src/stemlab_discovery.c
-STEMLAB_HEADERS=src/stemlab_discovery.h
-STEMLAB_OBJS=src/stemlab_discovery.o
-endif
-CPP_DEFINES += -DSTEMLAB_DISCOVERY
-CPP_SOURCES += src/stemlab_discovery.c
-CPP_INCLUDE += `$(PKG_CONFIG) --cflags libcurl`
-
-##############################################################################
-#
-# Add libraries for using PulseAudio, if requested
+# Add libraries for using PulseAudio [optional]
+# NOTE: exactly one of the audio modules must be selected
 #
 ##############################################################################
 
@@ -367,7 +245,6 @@ ifeq ($(AUDIO), PULSE)
 AUDIO_OPTIONS=-DPULSEAUDIO
 AUDIO_INCLUDE=
 AUDIO_LIBS=-lpulse-simple -lpulse -lpulse-mainloop-glib
-AUDIO_SOURCES=src/pulseaudio.c
 AUDIO_OBJS=src/pulseaudio.o
 endif
 CPP_DEFINES += -DPULSEAUDIO
@@ -375,7 +252,8 @@ CPP_SOURCES += src/pulseaudio.c
 
 ##############################################################################
 #
-# Add libraries for using ALSA, if requested
+# Add libraries for using ALSA [optional]
+# NOTE: exactly one of the audio modules must be selected
 #
 ##############################################################################
 
@@ -383,7 +261,6 @@ ifeq ($(AUDIO), ALSA)
 AUDIO_OPTIONS=-DALSA
 AUDIO_INCLUDE=
 AUDIO_LIBS=-lasound
-AUDIO_SOURCES=src/audio.c
 AUDIO_OBJS=src/audio.o
 endif
 CPP_DEFINES += -DALSA
@@ -391,7 +268,8 @@ CPP_SOURCES += src/audio.c
 
 ##############################################################################
 #
-# Add libraries for using PortAudio, if requested
+# Add libraries for using PortAudio [optional]
+# NOTE: exactly one of the audio modules must be selected
 #
 ##############################################################################
 
@@ -399,7 +277,6 @@ ifeq ($(AUDIO), PORTAUDIO)
 AUDIO_OPTIONS=-DPORTAUDIO
 AUDIO_INCLUDE=`$(PKG_CONFIG) --cflags portaudio-2.0`
 AUDIO_LIBS=`$(PKG_CONFIG) --libs portaudio-2.0`
-AUDIO_SOURCES=src/portaudio.c
 AUDIO_OBJS=src/portaudio.o
 endif
 CPP_DEFINES += -DPORTAUDIO
@@ -411,25 +288,64 @@ endif
 
 ##############################################################################
 #
-# End of "libraries for optional features" section
+# Add libraries for uPNP port forwarding [optional, needs miniupnpc lib]
 #
 ##############################################################################
 
+ifeq ($(PORTFORWARD), ON)
+PNP_OPTIONS=-DPORTFORWARD
+PNP_INCLUDE=`$(PKG_CONFIG) --cflags miniupnpc`
+PNP_LIBS=`$(PKG_CONFIG) --libs miniupnpc`
+CPP_DEFINES += -DPORTFORWARD
+CPPINCLUDE += `$(PKG_CONFIG) --cflags miniupnpc`
+endif
+
 ##############################################################################
 #
-# Includes and Libraries for the graphical user interface (GTK)
+# Add libraries for TCI [optional, requires libwebsockets]
 #
 ##############################################################################
+ifeq ($(TCI), ON)
+TCI_OPTIONS=-DTCI
+TCI_INCLUDE=`$(PKG_CONFIG) --cflags libwebsockets`
+TCI_OBJS=src/tci.o src/tci_audio.o
+TCI_LIBS=`$(PKG_CONFIG) --libs libwebsockets`
+CPP_DEFINES += -DTCI
+CPPINCLUDE += `$(PKG_CONFIG) --cflags libwebsockets`
+endif
+
+##############################################################################
+#
+# End of "libraries for optional features" section
+# Add pkg-config support for external libraries we depend on.
+#
+##############################################################################
+
+ifeq ($(MACOS), YES)
+TTS_OBJS=  src/MacTTS.o
+TTS_LIBS= -framework Foundation -framework AVFoundation
+endif
+
+ZLIB_INCLUDE=`$(PKG_CONFIG) --cflags zlib`
+ZLIB_LIBS=`$(PKG_CONFIG) --libs zlib`
+CPP_INCLUDE += `$(PKG_CONFIG) --cflags zlib`
+
+OPUS_INCLUDE=`$(PKG_CONFIG) --cflags opus`
+OPUS_LIBS=`$(PKG_CONFIG) --libs opus`
+CPP_INCLUDE += `$(PKG_CONFIG) --cflags opus`
+
+DXCLUSTER_INCLUDE=`$(PKG_CONFIG) --cflags sqlite3`
+DXCLUSTER_LIBS=`$(PKG_CONFIG) --libs sqlite3`
+CPP_INCLUDE += $(DXCLUSTER_INCLUDE)
+
+CURL_INCLUDE=`$(PKG_CONFIG) --cflags libcurl`
+CURL_LIBS=`$(PKG_CONFIG) --libs libcurl`
+CPP_INCLUDE += $(CURL_INCLUDE)
+
 
 GTK_INCLUDE=`$(PKG_CONFIG) --cflags gtk+-3.0`
 GTK_LIBS=`$(PKG_CONFIG) --libs gtk+-3.0`
 CPP_INCLUDE += $(GTK_INCLUDE)
-
-##############################################################################
-#
-# Includes/Libraries for OpenSSL (used for TCI and client/server password)
-#
-##############################################################################
 
 OPENSSL_INCLUDE=`$(PKG_CONFIG) --cflags openssl`
 OPENSSL_LIBS=`$(PKG_CONFIG) --libs openssl`
@@ -458,15 +374,21 @@ endif
 OPTIONS=$(MIDI_OPTIONS) $(USBOZY_OPTIONS) \
 	$(GPIO_OPTIONS) $(SOAPYSDR_OPTIONS) \
 	$(ANDROMEDA_OPTIONS) \
-	$(SATURN_OPTIONS) \
 	$(STEMLAB_OPTIONS) \
 	$(SERVER_OPTIONS) \
 	$(TTS_OPTIONS) \
-	$(AUDIO_OPTIONS) $(TCI_OPTIONS) \
+	$(AUDIO_OPTIONS) \
+    $(TCI_OPTIONS) \
+	$(OPUS_OPTIONS) \
+	$(ZLIB_OPTIONS) \
+	$(DXCLUSTER_OPTIONS) \
+	$(CURL_OPTIONS) \
+	$(PNP_OPTIONS) \
 	-D GIT_DATE='"$(GIT_DATE)"' -D GIT_VERSION='"$(GIT_VERSION)"' -D GIT_COMMIT='"$(GIT_COMMIT)"'
 
 INCLUDES=$(GTK_INCLUDE) $(WDSP_INCLUDE) $(OPENSSL_INCLUDE) $(AUDIO_INCLUDE) \
-	$(STEMLAB_INCLUDE) $(USBOZY_INCLUDE) $(SOAPYSDR_INCLUDE)
+	$(STEMLAB_INCLUDE) $(USBOZY_INCLUDE) $(SOAPYSDR_INCLUDE) $(OPUS_INCLUDE) \
+	$(ZLIB_INCLUDE) $(DXCLUSTER_INCLUDE) $(CURL_INCLUDE) $(PNP_INCLUDE)
 
 COMPILE=$(CC) $(CFLAGS) $(OPTIONS) $(INCLUDES)
 
@@ -483,7 +405,8 @@ COMPILE=$(CC) $(CFLAGS) $(OPTIONS) $(INCLUDES)
 ##############################################################################
 
 LIBS=	$(LDFLAGS) $(AUDIO_LIBS) $(USBOZY_LIBS) $(GTK_LIBS) $(GPIO_LIBS) \
-	$(SOAPYSDR_LIBS) $(STEMLAB_LIBS) $(MIDI_LIBS) $(TTS_LIBS) \
+	$(SOAPYSDR_LIBS) $(STEMLAB_LIBS) $(MIDI_LIBS) $(TTS_LIBS) $(OPUS_LIBS) \
+	$(ZLIB_LIBS) $(DXCLUSTER_LIBS) $(CURL_LIBS) $(PNP_LIBS) $(TCI_LIBS) \
 	$(OPENSSL_LIBS) $(WDSP_LIBS) -lm $(SYS_LIBS)
 
 ##############################################################################
@@ -520,6 +443,11 @@ src/discovered.c \
 src/discovery.c \
 src/display_menu.c \
 src/diversity_menu.c \
+src/dxcluster_menu.c \
+src/dxcluster.c \
+src/dxcluster_db.c \
+src/dxcluster_history_menu.c \
+src/dxcluster_popup.c \
 src/encoder_menu.c \
 src/equalizer_menu.c \
 src/exit_menu.c \
@@ -548,6 +476,8 @@ src/old_discovery.c \
 src/old_protocol.c \
 src/pa_menu.c \
 src/piHPSDR_logo.c \
+src/profile_menu.c \
+src/profiles.c \
 src/property.c \
 src/protocols.c \
 src/ps_menu.c \
@@ -558,6 +488,9 @@ src/rigctl.c \
 src/rigctl_menu.c \
 src/rx_menu.c \
 src/rx_panadapter.c \
+src/saturndrivers.c \
+src/saturnregisters.c \
+src/saturnmain.c \
 src/screen_menu.c \
 src/server_menu.c \
 src/server_thread.c \
@@ -565,14 +498,17 @@ src/sintab.c \
 src/sliders.c \
 src/sliders_menu.h \
 src/startup.c \
+src/stemlab_discovery.c \
 src/store.c \
 src/store_menu.c \
 src/switch_menu.c \
-src/tci.c \
 src/test_menu.c \
+src/theme.c \
+src/theme_menu.c \
 src/toolbar.c \
 src/toolbar_menu.c \
 src/transmitter.c \
+src/tts.c \
 src/tx_menu.c \
 src/tx_panadapter.c \
 src/version.c \
@@ -582,98 +518,6 @@ src/vox.c \
 src/vox_menu.c \
 src/waterfall.c \
 src/xvtr_menu.c
-
-##############################################################################
-#
-# The core *.h (header) files in alphabetical order
-#
-##############################################################################
-
-HEADERS= \
-src/MacOS.h \
-src/about_menu.h \
-src/actions.h \
-src/action_dialog.h \
-src/adc.h \
-src/agc.h \
-src/agc_menu.h \
-src/alex.h \
-src/andromeda.h \
-src/ant_menu.h \
-src/appearance.h \
-src/band.h \
-src/band_menu.h \
-src/bandstack_menu.h \
-src/bandstack.h \
-src/channel.h \
-src/client_server.h \
-src/css.h \
-src/cw_menu.h \
-src/discovered.h \
-src/discovery.h \
-src/display_menu.h \
-src/diversity_menu.h \
-src/encoder_menu.h \
-src/equalizer_menu.h \
-src/exit_menu.h \
-src/ext.h \
-src/fft_menu.h \
-src/filter.h \
-src/filter_menu.h \
-src/g2panel.h \
-src/g2panel_menu.h \
-src/gpio.h \
-src/iambic.h \
-src/i2c.h \
-src/led.h \
-src/main.h \
-src/message.h \
-src/meter.h \
-src/meter_menu.h \
-src/mode.h \
-src/mode_menu.h \
-src/new_discovery.h \
-src/new_menu.h \
-src/new_protocol.h \
-src/noise_menu.h \
-src/oc_menu.h \
-src/old_discovery.h \
-src/old_protocol.h \
-src/pa_menu.h \
-src/piHPSDR_logo.h \
-src/property.h \
-src/protocols.h \
-src/ps_menu.h \
-src/radio.h \
-src/radio_menu.h \
-src/receiver.h \
-src/rigctl.h \
-src/rigctl_menu.h \
-src/rx_menu.h \
-src/rx_panadapter.h \
-src/screen_menu.h \
-src/server_menu.h \
-src/sintab.h \
-src/sliders.h \
-src/sliders_menu.h \
-src/startup.h \
-src/store.h \
-src/store_menu.h \
-src/switch_menu.h \
-src/tci.h \
-src/test_menu.h \
-src/toolbar.h \
-src/toolbar_menu.h \
-src/transmitter.h \
-src/tx_menu.h \
-src/tx_panadapter.h \
-src/version.h \
-src/vfo.h \
-src/vfo_menu.h \
-src/vox.h \
-src/vox_menu.h \
-src/waterfall.h \
-src/xvtr_menu.h
 
 ##############################################################################
 #
@@ -701,6 +545,11 @@ src/discovered.o \
 src/discovery.o \
 src/display_menu.o \
 src/diversity_menu.o \
+src/dxcluster_menu.o \
+src/dxcluster.o \
+src/dxcluster_db.o \
+src/dxcluster_history_menu.o \
+src/dxcluster_popup.o \
 src/encoder_menu.o \
 src/equalizer_menu.o \
 src/exit_menu.o \
@@ -729,6 +578,8 @@ src/old_discovery.o \
 src/old_protocol.o \
 src/pa_menu.o \
 src/piHPSDR_logo.o \
+src/profile_menu.o \
+src/profiles.o \
 src/property.o \
 src/protocols.o \
 src/ps_menu.o \
@@ -739,6 +590,9 @@ src/rigctl.o \
 src/rigctl_menu.o \
 src/rx_menu.o \
 src/rx_panadapter.o \
+src/saturndrivers.o \
+src/saturnregisters.o \
+src/saturnmain.o \
 src/screen_menu.o \
 src/server_menu.o \
 src/server_thread.o \
@@ -746,14 +600,17 @@ src/sintab.o \
 src/sliders.o \
 src/sliders_menu.o \
 src/startup.o \
+src/stemlab_discovery.o \
 src/store.o \
 src/store_menu.o \
 src/switch_menu.o \
-src/tci.o \
 src/test_menu.o \
+src/theme.o \
+src/theme_menu.o \
 src/toolbar.o \
 src/toolbar_menu.o \
 src/transmitter.o \
+src/tts.o \
 src/tx_menu.o \
 src/tx_panadapter.o \
 src/version.o \
@@ -771,15 +628,13 @@ src/waterfall.o
 ##############################################################################
 
 $(PROGRAM):  $(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS) $(SOAPYSDR_OBJS) \
-		$(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(SATURN_OBJS) $(TTS_OBJS)
+		$(MIDI_OBJS) $(STEMLAB_OBJS) $(TTS_OBJS) $(TCI_OBJS)
 	$(COMPILE) -c -o src/version.o src/version.c
-ifneq ($(NR34LIB), ON)
 	@+make -C libspecbleach
 	@+make -C rnnoise
-endif
-	@+make NR34LIB=$(NR34LIB) -C wdsp
+	@+make -C wdsp
 	$(LINK) -o $(PROGRAM) $(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS) $(SOAPYSDR_OBJS) \
-		$(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(SATURN_OBJS) $(TTS_OBJS)\
+		$(MIDI_OBJS) $(STEMLAB_OBJS) $(TTS_OBJS) $(TCI_OBJS) \
 		$(LIBS)
 
 ##############################################################################
@@ -883,7 +738,7 @@ bootloader:	src/bootloader.c
 # Create a file named DEPEND containing dependencies, to be added to
 # the Makefile. This is done here because we need lots of #defines
 # to make it right.
-# Since src/MacTTS.c is Objective-C, create the final line manually
+# Since src/MacTTS.m is Objective-C, create the final line manually
 #
 #############################################################################
 
@@ -891,9 +746,8 @@ bootloader:	src/bootloader.c
 DEPEND:
 	rm -f DEPEND
 	touch DEPEND
-	export LC_ALL=C && makedepend -DMIDI -DSATURN -DUSBOZY -DSOAPYSDR -DGPIO \
-		-DSTEMLAB_DISCOVERY -DPULSEAUDIO \
-		-DPORTAUDIO -DALSA -DTTS -D__APPLE__ -D__linux__ \
+	export LC_ALL=C && makedepend -DMIDI -DUSBOZY -DSOAPYSDR -DGPIO \
+		-DPULSEAUDIO  -DPORTAUDIO -DALSA -DTTS -D__APPLE__ -D__linux__ \
 		-f DEPEND -I./src src/*.c src/*.h
 	echo "src/MacTTS.o: src/message.h" >> DEPEND
 #############################################################################
@@ -915,14 +769,12 @@ DEPEND:
 
 .PHONY: app
 app:	$(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS)  $(SOAPYSDR_OBJS) $(TCI_OBJS) \
-		$(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(SATURN_OBJS) $(TTS_OBJS)
-ifneq ($(NR34LIB), ON)
+		$(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(TTS_OBJS)
 	@+make -C libspecbleach
 	@+make -C rnnoise
-endif
-	@+make NR34LIB=$(NR34LIB) -C wdsp
+	@+make -C wdsp
 	$(LINK) -headerpad_max_install_names -o $(PROGRAM) $(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS)  \
-		$(SOAPYSDR_OBJS) $(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(SATURN_OBJS) $(TTS_OBJS) \
+		$(SOAPYSDR_OBJS) $(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(TTS_OBJS) \
 		$(TCI_OBJS) $(LIBS) $(LDFLAGS)
 	@rm -rf pihpsdr.app
 	@mkdir -p pihpsdr.app/Contents/MacOS
@@ -985,10 +837,11 @@ src/client_server.o: src/message.h src/radio.h src/adc.h src/discovered.h
 src/client_server.o: src/store.h src/vfo.h
 src/client_thread.o: src/audio.h src/receiver.h src/transmitter.h src/band.h
 src/client_thread.o: src/bandstack.h src/client_server.h src/mode.h src/ext.h
-src/client_thread.o: src/filter.h src/message.h src/meter.h src/radio.h
-src/client_thread.o: src/adc.h src/discovered.h src/rx_panadapter.h
-src/client_thread.o: src/sliders.h src/actions.h src/store.h
-src/client_thread.o: src/tx_panadapter.h src/vfo.h src/vox.h src/waterfall.h
+src/client_thread.o: src/filter.h src/main.h src/message.h src/meter.h
+src/client_thread.o: src/profiles.h src/radio.h src/adc.h src/discovered.h
+src/client_thread.o: src/rx_panadapter.h src/sliders.h src/actions.h
+src/client_thread.o: src/store.h src/tx_panadapter.h src/vfo.h src/vox.h
+src/client_thread.o: src/waterfall.h
 src/css.o: src/css.h src/message.h
 src/cw_menu.o: src/client_server.h src/mode.h src/receiver.h
 src/cw_menu.o: src/transmitter.h src/ext.h src/iambic.h src/message.h
@@ -997,7 +850,7 @@ src/cw_menu.o: src/adc.h src/discovered.h src/rigctl.h
 src/discovered.o: src/discovered.h
 src/discovery.o: src/actions.h src/client_server.h src/mode.h src/receiver.h
 src/discovery.o: src/transmitter.h src/discovered.h src/ext.h src/gpio.h
-src/discovery.o: src/main.h src/message.h src/new_discovery.h
+src/discovery.o: src/i2c.h src/main.h src/message.h src/new_discovery.h
 src/discovery.o: src/old_discovery.h src/ozyio.h src/property.h
 src/discovery.o: src/protocols.h src/radio.h src/adc.h src/soapy_discovery.h
 src/discovery.o: src/stemlab_discovery.h src/tts.h src/saturnmain.h
@@ -1007,6 +860,22 @@ src/display_menu.o: src/adc.h src/discovered.h
 src/diversity_menu.o: src/client_server.h src/mode.h src/receiver.h
 src/diversity_menu.o: src/transmitter.h src/new_menu.h src/radio.h src/adc.h
 src/diversity_menu.o: src/discovered.h
+src/dxcluster.o: src/dxcluster.h src/dxcluster_db.h src/property.h
+src/dxcluster.o: src/message.h
+src/dxcluster_db.o: src/dxcluster_db.h src/dxcluster.h src/message.h
+src/dxcluster_history_menu.o: src/band.h src/bandstack.h src/dxcluster.h
+src/dxcluster_history_menu.o: src/dxcluster_db.h src/dxcluster_history_menu.h
+src/dxcluster_history_menu.o: src/new_menu.h src/radio.h src/adc.h
+src/dxcluster_history_menu.o: src/discovered.h src/receiver.h
+src/dxcluster_history_menu.o: src/transmitter.h src/vfo.h src/mode.h
+src/dxcluster_history_menu.o: src/message.h
+src/dxcluster_menu.o: src/dxcluster.h src/dxcluster_menu.h src/new_menu.h
+src/dxcluster_menu.o: src/message.h src/radio.h src/adc.h src/discovered.h
+src/dxcluster_menu.o: src/receiver.h src/transmitter.h
+src/dxcluster_popup.o: src/dxcluster_popup.h src/dxcluster.h src/band.h
+src/dxcluster_popup.o: src/bandstack.h src/main.h src/radio.h src/adc.h
+src/dxcluster_popup.o: src/discovered.h src/receiver.h src/transmitter.h
+src/dxcluster_popup.o: src/vfo.h src/mode.h src/message.h
 src/encoder_menu.o: src/action_dialog.h src/actions.h src/agc.h src/band.h
 src/encoder_menu.o: src/bandstack.h src/channel.h src/gpio.h src/i2c.h
 src/encoder_menu.o: src/main.h src/new_menu.h src/radio.h src/adc.h
@@ -1034,12 +903,12 @@ src/g2panel.o: src/actions.h src/g2panel_menu.h src/property.h
 src/g2panel_menu.o: src/action_dialog.h src/actions.h src/g2panel.h
 src/g2panel_menu.o: src/message.h src/new_menu.h src/radio.h src/adc.h
 src/g2panel_menu.o: src/discovered.h src/receiver.h src/transmitter.h
-src/gpio.o: src/actions.h src/band.h src/bandstack.h src/channel.h
+src/gpio.o: src/gpio.h src/actions.h src/band.h src/bandstack.h src/channel.h
 src/gpio.o: src/discovered.h src/ext.h src/client_server.h src/mode.h
-src/gpio.o: src/receiver.h src/transmitter.h src/filter.h src/gpio.h
-src/gpio.o: src/i2c.h src/iambic.h src/main.h src/message.h
-src/gpio.o: src/new_protocol.h src/MacOS.h src/property.h src/radio.h
-src/gpio.o: src/adc.h src/sliders.h src/toolbar.h src/vfo.h
+src/gpio.o: src/receiver.h src/transmitter.h src/filter.h src/i2c.h
+src/gpio.o: src/iambic.h src/main.h src/message.h src/new_protocol.h
+src/gpio.o: src/MacOS.h src/property.h src/radio.h src/adc.h src/sliders.h
+src/gpio.o: src/toolbar.h src/vfo.h
 src/hpsdrsim.o: src/MacOS.h src/hpsdrsim.h
 src/i2c.o: src/actions.h src/band.h src/bandstack.h src/ext.h
 src/i2c.o: src/client_server.h src/mode.h src/receiver.h src/transmitter.h
@@ -1056,12 +925,13 @@ src/main.o: src/receiver.h src/transmitter.h src/band.h src/bandstack.h
 src/main.o: src/discovery.h src/discovered.h src/ext.h src/client_server.h
 src/main.o: src/mode.h src/gpio.h src/piHPSDR_logo.h src/main.h src/message.h
 src/main.o: src/new_menu.h src/new_protocol.h src/MacOS.h src/old_protocol.h
-src/main.o: src/radio.h src/adc.h src/saturnmain.h src/soapy_protocol.h
-src/main.o: src/startup.h src/test_menu.h src/version.h src/vfo.h
+src/main.o: src/property.h src/radio.h src/adc.h src/saturnmain.h
+src/main.o: src/soapy_protocol.h src/startup.h src/test_menu.h src/version.h
+src/main.o: src/vfo.h
 src/meter.o: src/appearance.h src/css.h src/band.h src/bandstack.h
-src/meter.o: src/meter.h src/receiver.h src/message.h src/mode.h
-src/meter.o: src/new_menu.h src/radio.h src/adc.h src/discovered.h
-src/meter.o: src/transmitter.h src/version.h src/vfo.h src/vox.h
+src/meter.o: src/client_server.h src/mode.h src/receiver.h src/transmitter.h
+src/meter.o: src/meter.h src/message.h src/new_menu.h src/radio.h src/adc.h
+src/meter.o: src/discovered.h src/theme.h src/version.h src/vfo.h src/vox.h
 src/meter_menu.o: src/client_server.h src/mode.h src/receiver.h
 src/meter_menu.o: src/transmitter.h src/meter.h src/new_menu.h src/radio.h
 src/meter_menu.o: src/adc.h src/discovered.h
@@ -1084,12 +954,12 @@ src/new_menu.o: src/fft_menu.h src/filter_menu.h src/g2panel_menu.h
 src/new_menu.o: src/gpio.h src/main.h src/meter_menu.h src/midi_menu.h
 src/new_menu.o: src/midi.h src/mode_menu.h src/new_menu.h src/new_protocol.h
 src/new_menu.o: src/MacOS.h src/noise_menu.h src/oc_menu.h src/old_protocol.h
-src/new_menu.o: src/pa_menu.h src/ps_menu.h src/radio_menu.h src/radio.h
-src/new_menu.o: src/adc.h src/discovered.h src/rigctl_menu.h src/rx_menu.h
-src/new_menu.o: src/saturn_menu.h src/server_menu.h src/screen_menu.h
-src/new_menu.o: src/sliders_menu.h src/store_menu.h src/switch_menu.h
-src/new_menu.o: src/toolbar_menu.h src/tx_menu.h src/xvtr_menu.h
-src/new_menu.o: src/vfo_menu.h src/vox_menu.h
+src/new_menu.o: src/pa_menu.h src/profile_menu.h src/ps_menu.h
+src/new_menu.o: src/radio_menu.h src/radio.h src/adc.h src/discovered.h
+src/new_menu.o: src/rigctl_menu.h src/rx_menu.h src/server_menu.h
+src/new_menu.o: src/screen_menu.h src/sliders_menu.h src/store_menu.h
+src/new_menu.o: src/switch_menu.h src/theme_menu.h src/toolbar_menu.h
+src/new_menu.o: src/tx_menu.h src/xvtr_menu.h src/vfo_menu.h src/vox_menu.h
 src/new_protocol.o: src/alex.h src/audio.h src/receiver.h src/transmitter.h
 src/new_protocol.o: src/band.h src/bandstack.h src/discovered.h src/ext.h
 src/new_protocol.o: src/client_server.h src/mode.h src/filter.h src/iambic.h
@@ -1120,6 +990,13 @@ src/piHPSDR_logo.o: src/message.h
 src/portaudio.o: src/audio.h src/receiver.h src/transmitter.h
 src/portaudio.o: src/client_server.h src/mode.h src/message.h src/radio.h
 src/portaudio.o: src/adc.h src/discovered.h src/vfo.h
+src/profile_menu.o: src/message.h src/mode.h src/new_menu.h src/profiles.h
+src/profile_menu.o: src/receiver.h src/transmitter.h src/radio.h src/adc.h
+src/profile_menu.o: src/discovered.h
+src/profiles.o: src/agc.h src/audio.h src/receiver.h src/transmitter.h
+src/profiles.o: src/ext.h src/client_server.h src/mode.h src/filter.h
+src/profiles.o: src/main.h src/message.h src/profiles.h src/property.h
+src/profiles.o: src/radio.h src/adc.h src/discovered.h src/vfo.h
 src/property.o: src/main.h src/message.h src/property.h src/radio.h src/adc.h
 src/property.o: src/discovered.h src/receiver.h src/transmitter.h
 src/protocols.o: src/property.h src/protocols.h src/radio.h src/adc.h
@@ -1137,23 +1014,24 @@ src/radio.o: src/bandstack.h src/channel.h src/client_server.h src/mode.h
 src/radio.o: src/discovered.h src/ext.h src/filter.h src/g2panel.h src/gpio.h
 src/radio.o: src/iambic.h src/main.h src/meter.h src/message.h src/midi.h
 src/radio.o: src/new_menu.h src/new_protocol.h src/MacOS.h src/old_protocol.h
-src/radio.o: src/property.h src/radio.h src/rigctl.h src/rx_panadapter.h
-src/radio.o: src/sliders.h src/tci.h src/test_menu.h src/toolbar.h src/tts.h
-src/radio.o: src/tx_panadapter.h src/saturnmain.h src/saturnserver.h
-src/radio.o: src/soapy_protocol.h src/store.h src/vfo.h src/vox.h
-src/radio.o: src/waterfall.h
+src/radio.o: src/profiles.h src/property.h src/radio.h src/rigctl.h
+src/radio.o: src/rx_panadapter.h src/server_menu.h src/sliders.h src/tci.h
+src/radio.o: src/test_menu.h src/theme.h src/toolbar.h src/tts.h
+src/radio.o: src/tx_panadapter.h src/saturnmain.h src/soapy_protocol.h
+src/radio.o: src/store.h src/vfo.h src/vox.h src/waterfall.h
 src/radio_menu.o: src/band.h src/bandstack.h src/client_server.h src/mode.h
 src/radio_menu.o: src/receiver.h src/transmitter.h src/discovered.h src/ext.h
-src/radio_menu.o: src/main.h src/message.h src/new_menu.h src/new_protocol.h
-src/radio_menu.o: src/MacOS.h src/radio.h src/adc.h src/sliders.h
-src/radio_menu.o: src/actions.h src/soapy_protocol.h src/vfo.h
+src/radio_menu.o: src/gpio.h src/main.h src/message.h src/new_menu.h
+src/radio_menu.o: src/new_protocol.h src/MacOS.h src/radio.h src/adc.h
+src/radio_menu.o: src/sliders.h src/actions.h src/soapy_protocol.h src/vfo.h
 src/receiver.o: src/agc.h src/audio.h src/receiver.h src/transmitter.h
 src/receiver.o: src/band.h src/bandstack.h src/channel.h src/client_server.h
 src/receiver.o: src/mode.h src/discovered.h src/ext.h src/filter.h src/main.h
 src/receiver.o: src/meter.h src/message.h src/new_menu.h src/new_protocol.h
-src/receiver.o: src/MacOS.h src/old_protocol.h src/property.h src/radio.h
-src/receiver.o: src/adc.h src/rx_panadapter.h src/sliders.h src/actions.h
-src/receiver.o: src/soapy_protocol.h src/vfo.h src/waterfall.h
+src/receiver.o: src/MacOS.h src/old_protocol.h src/profiles.h src/property.h
+src/receiver.o: src/radio.h src/adc.h src/rx_panadapter.h src/sliders.h
+src/receiver.o: src/actions.h src/soapy_protocol.h src/vfo.h src/vox.h
+src/receiver.o: src/waterfall.h
 src/rigctl.o: src/actions.h src/agc.h src/andromeda.h src/band.h
 src/rigctl.o: src/bandstack.h src/channel.h src/ext.h src/client_server.h
 src/rigctl.o: src/mode.h src/receiver.h src/transmitter.h src/filter.h
@@ -1163,41 +1041,36 @@ src/rigctl.o: src/property.h src/radio.h src/adc.h src/discovered.h
 src/rigctl.o: src/rigctl.h src/sliders.h src/store.h src/toolbar.h src/vfo.h
 src/rigctl_menu.o: src/band.h src/bandstack.h src/message.h src/new_menu.h
 src/rigctl_menu.o: src/radio.h src/adc.h src/discovered.h src/receiver.h
-src/rigctl_menu.o: src/transmitter.h src/rigctl.h src/tci.h src/vfo.h
-src/rigctl_menu.o: src/mode.h
+src/rigctl_menu.o: src/transmitter.h src/rigctl.h src/vfo.h src/mode.h
 src/rx_menu.o: src/audio.h src/receiver.h src/transmitter.h src/band.h
 src/rx_menu.o: src/bandstack.h src/client_server.h src/mode.h
 src/rx_menu.o: src/discovered.h src/filter.h src/message.h src/new_menu.h
-src/rx_menu.o: src/new_protocol.h src/MacOS.h src/radio.h src/adc.h
-src/rx_menu.o: src/rx_menu.h src/sliders.h src/actions.h src/vfo.h
+src/rx_menu.o: src/new_protocol.h src/MacOS.h src/profiles.h src/radio.h
+src/rx_menu.o: src/adc.h src/rx_menu.h src/sliders.h src/actions.h src/vfo.h
 src/rx_panadapter.o: src/actions.h src/agc.h src/appearance.h src/css.h
 src/rx_panadapter.o: src/band.h src/bandstack.h src/client_server.h
 src/rx_panadapter.o: src/mode.h src/receiver.h src/transmitter.h
-src/rx_panadapter.o: src/discovered.h src/gpio.h src/message.h src/radio.h
-src/rx_panadapter.o: src/adc.h src/ozyio.h src/rx_panadapter.h src/vfo.h
-src/saturn_menu.o: src/new_menu.h src/radio.h src/adc.h src/discovered.h
-src/saturn_menu.o: src/receiver.h src/transmitter.h src/saturn_menu.h
-src/saturn_menu.o: src/saturnserver.h
+src/rx_panadapter.o: src/discovered.h src/dxcluster_popup.h src/dxcluster.h
+src/rx_panadapter.o: src/gpio.h src/message.h src/radio.h src/adc.h
+src/rx_panadapter.o: src/ozyio.h src/rx_panadapter.h src/theme.h src/vfo.h
 src/saturndrivers.o: src/message.h src/saturndrivers.h src/saturnregisters.h
 src/saturnmain.o: src/discovered.h src/message.h src/new_protocol.h
 src/saturnmain.o: src/MacOS.h src/receiver.h src/saturndrivers.h
-src/saturnmain.o: src/saturnregisters.h src/saturnmain.h src/saturnserver.h
+src/saturnmain.o: src/saturnregisters.h src/saturnmain.h
 src/saturnregisters.o: src/saturndrivers.h src/saturnregisters.h
 src/saturnregisters.o: src/message.h
-src/saturnserver.o: src/message.h src/saturndrivers.h src/saturnregisters.h
-src/saturnserver.o: src/saturnmain.h src/saturnserver.h
 src/screen_menu.o: src/appearance.h src/css.h src/ext.h src/client_server.h
 src/screen_menu.o: src/mode.h src/receiver.h src/transmitter.h src/main.h
 src/screen_menu.o: src/message.h src/new_menu.h src/radio.h src/adc.h
 src/screen_menu.o: src/discovered.h
 src/server_menu.o: src/client_server.h src/mode.h src/receiver.h
-src/server_menu.o: src/transmitter.h src/message.h src/new_menu.h src/radio.h
-src/server_menu.o: src/adc.h src/discovered.h src/server_menu.h
+src/server_menu.o: src/transmitter.h src/main.h src/message.h src/new_menu.h
+src/server_menu.o: src/radio.h src/adc.h src/discovered.h src/server_menu.h
 src/server_thread.o: src/actions.h src/band.h src/bandstack.h
 src/server_thread.o: src/client_server.h src/mode.h src/receiver.h
 src/server_thread.o: src/transmitter.h src/ext.h src/filter.h src/iambic.h
 src/server_thread.o: src/main.h src/message.h src/new_protocol.h src/MacOS.h
-src/server_thread.o: src/radio.h src/adc.h src/discovered.h
+src/server_thread.o: src/profiles.h src/radio.h src/adc.h src/discovered.h
 src/server_thread.o: src/soapy_protocol.h src/store.h src/vfo.h
 src/sliders.o: src/actions.h src/ext.h src/client_server.h src/mode.h
 src/sliders.o: src/receiver.h src/transmitter.h src/main.h src/message.h
@@ -1213,13 +1086,14 @@ src/soapy_protocol.o: src/ext.h src/client_server.h src/mode.h src/filter.h
 src/soapy_protocol.o: src/main.h src/message.h src/radio.h src/adc.h
 src/soapy_protocol.o: src/soapy_protocol.h src/vfo.h
 src/startup.o: src/message.h
-src/stemlab_discovery.o: src/discovered.h src/discovery.h src/message.h
-src/stemlab_discovery.o: src/radio.h src/adc.h src/receiver.h
+src/stemlab_discovery.o: src/discovered.h src/discovery.h src/main.h
+src/stemlab_discovery.o: src/message.h src/radio.h src/adc.h src/receiver.h
 src/stemlab_discovery.o: src/transmitter.h
 src/store.o: src/band.h src/bandstack.h src/ext.h src/client_server.h
 src/store.o: src/mode.h src/receiver.h src/transmitter.h src/filter.h
-src/store.o: src/message.h src/property.h src/radio.h src/adc.h
-src/store.o: src/discovered.h src/store.h src/store_menu.h src/vfo.h
+src/store.o: src/message.h src/profiles.h src/property.h src/radio.h
+src/store.o: src/adc.h src/discovered.h src/store.h src/store_menu.h
+src/store.o: src/vfo.h
 src/store_menu.o: src/filter.h src/mode.h src/message.h src/new_menu.h
 src/store_menu.o: src/radio.h src/adc.h src/discovered.h src/receiver.h
 src/store_menu.o: src/transmitter.h src/store_menu.h src/store.h
@@ -1228,9 +1102,19 @@ src/switch_menu.o: src/bandstack.h src/channel.h src/gpio.h src/i2c.h
 src/switch_menu.o: src/main.h src/new_menu.h src/radio.h src/adc.h
 src/switch_menu.o: src/discovered.h src/receiver.h src/transmitter.h
 src/switch_menu.o: src/toolbar.h src/vfo.h src/mode.h
-src/tci.o: src/message.h src/radio.h src/adc.h src/discovered.h
-src/tci.o: src/receiver.h src/transmitter.h src/rigctl.h src/vfo.h src/mode.h
+src/tci.o: src/radio.h src/adc.h src/discovered.h src/receiver.h
+src/tci.o: src/transmitter.h src/vfo.h src/mode.h src/rigctl.h src/ext.h
+src/tci.o: src/client_server.h src/message.h src/main.h src/discovery.h
+src/tci.o: src/tci_audio.h src/audio.h src/band.h src/bandstack.h
+src/tci.o: src/filter.h src/agc.h src/sliders.h src/actions.h
+src/tci_audio.o: src/message.h src/receiver.h src/tci_audio.h src/tci.h
 src/test_menu.o: src/actions.h src/message.h
+src/theme.o: src/ext.h src/client_server.h src/mode.h src/receiver.h
+src/theme.o: src/transmitter.h src/theme.h
+src/theme_menu.o: src/appearance.h src/css.h src/ext.h src/client_server.h
+src/theme_menu.o: src/mode.h src/receiver.h src/transmitter.h src/main.h
+src/theme_menu.o: src/message.h src/new_menu.h src/radio.h src/adc.h
+src/theme_menu.o: src/discovered.h src/theme.h
 src/toolbar.o: src/actions.h src/gpio.h src/message.h src/property.h
 src/toolbar.o: src/radio.h src/adc.h src/discovered.h src/receiver.h
 src/toolbar.o: src/transmitter.h src/toolbar.h
@@ -1241,30 +1125,31 @@ src/transmitter.o: src/audio.h src/receiver.h src/transmitter.h src/band.h
 src/transmitter.o: src/bandstack.h src/channel.h src/ext.h
 src/transmitter.o: src/client_server.h src/mode.h src/filter.h src/main.h
 src/transmitter.o: src/meter.h src/message.h src/new_protocol.h src/MacOS.h
-src/transmitter.o: src/old_protocol.h src/ozyio.h src/property.h
-src/transmitter.o: src/ps_menu.h src/radio.h src/adc.h src/discovered.h
-src/transmitter.o: src/sintab.h src/sliders.h src/actions.h
+src/transmitter.o: src/old_protocol.h src/ozyio.h src/profiles.h
+src/transmitter.o: src/property.h src/ps_menu.h src/radio.h src/adc.h
+src/transmitter.o: src/discovered.h src/sintab.h src/sliders.h src/actions.h
 src/transmitter.o: src/soapy_protocol.h src/toolbar.h src/tx_panadapter.h
 src/transmitter.o: src/vfo.h src/vox.h src/waterfall.h
 src/tts.o: src/message.h src/radio.h src/adc.h src/discovered.h
 src/tts.o: src/receiver.h src/transmitter.h src/vfo.h src/mode.h src/MacTTS.h
 src/tx_menu.o: src/audio.h src/receiver.h src/transmitter.h src/ext.h
-src/tx_menu.o: src/client_server.h src/mode.h src/filter.h src/message.h
-src/tx_menu.o: src/new_menu.h src/new_protocol.h src/MacOS.h src/radio.h
-src/tx_menu.o: src/adc.h src/discovered.h src/sliders.h src/actions.h
-src/tx_menu.o: src/vfo.h
+src/tx_menu.o: src/client_server.h src/mode.h src/filter.h src/gpio.h
+src/tx_menu.o: src/message.h src/new_menu.h src/new_protocol.h src/MacOS.h
+src/tx_menu.o: src/profiles.h src/radio.h src/adc.h src/discovered.h
+src/tx_menu.o: src/sliders.h src/actions.h src/vfo.h
 src/tx_panadapter.o: src/actions.h src/agc.h src/appearance.h src/css.h
 src/tx_panadapter.o: src/band.h src/bandstack.h src/ext.h src/client_server.h
 src/tx_panadapter.o: src/mode.h src/receiver.h src/transmitter.h
 src/tx_panadapter.o: src/discovered.h src/gpio.h src/message.h src/radio.h
-src/tx_panadapter.o: src/adc.h src/rx_panadapter.h src/tx_panadapter.h
-src/tx_panadapter.o: src/vfo.h
+src/tx_panadapter.o: src/adc.h src/rx_panadapter.h src/theme.h
+src/tx_panadapter.o: src/tx_panadapter.h src/vfo.h
 src/vfo.o: src/appearance.h src/css.h src/audio.h src/receiver.h
 src/vfo.o: src/transmitter.h src/discovered.h src/main.h src/agc.h src/mode.h
-src/vfo.o: src/filter.h src/bandstack.h src/band.h src/property.h src/radio.h
-src/vfo.o: src/adc.h src/new_protocol.h src/MacOS.h src/vfo.h src/channel.h
-src/vfo.o: src/toolbar.h src/actions.h src/rigctl.h src/client_server.h
-src/vfo.o: src/ext.h src/message.h src/sliders.h
+src/vfo.o: src/filter.h src/bandstack.h src/band.h src/profiles.h
+src/vfo.o: src/property.h src/radio.h src/adc.h src/new_protocol.h
+src/vfo.o: src/MacOS.h src/vfo.h src/channel.h src/toolbar.h src/actions.h
+src/vfo.o: src/rigctl.h src/client_server.h src/ext.h src/message.h
+src/vfo.o: src/sliders.h src/theme.h
 src/vfo_menu.o: src/band.h src/bandstack.h src/ext.h src/client_server.h
 src/vfo_menu.o: src/mode.h src/receiver.h src/transmitter.h src/filter.h
 src/vfo_menu.o: src/new_menu.h src/radio.h src/adc.h src/discovered.h
@@ -1272,11 +1157,10 @@ src/vfo_menu.o: src/radio_menu.h src/vfo.h
 src/vox.o: src/radio.h src/adc.h src/discovered.h src/receiver.h
 src/vox.o: src/transmitter.h src/vox.h src/vfo.h src/mode.h src/ext.h
 src/vox.o: src/client_server.h
-src/vox_menu.o: src/appearance.h src/css.h src/ext.h src/client_server.h
-src/vox_menu.o: src/mode.h src/receiver.h src/transmitter.h src/led.h
-src/vox_menu.o: src/message.h src/new_menu.h src/radio.h src/adc.h
-src/vox_menu.o: src/discovered.h src/sliders.h src/actions.h src/vfo.h
-src/vox_menu.o: src/vox.h
+src/vox_menu.o: src/ext.h src/client_server.h src/mode.h src/receiver.h
+src/vox_menu.o: src/transmitter.h src/led.h src/message.h src/new_menu.h
+src/vox_menu.o: src/radio.h src/adc.h src/discovered.h src/sliders.h
+src/vox_menu.o: src/actions.h src/vfo.h src/vox.h
 src/waterfall.o: src/radio.h src/adc.h src/discovered.h src/receiver.h
 src/waterfall.o: src/transmitter.h src/vfo.h src/mode.h src/band.h
 src/waterfall.o: src/bandstack.h src/message.h src/waterfall.h
@@ -1289,17 +1173,20 @@ src/appearance.o: src/css.h
 src/audio.o: src/receiver.h src/transmitter.h
 src/band.o: src/bandstack.h
 src/client_server.o: src/mode.h src/receiver.h src/transmitter.h
+src/dxcluster_db.o: src/dxcluster.h
+src/dxcluster_popup.o: src/dxcluster.h
 src/ext.o: src/client_server.h src/mode.h src/receiver.h src/transmitter.h
 src/filter.o: src/mode.h
-src/meter.o: src/receiver.h
 src/midi.o: src/actions.h
 src/midi_menu.o: src/midi.h src/actions.h
 src/new_protocol.o: src/MacOS.h src/receiver.h
+src/profiles.o: src/receiver.h src/transmitter.h
 src/radio.o: src/adc.h src/discovered.h src/receiver.h src/transmitter.h
 src/rx_panadapter.o: src/receiver.h
 src/saturndrivers.o: src/saturnregisters.h
 src/sliders.o: src/actions.h src/receiver.h src/transmitter.h
 src/soapy_protocol.o: src/receiver.h src/transmitter.h
+src/tci.o: src/receiver.h
 src/toolbar.o: src/actions.h
 src/tx_panadapter.o: src/transmitter.h
 src/vfo.o: src/receiver.h src/mode.h

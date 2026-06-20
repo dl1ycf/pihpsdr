@@ -4,10 +4,7 @@
 #
 
 CFLAGS?= -pthread -O3 -D_GNU_SOURCE -Wno-parentheses
-
-ifneq ($(NR34LIB), ON)
-  CFLAGS += -I../rnnoise/include -I../libspecbleach/include
-endif
+CFLAGS += -I../rnnoise/include -I../libspecbleach/include
 
 FFTWINCLUDE=`pkg-config --cflags fftw3`
 

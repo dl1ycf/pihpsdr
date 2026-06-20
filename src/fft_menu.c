@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2017 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2017 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -62,7 +62,24 @@ static void filter_type_cb(GtkToggleButton *widget, gpointer data) {
   case 0:
   case 1:
     receiver[channel]->low_latency = type;
-    rx_set_fft_latency(receiver[channel]);
+    rx_set_fft_params(receiver[channel]);
+    break;
+
+  case 8:
+    // NOTREACHED
+    break;
+  }
+}
+
+static void window_type_cb(GtkToggleButton *widget, gpointer data) {
+  int type = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
+  int channel  = GPOINTER_TO_INT(data);
+
+  switch (channel) {
+  case 0:
+  case 1:
+    receiver[channel]->nbp_window = type;
+    rx_set_fft_params(receiver[channel]);
     break;
 
   case 8:
@@ -83,13 +100,13 @@ static void filter_size_cb(GtkWidget *widget, gpointer data) {
   case 0:
   case 1:
     receiver[channel]->fft_size = size;
-    rx_set_fft_size(receiver[channel]);
+    rx_set_fft_params(receiver[channel]);
     break;
 
   case 8:
     if (can_transmit) {
       transmitter->fft_size = size;
-      tx_set_fft_size(transmitter);
+      tx_set_fft_params(transmitter);
     }
 
     break;
@@ -115,19 +132,26 @@ void fft_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), w, 0, 0, 1, 1);
   w = gtk_label_new("Filter Type");
   gtk_widget_set_name(w, "boldlabel");
+  gtk_widget_set_halign(w, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), w, 0, 2, 1, 1);
   w = gtk_label_new("Filter Size");
   gtk_widget_set_name(w, "boldlabel");
+  gtk_widget_set_halign(w, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), w, 0, 3, 1, 1);
+  w = gtk_label_new("Window Type");
+  gtk_widget_set_name(w, "boldlabel");
+  gtk_widget_set_halign(w, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), w, 0, 4, 1, 1);
   w = gtk_label_new("Binaural");
   gtk_widget_set_name(w, "boldlabel");
-  gtk_grid_attach(GTK_GRID(grid), w, 0, 4, 1, 1);
+  gtk_widget_set_halign(w, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), w, 0, 5, 1, 1);
   int col = 1;
 
   for (int i = 0; i <= receivers; i++) {
     // i == receivers means "TX"
     int chan;
-    int j, s, dsize, fsize, ftype;
+    int j, s, dsize, fsize, ftype, wtype;
 
     if ((i == receivers) && !can_transmit) { break; }
 
@@ -138,6 +162,7 @@ void fft_menu(GtkWidget *parent) {
       fsize = receiver[0]->fft_size;          // actual size value
       dsize = receiver[0]->dsp_size;          // minimum size value
       ftype = receiver[0]->low_latency;       // 0: linear phase, 1: low latency
+      wtype = receiver[0]->nbp_window;        // 0: 4-term, 1: 7-term BH window
     } else if (i == receivers - 1) {
       w = gtk_label_new("RX2");
       gtk_widget_set_name(w, "boldlabel");
@@ -145,6 +170,7 @@ void fft_menu(GtkWidget *parent) {
       fsize = receiver[1]->fft_size;
       dsize = receiver[1]->dsp_size;
       ftype = receiver[1]->low_latency;
+      wtype = receiver[1]->nbp_window;
     } else {
       w = gtk_label_new("TX");
       gtk_widget_set_name(w, "boldlabel");
@@ -152,6 +178,7 @@ void fft_menu(GtkWidget *parent) {
       fsize = transmitter->fft_size;
       dsize = transmitter->dsp_size;
       ftype = 0;
+      wtype = 0;
     }
 
     gtk_grid_attach(GTK_GRID(grid), w, col, 1, 1, 1);
@@ -171,6 +198,12 @@ void fft_menu(GtkWidget *parent) {
       gtk_combo_box_set_active(GTK_COMBO_BOX(w), ftype);
       my_combo_attach(GTK_GRID(grid), w, col, 2, 1, 1);
       g_signal_connect(w, "changed", G_CALLBACK(filter_type_cb), GINT_TO_POINTER(chan));
+      w = gtk_combo_box_text_new();
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(w), NULL, "4-term BH");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(w), NULL, "7-term BH");
+      gtk_combo_box_set_active(GTK_COMBO_BOX(w), wtype);
+      my_combo_attach(GTK_GRID(grid), w, col, 4, 1, 1);
+      g_signal_connect(w, "changed", G_CALLBACK(window_type_cb), GINT_TO_POINTER(chan));
     }
 
     //
@@ -203,7 +236,7 @@ void fft_menu(GtkWidget *parent) {
     if (i < receivers) {
       w = gtk_check_button_new();
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w), receiver[i]->binaural);
-      gtk_grid_attach(GTK_GRID(grid), w, col, 4, 1, 1);
+      gtk_grid_attach(GTK_GRID(grid), w, col, 5, 1, 1);
       g_signal_connect(w, "toggled", G_CALLBACK(binaural_cb), GINT_TO_POINTER(chan));
     }
 

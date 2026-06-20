@@ -189,11 +189,20 @@ typedef struct _transmitter {
   int    dexp_filter_low;   // low-cut of side channel filter
   int    dexp_filter_high;  // high-cut of side channel filter
 
+  int phrot_enable;
+  double phrot_corner;
+  int phrot_stages;
+  int phrot_reverse;
+
   double fwd;
+  double fwdmax;
   double rev;
   double alc;
   int    alcmode;
+  int    metermode;  // power: max or average
+  double micpeak;
   double swr;
+  double outavg;
   int    swr_protection;
   double swr_alarm;
 
@@ -236,7 +245,7 @@ extern void   tx_add_ps_iq_samples(const TRANSMITTER *tx, double i_sample_0, dou
 
 extern void   tx_close(const TRANSMITTER *tx);
 extern void   tx_create_analyzer(const TRANSMITTER *tx);
-extern double tx_get_alc(const TRANSMITTER *tx);
+extern void   tx_get_meter(TRANSMITTER *tx);
 extern int    tx_get_pixels(TRANSMITTER *tx);
 extern void   tx_off(const TRANSMITTER *tx);
 extern void   tx_on(const TRANSMITTER *tx);
@@ -268,12 +277,13 @@ extern void   tx_set_deviation(const TRANSMITTER *tx);
 extern void   tx_set_dexp(const TRANSMITTER *tx);
 extern void   tx_set_displaying(TRANSMITTER *tx);
 extern void   tx_set_equalizer(TRANSMITTER *tx);
-extern void   tx_set_fft_size(const TRANSMITTER *tx);
+extern void   tx_set_fft_params(const TRANSMITTER *tx);
 extern void   tx_set_filter(TRANSMITTER *tx);
 extern void   tx_set_framerate(TRANSMITTER *tx);
 extern void   tx_set_mic_gain(const TRANSMITTER *tx);
 extern void   tx_set_mode(TRANSMITTER* tx, int m);
 extern void   tx_set_out_of_band(TRANSMITTER *tx);
+extern void   tx_set_phrot(const TRANSMITTER *tx);
 extern void   tx_set_pre_emphasize(const TRANSMITTER *tx);
 extern void   tx_set_ramps(TRANSMITTER *tx);
 extern void   tx_set_singletone(const TRANSMITTER *tx, int state, double freq);

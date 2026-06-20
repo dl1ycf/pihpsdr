@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -39,9 +39,7 @@ static int colorHighB = 0;
 
 /* Create a new surface of the appropriate size to store our scribbles */
 static gboolean
-waterfall_configure_event_cb (GtkWidget         *widget,
-                              GdkEventConfigure *event,
-                              gpointer           data) {
+waterfall_configure_event_cb (GtkWidget *widget, GdkEventConfigure *event, gpointer data) {
   RECEIVER *rx = (RECEIVER *)data;
 
   if (rx->pixbuf) {
@@ -74,29 +72,21 @@ waterfall_draw_cb (GtkWidget *widget,
   return FALSE;
 }
 
-static gboolean
-waterfall_button_press_event_cb (GtkWidget      *widget,
-                                 GdkEventButton *event,
-                                 gpointer        data) {
-  return rx_button_press_event(widget, event, data);
+static gboolean waterfall_button_press_event_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
+  return rx_button_press_event(widget, event, data, 1);
 }
 
-static gboolean
-waterfall_button_release_event_cb (GtkWidget      *widget,
-                                   GdkEventButton *event,
-                                   gpointer        data) {
-  return rx_button_release_event(widget, event, data);
+static gboolean waterfall_button_release_event_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
+  return rx_button_release_event(widget, event, data, 1);
 }
 
-static gboolean waterfall_motion_notify_event_cb (GtkWidget      *widget,
-    GdkEventMotion *event,
-    gpointer        data) {
-  return rx_motion_notify_event(widget, event, data);
+static gboolean waterfall_motion_notify_event_cb (GtkWidget *widget, GdkEventMotion *event, gpointer data) {
+  return rx_motion_notify_event(widget, event, data, 1);
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean waterfall_scroll_event_cb (GtkWidget *widget, GdkEventScroll *event, gpointer data) {
-  return rx_scroll_event(widget, event, data);
+  return rx_scroll_event(widget, event, data, 1);
 }
 
 void waterfall_update(RECEIVER *rx) {
@@ -294,10 +284,8 @@ void waterfall_init(RECEIVER *rx, int width, int height) {
   rx->waterfall = gtk_drawing_area_new ();
   gtk_widget_set_size_request (rx->waterfall, width, height);
   /* Signals used to handle the backing surface */
-  g_signal_connect (rx->waterfall, "draw",
-                    G_CALLBACK (waterfall_draw_cb), rx);
-  g_signal_connect (rx->waterfall, "configure-event",
-                    G_CALLBACK (waterfall_configure_event_cb), rx);
+  g_signal_connect (rx->waterfall, "draw", G_CALLBACK (waterfall_draw_cb), rx);
+  g_signal_connect (rx->waterfall, "configure-event", G_CALLBACK (waterfall_configure_event_cb), rx);
   /* Event signals */
   g_signal_connect (rx->waterfall, "motion-notify-event", G_CALLBACK (waterfall_motion_notify_event_cb), rx);
   g_signal_connect (rx->waterfall, "button-press-event", G_CALLBACK (waterfall_button_press_event_cb), rx);

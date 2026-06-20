@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -372,28 +372,27 @@ void filter_restore_state(void) {
 // are fixed (at 2500 or 5000).
 //
 //
-void filter_cut_default(int id) {
-  //
-  // This will restore the nominal filter edges of the filter being used
-  //
+
+void filter_edges_changed(int id, int low, int high) {
   int mode = vfo[id].mode;
 
   // Assertions
   if (id >= receivers || mode == modeFMN) { return; }
 
   RECEIVER *rx = receiver[id];
-  int f = vfo[id].filter;
-  const FILTER *filter = &(filters[mode][f]);
 
+  //
+  // Apply changed filter settings to the running rx
+  //
   if (mode == modeCWU) {
-    rx->filter_low = filter->low + cw_keyer_sidetone_frequency;
-    rx->filter_high = filter->high + cw_keyer_sidetone_frequency;
+    rx->filter_low = low + cw_keyer_sidetone_frequency;
+    rx->filter_high = high + cw_keyer_sidetone_frequency;
   } else if (mode == modeCWL) {
-    rx->filter_low = filter->low - cw_keyer_sidetone_frequency;
-    rx->filter_high = filter->high - cw_keyer_sidetone_frequency;
+    rx->filter_low = low - cw_keyer_sidetone_frequency;
+    rx->filter_high = high - cw_keyer_sidetone_frequency;
   } else {
-    rx->filter_low = filter->low;
-    rx->filter_high = filter->high;
+    rx->filter_low = low;
+    rx->filter_high = high;
   }
 
   if (radio_is_remote) {
@@ -411,6 +410,21 @@ void filter_cut_default(int id) {
   g_idle_add(ext_vfo_update, NULL);
 }
 
+void filter_cut_default(int id) {
+  //
+  // This will restore the nominal filter edges of the filter being used
+  //
+  int mode = vfo[id].mode;
+
+  // Assertions
+  if (id >= receivers || mode == modeFMN) { return; }
+
+  const RECEIVER *rx = receiver[id];
+  int f = vfo[id].filter;
+  const FILTER *filter = &(filters[mode][f]);
+  filter_edges_changed(rx->id, filter->low, filter->high);
+}
+
 //
 // The notion of "high" and "low" is referenced to the audio, that is,
 // they have to be reversed for LSB/DIGU.
@@ -425,7 +439,7 @@ void filter_high_changed(int id, int increment) {
   // Assertions
   if (id >= receivers || mode == modeFMN) { return; }
 
-  RECEIVER *rx = receiver[id];
+  const RECEIVER *rx = receiver[id];
   int low = rx->filter_low;
   int high = rx->filter_high;
   int new;
@@ -484,23 +498,7 @@ void filter_high_changed(int id, int increment) {
     break;
   }
 
-  //
-  // Apply changed filter settings to the running rx
-  //
-  rx->filter_low = low;
-  rx->filter_high = high;
-
-  if (radio_is_remote) {
-    send_rx_filter_cut(cl_sock_tcp, rx->id);
-  } else {
-    rx_set_bandpass(rx);
-    rx_set_agc(rx);
-
-    if (mode == modeCWL || mode == modeCWU) {
-      int have_peak = vfo[id].cwAudioPeakFilter;
-      rx_set_cw_peak(rx, have_peak, (double) cw_keyer_sidetone_frequency);
-    }
-  }
+  filter_edges_changed(rx->id, low, high);
 
   if (!suppress_popup_sliders) {
     g_idle_add(sliders_filter_high, GINT_TO_POINTER(100000 * id + 50000 + new));
@@ -515,7 +513,7 @@ void filter_low_changed(int id, int increment) {
   // Assertions
   if (id >= receivers || mode == modeFMN) { return; }
 
-  RECEIVER *rx = receiver[id];
+  const RECEIVER *rx = receiver[id];
   int low = rx->filter_low;
   int high = rx->filter_high;
   int new;
@@ -574,29 +572,11 @@ void filter_low_changed(int id, int increment) {
     break;
   }
 
-  //
-  // Apply changed filter settings to the running rx
-  //
-  rx->filter_low = low;
-  rx->filter_high = high;
-
-  if (radio_is_remote) {
-    send_rx_filter_cut(cl_sock_tcp, rx->id);
-  } else {
-    rx_set_bandpass(rx);
-    rx_set_agc(rx);
-
-    if (mode == modeCWL || mode == modeCWU) {
-      int have_peak = vfo[id].cwAudioPeakFilter;
-      rx_set_cw_peak(rx, have_peak, (double) cw_keyer_sidetone_frequency);
-    }
-  }
+  filter_edges_changed(rx->id, low, high);
 
   if (!suppress_popup_sliders) {
     g_idle_add(sliders_filter_low, GINT_TO_POINTER(100000 * id + 50000 + new));
   }
-
-  g_idle_add(ext_vfo_update, NULL);
 }
 
 //
@@ -608,7 +588,7 @@ void filter_width_changed(int id, int increment) {
   // Assertions
   if (id >= receivers || mode == modeFMN) { return; }
 
-  RECEIVER *rx = receiver[id];
+  const RECEIVER *rx = receiver[id];
   int low = rx->filter_low;
   int high = rx->filter_high;
 
@@ -681,29 +661,11 @@ void filter_width_changed(int id, int increment) {
     break;
   }
 
-  //
-  // Apply changed filter settings to the running rx
-  //
-  rx->filter_low = low;
-  rx->filter_high = high;
-
-  if (radio_is_remote) {
-    send_rx_filter_cut(cl_sock_tcp, rx->id);
-  } else {
-    rx_set_bandpass(rx);
-    rx_set_agc(rx);
-
-    if (mode == modeCWL || mode == modeCWU) {
-      int have_peak = vfo[id].cwAudioPeakFilter;
-      rx_set_cw_peak(rx, have_peak, (double) cw_keyer_sidetone_frequency);
-    }
-  }
+  filter_edges_changed(rx->id, low, high);
 
   if (!suppress_popup_sliders) {
     g_idle_add(sliders_filter_width, GINT_TO_POINTER(100000 * id + 50000 + high - low));
   }
-
-  g_idle_add(ext_vfo_update, NULL);
 }
 
 //
@@ -715,7 +677,7 @@ void filter_shift_changed(int id, int increment) {
   // Assertions
   if (id >= receivers || mode == modeFMN) { return; }
 
-  RECEIVER *rx = receiver[id];
+  const RECEIVER *rx = receiver[id];
   int low = rx->filter_low;
   int high = rx->filter_high;
   int fac;
@@ -763,22 +725,7 @@ void filter_shift_changed(int id, int increment) {
   //
   // Apply changed filter settings to the running rx
   //
-  rx->filter_low = low;
-  rx->filter_high = high;
-
-  if (radio_is_remote) {
-    send_rx_filter_cut(cl_sock_tcp, rx->id);
-  } else {
-    rx_set_bandpass(rx);
-    rx_set_agc(rx);
-
-    if (mode == modeCWL || mode == modeCWU) {
-      int have_peak = vfo[id].cwAudioPeakFilter;
-      rx_set_cw_peak(rx, have_peak, (double) cw_keyer_sidetone_frequency);
-    }
-  }
-
-  g_idle_add(ext_vfo_update, NULL);
+  filter_edges_changed(rx->id, low, high);
   shft = sgn * shft;
 
   if (mode == modeCWU ||  mode == modeCWL) {
@@ -788,8 +735,6 @@ void filter_shift_changed(int id, int increment) {
   if (!suppress_popup_sliders) {
     g_idle_add(sliders_filter_shift, GINT_TO_POINTER(100000 * id + 50000 + shft));
   }
-
-  g_idle_add(ext_vfo_update, NULL);
 }
 
 void notch_center_changed(int id, int pos, int val) {
@@ -805,11 +750,11 @@ void notch_width_changed(int id, int pos, int val) {
     RECEIVER *rx = receiver[id];
     double w = rx->multi_notch_width[pos] + (double) val;
     w = 25.0 * (w * 0.04);
- 
+
     if (w < rx->notch_min_width) {
       w = rx->notch_min_width;
     }
-    
+
     rx->multi_notch_width[pos] = w;
     rx_set_notch(rx);
   }

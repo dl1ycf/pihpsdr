@@ -1,5 +1,5 @@
 /* Copyright (C)
-* 2024 - Christoph van Wüllen, DL1YCF
+*  2024 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@ static GtkWidget *test_name = NULL;
 static GtkWidget *test_press = NULL;
 static GtkWidget *test_ccw = NULL;
 static GtkWidget *test_cw = NULL;
+static GtkWidget *test_slider = NULL;
 static int test_action = NO_ACTION;
 static guint repeat_timer = 0;
 static int repeat_state = 0;
@@ -86,9 +87,11 @@ static void test_action_changed_cb(GtkWidget *widget, gpointer data) {
 
   if (ActionTable[test_action].type & AT_BTN) {
     gtk_widget_set_sensitive(test_press, TRUE);
-  } else {
+  } else if (ActionTable[test_action].type & AT_ENC) {
     gtk_widget_set_sensitive(test_ccw, TRUE);
     gtk_widget_set_sensitive(test_cw, TRUE);
+  } else if (ActionTable[test_action].type & AT_KNB) {
+    gtk_widget_set_sensitive(test_slider, TRUE);
   }
 
   if (repeat_timer != 0) {
@@ -100,8 +103,8 @@ static void test_action_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 // cppcheck-suppress constParameterCallback
-static void test_press_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  if (event->type != GDK_BUTTON_PRESS) { return; }
+static gboolean test_press_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
+  if (event->type != GDK_BUTTON_PRESS) { return TRUE; }
 
   repeat_state = 1;
   schedule_action(test_action, PRESSED, 1);
@@ -111,10 +114,11 @@ static void test_press_cb(GtkWidget *widget, GdkEventButton *event, gpointer dat
   }
 
   repeat_timer = g_timeout_add(500, repeat_cb, NULL);
+  return FALSE;
 }
 
 // cppcheck-suppress constParameterCallback
-static void test_release_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
+static gboolean test_release_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
   repeat_state = 0;
 
   if (repeat_timer != 0) {
@@ -123,11 +127,12 @@ static void test_release_cb(GtkWidget *widget, GdkEventButton *event, gpointer d
 
   repeat_timer = 0;
   schedule_action(test_action, RELEASED, 1);
+  return FALSE;
 }
 
 // cppcheck-suppress constParameterCallback
-static void test_ccw_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  if (event->type != GDK_BUTTON_PRESS) { return; }
+static gboolean test_ccw_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
+  if (event->type != GDK_BUTTON_PRESS) { return TRUE; }
 
   repeat_state = 2;
   schedule_action(test_action, RELATIVE, -1);
@@ -137,11 +142,12 @@ static void test_ccw_cb(GtkWidget *widget, GdkEventButton *event, gpointer data)
   }
 
   repeat_timer = g_timeout_add(250, repeat_cb, NULL);
+  return FALSE;
 }
 
 // cppcheck-suppress constParameterCallback
-static void test_cw_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  if (event->type != GDK_BUTTON_PRESS) { return; }
+static gboolean test_cw_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
+  if (event->type != GDK_BUTTON_PRESS) { return TRUE; }
 
   repeat_state = 3;
   schedule_action(test_action, RELATIVE, 1);
@@ -151,16 +157,24 @@ static void test_cw_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) 
   }
 
   repeat_timer = g_timeout_add(250, repeat_cb, NULL);
+  return FALSE;
 }
 
+static void test_slider_cb(GtkWidget *widget, gpointer data) {
+  double val = gtk_range_get_value(GTK_RANGE(widget));
+  schedule_action(test_action, ABSOLUTE, (int) (val + 0.5));
+}
+
+
 // cppcheck-suppress constParameterCallback
-static void cancel_repeat_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
+static gboolean cancel_repeat_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
   if (repeat_timer != 0) {
     g_source_remove(repeat_timer);
   }
 
   repeat_timer = 0;
   repeat_state = 0;
+  return FALSE;
 }
 
 void test_menu(GtkWidget *parent) {
@@ -210,9 +224,14 @@ void test_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), test_cw, 2, 2, 1, 2);
   g_signal_connect(G_OBJECT(test_cw), "button-press-event", G_CALLBACK(test_cw_cb), NULL);
   g_signal_connect(G_OBJECT(test_cw), "button-release-event", G_CALLBACK(cancel_repeat_cb), NULL);
+  test_slider = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 127.0, 1.0);
+  gtk_range_set_value(GTK_RANGE(test_slider), 64.0);
+  g_signal_connect(G_OBJECT(test_slider), "value_changed", G_CALLBACK(test_slider_cb), NULL);
+  gtk_grid_attach(GTK_GRID(grid), test_slider, 0, 4, 3, 1);
   gtk_widget_set_sensitive(test_press, FALSE);
   gtk_widget_set_sensitive(test_ccw, FALSE);
   gtk_widget_set_sensitive(test_cw, FALSE);
+  gtk_widget_set_sensitive(test_slider, FALSE);
   gtk_container_add(GTK_CONTAINER(content), grid);
   gtk_widget_show_all(dialog);
 }

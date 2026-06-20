@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2017 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2017 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@
 #ifdef USBOZY
   #include "ozyio.h"
 #endif
+#include "profiles.h"
 #include "property.h"
 #include "ps_menu.h"
 #include "radio.h"
@@ -45,6 +46,10 @@
 #include "sliders.h"
 #ifdef SOAPYSDR
   #include "soapy_protocol.h"
+#endif
+#ifdef TCI
+  #include "tci.h"
+  #include "tci_audio.h"
 #endif
 #include "toolbar.h"
 #include "transmitter.h"
@@ -337,6 +342,7 @@ void tx_save_state(const TRANSMITTER *tx) {
 
   if (!radio_is_remote) {
     SetPropI1("transmitter.%d.alcmode",                             tx->id,    tx->alcmode);
+    SetPropI1("transmitter.%d.metermode",                           tx->id,    tx->metermode);
     SetPropI1("transmitter.%d.fft_size",                            tx->id,    tx->fft_size);
     SetPropI1("transmitter.%d.fps",                                 tx->id,    tx->fps);
     SetPropI1("transmitter.%d.default_filter_low",                  tx->id,    tx->default_filter_low);
@@ -395,6 +401,10 @@ void tx_save_state(const TRANSMITTER *tx) {
     SetPropI1("transmitter.%d.eq_enable",                           tx->id,    tx->eq_enable);
     SetPropF1("transmitter.%d.tt1_freq",                            tx->id,    tx->tt1_freq);
     SetPropF1("transmitter.%d.tt2_freq",                            tx->id,    tx->tt2_freq);
+    SetPropI1("transmitter.%d.phrot_enable",                        tx->id,    tx->phrot_enable);
+    SetPropI1("transmitter.%d.phrot_stages",                        tx->id,    tx->phrot_stages);
+    SetPropF1("transmitter.%d.phrot_corner",                        tx->id,    tx->phrot_corner);
+    SetPropI1("transmitter.%d.phrot_reverse",                       tx->id,    tx->phrot_reverse);
 
     for (int i = 0; i < 11; i++) {
       SetPropF2("transmitter.%d.eq_freq[%d]",                       tx->id, i, tx->eq_freq[i]);
@@ -431,6 +441,7 @@ void tx_restore_state(TRANSMITTER *tx) {
 
   if (!radio_is_remote) {
     GetPropI1("transmitter.%d.alcmode",                             tx->id,    tx->alcmode);
+    GetPropI1("transmitter.%d.metermode",                           tx->id,    tx->metermode);
     GetPropI1("transmitter.%d.fft_size",                            tx->id,    tx->fft_size);
     GetPropI1("transmitter.%d.fps",                                 tx->id,    tx->fps);
     GetPropI1("transmitter.%d.default_filter_low",                  tx->id,    tx->default_filter_low);
@@ -489,6 +500,10 @@ void tx_restore_state(TRANSMITTER *tx) {
     GetPropI1("transmitter.%d.eq_enable",                           tx->id,    tx->eq_enable);
     GetPropF1("transmitter.%d.tt1_freq",                            tx->id,    tx->tt1_freq);
     GetPropF1("transmitter.%d.tt2_freq",                            tx->id,    tx->tt2_freq);
+    GetPropI1("transmitter.%d.phrot_enable",                        tx->id,    tx->phrot_enable);
+    GetPropI1("transmitter.%d.phrot_stages",                        tx->id,    tx->phrot_stages);
+    GetPropF1("transmitter.%d.phrot_corner",                        tx->id,    tx->phrot_corner);
+    GetPropI1("transmitter.%d.phrot_reverse",                       tx->id,    tx->phrot_reverse);
 
     for (int i = 0; i < 11; i++) {
       GetPropF2("transmitter.%d.eq_freq[%d]",                       tx->id, i, tx->eq_freq[i]);
@@ -515,6 +530,9 @@ static double compute_power(double p) {
     if (i > 0) { i--; }
   }
 
+  // do not divide by zero if pa_trim is messed up
+  if (pa_trim[i + 1] - pa_trim[i] < 0.001) { return pa_trim[i + 1]; }
+
   double frac = (p - pa_trim[i]) / (pa_trim[i + 1] - pa_trim[i]);
   return interval * ((1.0 - frac) * (double)i + frac * (double)(i + 1));
 }
@@ -529,7 +547,7 @@ static gboolean tx_update_display(gpointer data) {
       tx_ps_getinfo(tx);
     }
 
-    tx->alc = tx_get_alc(tx);
+    tx_get_meter(tx);
     //
     // constant1 and the calibration offsets are used to convert
     // an ADC reading in the range 0-4095 to a voltage level.
@@ -544,6 +562,7 @@ static gboolean tx_update_display(gpointer data) {
     int fwd_cal_offset;
     int rev_cal_offset;
     int fwd_power;
+    int fwd_max;
     int rev_power;
     double v1;
     rc = vfo_get_tx_vfo();
@@ -554,7 +573,9 @@ static gboolean tx_update_display(gpointer data) {
     // repository.
     //
     fwd_power   = alex_forward_power;
+    fwd_max     = alex_forward_max;
     rev_power   = alex_reverse_power;
+    alex_forward_max = (alex_forward_max * 7) / 8;
 
     switch (device) {
     default:
@@ -567,6 +588,7 @@ static gboolean tx_update_display(gpointer data) {
       rev_cal_offset = 0;
       fwd_cal_offset = 0;
       fwd_power = 0;
+      fwd_max   = 0;
       rev_power = 0;
       break;
 #ifdef USBOZY
@@ -579,6 +601,7 @@ static gboolean tx_update_display(gpointer data) {
         rev_cal_offset = 3;
         fwd_cal_offset = 6;
         fwd_power = penny_fp;
+        fwd_max   = penny_fp;
         rev_power = penny_rp;
       } else {
         constant1 = 3.3;
@@ -587,6 +610,7 @@ static gboolean tx_update_display(gpointer data) {
         rev_cal_offset = 0;
         fwd_cal_offset = 90;
         fwd_power = penny_alc;
+        fwd_max   = penny_alc;
         rev_power = 0;
       }
 
@@ -660,15 +684,11 @@ static gboolean tx_update_display(gpointer data) {
     case DEVICE_HERMES_LITE2:
     case NEW_DEVICE_HERMES_LITE:
     case NEW_DEVICE_HERMES_LITE2:
-      //
-      // These values are a fit to the "HL2FilterE3" data in Quisk.
-      // No difference in the Fwd and Rev formula.
-      //
       constant1 = 3.3;
-      constant2 = 1.52;
-      rconstant2 = 1.52;
-      rev_cal_offset = -34;
-      fwd_cal_offset = -34;
+      constant2 = 1.5;
+      rconstant2 = 1.5;
+      rev_cal_offset = 6;
+      fwd_cal_offset = 6;
       break;
     }
 
@@ -681,27 +701,29 @@ static gboolean tx_update_display(gpointer data) {
       if (rev_power > fwd_power) {
         fwd_power   = alex_reverse_power;
         rev_power   = alex_forward_power;
+        fwd_max     = fwd_power;
       }
     }
 
     fwd_power = fwd_power - fwd_cal_offset;
+    fwd_max   = fwd_max   - fwd_cal_offset;
     rev_power = rev_power - rev_cal_offset;
 
     if (fwd_power < 0) { fwd_power = 0; }
 
+    if (fwd_max   < 0) { fwd_max   = 0; }
+
     if (rev_power < 0) { rev_power = 0; }
 
-    v1 = ((double)fwd_power / 4095.0) * constant1; // ADC reading in Volt
-    tx->fwd = (v1 * v1) / constant2;
-    v1 = ((double)rev_power / 4095.0) * constant1; // ADC reading in Volt
-    tx->rev = (v1 * v1) / rconstant2;
     //
     // compute_power does an interpolation is user-supplied pairs of
     // data points (measured by radio, measured by external watt meter)
     // are available.
     //
-    tx->rev  = compute_power(tx->rev);
-    tx->fwd = compute_power(tx->fwd);
+    v1 = ((double)fwd_power / 4095.0) * constant1; // ADC reading in Volt
+    tx->fwd = compute_power((v1 * v1) / constant2);
+    v1 = ((double)rev_power / 4095.0) * constant1; // ADC reading in Volt
+    tx->rev = compute_power((v1 * v1) / rconstant2);
 
     //
     // Calculate SWR and store as tx->swr.
@@ -733,6 +755,14 @@ static gboolean tx_update_display(gpointer data) {
       tx->swr = 0.7 + 0.3 * tx->swr;
     }
 
+    if (tx->metermode == 0) {
+      //
+      // Replace Avg by PEP value in tx->fwd
+      // This has to be done *after* SWR calculation
+      v1 = ((double)fwd_max   / 4095.0) * constant1; // ADC reading in Volt
+      tx->fwd = compute_power((v1 * v1) / constant2);
+    }
+
     //
     //  If SWR is above threshold emit a waring.
     //  If additionally  SWR protection is enabled,
@@ -757,7 +787,7 @@ static gboolean tx_update_display(gpointer data) {
     }
 
     if (!duplex) {
-      meter_update(active_receiver, POWER, tx->fwd, tx->alc, tx->swr);
+      txmeter_update(tx->fwd, tx->alc, tx->swr, tx->micpeak, tx->outavg);
     }
 
     // if "MON" button is active (tx->feedback is TRUE),
@@ -919,6 +949,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->dsp_size = 2048;
   tx->fft_size = 2048;
   tx->alcmode = ALC_PEAK;
+  tx->metermode = 0;  // PEP
   g_mutex_init(&tx->display_mutex);
   tx->update_timer_id = 0;
   tx->out_of_band_timer_id = 0;
@@ -1061,6 +1092,10 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->do_scale = 0;
   tx->compressor = 0;
   tx->compressor_level = 0.0;
+  tx->phrot_enable = 0;
+  tx->phrot_reverse = 0;
+  tx->phrot_corner = 600.0;
+  tx->phrot_stages = 2;
   tx->cfc              =       0;
   tx->cfc_eq           =       0;
   tx->cfc_freq[ 0]     =     0.0;  // Not used
@@ -1307,7 +1342,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx_set_ctcss(tx);
   tx_set_am_carrier_level(tx);
   tx_set_ctcss(tx);
-  tx_set_fft_size(tx);
+  tx_set_fft_params(tx);
   tx_set_pre_emphasize(tx);
   tx_set_mic_gain(tx);
   tx_set_compressor(tx);
@@ -1316,6 +1351,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx_create_analyzer(tx);
   tx_set_detector(tx);
   tx_set_average(tx);
+  tx_set_phrot(tx);
   tx_create_visual(tx);
 
   if (protocol == NEW_PROTOCOL || protocol == ORIGINAL_PROTOCOL) {
@@ -1821,6 +1857,15 @@ void tx_add_mic_sample(TRANSMITTER *tx, double mic_sample) {
   ASSERT_SERVER();
   int txmode = vfo_get_tx_mode();
 
+  //
+  // There are several (possible) sources of TX audio, so we have to prioritise them
+  // (lowest to highest).
+  // - Mic samples from radio
+  // - if selected: Mic samples from sound card
+  // - if active: Mic samples from TCI client
+  // - if remote client is running: Mic samples from remote client
+  //
+
   if (tx->local_audio) {
     //
     // ADD HPSDR MIC SAMPLES option:
@@ -1836,6 +1881,17 @@ void tx_add_mic_sample(TRANSMITTER *tx, double mic_sample) {
       mic_sample = audio_get_next_mic_sample(tx);
     }
   }
+
+#ifdef TCI
+
+  //
+  // This overwrites mic_sample if TCI audio is available
+  //
+  if (tci_audio_tx_active) {
+    mic_sample = tci_get_next_mic_sample();
+  }
+
+#endif
 
   //
   // If we have a client, it overwrites 'local' audio data.
@@ -2112,10 +2168,10 @@ void tx_set_filter(TRANSMITTER *tx) {
   }
 
   int txmode = vfo_get_tx_mode();
-  mode_settings[txmode].use_rx_filter  = tx->use_rx_filter;
-  mode_settings[txmode].tx_default_filter_low  = tx->default_filter_low;
-  mode_settings[txmode].tx_default_filter_high = tx->default_filter_high;
-  copy_mode_settings(txmode);
+  RXTXprofile[txmode].tx.use_rx_filter  = tx->use_rx_filter;
+  RXTXprofile[txmode].tx.default_filter_low  = tx->default_filter_low;
+  RXTXprofile[txmode].tx.default_filter_high = tx->default_filter_high;
+  profiles_copy_rxtxprofile(txmode);
   // load default values (0 < low < high), defaults: low=150, high=2850
   int low  = tx->default_filter_low;
   int high = tx->default_filter_high;
@@ -2248,8 +2304,8 @@ void tx_create_analyzer(const TRANSMITTER *tx) {
   }
 }
 
-double tx_get_alc(const TRANSMITTER *tx) {
-  ASSERT_SERVER(0.0);
+void tx_get_meter(TRANSMITTER *tx) {
+  ASSERT_SERVER();
   double alc, gain;
 
   switch (tx->alcmode) {
@@ -2271,7 +2327,9 @@ double tx_get_alc(const TRANSMITTER *tx) {
     break;
   }
 
-  return alc;
+  tx->alc = alc;
+  tx->micpeak = GetTXAMeter(tx->id, TXA_MIC_PK);
+  tx->outavg  = GetTXAMeter(tx->id, TXA_OUT_AV);
 }
 
 int tx_get_pixels(TRANSMITTER *tx) {
@@ -2585,18 +2643,18 @@ void tx_set_compressor(TRANSMITTER *tx) {
   }
 
   int txmode = vfo_get_tx_mode();
-  mode_settings[txmode].compressor       = tx->compressor;
-  mode_settings[txmode].compressor_level = tx->compressor_level;
-  mode_settings[txmode].cfc              = tx->cfc;
-  mode_settings[txmode].cfc_eq           = tx->cfc_eq;
+  RXTXprofile[txmode].tx.compressor       = tx->compressor;
+  RXTXprofile[txmode].tx.compressor_level = tx->compressor_level;
+  RXTXprofile[txmode].tx.cfc              = tx->cfc;
+  RXTXprofile[txmode].tx.cfc_eq           = tx->cfc_eq;
 
   for (int i = 0; i < 11; i++) {
-    mode_settings[txmode].cfc_freq[i] = tx->cfc_freq[i];
-    mode_settings[txmode].cfc_lvl [i] = tx->cfc_lvl [i];
-    mode_settings[txmode].cfc_post[i] = tx->cfc_post[i];
+    RXTXprofile[txmode].tx.cfc_freq[i] = tx->cfc_freq[i];
+    RXTXprofile[txmode].tx.cfc_lvl [i] = tx->cfc_lvl [i];
+    RXTXprofile[txmode].tx.cfc_post[i] = tx->cfc_post[i];
   }
 
-  copy_mode_settings(txmode);
+  profiles_copy_rxtxprofile(txmode);
   //
   // - Although I see not much juice therein, the
   //   usage of CFC alongside with the speech processor
@@ -2661,6 +2719,24 @@ void tx_set_detector(const TRANSMITTER *tx) {
   SetDisplayDetectorMode(tx->id, 0, wdspmode);
 }
 
+void tx_set_phrot(const TRANSMITTER *tx) {
+  if (radio_is_remote) {
+    send_phrot(cl_sock_tcp);
+    return;
+  }
+
+  int txmode = vfo_get_tx_mode();
+  RXTXprofile[txmode].tx.phrot_enable = tx->phrot_enable;
+  RXTXprofile[txmode].tx.phrot_reverse = tx->phrot_reverse;
+  RXTXprofile[txmode].tx.phrot_stages = tx->phrot_stages;
+  RXTXprofile[txmode].tx.phrot_corner = tx->phrot_corner;
+  profiles_copy_rxtxprofile(txmode);
+  SetTXAPHROTCorner(tx->id, tx->phrot_corner);
+  SetTXAPHROTNstages(tx->id, tx->phrot_stages);
+  SetTXAPHROTReverse(tx->id, tx->phrot_reverse);
+  SetTXAPHROTRun(tx->id, tx->phrot_enable);
+}
+
 void tx_set_deviation(const TRANSMITTER *tx) {
   ASSERT_SERVER();
   SetTXAFMDeviation(tx->id, (double)tx->deviation);
@@ -2673,18 +2749,18 @@ void tx_set_dexp(const TRANSMITTER *tx) {
   }
 
   int txmode = vfo_get_tx_mode();
-  mode_settings[txmode].dexp             = tx->dexp;
-  mode_settings[txmode].dexp_filter      = tx->dexp_filter;
-  mode_settings[txmode].dexp_tau         = tx->dexp_tau;
-  mode_settings[txmode].dexp_attack      = tx->dexp_attack;
-  mode_settings[txmode].dexp_release     = tx->dexp_release;
-  mode_settings[txmode].dexp_hold        = tx->dexp_hold;
-  mode_settings[txmode].dexp_hyst        = tx->dexp_hyst;
-  mode_settings[txmode].dexp_trigger     = tx->dexp_trigger;
-  mode_settings[txmode].dexp_filter_low  = tx->dexp_filter_low;
-  mode_settings[txmode].dexp_filter_high = tx->dexp_filter_high;
-  mode_settings[txmode].dexp_exp         = tx->dexp_exp;
-  copy_mode_settings(txmode);
+  RXTXprofile[txmode].tx.dexp             = tx->dexp;
+  RXTXprofile[txmode].tx.dexp_filter      = tx->dexp_filter;
+  RXTXprofile[txmode].tx.dexp_tau         = tx->dexp_tau;
+  RXTXprofile[txmode].tx.dexp_attack      = tx->dexp_attack;
+  RXTXprofile[txmode].tx.dexp_release     = tx->dexp_release;
+  RXTXprofile[txmode].tx.dexp_hold        = tx->dexp_hold;
+  RXTXprofile[txmode].tx.dexp_hyst        = tx->dexp_hyst;
+  RXTXprofile[txmode].tx.dexp_trigger     = tx->dexp_trigger;
+  RXTXprofile[txmode].tx.dexp_filter_low  = tx->dexp_filter_low;
+  RXTXprofile[txmode].tx.dexp_filter_high = tx->dexp_filter_high;
+  RXTXprofile[txmode].tx.dexp_exp         = tx->dexp_exp;
+  profiles_copy_rxtxprofile(txmode);
   //
   // Set all the parameters of the Downward Expander
   // Note the DEXP number must be between 0 and 3, so
@@ -2707,7 +2783,7 @@ void tx_set_dexp(const TRANSMITTER *tx) {
 void tx_xmit_captured_data_start(const TRANSMITTER *tx) {
   ASSERT_SERVER();
   //
-  // Turn OFF compression etc. without affecting the mode_settings
+  // Turn OFF compression etc. without affecting the RXTXprofile
   // and without changing the TX data
   //
   SetTXAEQRun(tx->id, 0);
@@ -2723,7 +2799,7 @@ void tx_xmit_captured_data_start(const TRANSMITTER *tx) {
 void tx_xmit_captured_data_end(const TRANSMITTER *tx) {
   ASSERT_SERVER();
   //
-  // Restore compression, mic gain etc. (without affecting the mode_settings)
+  // Restore compression, mic gain etc. (without affecting the RXTXprofile)
   // from the TX data
   //
   SetTXAEQRun(tx->id, tx->eq_enable);
@@ -2742,20 +2818,20 @@ void tx_set_equalizer(TRANSMITTER *tx) {
   }
 
   int txmode = vfo_get_tx_mode();
-  mode_settings[txmode].en_txeq = tx->eq_enable;
+  RXTXprofile[txmode].tx.en_eq = tx->eq_enable;
 
   for (int i = 0; i < 11; i++) {
-    mode_settings[txmode].tx_eq_freq[i] = tx->eq_freq[i];
-    mode_settings[txmode].tx_eq_gain[i] = tx->eq_gain[i];
+    RXTXprofile[txmode].tx.eq_freq[i] = tx->eq_freq[i];
+    RXTXprofile[txmode].tx.eq_gain[i] = tx->eq_gain[i];
   }
 
-  copy_mode_settings(txmode);
+  profiles_copy_rxtxprofile(txmode);
   g_idle_add(ext_vfo_update, NULL);
   SetTXAEQProfile(tx->id, 10, tx->eq_freq, tx->eq_gain);
   SetTXAEQRun(tx->id, tx->eq_enable);
 }
 
-void tx_set_fft_size(const TRANSMITTER *tx) {
+void tx_set_fft_params(const TRANSMITTER *tx) {
   if (radio_is_remote) {
     send_tx_fft(cl_sock_tcp, tx);
     return;
@@ -2771,8 +2847,8 @@ void tx_set_mic_gain(const TRANSMITTER *tx) {
   }
 
   int txmode = vfo_get_tx_mode();
-  mode_settings[txmode].mic_gain = tx->mic_gain;
-  copy_mode_settings(txmode);
+  RXTXprofile[txmode].tx.mic_gain = tx->mic_gain;
+  profiles_copy_rxtxprofile(txmode);
   SetTXAPanelGain1(tx->id, pow(10.0, tx->mic_gain * 0.05));
 }
 

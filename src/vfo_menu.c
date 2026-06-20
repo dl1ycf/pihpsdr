@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2016 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2016 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -204,14 +204,10 @@ void vfo_menu(GtkWidget *parent, int id) {
   }
 
   set_btn_state();
-  GtkWidget *rit_label = gtk_label_new("RIT step: ");
-  gtk_widget_set_name(rit_label, "boldlabel");
-  gtk_widget_set_halign(rit_label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), rit_label, 3, 2, 1, 1);
   GtkWidget *rit_b = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rit_b), NULL, "1 Hz");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rit_b), NULL, "10 Hz");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rit_b), NULL, "100 Hz");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rit_b), NULL, "RIT step: 1 Hz");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rit_b), NULL, "RIT step: 10 Hz");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rit_b), NULL, "RIT step: 100 Hz");
 
   switch (vfo[myvfo].rit_step) {
   case 1:
@@ -228,16 +224,14 @@ void vfo_menu(GtkWidget *parent, int id) {
   }
 
   g_signal_connect(rit_b, "changed", G_CALLBACK(rit_cb), NULL);
-  my_combo_attach(GTK_GRID(grid), rit_b, 4, 2, 1, 1);
-  GtkWidget *vfo_label = gtk_label_new("VFO step: ");
-  gtk_widget_set_name(vfo_label, "boldlabel");
-  gtk_widget_set_halign(vfo_label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), vfo_label, 3, 3, 1, 1);
+  my_combo_attach(GTK_GRID(grid), rit_b, 3, 2, 2, 1);
   GtkWidget *vfo_b = gtk_combo_box_text_new();
   int ind = vfo_id_get_stepindex(myvfo);
 
   for (i = 0; i < STEPS; i++) {
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(vfo_b), NULL, step_labels[i]);
+    char text[64];
+    snprintf(text, sizeof(text), "VFO step: %s", step_labels[i]);
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(vfo_b), NULL, text);
 
     if (i == ind) {
       gtk_combo_box_set_active (GTK_COMBO_BOX(vfo_b), i);
@@ -245,28 +239,24 @@ void vfo_menu(GtkWidget *parent, int id) {
   }
 
   g_signal_connect(vfo_b, "changed", G_CALLBACK(vfo_cb), NULL);
-  my_combo_attach(GTK_GRID(grid), vfo_b, 4, 3, 1, 1);
+  my_combo_attach(GTK_GRID(grid), vfo_b, 3, 3, 2, 1);
   row = 4;
   GtkWidget *lock_b = gtk_check_button_new_with_label("Lock VFOs");
-  gtk_widget_set_name(lock_b, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (lock_b), locked);
   gtk_grid_attach(GTK_GRID(grid), lock_b, 3, row, 2, 1);
   g_signal_connect(lock_b, "toggled", G_CALLBACK(lock_cb), NULL);
   row++;
   GtkWidget *duplex_b = gtk_check_button_new_with_label("Duplex");
-  gtk_widget_set_name(duplex_b, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (duplex_b), duplex);
   gtk_grid_attach(GTK_GRID(grid), duplex_b, 3, row, 2, 1);
   g_signal_connect(duplex_b, "toggled", G_CALLBACK(duplex_cb), NULL);
   row++;
   GtkWidget *ctun_b = gtk_check_button_new_with_label("CTUN");
-  gtk_widget_set_name(ctun_b, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ctun_b), vfo[myvfo].ctun);
   gtk_grid_attach(GTK_GRID(grid), ctun_b, 3, row, 2, 1);
   g_signal_connect(ctun_b, "toggled", G_CALLBACK(ctun_cb), NULL);
   row++;
   GtkWidget *split_b = gtk_check_button_new_with_label("Split");
-  gtk_widget_set_name(split_b, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (split_b), split);
   gtk_grid_attach(GTK_GRID(grid), split_b, 3, row, 2, 1);
   g_signal_connect(split_b, "toggled", G_CALLBACK(split_cb), NULL);

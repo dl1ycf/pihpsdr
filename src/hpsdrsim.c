@@ -1,5 +1,5 @@
 /* Copyright (C)
-* 2019 - Christoph van Wüllen, DL1YCF
+*  2019 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -162,7 +162,7 @@ static int              CommonMercuryFreq = -1;
 static int              freq = -1;
 static int              rx2gnd = -1;
 static int              TXDAC = 1;
-static double           p1noisefac = 6.92820;
+static double           p1noisefac = 6.92820;  // This gives a -150 dBm/Hz noise floor
 
 struct hl2word {
   unsigned char c1;
@@ -314,13 +314,13 @@ int main(int argc, char *argv[]) {
   noiseblank = 0;
   nb_pulse = 0;
   nb_width = 0;
-  const int MAC1 = 0x00;
-  const int MAC2 = 0x1C;
-  const int MAC3 = 0xC0;
-  const int MAC4 = 0xA2;
-  int MAC5 = 0x10;
-  const int MAC6 = 0xDD;  // P1
-  const int MAC6N = 0xEE; // P2
+  const int MAC1 = 0x54;
+  const int MAC2 = 0x10;
+  const int MAC3 = 0xEC;
+  const int MAC4 = 0x9B;
+  int MAC5 = 0x2D;
+  const int MAC6 = 0xE8;  // P1
+  const int MAC6N = 0xE6; // P2
   NDEVICE = NDEV_ORION2;
   ODEVICE = ODEV_ORION2;
 
@@ -884,11 +884,11 @@ int main(int argc, char *argv[]) {
         // Note that this interpolation causes weak "sidebands" at 48/96/... kHz distance (the
         // strongest ones at 48 kHz).
         double disample, dqsample, idelta, qdelta;
-        double sum;
         bp = buffer + 16; // skip 8 header and 8 SYNC/C&C bytes
-        sum = 0.0;
+        double txmax = 0.0;
 
         for (j = 0; j < 126; j++) {
+          double actmax;
           bp += 4; // skip audio samples
           sample  = (int)((signed char) * bp++) << 8;
           sample |= (int) ((signed char) * bp++ & 0xFF);
@@ -896,7 +896,9 @@ int main(int argc, char *argv[]) {
           sample  = (int)((signed char) * bp++) << 8;
           sample |= (int) ((signed char) * bp++ & 0xFF);
           dqsample = (double) sample * 0.000030517578125;
-          sum += (disample * disample + dqsample * dqsample);
+          actmax = (disample * disample + dqsample * dqsample);
+
+          if (actmax > txmax) { txmax = actmax; }
 
           switch (rate) {
           case 0:  // RX sample rate = TX sample rate = 48000
@@ -954,7 +956,7 @@ int main(int argc, char *argv[]) {
           if (j == 62) { bp += 8; } // skip 8 SYNC/C&C bytes of second block
         }
 
-        txlevel = txdrv_dbl * txdrv_dbl * sum * 0.0079365;
+        txlevel = txdrv_dbl * txdrv_dbl * txmax;
 
         // wrap-around of ring buffer
         if (txptr >= OLDRTXLEN) { txptr = 0; }
@@ -2029,30 +2031,24 @@ void *handler_ep6(void *arg) {
 void t_print(const char *format, ...) {
   va_list(args);
   va_start(args, format);
-  struct timespec ts;
-  double now;
-  static double starttime;
-  static int first = 1;
+  struct timeval tv;
   char line[1024];
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  now = ts.tv_sec + 1E-9 * ts.tv_nsec;
-
-  if (first) {
-    first = 0;
-    starttime = now;
-  }
-
+  gettimeofday(&tv, NULL);
   //
-  // After 11 days, the time reaches 999999.999 so we simply wrap around
+  // convert to hh:mm:ss.mmm. Wrap around at midnight
   //
-  if (now - starttime >= 999999.995) { starttime += 1000000.0; }
-
+  int sec = (int) (tv.tv_sec % 86400);
+  int hrs = sec / 3600;
+  sec -= 3600 * hrs;
+  int min = sec / 60;
+  sec -= 60 * min;
+  int ms = (int) (tv.tv_usec / 1000);
   //
   // We have to use vsnt_print to handle the varargs stuff
   // g_print() seems to be thread-safe but call it only ONCE.
   //
   vsnprintf(line, sizeof(line), format, args);
-  printf("%10.6f %s", now - starttime, line);
+  printf("%02d:%02d:%02d.%03d %s", hrs, min, sec, ms, line);
 }
 
 void t_perror(const char *string) {

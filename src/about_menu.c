@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2017 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2017 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -71,17 +71,17 @@ void about_menu(GtkWidget *parent) {
   row++;
   snprintf(text, sizeof(text), "piHPSDR by John Melton (G0ORX/N6LYT) and Christoph van Wüllen (DL1YCF)");
   label = gtk_label_new(text);
-  gtk_widget_set_name(label, "boldlabel");
+  gtk_widget_set_name(label, "med_txt");
   gtk_widget_set_halign(label, GTK_ALIGN_START);
   gtk_grid_attach(GTK_GRID(grid), label, 1, row, 19, 1);
   row++;
   snprintf(text, sizeof(text), "With help from:\n"
                                "  Steve Wilson, KA6S: RIGCTL (CAT over TCP)\n"
                                "  Laurence Barker, G8NJJ: USB OZY Support\n"
-                               "  Ken Hopper, N9VV: Testing and Documentation");
+                               "  Heiko Amft, DL1BZ: TCI");
   label = gtk_label_new(text);
   gtk_widget_set_halign(label, GTK_ALIGN_START);
-  gtk_widget_set_name(label, "small_button");
+  gtk_widget_set_name(label, "boldlabel");
   gtk_grid_attach(GTK_GRID(grid), label, 1, row, 19, 1);
   row++;
   snprintf(text, sizeof(text), "Build Version: %s\n"
@@ -93,7 +93,7 @@ void about_menu(GtkWidget *parent) {
            GetWDSPVersion() / 100, GetWDSPVersion() % 100);
   label = gtk_label_new(text);
   gtk_widget_set_halign(label, GTK_ALIGN_START);
-  gtk_widget_set_name(label, "small_button");
+  gtk_widget_set_name(label, "boldlabel");
   gtk_grid_attach(GTK_GRID(grid), label, 1, row, 19, 1);
   row++;
 
@@ -119,8 +119,8 @@ void about_menu(GtkWidget *parent) {
 
         if (have_saturn_xdma) {
           snprintf(text, sizeof(text), "Device: Saturn (via XDMA), Protocol %s, v%d.%d\n",
-                 radio->protocol == ORIGINAL_PROTOCOL ? "1" : "2",
-                 radio->software_version / 10, radio->software_version % 10);
+                   radio->protocol == ORIGINAL_PROTOCOL ? "1" : "2",
+                   radio->software_version / 10, radio->software_version % 10);
         } else {
           snprintf(text, sizeof(text), "Device: %s, Protocol %s, v%d.%d\n"
                                        "  Mac Address: %02X:%02X:%02X:%02X:%02X:%02X\n"
@@ -152,7 +152,7 @@ void about_menu(GtkWidget *parent) {
   }
 
   label = gtk_label_new(text);
-  gtk_widget_set_name(label, "small_button");
+  gtk_widget_set_name(label, "boldlabel");
   gtk_widget_set_halign(label, GTK_ALIGN_START);
   gtk_grid_attach(GTK_GRID(grid), label, 1, row, 19, 1);
   gtk_container_add(GTK_CONTAINER(content), grid);

@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -236,7 +236,6 @@ extern int clock_nanosleep(clockid_t __clock_id, int __flags,
 #endif
 
 static void keyer_close(void) {
-  t_print("%s\n", __func__);
   running = 0;
   // keyer thread may be sleeping, so wake it up
 #ifdef __APPLE__
@@ -254,7 +253,6 @@ static void keyer_close(void) {
 
 static int keyer_init(void) {
   int rc;
-  t_print("%s\n", __func__);
 #ifdef __APPLE__
   cw_event = apple_sem(0);
 #else

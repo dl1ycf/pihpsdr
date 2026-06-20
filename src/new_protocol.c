@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -54,9 +54,7 @@
 #include "radio.h"
 #include "receiver.h"
 #include "rigctl.h"
-#ifdef SATURN
-  #include "saturnmain.h"
-#endif
+#include "saturnmain.h"
 #include "toolbar.h"
 #include "transmitter.h"
 #include "vfo.h"
@@ -127,14 +125,12 @@ static uint32_t highprio_rcvd_sequence = 0;
 static uint32_t micsamples_sequence = 0;
 
 #ifdef __APPLE__
-  static sem_t *high_priority_sem_ready;
   static sem_t *high_priority_sem_buffer;
   static sem_t *mic_line_sem;
   static sem_t *iq_sem[MAX_DDC];
   static sem_t *txiq_sem;
   static sem_t *rxaudio_sem;
 #else
-  static sem_t high_priority_sem_ready;
   static sem_t high_priority_sem_buffer;
   static sem_t mic_line_sem;
   static sem_t iq_sem[MAX_DDC];
@@ -230,7 +226,12 @@ static volatile int iq_inptr[MAX_DDC] = { 0 };
 static volatile int iq_outptr[MAX_DDC] = { 0 };
 static volatile int iq_count[MAX_DDC] = { 0 };
 
-static mybuffer *high_priority_buffer;
+//static mybuffer *high_priority_buffer;
+
+#define HPRIORINGBUFLEN 64
+static volatile mybuffer *high_priority_ring[HPRIORINGBUFLEN];
+static volatile int high_priority_inptr = 0;
+static volatile int high_priority_outptr = 0;
 
 #define MICRINGBUFLEN 64
 static volatile mybuffer *mic_line_buffer[MICRINGBUFLEN];
@@ -270,12 +271,12 @@ static gpointer iq_thread(gpointer data);
 static void  process_iq_data(const unsigned char *buffer, RECEIVER *rx);
 static void  process_ps_iq_data(const unsigned char *buffer);
 static void process_div_iq_data(const unsigned char *buffer);
-static void  process_high_priority(void);
+static void  process_high_priority(const unsigned char *buffer);
 static void  process_mic_data(const unsigned char *buffer);
 
 //
 // Obtain a free buffer. If no one is available allocate
-// 5 new ones. The buffers are *never* released to the
+// extra ones. The buffers are *never* released to the
 // operating system, but marked free upon a protocol restart.
 //
 static mybuffer *get_my_buffer(void) {
@@ -294,10 +295,10 @@ static mybuffer *get_my_buffer(void) {
   }
 
   //
-  // no free buffer found, allocate some extra ones
+  // no free buffer found, allocate 64 extra ones
   // and add to the head of the list
   //
-  for (i = 0; i < 25; i++) {
+  for (i = 0; i < 64; i++) {
     bp = g_new(mybuffer, 1);
 
     if (!bp) {
@@ -310,7 +311,7 @@ static mybuffer *get_my_buffer(void) {
     }
   }
 
-  t_print("NewProtocol: number of buffers increased to %d\n", num_buf);
+  t_print("%s: number of buffers increased to %d\n", __func__, num_buf);
   // Mark the first buffer in list as used and return that one.
   buflist->free = 0;
   return buflist;
@@ -480,7 +481,6 @@ void new_protocol_init(void) {
   // (HighPrio, Mic, rxIQ) and spawn these threads.
   //
 #ifdef __APPLE__
-  high_priority_sem_ready = apple_sem(0);
   high_priority_sem_buffer = apple_sem(0);
   mic_line_sem = apple_sem(0);
 
@@ -489,7 +489,6 @@ void new_protocol_init(void) {
   }
 
 #else
-  (void)sem_init(&high_priority_sem_ready, 0, 0); // check return value!
   (void)sem_init(&high_priority_sem_buffer, 0, 0); // check return value!
   (void)sem_init(&mic_line_sem, 0, 0); // check return value!
 
@@ -514,9 +513,7 @@ void new_protocol_init(void) {
   // Some QoS stuff included here, and the buffer length for incoming UDP packets
   //
   if (have_saturn_xdma) {
-#ifdef SATURN
     saturn_init();
-#endif
   } else {
     data_socket = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
@@ -690,9 +687,7 @@ static void new_protocol_general(void) {
   //t_print("Alex Enable=%02X\n",general_buffer[59]);
   //t_print("new_protocol_general: %s:%d\n",inet_ntoa(base_addr.sin_addr),ntohs(base_addr.sin_port));
   if (have_saturn_xdma) {
-#ifdef SATURN
     saturn_handle_general_packet(general_buffer);
-#endif
   } else {
     if ((rc = sendto(data_socket, general_buffer, sizeof(general_buffer), 0, (struct sockaddr * )&base_addr,
                      base_addr_length)) < 0) {
@@ -1426,9 +1421,7 @@ static void new_protocol_high_priority(void) {
   //
   //t_print("new_protocol_high_priority: %s:%d\n",inet_ntoa(high_priority_addr.sin_addr),ntohs(high_priority_addr.sin_port));
   if (have_saturn_xdma) {
-#ifdef SATURN
     saturn_handle_high_priority(high_priority_buffer_to_radio);
-#endif
   } else {
     int rc;
 
@@ -1561,9 +1554,7 @@ static void new_protocol_transmit_specific(void) {
 
   //t_print("new_protocol_transmit_specific: %s:%d\n",inet_ntoa(transmitter_addr.sin_addr),ntohs(transmitter_addr.sin_port));
   if (have_saturn_xdma) {
-#ifdef SATURN
     saturn_handle_duc_specific(transmit_specific_buffer);
-#endif
   } else {
     int rc;
 
@@ -1665,9 +1656,7 @@ static void new_protocol_receive_specific(void) {
 
   //t_print("new_protocol_receive_specific: %s:%d enable=%02X\n",inet_ntoa(receiver_addr.sin_addr),ntohs(receiver_addr.sin_port),receive_specific_buffer[7]);
   if (have_saturn_xdma) {
-#ifdef SATURN
     saturn_handle_ddc_specific(receive_specific_buffer);
-#endif
   } else {
     int rc;
 
@@ -1776,16 +1765,14 @@ void new_protocol_menu_start(void) {
   // Mark all buffers free.
   //
   if (have_saturn_xdma) {
-#ifdef SATURN
     saturn_free_buffers();
-#endif
-  } else {
-    mybuffer *mybuf = buflist;
+  }
 
-    while (mybuf) {
-      mybuf->free = 1;
-      mybuf = mybuf->next;
-    }
+  mybuffer *mybuf = get_my_buffer();  // this will pre-allocate
+
+  while (mybuf) {
+    mybuf->free = 1;
+    mybuf = mybuf->next;
   }
 
   P2running = 1;
@@ -1853,9 +1840,7 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
     rxaudio_outptr = nptr;
 
     if (have_saturn_xdma) {
-#ifdef SATURN
       saturn_handle_speaker_audio(audiobuffer);
-#endif
     } else {
       //
       // We used to have a fixed sleeping time of 1000 usec, and
@@ -1960,9 +1945,7 @@ static gpointer new_protocol_txiq_thread(gpointer data) {
     txiq_outptr = nptr;
 
     if (have_saturn_xdma) {
-#ifdef SATURN
       saturn_handle_duc_iq(iqbuffer);
-#endif
     } else {
       //
       // The idea is to monitor how fast we actually send
@@ -2016,7 +1999,6 @@ static gpointer new_protocol_txiq_thread(gpointer data) {
 
 static gpointer new_protocol_thread(gpointer data) {
   ASSERT_SERVER(NULL);
-  t_print("new_protocol_thread\n");
 
   //
   // This thread should do as little work as possible and avoid any blocking.
@@ -2046,7 +2028,6 @@ static gpointer new_protocol_thread(gpointer data) {
     }
 
     if (bytesread < 0) {
-
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         mybuf->free = 1;
         continue;
@@ -2104,18 +2085,29 @@ static gpointer new_protocol_thread(gpointer data) {
 
 static gpointer high_priority_thread(gpointer data) {
   ASSERT_SERVER(NULL);
-  t_print("high_priority_thread\n");
+  int nptr;
+  int optr;
+  mybuffer *mybuf;
 
   while (1) {
 #ifdef __APPLE__
-    sem_post(high_priority_sem_ready);
     sem_wait(high_priority_sem_buffer);
 #else
-    sem_post(&high_priority_sem_ready);
     sem_wait(&high_priority_sem_buffer);
 #endif
-    process_high_priority();
-    high_priority_buffer->free = 1;
+    optr = high_priority_outptr;
+    nptr = optr + 1;
+
+    if (nptr >= HPRIORINGBUFLEN) { nptr = 0; }
+
+    mybuf = (mybuffer *) high_priority_ring[optr];
+    MEMORY_BARRIER;
+    high_priority_outptr = nptr;
+
+    if (mybuf->free) { continue; }
+
+    process_high_priority(mybuf->buffer);
+    mybuf->free = 1;
   }
 
   return NULL;
@@ -2123,7 +2115,6 @@ static gpointer high_priority_thread(gpointer data) {
 
 static gpointer mic_line_thread(gpointer data) {
   ASSERT_SERVER(NULL);
-  t_print("mic_line_thread\n");
   mybuffer *mybuf;
   int nptr;
 
@@ -2164,17 +2155,32 @@ static gpointer mic_line_thread(gpointer data) {
 //
 void saturn_post_high_priority(mybuffer *buffer) {
   ASSERT_SERVER();
+  int iptr;
+  int nptr;
+
+  if (!P2running) {
+    buffer->free = 1;
+    return;
+  }
+
+  iptr = high_priority_inptr;
+  nptr = iptr + 1;
+
+  if (nptr >= HPRIORINGBUFLEN) { nptr = 0; }
+
+  if (nptr != high_priority_outptr) {
+    high_priority_ring[iptr] = buffer;
+    MEMORY_BARRIER;
+    high_priority_inptr = nptr;
 #ifdef __APPLE__
-  sem_wait(high_priority_sem_ready);
+    sem_post(high_priority_sem_buffer);
 #else
-  sem_wait(&high_priority_sem_ready);
+    sem_post(&high_priority_sem_buffer);
 #endif
-  high_priority_buffer = buffer;
-#ifdef __APPLE__
-  sem_post(high_priority_sem_buffer);
-#else
-  sem_post(&high_priority_sem_buffer);
-#endif
+  } else {
+    t_print("%s: ring buffer overflow.\n", __func__);
+    buffer->free = 1;
+  }
 }
 
 void saturn_post_micaudio(int bytesread, mybuffer *mybuf) {
@@ -2205,7 +2211,7 @@ void saturn_post_micaudio(int bytesread, mybuffer *mybuf) {
 #endif
     mic_inptr = nptr;
   } else {
-    t_print("%s: buffer overflow.\n", __func__);
+    t_print("%s: ring buffer overflow.\n", __func__);
     mybuf->free = 1;
     // skip 16 mic buffers (21 msec)
     mic_count = -16;
@@ -2237,11 +2243,12 @@ void saturn_post_iq_data(int ddc, mybuffer *mybuf) {
   //
   uint32_t sequence = ((uint32_t)(mybuf->buffer[0] & 0xFF) << 24)
                       + ((uint32_t)(mybuf->buffer[1] & 0xFF) << 16)
-                      + ((uint32_t)(mybuf->buffer[2] & 0xFF) <<  8)
-                      + ((uint32_t)(mybuf->buffer[3] & 0xFF)      );
+                      + ((uint32_t)(mybuf->buffer[2] & 0xFF) << 8)
+                      + ((uint32_t)(mybuf->buffer[3] & 0xFF));
 
   if (ddc_sequence[ddc] != sequence) {
-    t_print("%s: DDC(%d) sequence error: expected %lu got %lu\n", __func__, ddc, ddc_sequence[ddc], sequence);
+    t_print("%s: DDC(%d) sequence error: expected %lu got %lu\n", __func__, ddc,
+            (unsigned long) ddc_sequence[ddc], (unsigned long) sequence);
     sequence_errors++;
   }
 
@@ -2261,7 +2268,7 @@ void saturn_post_iq_data(int ddc, mybuffer *mybuf) {
     sem_post(&iq_sem[ddc]);
 #endif
   } else {
-    t_print("%s: DDC(%d) buffer overflow.\n", __func__, ddc);
+    t_print("%s: DDC(%d) ring buffer overflow.\n", __func__, ddc);
     mybuf->free = 1;
     // skip 128 incoming buffers
     iq_count[ddc] = -128;
@@ -2275,11 +2282,10 @@ static gpointer iq_thread(gpointer data) {
   // TEMPORARY: additional sequence check here
   //
   int nptr, optr;
-  long sequence;
-  long expected_sequence = 0;
+  uint32_t sequence;
+  uint32_t expected_sequence = 0;
   volatile mybuffer *mybuf;
   const unsigned char *buffer;
-  t_print("iq_thread: ddc=%d\n", ddc);
 
   //
   // At a regular pace, a buffer with 238 samples arrives
@@ -2310,12 +2316,16 @@ static gpointer iq_thread(gpointer data) {
     //
     //  TEMP: perform additional sequence check
     //
-    sequence = ((buffer[0] & 0xFF) << 24) + ((buffer[1] & 0xFF) << 16) + ((buffer[2] & 0xFF) << 8) + (buffer[3] & 0xFF);
+    sequence = ((uint32_t)(buffer[0] & 0xFF) << 24)
+               + ((uint32_t)(buffer[1] & 0xFF) << 16)
+               + ((uint32_t)(buffer[2] & 0xFF) << 8)
+               + ((uint32_t)(buffer[3] & 0xFF));
 
     if (expected_sequence == 0) { expected_sequence = sequence; }
 
     if (sequence != expected_sequence) {
-      t_print("%s: DDC(%d) sequence error: expected %ld got %ld\n", __func__, ddc, expected_sequence, sequence);
+      t_print("%s: DDC(%d) sequence error: expected %ul got %ul\n", __func__, ddc,
+              (unsigned long) expected_sequence, (unsigned long) sequence);
       sequence_errors++;
     }
 
@@ -2550,7 +2560,7 @@ static void process_ps_iq_data(const unsigned char *buffer) {
   }
 }
 
-static void process_high_priority(void) {
+static void process_high_priority(const unsigned char *buffer) {
   ASSERT_SERVER();
   uint32_t sequence;
   int previous_ptt;
@@ -2570,11 +2580,11 @@ static void process_high_priority(void) {
   static unsigned int ex_acc = 0;
   static unsigned int adc0_acc = 0;
   static unsigned int adc1_acc = 0;
-  const unsigned char *buffer = high_priority_buffer->buffer;
   sequence = ((buffer[0] & 0xFF) << 24) + ((buffer[1] & 0xFF) << 16) + ((buffer[2] & 0xFF) << 8) + (buffer[3] & 0xFF);
 
   if (sequence != highprio_rcvd_sequence) {
-    t_print("HighPrio SeqErr Expected=%lu Seen=%lu\n", highprio_rcvd_sequence, sequence);
+    t_print("HighPrio SeqErr Expected=%lu Seen=%lu\n", (unsigned long) highprio_rcvd_sequence,
+            (unsigned long) sequence);
     highprio_rcvd_sequence = sequence;
     sequence_errors++;
   }
@@ -2615,6 +2625,9 @@ static void process_high_priority(void) {
   ex_acc = (15 * ex_acc) / 16  + val;
   val = ((buffer[14] & 0xFF) << 8) | (buffer[15] & 0xFF);
   fwd_acc = (15 * fwd_acc) / 16 + val;
+
+  if (val > alex_forward_max) { alex_forward_max = val; }
+
   val = ((buffer[22] & 0xFF) << 8) | (buffer[23] & 0xFF);
   rev_acc = (15 * rev_acc) / 16 + val;
   val = ((buffer[55] & 0xFF) << 8) | (buffer[56] & 0xFF);
@@ -2659,6 +2672,8 @@ static void process_high_priority(void) {
   }
 
   if (previous_ptt != hpsdr_ptt) {
+    // TODO: what if hpsdr_ptt goes to zero while we
+    //       are tuning or two-toning?
     g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(hpsdr_ptt));
   }
 
@@ -2699,7 +2714,7 @@ static void process_mic_data(const unsigned char *buffer) {
   sequence = ((buffer[0] & 0xFF) << 24) + ((buffer[1] & 0xFF) << 16) + ((buffer[2] & 0xFF) << 8) + (buffer[3] & 0xFF);
 
   if (sequence != micsamples_sequence) {
-    t_print("MicSample SeqErr Expected=%lu Seen=%lu\n", micsamples_sequence, sequence);
+    t_print("MicSample SeqErr Expected=%lu Seen=%lu\n", (unsigned long) micsamples_sequence, (unsigned long) sequence);
     sequence_errors++;
   }
 
@@ -2767,7 +2782,7 @@ void new_protocol_tx_audio_samples(double sample) {
 #endif
       rxaudio_count = 0;
     } else {
-      t_print("%s: buffer overflow\n", __func__);
+      t_print("%s: ring buffer overflow\n", __func__);
       // skip some audio samples
       rxaudio_count = -4096;
     }
@@ -2825,7 +2840,7 @@ void new_protocol_audio_samples(double left, double right) {
 #endif
       rxaudio_count = 0;
     } else {
-      t_print("%s: buffer overflow\n", __func__);
+      t_print("%s: ring buffer overflow\n", __func__);
       // skip some audio samples
       rxaudio_count = -4096;
     }

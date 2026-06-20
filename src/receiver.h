@@ -70,7 +70,9 @@ typedef struct _receiver {
   int display_waterfall;
   guint update_timer_id;
   int    smetermode;
-  double meter;
+  double rxlvl;
+  double curragc;
+  double currout;
 
   //
   // Encodings for "QRM fighters"
@@ -90,8 +92,12 @@ typedef struct _receiver {
   //
   int nb;
   int nr;
-  int anf;
   int snb;
+  int anf;
+  int anf_taps;      // Number of FIR Taps in ANF (64)
+  int anf_delay;     // ANF delay samples (16)
+  double anf_gain;   // ANF gain (0.0001)
+  double anf_leakage;
 
   //
   // NR/NR2/ANF: position
@@ -117,6 +123,12 @@ typedef struct _receiver {
   int nr2_post_factor;
   int nr2_post_rate;
   int nr2_post_taper;
+  // --- new feature fields ---
+  int    nbp_window;         // Bandpass window: 0=4-term BH 1=7-term BH
+  int agc_custom_attack;  // ms
+  int agc_custom_decay;   // ms
+  int agc_custom_hang;    // ms
+  int agc_custom_slope;   // *10 for WDSP
 
   //
   // Noise blanker parameters. These parameters have
@@ -165,6 +177,9 @@ typedef struct _receiver {
 
   int filter_low;
   int filter_high;
+  int sam_sb_mode;   // SAM sidebands: 0=both 1=LSB 2=USB
+  int fm_limiter;    // FM volume limiter on/off
+  double fm_limiter_gain; // FM limiter gain (0-30)
 
   int width;
   int height;
@@ -305,10 +320,10 @@ typedef struct _receiver {
 extern RECEIVER *rx_create_pure_signal_receiver(int id, int sample_rate, int pixels, int fps);
 extern RECEIVER *rx_create_receiver(int id, int width, int height);
 
-extern gboolean rx_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer data);
-extern gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data);
-extern gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpointer data);
-extern gboolean rx_scroll_event(GtkWidget *widget, const GdkEventScroll *event, gpointer data);
+extern gboolean rx_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer data, int from);
+extern gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data, int from);
+extern gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpointer data, int from);
+extern gboolean rx_scroll_event(GtkWidget *widget, const GdkEventScroll *event, gpointer data, int from);
 
 extern void   rx_add_iq_samples(RECEIVER *rx, double i_sample, double q_sample);
 extern void   rx_add_div_iq_samples(RECEIVER *rx, double i0, double q0, double i1, double q1);
@@ -319,7 +334,7 @@ extern void   rx_close(const RECEIVER *rx);
 extern void   rx_create_analyzer(RECEIVER *rx);
 extern void   rx_filter_changed(RECEIVER *rx);
 extern void   rx_get_pixels(RECEIVER *rx);
-extern double rx_get_smeter(const RECEIVER *rx);
+extern void   rx_get_meter(RECEIVER *rx);
 extern void   rx_frequency_changed(const RECEIVER *rx);
 extern void   rx_mode_changed(RECEIVER *rx);
 extern void   rx_off(const RECEIVER *rx, int wait);
@@ -340,10 +355,11 @@ extern void   rx_set_bandpass(const RECEIVER *rx);
 extern void   rx_set_cw_peak(const RECEIVER *rx, int state, double freq);
 extern void   rx_set_detector(const RECEIVER *rx);
 extern void   rx_set_deviation(const RECEIVER *rx);
+extern void   rx_set_sam_mode(const RECEIVER *rx);
 extern void   rx_set_displaying(RECEIVER *rx);
 extern void   rx_set_equalizer(RECEIVER *rx);
-extern void   rx_set_fft_latency(const RECEIVER *rx);
-extern void   rx_set_fft_size(RECEIVER *rx);
+extern void   rx_set_fm_limiter(const RECEIVER *rx);
+extern void   rx_set_fft_params(RECEIVER *rx);
 extern void   rx_set_filter(RECEIVER *rx);
 extern void   rx_set_framerate(RECEIVER *rx);
 extern void   rx_set_frequency(const RECEIVER *rx, long long frequency);

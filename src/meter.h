@@ -22,14 +22,8 @@
 
 #include <gtk/gtk.h>
 
-#include "receiver.h"
-
-enum _meter_type_enum {
-  SMETER = 0,
-  POWER
-};
-
 extern GtkWidget* meter_init(int width, int height);
-extern void meter_update(RECEIVER *rx, int meter_type, double value, double alc, double swr);
+extern void rxmeter_update(double rxlvl, double peak, double gain, double out);
+extern void txmeter_update(double pwr, double alc, double swr, double mic, double out);
 
 #endif

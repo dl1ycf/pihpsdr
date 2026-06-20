@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2017 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2017 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@
 #include "new_menu.h"
 #include "new_protocol.h"
 #include "old_protocol.h"
+#include "profiles.h"
 #include "property.h"
 #include "radio.h"
 #include "receiver.h"
@@ -46,15 +47,21 @@
 #ifdef SOAPYSDR
   #include "soapy_protocol.h"
 #endif
+#ifdef TCI
+  #include "tci.h"
+  #include "tci_audio.h"
+#endif
 #include "transmitter.h"
 #include "vfo.h"
+#include "vox.h"
 #include "waterfall.h"
 
 #define min(x,y) (x<y?x:y)
 #define max(x,y) (x<y?y:x)
 
-static int last_x;
-static gboolean has_moved = FALSE;
+static int last_x, last_y;
+static gboolean has_movedx = FALSE;
+static gboolean has_movedy = FALSE;
 static gboolean pressed = FALSE;
 static gboolean making_active = FALSE;
 
@@ -69,13 +76,14 @@ static void rx_weak_notify(gpointer data, GObject  *obj) {
 }
 
 // cppcheck-suppress constParameterPointer
-gboolean rx_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer data) {
+gboolean rx_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer data, int from) {
   const RECEIVER *rx = (RECEIVER *)data;
 
   if (rx == active_receiver) {
     if (event->button == GDK_BUTTON_PRIMARY) {
       last_x = (int)(event->x + 0.5);
-      has_moved = FALSE;
+      last_y = (int)(event->y + 0.5);
+      has_movedx = has_movedy = FALSE;
       pressed = TRUE;
     } else if (event->button == GDK_BUTTON_SECONDARY) {
       g_idle_add(ext_start_rx_menu, NULL);
@@ -115,7 +123,7 @@ void rx_set_active(RECEIVER *rx) {
 }
 
 // cppcheck-suppress constParameterPointer
-gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data) {
+gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data, int from) {
   RECEIVER *rx = (RECEIVER *)data;
 
   if (making_active) {
@@ -128,13 +136,16 @@ gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpoin
   } else {
     if (pressed) {
       int x = (int)(event->x + 0.5);
+      int y = (int)(event->y + 0.5);
+      int dy = (y - last_y) / 5;
 
       if (event->button == GDK_BUTTON_PRIMARY) {
         int id = active_receiver->id;
 
-        if (has_moved) {
+        if (has_movedx) {
           // drag
           vfo_id_move(id, (long long)((x - last_x)*rx->cB), vfo_snap);
+          last_x = x;
         } else {
           //
           // Calculate target frequency and move to that one
@@ -149,7 +160,19 @@ gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpoin
           vfo_id_move_to(id, f, vfo_snap);
         }
 
-        last_x = x;
+        if (has_movedy && from == 0 && dy) {
+          rx->panadapter_low += dy;
+
+          //
+          // Keep value within reasonable bounds
+          //
+          if (rx->panadapter_low < -160) { rx->panadapter_low = -160; }
+
+          if (rx->panadapter_low > rx->panadapter_high - 50) { rx->panadapter_low = rx->panadapter_high - 50; }
+
+          last_y = y;
+        }
+
         pressed = FALSE;
       }
     }
@@ -158,10 +181,10 @@ gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpoin
   return TRUE;
 }
 
-gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpointer data) {
+gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpointer data, int from) {
   int x, y;
   GdkModifierType state;
-  const RECEIVER *rx = (RECEIVER *)data;
+  RECEIVER *rx = (RECEIVER *)data;
   //
   // This solves a problem observed since with GTK about mid-2023:
   // when re-focusing a (sub-)menu window after it has lost focus,
@@ -201,14 +224,30 @@ gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpoint
     // - the first "move" to be accepted after a "press" must lead us
     //   at least 2 pixels away from the original position.
     //
-    int moved = x - last_x;
+    int dx = x - last_x;
+    int dy = (y - last_y) / 5;
 
-    if (moved != 0) {
-      if (has_moved || moved < -1 || moved > 1) {
+    if (dx != 0) {
+      if (has_movedx || dx < -1 || dx > 1) {
         int id = active_receiver->id;
-        vfo_id_move(id, (long long)((double)moved * rx->cB), FALSE);
+        vfo_id_move(id, (long long)((double)dx * rx->cB), FALSE);
         last_x = x;
-        has_moved = TRUE;
+        has_movedx = TRUE;
+      }
+    }
+
+    if (dy != 0 && from == 0) {
+      if (has_movedy || dy < -1 || dy > 1) {
+        rx->panadapter_low += dy;
+        last_y = y;
+        has_movedy = TRUE;
+
+        //
+        // Keep value within reasonable bounds
+        //
+        if (rx->panadapter_low < -160) { rx->panadapter_low = -160; }
+
+        if (rx->panadapter_low > rx->panadapter_high - 50) { rx->panadapter_low = rx->panadapter_high - 50; }
       }
     }
   }
@@ -217,7 +256,7 @@ gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpoint
 }
 
 // cppcheck-suppress constParameterPointer
-gboolean rx_scroll_event(GtkWidget *widget, const GdkEventScroll *event, gpointer data) {
+gboolean rx_scroll_event(GtkWidget *widget, const GdkEventScroll *event, gpointer data, int from) {
   int step = (event->state & GDK_SHIFT_MASK) ? 10 : 1;
 
   //
@@ -280,11 +319,16 @@ void rx_save_state(const RECEIVER *rx) {
     SetPropF1("receiver.%d.volume", rx->id,                     rx->volume);
     SetPropI1("receiver.%d.agc", rx->id,                        rx->agc);
     SetPropF1("receiver.%d.agc_gain", rx->id,                   rx->agc_gain);
-    SetPropF1("receiver.%d.agc_slope", rx->id,                  rx->agc_slope);
     SetPropF1("receiver.%d.agc_hang_threshold", rx->id,         rx->agc_hang_threshold);
     SetPropI1("receiver.%d.nb", rx->id,                         rx->nb);
     SetPropI1("receiver.%d.nr", rx->id,                         rx->nr);
     SetPropI1("receiver.%d.anf", rx->id,                        rx->anf);
+    SetPropI1("receiver.%d.anf_taps", rx->id,                   rx->anf_taps);
+    SetPropI1("receiver.%d.anf_delay", rx->id,                  rx->anf_delay);
+    SetPropF1("receiver.%d.anf_leakage", rx->id,                rx->anf_leakage);
+    SetPropI1("receiver.%d.fm_limiter", rx->id,                 rx->fm_limiter);
+    SetPropF1("receiver.%d.fm_limiter_gain", rx->id,            rx->fm_limiter_gain);
+    SetPropI1("receiver.%d.sam_sb_mode", rx->id,                rx->sam_sb_mode);
     SetPropI1("receiver.%d.snb", rx->id,                        rx->snb);
     SetPropI1("receiver.%d.nr_agc", rx->id,                     rx->nr_agc);
     SetPropI1("receiver.%d.nr2_gain_method", rx->id,            rx->nr2_gain_method);
@@ -293,6 +337,11 @@ void rx_save_state(const RECEIVER *rx) {
     SetPropF1("receiver.%d.nr2_trained_t2", rx->id,             rx->nr2_trained_t2);
     SetPropI1("receiver.%d.nr2_post", rx->id,                   rx->nr2_post);
     SetPropI1("receiver.%d.nr2_post_taper", rx->id,             rx->nr2_post_taper);
+    SetPropI1("receiver.%d.nbp_window", rx->id,                 rx->nbp_window);
+    SetPropI1("receiver.%d.agc_custom_attack", rx->id,          rx->agc_custom_attack);
+    SetPropI1("receiver.%d.agc_custom_decay", rx->id,           rx->agc_custom_decay);
+    SetPropI1("receiver.%d.agc_custom_hang", rx->id,            rx->agc_custom_hang);
+    SetPropI1("receiver.%d.agc_custom_slope", rx->id,           rx->agc_custom_slope);
     SetPropI1("receiver.%d.nr2_post_nlevel", rx->id,            rx->nr2_post_nlevel);
     SetPropI1("receiver.%d.nr2_post_factor", rx->id,            rx->nr2_post_factor);
     SetPropI1("receiver.%d.nr2_post_rate", rx->id,              rx->nr2_post_rate);
@@ -386,11 +435,17 @@ void rx_restore_state(RECEIVER *rx) {
     GetPropF1("receiver.%d.volume", rx->id,                     rx->volume);
     GetPropI1("receiver.%d.agc", rx->id,                        rx->agc);
     GetPropF1("receiver.%d.agc_gain", rx->id,                   rx->agc_gain);
-    GetPropF1("receiver.%d.agc_slope", rx->id,                  rx->agc_slope);
     GetPropF1("receiver.%d.agc_hang_threshold", rx->id,         rx->agc_hang_threshold);
     GetPropI1("receiver.%d.nb", rx->id,                         rx->nb);
     GetPropI1("receiver.%d.nr", rx->id,                         rx->nr);
     GetPropI1("receiver.%d.anf", rx->id,                        rx->anf);
+    GetPropI1("receiver.%d.anf", rx->id,                        rx->anf);
+    GetPropI1("receiver.%d.anf_taps", rx->id,                   rx->anf_taps);
+    GetPropI1("receiver.%d.anf_delay", rx->id,                  rx->anf_delay);
+    GetPropF1("receiver.%d.anf_leakage", rx->id,                rx->anf_leakage);
+    GetPropI1("receiver.%d.fm_limiter", rx->id,                 rx->fm_limiter);
+    GetPropF1("receiver.%d.fm_limiter_gain", rx->id,            rx->fm_limiter_gain);
+    GetPropI1("receiver.%d.sam_sb_mode", rx->id,                rx->sam_sb_mode);
     GetPropI1("receiver.%d.snb", rx->id,                        rx->snb);
     GetPropI1("receiver.%d.nr_agc", rx->id,                     rx->nr_agc);
     GetPropI1("receiver.%d.nr2_gain_method", rx->id,            rx->nr2_gain_method);
@@ -399,6 +454,11 @@ void rx_restore_state(RECEIVER *rx) {
     GetPropF1("receiver.%d.nr2_trained_t2", rx->id,             rx->nr2_trained_t2);
     GetPropI1("receiver.%d.nr2_post", rx->id,                   rx->nr2_post);
     GetPropI1("receiver.%d.nr2_post_taper", rx->id,             rx->nr2_post_taper);
+    GetPropI1("receiver.%d.nbp_window", rx->id,                 rx->nbp_window);
+    GetPropI1("receiver.%d.agc_custom_attack", rx->id,          rx->agc_custom_attack);
+    GetPropI1("receiver.%d.agc_custom_decay", rx->id,           rx->agc_custom_decay);
+    GetPropI1("receiver.%d.agc_custom_hang", rx->id,            rx->agc_custom_hang);
+    GetPropI1("receiver.%d.agc_custom_slope", rx->id,           rx->agc_custom_slope);
     GetPropI1("receiver.%d.nr2_post_nlevel", rx->id,            rx->nr2_post_nlevel);
     GetPropI1("receiver.%d.nr2_post_factor", rx->id,            rx->nr2_post_factor);
     GetPropI1("receiver.%d.nr2_post_rate", rx->id,              rx->nr2_post_rate);
@@ -513,7 +573,8 @@ static int rx_update_display(gpointer data) {
       int b  = vfo[id].band;
       const BAND *band = band_get_band(b);
       int calib = rx_gain_calibration - band->gaincalib;
-      double level = rx_get_smeter(rx);
+      rx_get_meter(rx);
+      double level = rx->rxlvl;
       level += (double)calib + (double)adc[rx->adc].attenuation - adc[rx->adc].gain;
 
       if (filter_board == ALEX && rx->adc == 0) {
@@ -528,8 +589,8 @@ static int rx_update_display(gpointer data) {
         level -= (double)(20 * adc[rx->adc].preamp);
       }
 
-      rx->meter = level;
-      meter_update(rx, SMETER, rx->meter, 0.0, 0.0);
+      rx->rxlvl = level;
+      rxmeter_update(rx->rxlvl, vox_get_peak(), rx->curragc, rx->currout);
     }
 
     g_mutex_lock(&rx->display_mutex);
@@ -777,6 +838,13 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->nb = 0;
   rx->nr = 0;
   rx->anf = 0;
+  rx->anf_taps = 64;
+  rx->anf_delay = 16;
+  rx->anf_gain = -80.0;        // we use dB, that is 20*log10(WdspValue)
+  rx->anf_leakage = -20.0;     // we use dB, that is 20*log10(WdspValue)
+  rx->sam_sb_mode = 0;         // use both sidebands
+  rx->fm_limiter = 0;
+  rx->fm_limiter_gain = 10.0;  // This is already in dB in WDSP
   rx->snb = 0;
   rx->nr_agc = 1;
   rx->nr2_gain_method = 2;
@@ -788,6 +856,12 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->nr2_post_rate = 5;
   rx->nr2_trained_threshold = -0.5; // Threshold if gain method is "Trained"
   rx->nr2_trained_t2 = 0.2;         // t2 value for trained threshold
+  // New feature defaults
+  rx->nbp_window        = 1;      // 7-term BH window
+  rx->agc_custom_attack = 1;
+  rx->agc_custom_decay  = 250;
+  rx->agc_custom_hang   = 250;
+  rx->agc_custom_slope  = 35;    // 3.5 dB slope (*10)
   //
   // It has been reported that the piHPSDR noise blankers do not function
   // satisfactorily. I could reproduce this after building an "impulse noise source"
@@ -818,7 +892,6 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
 
   rx->agc = AGC_MEDIUM;
   rx->agc_gain = 80.0;
-  rx->agc_slope = 35.0;
   rx->agc_hang_threshold = 0.0;
   rx->local_audio = 0;
   g_mutex_init(&rx->audio_mutex);
@@ -920,19 +993,17 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   //
   // Some WDSP settings that are never changed
   //
-  SetRXABandpassWindow(rx->id, 1);    // use 7-term BlackmanHarris Window
   SetRXABandpassRun(rx->id, 1);       // enable Bandbass
-  SetRXAAMDSBMode(rx->id, 0);         // use both sidebands in SAM
   SetRXAPanelRun(rx->id, 1);          // turn on RXA panel
   SetRXAPanelSelect(rx->id, 3);       // use both I and Q input
-
   //
   // Apply initial settings
   //
-  rx_set_fft_size(rx);  // This will adjust min notch width
+  rx_set_fm_limiter(rx);
+  rx_set_sam_mode(rx);
+  rx_set_fft_params(rx);  // This will adjust min notch width
   rx_set_noise(rx);
   rx_set_notch(rx);
-  rx_set_fft_latency(rx);
   rx_set_offset(rx);
   rx_set_af_gain(rx);
   rx_set_af_binaural(rx);
@@ -1043,6 +1114,15 @@ void rx_frequency_changed(const RECEIVER *rx) {
   }
 }
 
+void rx_set_sam_mode(const RECEIVER *rx) {
+  if (radio_is_remote) {
+    send_sam_mode(cl_sock_tcp, rx);
+    return;
+  }
+
+  SetRXAAMDSBMode(rx->id, rx->sam_sb_mode);
+}
+
 void rx_filter_changed(RECEIVER *rx) {
   ASSERT_SERVER();
   rx_set_filter(rx);
@@ -1145,6 +1225,10 @@ static void rx_process_buffer(RECEIVER *rx) {
       }
     }
 
+    if (remoteclient.running) {
+      remote_rxaudio(rx, left_sample);
+    }
+
     if (xmit && mute_rx_while_transmitting) {
       left_sample = 0.0;
       right_sample = 0.0;
@@ -1172,9 +1256,13 @@ static void rx_process_buffer(RECEIVER *rx) {
       audio_write(rx, left_sample, right_sample);
     }
 
-    if (remoteclient.running) {
-      remote_rxaudio(rx, left_sample);
+#ifdef TCI
+
+    if (tci_audio_rx_active) {
+      tci_audio_rx_sample(rx, left_sample, right_sample);
     }
+
+#endif
 
     if (rx == active_receiver) {
       switch (protocol) {
@@ -1509,8 +1597,8 @@ void rx_get_pixels(RECEIVER *rx) {
   rx->pixels_available = rc;
 }
 
-double rx_get_smeter(const RECEIVER *rx) {
-  ASSERT_SERVER(0.0);
+void rx_get_meter(RECEIVER *rx) {
+  ASSERT_SERVER();
   double level;
 
   switch (rx->smetermode) {
@@ -1524,7 +1612,13 @@ double rx_get_smeter(const RECEIVER *rx) {
     break;
   }
 
-  return level;
+  rx->rxlvl = level;
+  rx->curragc = -GetRXAMeter(rx->id, RXA_AGC_GAIN);
+  rx->currout = GetRXAMeter(rx->id, RXA_AGC_AV);
+
+  if (rx->agc == AGC_OFF) { rx->curragc = 0.0; }
+
+  if (rx->agc == AGC_FIXED) { rx->curragc = rx->agc_gain; }
 }
 
 void rx_create_analyzer(RECEIVER *rx) {
@@ -1721,14 +1815,14 @@ void rx_set_af_gain(const RECEIVER *rx) {
   //
   if (id == 0) {
     int mode = vfo[id].mode;
-    mode_settings[mode].rxvolume = rx->volume;
-    copy_mode_settings(mode);
+    RXTXprofile[mode].rx.volume = rx->volume;
+    profiles_copy_rxtxprofile(mode);
   }
 }
 
 void rx_set_agc(RECEIVER *rx) {
   if (radio_is_remote) {
-    send_agc_gain(cl_sock_tcp, rx);
+    send_agc(cl_sock_tcp, rx);
     return;
   }
 
@@ -1738,40 +1832,66 @@ void rx_set_agc(RECEIVER *rx) {
   // and store these in rx.
   //
   int id = rx->id;
-  SetRXAAGCMode(id, rx->agc);
-  SetRXAAGCSlope(id, rx->agc_slope);
-  SetRXAAGCTop(id, rx->agc_gain);
 
   switch (rx->agc) {
   case AGC_OFF:
+    SetRXAAGCFixed(id, 0.0);
+    SetRXAAGCMode(id, 0);
     break;
 
   case AGC_LONG:
     SetRXAAGCAttack(id, 2);
     SetRXAAGCHang(id, 2000);
     SetRXAAGCDecay(id, 2000);
-    SetRXAAGCHangThreshold(id, (int)rx->agc_hang_threshold);
+    SetRXAAGCHangThreshold(id, rx->agc_hang_threshold);
+    SetRXAAGCSlope(id, 35);
+    SetRXAAGCTop(id, rx->agc_gain);
+    SetRXAAGCMode(id, 5);
     break;
 
   case AGC_SLOW:
     SetRXAAGCAttack(id, 2);
     SetRXAAGCHang(id, 1000);
     SetRXAAGCDecay(id, 500);
-    SetRXAAGCHangThreshold(id, (int)rx->agc_hang_threshold);
+    SetRXAAGCHangThreshold(id, rx->agc_hang_threshold);
+    SetRXAAGCSlope(id, 35);
+    SetRXAAGCTop(id, rx->agc_gain);
+    SetRXAAGCMode(id, 5);
     break;
 
   case AGC_MEDIUM:
     SetRXAAGCAttack(id, 2);
     SetRXAAGCHang(id, 0);
     SetRXAAGCDecay(id, 250);
-    SetRXAAGCHangThreshold(id, 100);
+    SetRXAAGCHangThreshold(id, 0);
+    SetRXAAGCSlope(id, 35);
+    SetRXAAGCTop(id, rx->agc_gain);
+    SetRXAAGCMode(id, 5);
     break;
 
   case AGC_FAST:
     SetRXAAGCAttack(id, 2);
     SetRXAAGCHang(id, 0);
     SetRXAAGCDecay(id, 50);
-    SetRXAAGCHangThreshold(id, 100);
+    SetRXAAGCHangThreshold(id, 0);
+    SetRXAAGCSlope(id, 35);
+    SetRXAAGCTop(id, rx->agc_gain);
+    SetRXAAGCMode(id, 5);
+    break;
+
+  case AGC_CUSTOM:
+    SetRXAAGCAttack(id, rx->agc_custom_attack);
+    SetRXAAGCHang(id, rx->agc_custom_hang);
+    SetRXAAGCDecay(id, rx->agc_custom_decay);
+    SetRXAAGCHangThreshold(id, rx->agc_hang_threshold);
+    SetRXAAGCSlope(id, rx->agc_custom_slope);
+    SetRXAAGCTop(id, rx->agc_gain);
+    SetRXAAGCMode(id, 5);
+    break;
+
+  case AGC_FIXED:
+    SetRXAAGCFixed(id, rx->agc_gain);
+    SetRXAAGCMode(id, 0);
     break;
   }
 
@@ -1786,8 +1906,12 @@ void rx_set_agc(RECEIVER *rx) {
   //
   if (id == 0) {
     int mode = vfo[id].mode;
-    mode_settings[mode].agc = rx->agc;
-    copy_mode_settings(mode);
+    RXTXprofile[mode].rx.agc = rx->agc;
+    RXTXprofile[mode].rx.agc_custom_attack = rx->agc_custom_attack;
+    RXTXprofile[mode].rx.agc_custom_decay  = rx->agc_custom_decay;
+    RXTXprofile[mode].rx.agc_custom_hang   = rx->agc_custom_hang;
+    RXTXprofile[mode].rx.agc_custom_slope  = rx->agc_custom_slope;
+    profiles_copy_rxtxprofile(mode);
   }
 }
 
@@ -1838,27 +1962,42 @@ void rx_set_bandpass(const RECEIVER *rx) {
   RXASetPassband(rx->id, (double)rx->filter_low, (double)rx->filter_high);
 }
 
-void rx_set_cw_peak(const RECEIVER *rx, int state, double freq) {
+void rx_set_cw_peak(const RECEIVER *rx, int apf, double freq) {
   ASSERT_SERVER();
 
   //
-  // We use the "double pole" IIR filter implemented in WDSP (since version 1.29)
-  // At the nominal filter edges (4 * w), where the IF filter has -6 dB, its
-  // additional damping is -15 dB (compared to -25 dB for the simple BiQuad)
-  // so it implements a less aggressive "tuning aid"
+  // If apf is zero, this means "no peak filter", otherwise the filter
+  // with internal WDSP number (apf-1) is used:
   //
-  if (state) {
+  //   apf    |
+  // ---------+------------------
+  //    1     | Double-Pole (IIR)
+  //    2     | Gaussian    (FIR)
+  //    3     | Matched     (FIR)
+  //    4     | BiQuad      (IIR)
+  //
+  // We use one fourth of the width of the main IF filter, but limit this
+  // from below to 25 Hz for the IIR and to 15 Hz for the FIR filters.
+  //
+  if (apf > 0) {
     double w = 0.25 * (rx->filter_high - rx->filter_low);
 
     if (w < 0.0) { w = -w; }      // This happens with CWL
 
-    if (w < 25.0) { w = 25.0; }   // Do not go below 25 Hz to avoid ringing
+    if (apf == 1 || apf == 4) {
+      if (w < 25.0) { w = 25.0; }   // Do not go below 25 Hz to avoid ringing
+    } else {
+      if (w < 15.0) { w = 15.0; }
+    }
 
-    SetRXADoublepoleFreqs(rx->id, freq, w);
-    SetRXADoublepoleGain(rx->id, 1.50);
+    SetRXASPCWSelection(rx->id, apf - 1);
+    SetRXASPCWFreq(rx->id, freq);
+    SetRXASPCWBandwidth(rx->id, w);
+    SetRXASPCWGain(rx->id, 1.5);
+    SetRXASPCWRun(rx->id, 1);
+  } else {
+    SetRXASPCWRun(rx->id, 0);
   }
-
-  SetRXADoublepoleRun(rx->id, state);
 }
 
 void rx_set_detector(const RECEIVER *rx) {
@@ -1895,10 +2034,33 @@ void rx_set_deviation(const RECEIVER *rx) {
   SetRXAFMDeviation(rx->id, (double)rx->deviation);
 }
 
+void rx_set_fm_limiter(const RECEIVER *rx) {
+  ASSERT_SERVER();
+
+  if (radio_is_remote) {
+    send_fm_limiter(cl_sock_tcp, rx);
+    return;
+  }
+
+  int id = rx->id;
+  SetRXAFMLimRun(id,  rx->fm_limiter);
+  SetRXAFMLimGain(id, rx->fm_limiter_gain);
+
+  //
+  // Update mode settings, if this is RX1
+  //
+  if (id == 0) {
+    int mode = vfo[id].mode;
+    RXTXprofile[mode].rx.fm_limiter = rx->fm_limiter;
+    RXTXprofile[mode].rx.fm_limiter_gain = rx->fm_limiter_gain;
+    profiles_copy_rxtxprofile(mode);
+  }
+}
+
 void rx_capture_start(const RECEIVER *rx) {
   ASSERT_SERVER();
   //
-  // Turn OFF equalizer, but leave mode_settings and RX
+  // Turn OFF equalizer, but leave RXTXprofile and RX
   // data structure unaffected.
   //
   SetRXAEQRun(rx->id, 0);
@@ -1920,14 +2082,14 @@ void rx_set_equalizer(RECEIVER *rx) {
 
   if (rx->id == 0) {
     int mode = vfo[rx->id].mode;
-    mode_settings[mode].en_rxeq = rx->eq_enable;
+    RXTXprofile[mode].rx.en_eq = rx->eq_enable;
 
     for (int i = 0; i < 11; i++) {
-      mode_settings[mode].rx_eq_freq[i] = rx->eq_freq[i];
-      mode_settings[mode].rx_eq_gain[i] = rx->eq_gain[i];
+      RXTXprofile[mode].rx.eq_freq[i] = rx->eq_freq[i];
+      RXTXprofile[mode].rx.eq_gain[i] = rx->eq_gain[i];
     }
 
-    copy_mode_settings(mode);
+    profiles_copy_rxtxprofile(mode);
   }
 
   g_idle_add(ext_vfo_update, NULL);
@@ -1938,22 +2100,15 @@ void rx_set_equalizer(RECEIVER *rx) {
   SetRXAEQRun(rx->id, rx->eq_enable);
 }
 
-void rx_set_fft_latency(const RECEIVER *rx) {
-  if (radio_is_remote) {
-    send_rx_fft(cl_sock_tcp, rx);
-    return;
-  }
-
-  RXASetMP(rx->id, rx->low_latency);
-}
-
-void rx_set_fft_size(RECEIVER *rx) {
+void rx_set_fft_params(RECEIVER *rx) {
   if (radio_is_remote) {
     send_rx_fft(cl_sock_tcp, rx);
     return;
   }
 
   RXASetNC(rx->id, rx->fft_size);
+  RXASetMP(rx->id, rx->low_latency);
+  RXANBPSetWindow(rx->id, rx->nbp_window);
   //
   // Increase notch widths if they are too small
   //
@@ -1968,6 +2123,7 @@ void rx_set_fft_size(RECEIVER *rx) {
       rx->multi_notch_width[i] = rx->notch_min_width;
     }
   }
+
   rx_set_notch(rx);
 }
 
@@ -2025,32 +2181,36 @@ void rx_set_noise(const RECEIVER *rx) {
 
   if (rx->id == 0) {
     int mode = vfo[rx->id].mode;
-    mode_settings[mode].nr = rx->nr;
-    mode_settings[mode].nb = rx->nb;
-    mode_settings[mode].anf = rx->anf;
-    mode_settings[mode].snb = rx->snb;
-    mode_settings[mode].nr_agc = rx->nr_agc;
-    mode_settings[mode].nb2_mode = rx->nb2_mode;
-    mode_settings[mode].nr2_gain_method = rx->nr2_gain_method;
-    mode_settings[mode].nr2_npe_method = rx->nr2_npe_method;
-    mode_settings[mode].nr2_trained_threshold = rx->nr2_trained_threshold;
-    mode_settings[mode].nr2_trained_t2 = rx->nr2_trained_t2;
-    mode_settings[mode].nr2_post = rx->nr2_post;
-    mode_settings[mode].nr2_post_taper = rx->nr2_post_taper;
-    mode_settings[mode].nr2_post_nlevel = rx->nr2_post_nlevel;
-    mode_settings[mode].nr2_post_factor = rx->nr2_post_factor;
-    mode_settings[mode].nr2_post_rate = rx->nr2_post_rate;
-    mode_settings[mode].nb_tau = rx->nb_tau;
-    mode_settings[mode].nb_advtime = rx->nb_advtime;
-    mode_settings[mode].nb_hang = rx->nb_hang;
-    mode_settings[mode].nb_thresh = rx->nb_thresh;
-    mode_settings[mode].nr4_reduction_amount = rx->nr4_reduction_amount;
-    mode_settings[mode].nr4_smoothing_factor = rx->nr4_smoothing_factor;
-    mode_settings[mode].nr4_whitening_factor = rx->nr4_whitening_factor;
-    mode_settings[mode].nr4_noise_rescale = rx->nr4_noise_rescale;
-    mode_settings[mode].nr4_post_threshold = rx->nr4_post_threshold;
-    mode_settings[mode].nr4_noise_scaling_type = rx->nr4_noise_scaling_type;
-    copy_mode_settings(mode);
+    RXTXprofile[mode].rx.nr = rx->nr;
+    RXTXprofile[mode].rx.nb = rx->nb;
+    RXTXprofile[mode].rx.anf = rx->anf;
+    RXTXprofile[mode].rx.anf_taps = rx->anf_taps;
+    RXTXprofile[mode].rx.anf_delay = rx->anf_delay;
+    RXTXprofile[mode].rx.anf_gain = rx->anf_gain;
+    RXTXprofile[mode].rx.anf_leakage = rx->anf_leakage;
+    RXTXprofile[mode].rx.snb = rx->snb;
+    RXTXprofile[mode].rx.nr_agc = rx->nr_agc;
+    RXTXprofile[mode].rx.nb2_mode = rx->nb2_mode;
+    RXTXprofile[mode].rx.nr2_gain_method = rx->nr2_gain_method;
+    RXTXprofile[mode].rx.nr2_npe_method = rx->nr2_npe_method;
+    RXTXprofile[mode].rx.nr2_trained_threshold = rx->nr2_trained_threshold;
+    RXTXprofile[mode].rx.nr2_trained_t2 = rx->nr2_trained_t2;
+    RXTXprofile[mode].rx.nr2_post = rx->nr2_post;
+    RXTXprofile[mode].rx.nr2_post_taper = rx->nr2_post_taper;
+    RXTXprofile[mode].rx.nr2_post_nlevel = rx->nr2_post_nlevel;
+    RXTXprofile[mode].rx.nr2_post_factor = rx->nr2_post_factor;
+    RXTXprofile[mode].rx.nr2_post_rate = rx->nr2_post_rate;
+    RXTXprofile[mode].rx.nb_tau = rx->nb_tau;
+    RXTXprofile[mode].rx.nb_advtime = rx->nb_advtime;
+    RXTXprofile[mode].rx.nb_hang = rx->nb_hang;
+    RXTXprofile[mode].rx.nb_thresh = rx->nb_thresh;
+    RXTXprofile[mode].rx.nr4_reduction_amount = rx->nr4_reduction_amount;
+    RXTXprofile[mode].rx.nr4_smoothing_factor = rx->nr4_smoothing_factor;
+    RXTXprofile[mode].rx.nr4_whitening_factor = rx->nr4_whitening_factor;
+    RXTXprofile[mode].rx.nr4_noise_rescale = rx->nr4_noise_rescale;
+    RXTXprofile[mode].rx.nr4_post_threshold = rx->nr4_post_threshold;
+    RXTXprofile[mode].rx.nr4_noise_scaling_type = rx->nr4_noise_scaling_type;
+    profiles_copy_rxtxprofile(mode);
   }
 
   g_idle_add(ext_vfo_update, NULL);
@@ -2098,8 +2258,12 @@ void rx_set_noise(const RECEIVER *rx) {
   //
   // e) ANF
   //
-  SetRXAANFRun(rx->id,                  rx->anf);
+  SetRXAANFTaps(rx->id,                 rx->anf_taps);
+  SetRXAANFDelay(rx->id,                rx->anf_delay);
+  SetRXAANFGain(rx->id,                 pow(10.0, 0.05 * rx->anf_gain));
+  SetRXAANFLeakage(rx->id,              pow(10.0, 0.05 * rx->anf_leakage));
   SetRXAANFPosition(rx->id,             rx->nr_agc);
+  SetRXAANFRun(rx->id,                  rx->anf);
   //
   // f) SNB
   //
@@ -2160,9 +2324,9 @@ void rx_set_squelch(const RECEIVER *rx) {
   int mode = vfo[rx->id].mode;
 
   if (rx->id == 0) {
-    mode_settings[mode].squelch_enable = rx->squelch_enable;
-    mode_settings[mode].squelch        = rx->squelch;
-    copy_mode_settings(mode);
+    RXTXprofile[mode].rx.squelch_enable = rx->squelch_enable;
+    RXTXprofile[mode].rx.squelch        = rx->squelch;
+    profiles_copy_rxtxprofile(mode);
   }
 
   //

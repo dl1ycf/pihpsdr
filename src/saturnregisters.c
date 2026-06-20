@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2021 - Laurence Barker G8NJJ
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2021 - Laurence Barker G8NJJ
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -1324,18 +1324,17 @@ unsigned int GetP2PTTKeyInputs(void) {
 unsigned int GetADCOverflow(uint16_t *ADC1Max, uint16_t *ADC2Max) {
   unsigned int Result = 0;
   Result = RegisterRead(VADDRADCOVERFLOWBASE);
-
   *ADC1Max = 0;
   *ADC2Max = 0;
-
 #if 0
-   if(FPGA_MinorVersion >= 27) {
-     // for FPGAs with code, read the ADC1 & 2 max amplitude
-     *ADC1Max = RegisterRead(VADDRADCOVERFLOWBASE+4);
-     *ADC2Max = RegisterRead(VADDRADCOVERFLOWBASE+8);
-   }
-#endif
 
+  if (FPGA_MinorVersion >= 27) {
+    // for FPGAs with code, read the ADC1 & 2 max amplitude
+    *ADC1Max = RegisterRead(VADDRADCOVERFLOWBASE + 4);
+    *ADC2Max = RegisterRead(VADDRADCOVERFLOWBASE + 8);
+  }
+
+#endif
   return (Result & 0x3);
 }
 

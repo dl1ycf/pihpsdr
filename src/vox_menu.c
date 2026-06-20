@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2016 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2016 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
 
 #include <gtk/gtk.h>
 
-#include "appearance.h"
 #include "ext.h"
 #include "led.h"
 #include "message.h"
@@ -35,9 +34,9 @@ static GtkWidget *dialog = NULL;
 static GtkWidget *level;
 
 static GtkWidget *led;
-static GdkRGBA led_color = {COLOUR_OK};
-static GdkRGBA led_red  = {COLOUR_ALARM};
-static GdkRGBA led_green = {COLOUR_OK};
+static GdkRGBA led_color = {0.0, 0.0, 0.0, 1.0};
+static GdkRGBA led_red  = {1.0, 0.0, 0.0, 1.0};
+static GdkRGBA led_green = {0.0, 1.0, 0.0, 1.0};
 
 static GThread *level_thread_id;
 static int run_level = 0;
@@ -151,7 +150,6 @@ void vox_menu(GtkWidget *parent) {
   led = create_led(10, 10, &led_color);
   gtk_grid_attach(GTK_GRID(grid), led, 2, 0, 1, 1);
   GtkWidget *enable_b = gtk_check_button_new_with_label("VOX Enable");
-  gtk_widget_set_name(enable_b, "boldlabel");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(enable_b), vox_enabled);
   g_signal_connect (enable_b, "toggled", G_CALLBACK(enable_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), enable_b, 3, 0, 1, 1);

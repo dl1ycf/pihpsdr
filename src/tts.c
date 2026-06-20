@@ -1,5 +1,5 @@
 /* Copyright (C)
-* 2024 - Christoph van Wüllen, DL1YCF
+*  2024 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -47,8 +47,6 @@
 //
 
 // For MacOS, we in addition use the MacOS TTS capabilities
-
-#ifdef TTS
 
 #include <gtk/gtk.h>
 
@@ -182,7 +180,7 @@ void tts_filter(void) {
 void tts_smeter(void) {
   int s;
   int plus;
-  int val = (int) active_receiver->meter;
+  int val = (int) active_receiver->rxlvl;
   char msg[128];
 
   if (vfo[active_receiver->id].frequency > 30000000LL) {
@@ -242,5 +240,3 @@ void tts_atten(void) {
 
   tts_send(msg);
 }
-
-#endif

@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -321,12 +321,10 @@ void ant_menu(GtkWidget *parent) {
 
   if (device != SOAPYSDR_USB_DEVICE) {
     GtkWidget *hf_rb = gtk_radio_button_new_with_label(NULL, "HF");
-    gtk_widget_set_name(hf_rb, "boldlabel");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(hf_rb), TRUE);
     g_signal_connect(hf_rb, "toggled", G_CALLBACK(hf_rb_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), hf_rb, 1, 0, 1, 1);
     GtkWidget *xvtr_rb = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(hf_rb), "XVTR");
-    gtk_widget_set_name(xvtr_rb, "boldlabel");
     g_signal_connect(xvtr_rb, "toggled", G_CALLBACK(xvtr_rb_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), xvtr_rb, 2, 0, 1, 1);
   }

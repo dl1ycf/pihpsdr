@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2020 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2020 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -34,13 +34,13 @@
 
 static GtkWidget *dialog;
 
-gboolean enable_protocol_1;
-gboolean enable_protocol_2;
-gboolean enable_soapy_protocol;
-gboolean enable_stemlab;
-gboolean enable_usbozy;
-gboolean enable_saturn_xdma;
-gboolean autostart;
+int enable_protocol_1;
+int enable_protocol_2;
+int enable_soapy_protocol;
+int enable_stemlab;
+int enable_usbozy;
+int enable_saturn_xdma;
+int autostart;
 
 static void protocols_save_state(void) {
   clearProperties();
@@ -104,19 +104,13 @@ static void soapy_protocol_cb(GtkToggleButton *widget, gpointer data) {
 
 #endif
 
-#ifdef STEMLAB_DISCOVERY
 static void stemlab_cb(GtkToggleButton *widget, gpointer data) {
   enable_stemlab = gtk_toggle_button_get_active(widget);
 }
 
-#endif
-
-#ifdef SATURN
 static void saturn_xdma_cb(GtkToggleButton *widget, gpointer data) {
   enable_saturn_xdma = gtk_toggle_button_get_active(widget);
 }
-
-#endif
 
 #ifdef USBOZY
 static void usbozy_cb(GtkToggleButton *widget, gpointer data) {
@@ -159,14 +153,12 @@ void configure_protocols(GtkWidget *parent) {
   g_signal_connect(b_enable_protocol_2, "toggled", G_CALLBACK(protocol_2_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), b_enable_protocol_2, 0, row, 1, 1);
   row++;
-#ifdef SATURN
   GtkWidget *b_saturn_xdma = gtk_check_button_new_with_label("Enable Saturn XDMA");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (b_saturn_xdma), enable_saturn_xdma);
   gtk_widget_show(b_saturn_xdma);
   g_signal_connect(b_saturn_xdma, "toggled", G_CALLBACK(saturn_xdma_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), b_saturn_xdma, 0, row, 1, 1);
   row++;
-#endif
 #ifdef USBOZY
   GtkWidget *b_usbozy = gtk_check_button_new_with_label("Enable USB OZY");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (b_usbozy), enable_usbozy);
@@ -183,14 +175,12 @@ void configure_protocols(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), b_enable_soapy_protocol, 0, row, 1, 1);
   row++;
 #endif
-#ifdef STEMLAB_DISCOVERY
   GtkWidget *b_enable_stemlab = gtk_check_button_new_with_label("Enable STEMlab");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (b_enable_stemlab), enable_stemlab);
   gtk_widget_show(b_enable_stemlab);
   g_signal_connect(b_enable_stemlab, "toggled", G_CALLBACK(stemlab_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), b_enable_stemlab, 0, row, 1, 1);
   row++;
-#endif
   GtkWidget *b_autostart = gtk_check_button_new_with_label("Auto start if only one device");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (b_autostart), autostart);
   gtk_widget_show(b_autostart);

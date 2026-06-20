@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2016 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2016 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -183,7 +183,6 @@ void equalizer_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), close_b, col, row, 1, 1);
   col++;
   GtkWidget *rx1_sel = gtk_radio_button_new_with_label_from_widget(NULL, "RX1 Settings");
-  gtk_widget_set_name(rx1_sel, "boldlabel");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(rx1_sel), (eqid == 0));
   gtk_grid_attach(GTK_GRID(grid), rx1_sel, col, row, 1, 1);
   g_signal_connect(rx1_sel, "toggled", G_CALLBACK(eqid_changed_cb), GINT_TO_POINTER(0));
@@ -191,7 +190,6 @@ void equalizer_menu(GtkWidget *parent) {
   if (receivers > 1) {
     col++;
     mbtn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(rx1_sel), "RX2 Settings");
-    gtk_widget_set_name(mbtn, "boldlabel");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(mbtn), (eqid == 1));
     gtk_grid_attach(GTK_GRID(grid), mbtn, col, row, 1, 1);
     g_signal_connect(mbtn, "toggled", G_CALLBACK(eqid_changed_cb), GINT_TO_POINTER(1));
@@ -200,7 +198,6 @@ void equalizer_menu(GtkWidget *parent) {
   if (can_transmit) {
     col++;
     mbtn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(rx1_sel), "TX Settings");
-    gtk_widget_set_name(mbtn, "boldlabel");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(mbtn), (eqid == 2));
     gtk_grid_attach(GTK_GRID(grid), mbtn, col, row, 1, 1);
     g_signal_connect(mbtn, "toggled", G_CALLBACK(eqid_changed_cb), GINT_TO_POINTER(2));
@@ -257,7 +254,6 @@ void equalizer_menu(GtkWidget *parent) {
     gtk_grid_set_row_spacing (GTK_GRID(mygrid), 5);
     gtk_container_add(GTK_CONTAINER(mycontainer), mygrid);
     mbtn = gtk_check_button_new_with_label("Enable");
-    gtk_widget_set_name(mbtn, "boldlabel");
     gtk_grid_attach(GTK_GRID(mygrid), mbtn, mycol, myrow, 1, 1);
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (mbtn), en);
     g_signal_connect(mbtn, "toggled", G_CALLBACK(enable_cb), GINT_TO_POINTER(myeq));

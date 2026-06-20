@@ -216,7 +216,8 @@ extern int high_swr_seen;
 extern int sequence_errors;
 
 extern unsigned int exciter_power;
-extern unsigned int alex_forward_power;
+extern unsigned int alex_forward_power; // Avg
+extern unsigned int alex_forward_max;   // PEP
 extern unsigned int alex_reverse_power;
 extern unsigned int ADC1;
 extern unsigned int ADC0;
@@ -284,8 +285,8 @@ extern int mute_spkr_xmit;       // Mute audio amplifier in radio upon transmitt
 
 extern int VFO_WIDTH;
 extern int VFO_HEIGHT;
-extern const int MIN_METER_WIDTH;
 extern int METER_WIDTH;
+extern int ADD_METER_WIDTH;
 extern const int MENU_WIDTH;
 
 extern int rx_stack_horizontal;
@@ -344,6 +345,7 @@ extern void   radio_set_attenuation(int id, int value);
 extern void   radio_set_random(int id, int value);
 extern void   radio_set_dither(int id, int value);
 extern void   radio_set_preamp(int id, int value);
+extern void   radio_toggle_preamp(int id);
 extern void   radio_set_c25_att(int id, int value);
 extern void   radio_set_alex_attenuation(int v);
 extern int    radio_is_transmitting(void);

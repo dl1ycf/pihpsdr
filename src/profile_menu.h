@@ -1,6 +1,5 @@
 /* Copyright (C)
-* 2017 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+* 2026 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -18,4 +17,4 @@
 */
 
 #include <gtk/gtk.h>
-extern void saturn_menu(GtkWidget *parent);
+void profile_menu(GtkWidget *parent);

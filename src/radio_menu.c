@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -430,6 +430,23 @@ static void rit_cb(GtkWidget *widget, gpointer data) {
   }
 }
 
+static void max_power_changed_cb(GtkWidget *widget, gpointer data) {
+  pa_power = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  t_print("max_power_changed_cb: %d\n", pa_power_list[pa_power]);
+  //
+  // If the power changed, re-init watt meter calibration data
+  //
+  double increment = 0.1 * pa_power_list[pa_power];
+  for (int i = 1; i < 11; i++) {
+    pa_trim[i] = i * increment;
+  }
+
+  if (radio_is_remote) {
+    send_radiomenu(cl_sock_tcp);
+    send_patrim(cl_sock_tcp);
+  }
+} 
+
 static void ck10mhz_cb(GtkWidget *widget, gpointer data) {
   atlas_clock_source_10mhz = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
 
@@ -466,7 +483,7 @@ void radio_menu(GtkWidget *parent) {
   int col;
   int hwpanel = 0;
   GtkWidget *label;
-  GtkWidget *ChkBtn;
+  GtkWidget *Btn;
   GtkWidget *Separator;
   dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
@@ -546,41 +563,35 @@ void radio_menu(GtkWidget *parent) {
   g_signal_connect(region_combo, "changed", G_CALLBACK(region_cb), NULL);
 
   if (can_transmit) {
-    ChkBtn = gtk_check_button_new_with_label("Split");
-    gtk_widget_set_name(ChkBtn, "boldlabel");
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), split);
-    gtk_grid_attach(GTK_GRID(grid), ChkBtn, 3, 1, 1, 1);
-    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(split_cb), NULL);
-    ChkBtn = gtk_check_button_new_with_label("Duplex");
-    gtk_widget_set_name(ChkBtn, "boldlabel");
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), duplex);
-    gtk_grid_attach(GTK_GRID(grid), ChkBtn, 3, 2, 1, 1);
-    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(duplex_cb), NULL);
-    ChkBtn = gtk_check_button_new_with_label("Mute RX on TX");
-    gtk_widget_set_name(ChkBtn, "boldlabel");
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), mute_rx_while_transmitting);
-    gtk_grid_attach(GTK_GRID(grid), ChkBtn, 3, 3, 1, 1);
-    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &mute_rx_while_transmitting);
+    Btn = gtk_check_button_new_with_label("Split");
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (Btn), split);
+    gtk_grid_attach(GTK_GRID(grid), Btn, 3, 1, 1, 1);
+    g_signal_connect(Btn, "toggled", G_CALLBACK(split_cb), NULL);
+    Btn = gtk_check_button_new_with_label("Duplex");
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (Btn), duplex);
+    gtk_grid_attach(GTK_GRID(grid), Btn, 3, 2, 1, 1);
+    g_signal_connect(Btn, "toggled", G_CALLBACK(duplex_cb), NULL);
+    Btn = gtk_check_button_new_with_label("Mute RX on TX");
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (Btn), mute_rx_while_transmitting);
+    gtk_grid_attach(GTK_GRID(grid), Btn, 3, 3, 1, 1);
+    g_signal_connect(Btn, "toggled", G_CALLBACK(toggle_cb), &mute_rx_while_transmitting);
 
     if (protocol ==  ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
-      ChkBtn = gtk_check_button_new_with_label("PA enable");
-      gtk_widget_set_name(ChkBtn, "boldlabel");
-      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), pa_enabled);
-      gtk_grid_attach(GTK_GRID(grid), ChkBtn, 3, 4, 1, 1);
-      g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &pa_enabled);
+      Btn = gtk_check_button_new_with_label("PA enable");
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (Btn), pa_enabled);
+      gtk_grid_attach(GTK_GRID(grid), Btn, 3, 4, 1, 1);
+      g_signal_connect(Btn, "toggled", G_CALLBACK(toggle_cb), &pa_enabled);
     }
   }
 
-  ChkBtn = gtk_check_button_new_with_label("VFO snap");
-  gtk_widget_set_name(ChkBtn, "boldlabel");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), vfo_snap);
-  gtk_grid_attach(GTK_GRID(grid), ChkBtn, 3, 5, 1, 1);
-  g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &vfo_snap);
-  ChkBtn = gtk_check_button_new_with_label("3dB/Smtr step");
-  gtk_widget_set_name(ChkBtn, "boldlabel");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), smeter3dB);
-  gtk_grid_attach(GTK_GRID(grid), ChkBtn, 3, 6, 1, 1);
-  g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &smeter3dB);
+  Btn = gtk_check_button_new_with_label("VFO snap");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (Btn), vfo_snap);
+  gtk_grid_attach(GTK_GRID(grid), Btn, 3, 5, 1, 1);
+  g_signal_connect(Btn, "toggled", G_CALLBACK(toggle_cb), &vfo_snap);
+  Btn = gtk_check_button_new_with_label("3dB/Smtr step");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (Btn), smeter3dB);
+  gtk_grid_attach(GTK_GRID(grid), Btn, 3, 6, 1, 1);
+  g_signal_connect(Btn, "toggled", G_CALLBACK(toggle_cb), &smeter3dB);
 
   switch (protocol) {
   case NEW_PROTOCOL:
@@ -710,10 +721,10 @@ void radio_menu(GtkWidget *parent) {
   label = gtk_label_new("Frequency\nCalibr. (ppm)");
   gtk_widget_set_name(label, "boldlabel");
   gtk_grid_attach(GTK_GRID(grid), label, 1, 5, 1, 1);
-  ChkBtn = gtk_spin_button_new_with_range(-2500.0, 2500.0, 0.1);
-  gtk_spin_button_set_value(GTK_SPIN_BUTTON(ChkBtn), 0.1 * (double)frequency_calibration);
-  gtk_grid_attach(GTK_GRID(grid), ChkBtn, 1, 6, 1, 1);
-  g_signal_connect(ChkBtn, "value_changed", G_CALLBACK(calibration_value_changed_cb), NULL);
+  Btn = gtk_spin_button_new_with_range(-2500.0, 2500.0, 0.1);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(Btn), 0.1 * (double)frequency_calibration);
+  gtk_grid_attach(GTK_GRID(grid), Btn, 1, 6, 1, 1);
+  g_signal_connect(Btn, "value_changed", G_CALLBACK(calibration_value_changed_cb), NULL);
   //
   // Calibration of the RF front end
   //
@@ -721,35 +732,54 @@ void radio_menu(GtkWidget *parent) {
   gtk_widget_set_name(label, "boldlabel");
   gtk_widget_set_halign(label, GTK_ALIGN_CENTER);
   gtk_grid_attach(GTK_GRID(grid), label, 2, 5, 1, 1);
-  ChkBtn = gtk_spin_button_new_with_range(-50.0, 50.0, 1.0);
-  gtk_spin_button_set_value(GTK_SPIN_BUTTON(ChkBtn), (double)rx_gain_calibration);
-  gtk_grid_attach(GTK_GRID(grid), ChkBtn, 2, 6, 1, 1);
-  g_signal_connect(ChkBtn, "value_changed", G_CALLBACK(rx_gain_calibration_value_changed_cb), NULL);
-  ChkBtn = gtk_check_button_new_with_label("Optimise for TouchScreen");
-  gtk_widget_set_name(ChkBtn, "boldlabel");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), optimize_for_touchscreen);
-  gtk_grid_attach(GTK_GRID(grid), ChkBtn, 0, 7, 2, 1);
-  g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &optimize_for_touchscreen);
+  Btn = gtk_spin_button_new_with_range(-50.0, 50.0, 1.0);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(Btn), (double)rx_gain_calibration);
+  gtk_grid_attach(GTK_GRID(grid), Btn, 2, 6, 1, 1);
+  g_signal_connect(Btn, "value_changed", G_CALLBACK(rx_gain_calibration_value_changed_cb), NULL);
+  Btn = gtk_check_button_new_with_label("Optimise for TouchScreen");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (Btn), optimize_for_touchscreen);
+  gtk_grid_attach(GTK_GRID(grid), Btn, 0, 7, 2, 1);
+  g_signal_connect(Btn, "toggled", G_CALLBACK(toggle_cb), &optimize_for_touchscreen);
   max_row = 7;
 
   if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
     max_row++;
-    ChkBtn = gtk_check_button_new_with_label("Enable TxInhibit Input");
-    gtk_widget_set_name(ChkBtn, "boldlabel");
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), enable_tx_inhibit);
-    gtk_grid_attach(GTK_GRID(grid), ChkBtn, 0, max_row, 2, 1);
-    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &enable_tx_inhibit);
-    ChkBtn = gtk_check_button_new_with_label("Enable AutoTune Input");
-    gtk_widget_set_name(ChkBtn, "boldlabel");
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), enable_auto_tune);
-    gtk_grid_attach(GTK_GRID(grid), ChkBtn, 2, max_row, 2, 1);
-    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &enable_auto_tune);
+    Btn = gtk_check_button_new_with_label("Enable TxInhibit Input");
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (Btn), enable_tx_inhibit);
+    gtk_grid_attach(GTK_GRID(grid), Btn, 0, max_row, 2, 1);
+    g_signal_connect(Btn, "toggled", G_CALLBACK(toggle_cb), &enable_tx_inhibit);
+    Btn = gtk_check_button_new_with_label("Enable AutoTune Input");
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (Btn), enable_auto_tune);
+    gtk_grid_attach(GTK_GRID(grid), Btn, 2, max_row, 2, 1);
+    g_signal_connect(Btn, "toggled", G_CALLBACK(toggle_cb), &enable_auto_tune);
   }
 
   //
   // The HPSDR machine-specific stuff is now put in columns 5+6
   //
   row = 0;
+
+  if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
+    row++;
+    hwpanel = 1;
+    label = gtk_label_new("PA Pwr");
+    gtk_widget_set_name(label, "boldlabel");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, 5, row, 1, 1);
+    Btn = gtk_combo_box_text_new();
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(Btn), NULL, "1W");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(Btn), NULL, "5W");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(Btn), NULL, "10W");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(Btn), NULL, "30W");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(Btn), NULL, "50W");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(Btn), NULL, "100W");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(Btn), NULL, "200W");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(Btn), NULL, "500W");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(Btn), NULL, "1KW");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(Btn), pa_power);
+    my_combo_attach(GTK_GRID(grid), Btn, 6, row, 1, 1);
+    g_signal_connect(Btn, "changed", G_CALLBACK(max_power_changed_cb), NULL);
+  }
 
   if (device == DEVICE_OZY || device == DEVICE_METIS) {
     //
@@ -813,11 +843,10 @@ void radio_menu(GtkWidget *parent) {
     //
     row++;
     hwpanel = 1;
-    ChkBtn = gtk_check_button_new_with_label("Janus Only");
-    gtk_widget_set_name(ChkBtn, "boldlabel");
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), atlas_janus);
-    gtk_grid_attach(GTK_GRID(grid), ChkBtn, 5, row, 2, 1);
-    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &atlas_janus);
+    Btn = gtk_check_button_new_with_label("Janus Only");
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (Btn), atlas_janus);
+    gtk_grid_attach(GTK_GRID(grid), Btn, 5, row, 2, 1);
+    g_signal_connect(Btn, "toggled", G_CALLBACK(toggle_cb), &atlas_janus);
   }
 
   if (device == DEVICE_HERMES_LITE2) {
@@ -826,23 +855,20 @@ void radio_menu(GtkWidget *parent) {
     //
     row++;
     hwpanel = 1;
-    ChkBtn = gtk_check_button_new_with_label("HL2 audio codec");
-    gtk_widget_set_name(ChkBtn, "boldlabel");
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(ChkBtn), hl2_audio_codec);
-    gtk_grid_attach(GTK_GRID(grid), ChkBtn, 5, row, 2, 1);
-    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &hl2_audio_codec);
+    Btn = gtk_check_button_new_with_label("HL2 audio codec");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(Btn), hl2_audio_codec);
+    gtk_grid_attach(GTK_GRID(grid), Btn, 5, row, 2, 1);
+    g_signal_connect(Btn, "toggled", G_CALLBACK(toggle_cb), &hl2_audio_codec);
     row++;
-    ChkBtn = gtk_check_button_new_with_label("HL2 CL1/2");
-    gtk_widget_set_name(ChkBtn, "boldlabel");
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(ChkBtn), hl2_cl1_input);
-    gtk_grid_attach(GTK_GRID(grid), ChkBtn, 5, row, 2, 1);
-    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &hl2_cl1_input);
+    Btn = gtk_check_button_new_with_label("HL2 CL1/2");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(Btn), hl2_cl1_input);
+    gtk_grid_attach(GTK_GRID(grid), Btn, 5, row, 2, 1);
+    g_signal_connect(Btn, "toggled", G_CALLBACK(toggle_cb), &hl2_cl1_input);
     row++;
-    ChkBtn = gtk_check_button_new_with_label("HL2 AH4 ATU");
-    gtk_widget_set_name(ChkBtn, "boldlabel");
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(ChkBtn), hl2_ah4_atu);
-    gtk_grid_attach(GTK_GRID(grid), ChkBtn, 5, row, 2, 1);
-    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &hl2_ah4_atu);
+    Btn = gtk_check_button_new_with_label("HL2 AH4 ATU");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(Btn), hl2_ah4_atu);
+    gtk_grid_attach(GTK_GRID(grid), Btn, 5, row, 2, 1);
+    g_signal_connect(Btn, "toggled", G_CALLBACK(toggle_cb), &hl2_ah4_atu);
   }
 
   if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN
@@ -923,19 +949,17 @@ void radio_menu(GtkWidget *parent) {
     my_combo_attach(GTK_GRID(grid), ptt_combo, 6, row, 1, 1);
     g_signal_connect(ptt_combo, "changed", G_CALLBACK(orion_mic_ptt_cb), NULL);
     row++;
-    ChkBtn = gtk_check_button_new_with_label("Mic PTT enabled");
-    gtk_widget_set_name(ChkBtn, "boldlabel");
-    gtk_widget_set_halign(ChkBtn, GTK_ALIGN_END);
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), orion_mic_ptt_enabled);
-    gtk_grid_attach(GTK_GRID(grid), ChkBtn, 5, row, 2, 1);
-    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(orion_ptt_enable_cb), NULL);
+    Btn = gtk_check_button_new_with_label("Mic PTT enabled");
+    gtk_widget_set_halign(Btn, GTK_ALIGN_END);
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (Btn), orion_mic_ptt_enabled);
+    gtk_grid_attach(GTK_GRID(grid), Btn, 5, row, 2, 1);
+    g_signal_connect(Btn, "toggled", G_CALLBACK(orion_ptt_enable_cb), NULL);
     row++;
-    ChkBtn = gtk_check_button_new_with_label("Mic Bias enabled");
-    gtk_widget_set_name(ChkBtn, "boldlabel");
-    gtk_widget_set_halign(ChkBtn, GTK_ALIGN_END);
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), orion_mic_bias_enabled);
-    gtk_grid_attach(GTK_GRID(grid), ChkBtn, 5, row, 2, 1);
-    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(orion_bias_enable_cb), NULL);
+    Btn = gtk_check_button_new_with_label("Mic Bias enabled");
+    gtk_widget_set_halign(Btn, GTK_ALIGN_END);
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (Btn), orion_mic_bias_enabled);
+    gtk_grid_attach(GTK_GRID(grid), Btn, 5, row, 2, 1);
+    g_signal_connect(Btn, "toggled", G_CALLBACK(orion_bias_enable_cb), NULL);
   }
 
   if (device == DEVICE_HERMES) {
@@ -948,12 +972,11 @@ void radio_menu(GtkWidget *parent) {
     //
     row++;
     hwpanel = 1;
-    ChkBtn = gtk_check_button_new_with_label("Anan-10E/100B");
-    gtk_widget_set_name(ChkBtn, "boldlabel");
-    gtk_widget_set_halign(ChkBtn, GTK_ALIGN_END);
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(ChkBtn), anan10E);
-    gtk_grid_attach(GTK_GRID(grid), ChkBtn, 5, row, 2, 1);
-    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(anan10e_cb), NULL);
+    Btn = gtk_check_button_new_with_label("Anan-10E/100B");
+    gtk_widget_set_halign(Btn, GTK_ALIGN_END);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(Btn), anan10E);
+    gtk_grid_attach(GTK_GRID(grid), Btn, 5, row, 2, 1);
+    g_signal_connect(Btn, "toggled", G_CALLBACK(anan10e_cb), NULL);
   }
 
   if (device == DEVICE_HERMES  || device == NEW_DEVICE_HERMES ||
@@ -969,12 +992,11 @@ void radio_menu(GtkWidget *parent) {
     //
     row++;
     hwpanel = 1;
-    ChkBtn = gtk_check_button_new_with_label("New PA board");
-    gtk_widget_set_name(ChkBtn, "boldlabel");
-    gtk_widget_set_halign(ChkBtn, GTK_ALIGN_END);
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(ChkBtn), new_pa_board);
-    gtk_grid_attach(GTK_GRID(grid), ChkBtn, 5, row, 2, 1);
-    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &new_pa_board);
+    Btn = gtk_check_button_new_with_label("New PA board");
+    gtk_widget_set_halign(Btn, GTK_ALIGN_END);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(Btn), new_pa_board);
+    gtk_grid_attach(GTK_GRID(grid), Btn, 5, row, 2, 1);
+    g_signal_connect(Btn, "toggled", G_CALLBACK(toggle_cb), &new_pa_board);
   }
 
   if (device == SOAPYSDR_USB_DEVICE) {
@@ -984,24 +1006,22 @@ void radio_menu(GtkWidget *parent) {
     //
     row++;
     hwpanel = 1;
-    ChkBtn = gtk_check_button_new_with_label("Swap IQ");
-    gtk_widget_set_name(ChkBtn, "boldlabel");
-    gtk_widget_set_halign(ChkBtn, GTK_ALIGN_END);
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ChkBtn), soapy_iqswap);
-    gtk_grid_attach(GTK_GRID(grid), ChkBtn, 5, row, 2, 1);
-    g_signal_connect(ChkBtn, "toggled", G_CALLBACK(toggle_cb), &soapy_iqswap);
+    Btn = gtk_check_button_new_with_label("Swap IQ");
+    gtk_widget_set_halign(Btn, GTK_ALIGN_END);
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (Btn), soapy_iqswap);
+    gtk_grid_attach(GTK_GRID(grid), Btn, 5, row, 2, 1);
+    g_signal_connect(Btn, "toggled", G_CALLBACK(toggle_cb), &soapy_iqswap);
 
     for (int id = 0; id < RECEIVERS; id++) {
       if (radio->soapy.rx[id].has_automatic_gain) {
         row++;
         char text[64];
         snprintf(text, sizeof(text), "HW AGC RX%d", id + 1);
-        ChkBtn = gtk_check_button_new_with_label(text);
-        gtk_widget_set_name(ChkBtn, "boldlabel");
-        gtk_widget_set_halign(ChkBtn, GTK_ALIGN_END);
-        gtk_grid_attach(GTK_GRID(grid), ChkBtn, 5, row, 2, 1);
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(ChkBtn), adc[id].agc);
-        g_signal_connect(ChkBtn, "toggled", G_CALLBACK(agc_changed_cb), GINT_TO_POINTER(id));
+        Btn = gtk_check_button_new_with_label(text);
+        gtk_widget_set_halign(Btn, GTK_ALIGN_END);
+        gtk_grid_attach(GTK_GRID(grid), Btn, 5, row, 2, 1);
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(Btn), adc[id].agc);
+        g_signal_connect(Btn, "toggled", G_CALLBACK(agc_changed_cb), GINT_TO_POINTER(id));
       }
     }
   }

@@ -1,5 +1,4 @@
 #ifdef __APPLE__
-#ifdef TTS
 
 #undef MIDI  // Having MIDI defined conflicts with Apple stuff
 
@@ -28,8 +27,8 @@ void MacTTS(const char *text) {
   // then keep it.
   //
   if (synth == NULL) {
-   t_print("%s: Creating the MacOS Speech Synthesizer Instance\n", __func__);
-   synth = [[AVSpeechSynthesizer alloc] init];
+    t_print("%s: Creating the MacOS Speech Synthesizer Instance\n", __func__);
+    synth = [[AVSpeechSynthesizer alloc] init];
   }
 
   AVSpeechUtterance *utter = [[AVSpeechUtterance alloc] initWithString:str];
@@ -55,5 +54,4 @@ void MacTTS(const char *text) {
   [utter release];
 }
 
-#endif
 #endif

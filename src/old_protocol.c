@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -126,7 +126,7 @@ static int current_rx = 0;
 static int mic_samples = 0;
 static int mic_sample_divisor = 1;
 
-static int command = 1;
+static int p1_command_loop = 1;
 
 static gpointer receive_thread(gpointer arg);
 static gpointer process_ozy_input_buffer_thread(gpointer arg);
@@ -139,7 +139,7 @@ static uint32_t send_sequence = 0;
 static int metis_offset = 8;
 
 static void metis_write(unsigned char ep, unsigned const char* buffer);
-static void metis_start_stop(int command);
+static void metis_start_stop(int cmd);
 static void metis_send_buffer(const unsigned char* buffer, int length);
 
 static void open_tcp_socket(void);
@@ -1142,6 +1142,8 @@ static void process_control_bytes(void) {
   hpsdr_ptt  = (control_in[0]     ) & 0x01;
 
   if (previous_ptt != hpsdr_ptt) {
+    // TODO: what if hpsdr_ptt goes to zero while we
+    //       are tuning or two-toning?
     g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(hpsdr_ptt));
   }
 
@@ -1291,6 +1293,9 @@ static void process_control_bytes(void) {
     val = ((control_in[3] & 0xFF) << 8) | (control_in[4] & 0xFF);
     fwd_acc = (15 * fwd_acc) / 16 + val;
     alex_forward_power = fwd_acc / 16;
+
+    if (val > alex_forward_max) { alex_forward_max = val; }
+
     break;
 
   case 2:
@@ -2091,7 +2096,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
     buffer[C3] = 0x00;
     buffer[C4] = 0x00;
 
-    switch (command) {
+    switch (p1_command_loop) {
     case 1: { // tx frequency
       buffer[C0] = 0x02;
       long long DUCfrequency = channel_freq(-1);
@@ -2099,7 +2104,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
       buffer[C2] = DUCfrequency >> 16;
       buffer[C3] = DUCfrequency >> 8;
       buffer[C4] = DUCfrequency;
-      command = 2;
+      p1_command_loop = 2;
     }
     break;
 
@@ -2118,7 +2123,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
       // and proceed with the next "command"
       if (current_rx >= num_hpsdr_receivers) {
         current_rx = 0;
-        command = 3;
+        p1_command_loop = 3;
       }
 
       break;
@@ -2238,7 +2243,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
         if (transmitter->tune && hl2_ah4_atu) { buffer[C2] |= 0x10; }
       }
 
-      command = 4;
+      p1_command_loop = 4;
     }
     break;
 
@@ -2311,7 +2316,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
         }
       }
 
-      command = 5;
+      p1_command_loop = 5;
       break;
 
     case 5:
@@ -2340,7 +2345,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
 
       buffer[C3] = cw_keyer_speed | (cw_keyer_mode << 6);
       buffer[C4] = cw_keyer_weight | (cw_keyer_spacing << 7);
-      command = 6;
+      p1_command_loop = 6;
       break;
 
     case 6:
@@ -2390,7 +2395,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
         }
       }
 
-      command = 7;
+      p1_command_loop = 7;
       break;
 
     case 7:
@@ -2415,7 +2420,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
 
       buffer[C2] = cw_keyer_sidetone_volume;
       buffer[C3] = rfdelay;
-      command = 8;
+      p1_command_loop = 8;
       break;
 
     case 8:
@@ -2424,7 +2429,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
       buffer[C2] = cw_keyer_hang_time & 0x03;
       buffer[C3] = (cw_keyer_sidetone_frequency >> 4) & 0xFF;
       buffer[C4] = cw_keyer_sidetone_frequency & 0x0F;
-      command = 9;
+      p1_command_loop = 9;
       break;
 
     case 9:
@@ -2434,7 +2439,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
       buffer[C2] = 0;
       buffer[C3] = 100;
       buffer[C4] = 0;
-      command = 10;
+      p1_command_loop = 10;
       break;
 
     case 10:
@@ -2469,9 +2474,9 @@ static void ozy_send_buffer(unsigned char *buffer) {
       // The HermesLite-II uses an extended command set so in this case
       // we proceed.
       if (device == DEVICE_HERMES_LITE2) {
-        command = 11;
+        p1_command_loop = 11;
       } else {
-        command = 1;
+        p1_command_loop = 1;
       }
 
       break;
@@ -2747,7 +2752,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
       // so roll back to the first one. It is obvious how to extend this
       // to cover more of the HL2 extended command set.
       //
-      command = 1;
+      p1_command_loop = 1;
     }
     break;
     }
@@ -2887,7 +2892,7 @@ void old_protocol_run(void) {
     memset(buffer, 0, OZY_BUFFER_SIZE);
     metis_offset = 8;
     current_rx = 0;
-    command = 1;
+    p1_command_loop = 1;
     ozy_send_buffer(buffer);  // sends C1=0 packet
     ozy_send_buffer(buffer);  // sends C1=2 packet
     usleep(20000);
@@ -2912,18 +2917,18 @@ void old_protocol_run(void) {
   P1running = 1;
 }
 
-static void metis_start_stop(int command) {
+static void metis_start_stop(int cmd) {
   ASSERT_SERVER();
   int i;
   unsigned char buffer[1032];
-  t_print("%s: %d\n", __func__, command);
+  t_print("%s: %d\n", __func__, cmd);
 
   if (device == DEVICE_OZY) { return; }
 
   buffer[0] = 0xEF;
   buffer[1] = 0xFE;
-  buffer[2] = 0x04;     // start/stop command
-  buffer[3] = command;  // send EP6 and EP4 data (0x00=stop)
+  buffer[2] = 0x04; // start/stop command
+  buffer[3] = cmd;  // send EP6 and EP4 data (0x00=stop)
 
   if (tcp_socket < 0) {
     // use UDP  -- send a short packet
@@ -2952,7 +2957,7 @@ static void metis_start_stop(int command) {
     usleep(100000);
   }
 
-  if (command == 0 && tcp_socket >= 0) {
+  if (cmd == 0 && tcp_socket >= 0) {
     // We just have sent a METIS stop in TCP
     // Radio will close the TCP connection, therefore we do this as well
     int tmp = tcp_socket;

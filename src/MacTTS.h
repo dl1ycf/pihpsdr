@@ -17,9 +17,5 @@
 */
 
 #ifdef __APPLE__
-  #ifdef TTS
-
-    void MacTTS(const char *msg);
-
-  #endif
+  void MacTTS(const char *msg);
 #endif

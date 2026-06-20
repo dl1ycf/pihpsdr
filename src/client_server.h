@@ -23,6 +23,7 @@
 #include <gtk/gtk.h>
 #include <stdint.h>
 #include <netinet/in.h>
+#include <opus/opus.h>
 
 #include "mode.h"
 #include "receiver.h"
@@ -33,7 +34,6 @@
 enum _header_type_enum {
   CMD_ADC,
   CMD_AGC,
-  CMD_AGC_GAIN,
   CMD_AMCARRIER,
   CMD_ANAN10E,
   CMD_ATTENUATION,
@@ -55,8 +55,8 @@ enum _header_type_enum {
   CMD_FILTER_BOARD,
   CMD_FILTER_SEL,
   CMD_FILTER_VAR,
+  CMD_FM_LIMITER,
   CMD_FREQ,
-  CMD_HEARTBEAT,
   CMD_LOCK,
   CMD_METER,
   CMD_MICGAIN,
@@ -69,6 +69,9 @@ enum _header_type_enum {
   CMD_NOTCH,
   CMD_PAN,
   CMD_PATRIM,
+  CMD_PHROT,
+  CMD_PING,
+  CMD_PONG,
   CMD_PREEMP,
   CMD_PSATT,
   CMD_PSONOFF,
@@ -86,12 +89,14 @@ enum _header_type_enum {
   CMD_RIT_STEP,
   CMD_RXFFT,
   CMD_RXMENU,
+  CMD_RXPROFILE,
   CMD_RX_DISPLAY,
   CMD_RX_EQ,
   CMD_RX_FILTER_CUT,
   CMD_RX_FPS,
   CMD_RX_SELECT,
   CMD_RX_SPECTRUM,
+  CMD_SAMMODE,
   CMD_SAMPLE_RATE,
   CMD_SAT,
   CMD_SCREEN,
@@ -111,6 +116,7 @@ enum _header_type_enum {
   CMD_TXFFT,
   CMD_TXFILTER,
   CMD_TXMENU,
+  CMD_TXPROFILE,
   CMD_TX_DISPLAY,
   CMD_TX_EQ,
   CMD_TX_FILTER_CUT,
@@ -134,15 +140,17 @@ enum _header_type_enum {
   INFO_RADIO,
   INFO_RECEIVER,
   INFO_RXAUDIO,
+  INFO_RXAUDIO_OPUS,
   INFO_RX_SPECTRUM,
   INFO_TX_SPECTRUM,
   INFO_TRANSMITTER,
   INFO_TXAUDIO,
+  INFO_TXAUDIO_OPUS,
   INFO_VFO,
   CLIENT_SERVER_COMMANDS,
 };
 
-#define CLIENT_SERVER_VERSION 0x01270002 // 32-bit version number
+#define CLIENT_SERVER_VERSION 0x01300003 // 32-bit version number
 #define SPECTRUM_DATA_SIZE 4096          // Maximum width of a panadapter
 #define AUDIO_DATA_SIZE 512              // 512 (mono) samples
 
@@ -166,7 +174,7 @@ typedef struct _remote_client {
 // the structs: 64-bit first, then 32-bit, 16-bit and 8-bit
 // data.
 // The only exception is the header which must begin with the
-// sync bytes.
+// sync bytes but the alignment is kept.
 //
 typedef struct __attribute__((__packed__)) _header {
   uint8_t sync[4];           // 4 bytes
@@ -510,6 +518,7 @@ typedef struct __attribute__((__packed__)) _transmitter_data {
   mydouble ps_moxdelay;
   mydouble ps_loopdelay;
   mydouble ps_setpk;
+  mydouble phrot_corner;
   //
   uint32_t fft_size;
   //
@@ -550,8 +559,12 @@ typedef struct __attribute__((__packed__)) _transmitter_data {
   uint8_t  dexp_filter;
   uint8_t  eq_enable;
   uint8_t  alcmode;
+  uint8_t  metermode;
   uint8_t  swr_protection;
   uint8_t  usr_rx_filter;
+  uint8_t  phrot_enable;
+  uint8_t  phrot_stages;
+  uint8_t  phrot_reverse;
 } TRANSMITTER_DATA;
 
 //
@@ -589,6 +602,9 @@ typedef struct __attribute__((__packed__)) _receiver_data {
   mydouble multi_notch_center[3];
   mydouble multi_notch_width[3];
   mydouble notch_min_width;
+  mydouble anf_gain;
+  mydouble anf_leakage;
+  mydouble fm_limiter_gain;
   //
   uint32_t fft_size;
   uint32_t sample_rate;
@@ -598,6 +614,12 @@ typedef struct __attribute__((__packed__)) _receiver_data {
   uint16_t filter_high;
   uint16_t deviation;
   uint16_t width;
+  uint16_t agc_custom_attack;
+  uint16_t agc_custom_decay;
+  uint16_t agc_custom_hang;
+  uint16_t agc_custom_slope;
+  uint16_t anf_taps;
+  uint16_t anf_delay;
   //
   uint8_t id;
   uint8_t adc;
@@ -625,7 +647,9 @@ typedef struct __attribute__((__packed__)) _receiver_data {
   uint8_t smetermode;
   uint8_t low_latency;
   uint8_t pan;
+  uint8_t nbp_window;
   uint8_t multi_notch_enable[3];
+  uint8_t fm_limiter;
 } RECEIVER_DATA;
 
 //
@@ -669,8 +693,12 @@ typedef struct __attribute__((__packed__)) _vfo_data {
 typedef struct __attribute__((__packed__)) _spectrum_data {
   HEADER header;
   //
-  mydouble meter;
+  mydouble rxlvl;
+  mydouble curragc;
+  mydouble currout;
   mydouble alc;
+  mydouble micpeak;
+  mydouble outavg;
   mydouble fwd;
   mydouble swr;
   mydouble cA;
@@ -686,9 +714,11 @@ typedef struct __attribute__((__packed__)) _spectrum_data {
   uint64_t vfo_b_offset;
   //
   uint16_t width;
+  uint16_t compressed_width;
   //
   uint8_t id;
   uint8_t avail;
+  uint8_t compressed;
   //
   uint8_t sample[SPECTRUM_DATA_SIZE];
 } SPECTRUM_DATA;
@@ -699,18 +729,12 @@ typedef struct __attribute__((__packed__)) _spectrum_data {
 //
 typedef struct __attribute__((__packed__)) _txaudio_data {
   HEADER header;
-  //
-  uint16_t numsamples;
   uint16_t samples[AUDIO_DATA_SIZE];
 } TXAUDIO_DATA;
 
 typedef struct __attribute__((__packed__)) _rxaudio_data {
   HEADER header;
-  //
-  uint16_t numsamples;
   uint16_t samples[AUDIO_DATA_SIZE];
-  //
-  uint8_t rx;
 } RXAUDIO_DATA;
 
 
@@ -809,7 +833,7 @@ typedef struct __attribute__((__packed__)) _diversity_command {
   uint8_t diversity_enabled;
 } DIVERSITY_COMMAND;
 
-typedef struct __attribute__((__packed__)) _agc_gain_command {
+typedef struct __attribute__((__packed__)) _agc_command {
   HEADER header;
   //
   mydouble gain;
@@ -817,8 +841,14 @@ typedef struct __attribute__((__packed__)) _agc_gain_command {
   mydouble thresh;
   mydouble hang_thresh;
   //
+  uint16_t custom_attack;
+  uint16_t custom_decay;
+  uint16_t custom_hang;
+  uint16_t custom_slope;
+  //
   uint8_t id;
-} AGC_GAIN_COMMAND;
+  uint8_t agc;
+} AGC_COMMAND;
 
 //
 // Data to be sent by the client if an equalizer (RX1, RX2 or TX)
@@ -866,6 +896,11 @@ typedef struct __attribute__((__packed__)) _noise_command {
   mydouble nr4_whitening_factor;
   mydouble nr4_noise_rescale;
   mydouble nr4_post_threshold;
+  mydouble anf_gain;
+  mydouble anf_leakage;
+  //
+  uint16_t anf_taps;
+  uint16_t anf_delay;
   //
   uint8_t  id;
   uint8_t  nb;
@@ -884,11 +919,34 @@ typedef struct __attribute__((__packed__)) _noise_command {
   uint8_t  nr4_noise_scaling_type;
 } NOISE_COMMAND;
 
+//
+// Opus compressed audio packet (variable length, max ~4000 bytes encoded)
+// Used for INFO_RXAUDIO_OPUS and INFO_TXAUDIO_OPUS
+// NOTE: OPUS_MAX_PACKET must be larger than 2*AUDIO_DATA_SIZE so the storage needed
+//       for OPUS_AUDIO_DATA will also be sufficient for PCM audio
+//
+#define OPUS_MAX_PACKET  4000   // max Opus frame bytes (well above 32kbps @ 60ms)
+#define OPUS_FRAME_SIZE   960   // 20ms at 48kHz — standard VoIP frame
+#define OPUS_SAMPLE_RATE 48000
+
+typedef struct __attribute__((__packed__)) _opus_audio_data {
+  HEADER   header;
+  uint8_t  payload[OPUS_MAX_PACKET];
+} OPUS_AUDIO_DATA;
+
 #define HPSDR_PWD_LEN 64
 extern int hpsdr_server;
 extern int server_stops_protocol;
+extern int server_port_fwd;
+extern int server_duckdns;
+extern char duckdns_host[256];
+extern char duckdns_token[256];
 extern char hpsdr_pwd[HPSDR_PWD_LEN];
 
+extern int audio_compression;
+extern int spec_compression;
+extern int remote_auto_reconnect;
+extern int remote_latency_ms;
 extern int cl_sock_tcp;
 
 extern void start_vfo_timer(void);
@@ -912,8 +970,7 @@ extern void  send_txspectrum(void);
 extern void send_adc(int s, int id, int adc);
 extern void send_adc_data(int sock, int i);
 extern void send_afbinaural(int s, const RECEIVER *rx);
-extern void send_agc(int s, int rx, int agc);
-extern void send_agc_gain(int s, const RECEIVER *rx);
+extern void send_agc(int s, const RECEIVER *rx);
 extern void send_am_carrier(int s);
 extern void send_anan10E(int s, int new);
 extern void send_attenuation(int s, int rx, int attenuation);
@@ -928,6 +985,7 @@ extern void send_cw(int s, int state,  int wait);
 extern void send_cwpeak(int s, int id, int state);
 extern void send_dac_data(int sock);
 extern void send_deviation(int s, int id, int state);
+extern void send_sam_mode(int s, const RECEIVER *rx);
 extern void send_dexp(int s);
 extern void send_digidrivemax(int s);
 extern void send_display(int s, int id);
@@ -936,6 +994,7 @@ extern void send_drive(int s, double value);
 extern void send_duplex(int s, int state);
 extern void send_eq(int s, int id);
 extern void send_filter_board(int s, int filter_board);
+extern void send_fm_limiter(int s, const RECEIVER *rx);
 extern void send_replay(int s);
 extern void send_rx_filter_cut(int s, int rx);
 extern void send_tx_filter_cut(int s);
@@ -943,10 +1002,12 @@ extern void send_filter_sel(int s, int vfo, int filter);
 extern void send_filter_var(int s, int mode, int filter);
 extern void send_rxfps(int s, int rx, int fps);
 extern void send_txfps(int s, int fps);
-extern void send_heartbeat(int s);
+extern void send_phrot(int s);
+extern void send_ping(int s);
+extern void send_pong(int s, int time);
 extern void send_lock(int s, int lock);
 extern void send_memory_data(int sock, int index);
-extern void send_meter(int s, int metermode, int alcmode);
+extern void send_meter(int s, int smetermode, int txmetermode, int alcmode);
 extern void send_micgain(int s, double gain);
 extern void send_mode(int s, int rx, int mode);
 extern void send_mute_rx(int s, int id, int mute);
@@ -970,6 +1031,7 @@ extern void send_restart(int s);
 extern void send_rfgain(int s, int rx, double gain);
 extern void send_rit(int s, int id);
 extern void send_rit_step(int s, int v, int step);
+extern void send_rxprofile(int s, int id, int what, int m);
 extern void send_rx_data(int s, int id);
 extern void send_rx_fft(int s, const RECEIVER *rx);
 extern void send_rx_select(int s, int rx);
@@ -992,6 +1054,7 @@ extern void send_toggle_mox(int s);
 extern void send_toggle_tune(int s);
 extern void send_tune(int s, int state);
 extern void send_twotone(int s, int state);
+extern void send_txprofile(int s, int what, int m);
 extern void send_tx_compressor(int s);
 extern void send_tx_data(int s);
 extern void send_tx_fft(int s, const TRANSMITTER *tx);
@@ -1100,4 +1163,5 @@ static inline void SYNC(uint8_t *sync) {
   *sync++ = 0xAF;
   *sync++ = 0xAF;
 }
+
 #endif

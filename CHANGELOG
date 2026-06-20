@@ -1,5 +1,48 @@
 LIST OF RECENT PIHPSDR CHANGES
 ==============================
+June 2026:
+----------
+
+- "Modernization" project
+  -----------------------
+
+   - "Themes menu": Dark/Light GTK theme switching,
+     selectable piHPSDR colour "themes"
+
+   - AGC: new AGC mode "custom" (parameters in AGC menu),
+          new AGC mode "fixed"  (AGC off with fixed gain from AGC slider)
+
+   - VFO bar: left click in VFO-A/VFO-B dial opens "Band" menu for that VFO
+              right click in VFO-A/VFO-B opens "Filter menu" for that VFO
+              (for VFO-B only if RX1 is running)
+              left click between VFO-A/VFO-B opens "Mode" menu for VFO-A
+              right click between VFO-A/VFO-B opens "Mode" menu for VFO-B
+
+   - VFO bar in Client/Server: added an indicator for the round-trip latency
+
+   - DSP menu: additional choice between 4-term and 7-term Blackman-Harris Window function
+
+   - Filter menu: CW audio peak filter: choose between 4 different filters or "None"
+
+   - Mouse drags in panadapter: vertical component of motion moves panadapter_low value
+
+   - Client/Server Bandwidth Reduction:
+       - use  OPUS-compressed audio data (None/32kbps/64kbps/96kbps, user-selectable)
+       - use zlib compression for spectrum data (auto-negotiated)
+
+   - "Network Helpers" in Server menu (DuckDNS and UPNP port forwarding)
+
+   - Meters: analog meter overhaul, digial meter "radically digital",
+     added extended metering (if space allows)
+
+   - Auto Reconnect option for the client (to recover from short network break-downs)
+
+   - DX cluster support added (contributed by AL), including display
+     of (click-able) cluster spots in the panadapter
+
+   - TCI: more complete server (including TCI audio), taken and adapted from deskHPSDR
+
+   - RX and TX profiles: can now be saved/restored separately in a new "Profiles" menu
 
 April 2026:
 -----------
@@ -42,7 +85,7 @@ January 2026:
   includes a PTT-out signal on RTS.
 
 - added CW texts that can be changed in the CW menu and
-  transmitted upon pushing a (physical) button or clicking a 
+  transmitted upon pushing a (physical) button or clicking a
   toolbar (on-screen) button.
 
 - re-worked the "machine specific" settings in the Radio menu.
@@ -213,7 +256,7 @@ February 2025:
 --------------
 
 - Automatic RadioBerry detection, so only two
-  "free" GPIO lines are activated if compiled 
+  "free" GPIO lines are activated if compiled
   with GPIO.
 
 - Massive work on the client-server version, and
@@ -334,7 +377,7 @@ April 2024:
 - removed installation procedure for pre-compiled binaries
 
 - Included AGC characteristic (slow/med/fast) in settings
-  "stored by the mode", described the "mode specific 
+  "stored by the mode", described the "mode specific
   settings" more consistently in the manual.
 
 - Increased the number of transverter bands from 8 to 10
@@ -384,12 +427,12 @@ January 2024:
 - new P2 definition for the upper 16 alex
   bits.
 
-- Included CTUN and Band data in the 
+- Included CTUN and Band data in the
   memory slots.
 
 - XVTR menu now allows to specify the RX gain
   of the transverter band-by-band.
-  
+
 - WDSP updated to version 1.24
 
 - PureSignal changes: included two check-boxes
@@ -577,9 +620,9 @@ Jan 2023:
 August 2022
 -----------
 
-- New value for the "CW RF delay" (30 msec), based on measurement 
+- New value for the "CW RF delay" (30 msec), based on measurement
   with my ANAN-7000 (with the new value, no "chopping" of the first
-  dot is observed any longer). 
+  dot is observed any longer).
 
 - Disable T/R relay if PA is disabled, this works around a bug in the
   Orion-II FPGA firmware

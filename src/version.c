@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -22,23 +22,20 @@ char build_version[] = GIT_VERSION;
 char build_commit[] = GIT_COMMIT;
 
 char build_options[] =
+#ifdef TCI
+  "TCI "
+#endif
 #ifdef GPIO
   "GPIO "
 #endif
 #ifdef MIDI
   "MIDI "
 #endif
-#ifdef SATURN
-  "SATURN "
-#endif
 #ifdef USBOZY
   "USBOZY "
 #endif
 #ifdef SOAPYSDR
   "SOAPYSDR "
-#endif
-#ifdef STEMLAB_DISCOVERY
-  "STEMLAB "
 #endif
   "";
 

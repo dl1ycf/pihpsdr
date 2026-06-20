@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2017 - Markus Großer, DL8GM
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2017 - Markus Großer, DL8GM
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -25,7 +25,6 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <unistd.h>
-#include <curl/curl.h>
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
 #include <glib.h>
@@ -34,148 +33,24 @@
 
 #include "discovered.h"
 #include "discovery.h"
+#include "main.h"
 #include "message.h"
 #include "radio.h"
 
 // As we only run in the GTK+ main event loop, which is single-threaded and
 // non-preemptive, we shouldn't need any additional synchronisation mechanisms.
 
-static bool curl_initialised = FALSE;
-extern void status_text(const char *);
-
-static size_t app_list_cb(void *buffer, size_t size, size_t nmemb, void *data);
-
-// cppcheck-suppress constParameterCallback
-static size_t get_list_cb(void *buffer, size_t size, size_t nmemb, void *data) {
-  //
-  // Scan output of original HEAD request, which is the HTML code of the
-  // starting page. "barbone" RedPitayas running Alpine Linux will show
-  // the existing apps, so look for them. STEMlab web servers are MUCH more
-  // fancy and will not show the name of the apps in the initial HEAD
-  // request.
-  //
-  int *software_version = (int*) data;
-  const gchar *pavel_rx = "\"sdr_receiver_hpsdr\"";
-
-  if (g_strstr_len(buffer, size * nmemb, pavel_rx) != NULL) {
-    *software_version |= STEMLAB_PAVEL_RX | BARE_REDPITAYA;
-  }
-
-  const gchar *pavel_trx = "\"sdr_transceiver_hpsdr\"";
-
-  if (g_strstr_len(buffer, size * nmemb, pavel_trx) != NULL) {
-    *software_version |= STEMLAB_PAVEL_TRX | BARE_REDPITAYA;
-  }
-
-  // Returning the total amount of bytes "processed" to signal cURL that we
-  // are done without any errors
-  return size * nmemb;
-}
-
-// cppcheck-suppress constParameterCallback
-static size_t app_list_cb(void *buffer, size_t size, size_t nmemb, void *data) {
-  //
-  // Analyze the JSON output of the "bazaar?app=" request and figure out
-  // which applications are present. This is done the "pedestrian" way such
-  // that we can build without a json library. Hopefully, the target strings
-  // are not split across two buffers.
-  // This is for STEMlab web servers.
-  //
-  int *software_version = (int*) data;
-  const gchar *pavel_rx_json = "\"sdr_receiver_hpsdr\":";
-
-  if (g_strstr_len(buffer, size * nmemb, pavel_rx_json) != NULL) {
-    *software_version |= STEMLAB_PAVEL_RX;
-  }
-
-  const gchar *pavel_trx_json = "\"sdr_transceiver_hpsdr\":";
-
-  if (g_strstr_len(buffer, size * nmemb, pavel_trx_json) != NULL) {
-    *software_version |= STEMLAB_PAVEL_TRX;
-  }
-
-  const gchar *rp_trx_json = "\"stemlab_sdr_transceiver_hpsdr\":";
-
-  if (g_strstr_len(buffer, size * nmemb, rp_trx_json) != NULL) {
-    *software_version |= STEMLAB_RP_TRX;
-  }
-
-  const gchar *hamlab_trx_json = "\"hamlab_sdr_transceiver_hpsdr\":";
-
-  if (g_strstr_len(buffer, size * nmemb, hamlab_trx_json) != NULL) {
-    *software_version |= HAMLAB_RP_TRX;
-  }
-
-  // Returning the total amount of bytes "processed" to signal cURL that we
-  // are done without any errors
-  return size * nmemb;
-}
-
-//
-// This is a no-op curl callback and swallows what is sent by
-// the RedPitaya web server when starting the SDR application.
-//
-// cppcheck-suppress constParameterCallback
-static size_t alpine_start_callback(void *buffer, size_t size, size_t nmemb, void *data) {
-  return size * nmemb;
-}
-
-//
-// Digest what the web server sends after starting the SDR app.
-// It should show a status:OK message in the JSON output.
-//
-// cppcheck-suppress constParameterCallback
-static size_t app_start_callback(void *buffer, size_t size, size_t nmemb, void *data) {
-  if (strncmp(buffer, "{\"status\":\"OK\"}", size * nmemb) != 0) {
-    t_print( "%s: Receiver error from STEMlab\n", __func__);
-    return 0;
-  }
-
-  return size * nmemb;
-}
-
 //
 // Starting an app on the Alpine Linux version of RedPitaya simply works
-// by accessing the corresponding directory. We could use a no-op instead of
-// the WRITEFUNCTION, but this way we can activate debug output in
-// alpine_start_cb.
+// by accessing the corresponding directory. There seems to be no stop command.
 //
 int alpine_start_app(const char * const app_id) {
-  // Dummy string, using the longest possible app id
-  char app_start_url[] = "http://123.123.123.123/stemlab_sdr_transceiver_hpsdr_with_some_headroom";
-  // The scripts on the "alpine" machine all contain code that
-  // stops all running programs, so we need not stop any possible running app here
-  CURL *curl_handle = curl_easy_init();
-  CURLcode curl_error = CURLE_OK;
-
-  if (curl_handle == NULL) {
-    t_print( "%s: Failed to create cURL handle\n", __func__);
-    return -1;
-  }
-
-#define check_curl(description) do { \
-  if (curl_error != CURLE_OK) { \
-    t_print( "%s: " description ": %s\n", __func__, \
-        curl_easy_strerror(curl_error)); \
-     return -1; \
-  } \
-}  while (0);
-  //
-  // Copy IP addr and name of app to app_start_url
-  //
+  char app_start_url[256];
+  char result[256];
   snprintf(app_start_url, sizeof(app_start_url), "http://%s/%s/",
            inet_ntoa(radio->network.address.sin_addr),
            app_id);
-  curl_error = curl_easy_setopt(curl_handle, CURLOPT_URL, app_start_url);
-  check_curl("Failed setting cURL URL");
-  curl_error = curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, alpine_start_callback);
-  check_curl("Failed install cURL callback");
-  curl_error = curl_easy_perform(curl_handle);
-  check_curl("Failed to start app");
-#undef check_curl
-  curl_easy_cleanup(curl_handle);
-  // Since the SDR application is now running, we can hand it over to the
-  // regular HPSDR protocol handling code
+  run_curl(app_start_url, result, sizeof(result), 5);
   radio->protocol = ORIGINAL_PROTOCOL;
   return 0;
 }
@@ -185,7 +60,8 @@ int alpine_start_app(const char * const app_id) {
 //
 int stemlab_start_app(const char * const app_id) {
   // Dummy string, using the longest possible app id
-  char app_start_url[] = "http://123.123.123.123/bazaar?start=stemlab_sdr_transceiver_hpsdr_headroom_max";
+  char app_start_url[256];
+  char result[256];
   //
   // If there is already an SDR application running on the RedPitaya,
   // starting the SDR app might lead to an unpredictable state, unless
@@ -195,57 +71,24 @@ int stemlab_start_app(const char * const app_id) {
   // command "killall sdr_transceiver_hpsdr") and then start it.
   // We return with value 0 if everything went OK, else we return -1.
   //
-  CURL *curl_handle = curl_easy_init();
-  CURLcode curl_error = CURLE_OK;
-
-  if (curl_handle == NULL) {
-    t_print( "%s: Failed to create cURL handle\n", __func__);
-    return -1;
-  }
-
-#define check_curl(description) do { \
-  if (curl_error != CURLE_OK) { \
-    t_print( "%s: " description ": %s\n", __func__, \
-        curl_easy_strerror(curl_error)); \
-     return -1; \
-  } \
-}  while (0);
   //
   // stop command
   //
   snprintf(app_start_url, sizeof(app_start_url), "http://%s/bazaar?stop=%s",
            inet_ntoa(radio->network.address.sin_addr),
            app_id);
-  curl_error = curl_easy_setopt(curl_handle, CURLOPT_URL, app_start_url);
-  check_curl("Failed setting cURL URL");
-  curl_error = curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, app_start_callback);
-  check_curl("Failed install cURL callback");
-  curl_error = curl_easy_perform(curl_handle);
-  check_curl("Failed to stop app");
+  run_curl(app_start_url, result, sizeof(result), 5);
   //
   // start command
   //
   snprintf(app_start_url, sizeof(app_start_url), "http://%s/bazaar?start=%s",
            inet_ntoa(radio->network.address.sin_addr),
            app_id);
-  curl_error = curl_easy_setopt(curl_handle, CURLOPT_URL, app_start_url);
-  check_curl("Failed setting cURL URL");
-  curl_error = curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, app_start_callback);
-  check_curl("Failed install cURL callback");
-  curl_error = curl_easy_perform(curl_handle);
-  check_curl("Failed to start app");
-#undef check_curl
-  curl_easy_cleanup(curl_handle);
+  run_curl(app_start_url, result, sizeof(result), 5);
   // Since the SDR application is now running, we can hand it over to the
   // regular HPSDR protocol handling code
   radio->protocol = ORIGINAL_PROTOCOL;
   return 0;
-}
-
-void stemlab_cleanup(void) {
-  if (curl_initialised) {
-    curl_global_cleanup();
-  }
 }
 
 //
@@ -262,8 +105,7 @@ void stemlab_cleanup(void) {
 
 void stemlab_discovery(void) {
   char txt[256];
-  CURL *curl_handle;
-  CURLcode curl_error;
+  char result[2048];
   int app_list;
   struct sockaddr_in ip_address;
   struct sockaddr_in netmask;
@@ -281,60 +123,40 @@ void stemlab_discovery(void) {
   // Do a HEAD request (poor curl's ping) to see whether the device is on-line
   // allow a 5 sec time-out
   //
-  curl_handle = curl_easy_init();
-
-  if (curl_handle == NULL) {
-    t_print( "%s: Failed to create cURL handle\n", __func__);
-    return;
-  }
-
   app_list = 0;
   snprintf(txt, sizeof(txt), "http://%s", ipaddr_radio);
-  curl_easy_setopt(curl_handle, CURLOPT_URL, txt);
-  curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, (long) 5);
-  curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, get_list_cb);
-  curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, &app_list);
-  curl_error = curl_easy_perform(curl_handle);
-  curl_easy_cleanup(curl_handle);
 
-  if (curl_error ==  CURLE_OPERATION_TIMEDOUT) {
-    snprintf(txt, sizeof(txt), "No response from web server at %s", ipaddr_radio);
-    status_text(txt);
-    t_print("%s: %s\n", __func__, txt);
+  if (run_curl(txt, result, sizeof(result), 5) != 0) { return; }
+
+  if (g_strstr_len(result, sizeof(result), "\"sdr_receiver_hpsdr\"") != NULL) {
+    app_list |= STEMLAB_PAVEL_RX | BARE_REDPITAYA;
   }
 
-  if (curl_error != CURLE_OK) {
-    t_print( "%s: ping error: %s\n", __func__, curl_easy_strerror(curl_error));
-    return;
+  if (g_strstr_len(result, sizeof(result), "\"sdr_transceiver_hpsdr\"") != NULL) {
+    app_list |= STEMLAB_PAVEL_TRX | BARE_REDPITAYA;
   }
 
   //
   // Determine which SDR apps are present on the RedPitaya. The list may be empty.
   //
   if (app_list == 0) {
-    curl_handle = curl_easy_init();
-
-    if (curl_handle == NULL) {
-      t_print( "%s: Failed to create cURL handle\n", __func__);
-      return;
-    }
-
     snprintf(txt, sizeof(txt), "http://%s/bazaar?apps=", ipaddr_radio);
-    curl_easy_setopt(curl_handle, CURLOPT_URL, txt);
-    curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, (long) 20);
-    curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, app_list_cb);
-    curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, &app_list);
-    curl_error = curl_easy_perform(curl_handle);
-    curl_easy_cleanup(curl_handle);
+    run_curl(txt, result, sizeof(result), 20);
 
-    if (curl_error == CURLE_OPERATION_TIMEDOUT) {
-      status_text("No Response from RedPitaya in 20 secs");
-      t_print("%s: TimeOut met when trying to get list of HPSDR apps from RedPitaya\n", __func__);
+    if (g_strstr_len(result, sizeof(result), "\"sdr_receiver_hpsdr\":") != NULL) {
+      app_list |= STEMLAB_PAVEL_RX;
     }
 
-    if (curl_error != CURLE_OK) {
-      t_print( "%s: app-list error: %s\n", __func__, curl_easy_strerror(curl_error));
-      return;
+    if (g_strstr_len(result, sizeof(result), "\"sdr_transceiver_hpsdr\":") != NULL) {
+      app_list |= STEMLAB_PAVEL_TRX;
+    }
+
+    if (g_strstr_len(result, sizeof(result), "\"stemlab_sdr_transceiver_hpsdr\":") != NULL) {
+      app_list |= STEMLAB_RP_TRX;
+    }
+
+    if (g_strstr_len(result, sizeof(result), "\"hamlab_sdr_transceiver_hpsdr\":") != NULL) {
+      app_list |= HAMLAB_RP_TRX;
     }
   }
 

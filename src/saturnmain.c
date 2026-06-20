@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2021 - Laurence Barker G8NJJ
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2021 - Laurence Barker G8NJJ
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -58,7 +58,6 @@
 #include "saturndrivers.h"
 #include "saturnmain.h"
 #include "saturnregisters.h"
-#include "saturnserver.h"
 
 static bool HaveMOX;                                   // true if in TX
 static bool SDRActive;                                  // true if this SDR is running at the moment
@@ -712,7 +711,6 @@ void saturn_exit() {
   SetMOX(false);
   SetTXEnable(false);
   EnableCW(false, false);
-  ServerActive = false;
   CloseXDMADriver();
 }
 
@@ -756,8 +754,11 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
       // currently not used by piHPSDR
       //
       ADCOverflows |= (GetADCOverflow(&ADC1MaxAmpl, &ADC2MaxAmpl) & 0xFF);            // add in any new overflows
+
       if (ADC1MaxAmpl > PeakADC1MaxAmpl) { PeakADC1MaxAmpl = ADC1MaxAmpl; }           // get peak hold
+
       if (ADC2MaxAmpl > PeakADC2MaxAmpl) { PeakADC2MaxAmpl = ADC2MaxAmpl; }           // get peak hold
+
       mybuf->buffer[39] = (PeakADC1MaxAmpl >> 8) & 0xFF;                              // ADC1 peak hold
       mybuf->buffer[40] = (PeakADC1MaxAmpl     ) & 0xFF;
       mybuf->buffer[41] = (PeakADC2MaxAmpl >> 8) & 0xFF;                              // ADC2 peak hold
@@ -814,7 +815,9 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
         // a new ADC overflow has been detected.
         //
         ADCOverflows |= (GetADCOverflow(&ADC1MaxAmpl, &ADC2MaxAmpl) & 0xFF);
+
         if (ADC1MaxAmpl > PeakADC1MaxAmpl) { PeakADC1MaxAmpl = ADC1MaxAmpl; }
+
         if (ADC2MaxAmpl > PeakADC2MaxAmpl) { PeakADC2MaxAmpl = ADC2MaxAmpl; }
 
         if (ADCOverflows != 0 && SleepCount > 100)  {
@@ -837,10 +840,7 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
 }
 
 //
-// Periodically send MicSamples. Although the client is RX only,
-// send zero samples to the client in the pace of incoming
-// samples from XDMA, since this may be used as a
-// heart beat or clock source.
+// Periodically send MicSamples.
 //
 static gpointer saturn_micaudio_thread(gpointer arg) {
   //
@@ -855,13 +855,6 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
   bool FIFOOverflow, FIFOUnderflow, FIFOOverThreshold;
   unsigned int Current;                     // current occupied locations in FIFO
   uint8_t UDPBuffer[VMICPACKETSIZE];
-  int Error;
-  //
-  // variables for outgoing UDP frame
-  //
-  struct sockaddr_in DestAddr;
-  struct iovec iovecinst;
-  struct msghdr datagram;
   //
   // The UDP buffer is cleared. Only the sequence number will be
   // updated each time a packet is sent via ethernet
@@ -908,20 +901,11 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
   //
   while (!Exiting) {
     uint32_t SequenceCounter = 0;
-    uint32_t SequenceCounter2 = 0;
 
     while (!SDRActive) {
       usleep(10000);
     }
 
-    memcpy(&DestAddr, &server_reply_addr, sizeof(struct sockaddr_in)); // make local copy of dest. addr.
-    memset(&iovecinst, 0, sizeof(struct iovec));
-    memset(&datagram, 0, sizeof(struct msghdr));
-    iovecinst.iov_len = VMICPACKETSIZE;
-    datagram.msg_iov = &iovecinst;
-    datagram.msg_iovlen = 1;
-    datagram.msg_name = &DestAddr;                   // MAC addr & port to send to
-    datagram.msg_namelen = sizeof(DestAddr);
     t_print("starting %s\n", __func__);
 
     while (SDRActive) {
@@ -969,24 +953,6 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
       SequenceCounter++;
       memcpy(mybuf->buffer + 4, MicBasePtr, VDMAMICTRANSFERSIZE);  // copy in mic samples
       saturn_post_micaudio(VMICPACKETSIZE, mybuf);
-
-      if (ServerActive) {
-        iovecinst.iov_base = UDPBuffer;
-        memcpy(&DestAddr, &server_reply_addr, sizeof(struct sockaddr_in)); // make local copy of dest. addr.
-        UDPBuffer[0] = (SequenceCounter2 >> 24) & 0xFF;           // add seq. count
-        UDPBuffer[1] = (SequenceCounter2 >> 16) & 0xFF;
-        UDPBuffer[2] = (SequenceCounter2 >>  8) & 0xFF;
-        UDPBuffer[3] = (SequenceCounter2      ) & 0xFF;
-        SequenceCounter2++;
-        Error = sendmsg(SocketData[VPORTMICAUDIO].Socketid, &datagram, 0);
-
-        if (Error == -1) {
-          t_perror("sendmsg, Mic Audio");
-          exit(-1);
-        }
-      } else {
-        SequenceCounter2 = 0;
-      }
     }
   }
 
@@ -1005,13 +971,6 @@ static gpointer saturn_rx_thread(gpointer arg) {
   int IQReadfile_fd = -1;                     // DMA read file device
   uint32_t RegisterValue;
   bool FIFOOverflow, FIFOUnderflow, FIFOOverThreshold;
-  int Error;
-  //
-  // variables for outgoing UDP frame
-  //
-  struct sockaddr_in DestAddr[VNUMDDC];
-  struct iovec iovecinst[VNUMDDC];                            // instance of iovec
-  struct msghdr datagram[VNUMDDC];
   uint32_t SequenceCounter[VNUMDDC];                          // UDP sequence count
   //
   // variables for analysing a DDC frame
@@ -1079,14 +1038,6 @@ static gpointer saturn_rx_thread(gpointer arg) {
 
     for (int DDC = 0; DDC < VNUMDDC; DDC++) {
       SequenceCounter[DDC] = 0;
-      memcpy(&DestAddr[DDC], &server_reply_addr, sizeof(struct sockaddr_in)); // make local copy of dest. addr.
-      memset(&iovecinst[DDC], 0, sizeof(struct iovec));
-      memset(&datagram[DDC], 0, sizeof(struct msghdr));
-      iovecinst[DDC].iov_len = VDDCPACKETSIZE;
-      datagram[DDC].msg_iov = &iovecinst[DDC];
-      datagram[DDC].msg_iovlen = 1;
-      datagram[DDC].msg_name = &DestAddr[DDC];                   // MAC addr & port to send to
-      datagram[DDC].msg_namelen = sizeof(DestAddr);
     }
 
     t_print("starting %s\n", __func__);
@@ -1120,20 +1071,7 @@ static gpointer saturn_rx_thread(gpointer arg) {
           IQReadPtr[DDC] += VIQBYTESPERFRAME;
 
           if (DDC < 6) {
-            if (ServerActive) {
-              iovecinst[DDC].iov_base = mybuf->buffer;
-              memcpy(&DestAddr[DDC], &server_reply_addr, sizeof(struct sockaddr_in)); // make local copy of dest. addr.
-              Error = sendmsg(SocketData[VPORTDDCIQ0 + DDC].Socketid, &datagram[DDC], 0);
-
-              if (Error == -1) {
-                t_print("Send Error, DDC=%d, errno=%d, socket id = %d\n", DDC,
-                        errno, SocketData[VPORTDDCIQ0 + DDC].Socketid);
-                exit(-1);
-              }
-            } else {
-              SequenceCounter[DDC] = 0;
-            }
-
+            SequenceCounter[DDC] = 0;
             mybuf->free = 1;
           } else {
             saturn_post_iq_data(DDC - 6, mybuf);
@@ -1339,42 +1277,6 @@ void saturn_init() {
   saturn_rx_thread_id = g_thread_new( "SATURN RX", saturn_rx_thread, NULL);
   saturn_micaudio_thread_id = g_thread_new( "SATURN MIC", saturn_micaudio_thread, NULL);
   saturn_high_priority_thread_id = g_thread_new( "SATURN HP OUT", saturn_high_priority_thread, NULL);
-}
-
-void saturn_handle_high_priority_server(const unsigned char *UDPInBuffer) {
-  //
-  // HighPrio Packet that came via ethernet:
-  // only handle start/stop and DDC frequencies
-  // map DDC0:5 to DDC0:5
-  //
-  for (int i = 0; i < 6; i++) {
-    uint32_t LongWord = ((UDPInBuffer[4 * i +  9] & 0xFF) << 24) |
-                        ((UDPInBuffer[4 * i + 10] & 0xFF) << 16) |
-                        ((UDPInBuffer[4 * i + 11] & 0xFF) <<  8) |
-                        ((UDPInBuffer[4 * i + 12] & 0xFF)      );
-    SetDDCFrequency(i, LongWord, true);
-  }
-
-  int RunBit = UDPInBuffer[4] & 0x01;
-
-  if (RunBit) {
-    StartBitReceived = true;
-
-    if (ReplyAddressSet) {
-      ServerActive = true;  // only set active if we have replay address too
-    }
-  } else {
-    ServerActive = false;
-
-    // disable DDC0:6
-    for (int i = 0; i < 6; i++) {
-      SetP2SampleRate(i, false, 48, false);
-    }
-
-    WriteP2DDCRateRegister();
-    t_print("Server set to inactive by client app\n");
-    StartBitReceived = false;
-  }
 }
 
 void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {

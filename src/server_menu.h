@@ -19,3 +19,4 @@
 
 #include <gtk/gtk.h>
 extern void server_menu(GtkWidget *parent);
+extern void start_network_helper(void);

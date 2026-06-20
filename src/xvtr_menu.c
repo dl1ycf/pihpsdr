@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -162,7 +162,7 @@ static gboolean close_cb(void) {
 
 static gboolean update_cb(void) {
   save_xvtr();
-  return TRUE;
+  return FALSE;
 }
 
 void xvtr_menu(GtkWidget *parent) {

@@ -1,5 +1,5 @@
 /* Copyright (C)
-* 2023 - Christoph van Wüllen, DL1YCF
+*  2023 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -36,34 +36,29 @@
 #include <gdk/gdk.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <sys/time.h>
 
 void t_print(const gchar *format, ...) {
   va_list(args);
   va_start(args, format);
-  struct timespec ts;
-  double now;
-  static double starttime;
-  static int first = 1;
+  struct timeval tv;
   char line[1024];
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  now = ts.tv_sec + 1E-9 * ts.tv_nsec;
-
-  if (first) {
-    first = 0;
-    starttime = now;
-  }
-
+  gettimeofday(&tv, NULL);
   //
-  // After 11 days, the time reaches 999999.999 so we simply wrap around
+  // convert to hh:mm:ss.mmm. Wrap around at midnight
   //
-  if (now - starttime >= 999999.995) { starttime += 1000000.0; }
-
+  int sec = (int) (tv.tv_sec % 86400);
+  int hrs = sec / 3600;
+  sec -= 3600 * hrs;
+  int min = sec / 60;
+  sec -= 60 * min;
+  int ms = (int) (tv.tv_usec / 1000);
   //
   // We have to use vsnprintf to handle the varargs stuff
   // g_print() seems to be thread-safe but call it only ONCE.
   //
   vsnprintf(line, sizeof(line), format, args);
-  g_print("%10.3f %s", now - starttime, line);
+  g_print("%02d:%02d:%02d.%03d %s", hrs, min, sec, ms, line);
 }
 
 void t_perror(const gchar *string) {

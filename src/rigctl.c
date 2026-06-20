@@ -1,6 +1,6 @@
 /* Copyright (C)
 *  2016 Steve Wilson <wevets@gmail.com>
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -760,95 +760,95 @@ static void send_resp (int fd, char * msg) {
   }
 }
 
-static int wdspmode(int kenwoodmode) {
-  int wdspmode;
+static int wdspmode(int kmode) {
+  int wmode;
 
-  switch (kenwoodmode) {
+  switch (kmode) {
   case 1:                // Kenwood LSB
-    wdspmode = modeLSB;
+    wmode = modeLSB;
     break;
 
   case 2:                // Kenwood USB
-    wdspmode = modeUSB;
+    wmode = modeUSB;
     break;
 
   case 3:                // Kenwood CW (upper side band)
-    wdspmode = modeCWU;
+    wmode = modeCWU;
     break;
 
   case 4:                // Kenwood FM
-    wdspmode = modeFMN;
+    wmode = modeFMN;
     break;
 
   case 5:                // Kenwood AM
-    wdspmode = modeAM;
+    wmode = modeAM;
     break;
 
   case 6:                // Kenwood FSK (lower side band)
-    wdspmode = modeDIGL;
+    wmode = modeDIGL;
     break;
 
   case 7:                // Kenwood CW-R (lower side band)
-    wdspmode = modeCWL;
+    wmode = modeCWL;
     break;
 
   case 9:                // Kenwood FSK-R (upper side band)
-    wdspmode = modeDIGU;
+    wmode = modeDIGU;
     break;
 
   default:
     // NOTREACHED?
-    wdspmode = modeLSB;
+    wmode = modeLSB;
     break;
   }
 
-  return wdspmode;
+  return wmode;
 }
 
-static int ts2000_mode(int wdspmode) {
-  int kenwoodmode;
+static int ts2000_mode(int wmode) {
+  int kmode;
 
-  switch (wdspmode) {
+  switch (wmode) {
   case modeLSB:
-    kenwoodmode = 1;  // Kenwood LDB
+    kmode = 1;  // Kenwood LDB
     break;
 
   case modeUSB:
-    kenwoodmode = 2;  // Kenwood USB
+    kmode = 2;  // Kenwood USB
     break;
 
   case modeCWL:
-    kenwoodmode = 7;  // Kenwood CW-R
+    kmode = 7;  // Kenwood CW-R
     break;
 
   case modeCWU:
-    kenwoodmode = 3;  // Kenwood CW
+    kmode = 3;  // Kenwood CW
     break;
 
   case modeFMN:
-    kenwoodmode = 4;  // Kenwood FM
+    kmode = 4;  // Kenwood FM
     break;
 
   case modeAM:
   case modeSAM:
-    kenwoodmode = 5;  // Kenwood AM
+    kmode = 5;  // Kenwood AM
     break;
 
   case modeDIGL:
-    kenwoodmode = 6;  // Kenwood FSK
+    kmode = 6;  // Kenwood FSK
     break;
 
   case modeDIGU:
-    kenwoodmode = 9;  // Kenwood FSK-R
+    kmode = 9;  // Kenwood FSK-R
     break;
 
   default:
     // NOTREACHED?
-    kenwoodmode = 1;  // LSB
+    kmode = 1;  // LSB
     break;
   }
 
-  return kenwoodmode;
+  return kmode;
 }
 
 static gboolean autoreport_handler(gpointer data) {
@@ -1063,7 +1063,11 @@ static gboolean andromeda_oneshot_handler(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
-static void queue_cw_char(char c) {
+void rigctl_purge_cw() {
+  cw_buf_in = cw_buf_out;
+}
+
+void rigctl_queue_cw_char(const char c) {
   if (c < ' ') { return; } // suppress non-printable characters including \0
 
   int new = cw_buf_in + 1;
@@ -1077,7 +1081,17 @@ static void queue_cw_char(char c) {
   }
 }
 
-void rigctl_send_cw_text(int pos) {
+void rigctl_queue_cw_string(const char *str) {
+  for (;;) {
+    char c = *str++;
+
+    if (c == '\0') { break; }
+
+    rigctl_queue_cw_char(c);
+  }
+}
+
+void rigctl_queue_cw_text(const int pos) {
   //
   // Send one of the pre-defined CW texts
   // It is important that this runs in the GTK queue to
@@ -1090,10 +1104,10 @@ void rigctl_send_cw_text(int pos) {
 
     if (c == '#') {
       for (unsigned int j = 0; j < strlen(predef_call); j++) {
-        queue_cw_char(predef_call[j]);
+        rigctl_queue_cw_char(predef_call[j]);
       }
     } else {
-      queue_cw_char(c);
+      rigctl_queue_cw_char(c);
     }
   }
 }
@@ -1863,168 +1877,6 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 
       break;
 
-    //    case 'P': //ZZCP
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      // set/read compander
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZCP%d;", 0);
-    //        send_resp(client->fd, reply) ;
-    //      }
-    //
-    //      break;
-
-    default:
-      implemented = FALSE;
-      break;
-    }
-
-    break;
-
-  case 'D': //ZZDx
-    switch (command[3]) {
-    //    case 'B': //ZZDB
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      // set/read RX Reference
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZDB%d;", 0); // currently always 0
-    //        send_resp(client->fd, reply) ;
-    //      }
-    //
-    //      break;
-    //
-    //    case 'C': //ZZDC
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      // set/get diversity gain
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZDC%04d;", (int)div_gain);
-    //        send_resp(client->fd, reply) ;
-    //      }
-    //
-    //      break;
-    //
-    //    case 'D': //ZZDD
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      // set/get diversity phase
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZDD%04d;", (int)div_phase);
-    //        send_resp(client->fd, reply) ;
-    //      }
-    //
-    //      break;
-    //
-    //    case 'M': //ZZDM
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      // set/read Display Mode
-    //      if (command[4] == ';') {
-    //        int v = 0;
-    //
-    //        if (receiver[0]->display_waterfall) {
-    //          v = 8;
-    //        } else {
-    //          v = 2;
-    //        }
-    //
-    //        snprintf(reply,  sizeof(reply), "ZZDM%d;", v);
-    //        send_resp(client->fd, reply) ;
-    //      }
-    //
-    //      break;
-    //
-    //    case 'N': //ZZDN
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      // set/read waterfall low
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZDN%+4d;", receiver[0]->waterfall_low);
-    //        send_resp(client->fd, reply) ;
-    //      }
-    //
-    //      break;
-    //
-    //    case 'O': //ZZDO
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      // set/read waterfall high
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZDO%+4d;", receiver[0]->waterfall_high);
-    //        send_resp(client->fd, reply) ;
-    //      }
-    //
-    //      break;
-    //
-    //    case 'P': //ZZDP
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      // set/read panadapter high
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZDP%+4d;", receiver[0]->panadapter_high);
-    //        send_resp(client->fd, reply) ;
-    //      }
-    //
-    //      break;
-    //
-    //    case 'Q': //ZZDQ
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      // set/read panadapter low
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZDQ%+4d;", receiver[0]->panadapter_low);
-    //        send_resp(client->fd, reply) ;
-    //      }
-    //
-    //      break;
-    //
-    //    case 'R': //ZZDR
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      // set/read panadapter step
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZDR%2d;", receiver[0]->panadapter_step);
-    //        send_resp(client->fd, reply) ;
-    //      }
-    //
-    //      break;
-    default:
-      implemented = FALSE;
-      break;
-    }
-
-    break;
-
-  case 'E': //ZZEx
-    switch (command[3]) {
-    //    case 'R': //ZZER
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      // set/read rx equaliser
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZER%d;", receiver[0]->eq_enable);
-    //        send_resp(client->fd, reply) ;
-    //      } else if (command[5] == ';') {
-    //        receiver[0]->eq_enable = SET(atoi(&command[4]));
-    //      }
-    //
-    //      break;
-    //
-    //    case 'T': //ZZET
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      // set/read tx equaliser
-    //      if (can_transmit) {
-    //        if (command[4] == ';') {
-    //          snprintf(reply,  sizeof(reply), "ZZET%d;", transmitter->eq_enable);
-    //          send_resp(client->fd, reply) ;
-    //        } else if (command[5] == ';') {
-    //          transmitter->eq_enable = SET(atoi(&command[4]));
-    //        }
-    //      }
-    //
-    //      break;
     default:
       implemented = FALSE;
       break;
@@ -2084,26 +1936,6 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 
       break;
 
-    //    case 'D': //ZZFD
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZFD%d;", vfo[VFO_A].deviation == 2500 ? 0 : 1);
-    //        send_resp(client->fd, reply) ;
-    //      } else if (command[5] == ';') {
-    //        int d = atoi(&command[4]);
-    //        vfo[VFO_A].deviation = d ? 5000 : 2500;
-    //        rx_set_filter(receiver[0]);
-    //
-    //        if (can_transmit) {
-    //          tx_set_filter(transmitter);
-    //        }
-    //
-    //        g_idle_add(ext_vfo_update, NULL);
-    //      }
-    //
-    //      break;
-
     case 'H': //ZZFH
 
       //CATDEF    ZZFH
@@ -2136,32 +1968,6 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       }
 
       break;
-
-    //    case 'I': //ZZFI
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZFI%02d;", vfo[VFO_A].filter);
-    //        send_resp(client->fd, reply) ;
-    //      } else if (command[6] == ';') {
-    //        int filter = atoi(&command[4]);
-    //        vfo_id_filter_changed(VFO_A, filter);
-    //      }
-    //
-    //      break;
-
-    //    case 'J': //ZZFJ
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZFJ%02d;", vfo[VFO_B].filter);
-    //        send_resp(client->fd, reply) ;
-    //      } else if (command[6] == ';') {
-    //        int filter = atoi(&command[4]);
-    //        vfo_id_filter_changed(VFO_B, filter);
-    //      }
-    //
-    //      break;
 
     case 'L': //ZZFL
 
@@ -2212,7 +2018,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //SET       ZZGTx;
       //READ      ZZGT;
       //RESP      ZZGTx;
-      //NOTE      x=0: AGC OFF, x=1: LONG, x=2: SLOW, x=3: MEDIUM, x=4: FAST
+      //NOTE      x=0...6 for AGC OFF,LONG,SLOW,MEDIUM,FAST,CUSTOM,FIXED
       //ENDDEF
       if (command[4] == ';') {
         snprintf(reply,  sizeof(reply), "ZZGT%d;", receiver[0]->agc);
@@ -2234,7 +2040,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //SET       ZZGUx;
       //READ      ZZGU;
       //RESP      ZZGUx;
-      //NOTE      x=0: AGC OFF, x=1: LONG, x=2: SLOW, x=3: MEDIUM, x=4: FAST
+      //NOTE      x=0...6 for AGC OFF,LONG,SLOW,MEDIUM,FAST,CUSTOM,FIXED
       //ENDDEF
       if (receivers > 1) {
         if (command[4] == ';') {
@@ -2256,12 +2062,6 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       break;
     }
 
-    break;
-
-  case 'H': //ZZHx
-  case 'I': //ZZIx
-  case 'K': //ZZKx
-    implemented = FALSE;
     break;
 
   case 'L': //ZZLx
@@ -2466,453 +2266,12 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 
       break;
 
-    //    case 'L': //ZZML
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply),
-    //                 "ZZML LSB00: USB01: DSB02: CWL03: CWU04: FMN05:  AM06:DIGU07:SPEC08:DIGL09: SAM10: DRM11;");
-    //        send_resp(client->fd, reply);
-    //      }
-    //
-    //      break;
-    //
-    //    case 'O': //ZZMO
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      // set/read MON status
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZMO%d;", 0);
-    //        send_resp(client->fd, reply);
-    //      }
-    //
-    //      break;
-    //
-    //    case 'R': //ZZMR
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZMR%d;", active_receiver->smetermode + 1);
-    //        send_resp(client->fd, reply);
-    //      } else if (command[5] == ';') {
-    //        int val = atoi(&command[4]) - 1;
-    //
-    //        switch (val) {
-    //        case 0:
-    //          active_receiver->smetermode = SMETER_PEAK;
-    //          break;
-    //
-    //        case 1:
-    //          active_receiver->smetermode = SMETER_AVERAGE;
-    //          break;
-    //        }
-    //      }
-    //
-    //      break;
-    //
-    //    case 'T': //ZZMT
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZMT%02d;", 1); // forward power
-    //        send_resp(client->fd, reply);
-    //      } else {
-    //      }
-    //
-    //      break;
-    //
     default:
       implemented = FALSE;
       break;
     }
 
     break;
-
-  case 'N': //ZZNx
-    implemented = FALSE;
-    break;
-
-  //    switch (command[3]) {
-  //    case 'A': //ZZNA
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (command[4] == ';') {
-  //        snprintf(reply,  sizeof(reply), "ZZNA%d;", (receiver[0]->nb == 1));
-  //        send_resp(client->fd, reply);
-  //      } else if (command[5] == ';') {
-  //        if (atoi(&command[4])) { receiver[0]->nb = 1; }
-  //
-  //        rx_set_noise(receiver[0]);
-  //      }
-  //
-  //      break;
-  //
-  //    case 'B': //ZZNB
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (command[4] == ';') {
-  //        snprintf(reply,  sizeof(reply), "ZZNB%d;", (receiver[0]->nb == 2));
-  //        send_resp(client->fd, reply);
-  //      } else if (command[5] == ';') {
-  //        if (atoi(&command[4])) { receiver[0]->nb = 2; }
-  //
-  //        rx_set_noise(receiver[0]);
-  //      }
-  //
-  //      break;
-  //
-  //    case 'C': //ZZNC
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (receivers > 1) {
-  //        if (command[4] == ';') {
-  //          snprintf(reply,  sizeof(reply), "ZZNC%d;", (receiver[1]->nb == 1));
-  //          send_resp(client->fd, reply);
-  //        } else if (command[5] == ';') {
-  //          if (atoi(&command[4])) { receiver[1]->nb = 1; }
-  //
-  //          rx_set_noise(receiver[1]);
-  //        }
-  //      } else {
-  //        implemented = FALSE;
-  //      }
-  //
-  //      break;
-  //
-  //    case 'D': //ZZND
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (receivers > 1) {
-  //        if (command[4] == ';') {
-  //          snprintf(reply,  sizeof(reply), "ZZND%d;", (receiver[1]->nb == 2));
-  //          send_resp(client->fd, reply);
-  //        } else if (command[5] == ';') {
-  //          if (atoi(&command[4])) { receiver[1]->nb = 2; }
-  //
-  //          rx_set_noise(receiver[1]);
-  //        }
-  //      } else {
-  //        implemented = FALSE;
-  //      }
-  //
-  //      break;
-  //
-  //    case 'N': //ZZNN
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (command[4] == ';') {
-  //        snprintf(reply,  sizeof(reply), "ZZNN%d;", receiver[0]->snb);
-  //        send_resp(client->fd, reply);
-  //      } else if (command[5] == ';') {
-  //        receiver[0]->snb = atoi(&command[4]);
-  //        rx_set_noise(receiver[0]);
-  //      }
-  //
-  //      break;
-  //
-  //    case 'O': //ZZNO
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (receivers > 1) {
-  //        if (command[4] == ';') {
-  //          snprintf(reply,  sizeof(reply), "ZZNO%d;", receiver[1]->snb);
-  //          send_resp(client->fd, reply);
-  //        } else if (command[5] == ';') {
-  //          receiver[1]->snb = atoi(&command[4]);
-  //          rx_set_noise(receiver[1]);
-  //        }
-  //      } else {
-  //        implemented = FALSE;
-  //      }
-  //
-  //      break;
-  //
-  //    case 'R': //ZZNR
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (receivers == 2) {
-  //        if (command[4] == ';') {
-  //          snprintf(reply,  sizeof(reply), "ZZNR%d;", (receiver[0]->nr == 1));
-  //          send_resp(client->fd, reply);
-  //        } else if (command[5] == ';') {
-  //          if (atoi(&command[4])) { receiver[0]->nr = 1; }
-  //
-  //          rx_set_noise(receiver[0]);
-  //        }
-  //      }
-  //
-  //      break;
-  //
-  //    case 'S': //ZZNS
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (command[4] == ';') {
-  //        snprintf(reply,  sizeof(reply), "ZZNS%d;", (receiver[0]->nr == 2));
-  //        send_resp(client->fd, reply);
-  //      } else if (command[5] == ';') {
-  //        if (atoi(&command[4])) { receiver[0]->nr = 2; }
-  //
-  //        rx_set_noise(receiver[0]);
-  //      }
-  //
-  //      break;
-  //
-  //    case 'T': //ZZNT
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (command[4] == ';') {
-  //        snprintf(reply,  sizeof(reply), "ZZNT%d;", receiver[0]->anf);
-  //        send_resp(client->fd, reply);
-  //      } else if (command[5] == ';') {
-  //        if (atoi(&command[4])) { receiver[0]->anf = 1; }
-  //
-  //        rx_set_noise(receiver[0]);
-  //      }
-  //
-  //      break;
-  //
-  //    case 'U': //ZZNU
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (receivers > 1) {
-  //        if (command[4] == ';') {
-  //          snprintf(reply,  sizeof(reply), "ZZNU%d;", receiver[1]->anf);
-  //          send_resp(client->fd, reply);
-  //        } else if (command[5] == ';') {
-  //          if (atoi(&command[4])) { receiver[1]->anf = 1; }
-  //
-  //          rx_set_noise(receiver[1]);
-  //        }
-  //      } else {
-  //        implemented = FALSE;
-  //      }
-  //
-  //      break;
-  //
-  //    case 'V': //ZZNV
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (receivers > 1) {
-  //        if (command[4] == ';') {
-  //          snprintf(reply,  sizeof(reply), "ZZNV%d;", (receiver[1]->nr == 1));
-  //          send_resp(client->fd, reply);
-  //        } else if (command[5] == ';') {
-  //          if (atoi(&command[4])) { receiver[1]->nr = 1; }
-  //
-  //          rx_set_noise(receiver[1]);
-  //        }
-  //      } else {
-  //        implemented = FALSE;
-  //      }
-  //
-  //      break;
-  //
-  //    case 'W': //ZZNW
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (receivers > 1) {
-  //        if (command[4] == ';') {
-  //          snprintf(reply,  sizeof(reply), "ZZNW%d;", (receiver[1]->nr == 2));
-  //          send_resp(client->fd, reply);
-  //        } else if (command[5] == ';') {
-  //          if (atoi(&command[4])) { receiver[1]->nr = 2; }
-  //
-  //          rx_set_noise(receiver[1]);
-  //        }
-  //      } else {
-  //        implemented = FALSE;
-  //      }
-  //
-  //      break;
-  //
-  //    default:
-  //      implemented = FALSE;
-  //      break;
-  //    }
-  //
-  //    break;
-
-  case 'O': //ZZOx
-    implemented = FALSE;
-    break;
-
-  case 'P': //ZZPx
-    implemented = FALSE;
-    break;
-
-  //  switch (command[3]) {
-  //    case 'A': //ZZPA
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (command[4] == ';') {
-  //        int a = adc[receiver[0]->adc].attenuation;
-  //
-  //        if (a == 0) {
-  //          a = 1;
-  //        } else if (a <= -30) {
-  //          a = 4;
-  //        } else if (a <= -20) {
-  //          a = 0;
-  //        } else if (a <= -10) {
-  //          a = 2;
-  //        } else {
-  //          a = 3;
-  //        }
-  //
-  //        snprintf(reply,  sizeof(reply), "ZZPA%d;", a);
-  //        send_resp(client->fd, reply);
-  //      } else if (command[5] == ';' && have_rx_att) {
-  //        int a = atoi(&command[4]);
-  //
-  //        switch (a) {
-  //        case 0:
-  //          adc[receiver[0]->adc].attenuation = -20;
-  //          break;
-  //
-  //        case 1:
-  //          adc[receiver[0]->adc].attenuation = 0;
-  //          break;
-  //
-  //        case 2:
-  //          adc[receiver[0]->adc].attenuation = -10;
-  //          break;
-  //
-  //        case 3:
-  //          adc[receiver[0]->adc].attenuation = -20;
-  //          break;
-  //
-  //        case 4:
-  //          adc[receiver[0]->adc].attenuation = -30;
-  //          break;
-  //
-  //        default:
-  //          adc[receiver[0]->adc].attenuation = 0;
-  //          break;
-  //        }
-  //      }
-  //
-  //      break;
-  //
-  //    case 'Y': // ZZPY
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (command[4] == ';') {
-  //        snprintf(reply,  sizeof(reply), "ZZPY%d;", receiver[0]->zoom);
-  //        send_resp(client->fd, reply);
-  //      } else if (command[7] == ';') {
-  //        int zoom = atoi(&command[4]);
-  //        radio_set_zoom(0, zoom);
-  //      }
-  //
-  //      break;
-  //
-  //    default:
-  //      implemented = FALSE;
-  //      break;
-  //    }
-  //
-  //    break;
-
-  case 'Q': //ZZQx
-    implemented = FALSE;
-    break;
-
-  case 'R': //ZZRx
-    implemented = FALSE;
-    break;
-
-  //    switch (command[3]) {
-  //    case 'C': //ZZRC
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (command[4] == ';') {
-  //        schedule_action(RIT_CLEAR, PRESSED, 0);
-  //      }
-  //
-  //      break;
-  //
-  //    case 'D': //ZZRD
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (command[4] == ';') {
-  //        vfo_id_rit_incr(VFO_A, -vfo[VFO_A].rit_step);
-  //      } else if (command[9] == ';') {
-  //        // set RIT frequency
-  //        vfo_id_rit_value(VFO_A, atoi(&command[4]));
-  //      }
-  //
-  //      break;
-  //
-  //    case 'F': //ZZRF
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (command[4] == ';') {
-  //        snprintf(reply,  sizeof(reply), "ZZRF%+5lld;", vfo[VFO_A].rit);
-  //        send_resp(client->fd, reply);
-  //      } else if (command[9] == ';') {
-  //        vfo_id_rit_value(VFO_A, atoi(&command[4]));
-  //        g_idle_add(ext_vfo_update, NULL);
-  //      }
-  //
-  //      break;
-  //
-  //    case 'M': //ZZRM
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (command[5] == ';') {
-  //        snprintf(reply,  sizeof(reply), "ZZRM%d%20d;", active_receiver->smetermode, (int)receiver[0]->meter);
-  //        send_resp(client->fd, reply);
-  //      }
-  //
-  //      break;
-  //
-  //    case 'S': //ZZRS
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (command[4] == ';') {
-  //        snprintf(reply,  sizeof(reply), "ZZRS%d;", receivers == 2);
-  //        send_resp(client->fd, reply);
-  //      } else if (command[5] == ';') {
-  //        int state = atoi(&command[4]);
-  //
-  //        if (state) {
-  //          radio_change_receivers(2);
-  //        } else {
-  //          radio_change_receivers(1);
-  //        }
-  //      }
-  //
-  //      break;
-  //
-  //    case 'T': //ZZRT
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (command[4] == ';') {
-  //        snprintf(reply,  sizeof(reply), "ZZRT%d;", vfo[VFO_A].rit_enabled);
-  //        send_resp(client->fd, reply);
-  //      } else if (command[5] == ';') {
-  //        vfo_id_rit_onoff(VFO_A, SET(atoi(&command[4])));
-  //      }
-  //
-  //      break;
-  //
-  //    case 'U': //ZZRU
-  //
-  //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-  //      if (command[4] == ';') {
-  //        vfo_id_rit_incr(VFO_A, vfo[VFO_A].rit_step);
-  //      } else if (command[9] == ';') {
-  //        vfo_id_rit_value(VFO_A,  atoi(&command[4]));
-  //      }
-  //
-  //      break;
-  //
-  //    default:
-  //      implemented = FALSE;
-  //      break;
-  //    }
-  //
-  //    break;
 
   case 'S': //ZZSx
     switch (command[3]) {
@@ -2968,51 +2327,6 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 
       break;
 
-    //    case 'M': //ZZSM
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      if (command[5] == ';') {
-    //        int v = atoi(&command[4]);
-    //
-    //        if (v >= 0 && v < receivers) {
-    //          double m = receiver[v]->meter;
-    //          m = fmax(-140.0, m);
-    //          m = fmin(-10.0, m);
-    //          snprintf(reply,  sizeof(reply), "ZZSM%d%03d;", v, (int)((m + 140.0) * 2));
-    //          send_resp(client->fd, reply);
-    //        } else {
-    //          implemented = FALSE;
-    //        }
-    //      }
-    //
-    //      break;
-    //
-    //    case 'P': //ZZSP
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZSP%d;", split);
-    //        send_resp(client->fd, reply) ;
-    //      } else if (command[5] == ';') {
-    //        int val = atoi(&command[4]);
-    //        radio_set_split(val);
-    //      }
-    //
-    //      break;
-    //
-    //    case 'W': //ZZSW
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZSW%d;", split);
-    //        send_resp(client->fd, reply) ;
-    //      } else if (command[5] == ';') {
-    //        int val = atoi(&command[4]);
-    //        radio_set_split(val);
-    //      }
-    //
-    //      break;
-
     default:
       implemented = FALSE;
       break;
@@ -3022,17 +2336,6 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 
   case 'T': //ZZTx
     switch (command[3]) {
-    //    case 'U': //ZZTU
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZTU%d;", can_transmit ? transmitter->tune : 0);
-    //        send_resp(client->fd, reply) ;
-    //      } else if (command[5] == ';') {
-    //        radio_set_tune(atoi(&command[4]));
-    //      }
-    //
-    //      break;
     case 'X': //ZZTX
 
       //CATDEF    ZZTX
@@ -3089,11 +2392,6 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 
   case 'V': //ZZVx
     switch (command[3]) {
-    //    case 'L': //ZZVL
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      locked = command[4] == '1';
-    //      g_idle_add(ext_vfo_update, NULL);
-    //      break;
     case 'S': { //ZZVS
       //CATDEF    ZZVS
       //DESCR     Swap VFO A and B
@@ -3119,128 +2417,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 
     break;
 
-  case 'W': //ZZWx
-    implemented = FALSE;
-    break;
-
   case 'X': //ZZXx
     switch (command[3]) {
-    //    case 'C': //ZZXC
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      schedule_action(XIT_CLEAR, PRESSED, 0);
-    //      break;
-    //
-    //    case 'F': //ZZXF
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZXT%+05lld;", vfo[vfo_get_tx_vfo()].xit);
-    //        send_resp(client->fd, reply) ;
-    //      } else if (command[9] == ';') {
-    //        vfo_xit_value(atoi(&command[4]));
-    //      }
-    //
-    //      break;
-    //
-    //    case 'N': //ZZXN
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      if (command[4] == ';') {
-    //        int status = ((receiver[0]->agc) & 0x03);
-    //        int a = adc[receiver[0]->adc].attenuation;
-    //
-    //        if (a == 0) {
-    //          a = 1;
-    //        } else if (a <= -30) {
-    //          a = 4;
-    //        } else if (a <= -20) {
-    //          a = 0;
-    //        } else if (a <= -10) {
-    //          a = 2;
-    //        } else {
-    //          a = 3;
-    //        }
-    //
-    //        status = status | ((a & 0x03) << 3);
-    //
-    //        if (receiver[0]->squelch_enable) { status |=  0x0040; }
-    //
-    //        if (receiver[0]->nb == 1) { status |=  0x0080; }
-    //
-    //        if (receiver[0]->nb == 2) { status |=  0x0100; }
-    //
-    //        if (receiver[0]->nr == 1) { status |=  0x0200; }
-    //
-    //        if (receiver[0]->nr == 2) { status |=  0x0400; }
-    //
-    //        if (receiver[0]->snb) { status |=  0x0800; }
-    //
-    //        if (receiver[0]->anf) { status |=  0x1000; }
-    //
-    //        snprintf(reply,  sizeof(reply), "ZZXN%04d;", status);
-    //        send_resp(client->fd, reply);
-    //      }
-    //
-    //      break;
-    //
-    //    case 'O': //ZZXO
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      if (receivers > 1) {
-    //        if (command[4] == ';') {
-    //          int status = ((receiver[1]->agc) & 0x03);
-    //          int a = adc[receiver[1]->adc].attenuation;
-    //
-    //          if (a == 0) {
-    //            a = 1;
-    //          } else if (a <= -30) {
-    //            a = 4;
-    //          } else if (a <= -20) {
-    //            a = 0;
-    //          } else if (a <= -10) {
-    //            a = 2;
-    //          } else {
-    //            a = 3;
-    //          }
-    //
-    //          status = status | ((a & 0x03) << 3);
-    //
-    //          if (receiver[1]->squelch_enable) { status |=  0x0040; }
-    //
-    //          if (receiver[1]->nb == 1) { status |=  0x0080; }
-    //
-    //          if (receiver[1]->nb == 2) { status |=  0x0100; }
-    //
-    //          if (receiver[1]->nr == 1) { status |=  0x0200; }
-    //
-    //          if (receiver[1]->nr == 2) { status |=  0x0400; }
-    //
-    //          if (receiver[1]->snb) { status |=  0x0800; }
-    //
-    //          if (receiver[1]->anf) { status |=  0x1000; }
-    //
-    //          snprintf(reply,  sizeof(reply), "ZZXO%04d;", status);
-    //          send_resp(client->fd, reply);
-    //        }
-    //      } else {
-    //        implemented = FALSE;
-    //      }
-    //
-    //      break;
-    //
-    //    case 'S': //ZZXS
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      if (command[4] == ';') {
-    //        snprintf(reply,  sizeof(reply), "ZZXS%d;", vfo[vfo_get_tx_vfo()].xit_enabled);
-    //        send_resp(client->fd, reply);
-    //      } else if (command[5] == ';') {
-    //        vfo[vfo_get_tx_vfo()].xit_enabled = atoi(&command[4]);
-    //        schedule_high_priority();
-    //        g_idle_add(ext_vfo_update, NULL);
-    //      }
-    //
-    //      break;
     case 'V': //ZZXV
 
       //CATDEF    ZZXV
@@ -3349,8 +2527,10 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //CONT      A warning message window may pop up.
       //ENDDEF
       if (command[6] == ';') {
+#if 0
         static int pastate = 0;
         int x = 10 * (command[4] - '0') + (command[5] - '0');
+
         if (x == 0) {
           pastate = 0;
         } else if ( x == 64) {
@@ -3358,10 +2538,13 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         } else {
           pastate |= x;
         }
+
+#endif
       } else {
         // unexpected command format
         implemented = FALSE;
       }
+
       break;
 
     case 'D': //ZZZD
@@ -4206,18 +3389,6 @@ static int parse_cmd(gpointer data) {
     }
     break;
 
-    //    case 'S': //IS
-    //
-    //      //DO NOT DOCUMENT, THIS WILL BE REMOVED
-    //      if (command[2] == ';') {
-    //        snprintf(reply,  sizeof(reply), "%s", "IS 0000;");
-    //        send_resp(client->fd, reply);
-    //      } else {
-    //        implemented = FALSE;
-    //      }
-    //
-    //      break;
-
     default:
       implemented = FALSE;
       break;
@@ -4305,7 +3476,7 @@ static int parse_cmd(gpointer data) {
         // j points to the last non-blank character, or to the first blank
         // in an empty string
         for (int i = 3; i <= j; i++) {
-          queue_cw_char(command[i]);
+          rigctl_queue_cw_char(command[i]);
         }
       }
 
@@ -5246,7 +4417,7 @@ static int parse_cmd(gpointer data) {
         int id = atoi(&command[2]);
 
         if (id >= 0 && id < receivers) {
-          int val = (int)((receiver[id]->meter + 127.0) * 0.277778);
+          int val = (int)((receiver[id]->rxlvl + 127.0) * 0.277778);
 
           if (val > 30) { val = 30; }
 

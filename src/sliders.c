@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -940,7 +940,7 @@ void sliders_create(int width, int height, int rows) {
     csslabel = "slider1";
   } else if (tpix < 85) {
     csslabel = "slider2";
-  } else if (tpix < 100) {
+  } else if (tpix < 105) {
     csslabel = "slider3";
   } else {
     csslabel = "slider4";

@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -84,9 +84,9 @@ static void mn_enable_cb(GtkWidget *widget, gpointer data) {
   rx_set_notch(myrx);
 }
 
-static void cw_peak_cb(GtkWidget *widget, gpointer data) {
+static void cw_apf_cb(GtkWidget *widget, gpointer data) {
   int id = myrx->id;
-  int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  int val = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
   vfo_id_cwpeak_changed(id, val);
 }
 
@@ -350,15 +350,23 @@ static void var_spin_high_cb (GtkWidget *widget, gpointer data) {
   }
 }
 
-void filter_menu(GtkWidget *parent) {
+void filter_menu(GtkWidget *parent, int id) {
   GtkWidget *w;
   dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
   char title[64];
+
   //
   // This guards against changing the active receiver while the menu is open
   //
-  myrx = active_receiver;
+  if (id >= receivers) {
+    //
+    // If this is VFO-B and only one RX running, we cannot update filters
+    //
+    return;
+  }
+
+  myrx = receiver[id];
   mymode = vfo[myrx->id].mode;
   int f = vfo[myrx->id].filter;
   snprintf(title, sizeof(title), "piHPSDR - Filter (RX%d VFO-%s)", myrx->id + 1, myrx->id == 0 ? "A" : "B");
@@ -587,12 +595,23 @@ void filter_menu(GtkWidget *parent) {
     // Add a checkbox for the CW audio peak filter, if the mode is CWU/CWL
     //
     if (mymode == modeCWU || mymode == modeCWL) {
-      w = gtk_check_button_new_with_label("Enable additional CW Audio peak filter");
+      w = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+      gtk_widget_set_size_request(w, -1, 3);
+      gtk_grid_attach(GTK_GRID(grid), w, 0, row++, 10, 1);
+      w = gtk_label_new("CW Audio peak filter:");
       gtk_widget_set_name(w, "boldlabel");
-      gtk_widget_set_halign(w, GTK_ALIGN_START);
-      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), vfo[myrx->id].cwAudioPeakFilter);
-      gtk_grid_attach(GTK_GRID(grid), w, 4, 0, 6, 1);
-      g_signal_connect(w, "toggled", G_CALLBACK(cw_peak_cb), NULL);
+      gtk_widget_set_halign(w, GTK_ALIGN_END);
+      gtk_grid_attach(GTK_GRID(grid), w, 0, row, 4, 1);
+      w = gtk_combo_box_text_new();
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(w), NULL, "None");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(w), NULL, "Double Pole");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(w), NULL, "Gaussian");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(w), NULL, "Matched");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(w), NULL, "Bi-Quad");
+      gtk_combo_box_set_active(GTK_COMBO_BOX(w), vfo[myrx->id].cwAudioPeakFilter);
+      g_signal_connect(w, "changed", G_CALLBACK(cw_apf_cb), NULL);
+      my_combo_attach(GTK_GRID(grid), w, 4, row, 4, 1);
+      row++;
     }
   }
 
@@ -608,19 +627,19 @@ void filter_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), w, 0, row, 2, 1);
   w = gtk_label_new("Notch Center");
   gtk_widget_set_name(w, "boldlabel");
-  gtk_widget_set_halign(w, GTK_ALIGN_CENTER);
+  gtk_widget_set_halign(w, GTK_ALIGN_START);
   gtk_grid_attach(GTK_GRID(grid), w, 2, row, 3, 1);
   w = gtk_label_new("Notch Width");
   gtk_widget_set_name(w, "boldlabel");
-  gtk_widget_set_halign(w, GTK_ALIGN_CENTER);
+  gtk_widget_set_halign(w, GTK_ALIGN_START);
   gtk_grid_attach(GTK_GRID(grid), w, 5, row, 3, 1);
   row++;
-
   //
   // It is not meant to "spin" until the maxoffset, but the
   // "Default" button should allow this
   //
   double maxoffset = 0.5 * (double)myrx->sample_rate;
+
   for (int i = 0; i < 3; i++) {
     w = gtk_check_button_new();
     gtk_widget_set_halign(w, GTK_ALIGN_CENTER);

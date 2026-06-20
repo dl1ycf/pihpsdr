@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2016 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2016 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -124,12 +124,12 @@ static gboolean band_select_cb (GtkWidget *widget, gpointer data) {
   return FALSE;
 }
 
-void band_menu(GtkWidget *parent) {
+void band_menu(GtkWidget *parent, int id) {
   int i, j;
   dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
   char title[64];
-  myvfo = active_receiver->id;
+  myvfo = id;
   snprintf(title, sizeof(title), "piHPSDR - Band (VFO-%s)", myvfo == 0 ? "A" : "B");
   GtkWidget *headerbar = gtk_header_bar_new();
   gtk_window_set_titlebar(GTK_WINDOW(dialog), headerbar);

@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -182,12 +182,10 @@ void cw_menu(GtkWidget *parent) {
   g_signal_connect (btn, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), btn, 0, 0, 1, 1);
   selbtn = gtk_radio_button_new_with_label_from_widget(NULL, "CW Options");
-  gtk_widget_set_name(selbtn, "boldlabel");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(selbtn), 1);
   gtk_grid_attach(GTK_GRID(grid), selbtn, 1, 0, 1, 1);
   g_signal_connect(selbtn, "toggled", G_CALLBACK(sel_cb), options_container);
   btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(selbtn), "CW Texts");
-  gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), 0);
   gtk_grid_attach(GTK_GRID(grid), btn, 2, 0, 1,  1);
   g_signal_connect(btn, "toggled", G_CALLBACK(sel_cb), cwtxt_container);
@@ -212,7 +210,6 @@ void cw_menu(GtkWidget *parent) {
 
   if (!radio_is_remote) {
     btn = gtk_check_button_new_with_label("CW handled in Radio");
-    gtk_widget_set_name(btn, "boldlabel");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), cw_keyer_internal);
     gtk_grid_attach(GTK_GRID(op_grid), btn, 2, row, 1, 1);
     g_signal_connect(btn, "toggled", G_CALLBACK(cw_keyer_internal_cb), NULL);
@@ -221,14 +218,13 @@ void cw_menu(GtkWidget *parent) {
   row++;
   lbl = gtk_label_new("Hang time (ms)");
   gtk_widget_set_name(lbl, "boldlabel");
-  gtk_widget_set_halign(btn, GTK_ALIGN_END);
+  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(op_grid), lbl, 0, row, 1, 1);
   btn = gtk_spin_button_new_with_range(0.0, 1000.0, 1.0);
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), (double)cw_keyer_hang_time);
   gtk_grid_attach(GTK_GRID(op_grid), btn, 1, row, 1, 1);
   g_signal_connect(btn, "value_changed", G_CALLBACK(cw_keyer_hang_time_value_changed_cb), NULL);
   btn = gtk_check_button_new_with_label("CW Break-In");
-  gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), cw_breakin);
   gtk_grid_attach(GTK_GRID(op_grid), btn, 2, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(cw_breakin_cb), NULL);
@@ -242,7 +238,6 @@ void cw_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(op_grid), btn, 1, row, 1, 1);
   g_signal_connect(btn, "value_changed", G_CALLBACK(cw_keyer_sidetone_level_value_changed_cb), NULL);
   btn = gtk_check_button_new_with_label("Letter spacing");
-  gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), cw_keyer_spacing);
   gtk_grid_attach(GTK_GRID(op_grid), btn, 2, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(cw_keyer_spacing_cb), NULL);
@@ -256,7 +251,6 @@ void cw_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(op_grid), btn, 1, row, 1, 1);
   g_signal_connect(btn, "value_changed", G_CALLBACK(cw_keyer_sidetone_frequency_value_changed_cb), NULL);
   btn = gtk_check_button_new_with_label("Keys reversed");
-  gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), cw_keys_reversed);
   gtk_grid_attach(GTK_GRID(op_grid), btn, 2, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(cw_keys_reversed_cb), NULL);

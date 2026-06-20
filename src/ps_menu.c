@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2017 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2017 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -533,7 +533,7 @@ static void auto_cb(GtkWidget *widget, gpointer data) {
   }
 }
 
-static void resume_cb(GtkWidget *widget, gpointer data) {
+static gboolean resume_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
   //
   // Set the attenuation to zero if auto-adjusting and resuming.
   // A very high attenuation value here could lead to no PS calculation
@@ -551,6 +551,8 @@ static void resume_cb(GtkWidget *widget, gpointer data) {
 
     tx_ps_resume(transmitter);
   }
+
+  return FALSE;
 }
 
 static void feedback_cb(GtkWidget *widget, gpointer data) {
@@ -562,10 +564,12 @@ static void feedback_cb(GtkWidget *widget, gpointer data) {
 }
 
 // cppcheck-suppress constParameterCallback
-static void reset_cb(GtkWidget *widget, gpointer data) {
+static gboolean reset_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
   if (transmitter->puresignal) {
     tx_ps_reset(transmitter);
   }
+
+  return FALSE;
 }
 
 static void twotone_cb(GtkWidget *widget, gpointer data) {
@@ -599,7 +603,6 @@ void ps_menu(GtkWidget *parent) {
   row++;
   col = 0;
   GtkWidget *enable_b = gtk_check_button_new_with_label("Enable PS");
-  gtk_widget_set_name(enable_b, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (enable_b), transmitter->puresignal);
   gtk_grid_attach(GTK_GRID(grid), enable_b, col, row, 1, 1);
   g_signal_connect(enable_b, "toggled", G_CALLBACK(enable_cb), NULL);
@@ -612,7 +615,6 @@ void ps_menu(GtkWidget *parent) {
   g_signal_connect(twotone_b, "toggled", G_CALLBACK(twotone_cb), NULL);
   col++;
   GtkWidget *auto_b = gtk_check_button_new_with_label("Auto Attenuate");
-  gtk_widget_set_name(auto_b, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (auto_b), transmitter->auto_on);
   gtk_grid_attach(GTK_GRID(grid), auto_b, col, row, 1, 1);
   g_signal_connect(auto_b, "toggled", G_CALLBACK(auto_cb), NULL);
@@ -672,20 +674,17 @@ void ps_menu(GtkWidget *parent) {
   g_signal_connect(ps_ant_combo, "changed", G_CALLBACK(ps_ant_cb), NULL);
   col++;
   GtkWidget *map_b = gtk_check_button_new_with_label("PS MAP");
-  gtk_widget_set_name(map_b, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (map_b), transmitter->ps_map);
   gtk_grid_attach(GTK_GRID(grid), map_b, col, row, 1, 1);
   g_signal_connect(map_b, "toggled", G_CALLBACK(map_cb), NULL);
   col++;
   GtkWidget *tol_b = gtk_check_button_new_with_label("PS Relax Tolerance");
-  gtk_widget_set_name(tol_b, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (tol_b), transmitter->ps_ptol);
   gtk_grid_attach(GTK_GRID(grid), tol_b, col, row, 2, 1);
   g_signal_connect(tol_b, "toggled", G_CALLBACK(tol_cb), NULL);
   col++;
   col++;
   GtkWidget *oneshot_b = gtk_check_button_new_with_label("OneShot");
-  gtk_widget_set_name(oneshot_b, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (oneshot_b), transmitter->ps_oneshot);
   gtk_grid_attach(GTK_GRID(grid), oneshot_b, col, row, 1, 1);
   g_signal_connect(oneshot_b, "toggled", G_CALLBACK(oneshot_cb), NULL);

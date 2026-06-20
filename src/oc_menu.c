@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -247,7 +247,6 @@ void oc_menu(GtkWidget *parent) {
     snprintf(oc_id, sizeof(oc_id), "%d", j);
     mask = 0x01 << (j - 1);
     GtkWidget *oc_tune_b = gtk_check_button_new_with_label(oc_id);
-    gtk_widget_set_name(oc_tune_b, "boldlabel");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (oc_tune_b), (OCtune & mask) == mask);
     gtk_grid_attach(GTK_GRID(scrgrd), oc_tune_b, 16, j + 1, 1, 1);
     gtk_widget_set_halign(oc_tune_b, GTK_ALIGN_CENTER);

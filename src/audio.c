@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2016 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2016 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -129,10 +129,10 @@ int audio_open_output(RECEIVER *rx) {
                             48000, soft_resample,  out_latency);
 
   if (err < 0) {
-      t_print("%s: cannot set format for %s (%s)\n", __func__, rx->audio_name, snd_strerror (err));
-      snd_pcm_close(rx->audio_handle);
-      g_mutex_unlock(&rx->audio_mutex);
-      return -1;
+    t_print("%s: cannot set format for %s (%s)\n", __func__, rx->audio_name, snd_strerror (err));
+    snd_pcm_close(rx->audio_handle);
+    g_mutex_unlock(&rx->audio_mutex);
+    return -1;
   }
 
   rx->audio_buffer_offset = 0;
@@ -327,7 +327,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       }
     }
 
-    switch (4*rx->local_audio_channels + adjust) {
+    switch (4 * rx->local_audio_channels + adjust) {
     case 5:
       //
       // put mono sample into buffer and that's it
@@ -481,7 +481,6 @@ void audio_write(RECEIVER *rx, double left, double right) {
   g_mutex_lock(&rx->audio_mutex);
 
   if (rx->audio_handle != NULL && rx->audio_buffer != NULL) {
-
     if (rx->local_audio_channels == 1) {
       rx->audio_buffer[rx->audio_buffer_offset] = 0.5 * (left + right);
       rx->audio_buffer_offset++;
@@ -789,7 +788,6 @@ void audio_get_cards() {
         char device_desc[256];
         int err;
         snd_pcm_stream_t direction;
-
         // release slot for this (card, dev, direction) combination
         audio_format = SND_PCM_FORMAT_UNKNOWN;
 
@@ -826,6 +824,7 @@ void audio_get_cards() {
           } else {
             snprintf(device_name, sizeof(device_name), "plughw:%d,%d", card, dev);
           }
+
           snprintf(device_desc, sizeof(device_desc), "(%d,%d):%s", card, dev, snd_ctl_card_info_get_name(info));
 
           if (snd_pcm_open (&audio_handle, device_name, direction, SND_PCM_ASYNC) < 0) {
@@ -834,12 +833,13 @@ void audio_get_cards() {
 
           // reample off/on
           for (int soft_resample = 0; soft_resample < 2; soft_resample++) {
-             // stereo/mono
+            // stereo/mono
             for (unsigned int channels = 2; channels > 0; channels--) {
               // loop through formats
               for (int f = 0; f < FORMATS; f++) {
                 err = snd_pcm_set_params(audio_handle, formats[f], SND_PCM_ACCESS_RW_INTERLEAVED,
                                          channels, 48000, soft_resample, inp_latency);
+
                 if (err == 0) {
                   //
                   // Found a working device. Include it in database if this is the first time
@@ -856,6 +856,7 @@ void audio_get_cards() {
                       input_devices[n_input_devices].soft_resample = soft_resample;
                       n_input_devices++;
                     }
+
                     if (direction == SND_PCM_STREAM_PLAYBACK && n_input_devices < MAX_AUDIO_DEVICES) {
                       // found a working output device
                       audio_format = formats[f]; // lock slot
@@ -908,13 +909,16 @@ void audio_get_cards() {
       // also does no harm.
       //
       snd_pcm_t *audio_handle;
+
       if (snd_pcm_open (&audio_handle, name, SND_PCM_STREAM_PLAYBACK, SND_PCM_ASYNC) == 0) {
         snd_pcm_format_t audio_format = SND_PCM_FORMAT_UNKNOWN;
+
         for (int soft_resample = 0; soft_resample < 2; soft_resample++) {
           for (unsigned int channels = 2; channels > 0; channels--) {
             for (int f = 0; f < FORMATS; f++) {
               int err = snd_pcm_set_params(audio_handle, formats[f], SND_PCM_ACCESS_RW_INTERLEAVED,
-                                       channels, 48000, soft_resample, inp_latency);
+                                           channels, 48000, soft_resample, inp_latency);
+
               if (err == 0) {
                 //
                 // Found a working device. Include it in database if this is the first time
@@ -924,7 +928,7 @@ void audio_get_cards() {
                   char device_desc[256];
                   char *cp;
                   audio_format = formats[f]; // lock slot
-                  snprintf(device_desc,sizeof(device_desc),"dmix:%s",descr);
+                  snprintf(device_desc, sizeof(device_desc), "dmix:%s", descr);
                   // truncate at newline
                   cp = strchr(device_desc, '\n');
 
@@ -941,6 +945,7 @@ void audio_get_cards() {
             }
           }
         }
+
         snd_pcm_close(audio_handle);
       }
     }

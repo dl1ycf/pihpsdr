@@ -1,6 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT
-* 2025 - Christoph van Wüllen, DL1YCF
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -50,12 +50,8 @@
 #ifdef SOAPYSDR
   #include "soapy_discovery.h"
 #endif
-#ifdef STEMLAB_DISCOVERY
-  #include "stemlab_discovery.h"
-#endif
-#ifdef TTS
-  #include "tts.h"
-#endif
+#include "stemlab_discovery.h"
+#include "tts.h"
 
 static GtkWidget *discovery_dialog;
 static DISCOVERED *d;
@@ -63,8 +59,8 @@ static DISCOVERED *d;
 static GtkWidget *apps_combobox[MAX_DEVICES];
 
 static GtkWidget *host_combo = NULL;
-static GtkWidget *host_entry = NULL;
-static GtkWidget *host_pwd = NULL;
+static GtkWidget *host_addr_entry = NULL;
+static GtkWidget *host_pwd_entry = NULL;
 static int        pwd_from_props = 0;
 static int        host_entry_changed = 0;
 static int        host_pos = 0;
@@ -77,6 +73,8 @@ static gulong     host_combo_signal_id = 0;
 #define           DISCOVERY_STARTING 3
 
 static int        discovery_state = 0;
+static int        have_i2c = 0;
+static int        have_gpio = 0;
 
 GtkWidget *tcpaddr;
 char ipaddr_radio[128] = { 0 };
@@ -87,6 +85,9 @@ int discover_only_stemlab = 0;
 int delayed_discovery(gpointer data);
 
 static char host_addr[128] = "127.0.0.1:50000";
+static char host_list[24][128] = {""};
+static int num_hosts = 0;
+static char host_pwd[64] = "";
 
 static void host_entry_cb(GtkWidget *widget, gpointer data);
 
@@ -127,14 +128,20 @@ static void print_devices(void) {
 }
 
 static gboolean close_cb(void) {
-  host_entry_cb(host_entry, NULL);
+  host_entry_cb(host_addr_entry, NULL);  // this includes save_remote()
+  return TRUE;
+}
+
+static gboolean exit_cb(void) {
+  // leave the program
+  gtk_widget_destroy(discovery_dialog);
+  _exit(0);
   return TRUE;
 }
 
 static gboolean start_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   radio = (DISCOVERED *)data;
   discovery_state = DISCOVERY_STARTING;
-#ifdef STEMLAB_DISCOVERY
 
   // We need to start the STEMlab app before destroying the dialog, since
   // we otherwise lose the information about which app has been selected.
@@ -154,7 +161,6 @@ static gboolean start_cb (GtkWidget *widget, GdkEventButton *event, gpointer dat
     // and proceeding this way is the only way to choose between UDP and TCP connection
     // Since we have just started the app, we temporarily deactivate STEMlab detection
     //
-    stemlab_cleanup();
     discover_only_stemlab = 1;
     gtk_widget_destroy(discovery_dialog);
     status_text("Wait for STEMlab app\n");
@@ -162,7 +168,6 @@ static gboolean start_cb (GtkWidget *widget, GdkEventButton *event, gpointer dat
     return TRUE;
   }
 
-#endif
   //
   // Starting the radio via the GTK queue ensures quick update
   // of the status label
@@ -198,47 +203,7 @@ static gboolean discover_cb (GtkWidget *widget, GdkEventButton *event, gpointer 
   return TRUE;
 }
 
-static gboolean exit_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  gtk_widget_destroy(discovery_dialog);
-  _exit(0);
-  return TRUE;
-}
-
-static void save_ipaddr(void) {
-  clearProperties();
-
-  if (strlen(ipaddr_radio) > 0) {
-    SetPropS0("radio_ip_addr", ipaddr_radio);
-  }
-
-  SetPropI0("radio_tcp_enable", tcp_enable);
-  saveProperties("ipaddr.props");
-}
-
-static gboolean radio_ip_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  const char *cp;
-  cp = gtk_entry_get_text(GTK_ENTRY(tcpaddr));
-
-  if (cp && (strlen(cp) > 0)) {
-    snprintf(ipaddr_radio, sizeof(ipaddr_radio), "%s", cp);
-  } else {
-    ipaddr_radio[0] = 0;
-  }
-
-  save_ipaddr();
-  return FALSE;
-}
-
-static void tcp_en_cb(GtkWidget *widget, gpointer data) {
-  tcp_enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-  save_ipaddr();
-}
-
-//------------------------------------------------------+
-// Supporting functions for the server selection screen |
-//------------------------------------------------------+
-
-static void save_hostlist(void) {
+static void save_remote(void) {
   g_signal_handler_block(G_OBJECT(host_combo), host_combo_signal_id);
   clearProperties();
   int count = 0;
@@ -261,17 +226,52 @@ static void save_hostlist(void) {
   SetPropS0("current_host", host_addr);
 
   if (pwd_from_props) {
-    const char *mypwd = gtk_entry_get_text(GTK_ENTRY(host_pwd));
+    snprintf(host_pwd, sizeof(host_pwd), "%s", gtk_entry_get_text(GTK_ENTRY(host_pwd_entry)));
 
-    if (strlen(mypwd) > 4) {
-      SetPropS0("host_pwd", mypwd);
+    if (strlen(host_pwd) > 4) {
+      SetPropS0("host_pwd", host_pwd);
     }
   }
 
+  if (strlen(ipaddr_radio) > 0) {
+    SetPropS0("radio_ip_addr", ipaddr_radio);
+  }
+
+  SetPropI0("radio_tcp_enable", tcp_enable);
+  SetPropI0("audio_compression", audio_compression);
+  SetPropI0("auto_reconnect", remote_auto_reconnect);
   SetPropS0("property_version", "3.00");
   saveProperties("remote.props");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(host_combo), host_pos);
   g_signal_handler_unblock(G_OBJECT(host_combo), host_combo_signal_id);
+}
+
+static void audio_cb(GtkWidget *widget, gpointer data) {
+  audio_compression = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  save_remote();
+}
+
+static void reconnect_cb(GtkWidget *widget, gpointer data) {
+  remote_auto_reconnect = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  save_remote();
+}
+
+static gboolean radio_ip_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
+  const char *cp;
+  cp = gtk_entry_get_text(GTK_ENTRY(tcpaddr));
+
+  if (cp && (strlen(cp) > 0)) {
+    snprintf(ipaddr_radio, sizeof(ipaddr_radio), "%s", cp);
+  } else {
+    ipaddr_radio[0] = 0;
+  }
+
+  save_remote();
+  return FALSE;
+}
+
+static void tcp_en_cb(GtkWidget *widget, gpointer data) {
+  tcp_enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  save_remote();
 }
 
 static void host_entry_cb(GtkWidget *widget, gpointer data) {
@@ -312,15 +312,14 @@ static void host_entry_cb(GtkWidget *widget, gpointer data) {
   //
   // The combo box has changed, so dump contents to props file
   //
-  save_hostlist();
+  save_remote();
 }
 
 static void connect_cb(GtkWidget *widget, gpointer data) {
   char myhost[256];
   int  myport;
-  const char *mypwd;
   discovery_state = DISCOVERY_STARTING;
-  host_entry_cb(host_entry, NULL);
+  host_entry_cb(host_addr_entry, NULL);
   *myhost = 0;
   myport = 0;
   gchar **splitstr = g_strsplit(host_addr, ":", 2);
@@ -331,7 +330,7 @@ static void connect_cb(GtkWidget *widget, gpointer data) {
   }
 
   g_strfreev(splitstr);
-  mypwd = gtk_entry_get_text(GTK_ENTRY(host_pwd));
+  snprintf(host_pwd, sizeof(host_pwd), "%s", gtk_entry_get_text(GTK_ENTRY(host_pwd_entry)));
   t_print("%s: host=%s port=%d\n", __func__, myhost, myport);
 
   if (*myhost == 0 || myport == 0) {
@@ -339,7 +338,7 @@ static void connect_cb(GtkWidget *widget, gpointer data) {
     return;
   }
 
-  switch (radio_connect_remote(myhost, myport, mypwd)) {
+  switch (radio_connect_remote(myhost, myport, host_pwd)) {
   case 0:
     gtk_widget_destroy(discovery_dialog);
     break;
@@ -389,7 +388,7 @@ static void host_combo_cb(GtkWidget *widget, gpointer data) {
     //
     // Something has been typed into the entry  field: update host_addr
     //
-    const gchar *text = gtk_entry_get_text(GTK_ENTRY(host_entry));
+    const gchar *text = gtk_entry_get_text(GTK_ENTRY(host_addr_entry));
 
     if (text) {
       snprintf(host_addr, sizeof(host_addr), "%s", text);
@@ -401,32 +400,28 @@ static void host_combo_cb(GtkWidget *widget, gpointer data) {
   }
 }
 
-static void password_visibility_cb(GtkToggleButton *button, gpointer user_data) {
+static void password_visibility_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data) {
   GtkEntry *entry = GTK_ENTRY(user_data);
   gboolean visible = !gtk_entry_get_visibility(entry);
   gtk_entry_set_visibility(entry, visible);
 
   if (visible) {
-    gtk_button_set_label(GTK_BUTTON(button), "Hide");
+    gtk_button_set_label(GTK_BUTTON(w), "Hide");
   } else {
-    gtk_button_set_label(GTK_BUTTON(button), "Show");
+    gtk_button_set_label(GTK_BUTTON(w), "Show");
   }
 }
 
 // cppcheck-suppress constParameterCallback
 gboolean discovery_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data) {
   gboolean ret = TRUE;
-#ifdef TTS
   char text[2048];
-#endif
 
   //
   // This is called when an "intercepted" key stroke is
   // received before the radio starts
   //
   switch (event->keyval) {
-#ifdef TTS
-
   case GDK_KEY_F1:
     switch (discovery_state) {
     case DISCOVERY_VIRGIN:
@@ -540,33 +535,24 @@ gboolean discovery_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer d
     }
 
     break;
-#endif
 
   case GDK_KEY_F3:
     if (devices > 0) {
-#ifdef TTS
       tts_send("Starting first radio");
-#endif
       start_cb(NULL, NULL, &discovered[0]);
     } else {
-#ifdef TTS
       tts_send("Cannot start, no radio has been found");
-#endif
     }
 
     break;
 
   case GDK_KEY_F4:
     if (discovery_state == DISCOVERY_COMPLETE) {
-#ifdef TTS
       tts_send("Restarting Discovery Process");
-#endif
       gtk_widget_destroy(discovery_dialog);
       g_timeout_add(100, delayed_discovery, NULL);
     } else {
-#ifdef TTS
       tts_send("Discovery not yet complete, cannot restart");
-#endif
     }
 
     break;
@@ -587,14 +573,30 @@ static void discovery(void) {
   //
   // On the discovery screen, make the combo-boxes "touchscreen-friendly"
   //
+  GtkWidget *start_button;
+  GtkWidget *btn;
+  GtkWidget *lbl;
+  GtkWidget *sep;
   discovery_state = DISCOVERY_RUNNING;
   optimize_for_touchscreen = 1;
   protocols_restore_state();
   selected_device = 0;
   devices = 0;
-  loadProperties("ipaddr.props");
+  loadProperties("remote.props");
   GetPropS0("radio_ip_addr", ipaddr_radio);
   GetPropI0("radio_tcp_enable", tcp_enable);
+  GetPropS0("current_host", host_addr);
+  GetPropI0("num_hosts", num_hosts);
+  GetPropS0("host_pwd", host_pwd);
+  GetPropI0("audio_compression", audio_compression);
+  GetPropI0("auto_reconnect", remote_auto_reconnect);
+
+  if (num_hosts > 24) { num_hosts = 24; }
+
+  for (int i = 0; i < num_hosts; i++) {
+    GetPropS1("host[%d]", i, host_list[i]);
+  }
+
 #ifdef USBOZY
 
   if (enable_usbozy && !discover_only_stemlab) {
@@ -631,7 +633,6 @@ static void discovery(void) {
   }
 
 #endif
-#ifdef SATURN
 #include "saturnmain.h"
 
   if (enable_saturn_xdma && !discover_only_stemlab) {
@@ -639,15 +640,10 @@ static void discovery(void) {
     saturn_discovery();
   }
 
-#endif
-#ifdef STEMLAB_DISCOVERY
-
   if (enable_stemlab && !discover_only_stemlab) {
     status_text("Looking for STEMlab WEB apps");
     stemlab_discovery();
   }
-
-#endif
 
   if (enable_protocol_1 || discover_only_stemlab) {
     if (discover_only_stemlab) {
@@ -690,22 +686,41 @@ static void discovery(void) {
   GtkWidget *content;
   content = gtk_dialog_get_content_area(GTK_DIALOG(discovery_dialog));
   GtkWidget *grid = gtk_grid_new();
-  gtk_grid_set_row_homogeneous(GTK_GRID(grid), TRUE);
-  gtk_grid_set_row_spacing (GTK_GRID(grid), 10);
+  gtk_grid_set_row_homogeneous(GTK_GRID(grid), FALSE);
+  gtk_grid_set_row_spacing (GTK_GRID(grid), 5);
   int row = 0;
+  //
+  // The Exit button actually leaves the program
+  //
+  btn = gtk_button_new_with_label("Exit");
+  gtk_widget_set_name(btn, "close_button");
+  g_signal_connect (btn, "button-press-event", G_CALLBACK(exit_cb), NULL);
+  gtk_grid_attach(GTK_GRID(grid), btn, 0, 0, 1, 1);
+  btn = gtk_button_new_with_label("Protocols");
+  g_signal_connect (btn, "button-press-event", G_CALLBACK(protocols_cb), NULL);
+  gtk_grid_attach(GTK_GRID(grid), btn, 2, 0, 1, 1);
+  btn = gtk_button_new_with_label("Discover");
+  gtk_widget_set_name(btn, "close_button");
+  g_signal_connect (btn, "button-press-event", G_CALLBACK(discover_cb), NULL);
+  gtk_grid_attach(GTK_GRID(grid), btn, 3, 0, 1, 1);
+  row++;
+  sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+  gtk_widget_set_size_request(sep, -1, 3);
+  gtk_grid_attach(GTK_GRID(grid), sep, 0, row, 4, 1);
+  row++;
 
   if (devices == 0) {
-    GtkWidget *label = gtk_label_new("No local devices found!");
-    gtk_widget_set_name(label, "med_txt");
-    gtk_grid_attach(GTK_GRID(grid), label, 0, row, 3, 1);
+    lbl = gtk_label_new("No local devices found!");
+    gtk_widget_set_name(lbl, "med_txt");
+    gtk_grid_attach(GTK_GRID(grid), lbl, 0, row, 3, 1);
     row++;
   } else {
     char version[16];
     char text[512];
     char macStr[18];
 
-    for (row = 0; row < devices; row++) {
-      d = &discovered[row];
+    for (int dev = 0; dev < devices; dev++) {
+      d = &discovered[dev];
       snprintf(version, sizeof(version), "v%d.%d",
                d->software_version / 10,
                d->software_version % 10);
@@ -750,14 +765,12 @@ static void discovery(void) {
                  inet_ntoa(d->network.address.sin_addr));
       }
 
-      GtkWidget *label = gtk_label_new(text);
-      gtk_widget_set_name(label, "boldlabel");
-      gtk_widget_set_halign (label, GTK_ALIGN_START);
-      gtk_widget_show(label);
-      gtk_grid_attach(GTK_GRID(grid), label, 0, row, 3, 1);
-      GtkWidget *start_button = gtk_button_new();
+      lbl = gtk_label_new(text);
+      gtk_widget_set_name(lbl, "boldlabel");
+      gtk_widget_set_halign (lbl, GTK_ALIGN_START);
+      gtk_grid_attach(GTK_GRID(grid), lbl, 0, row, 3, 1);
+      start_button = gtk_button_new();
       gtk_widget_set_name(start_button, "big_txt");
-      gtk_widget_show(start_button);
       gtk_grid_attach(GTK_GRID(grid), start_button, 3, row, 1, 1);
       g_signal_connect(start_button, "button-press-event", G_CALLBACK(start_cb), (gpointer)d);
 
@@ -807,136 +820,71 @@ static void discovery(void) {
           gtk_button_set_label(GTK_BUTTON(start_button), "No SDR app found!");
           gtk_widget_set_sensitive(start_button, FALSE);
         } else {
-          apps_combobox[row] = gtk_combo_box_text_new();
+          apps_combobox[dev] = gtk_combo_box_text_new();
 
           // We want the default selection priority for the STEMlab app to be
           // RP-Trx > HAMlab-Trx > Pavel-Trx > Pavel-Rx, so we add in decreasing order and
           // always set the newly added entry to be active.
           if ((d->software_version & STEMLAB_PAVEL_RX) != 0) {
-            gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(apps_combobox[row]),
+            gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(apps_combobox[dev]),
                                       "sdr_receiver_hpsdr", "Pavel-Rx");
-            gtk_combo_box_set_active_id(GTK_COMBO_BOX(apps_combobox[row]),
+            gtk_combo_box_set_active_id(GTK_COMBO_BOX(apps_combobox[dev]),
                                         "sdr_receiver_hpsdr");
           }
 
           if ((d->software_version & STEMLAB_PAVEL_TRX) != 0) {
-            gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(apps_combobox[row]),
+            gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(apps_combobox[dev]),
                                       "sdr_transceiver_hpsdr", "Pavel-Trx");
-            gtk_combo_box_set_active_id(GTK_COMBO_BOX(apps_combobox[row]),
+            gtk_combo_box_set_active_id(GTK_COMBO_BOX(apps_combobox[dev]),
                                         "sdr_transceiver_hpsdr");
           }
 
           if ((d->software_version & HAMLAB_RP_TRX) != 0) {
-            gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(apps_combobox[row]),
+            gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(apps_combobox[dev]),
                                       "hamlab_sdr_transceiver_hpsdr", "HAMlab-Trx");
-            gtk_combo_box_set_active_id(GTK_COMBO_BOX(apps_combobox[row]),
+            gtk_combo_box_set_active_id(GTK_COMBO_BOX(apps_combobox[dev]),
                                         "hamlab_sdr_transceiver_hpsdr");
           }
 
           if ((d->software_version & STEMLAB_RP_TRX) != 0) {
-            gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(apps_combobox[row]),
+            gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(apps_combobox[dev]),
                                       "stemlab_sdr_transceiver_hpsdr", "STEMlab-Trx");
-            gtk_combo_box_set_active_id(GTK_COMBO_BOX(apps_combobox[row]),
+            gtk_combo_box_set_active_id(GTK_COMBO_BOX(apps_combobox[dev]),
                                         "stemlab_sdr_transceiver_hpsdr");
           }
 
-          my_combo_attach(GTK_GRID(grid), apps_combobox[row], 4, row, 1, 1);
-          gtk_widget_show(apps_combobox[row]);
+          my_combo_attach(GTK_GRID(grid), apps_combobox[dev], 4, row, 1, 1);
+          gtk_widget_show(apps_combobox[dev]);
         }
       }
+
+      row++;
     }
   }
 
-  //----------------------------------------------------+
-  // Construct the Server selection and start interface |
-  //----------------------------------------------------+
-  loadProperties("remote.props");
-  GetPropS0("current_host", host_addr);
-  t_print("%s: current server host %s\n", __func__, host_addr);
-  // Create a "Server" button
-  GtkWidget *start_server_button = gtk_button_new_with_label("Use Server");
-  g_signal_connect(start_server_button, "clicked", G_CALLBACK(connect_cb), grid);
-  gtk_grid_attach(GTK_GRID(grid), start_server_button, 0, row, 1, 1);
-  //
-  // Create combo-box for servers
-  // Populate with hosts from props files, put the "current" host first
-  //
-  host_combo = gtk_combo_box_text_new_with_entry();
-  gtk_grid_attach(GTK_GRID(grid), host_combo, 1, row, 1, 1);
-  int num_hosts = 0;
-  char str[128];
-  GetPropI0("num_hosts", num_hosts);
-
-  for (int i = 0; i < num_hosts; i++) {
-    *str = 0;
-    GetPropS1("host[%d]", i, str);
-    t_print("%s: server host entry #%d = %s\n", __func__, i, str);
-
-    if (strcmp(str, host_addr) && *str && strlen(str) > 0) {  // Avoid duplicate
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(host_combo), NULL, str);
-    }
-  }
-
-  *str = 0;
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(host_combo), NULL, str);
-  gtk_combo_box_text_prepend(GTK_COMBO_BOX_TEXT(host_combo), NULL, host_addr);
-  host_pos = 0;
-  gtk_combo_box_set_active(GTK_COMBO_BOX(host_combo), host_pos);
-  host_combo_signal_id = g_signal_connect(host_combo, "changed", G_CALLBACK(host_combo_cb), NULL);
-  host_entry = gtk_bin_get_child(GTK_BIN(host_combo));
-  g_signal_connect(host_entry, "activate", G_CALLBACK(host_entry_cb), NULL);
-  // Create the password entry box
-  host_pwd = gtk_entry_new();
-  gtk_entry_set_visibility(GTK_ENTRY(host_pwd), FALSE);
-  //
-  // If there *is* a host pwd in the props file, it will be used
-  // and also written back to the props file. But a password
-  // will only occur in remote.props if it has been put there
-  // by manual editing.
-  //
-  *str = 0;
-  GetPropS0("host_pwd", str);
-
-  if (strlen(str) > 4) {
-    gtk_entry_set_text(GTK_ENTRY(host_pwd), str);
-    pwd_from_props = 1;
-  } else {
-    gtk_entry_set_placeholder_text(GTK_ENTRY(host_pwd), "Server Password");
-  }
-
-  gtk_grid_attach(GTK_GRID(grid), host_pwd, 2, row, 1, 1);
-  //
-  // "Enter" in the pwd file induces connection
-  //
-  g_signal_connect(host_pwd, "activate", G_CALLBACK(connect_cb), NULL);
-  // Create the password visibility toggle button
-  GtkWidget *toggle_button = gtk_toggle_button_new_with_label("Show");
-  g_signal_connect(toggle_button, "toggled", G_CALLBACK(password_visibility_cb), host_pwd);
-  gtk_grid_attach(GTK_GRID(grid), toggle_button, 3, row, 1, 1);
+  sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+  gtk_widget_set_size_request(sep, -1, 3);
+  gtk_grid_attach(GTK_GRID(grid), sep, 0, row, 4, 1);
   row++;
   //
   // Check if we have "discovered" SATURN device via XDMA. Note if compiled *without* GPIO.
   // a G2V2 is assumed. If compiled *with* GPIO support, a G2V1 is assumed if the
   // MCP23017 expander on the front panel is detected via i2c_check_presence().
   //
-#ifdef SATURN
-
-  for (int i = 0; i < devices; i++) {
-    if (discovered[i].device == NEW_DEVICE_SATURN &&
-        !strcmp(discovered[i].network.interface_name, "XDMA")) {
 #ifdef GPIO
+  have_gpio = 1;
 
-      if (i2c_check_presence()) {
-        have_g2v1 = 1;
-      }
-
-#endif
-
-      if (!have_g2v1) { have_g2v2 = 1; }
-    }
+  if (i2c_check_presence()) {
+    have_i2c = 1;
   }
 
 #endif
+
+  for (int i = 0; i < devices; i++) {
+    if (discovered[i].device == NEW_DEVICE_SATURN &&
+        !strcmp(discovered[i].network.interface_name, "XDMA") && have_i2c) { have_g2v1 = 1; }
+  }
+
 #ifdef GPIO
   //
   // Even if compiled with GPIO support, do *not* show the "controller"
@@ -950,6 +898,7 @@ static void discovery(void) {
   // such that in special cases, something can be changed manually.
   //
   gpio_restore_state();
+  have_g2v2 = 1;
 
   if (have_g2v2) {
     if (controller != NO_CONTROLLER) {
@@ -970,54 +919,138 @@ static void discovery(void) {
       gpio_save_state();
     }
   } else {
-    if (controller > CONTROLLER2_V2) {
+    if (controller > CONTROLLER2_V2 || (!have_i2c && controller > CONTROLLER1)) {
       //
       // This should not happen: auto-detected controller in the props file
-      // has not been auto-detected.
+      // has not been auto-detected, or controller2 in the props file but not i2c
       //
       controller = NO_CONTROLLER;
       gpio_set_defaults(controller);
       gpio_save_state();
     }
-
-    GtkWidget *gpio = gtk_combo_box_text_new();
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "No Controller");
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller1");
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller2 V1");
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(gpio), NULL, "Controller2 V2");
-    my_combo_attach(GTK_GRID(grid), gpio, 0, row, 1, 1);
-    gtk_combo_box_set_active(GTK_COMBO_BOX(gpio), controller);
-    g_signal_connect(gpio, "changed", G_CALLBACK(gpio_changed_cb), NULL);
   }
 
 #endif
-  GtkWidget *discover_b = gtk_button_new_with_label("Discover");
-  g_signal_connect (discover_b, "button-press-event", G_CALLBACK(discover_cb), NULL);
-  gtk_grid_attach(GTK_GRID(grid), discover_b, 1, row, 1, 1);
-  GtkWidget *protocols_b = gtk_button_new_with_label("Protocols");
-  g_signal_connect (protocols_b, "button-press-event", G_CALLBACK(protocols_cb), NULL);
-  gtk_grid_attach(GTK_GRID(grid), protocols_b, 2, row, 1, 1);
-  //
-  row++;
-  GtkWidget *tcp_b = gtk_label_new("Radio IP Addr ");
-  gtk_widget_set_name(tcp_b, "boldlabel");
-  gtk_widget_set_halign (tcp_b, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), tcp_b, 0, row, 1, 1);
+  btn = gtk_combo_box_text_new();
+
+  if (controller == CONTROLLER3) {
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Controller3");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 0);
+  } else if (have_g2v1) {
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "G2V1 Panel");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 0);
+  } else if (have_g2v2) {
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "G2V2 Panel");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 0);
+  } else if (!have_gpio) {
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "No Controller");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 0);
+  } else {
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "No Controller");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Controller1");
+
+    if (have_i2c) {
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Controller2 V1");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Controller2 V2");
+    }
+
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), controller);
+#ifdef GPIO
+    g_signal_connect(btn, "changed", G_CALLBACK(gpio_changed_cb), NULL);
+#endif
+  }
+
+  my_combo_attach(GTK_GRID(grid), btn, 0, row, 1, 1);
+  lbl = gtk_label_new("Radio IP Addr ");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_widget_set_halign (lbl, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), lbl, 1, row, 1, 1);
   tcpaddr = gtk_entry_new();
   gtk_entry_set_max_length(GTK_ENTRY(tcpaddr), 20);
-  gtk_grid_attach(GTK_GRID(grid), tcpaddr, 1, row, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), tcpaddr, 2, row, 1, 1);
   gtk_entry_set_text(GTK_ENTRY(tcpaddr), ipaddr_radio);
   g_signal_connect (tcpaddr, "changed", G_CALLBACK(radio_ip_cb), NULL);
-  GtkWidget *tcp_en = gtk_check_button_new_with_label("Enable TCP");
-  gtk_widget_set_name(tcp_en, "boldlabel");
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(tcp_en), tcp_enable);
-  gtk_widget_set_halign (tcp_en, GTK_ALIGN_START);
-  gtk_grid_attach(GTK_GRID(grid), tcp_en, 2, row, 1, 1);
-  g_signal_connect(tcp_en, "toggled", G_CALLBACK(tcp_en_cb), NULL);
-  GtkWidget *exit_b = gtk_button_new_with_label("Close");
-  gtk_widget_set_name(exit_b, "close_button");
-  g_signal_connect (exit_b, "button-press-event", G_CALLBACK(exit_cb), NULL);
-  gtk_grid_attach(GTK_GRID(grid), exit_b, 3, row, 1, 1);
+  btn = gtk_check_button_new_with_label("Enable TCP");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), tcp_enable);
+  gtk_widget_set_halign (btn, GTK_ALIGN_START);
+  gtk_grid_attach(GTK_GRID(grid), btn, 3, row, 1, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(tcp_en_cb), NULL);
+  row++;
+  sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+  gtk_widget_set_size_request(sep, -1, 3);
+  gtk_grid_attach(GTK_GRID(grid), sep, 0, row, 4, 1);
+  row++;
+  //----------------------------------------------------+
+  // Construct the Server selection and start interface |
+  //----------------------------------------------------+
+  // Create a "Server" button
+  btn = gtk_button_new_with_label("Use Server");
+  g_signal_connect(btn, "clicked", G_CALLBACK(connect_cb), grid);
+  gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 1, 1);
+  //
+  // Create combo-box for servers
+  // Populate with hosts from props files, put the "current" host first
+  //
+  host_combo = gtk_combo_box_text_new_with_entry();
+  gtk_grid_attach(GTK_GRID(grid), host_combo, 1, row, 1, 1);
+
+  for (int i = 0; i < num_hosts; i++) {
+    t_print("%s: server host entry #%d = %s\n", __func__, i, host_list[i]);
+
+    if (strcmp(host_list[i], host_addr) && strlen(host_list[i]) > 0) {  // Avoid duplicate
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(host_combo), NULL, host_list[i]);
+    }
+  }
+
+  gtk_combo_box_text_prepend(GTK_COMBO_BOX_TEXT(host_combo), NULL, host_addr);
+  host_pos = 0;
+  gtk_combo_box_set_active(GTK_COMBO_BOX(host_combo), host_pos);
+  host_combo_signal_id = g_signal_connect(host_combo, "changed", G_CALLBACK(host_combo_cb), NULL);
+  host_addr_entry = gtk_bin_get_child(GTK_BIN(host_combo));
+  g_signal_connect(host_addr_entry, "activate", G_CALLBACK(host_entry_cb), NULL);
+  // Create the password entry box
+  host_pwd_entry = gtk_entry_new();
+  gtk_entry_set_visibility(GTK_ENTRY(host_pwd_entry), FALSE);
+  //
+  // If there *is* a host pwd in the props file, it will be used
+  // and also written back to the props file. But a password
+  // will only occur in remote.props if it has been put there
+  // by manual editing.
+  //
+
+  if (strlen(host_pwd) > 4) {
+    gtk_entry_set_text(GTK_ENTRY(host_pwd_entry), host_pwd);
+    pwd_from_props = 1;
+  } else {
+    gtk_entry_set_placeholder_text(GTK_ENTRY(host_pwd_entry), "Server Password");
+  }
+
+  gtk_grid_attach(GTK_GRID(grid), host_pwd_entry, 2, row, 1, 1);
+  //
+  // "Enter" in the pwd file induces connection
+  //
+  g_signal_connect(host_pwd_entry, "activate", G_CALLBACK(connect_cb), NULL);
+  // Create the password visibility toggle button
+  btn = gtk_button_new_with_label("Show");
+  g_signal_connect(btn, "button-press-event", G_CALLBACK(password_visibility_cb), host_pwd_entry);
+  gtk_grid_attach(GTK_GRID(grid), btn, 3, row, 1, 1);
+  row++;
+  btn = gtk_check_button_new_with_label("Auto Reconnect");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), remote_auto_reconnect);
+  gtk_grid_attach(GTK_GRID(grid), btn, 1, row, 1, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(reconnect_cb), NULL);
+  lbl = gtk_label_new("Audio Compression: ");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), lbl, 2, row, 1, 1);
+  btn = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "None");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "32 kbps");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "64 kbps");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "96 kbps");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(btn), audio_compression);
+  g_signal_connect(btn, "changed", G_CALLBACK(audio_cb), NULL);
+  my_combo_attach(GTK_GRID(grid), btn, 3, row, 1, 1);
   gtk_container_add (GTK_CONTAINER (content), grid);
   gtk_widget_show_all(discovery_dialog);
   t_print("%s: showing device dialog\n", __func__);

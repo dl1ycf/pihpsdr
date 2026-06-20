@@ -29,89 +29,6 @@
 #include "css.h"
 
 #define DISPLAY_FONT_FACE  cssfont[which_css_font]
-#define DISPLAY_FONT_SIZE1 10                       // no longer used, this is too small for elder hams
-#define DISPLAY_FONT_SIZE2 12                       // used for SWR, FWD in Tx meter, S-meter ticks, and panadapter labels
-#define DISPLAY_FONT_SIZE3 16                       // used for warning/info in panadapters
-#define DISPLAY_FONT_SIZE4 20                       // only used for server IP addr in client mode
-
-//
-// Colours. They are given as a 4-tuple (RGB and opacity).
-// The default value for the opacity (1.0) is used  in most cases.
-// "weak" versions of some colours (e.g. for the non-active receiver) are also available
-//
-
-//
-// There are three "traffic light" colors ALARM, ATTN, OK (default: red, yellow, green)
-// that are used in various places. All three colours should be clearly readable
-// when written on a (usually dark) background.
-//
-#define COLOUR_ALARM         1.00, 0.00, 0.00, 1.00
-#define COLOUR_ALARM_WEAK    0.50, 0.00, 0.00, 1.00
-#define COLOUR_ATTN          1.00, 1.00, 0.00, 1.00
-#define COLOUR_ATTN_WEAK     0.50, 0.50, 0.00, 1.00
-#define COLOUR_OK            0.00, 1.00, 0.00, 1.00
-#define COLOUR_OK_WEAK       0.00, 0.50, 0.00, 1.00
-
-//
-// Colours for drawing horizontal (dBm) and vertical (Frequency)
-// lines in the panadapters, and indicating filter passbands and
-// 60m band segments.
-//
-// The PAN_FILTER and PAN_NOTCH must be somewhat transparent, such that it does not hide a PAN_LINE.
-//
-
-#define COLOUR_PAN_FILTER    0.30, 0.30, 0.30, 0.66
-#define COLOUR_PAN_NOTCH     0.60, 0.60, 0.00, 0.66
-#define COLOUR_PAN_NOTCHLINE 0.80, 0.80, 0.00, 1.00
-#define COLOUR_PAN_LINE      0.00, 1.00, 1.00, 1.00
-#define COLOUR_PAN_LINE_WEAK 0.00, 0.50, 0.50, 1.00
-#define COLOUR_PAN_60M       0.60, 0.30, 0.30, 1.00
-#define COLOUR_PAN_TEXT      1.00, 1.00, 1.00, 1.00 // dBm labels
-
-//
-// Main background colours, allowing different colors for the panadapters and
-// the VFO/meter bar.
-// Writing with SHADE on a BACKGND should be visible,
-// but need not be "alerting"
-// METER is a special colour for data/ticks in the "meter" surface
-//
-
-#define COLOUR_PAN_BACKGND   0.15, 0.15, 0.15, 1.00
-#define COLOUR_VFO_BACKGND   0.15, 0.15, 0.15, 1.00
-#define COLOUR_SHADE         0.70, 0.70, 0.70, 1.00
-#define COLOUR_METER         1.00, 1.00, 1.00, 1.00
-
-//
-// Settings for a coloured (gradient) spectrum, only availabe for RX.
-// The first and last colour are also used for the digital S-meter bar graph
-//
-
-#define COLOUR_GRAD1         0.00, 1.00, 0.00, 1.00
-#define COLOUR_GRAD2         1.00, 0.66, 0.00, 1.00
-#define COLOUR_GRAD3         1.00, 1.00, 0.00, 1.00
-#define COLOUR_GRAD4         1.00, 0.00, 0.00, 1.00
-#define COLOUR_GRAD1_WEAK    0.00, 0.50, 0.00, 1.00
-#define COLOUR_GRAD2_WEAK    0.50, 0.33, 0.00, 1.00
-#define COLOUR_GRAD3_WEAK    0.50, 0.50, 0.00, 1.00
-#define COLOUR_GRAD4_WEAK    0.50, 0.00, 0.00, 1.00
-
-//
-// Settings for a "non gradient" spectrum (note the TX spectrum never has a gradient).
-// To increase visibility in the region of the (gray) filter area, the filled spectrum
-// is made slightly red-ish, while the lines are made slightly yellow-ish
-//
-//
-// COLOUR_PAN_LINE1  is used for the line spectrum of the active RX and the TX
-// COLOUR_PAN_LINE2  is used for the line spectrum of the non-active RX
-// COLOUR_PAN_FILL1  is used for the filled spectrum of the active RX and the TX
-// COLOUR_PAN_FILL2  is used for the filled spectrum of the non-active RX
-//
-
-#define COLOUR_PAN_LINE1     0.80, 1.00, 0.80, 0.75
-#define COLOUR_PAN_LINE2     0.80, 1.00, 0.80, 0.50
-
-#define COLOUR_PAN_FILL1     1.00, 0.80, 0.80, 0.50
-#define COLOUR_PAN_FILL2     1.00, 0.80, 0.80, 0.25
 
 //
 // thin and thick line widths in the panadapers
@@ -133,8 +50,8 @@ struct _VFO_BAR_LAYOUT {
   int size2;               // Font size for the "small dial digits"
   int size3;               // Font size for the "large dial digits"
 
-  int vfo_a_x, vfo_a_y;    // coordinates of VFO A/B dial
-  int vfo_b_x, vfo_b_y;
+  int vfo_a_l, vfo_a_r, vfo_a_y;    // x (left/right) and y coordinates of VFO dial frequency
+  int vfo_b_l, vfo_b_r, vfo_b_y;
 
   int mode_x,  mode_y;     // Mode/Filter/CW wpm string
   int zoom_x,  zoom_y;     // "Zoom x1"
@@ -160,6 +77,7 @@ struct _VFO_BAR_LAYOUT {
   int dup_x,   dup_y;
   int filter_x, filter_y;
   int multifn_x, multifn_y;
+  int lat_x, lat_y;      // latency indicator (right- or left-aligned)
 };
 
 typedef struct _VFO_BAR_LAYOUT VFO_BAR_LAYOUT;
