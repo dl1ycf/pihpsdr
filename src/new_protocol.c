@@ -279,6 +279,16 @@ static void  process_mic_data(const unsigned char *buffer);
 // extra ones. The buffers are *never* released to the
 // operating system, but marked free upon a protocol restart.
 //
+static void mark_all_buffers_free(void) {
+  ASSERT_SERVER();
+  mybuffer *bp = buflist;
+
+  while (bp) {
+    bp->free = 1;
+    bp = bp->next;
+  }
+}
+
 static mybuffer *get_my_buffer(void) {
   ASSERT_SERVER(NULL);
   int i;
@@ -1766,13 +1776,9 @@ void new_protocol_menu_start(void) {
   //
   if (have_saturn_xdma) {
     saturn_free_buffers();
-  }
-
-  mybuffer *mybuf = get_my_buffer();  // this will pre-allocate
-
-  while (mybuf) {
-    mybuf->free = 1;
-    mybuf = mybuf->next;
+  } else {
+    (void) get_my_buffer();  // this will pre-allocate
+    mark_all_buffers_free(); // if restarting, set them free
   }
 
   P2running = 1;

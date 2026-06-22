@@ -45,6 +45,10 @@
 #include "rx_panadapter.h"
 #include "sliders.h"
 #include "store.h"
+#ifdef TCI
+  #include "tci.h"
+  #include "tci_audio.h"
+#endif
 #include "tx_panadapter.h"
 #include "vfo.h"
 #include "vox.h"
@@ -430,6 +434,17 @@ void server_tx_audio(double sample) {
   //
   static opus_int16 tx_pcm_buf[OPUS_FRAME_SIZE];
   static int        tx_pcm_idx = 0;
+
+#ifdef TCI
+
+  //
+  // This overwrites the sample if TCI audio is available
+  //
+  if (tci_audio_tx_active) {
+    sample = tci_get_next_mic_sample();
+  }
+
+#endif
 
   if (audio_compression && tx_opus_enc == NULL ) {
     //
@@ -873,6 +888,14 @@ gpointer client_udp_thread(gpointer arg) {
           if (rx->audio_channel == LEFT)  { right_sample = 0.0; }
 
           if (rx->audio_channel == RIGHT) { left_sample  = 0.0; }
+
+#ifdef TCI
+
+          if (tci_audio_rx_active) {
+            tci_audio_rx_sample(rx, left_sample, right_sample);
+          }
+
+#endif
 
           audio_write(rx, left_sample, right_sample);
         }

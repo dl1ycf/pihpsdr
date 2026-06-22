@@ -168,17 +168,17 @@ static mybuffer *get_my_buffer(int numlist) {
 
   switch (numlist) {
   case HPMYBUF:
-    j = 1;  // allocate 1 new buffer
+    j = 4;
     desc = "HP";
     break;
 
   case MICMYBUF:
-    j = 5;  // allocate 5 new buffers
+    j = 16;
     desc = "MIC";
     break;
 
   case DDCMYBUF:
-    j = 25; // allocate 25 new buffers
+    j = 64;
     desc = "DDC";
     break;
 
@@ -210,11 +210,15 @@ static mybuffer *get_my_buffer(int numlist) {
 void saturn_free_buffers() {
   //
   // Mark all buffers as "free" but do not release storage
-  // This is called upon a protocol restart
+  // This is called upon a protocol (re-)start, so first
+  // allocate a single buffer in each class, and then free
+  // everything. This leaves us will pre-allocated buffers
+  // on first start.
   //
   mybuffer *mybuf;
 
   for (int i = 0; i < MAXMYBUF; i++) {
+    (void) get_my_buffer(i);  // this will pre-allocate
     mybuf = buflist[i];
 
     while (mybuf) {

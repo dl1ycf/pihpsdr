@@ -58,9 +58,12 @@ fi
 # that include files are found by the preprocessor, and libraries are found by the linker.
 #
 BREW=junk
+BREWDIR=junk
 OPTHOMEBREW=0
 
 if [ -x /usr/local/bin/brew ]; then
+  BREWDIR=/usr/local/homebrew
+  BREW=/usr/local/bin/brew
   BREW=/usr/local/bin/brew
   if [ z$CPATH == z ]; then
     export CPATH=/usr/local/include
@@ -76,6 +79,7 @@ fi
 
 if [ -x /opt/homebrew/bin/brew ]; then
   BREW=/opt/homebrew/bin/brew
+  BREWDIR=/opt/homebrew
   OPTHOMEBREW=1
   if [ z$CPATH == z ]; then
     export CPATH=/opt/homebrew/include
@@ -119,13 +123,24 @@ echo "export CPATH=$CPATH" >> $HOME/.zprofile
 echo "export LIBRARY_PATH=$LIBRARY_PATH" >> $HOME/.profile
 fi
 
+$BREW update
+################################################################
+#
+# If <homebrew>/Library/Homebrew/extend/os/mac/formula.rb has
+# been modified to enable compilation of some of the SoapySDR
+# modules, this change is lost during "update". The following
+# command restores the last "stashed change"
+#
+################################################################
+
+( cd $BREWDIR && git stash pop )
+
 ################################################################
 #
 # All homebrew packages needed for pihpsdr (makedepend and
 # cppcheck are useful for maintainers)
 #
 ################################################################
-$BREW update
 $BREW install gtk+3
 $BREW install librsvg
 $BREW install pkg-config
@@ -156,11 +171,15 @@ $BREW install zlib
 #
 $BREW install cmake
 $BREW install python-setuptools
+
+################################################################
 #
 # If an older version of SoapySDR exist, a forced
-# re-install may be necessary (note parts the Soapy stuff
-# is always compiled from the sources).
+# re-install may be necessary
 #
+################################################################
+$BREW install soapysdr
+
 ################################################################
 # HOMEBREW/POTHOSWARE PROBLEM:
 #
@@ -187,10 +206,16 @@ $BREW install python-setuptools
 # You can apply the above fix and simply re-run this script,
 # since HOMEBREW will not be re-installed if already present.
 #
+#
+# pothosware is considered "untrusted" in lastest versions of
+# homebrew. So the following statements will fail unless
+# you "manually" declare you trust pothosware. This script
+# will *not* do this for you. If the commands below fail,
+# piHPSDR can still be built, but the SoapySDR modules
+# for the respective radios may be missing.
 ################################################################
 
 $BREW tap pothosware/pothos
-$BREW reinstall soapysdr
 $BREW reinstall pothosware/pothos/soapyplutosdr
 $BREW reinstall pothosware/pothos/limesuite
 $BREW reinstall pothosware/pothos/soapyrtlsdr
