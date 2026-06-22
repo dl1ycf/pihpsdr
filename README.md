@@ -24,17 +24,18 @@ piHPSDR should be compiled from the sources, consult the Manual (**link given ab
 
 Latest features:
 
+- Selectable color themes
+- more complete TCI implementation including TCI-Audio
+- DX cluster support
+- Reduced client/server bandwidth due to data compression
+- different selectable CW audio peak filters
+- storing/restoring RX and TX profiles in individual (user-selectable) slots
 - manual multi notch filter (in the FILTER menu)
 - NR3/NR4 noise reduction models (RNNnoise and libspecbleach) fully integrated
 - client/server model for remote operation (including transmitting in phone and CW)
 - fully configurable Slider and Toolbar area
-- full support for Anan G2-Ultra radios, including customizable panel button/encoder functions
 - added continuous frequency compressor (**CFC**) and downward expander (**DEXP**) to the TX chain
-- HermesLite-II I/O-board support
 - audio recording (RX capture) and playback (TX)
-- automatic installation procedures for compilation from the sources, for Linux (including RaspPi) and MacOS
-- dynamic screen resizing in the "Screen" menu, including transitions
-  between full-screen and window mode
 
 
 
