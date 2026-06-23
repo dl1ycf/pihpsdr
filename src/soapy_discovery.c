@@ -410,7 +410,7 @@ void soapy_discovery(void) {
   t_print("%s\n", __func__);
   rtlsdr_count = 0;
   sdrplay_count = 0;
-  SoapySDRKwargs_set(&input_args, "hostname", "pluto.local");
+  //SoapySDRKwargs_set(&input_args, "hostname", "pluto.local");
   SoapySDRKwargs *results = SoapySDRDevice_enumerate(&input_args, &length);
   t_print("%s: length=%d\n", __func__, (int)length);
 
