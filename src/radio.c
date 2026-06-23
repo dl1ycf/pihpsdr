@@ -266,6 +266,7 @@ int OCmemory_tune_time = 500; // ms
 long long tune_timeout;
 
 int analog_meter = 1;
+int extended_meter = 1;
 
 static int pre_tune_mode;
 static int pre_tune_cw_internal;
@@ -605,7 +606,7 @@ static void choose_vfo_layout(void) {
   //
   // If space permits, first add the extended metering
   //
-  if (spare >= MIN_ADD_METER_WIDTH) {
+  if (spare >= MIN_ADD_METER_WIDTH && extended_meter) {
     ADD_METER_WIDTH = MIN_ADD_METER_WIDTH;
     spare -= ADD_METER_WIDTH;
   }
@@ -3452,6 +3453,7 @@ static void radio_restore_state(void) {
   GetPropI0("vfo_snap",                                      vfo_snap);
   GetPropI0("mute_rx_while_transmitting",                    mute_rx_while_transmitting);
   GetPropI0("analog_meter",                                  analog_meter);
+  GetPropI0("extended_meter",                                extended_meter);
   GetPropI0("vox_enabled",                                   vox_enabled);
   GetPropF0("vox_threshold",                                 vox_threshold);
   GetPropF0("vox_hang",                                      vox_hang);
@@ -3690,6 +3692,7 @@ void radio_save_state(void) {
   SetPropI0("vfo_snap",                                      vfo_snap);
   SetPropI0("mute_rx_while_transmitting",                    mute_rx_while_transmitting);
   SetPropI0("analog_meter",                                  analog_meter);
+  SetPropI0("extended_meter",                                extended_meter);
   SetPropI0("vox_enabled",                                   vox_enabled);
   SetPropF0("vox_threshold",                                 vox_threshold);
   SetPropF0("vox_hang",                                      vox_hang);

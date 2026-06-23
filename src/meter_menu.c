@@ -43,6 +43,11 @@ static gboolean close_cb(void) {
   return TRUE;
 }
 
+static void extended_meter_cb(GtkWidget *widget, gpointer data) {
+  extended_meter = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  radio_reconfigure_screen();
+}
+
 static void txmeter_cb (GtkToggleButton *widget, gpointer data) {
   transmitter->metermode = !gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(widget));
   send_meter(cl_sock_tcp, active_receiver->smetermode, transmitter->metermode, transmitter->alcmode);
@@ -89,7 +94,7 @@ static void alc_cb(GtkToggleButton *widget, gpointer data) {
 }
 
 void meter_menu (GtkWidget *parent) {
-  GtkWidget *w;
+  GtkWidget *lbl;
   GtkWidget *btn, *mbtn;
   dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
@@ -107,53 +112,60 @@ void meter_menu (GtkWidget *parent) {
   gtk_widget_set_name(close_b, "close_button");
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 1, 1);
-  w = gtk_label_new("Meter Type");
-  gtk_widget_set_name(w, "boldlabel");
-  gtk_widget_set_halign(w, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), w, 0, 1, 1, 1);
+  //
+  btn = gtk_check_button_new_with_label("Enable extended metering");
+  gtk_widget_set_halign(btn, GTK_ALIGN_START);
+  gtk_grid_attach(GTK_GRID(grid), btn, 0, 1, 3, 1);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), extended_meter);
+  g_signal_connect(btn, "toggled", G_CALLBACK(extended_meter_cb), NULL);
+  //
+  lbl = gtk_label_new("Meter Type");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), lbl, 0, 2, 1, 1);
   mbtn = gtk_radio_button_new_with_label_from_widget(NULL, "Analog");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(mbtn), analog_meter);
   g_signal_connect(mbtn, "toggled", G_CALLBACK(analog_cb), NULL);
-  gtk_grid_attach(GTK_GRID(grid), mbtn, 1, 1, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), mbtn, 1, 2, 1, 1);
   btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(mbtn), "Digital");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), !analog_meter);
-  gtk_grid_attach(GTK_GRID(grid), btn, 2, 1, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), btn, 2, 2, 1, 1);
   //
-  w = gtk_label_new("S-Meter Reading");
-  gtk_widget_set_name(w, "boldlabel");
-  gtk_widget_set_halign(w, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), w, 0, 2, 1, 1);
+  lbl = gtk_label_new("S-Meter Reading");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), lbl, 0, 3, 1, 1);
   mbtn = gtk_radio_button_new_with_label_from_widget(NULL, "Peak");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(mbtn), active_receiver->smetermode == SMETER_PEAK);
   g_signal_connect(mbtn, "toggled", G_CALLBACK(smeter_cb), NULL);
-  gtk_grid_attach(GTK_GRID(grid), mbtn, 1, 2, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), mbtn, 1, 3, 1, 1);
   btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(mbtn), "Average");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), !(active_receiver->smetermode == SMETER_PEAK));
-  gtk_grid_attach(GTK_GRID(grid), btn, 2, 2, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), btn, 2, 3, 1, 1);
 
   if (can_transmit) {
-    w = gtk_label_new("TX Pwr Reading");
-    gtk_widget_set_name(w, "boldlabel");
-    gtk_widget_set_halign(w, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(grid), w, 0, 3, 1, 1);
+    lbl = gtk_label_new("TX Pwr Reading");
+    gtk_widget_set_name(lbl, "boldlabel");
+    gtk_widget_set_halign(lbl, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), lbl, 0, 4, 1, 1);
     mbtn = gtk_radio_button_new_with_label_from_widget(NULL, "Peak");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(mbtn), !transmitter->metermode);
     g_signal_connect(mbtn, "toggled", G_CALLBACK(txmeter_cb), NULL);
-    gtk_grid_attach(GTK_GRID(grid), mbtn, 1, 3, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), mbtn, 1, 4, 1, 1);
     btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(mbtn), "Average");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), transmitter->metermode);
-    gtk_grid_attach(GTK_GRID(grid), btn, 2, 3, 1, 1);
-    w = gtk_label_new("TX ALC Reading");
-    gtk_widget_set_name(w, "boldlabel");
-    gtk_widget_set_halign(w, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(grid), w, 0, 4, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), btn, 2, 4, 1, 1);
+    lbl = gtk_label_new("TX ALC Reading");
+    gtk_widget_set_name(lbl, "boldlabel");
+    gtk_widget_set_halign(lbl, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), lbl, 0, 5, 1, 1);
     mbtn = gtk_radio_button_new_with_label_from_widget(NULL, "Peak");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(mbtn), transmitter->alcmode == ALC_PEAK);
     g_signal_connect(mbtn, "toggled", G_CALLBACK(alc_cb), NULL);
-    gtk_grid_attach(GTK_GRID(grid), mbtn, 1, 4, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), mbtn, 1, 5, 1, 1);
     btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(mbtn), "Average");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), !(transmitter->alcmode == ALC_PEAK));
-    gtk_grid_attach(GTK_GRID(grid), btn, 2, 4, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), btn, 2, 5, 1, 1);
   }
 
   gtk_container_add(GTK_CONTAINER(content), grid);

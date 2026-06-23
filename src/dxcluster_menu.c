@@ -38,7 +38,6 @@ static GtkWidget *w_port;
 static GtkWidget *w_call;
 static GtkWidget *w_age_5, *w_age_10, *w_age_30, *w_age_60;
 static GtkWidget *w_m_ft8, *w_m_ft4, *w_m_cw, *w_m_ssb, *w_m_rtty, *w_m_other;
-static GtkWidget *w_band_active, *w_band_all;
 static GtkWidget *w_r_na, *w_r_eu, *w_r_as, *w_r_sa, *w_r_af, *w_r_oc;
 static GtkWidget *w_whitelist, *w_blacklist;
 static GtkWidget *apply_btn;
@@ -96,9 +95,6 @@ static void read_settings(DXC_SETTINGS *s) {
   s->mode_ssb   = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w_m_ssb));
   s->mode_rtty  = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w_m_rtty));
   s->mode_other = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w_m_other));
-  /* Band */
-  s->band_active_only =
-    gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w_band_active));
   /* Regions */
   s->region_na = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w_r_na));
   s->region_eu = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w_r_eu));
@@ -184,7 +180,7 @@ void dxcluster_menu(GtkWidget *parent) {
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(w_port), cur.port);
   gtk_grid_attach(GTK_GRID(grid), w_port, 5, row, 2, 1);
   row++;
-  lbl = gtk_label_new("Your callsign");
+  lbl = gtk_label_new("Your call sign");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), lbl, 0, row, 1, 1);
@@ -197,7 +193,7 @@ void dxcluster_menu(GtkWidget *parent) {
   w_enable     = gtk_check_button_new_with_label("Enable DX cluster");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w_enable),     cur.enabled);
   w_show_pan   = gtk_check_button_new_with_label("Show spots");
-  w_auto_recon = gtk_check_button_new_with_label("Auto-reconnect");
+  w_auto_recon = gtk_check_button_new_with_label("Auto reconnect");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w_show_pan),   cur.show_on_panadapter);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w_auto_recon), cur.auto_reconnect);
   gtk_grid_attach(GTK_GRID(grid), w_enable,     1, row, 2, 1);
@@ -261,18 +257,6 @@ void dxcluster_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), w_m_rtty,  5, row, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), w_m_other, 6, row, 1, 1);
   row++;
-  /* Bands */
-  lbl = gtk_label_new("Bands");
-  gtk_widget_set_name(lbl, "boldlabel");
-  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), lbl, 0, row, 1, 1);
-  w_band_active = gtk_radio_button_new_with_label(NULL, "Active band only");
-  w_band_all    = gtk_radio_button_new_with_label_from_widget(
-                    GTK_RADIO_BUTTON(w_band_active), "All bands");
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(
-                                 cur.band_active_only ? w_band_active : w_band_all), TRUE);
-  gtk_grid_attach(GTK_GRID(grid), w_band_active, 1, row, 2, 1);
-  gtk_grid_attach(GTK_GRID(grid), w_band_all,    3, row, 2, 1);
   row++;
   /* Regions */
   lbl = gtk_label_new("Spotter regions");

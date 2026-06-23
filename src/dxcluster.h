@@ -75,7 +75,6 @@ typedef struct {
   int       mode_ssb;
   int       mode_rtty;
   int       mode_other;
-  int       band_active_only;
   /* Spotter regions: bitmask of 6 continents */
   int       region_na;
   int       region_eu;
@@ -104,7 +103,6 @@ void        dxcluster_save_state(void);
 /* Status snapshot — for status dot, settings dialog "connected" line, etc. */
 DXC_STATE   dxcluster_get_state(void);
 int         dxcluster_spots_received_this_session(void);
-const char *dxcluster_state_label(DXC_STATE s);
 
 /* Panadapter integration.
  *

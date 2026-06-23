@@ -556,6 +556,11 @@ static void *worker_main(void *arg) {
       continue;
     }
 
+    if (strlen(s.callsign) < 1) {
+      set_state(DXC_ERROR);
+      continue;
+    }
+
     set_state(DXC_CONNECTING);
     t_print("dxcluster: connecting to %s:%d\n", s.server, s.port);
     int fd = tcp_connect(s.server, s.port, NULL, 0);
@@ -674,7 +679,6 @@ static void set_default_settings(DXC_SETTINGS *s) {
   s->age_limit_sec      = 600;    /* 10 minutes */
   s->mode_ft8 = s->mode_ft4 = s->mode_cw = s->mode_ssb =
                                 s->mode_rtty = s->mode_other = 1;
-  s->band_active_only   = 1;
   s->region_na = s->region_eu = s->region_as = s->region_sa =
                                   s->region_af = s->region_oc = 1;
   s->whitelist[0] = '\0';
@@ -813,28 +817,6 @@ int dxcluster_spots_received_this_session(void) {
   return n;
 }
 
-const char *dxcluster_state_label(DXC_STATE s) {
-  switch (s) {
-  case DXC_DISABLED:
-    return "Off";
-
-  case DXC_DISCONNECTED:
-    return "Disconnected";
-
-  case DXC_CONNECTING:
-    return "Connecting...";
-
-  case DXC_CONNECTED:
-    return "Connected";
-
-  case DXC_ERROR:
-    return "Connection error";
-
-  default:
-    return "?";
-  }
-}
-
 static int dxcluster_query_spots(DX_SPOT *out, int max_out,
                                  long long lo_hz, long long hi_hz) {
   if (!out || max_out <= 0) { return 0; }
@@ -885,7 +867,6 @@ void dxcluster_save_state(void) {
   SetPropI0("dxcluster.mode_ssb",           s.mode_ssb);
   SetPropI0("dxcluster.mode_rtty",          s.mode_rtty);
   SetPropI0("dxcluster.mode_other",         s.mode_other);
-  SetPropI0("dxcluster.band_active_only",   s.band_active_only);
   SetPropI0("dxcluster.region_na",          s.region_na);
   SetPropI0("dxcluster.region_eu",          s.region_eu);
   SetPropI0("dxcluster.region_as",          s.region_as);
@@ -912,7 +893,6 @@ void dxcluster_restore_state(void) {
   GetPropI0("dxcluster.mode_ssb",           s.mode_ssb);
   GetPropI0("dxcluster.mode_rtty",          s.mode_rtty);
   GetPropI0("dxcluster.mode_other",         s.mode_other);
-  GetPropI0("dxcluster.band_active_only",   s.band_active_only);
   GetPropI0("dxcluster.region_na",          s.region_na);
   GetPropI0("dxcluster.region_eu",          s.region_eu);
   GetPropI0("dxcluster.region_as",          s.region_as);

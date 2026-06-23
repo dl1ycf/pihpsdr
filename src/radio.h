@@ -230,6 +230,7 @@ extern int OCmemory_tune_time;
 extern long long tune_timeout;
 
 extern int analog_meter;
+extern int extended_meter;
 
 extern int vox_enabled;
 extern double vox_threshold;

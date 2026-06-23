@@ -302,7 +302,7 @@ void dxcluster_history_menu(GtkWidget *parent) {
   /* Toolbar */
   GtkWidget *toolbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
   search_entry = gtk_entry_new();
-  gtk_entry_set_placeholder_text(GTK_ENTRY(search_entry), "Search callsign");
+  gtk_entry_set_placeholder_text(GTK_ENTRY(search_entry), "Search call sign");
   gtk_entry_set_width_chars(GTK_ENTRY(search_entry), 16);
   g_signal_connect(search_entry, "changed", G_CALLBACK(on_filter_changed), NULL);
   gtk_box_pack_start(GTK_BOX(toolbar), search_entry, FALSE, FALSE, 0);
