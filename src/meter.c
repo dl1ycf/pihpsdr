@@ -1208,7 +1208,7 @@ void txmeter_update(double pwr, double alc, double swr, double mic, double out) 
   }
 
   //
-  // Some data common to power meters (only valid for HPSDR)
+  // Some data common to power meters (only needed and valid for HPSDR)
   //
   int units;
   int swr_alarm;
@@ -1216,33 +1216,31 @@ void txmeter_update(double pwr, double alc, double swr, double mic, double out) 
   double interval;
   double frac;
 
-  if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
-    if (band->disablePA || !pa_enabled) {
-      units = 1;
-      interval = 0.1;
-    } else {
-      int pp = pa_power_list[pa_power];
-      units = (pp <= 1) ? 1 : 2;
-      interval = 0.1 * pp;
-    }
+  if (band->disablePA || !pa_enabled) {
+    units = 1;
+    interval = 0.1;
+  } else {
+    int pp = pa_power_list[pa_power];
+    units = (pp <= 1) ? 1 : 2;
+    interval = 0.1 * pp;
+  }
 
-    frac = max_pwr / (10.0 * interval);
-    swr_alarm = (swr > transmitter->swr_alarm);
+  frac = max_pwr / (10.0 * interval);
+  swr_alarm = (swr > transmitter->swr_alarm);
 
-    switch (pa_power) {
-    case PA_1W:
-      snprintf(pwrstr, sizeof(pwrstr), "%dmW",   (int)(1000.0 * max_pwr + 0.5));
-      break;
+  switch (pa_power) {
+  case PA_1W:
+    snprintf(pwrstr, sizeof(pwrstr), "%dmW",   (int)(1000.0 * max_pwr + 0.5));
+    break;
 
-    case PA_5W:
-    case PA_10W:
-      snprintf(pwrstr, sizeof(pwrstr), "%0.1fW", max_pwr);
-      break;
+  case PA_5W:
+  case PA_10W:
+    snprintf(pwrstr, sizeof(pwrstr), "%0.1fW", max_pwr);
+    break;
 
-    default:
-      snprintf(pwrstr, sizeof(pwrstr), "%dW",    (int)(max_pwr + 0.5));
-      break;
-    }
+  default:
+    snprintf(pwrstr, sizeof(pwrstr), "%dW",    (int)(max_pwr + 0.5));
+    break;
   }
 
   switch (meter_type) {
