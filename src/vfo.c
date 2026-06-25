@@ -1081,7 +1081,7 @@ void vfo_update(void) {
 
   int f = vfo[id].filter;
   int txvfo = vfo_get_tx_vfo();
-  const VFO_BAR_LAYOUT *vfl = &vfo_layout_list[display_vfobar[display_size]];
+  const VFO_BAR_LAYOUT *vfl = current_vfo_layout;
   //
   // Filter used in active receiver
   //
@@ -1863,9 +1863,9 @@ static gboolean vfo_press_event_cb (GtkWidget *widget, GdkEventButton *event, gp
     // click on VFO-B dial: open band menu for VFO-B
     // click between VFO-A and VFO-B: open mode menu for VFO-A
     //
-    if (event->x <= vfo_layout_list[display_vfobar[display_size]].vfo_a_r) {
+    if (event->x <= current_vfo_layout->vfo_a_r) {
       g_idle_add(ext_start_band_menu, GINT_TO_POINTER(VFO_A));
-    } else if (event->x >= vfo_layout_list[display_vfobar[display_size]].vfo_b_l) {
+    } else if (event->x >= current_vfo_layout->vfo_b_l) {
       g_idle_add(ext_start_band_menu, GINT_TO_POINTER(VFO_B));
     } else {
       g_idle_add(ext_start_mode_menu, GINT_TO_POINTER(VFO_A));
@@ -1880,9 +1880,9 @@ static gboolean vfo_press_event_cb (GtkWidget *widget, GdkEventButton *event, gp
     // click on VFO-B dial: open filter menu for VFO-B
     // click between VFO-A and VFO-B: open filter menu for VFO-B
     //
-    if (event->x <= vfo_layout_list[display_vfobar[display_size]].vfo_a_r) {
+    if (event->x <= current_vfo_layout->vfo_a_r) {
       g_idle_add(ext_start_filter_menu, GINT_TO_POINTER(VFO_A));
-    } else if (event->x >= vfo_layout_list[display_vfobar[display_size]].vfo_b_l) {
+    } else if (event->x >= current_vfo_layout->vfo_b_l) {
       g_idle_add(ext_start_filter_menu, GINT_TO_POINTER(VFO_B));
     } else {
       g_idle_add(ext_start_mode_menu, GINT_TO_POINTER(VFO_B));

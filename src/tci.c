@@ -2385,7 +2385,7 @@ static void tci_cmd_volume (CLIENT *client, const TCI_CMD *cmd) {
       suppress_popup_sliders++;
       radio_set_af_gain(0, volume);
       suppress_popup_sliders--;
-      tci_send_volume_value (client, gain);
+      tci_send_volume_value (client, volume);
     }
   } else {
     tci_send_volume (client);
@@ -2409,7 +2409,7 @@ static void tci_cmd_rx_volume (CLIENT *client, const TCI_CMD *cmd) {
     suppress_popup_sliders++;
     radio_set_af_gain(receiver_id, volume);
     suppress_popup_sliders--;
-    tci_send_rx_volume_value (client, receiver_id, channel, gain);
+    tci_send_rx_volume_value (client, receiver_id, channel, volume);
   } else {
     tci_send_rx_volume (client, receiver_id, channel);
   }
@@ -2502,48 +2502,19 @@ static void tci_cmd_tx_sensors_enable (CLIENT *client, const TCI_CMD *cmd) {
 }
 
 static void tci_cmd_spot (CLIENT *client, const TCI_CMD *cmd) {
-  const char *dxcall;
-  char *endptr = NULL;
-  long long freq_hz;
-
-  if (cmd->argc < 3 || cmd->argv[0] == NULL || cmd->argv[2] == NULL) {
-    return;
-  }
-
-  dxcall = cmd->argv[0];
-
-  if (dxcall[0] == '\0') {
-    return;
-  }
-
-  freq_hz = g_ascii_strtoll(cmd->argv[2], &endptr, 10);
-
-  if (endptr == cmd->argv[2] || freq_hz <= 0) {
-    return;
-  }
-
-  // TODO: Add spot to panadapter
 }
 
 static void tci_cmd_spot_delete (CLIENT *client, const TCI_CMD *cmd) {
-  if (cmd->argc < 1 || cmd->argv[0] == NULL || cmd->argv[0][0] == '\0') {
-    return;
-  }
-
-  // TODO: delete spot from panadapter
 }
 
 static void tci_cmd_spot_clear (CLIENT *client, const TCI_CMD *cmd) {
-  // TODO: clear DX spots
 }
 
 
 static void tci_cmd_iq_start (CLIENT *client, const TCI_CMD *cmd) {
-  return;  // this is a dummy
 }
 
 static void tci_cmd_iq_stop (CLIENT *client, const TCI_CMD *cmd) {
-  return; // this is a dummy
 }
 
 static void tci_cmd_audio_start (CLIENT *client, const TCI_CMD *cmd) {

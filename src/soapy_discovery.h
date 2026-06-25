@@ -17,4 +17,4 @@
 *
 */
 
-void soapy_discovery(void);
+void soapy_discovery(const char *hostname);

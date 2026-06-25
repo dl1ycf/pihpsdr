@@ -32,7 +32,7 @@
 static int rtlsdr_count = 0;
 static int sdrplay_count = 0;
 
-static void get_info(char *driver) {
+static void get_info(char *DriverHost) {
   int sample_rate;
   SoapySDRKwargs args = { 0 };
   int software_version = 0;
@@ -40,6 +40,26 @@ static void get_info(char *driver) {
   char gw_version[32];
   char hw_version[32];
   char p_version[32];
+  char driver[256];
+  char hostname[128];
+  char *cp;
+
+  //
+  // If called with an argument of form driver:host,
+  // init driver and host
+  //
+  snprintf(driver, sizeof(driver), "%s", DriverHost);
+  cp = strchr(driver, ':');
+
+  if (cp && *(cp+1) != 0) {
+    *cp = 0;
+    snprintf(hostname, sizeof(hostname), "%s", cp + 1);
+  } else {
+    snprintf(hostname, sizeof(hostname), "%s", "USB");
+  }
+
+  t_print("%s: Driver=%s Hostname=%s\n", __func__, driver, hostname);
+
   int rxincompatible = 0;
   int txincompatible = 0;
   *fw_version = *gw_version = *hw_version = *p_version = 0;
@@ -54,7 +74,12 @@ static void get_info(char *driver) {
   discovered[devices].protocol = SOAPYSDR_PROTOCOL;
   snprintf(discovered[devices].name, sizeof(discovered[devices].name), "%s", driver);
   discovered[devices].status = STATE_AVAILABLE;
+  snprintf(discovered[devices].soapy.hostname, sizeof(discovered[devices].soapy.hostname), "%s", hostname);
   SoapySDRKwargs_set(&args, "driver", driver);
+
+  if (hostname[0] != 0) {
+    SoapySDRKwargs_set(&args, "hostname", hostname);
+  }
 
   //
   // In case more than one RTLsdr or SDRplay devices are connected,
@@ -74,6 +99,12 @@ static void get_info(char *driver) {
 
   SoapySDRDevice *sdr = SoapySDRDevice_make(&args);
   SoapySDRKwargs_clear(&args);
+
+  if (sdr == NULL) {
+    t_print("%s: could not query device for %s\n", __func__, DriverHost);
+    return;
+  }
+
   software_version = 0;
   //
   const char *driverkey = SoapySDRDevice_getDriverKey(sdr);
@@ -84,12 +115,7 @@ static void get_info(char *driver) {
   t_print("%s: HardwareKey=%s\n", __func__, hardwarekey);
   snprintf(discovered[devices].soapy.hardware_key, sizeof(discovered[devices].soapy.hardware_key), "%s", hardwarekey);
 
-  if (strcmp(driver, "sdrplay") == 0) {
-    snprintf(discovered[devices].soapy.address, sizeof(discovered[devices].soapy.address), "%s", hardwarekey);
-  } else {
-    snprintf(discovered[devices].soapy.address, sizeof(discovered[devices].soapy.address), "USB");
-  }
-
+  snprintf(discovered[devices].soapy.hostname, sizeof(discovered[devices].soapy.hostname), "%s", hostname);
   SoapySDRKwargs info = SoapySDRDevice_getHardwareInfo(sdr);
 
   for (size_t i = 0; i < info.size; i++) {
@@ -397,8 +423,9 @@ static void get_info(char *driver) {
   devices++;
 }
 
-void soapy_discovery(void) {
+void soapy_discovery(const char *hostname) {
   size_t length;
+  char driver[256];
   SoapySDRKwargs input_args = { 0 };
   t_print("%s\n", __func__);
   rtlsdr_count = 0;
@@ -416,4 +443,10 @@ void soapy_discovery(void) {
   }
 
   SoapySDRKwargsList_clear(results, length);
+
+  //
+  // hook for detecting Plutos over the internet
+  //
+  snprintf(driver, sizeof(driver), "plutosdr:%s", hostname);
+  get_info(driver);
 }
