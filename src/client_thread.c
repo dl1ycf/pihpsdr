@@ -75,9 +75,6 @@ static struct sockaddr_in server_address;
 static int old_rx1mode;
 static int old_txmode;
 
-z_stream rx_inflater[2];
-z_stream tx_inflater;
-
 OpusEncoder *tx_opus_enc;
 OpusDecoder *opus_dec[2];
 
@@ -238,46 +235,6 @@ int radio_connect_remote(char *host, int port, const char *pwd) {
   }
 
   snprintf(server_host, sizeof(server_host), "%s:%d", host, port);
-  //
-  // Spectrum decompressor
-  //
-  spec_compression = 1;
-
-  for (int id = 0; id < 2; id++) {
-    rx_inflater[id].zalloc = Z_NULL;
-    rx_inflater[id].zfree = Z_NULL;
-    rx_inflater[id].opaque = Z_NULL;
-    rx_inflater[id].total_in = 0;
-    rx_inflater[id].total_out = 0;
-
-    if (inflateInit(&rx_inflater[id]) != Z_OK) { spec_compression = 0; }
-  }
-
-  tx_inflater.zalloc = Z_NULL;
-  tx_inflater.zfree = Z_NULL;
-  tx_inflater.opaque = Z_NULL;
-  tx_inflater.total_in = 0;
-  tx_inflater.total_out = 0;
-
-  if (inflateInit(&tx_inflater) != Z_OK) { spec_compression = 0; }
-
-  *s = 0x40 + spec_compression;
-  send_tcp(cl_sock_tcp, (char *)s, 1);
-
-  if (recv_tcp(cl_sock_tcp, (char *)s, 1) < 0) {
-    t_print("%s: Could not receive SpecCompression Receipt\n", __func__);
-    close(cl_sock_tcp);
-    return -1;
-  }
-
-  spec_compression = *s & 0x3F;
-
-  if (spec_compression) {
-    t_print("%s: Using zlib for compression of panadapter data\n", __func__);
-  } else {
-    t_print("%s: Spectrum panadapter data not compressed\n", __func__);
-  }
-
   //
   // Negotiate Audio compression. We first check if we can initialise
   // the Opus codecs, and then send what we want. The server then
@@ -719,14 +676,10 @@ static int client_spectrum(gpointer ptr) {
       if (data->compressed) {
         int rc;
         int len = from_16(data->compressed_width);
-        rx_inflater[id].total_out = 0;
-        rx_inflater[id].total_in = 0;
-        rx_inflater[id].next_in = data->sample;
-        rx_inflater[id].avail_in = len;
-        rx_inflater[id].next_out = specbuf;
-        rx_inflater[id].avail_out = SPECTRUM_DATA_SIZE;
-        rc = inflate(&rx_inflater[id], Z_SYNC_FLUSH);
-        int num = rx_inflater[id].total_out;
+        uLongf destLen = SPECTRUM_DATA_SIZE;
+        uLongf sourceLen = len;
+        rc = uncompress(specbuf, &destLen, data->sample, sourceLen);
+        int num = destLen;
 
         if (rc < 0 || num != width) {
           t_print("%s: %d --> %d (w=%d, ret=%d)\n", __func__, len, num, width, rc);
@@ -770,14 +723,10 @@ static int client_spectrum(gpointer ptr) {
       if (data->compressed) {
         int rc;
         int len = from_16(data->compressed_width);
-        tx_inflater.total_out = 0;
-        tx_inflater.total_in = 0;
-        tx_inflater.next_in = data->sample;
-        tx_inflater.avail_in = len;
-        tx_inflater.next_out = specbuf;
-        tx_inflater.avail_out = SPECTRUM_DATA_SIZE;
-        rc = inflate(&tx_inflater, Z_SYNC_FLUSH);
-        int num = tx_inflater.total_out;
+        uLongf destLen = SPECTRUM_DATA_SIZE;
+        uLongf sourceLen = len;
+        rc = uncompress(specbuf, &destLen, data->sample, sourceLen);
+        int num = destLen;
 
         if (rc < 0 || num != width) {
           t_print("%s: %d --> %d (w=%d, ret=%d)\n", __func__, len, num, width, rc);

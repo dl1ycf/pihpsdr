@@ -75,8 +75,8 @@ static void smeter_cb (GtkToggleButton *widget, gpointer data) {
   }
 }
 
-static void analog_cb (GtkToggleButton *widget, gpointer        data) {
-  analog_meter = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(widget));
+static void meter_type_cb (GtkToggleButton *widget, gpointer        data) {
+  meter_type = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
 }
 
 static void alc_cb(GtkToggleButton *widget, gpointer data) {
@@ -123,13 +123,17 @@ void meter_menu (GtkWidget *parent) {
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), lbl, 0, 2, 1, 1);
-  mbtn = gtk_radio_button_new_with_label_from_widget(NULL, "Analog");
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(mbtn), analog_meter);
-  g_signal_connect(mbtn, "toggled", G_CALLBACK(analog_cb), NULL);
-  gtk_grid_attach(GTK_GRID(grid), mbtn, 1, 2, 1, 1);
-  btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(mbtn), "Digital");
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), !analog_meter);
-  gtk_grid_attach(GTK_GRID(grid), btn, 2, 2, 1, 1);
+  //
+  // Combo-box with choices
+  //
+  btn = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Digital");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Analog");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Edgewise");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "DualScale");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(btn), meter_type);
+  g_signal_connect(btn, "changed", G_CALLBACK(meter_type_cb), NULL);
+  gtk_grid_attach(GTK_GRID(grid), btn, 1, 2, 2, 1);
   //
   lbl = gtk_label_new("S-Meter Reading");
   gtk_widget_set_name(lbl, "boldlabel");

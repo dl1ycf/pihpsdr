@@ -47,8 +47,6 @@ static gboolean meter_configure_event_cb (GtkWidget *widget, GdkEventConfigure *
   }
 
   meter_surface = cairo_image_surface_create (CAIRO_FORMAT_RGB24, METER_WIDTH, VFO_HEIGHT);
-  //meter_surface = gdk_window_create_similar_surface (gtk_widget_get_window (widget),
-  //                CAIRO_CONTENT_COLOR, METER_WIDTH, VFO_HEIGHT);
   /* Initialise the surface to black */
   cairo_t *cr;
   cr = cairo_create (meter_surface);
@@ -87,6 +85,659 @@ GtkWidget* meter_init(int width, int height) {
   return meter;
 }
 
+//
+// ----------------------------------------------------------------------------
+// Additional RX meter styles: edgewise moving-coil and dual-scale bar.
+// Selected through analog_meter (0=digital, 1=analog arc, 2=edgewise, 3=dual).
+// ----------------------------------------------------------------------------
+//
+static void meter_zone_rgb(double frac, double *r, double *g, double *b) {
+  if (frac < 0.40) {
+    double t = frac / 0.40;
+    *r = 0.22 + t * (0.55 - 0.22);
+    *g = 0.83 - t * (0.83 - 0.80);
+    *b = 0.33 - t * 0.33;
+  } else if (frac < 0.647) {
+    double t = (frac - 0.40) / 0.247;
+    *r = 0.55 + t * (0.941 - 0.55);
+    *g = 0.80 - t * (0.80 - 0.647);
+    *b = 0.0;
+  } else {
+    double t = (frac - 0.647) / 0.353;
+    *r = 0.941 + t * 0.032;
+    *g = 0.647 - t * (0.647 - 0.318);
+    *b = t * 0.286;
+  }
+}
+
+static void meter_rounded_rect(cairo_t *cr, double x, double y, double w, double h, double r) {
+  if (r > 0.5 * h) { r = 0.5 * h; }
+
+  cairo_new_sub_path(cr);
+  cairo_arc(cr, x + w - r, y + r,     r, -M_PI / 2.0, 0.0);
+  cairo_arc(cr, x + w - r, y + h - r, r,  0.0,         M_PI / 2.0);
+  cairo_arc(cr, x + r,     y + h - r, r,  M_PI / 2.0,  M_PI);
+  cairo_arc(cr, x + r,     y + r,     r,  M_PI,        1.5 * M_PI);
+  cairo_close_path(cr);
+}
+
+/* ───────────────────────── Dual-scale bar ───────────────────────── */
+static void rxmeter_dualscale(cairo_t *cr, double smtr, int sval, int sval2,
+                              double max_rxlvl, double ref9, double perS) {
+  char sf[32];
+  cairo_text_extents_t extents;
+  double r, g, b;
+  const double x0  = (double) ADD_METER_WIDTH;
+  const double w   = (double)(METER_WIDTH - ADD_METER_WIDTH);
+  const double scalfac = w * 0.00625;            // 1.0 at the 160 px minimum width
+  const double bx  = x0 + 22.0 * scalfac;
+  const double bw  = w - 36.0 * scalfac;
+  const double bh  = 13.0 * scalfac;
+  const double by  = VFO_HEIGHT * 0.46;
+  const double frac = smtr / 114.0;
+  //
+  // peak-hold on the needle position: instant attack, slow release
+  //
+  static double pk = 0.0;
+
+  if (smtr > pk) { pk = smtr; } else { pk -= 1.2; }
+
+  if (pk < smtr)   { pk = smtr; }
+
+  if (pk > 114.0)  { pk = 114.0; }
+
+  const double pfrac = pk / 114.0;
+  cairo_set_line_width(cr, 1.0);
+  //
+  // Top readout: S-value (left) and dBm (right)
+  //
+  cairo_set_source_rgba(cr, COLOUR_METER);
+  cairo_set_font_size(cr, 13.0 * scalfac);
+
+  if (sval2 > 0) { snprintf(sf, sizeof(sf), "S%d+%d", sval, sval2); }
+  else           { snprintf(sf, sizeof(sf), "S%d", sval); }
+
+  cairo_move_to(cr, bx, 15.0 * scalfac);
+  cairo_show_text(cr, sf);
+  snprintf(sf, sizeof(sf), "%d dBm", (int)(max_rxlvl - 0.5));
+  cairo_text_extents(cr, sf, &extents);
+  cairo_set_source_rgba(cr, COLOUR_ATTN);
+  cairo_move_to(cr, bx + bw - extents.width, 15.0 * scalfac);
+  cairo_show_text(cr, sf);
+  //
+  // dBm tick scale ABOVE the bar (positioned on the S grid so it always
+  // agrees with the bar, whatever the band / 3 dB-per-S setting)
+  //
+  cairo_set_font_size(cr, 8.5 * scalfac);
+
+  for (int s = 1; s <= 9; s += 4) {            // S1 / S5 / S9 only: keeps dBm labels apart
+    double f  = (double)(s * 8) / 114.0;
+    double tx = bx + f * bw;
+    int  dbm  = (int)(ref9 - (9 - s) * perS);
+    cairo_set_source_rgba(cr, COLOUR_METER);
+    cairo_move_to(cr, tx, by - 3.0 * scalfac);
+    cairo_line_to(cr, tx, by - 8.0 * scalfac);
+    cairo_stroke(cr);
+    snprintf(sf, sizeof(sf), "%d", dbm);
+    cairo_text_extents(cr, sf, &extents);
+    cairo_move_to(cr, tx - 0.5 * extents.width, by - 10.0 * scalfac);
+    cairo_show_text(cr, sf);
+  }
+
+  //
+  // Trough
+  //
+  cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.06);
+  meter_rounded_rect(cr, bx, by, bw, bh, 4.0 * scalfac);
+  cairo_fill(cr);
+  //
+  // Graded fill up to the needle, clipped to the rounded trough
+  //
+  cairo_save(cr);
+  meter_rounded_rect(cr, bx, by, bw, bh, 4.0 * scalfac);
+  cairo_clip(cr);
+  const int nsteps = 96;
+
+  for (int i = 0; i < nsteps; i++) {
+    double f = (double)i / nsteps;
+
+    if (f > frac) { break; }
+
+    meter_zone_rgb(f, &r, &g, &b);
+    cairo_set_source_rgba(cr, r, g, b, 0.95);
+    cairo_rectangle(cr, bx + f * bw, by, bw / nsteps + 0.6, bh);
+    cairo_fill(cr);
+  }
+
+  cairo_restore(cr);
+  //
+  // Peak marker
+  //
+  cairo_set_source_rgba(cr, COLOUR_METER);
+  cairo_set_line_width(cr, 2.0 * scalfac);
+  double px = bx + pfrac * bw;
+  cairo_move_to(cr, px, by - 2.0 * scalfac);
+  cairo_line_to(cr, px, by + bh + 2.0 * scalfac);
+  cairo_stroke(cr);
+  cairo_set_line_width(cr, 1.0);
+  //
+  // S-unit ticks + labels BELOW the bar
+  //
+  cairo_set_font_size(cr, 9.0 * scalfac);
+
+  for (int s = 1; s <= 9; s += 2) {
+    double f  = (double)(s * 8) / 114.0;
+    double tx = bx + f * bw;
+    meter_zone_rgb(f, &r, &g, &b);
+    cairo_set_source_rgba(cr, r, g, b, 0.85);
+    cairo_move_to(cr, tx, by + bh + 2.0 * scalfac);
+    cairo_line_to(cr, tx, by + bh + 7.0 * scalfac);
+    cairo_stroke(cr);
+    snprintf(sf, sizeof(sf), "%d", s);        // no "S" prefix: the readout already shows it
+    cairo_text_extents(cr, sf, &extents);
+    cairo_move_to(cr, tx - 0.5 * extents.width, by + bh + 17.0 * scalfac);
+    cairo_show_text(cr, sf);
+  }
+
+  cairo_set_font_size(cr, 8.0 * scalfac);
+
+  for (int k = 1; k <= 3; k++) {
+    double f  = (double)(72 + 14 * k) / 114.0;
+    double tx = bx + f * bw;
+    cairo_set_source_rgba(cr, COLOUR_ALARM);
+    cairo_move_to(cr, tx, by + bh + 2.0 * scalfac);
+    cairo_line_to(cr, tx, by + bh + 7.0 * scalfac);
+    cairo_stroke(cr);
+    snprintf(sf, sizeof(sf), "+%d", 20 * k);
+    cairo_text_extents(cr, sf, &extents);
+    cairo_move_to(cr, tx - 0.5 * extents.width, by + bh + 17.0 * scalfac);
+    cairo_show_text(cr, sf);
+  }
+}
+
+/* ───────────────────── Edgewise moving-coil ───────────────────── */
+static void rxmeter_edgewise(cairo_t *cr, double smtr, int sval, int sval2,
+                             double max_rxlvl) {
+  char sf[32];
+  cairo_text_extents_t extents;
+  double r, g, b, x, y, angle, radians;
+  const double w   = (double)(METER_WIDTH - ADD_METER_WIDTH);
+  const double scalfac = w * 0.00625;
+  const double cx  = (w / 2.0) + (double) ADD_METER_WIDTH - 5.0;
+  //
+  // A far-below pivot gives the shallow "edgewise" curve. The half-span is
+  // chosen so the scale fills the available width but is clamped to keep the
+  // arc visually flat.
+  //
+  const double pivot_y = VFO_HEIGHT * 1.95;
+  const double radius  = VFO_HEIGHT * 1.58;
+  double half = asin(fmin(0.9, ((w / 2.0) - 14.0 * scalfac) / radius)) * 180.0 / M_PI;
+
+  if (half > 30.0) { half = 30.0; }
+
+  const double min_angle = 270.0 - half;
+  const double max_angle = 270.0 + half;
+  const double bydb = (max_angle - min_angle) / 114.0;
+  const double frac = smtr / 114.0;
+  //
+  // peak-hold needle (instant attack, slow release)
+  //
+  static double pk = 0.0;
+
+  if (smtr > pk) { pk = smtr; } else { pk -= 1.2; }
+
+  if (pk < smtr)  { pk = smtr; }
+
+  if (pk > 114.0) { pk = 114.0; }
+
+#if 0
+  //
+  // Brushed-dark face for a little depth (over the VFO background)
+  // deactivated -- colours must be calculated from COLOUR_VFO_BACKGROUND
+  //
+  {
+    cairo_pattern_t *face = cairo_pattern_create_linear(cx, 0, cx, VFO_HEIGHT);
+    cairo_pattern_add_color_stop_rgba(face, 0.0, 0.09, 0.11, 0.14, 0.55);
+    cairo_pattern_add_color_stop_rgba(face, 1.0, 0.02, 0.03, 0.04, 0.0);
+    cairo_set_source(cr, face);
+    cairo_rectangle(cr, ADD_METER_WIDTH, 0, w, VFO_HEIGHT);
+    cairo_fill(cr);
+    cairo_pattern_destroy(face);
+  }
+#endif
+  //
+  // Dim full-scale track
+  //
+  cairo_set_line_cap(cr, CAIRO_LINE_CAP_BUTT);
+  cairo_set_line_width(cr, 12.0 * scalfac);
+  cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.05);
+  cairo_arc(cr, cx, pivot_y, radius, min_angle * M_PI / 180.0, max_angle * M_PI / 180.0);
+  cairo_stroke(cr);
+  //
+  // Graded fill up to the needle
+  //
+  {
+    const int nsteps = 80;
+
+    for (int i = 0; i < nsteps; i++) {
+      double f = (double)i / nsteps;
+
+      if (f > frac) { break; }
+
+      double a1 = (min_angle + f * (max_angle - min_angle)) * M_PI / 180.0;
+      double a2 = (min_angle + (f + 1.0 / nsteps) * (max_angle - min_angle)) * M_PI / 180.0;
+      meter_zone_rgb(f, &r, &g, &b);
+      cairo_set_line_width(cr, 12.0 * scalfac);
+      cairo_set_source_rgba(cr, r, g, b, 0.9);
+      cairo_arc(cr, cx, pivot_y, radius, a1, a2);
+      cairo_stroke(cr);
+    }
+  }
+  //
+  // Tick marks + S labels (outside the band, i.e. towards the top of screen)
+  //
+  cairo_set_line_width(cr, 1.4 * scalfac);
+  cairo_set_font_size(cr, 9.0 * scalfac);
+
+  for (int s = 1; s <= 9; s++) {
+    angle   = min_angle + (double)(s * 8) * bydb;
+    radians = angle * M_PI / 180.0;
+    double f = (double)(s * 8) / 114.0;
+    meter_zone_rgb(f, &r, &g, &b);
+    cairo_set_source_rgba(cr, r, g, b, 0.8);
+    double ri = radius + 7.0 * scalfac;
+    double ro = radius + (s % 2 ? 14.0 : 11.0) * scalfac;
+    cairo_move_to(cr, cx + ri * cos(radians), pivot_y + ri * sin(radians));
+    cairo_line_to(cr, cx + ro * cos(radians), pivot_y + ro * sin(radians));
+    cairo_stroke(cr);
+
+    if (s % 2) {
+      snprintf(sf, sizeof(sf), "%d", s);
+      cairo_text_extents(cr, sf, &extents);
+      x = cx + (ro + 8.0 * scalfac) * cos(radians);
+      y = pivot_y + (ro + 8.0 * scalfac) * sin(radians);
+      cairo_move_to(cr, x - 0.5 * extents.width, y + 0.35 * extents.height);
+      cairo_show_text(cr, sf);
+    }
+  }
+
+  //
+  // Red over-S9 ticks (+20/+40/+60)
+  //
+  cairo_set_source_rgba(cr, COLOUR_ALARM);
+  cairo_set_font_size(cr, 8.0 * scalfac);
+
+  for (int k = 1; k <= 3; k++) {
+    angle   = min_angle + (double)(72 + 14 * k) * bydb;
+    radians = angle * M_PI / 180.0;
+    double ri = radius + 7.0 * scalfac;
+    double ro = radius + 13.0 * scalfac;
+    cairo_move_to(cr, cx + ri * cos(radians), pivot_y + ri * sin(radians));
+    cairo_line_to(cr, cx + ro * cos(radians), pivot_y + ro * sin(radians));
+    cairo_stroke(cr);
+    snprintf(sf, sizeof(sf), "+%d", 20 * k);
+    cairo_text_extents(cr, sf, &extents);
+    x = cx + (ro + 7.0 * scalfac) * cos(radians);
+    y = pivot_y + (ro + 7.0 * scalfac) * sin(radians);
+    cairo_move_to(cr, x - 0.5 * extents.width, y + 0.35 * extents.height);
+    cairo_show_text(cr, sf);
+  }
+
+  //
+  // White peak-hold needle
+  //
+  angle   = min_angle + pk * bydb;
+  radians = angle * M_PI / 180.0;
+  cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.9);
+  cairo_set_line_width(cr, 1.4 * scalfac);
+  cairo_move_to(cr, cx + (radius - 26.0 * scalfac) * cos(radians),
+                pivot_y + (radius - 26.0 * scalfac) * sin(radians));
+  cairo_line_to(cr, cx + (radius + 4.0 * scalfac) * cos(radians),
+                pivot_y + (radius + 4.0 * scalfac) * sin(radians));
+  cairo_stroke(cr);
+  //
+  // Live needle (short, stubby), coloured by zone
+  //
+  angle   = min_angle + smtr * bydb;
+  radians = angle * M_PI / 180.0;
+  meter_zone_rgb(frac, &r, &g, &b);
+  cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+  cairo_set_source_rgba(cr, r, g, b, 0.25);          // glow
+  cairo_set_line_width(cr, 4.0 * scalfac);
+  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cos(radians),
+                pivot_y + (radius - 30.0 * scalfac) * sin(radians));
+  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cos(radians),
+                pivot_y + (radius + 5.0 * scalfac) * sin(radians));
+  cairo_stroke(cr);
+  cairo_set_source_rgba(cr, r, g, b, 0.96);          // needle
+  cairo_set_line_width(cr, 2.2 * scalfac);
+  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cos(radians),
+                pivot_y + (radius - 30.0 * scalfac) * sin(radians));
+  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cos(radians),
+                pivot_y + (radius + 5.0 * scalfac) * sin(radians));
+  cairo_stroke(cr);
+  //
+  // Readouts: S-value bottom-left, dBm bottom-right
+  //
+  cairo_set_source_rgba(cr, COLOUR_METER);
+  cairo_set_font_size(cr, 15.0 * scalfac);
+
+  if (sval2 > 0) { snprintf(sf, sizeof(sf), "S%d+%d", sval, sval2); }
+  else           { snprintf(sf, sizeof(sf), "S%d", sval); }
+
+  cairo_move_to(cr, ADD_METER_WIDTH + 6.0 * scalfac, VFO_HEIGHT - 6.0 * scalfac);
+  cairo_show_text(cr, sf);
+  cairo_set_source_rgba(cr, COLOUR_ATTN);
+  cairo_set_font_size(cr, 12.0 * scalfac);
+  snprintf(sf, sizeof(sf), "%d dBm", (int)(max_rxlvl - 0.5));
+  cairo_text_extents(cr, sf, &extents);
+  cairo_move_to(cr, METER_WIDTH - 6.0 * scalfac - extents.width, VFO_HEIGHT - 6.0 * scalfac);
+  cairo_show_text(cr, sf);
+}
+
+/* ───────────────────── Edgewise TX power meter ───────────────────── */
+static void txmeter_edgewise(cairo_t *cr, double frac, const char *pwrstr,
+                             double swr, int swr_alarm, double interval, int units,
+                             double alc, int cwmode) {
+  char sf[32];
+  cairo_text_extents_t extents;
+  double r, g, b, x, y, angle, radians;
+  const double w   = (double)(METER_WIDTH - ADD_METER_WIDTH);
+  const double scalfac = w * 0.00625;
+  const double cx  = (w / 2.0) + (double) ADD_METER_WIDTH;
+  const double pivot_y = VFO_HEIGHT * 1.95;
+  const double radius  = VFO_HEIGHT * 1.58;
+  double half = asin(fmin(0.9, (0.37 * w / radius))) * 180.0 / M_PI;
+
+  if (half > 30.0) { half = 30.0; }
+
+  const double min_angle = 270.0 - half;
+  const double max_angle = 270.0 + half;
+
+  if (frac < 0.0) { frac = 0.0; }
+
+  if (frac > 1.0) { frac = 1.0; }
+
+  //
+  // peak-hold (instant attack, slow release)
+  //
+  static double pk = 0.0;
+
+  if (frac > pk) { pk = frac; } else { pk -= 0.012; }
+
+  if (pk < frac) { pk = frac; }
+
+  if (pk > 1.0)  { pk = 1.0; }
+
+#if 0
+  //
+  // Brushed-dark face
+  // deactivated -- colours must be calculated from COLOUR_VFO_BACKGROUND
+  //
+  {
+    cairo_pattern_t *face = cairo_pattern_create_linear(cx, 0, cx, VFO_HEIGHT);
+    cairo_pattern_add_color_stop_rgba(face, 0.0, 0.09, 0.11, 0.14, 0.55);
+    cairo_pattern_add_color_stop_rgba(face, 1.0, 0.02, 0.03, 0.04, 0.0);
+    cairo_set_source(cr, face);
+    cairo_rectangle(cr, ADD_METER_WIDTH, 0, w, VFO_HEIGHT);
+    cairo_fill(cr);
+    cairo_pattern_destroy(face);
+  }
+#endif
+  //
+  // Dim track
+  //
+  cairo_set_line_cap(cr, CAIRO_LINE_CAP_BUTT);
+  cairo_set_line_width(cr, 12.0 * scalfac);
+  cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.05);
+  cairo_arc(cr, cx, pivot_y, radius, min_angle * M_PI / 180.0, max_angle * M_PI / 180.0);
+  cairo_stroke(cr);
+  //
+  // Graded fill up to the needle
+  //
+  {
+    const int nsteps = 80;
+
+    for (int i = 0; i < nsteps; i++) {
+      double f = (double)i / nsteps;
+
+      if (f > frac) { break; }
+
+      double a1 = (min_angle + f * (max_angle - min_angle)) * M_PI / 180.0;
+      double a2 = (min_angle + (f + 1.0 / nsteps) * (max_angle - min_angle)) * M_PI / 180.0;
+      meter_zone_rgb(f, &r, &g, &b);
+      cairo_set_line_width(cr, 12.0 * scalfac);
+      cairo_set_source_rgba(cr, r, g, b, 0.9);
+      cairo_arc(cr, cx, pivot_y, radius, a1, a2);
+      cairo_stroke(cr);
+    }
+  }
+  //
+  // Tick marks + power labels (0 .. full scale)
+  //
+  cairo_set_line_width(cr, 1.4 * scalfac);
+  cairo_set_font_size(cr, 8.0 * scalfac);
+
+  for (int t = 0; t <= 10; t++) {
+    double f = (double)t / 10.0;
+    angle   = min_angle + f * (max_angle - min_angle);
+    radians = angle * M_PI / 180.0;
+    meter_zone_rgb(f, &r, &g, &b);
+    cairo_set_source_rgba(cr, r, g, b, 0.8);
+    double ri = radius + 7.0 * scalfac;
+    double ro = radius + ((t % 2 == 0) ? 14.0 : 11.0) * scalfac;
+    cairo_move_to(cr, cx + ri * cos(radians), pivot_y + ri * sin(radians));
+    cairo_line_to(cr, cx + ro * cos(radians), pivot_y + ro * sin(radians));
+    cairo_stroke(cr);
+
+    if (t % 2 == 0) {
+      double val = f * 10.0 * interval;
+
+      if (units == 1) {
+        snprintf(sf, sizeof(sf), "%0.1f", val);
+      } else {
+        int p = (int)(val + 0.5);
+
+        if (p == 1000) { snprintf(sf, sizeof(sf), "1K"); }
+        else           { snprintf(sf, sizeof(sf), "%d", p); }
+      }
+
+      cairo_text_extents(cr, sf, &extents);
+      x = cx + (ro + 7.0 * scalfac) * cos(radians);
+      y = pivot_y + (ro + 7.0 * scalfac) * sin(radians);
+      cairo_move_to(cr, x - 0.5 * extents.width, y + 0.35 * extents.height);
+      cairo_show_text(cr, sf);
+    }
+  }
+
+  //
+  // White peak-hold needle
+  //
+  angle   = min_angle + pk * (max_angle - min_angle);
+  radians = angle * M_PI / 180.0;
+  cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.9);
+  cairo_set_line_width(cr, 1.4 * scalfac);
+  cairo_move_to(cr, cx + (radius - 26.0 * scalfac) * cos(radians),
+                pivot_y + (radius - 26.0 * scalfac) * sin(radians));
+  cairo_line_to(cr, cx + (radius + 4.0 * scalfac) * cos(radians),
+                pivot_y + (radius + 4.0 * scalfac) * sin(radians));
+  cairo_stroke(cr);
+  //
+  // Live needle
+  //
+  angle   = min_angle + frac * (max_angle - min_angle);
+  radians = angle * M_PI / 180.0;
+  meter_zone_rgb(frac, &r, &g, &b);
+  cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+  cairo_set_source_rgba(cr, r, g, b, 0.25);
+  cairo_set_line_width(cr, 4.0 * scalfac);
+  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cos(radians),
+                pivot_y + (radius - 30.0 * scalfac) * sin(radians));
+  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cos(radians),
+                pivot_y + (radius + 5.0 * scalfac) * sin(radians));
+  cairo_stroke(cr);
+  cairo_set_source_rgba(cr, r, g, b, 0.96);
+  cairo_set_line_width(cr, 2.2 * scalfac);
+  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cos(radians),
+                pivot_y + (radius - 30.0 * scalfac) * sin(radians));
+  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cos(radians),
+                pivot_y + (radius + 5.0 * scalfac) * sin(radians));
+  cairo_stroke(cr);
+  //
+  // Centered text stack: power, SWR, (ALC)
+  //
+  cairo_set_source_rgba(cr, COLOUR_METER);
+  cairo_set_font_size(cr, 12.0 * scalfac);
+  cairo_text_extents(cr, pwrstr, &extents);
+  cairo_move_to(cr, cx - 0.5 * extents.width, VFO_HEIGHT - 32.0 * scalfac);
+  cairo_show_text(cr, pwrstr);
+
+  if (swr_alarm) { cairo_set_source_rgba(cr, COLOUR_ALARM); }
+  else           { cairo_set_source_rgba(cr, COLOUR_METER); }
+
+  snprintf(sf, sizeof(sf), "SWR %1.1f:1", swr);
+  cairo_text_extents(cr, sf, &extents);
+  cairo_move_to(cr, cx - 0.5 * extents.width, VFO_HEIGHT - 17.0 * scalfac);
+  cairo_show_text(cr, sf);
+
+  if (!cwmode && ADD_METER_WIDTH == 0) {
+    cairo_set_source_rgba(cr, COLOUR_METER);
+    snprintf(sf, sizeof(sf), "ALC %2.0f dB", alc);
+    cairo_text_extents(cr, sf, &extents);
+    cairo_move_to(cr, cx - 0.5 * extents.width, VFO_HEIGHT - 4.0 * scalfac);
+    cairo_show_text(cr, sf);
+  }
+}
+
+/* ───────────────────── Dual-scale TX power bar ───────────────────── */
+static void txmeter_powerbar(cairo_t *cr, double frac, const char *pwrstr,
+                             double swr, int swr_alarm, double interval, int units,
+                             double alc, int cwmode) {
+  char sf[32];
+  cairo_text_extents_t extents;
+  double r, g, b;
+  const double x0  = (double) ADD_METER_WIDTH;
+  const double w   = (double)(METER_WIDTH - ADD_METER_WIDTH);
+  const double scalfac = w * 0.00625;
+  const double bx  = x0 + 22.0 * scalfac;
+  const double bw  = w - 36.0 * scalfac;
+  const double bh  = 13.0 * scalfac;
+  const double by  = VFO_HEIGHT * 0.50;
+  (void) alc;
+  (void) cwmode;
+
+  if (frac < 0.0) { frac = 0.0; }
+
+  if (frac > 1.0) { frac = 1.0; }
+
+  //
+  // peak-hold
+  //
+  static double pk = 0.0;
+
+  if (frac > pk) { pk = frac; } else { pk -= 0.012; }
+
+  if (pk < frac) { pk = frac; }
+
+  if (pk > 1.0)  { pk = 1.0; }
+
+  //
+  // Top readout: power (left), SWR (right)
+  //
+  cairo_set_source_rgba(cr, COLOUR_METER);
+  cairo_set_font_size(cr, 13.0 * scalfac);
+  cairo_move_to(cr, bx, 15.0 * scalfac);
+  cairo_show_text(cr, pwrstr);
+
+  if (swr_alarm) { cairo_set_source_rgba(cr, COLOUR_ALARM); }
+  else           { cairo_set_source_rgba(cr, COLOUR_OK); }
+
+  snprintf(sf, sizeof(sf), "SWR %1.1f:1", swr);
+  cairo_text_extents(cr, sf, &extents);
+  cairo_move_to(cr, bx + bw - extents.width, 15.0 * scalfac);
+  cairo_show_text(cr, sf);
+  //
+  // Percent scale ABOVE the bar (0 / 50 / 100)
+  //
+  cairo_set_font_size(cr, 8.0 * scalfac);
+
+  for (int t = 0; t <= 10; t += 5) {
+    double f  = (double)t / 10.0;
+    double tx = bx + f * bw;
+    cairo_set_source_rgba(cr, COLOUR_METER);
+    cairo_set_line_width(cr, 1.0);
+    cairo_move_to(cr, tx, by - 3.0 * scalfac);
+    cairo_line_to(cr, tx, by - 8.0 * scalfac);
+    cairo_stroke(cr);
+    snprintf(sf, sizeof(sf), "%d%%", t * 10);
+    cairo_text_extents(cr, sf, &extents);
+    cairo_move_to(cr, tx - 0.5 * extents.width, by - 10.0 * scalfac);
+    cairo_show_text(cr, sf);
+  }
+
+  //
+  // Trough + graded fill (clipped to the rounded trough)
+  //
+  cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.06);
+  meter_rounded_rect(cr, bx, by, bw, bh, 4.0 * scalfac);
+  cairo_fill(cr);
+  cairo_save(cr);
+  meter_rounded_rect(cr, bx, by, bw, bh, 4.0 * scalfac);
+  cairo_clip(cr);
+  const int nsteps = 96;
+
+  for (int i = 0; i < nsteps; i++) {
+    double f = (double)i / nsteps;
+
+    if (f > frac) { break; }
+
+    meter_zone_rgb(f, &r, &g, &b);
+    cairo_set_source_rgba(cr, r, g, b, 0.95);
+    cairo_rectangle(cr, bx + f * bw, by, bw / nsteps + 0.6, bh);
+    cairo_fill(cr);
+  }
+
+  cairo_restore(cr);
+  //
+  // White peak marker
+  //
+  cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.9);
+  cairo_set_line_width(cr, 2.0 * scalfac);
+  double px = bx + pk * bw;
+  cairo_move_to(cr, px, by - 2.0 * scalfac);
+  cairo_line_to(cr, px, by + bh + 2.0 * scalfac);
+  cairo_stroke(cr);
+  cairo_set_line_width(cr, 1.0);
+  //
+  // Native scale (W, or 0..1 when PA disabled) BELOW the bar
+  //
+  cairo_set_font_size(cr, 8.0 * scalfac);
+
+  for (int t = 0; t <= 10; t += 2) {
+    double f  = (double)t / 10.0;
+    double tx = bx + f * bw;
+    meter_zone_rgb(f, &r, &g, &b);
+    cairo_set_source_rgba(cr, r, g, b, 0.85);
+    cairo_move_to(cr, tx, by + bh + 2.0 * scalfac);
+    cairo_line_to(cr, tx, by + bh + 7.0 * scalfac);
+    cairo_stroke(cr);
+    double val = f * 10.0 * interval;
+
+    if (units == 1) {
+      snprintf(sf, sizeof(sf), "%0.1f", val);
+    } else {
+      int p = (int)(val + 0.5);
+
+      if (p == 1000) { snprintf(sf, sizeof(sf), "1K"); }
+      else           { snprintf(sf, sizeof(sf), "%d", p); }
+    }
+
+    cairo_text_extents(cr, sf, &extents);
+    cairo_move_to(cr, tx - 0.5 * extents.width, by + bh + 16.0 * scalfac);
+    cairo_show_text(cr, sf);
+  }
+}
+
 void rxmeter_update(double rxlvl, double peak, double gain, double out) {
   if (!meter_surface) { return; }
 
@@ -105,7 +756,7 @@ void rxmeter_update(double rxlvl, double peak, double gain, double out) {
   char sf[32];
   cairo_t *cr = cairo_create (meter_surface);
   cairo_text_extents_t extents;
-  double smtr = 0.0, smtr2;
+  double smtr = 0.0, smtr2, perS, ref9;
   int sval = 0, sval2 = 0;
 
   //
@@ -163,17 +814,23 @@ void rxmeter_update(double rxlvl, double peak, double gain, double out) {
   // sval2: if > 0, adds +<sval>
   //
   if (vfo[active_receiver->id].frequency > 30000000LL) {
+    ref9 = -93.0;
     if (smeter3dB) {
+      perS = 3.0;
       smtr = 2.66666666 * (fmax(-120.0, max_rxlvl) + 120.0);
     } else {
+      perS = 6.0;
       smtr = 1.33333333 * (fmax(-147.0, max_rxlvl) + 147.0);
     }
 
     smtr2 = 0.7 * (max_rxlvl + 93.0);
   } else {
+    ref9 = -73.0;
     if (smeter3dB) {
+      perS = 3.0;
       smtr = 2.66666666 * (fmax(-100.0, max_rxlvl) + 100.0);
     } else {
+      perS = 6.0;
       smtr = 1.33333333 * (fmax(-127.0, max_rxlvl) + 127.0);
     }
 
@@ -231,7 +888,8 @@ void rxmeter_update(double rxlvl, double peak, double gain, double out) {
     cairo_stroke(cr);
   }
 
-  if (analog_meter) {
+  switch (meter_type) {
+  case ANALOG: {
     //
     // Analog RX — Option 2 face (dark glass + filled arc) with Option 3 text
     //
@@ -258,7 +916,9 @@ void rxmeter_update(double rxlvl, double peak, double gain, double out) {
     }
 
     bydb = (max_angle - min_angle) / 114.0;
+#if 0
     // ── Radial face gradient (dark glass look) ──────────────────────────────
+    // deactivated -- colours must be calculated from COLOUR_VFO_BACKGROUND
     {
       cairo_pattern_t *face = cairo_pattern_create_radial(cx, cy - 10, 5, cx, cy, radius + 30);
       cairo_pattern_add_color_stop_rgba(face, 0.0, 0.11, 0.13, 0.16, 0.90);
@@ -268,6 +928,7 @@ void rxmeter_update(double rxlvl, double peak, double gain, double out) {
       cairo_paint(cr);
       cairo_pattern_destroy(face);
     }
+#endif
     // ── Dim arc track (full scale background) ──────────────────────────────
     //cairo_set_line_width(cr, 10.0);
     cairo_set_line_width(cr, 10.0 * scalfac);
@@ -417,7 +1078,9 @@ void rxmeter_update(double rxlvl, double peak, double gain, double out) {
     cairo_set_font_size(cr, 16.0 * scalfac);
     cairo_move_to(cr, cx - 0.5 * extents.width, cy - radius + 30.0 * scalfac);
     cairo_show_text(cr, sf);
-  } else {
+    }
+    break;
+  case DIGITAL: {
     //
     // Digital RX meter
     //
@@ -444,6 +1107,14 @@ void rxmeter_update(double rxlvl, double peak, double gain, double out) {
 
     cairo_move_to(cr, METER_WIDTH - 5 - extents.width, Y2);
     cairo_show_text(cr, sf);
+    }
+    break;
+  case EDGEWISE:
+   rxmeter_edgewise(cr, smtr, sval, sval2, max_rxlvl);
+   break;
+  case DUALSCALE:
+    rxmeter_dualscale(cr, smtr, sval, sval2, max_rxlvl, ref9, perS);
+    break;
   }
 
   cairo_destroy(cr);
@@ -536,7 +1207,46 @@ void txmeter_update(double pwr, double alc, double swr, double mic, double out) 
     cairo_stroke(cr);
   }
 
-  if (analog_meter) {
+  //
+  // Some data common to power meters (only valid for HPSDR)
+  //
+  int units;
+  int swr_alarm;
+  char pwrstr[32];
+  double interval;
+  double frac;
+
+  if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
+    if (band->disablePA || !pa_enabled) {
+      units = 1;
+      interval = 0.1;
+    } else {
+      int pp = pa_power_list[pa_power];
+      units = (pp <= 1) ? 1 : 2;
+      interval = 0.1 * pp;
+    }
+
+    frac = max_pwr / (10.0 * interval);
+    swr_alarm = (swr > transmitter->swr_alarm);
+
+    switch (pa_power) {
+    case PA_1W:
+      snprintf(pwrstr, sizeof(pwrstr), "%dmW",   (int)(1000.0 * max_pwr + 0.5));
+      break;
+
+    case PA_5W:
+    case PA_10W:
+      snprintf(pwrstr, sizeof(pwrstr), "%0.1fW", max_pwr);
+      break;
+
+    default:
+      snprintf(pwrstr, sizeof(pwrstr), "%dW",    (int)(max_pwr + 0.5));
+      break;
+    }
+  }
+
+  switch (meter_type) {
+  case ANALOG: {
     //
     // Analog TX — Option 2 face (dark glass + filled arc) with Option 3 text
     //
@@ -572,7 +1282,9 @@ void txmeter_update(double pwr, double alc, double swr, double mic, double out) 
         max_angle = 320.0;
       }
 
+#if 0
       // ── Radial face gradient ──────────────────────────────────────────────
+      // deactivated -- colours must be calculated from COLOUR_VFO_BACKGROUND
       {
         cairo_pattern_t *face = cairo_pattern_create_radial(cx, cy - 10, 5, cx, cy, radius + 30);
         cairo_pattern_add_color_stop_rgba(face, 0.0, 0.11, 0.13, 0.16, 0.90);
@@ -582,6 +1294,7 @@ void txmeter_update(double pwr, double alc, double swr, double mic, double out) 
         cairo_paint(cr);
         cairo_pattern_destroy(face);
       }
+#endif
       // ── Dim arc track ─────────────────────────────────────────────────────
       cairo_set_line_width(cr, 10.0 * scalfac);
       cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.06);
@@ -759,7 +1472,9 @@ void txmeter_update(double pwr, double alc, double swr, double mic, double out) 
       cairo_move_to(cr, cx - 0.5 * extents.width, VFO_HEIGHT - 5);
       cairo_show_text(cr, sf);
     }
-  } else {
+    }
+    break;
+  case DIGITAL: {
     //
     // Digital TX meter
     //
@@ -814,7 +1529,15 @@ void txmeter_update(double pwr, double alc, double swr, double mic, double out) 
       cairo_text_extents(cr, sf, &extents);
       cairo_move_to(cr, METER_WIDTH - 5 - extents.width, Y2);
       cairo_show_text(cr, sf);
+      }
     }
+    break;
+  case EDGEWISE:
+   txmeter_edgewise(cr, frac, pwrstr, swr, swr_alarm, interval, units, max_alc, cwmode);
+   break;
+  case DUALSCALE:
+    txmeter_powerbar(cr, frac, pwrstr, swr, swr_alarm, interval, units, max_alc, cwmode);
+    break;
   }
 
   cairo_destroy(cr);

@@ -143,10 +143,18 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
     to_addr.sin_port = htons(DISCOVERY_PORT);
 
     if (inet_aton(ipaddr_radio, &to_addr.sin_addr) == 0) {
-      return;
+      //
+      // if no legal "dotted" address, try if it is a valid hostname
+      //
+      struct hostent *entry = gethostbyname(ipaddr_radio);
+      if (entry != NULL && entry->h_addr_list[0] != 0) {
+        to_addr.sin_addr = *(struct in_addr *)entry->h_addr_list[0];
+      } else {
+        return;
+      }
     }
 
-    t_print("%s: trying UDP connection with IP %s\n", __func__, ipaddr_radio);
+    t_print("%s: trying UDP connection with IP %s\n", __func__, inet_ntoa(to_addr.sin_addr));
     discovery_socket = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     if (discovery_socket < 0) {
@@ -168,10 +176,18 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
     to_addr.sin_port = htons(DISCOVERY_PORT);
 
     if (inet_aton(ipaddr_radio, &to_addr.sin_addr) == 0) {
-      return;
+      //
+      // if no legal "dotted" address, try if it is a valid hostname
+      //
+      struct hostent *entry = gethostbyname(ipaddr_radio);
+      if (entry != NULL && entry->h_addr_list[0] != 0) {
+        to_addr.sin_addr = *(struct in_addr *)entry->h_addr_list[0];
+      } else {
+        return;
+      }
     }
 
-    t_print("%s: trying TCP connection IP %s\n", __func__, ipaddr_radio);
+    t_print("%s: trying TCP connection IP %s\n", __func__, inet_ntoa(to_addr.sin_addr));
     discovery_socket = socket(AF_INET, SOCK_STREAM, 0);
 
     if (discovery_socket < 0) {

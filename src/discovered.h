@@ -139,7 +139,7 @@ struct _DISCOVERED {
   struct soapy {
     char         hardware_key[64];
     char         driver_key[64];
-    char         address[64];
+    char         hostname[64];
     char         version[128];
     int          rtlsdr_count;
     int          sdrplay_count;

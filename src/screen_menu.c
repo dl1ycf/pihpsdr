@@ -30,9 +30,7 @@
 static GtkWidget *dialog = NULL;
 static GtkWidget *wide_b = NULL;
 static GtkWidget *height_b = NULL;
-static GtkWidget *vfo_b = NULL;
 static GtkWidget *size_b = NULL;
-static gulong vfo_signal_id;
 static gulong font_signal_id;
 static guint apply_timeout = 0;
 
@@ -42,7 +40,6 @@ static guint apply_timeout = 0;
 static int my_display_width;
 static int my_display_height;
 static int my_display_size;
-static int my_vfo_layout;
 static int my_rx_stack_horizontal;
 
 //
@@ -58,7 +55,6 @@ static int apply(gpointer data) {
   display_width[1]             = my_display_width;
   display_height[1]            = my_display_height;
   display_size                 = my_display_size;
-  display_vfobar[display_size] = my_vfo_layout;
   rx_stack_horizontal          = my_rx_stack_horizontal;
   //
   radio_reconfigure_screen();
@@ -67,14 +63,6 @@ static int apply(gpointer data) {
     send_screen(cl_sock_tcp, rx_stack_horizontal, display_width[my_display_size]);
   }
 
-  //
-  // VFO layout may have been re-adjusted so update combo-box
-  // (without letting it emit a signal)
-  //
-  my_vfo_layout = display_vfobar[my_display_size];
-  g_signal_handler_block(G_OBJECT(vfo_b), vfo_signal_id);
-  gtk_combo_box_set_active(GTK_COMBO_BOX(vfo_b), my_vfo_layout);
-  g_signal_handler_unblock(G_OBJECT(vfo_b), vfo_signal_id);
   return G_SOURCE_REMOVE;
 }
 
@@ -113,51 +101,8 @@ static void font_cb(GtkWidget *widget, gpointer data) {
 
 static void size_cb(GtkWidget *widget, gpointer data) {
   my_display_size = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
-  my_vfo_layout = display_vfobar[my_display_size];
-  g_signal_handler_block(G_OBJECT(vfo_b), vfo_signal_id);
-  gtk_combo_box_set_active(GTK_COMBO_BOX(vfo_b), my_vfo_layout);
-  g_signal_handler_unblock(G_OBJECT(vfo_b), vfo_signal_id);
   gtk_widget_set_sensitive(wide_b, my_display_size == 1);
   gtk_widget_set_sensitive(height_b, my_display_size == 1);
-  schedule_apply();
-}
-
-static void vfo_cb(GtkWidget *widget, gpointer data) {
-  my_vfo_layout = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
-  int needed = vfo_layout_list[my_vfo_layout].width + METER_WIDTH + MENU_WIDTH;
-
-  if (needed % 32 != 0) { needed = 32 * (needed / 32 + 1); }
-
-  //
-  // Do not accept a VFO bar layout that exceeds the dimensions
-  // of the local screen
-  //
-
-  if (needed > display_width[0]) { needed = display_width[0]; }
-
-  //
-  // If we have a "custom" size, increase it as needed
-  //
-
-  if (my_display_size == 1 && needed > my_display_width) {
-    // this emits a signal and involves width_cb();
-    gtk_spin_button_set_value(GTK_SPIN_BUTTON(wide_b), (double) my_display_width);
-  }
-
-  //
-  // If we have a "standard" size, look whether we need to advance to
-  // a larger "standard" size.
-  //
-
-  if (my_display_size > 1 && needed > display_width[display_size]) {
-    for (int i = my_display_size; i < 6; i++) {
-      if (needed <= display_width[i]) {
-        gtk_combo_box_set_active(GTK_COMBO_BOX(size_b), i);
-        break;
-      }
-    }
-  }
-
   schedule_apply();
 }
 
@@ -192,7 +137,6 @@ void screen_menu(GtkWidget *parent) {
   my_display_width       = display_width[1];
   my_display_height      = display_height[1];
   my_display_size        = display_size;
-  my_vfo_layout          = display_vfobar[display_size];
   my_rx_stack_horizontal = rx_stack_horizontal;
   dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
@@ -266,27 +210,6 @@ void screen_menu(GtkWidget *parent) {
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(height_b), (double) my_display_height);
   gtk_grid_attach(GTK_GRID(grid), height_b, col, row, 1, 1);
   g_signal_connect(height_b, "value-changed", G_CALLBACK(height_cb), NULL);
-  row++;
-  col = 0;
-  label = gtk_label_new("Select VFO bar layout");
-  gtk_widget_set_name(label, "boldlabel");
-  gtk_widget_set_halign(label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), label, col, row, 1, 1);
-  col++;
-  vfo_b = gtk_combo_box_text_new();
-  const VFO_BAR_LAYOUT *vfl = vfo_layout_list;
-
-  for (;;) {
-    if (vfl->width < 0) { break; }
-
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(vfo_b), NULL, vfl->description);
-    vfl++;
-  }
-
-  gtk_combo_box_set_active(GTK_COMBO_BOX(vfo_b), my_vfo_layout);
-  // This combo-box spans three columns so the text may be really long
-  my_combo_attach(GTK_GRID(grid), vfo_b, col, row, 2, 1);
-  vfo_signal_id = g_signal_connect(vfo_b, "changed", G_CALLBACK(vfo_cb), NULL);
   row++;
   label = gtk_label_new("Slider Rows");
   gtk_widget_set_name (label, "boldlabel");

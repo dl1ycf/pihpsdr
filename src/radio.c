@@ -265,7 +265,7 @@ int OCfull_tune_time = 3000;  // ms
 int OCmemory_tune_time = 500; // ms
 long long tune_timeout;
 
-int analog_meter = 1;
+int meter_type = 1;
 int extended_meter = 1;
 
 static int pre_tune_mode;
@@ -551,55 +551,28 @@ void radio_stop_radio(void) {
 
 static void choose_vfo_layout(void) {
   //
-  // a) secure that vfo_layout is a valid pointer
-  // b) secure that the VFO layout width fits
+  // choose largest possible VFO layout that fits
   //
-  int rc;
-  int layout = display_vfobar[display_size];
-  const VFO_BAR_LAYOUT *vfl;
-  rc = 1;
-  vfl = vfo_layout_list;
+  const VFO_BAR_LAYOUT *vfl = vfo_layout_list;
+  int avail = display_width[display_size] - MENU_WIDTH - MIN_METER_WIDTH;
 
-  // make sure vfo_layout points to a valid entry in vfo_layout_list
+  if (extended_meter) { avail -= MIN_ADD_METER_WIDTH; }
+
   for (;;) {
-    if (vfl->width < 0) { break; }
+    if (vfl->width < 0) {
+      vfl--;
+      break;
+    }
 
-    if ((vfl - vfo_layout_list) == layout) { rc = 0; }
+    if (vfl->width <= avail) { break; }
 
     vfl++;
   }
 
-  if (rc) {
-    layout = 0;
-  }
+  current_vfo_layout = vfl;
 
-  int avail = display_width[display_size] - MENU_WIDTH - MIN_METER_WIDTH;
-
-  //
-  // If chosen layout does not fit:
-  // Choose the first largest layout that fits
-  // with a minimum-width meter
-  //
-  if (vfo_layout_list[layout].width > avail) {
-    vfl = vfo_layout_list;
-
-    for (;;) {
-      if (vfl->width < 0) {
-        vfl--;
-        break;
-      }
-
-      if (vfl->width <= avail) { break; }
-
-      vfl++;
-    }
-
-    layout = vfl - vfo_layout_list;
-  }
-
-  VFO_HEIGHT = vfo_layout_list[layout].height;
-  display_vfobar[display_size] = layout;
-  int spare = avail - vfo_layout_list[layout].width;
+  VFO_HEIGHT = current_vfo_layout->height;
+  int spare = display_width[display_size] - MENU_WIDTH - MIN_METER_WIDTH - current_vfo_layout->width;
   METER_WIDTH = MIN_METER_WIDTH;
   ADD_METER_WIDTH = 0;
 
@@ -632,7 +605,7 @@ static void choose_vfo_layout(void) {
 
   METER_WIDTH += ADD_METER_WIDTH;
   VFO_WIDTH = display_width[display_size] - MENU_WIDTH - METER_WIDTH;
-  t_print("%s: VFO width = %d, Meter width=%d, extra width=%d\n", __func__, VFO_WIDTH, METER_WIDTH, ADD_METER_WIDTH);
+  //t_print("%s: VFO width = %d height=%d, Meter width=%d, extra width=%d\n", __func__, VFO_WIDTH, VFO_HEIGHT, METER_WIDTH, ADD_METER_WIDTH);
 }
 
 static guint full_screen_timeout = 0;
@@ -839,6 +812,9 @@ void radio_reconfigure(void) {
 
   if (can_transmit && !duplex) {
     tx_reconfigure(transmitter, my_width, my_width, rx_height);
+    if (radio_is_transmitting()) {
+      gtk_fixed_move(GTK_FIXED(fixed), transmitter->panel, 0, VFO_HEIGHT);
+    }
   }
 }
 
@@ -3452,7 +3428,7 @@ static void radio_restore_state(void) {
   GetPropI0("vfo_encoder_divisor",                           vfo_encoder_divisor);
   GetPropI0("vfo_snap",                                      vfo_snap);
   GetPropI0("mute_rx_while_transmitting",                    mute_rx_while_transmitting);
-  GetPropI0("analog_meter",                                  analog_meter);
+  GetPropI0("meter_type",                                    meter_type);
   GetPropI0("extended_meter",                                extended_meter);
   GetPropI0("vox_enabled",                                   vox_enabled);
   GetPropF0("vox_threshold",                                 vox_threshold);
@@ -3493,10 +3469,6 @@ static void radio_restore_state(void) {
   GetPropF0("linein_gain",                                   linein_gain);
   GetPropI0("mute_spkr_amp",                                 mute_spkr_amp);
   GetPropI0("mute_spkr_xmit",                                mute_spkr_xmit);
-
-  for (int i = 0; i < 6; i++) {
-    GetPropI1("display_vfobar[%d]", i,                       display_vfobar[i]);
-  }
 
   if (!radio_is_remote) {
     //
@@ -3691,7 +3663,7 @@ void radio_save_state(void) {
   SetPropI0("vfo_encoder_divisor",                           vfo_encoder_divisor);
   SetPropI0("vfo_snap",                                      vfo_snap);
   SetPropI0("mute_rx_while_transmitting",                    mute_rx_while_transmitting);
-  SetPropI0("analog_meter",                                  analog_meter);
+  SetPropI0("meter_type",                                    meter_type);
   SetPropI0("extended_meter",                                extended_meter);
   SetPropI0("vox_enabled",                                   vox_enabled);
   SetPropF0("vox_threshold",                                 vox_threshold);
@@ -3732,10 +3704,6 @@ void radio_save_state(void) {
   SetPropF0("linein_gain",                                   linein_gain);
   SetPropI0("mute_spkr_amp",                                 mute_spkr_amp);
   SetPropI0("mute_spkr_xmit",                                mute_spkr_xmit);
-
-  for (int i = 0; i < 6; i++) {
-    SetPropI1("display_vfobar[%d]", i,                       display_vfobar[i]);
-  }
 
   if (!radio_is_remote) {
     SetPropI0("enable_auto_tune",                            enable_auto_tune);

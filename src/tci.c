@@ -2379,16 +2379,9 @@ static void tci_cmd_rx_nr_enable (CLIENT *client, const TCI_CMD *cmd) {
 
 static void tci_cmd_volume (CLIENT *client, const TCI_CMD *cmd) {
   if (cmd->argc >= 1) {
-    double volume;
-    double gain = tci_clamp_double(tci_double(cmd->argv[0], 0.0), -40.0, 0.0);
+    double volume = tci_clamp_double(tci_double(cmd->argv[0], 0.0), -40.0, 0.0);
 
     if (active_receiver != NULL && active_receiver->id >= 0 && active_receiver->id < receivers && active_receiver->id < 2) {
-      if (gain < 2) {
-        volume = -40.0;
-      } else {
-        volume = 20.0 * log10(0.01 * (double) gain);
-      }
-
       suppress_popup_sliders++;
       radio_set_af_gain(0, volume);
       suppress_popup_sliders--;
@@ -2412,15 +2405,7 @@ static void tci_cmd_rx_volume (CLIENT *client, const TCI_CMD *cmd) {
   }
 
   if (cmd->argc >= 3) {
-    double volume;
-    double gain = tci_clamp_double(tci_double(cmd->argv[2], 0.0), -40.0, 0.0);
-
-    if (gain < 2) {
-      volume = -40.0;
-    } else {
-      volume = 20.0 * log10(0.01 * (double) gain);
-    }
-
+    double volume = tci_clamp_double(tci_double(cmd->argv[2], 0.0), -40.0, 0.0);
     suppress_popup_sliders++;
     radio_set_af_gain(receiver_id, volume);
     suppress_popup_sliders--;

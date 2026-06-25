@@ -64,7 +64,6 @@ GdkScreen *screen;
 int display_size;
 int display_width[6] = {0, 0, 640, 832, 1024, 1280};
 int display_height[6] = {0, 0, 400, 500, 600, 720};
-int display_vfobar[6] = {0, 0, 0, 0, 0, 0};
 int this_monitor;
 
 static GdkCursor *cursor_arrow;

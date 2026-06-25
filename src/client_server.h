@@ -150,7 +150,7 @@ enum _header_type_enum {
   CLIENT_SERVER_COMMANDS,
 };
 
-#define CLIENT_SERVER_VERSION 0x01300003 // 32-bit version number
+#define CLIENT_SERVER_VERSION 0x01300004 // 32-bit version number
 #define SPECTRUM_DATA_SIZE 4096          // Maximum width of a panadapter
 #define AUDIO_DATA_SIZE 512              // 512 (mono) samples
 
@@ -944,7 +944,6 @@ extern char duckdns_token[256];
 extern char hpsdr_pwd[HPSDR_PWD_LEN];
 
 extern int audio_compression;
-extern int spec_compression;
 extern int remote_auto_reconnect;
 extern int remote_latency_ms;
 extern int cl_sock_tcp;

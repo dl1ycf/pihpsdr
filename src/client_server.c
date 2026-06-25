@@ -70,7 +70,6 @@
 
 
 int audio_compression = 0;
-int spec_compression = 0;
 
 //
 // From a challenge in s, calculate a password hash with "loop and salt".

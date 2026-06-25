@@ -87,9 +87,6 @@ char duckdns_token[256] = "DuckDnsToken";
 
 REMOTE_CLIENT remoteclient = { 0 };
 
-z_stream rx_deflater[2];
-z_stream tx_deflater;
-
 static OpusEncoder *opus_enc[2] = { NULL, NULL };
 static OpusDecoder *tx_opus_dec = NULL;
 static opus_int16 opus_pcm_buf[2][OPUS_FRAME_SIZE];
@@ -227,42 +224,36 @@ void send_rxspectrum(int id) {
 
   numout = 0;
 
-  if (spec_compression) {
-    //
-    // Compression: make uncompressed data and compress it
-    //
-    spectrum_data.compressed = 1;
+  //
+  // Compression: make uncompressed data and compress it
+  //
+  spectrum_data.compressed = 1;
 
-    for (int i = 0; i < numsamples; i++) {
-      int s = ((int) samples[i]) + 200;  // -200dBm ... 55dBm maps to 0 ... 55
+  for (int i = 0; i < numsamples; i++) {
+    int s = ((int) samples[i]) + 200;  // -200dBm ... 55dBm maps to 0 ... 55
 
-      if (s < 0) { s = 0; }
+    if (s < 0) { s = 0; }
 
-      if (s > 255) { s = 255; }
+    if (s > 255) { s = 255; }
 
-      specbuf[i] = (uint8_t) s;
-    }
+    specbuf[i] = (uint8_t) s;
+  }
 
-    rx_deflater[id].total_out = 0;
-    rx_deflater[id].total_in  = 0;
-    rx_deflater[id].next_in = specbuf;
-    rx_deflater[id].avail_in = numsamples;
-    rx_deflater[id].next_out = spectrum_data.sample;
-    rx_deflater[id].avail_out = SPECTRUM_DATA_SIZE;
-    rc = deflate(&rx_deflater[id], Z_SYNC_FLUSH);
-    numout = rx_deflater[id].total_out;
-    spectrum_data.compressed_width = to_16(numout);
+  uLongf destLen = SPECTRUM_DATA_SIZE;
+  uLongf sourceLen = numsamples;
+  rc = compress(spectrum_data.sample, &destLen, specbuf, sourceLen);
+  numout = destLen;
+  spectrum_data.compressed_width = to_16(numout);
 
-    // Trigger fallback if compression failed
-    if (rc != Z_OK) {
-      t_print("%s: compression failed for RX%d\n", __func__, id + 1);
-      numout = 0;
-    }
+  // Trigger fallback if compression failed
+  if (rc != Z_OK) {
+    t_print("%s: compression failed for RX%d\n", __func__, id + 1);
+    numout = 0;
   }
 
   if (numout == 0) {
     //
-    // No compression or compression failed: copy directly to spectrum_data
+    // If compression failed: send un-compressed data
     //
     spectrum_data.compressed = 0;
 
@@ -338,42 +329,36 @@ void send_txspectrum(void) {
   int offset = (tx->pixels - tx->width) / 2;
   numout = 0;
 
-  if (spec_compression) {
-    //
-    // Compression: make uncompressed data and compress it
-    //
-    spectrum_data.compressed = 1;
+  //
+  // Compression: make uncompressed data and compress it
+  //
+  spectrum_data.compressed = 1;
 
-    for (int i = 0; i < numsamples; i++) {
-      int s = ((int) samples[i + offset]) + 200;  // -200dBm ... 55dBm maps to 0 ... 55
+  for (int i = 0; i < numsamples; i++) {
+    int s = ((int) samples[i + offset]) + 200;  // -200dBm ... 55dBm maps to 0 ... 55
 
-      if (s < 0) { s = 0; }
+    if (s < 0) { s = 0; }
 
-      if (s > 255) { s = 255; }
+    if (s > 255) { s = 255; }
 
-      specbuf[i] = (uint8_t) s;
-    }
+    specbuf[i] = (uint8_t) s;
+  }
 
-    tx_deflater.total_out = 0;
-    tx_deflater.total_in = 0;
-    tx_deflater.next_in = specbuf;
-    tx_deflater.avail_in = numsamples;
-    tx_deflater.next_out = spectrum_data.sample;
-    tx_deflater.avail_out = SPECTRUM_DATA_SIZE;
-    rc = deflate(&tx_deflater, Z_SYNC_FLUSH);
-    numout = tx_deflater.total_out;
-    spectrum_data.compressed_width = to_16(numout);
+  uLongf destLen = SPECTRUM_DATA_SIZE;
+  uLongf sourceLen = numsamples;
+  rc = compress(spectrum_data.sample, &destLen, specbuf, sourceLen);
+  numout = destLen;
+  spectrum_data.compressed_width = to_16(numout);
 
-    // Trigger fallback if compression failed
-    if (rc != Z_OK) {
-      t_print("%s: compression failed for TX\n", __func__);
-      numout = 0;
-    }
+  // Trigger fallback if compression failed
+  if (rc != Z_OK) {
+    t_print("%s: compression failed for TX\n", __func__);
+    numout = 0;
   }
 
   if (numout == 0) {
     //
-    // No compression or compression failed: copy directly to spectrum_data
+    // If compression failed: send uncompressed data
     //
     spectrum_data.compressed = 0;
 
@@ -1055,13 +1040,6 @@ static gpointer listen_thread(gpointer arg) {
       udp_thread_id = NULL;
     }
 
-    if (spec_compression) {
-      deflateEnd(&rx_deflater[0]);
-      deflateEnd(&rx_deflater[1]);
-      deflateEnd(&tx_deflater);
-      spec_compression = 0;
-    }
-
     audio_compression = 0;
 
     for (int id = 0; id < 2; id++) {
@@ -1166,43 +1144,6 @@ static gpointer listen_thread(gpointer arg) {
       *s = 0x7F;
       send_tcp(remoteclient.sock_tcp, (char *)s, 1);
     }
-
-    if (recv_tcp(remoteclient.sock_tcp, (char *)s, 1) < 0) {
-      t_print("%s: could not receive SpecCompression Request(1)\n", __func__);
-      remoteclient.running = FALSE;
-    }
-
-    //
-    // ZLIB compression negotiation
-    //
-    spec_compression = *s & 0x3f;
-
-    if (spec_compression) {
-      for (int id = 0; id < 2; id++) {
-        rx_deflater[id].zalloc = Z_NULL;
-        rx_deflater[id].zfree = Z_NULL;
-        rx_deflater[id].opaque = Z_NULL;
-        rx_deflater[id].total_out = 0;
-        rx_deflater[id].total_in = 0;
-
-        if (deflateInit(&rx_deflater[id], 6) != Z_OK) { spec_compression = 0; }
-      }
-
-      tx_deflater.zalloc = Z_NULL;
-      tx_deflater.zfree = Z_NULL;
-      tx_deflater.opaque = Z_NULL;
-      tx_deflater.total_out = 0;
-      tx_deflater.total_in = 0;
-
-      if (deflateInit(&tx_deflater, 6) != Z_OK) { spec_compression = 0; }
-
-      if (spec_compression) {
-        t_print("%s: Using zlib for compression of panadapter data\n", __func__);
-      }
-    }
-
-    *s = 0x40 + spec_compression;
-    send_tcp(remoteclient.sock_tcp, (char *)s, 1);
 
     //
     // Audio Compression Negotiation
@@ -1979,6 +1920,12 @@ static int server_command(gpointer data) {
       switch (what) {
       case 0:
         profiles_load_rx_profile(receiver[id], num);
+        //
+        // Restoring a profile implies that all sorts of settings
+        // have been changes. So we need to send back much data.
+        //
+        send_vfo_data(remoteclient.sock_tcp, id);
+        send_rx_data(remoteclient.sock_tcp, id);
         break;
 
       case 1:
@@ -1997,6 +1944,11 @@ static int server_command(gpointer data) {
       switch (what) {
       case 0:
         profiles_load_tx_profile(transmitter, num);
+        //
+        // Restoring a TX profile implies that all sorts of settings
+        // have been changes. So we need to send back much data.
+        //
+        send_tx_data(remoteclient.sock_tcp);
         break;
 
       case 1:
@@ -2026,7 +1978,7 @@ static int server_command(gpointer data) {
   break;
 
   case CMD_MODE: {
-    int v = header->b1;
+    int id = header->b1;
     int m = header->b2;
     vfo_mode_changed(m);
     //
@@ -2034,9 +1986,8 @@ static int server_command(gpointer data) {
     // those "stored with the mode" are changed as well. So we need
     // to send back VFO, receiver, and transmitter data
     //
-    send_vfo_data(remoteclient.sock_tcp, v);
-    send_adc_data(remoteclient.sock_tcp, receiver[v]->adc);
-    send_rx_data(remoteclient.sock_tcp, v);
+    send_vfo_data(remoteclient.sock_tcp, id);
+    send_rx_data(remoteclient.sock_tcp, id);
     send_tx_data(remoteclient.sock_tcp);
   }
   break;

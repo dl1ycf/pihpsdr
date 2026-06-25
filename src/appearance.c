@@ -34,6 +34,7 @@
 
 #include "appearance.h"
 
+const VFO_BAR_LAYOUT *current_vfo_layout = vfo_layout_list;
 //
 // When a VFO bar layout that fits is searched in this list,
 // first mathing layout is taken,

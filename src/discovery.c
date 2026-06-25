@@ -121,7 +121,7 @@ static void print_devices(void) {
               discovered[i].software_version,
               discovered[i].soapy.driver_key,
               discovered[i].soapy.hardware_key,
-              discovered[i].soapy.address);
+              discovered[i].soapy.hostname);
       break;
     }
   }
@@ -664,7 +664,7 @@ static void discovery(void) {
 
   if (enable_soapy_protocol && !discover_only_stemlab) {
     status_text("SoapySDR ... Discovering Devices");
-    soapy_discovery();
+    soapy_discovery(ipaddr_radio);
   }
 
 #endif
@@ -756,7 +756,7 @@ static void discovery(void) {
 
       case SOAPYSDR_PROTOCOL:
 #ifdef SOAPYSDR
-        snprintf(text, sizeof(text), "%s (Protocol SOAPY_SDR %s) via %s", d->name, d->soapy.version, d->soapy.address);
+        snprintf(text, sizeof(text), "%s (Protocol SOAPY_SDR %s) via %s", d->name, d->soapy.version, d->soapy.hostname);
 #endif
         break;
 
@@ -966,7 +966,7 @@ static void discovery(void) {
   gtk_widget_set_halign (lbl, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), lbl, 1, row, 1, 1);
   tcpaddr = gtk_entry_new();
-  gtk_entry_set_max_length(GTK_ENTRY(tcpaddr), 20);
+  gtk_entry_set_max_length(GTK_ENTRY(tcpaddr), 128);
   gtk_grid_attach(GTK_GRID(grid), tcpaddr, 2, row, 1, 1);
   gtk_entry_set_text(GTK_ENTRY(tcpaddr), ipaddr_radio);
   g_signal_connect (tcpaddr, "changed", G_CALLBACK(radio_ip_cb), NULL);

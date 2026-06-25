@@ -229,7 +229,7 @@ extern int OCfull_tune_time;
 extern int OCmemory_tune_time;
 extern long long tune_timeout;
 
-extern int analog_meter;
+extern int meter_type;
 extern int extended_meter;
 
 extern int vox_enabled;
