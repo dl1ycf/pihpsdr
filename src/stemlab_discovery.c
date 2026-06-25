@@ -109,14 +109,18 @@ void stemlab_discovery(void) {
   int app_list;
   struct sockaddr_in ip_address;
   struct sockaddr_in netmask;
-  t_print("%s: using inet addr %s\n", __func__, ipaddr_radio);
   ip_address.sin_family = AF_INET;
+
+  if (strlen(ipaddr_radio) < 3) {
+    return;
+  }
 
   if (inet_aton(ipaddr_radio, &ip_address.sin_addr) == 0) {
     t_print("%s: TCP %s is invalid!\n", __func__, ipaddr_radio);
     return;
   }
 
+  t_print("%s: using inet addr %s\n", __func__, ipaddr_radio);
   netmask.sin_family = AF_INET;
   inet_aton("0.0.0.0", &netmask.sin_addr);
   //
