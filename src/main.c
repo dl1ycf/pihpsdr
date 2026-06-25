@@ -442,6 +442,7 @@ static size_t curl_cb(char *ptr, size_t size, size_t nmemb, void *data) {
   //
   // copy all into our result buffer until it is (nearly full)
   //
+  if (size * nmemb < result->len) { result->len = size * nmemb + 1; }
   while (result->pos < result->len - 1) { result->buf[result->pos++] = *ptr++; }
 
   //

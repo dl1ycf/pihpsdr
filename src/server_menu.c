@@ -78,22 +78,25 @@ static void* network_bkgd_thread(void *arg) {
   int duck_counter = 1200;  // update DuckDNS (if requested) every 5 minutes
   int ip_counter = 0;       // query WAN address every 5 minutes
   char url[1024];
-  char result[512];
+  char result[64];
   int rc;
 
   for (;;) {
     if (ip_counter == 0) {
-      snprintf(url, sizeof(url), "https://ipv4.icanhazip.com");
+      snprintf(url, sizeof(url), "https://ipv4.icanxhazip.com");
       rc = run_curl(url, result, sizeof(result), 5);
 
       if (rc != 0) {
-        snprintf(url, sizeof(url), "https://api4.my-ip.io/ip");
+        snprintf(url, sizeof(url), "https://ipinfo.io/ip");
         rc = run_curl(url, result, sizeof(result), 5);
       }
 
       if (rc != 0) {
         snprintf(wan_ip_addr, sizeof(wan_ip_addr), "%s", "Not available.");
       } else {
+        //
+        // copy up to the first new-line
+        //
         char *cp = strchr(result, '\n');
 
         if (cp) { *cp = '\0'; }
