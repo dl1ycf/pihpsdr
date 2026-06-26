@@ -2211,6 +2211,10 @@ void radio_set_ptt_delay(int delay) {
     send_txmenu(cl_sock_tcp);
     return;
   }
+
+  int txmode = vfo_get_tx_mode();
+  RXTXprofile[txmode].tx.ptt_delay = delay;
+  profiles_copy_rxtxprofile(txmode);
 }
 
 void radio_toggle_mox(void) {

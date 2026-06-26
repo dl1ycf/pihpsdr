@@ -117,6 +117,79 @@ const VFO_BAR_LAYOUT vfo_layout_list[] = {
   },
 
   //
+  // 1210 pix: 1280 screen layout scaled with 1.5
+  //
+  {
+    .description = "1210pix",
+    .width = 1210,
+    .height = 145,
+    .size1 = 24,
+    .size2 = 45,
+    .size3 = 66,
+
+    .vfo_a_l = 5,
+    .vfo_a_r = 525,
+    .vfo_a_y = 105,
+    .vfo_b_l = 735,
+    .vfo_b_r = 1210,
+    .vfo_b_y = 105,
+
+    .mode_x = 5,
+    .mode_y = 36,
+    .agc_x = 375,
+    .agc_y = 36,
+    .nr_x = 525,
+    .nr_y = 36,
+    .nb_x = 600,
+    .nb_y = 36,
+    .anf_x = 660,
+    .anf_y = 36,
+    .snb_x = 735,
+    .snb_y = 36,
+    .div_x = 795,
+    .div_y = 36,
+    .eq_x = 855,
+    .eq_y = 36,
+    .cat_x = 930,
+    .cat_y = 36,
+
+    .cmpr_x = 525,
+    .cmpr_y = 68,
+    .ps_x = 735,
+    .ps_y = 135,
+    .dexp_x = 660,
+    .dexp_y = 68,
+
+    .vox_x = 525,
+    .vox_y = 102,
+    .dup_x = 660,
+    .dup_y = 102,
+
+    .lock_x = 5,
+    .lock_y = 135,
+    .zoom_x = 135,
+    .zoom_y = 135,
+    .ctun_x = 270,
+    .ctun_y = 135,
+    .step_x = 375,
+    .step_y = 135,
+    .split_x = 525,
+    .split_y = 135,
+    .sat_x = 660,
+    .sat_y = 135,
+    .rit_x = 795,
+    .rit_y = 135,
+    .xit_x = 930,
+    .xit_y = 135,
+    .filter_x = 1035,
+    .filter_y = 36,
+    .multifn_x = 1070,
+    .multifn_y = 135,
+    .lat_x = 5,
+    .lat_y = 63
+  },
+
+  //
   // A layout tailored for a screen 1600 px wide,
   // which is the 1280px version scaled with 1.25
   //
@@ -190,6 +263,80 @@ const VFO_BAR_LAYOUT vfo_layout_list[] = {
     .lat_x = 5,
     .lat_y = 52
   },
+
+  //
+  // 925 pix wide, the "1280" pix layout scaled with 1.15
+  //
+  {
+    .description = "925 pix wide",
+    .width = 925,
+    .height = 109,
+    .size1 = 18,
+    .size2 = 34,
+    .size3 = 50,
+
+    .vfo_a_l = 5,
+    .vfo_a_r = 405,
+    .vfo_a_y = 80,
+    .vfo_b_l = 565,
+    .vfo_b_r = 925,
+    .vfo_b_y = 80,
+
+    .mode_x = 5,
+    .mode_y = 28,
+    .agc_x = 285,
+    .agc_y = 28,
+    .nr_x = 405,
+    .nr_y = 28,
+    .nb_x = 460,
+    .nb_y = 28,
+    .anf_x = 505,
+    .anf_y = 28,
+    .snb_x = 565,
+    .snb_y = 28,
+    .div_x = 610,
+    .div_y = 28,
+    .eq_x = 655,
+    .eq_y = 28,
+    .cat_x = 715,
+    .cat_y = 28,
+
+    .cmpr_x = 405,
+    .cmpr_y = 52,
+    .ps_x = 565,
+    .ps_y = 105,
+    .dexp_x = 505,
+    .dexp_y = 52,
+
+    .vox_x = 405,
+    .vox_y = 78,
+    .dup_x = 505,
+    .dup_y = 78,
+
+    .lock_x = 5,
+    .lock_y = 105,
+    .zoom_x = 105,
+    .zoom_y = 105,
+    .ctun_x = 205,
+    .ctun_y = 105,
+    .step_x = 285,
+    .step_y = 105,
+    .split_x = 405,
+    .split_y = 105,
+    .sat_x = 460,
+    .sat_y = 105,
+    .rit_x = 610,
+    .rit_y = 105,
+    .xit_x = 715,
+    .xit_y = 105,
+    .filter_x = 795,
+    .filter_y = 28,
+    .multifn_x = 820,
+    .multifn_y = 105,
+    .lat_x = 5,
+    .lat_y = 48
+  },
+
   //
   // A layout tailored for a screen 1280 px wide:
   // a Layout with dial digits of size 50, and a "LED" size 20
@@ -339,6 +486,9 @@ const VFO_BAR_LAYOUT vfo_layout_list[] = {
     .lat_x = 5,
     .lat_y = 35
   },
+
+//MISSING: something about 610 pix, Layout(530) scaled with 1.15
+
   {
     .description = "VFO for 832px Screens",
     .width = 530,
@@ -407,6 +557,8 @@ const VFO_BAR_LAYOUT vfo_layout_list[] = {
     .lat_x = 5,
     .lat_y = 32
   },
+
+  // MISSING: something about 444 pix, Layout(370) scaled with 1.2
 
   //
   // This is for those who want to run piHPDSR on a 640x480 screen
