@@ -83,7 +83,7 @@ static void* network_bkgd_thread(void *arg) {
 
   for (;;) {
     if (ip_counter == 0) {
-      snprintf(url, sizeof(url), "https://ipv4.icanxhazip.com");
+      snprintf(url, sizeof(url), "https://ipv4.icanhazip.com");
       rc = run_curl(url, result, sizeof(result), 5);
 
       if (rc != 0) {
