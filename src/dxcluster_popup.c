@@ -83,11 +83,10 @@ static void on_popup_destroy(GtkWidget *w, gpointer data) {
 static const char *age_string(time_t when, char *buf, int len) {
   long age = time(NULL) - when;
 
-  if (age < 0) { snprintf(buf, len, "VERYNEW"); }
+  if (age < 0 || age > 100000000L) { *buf = 0; }
   else if (age < 60) { snprintf(buf, len, "%ld sec",  age); }
   else if (age < 3600) { snprintf(buf, len, "%ld min",  age / 60); }
-  else if (age < 100000000L) { snprintf(buf, len, "%ld hr",   age / 3600); }
-  else { snprintf(buf, len, "VERYOLD"); }
+  else { snprintf(buf, len, "%ld hr",   age / 3600); }
 
   return buf;
 }
