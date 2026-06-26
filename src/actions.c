@@ -1259,7 +1259,11 @@ int process_action(gpointer data) {
 
   case MOX:
     if (a->mode == PRESSED) {
-      radio_toggle_mox();
+      if (mox) {
+        g_timeout_add(ptt_delay, ext_radio_toggle_mox, NULL);
+      } else {
+        radio_toggle_mox();
+      }
     }
 
     break;
@@ -1553,7 +1557,13 @@ int process_action(gpointer data) {
 
   case PTT:
     if (a->mode == PRESSED || a->mode == RELEASED) {
-      radio_set_mox(a->mode == PRESSED);
+      int new = (a->mode == PRESSED);
+
+      if (new) {
+        radio_set_mox(1);
+      } else {
+        g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
+      }
     }
 
     break;
@@ -2066,6 +2076,9 @@ int process_action(gpointer data) {
     // a footswitch has been pushed, or that the radio went TX due to operating a Morse key
     // attached to the radio.
     // In both cases, piHPSDR stays TX and the radio will induce the TX/RX transition by removing hpsdr_ptt.
+    //
+    // IGNORE ptt_delay since it is assumed that if the signal comes from a keyer, such delays are
+    // taken care of there.
     //
     if (a->mode == PRESSED) {
       MIDI_cw_is_active = 1;         // disable "CW handled in radio"

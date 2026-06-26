@@ -1696,13 +1696,21 @@ static int server_command(gpointer data) {
     break;
 
   case CMD_TOGGLE_MOX:
-    radio_toggle_mox();
+    if (mox) {
+      radio_toggle_mox();
+    } else {
+      g_timeout_add(ptt_delay, ext_radio_toggle_mox, NULL);
+    }
     g_idle_add(ext_vfo_update, NULL);
     send_mox(remoteclient.sock_tcp, mox);
     break;
 
   case CMD_MOX:
-    radio_set_mox(header->b1);
+    if (header->b1) {
+      radio_set_mox(1);
+    } else {
+      g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
+    }
     g_idle_add(ext_vfo_update, NULL);
     send_mox(remoteclient.sock_tcp, mox);
     break;
@@ -1712,7 +1720,11 @@ static int server_command(gpointer data) {
     // Vox is handled in the client, so do a  mox update
     // but report back properly
     //
-    radio_set_mox(header->b1);
+    if (header->b1) {
+      radio_set_mox(1);
+    } else {
+      g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
+    }
     g_idle_add(ext_vfo_update, NULL);
     send_vox(remoteclient.sock_tcp, mox);
     break;
@@ -2535,6 +2547,7 @@ static int server_command(gpointer data) {
       transmitter->tune_use_drive = command->tune_use_drive;
       transmitter->swr_protection = command->swr_protection;
       transmitter->swr_alarm = from_double(command->swr_alarm);
+      radio_set_ptt_delay(from_16(command->ptt_delay));
       schedule_transmit_specific();
       send_tx_data(remoteclient.sock_tcp);
     }

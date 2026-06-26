@@ -252,6 +252,8 @@ typedef struct __attribute__((__packed__)) _txmenu_data {
   //
   mydouble swr_alarm;
   //
+  uint16_t ptt_delay;
+  //
   uint8_t  tune_drive;
   uint8_t  tune_use_drive;
   uint8_t  swr_protection;
@@ -376,6 +378,7 @@ typedef struct __attribute__((__packed__)) _radio_data {
   uint16_t cw_keyer_sidetone_frequency;
   uint16_t rx_gain_calibration;
   uint16_t device;
+  uint16_t ptt_delay;
   //
   uint8_t  locked;
   uint8_t  protocol;

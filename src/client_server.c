@@ -393,6 +393,7 @@ void send_radio_data(int sock) {
 
   //
   data.pa_power = to_16(pa_power);
+  data.ptt_delay = to_16(ptt_delay);
   data.OCfull_tune_time = to_16(OCfull_tune_time);
   data.OCmemory_tune_time = to_16(OCmemory_tune_time);
   data.cw_keyer_sidetone_frequency = to_16(cw_keyer_sidetone_frequency);
@@ -1230,6 +1231,7 @@ void send_txmenu(int s) {
     command.tune_drive = transmitter->tune_drive;
     command.tune_use_drive = transmitter->tune_use_drive;
     command.swr_protection = transmitter->swr_protection;
+    command.ptt_delay = to_16(ptt_delay);
     command.swr_alarm = to_double(transmitter->swr_alarm);
     send_tcp(s, (char *)&command, sizeof(TXMENU_DATA));
   }

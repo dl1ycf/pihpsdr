@@ -703,7 +703,7 @@ static gpointer rigctl_cw_thread(gpointer data) {
       // Morse key, then continue transmitting.
       //
       if (!cw_key_hit && !hpsdr_ptt) {
-        g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(0));
+        g_timeout_add(50, ext_radio_set_mox, GINT_TO_POINTER(0));
         // wait up to 500 msec for MOX having gone
         // otherwise there might be a race condition when sending
         // the next character really soon
@@ -2349,7 +2349,12 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         snprintf(reply,  sizeof(reply), "ZZTX%d;", mox);
         send_resp(client->fd, reply) ;
       } else if (command[5] == ';') {
-        radio_set_mox(atoi(&command[4]));
+        int new = atoi(&command[4]);
+        if (new) {
+          radio_set_mox(1);
+        } else {
+          g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
+        }
       }
 
       break;
@@ -4030,7 +4035,7 @@ static int parse_cmd(gpointer data) {
       //SET       RX;
       //ENDDEF
       if (command[2] == ';') {
-        radio_set_mox(0);
+        g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
       }
 
       break;

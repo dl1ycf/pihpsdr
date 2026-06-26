@@ -241,6 +241,7 @@ unsigned int ADC1 = 0;
 unsigned int ADC0 = 0;
 
 int ptt = 0;
+int ptt_delay = 0;
 int mox = 0;
 int have_rx_gain = 0;
 int have_rx_att = 0;
@@ -400,7 +401,11 @@ gboolean radio_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
     break;
 
   case GDK_KEY_space:
-    radio_toggle_mox();
+    if (mox) {
+      radio_toggle_mox();
+    } else {
+      g_timeout_add(ptt_delay, ext_radio_toggle_mox, NULL);
+    }
     break;
 
   case  GDK_KEY_d:
@@ -2199,6 +2204,15 @@ static void rxtx(int state) {
 #endif
 }
 
+void radio_set_ptt_delay(int delay) {
+  ptt_delay = delay;
+
+  if (radio_is_remote) {
+    send_txmenu(cl_sock_tcp);
+    return;
+  }
+}
+
 void radio_toggle_mox(void) {
   if (radio_is_remote) {
     send_toggle_mox(cl_sock_tcp);
@@ -3512,6 +3526,7 @@ static void radio_restore_state(void) {
     GetPropI0("sat_mode",                                    sat_mode);
     GetPropI0("radio.display_warnings",                      display_warnings);
     GetPropI0("radio.display_pacurr",                        display_pacurr);
+    GetPropI0("radio.ptt_delay",                             ptt_delay);
 
     for (int i = 0; i < 11; i++) {
       GetPropF1("pa_trim[%d]", i,                            pa_trim[i]);
@@ -3743,6 +3758,7 @@ void radio_save_state(void) {
     SetPropI0("sat_mode",                                    sat_mode);
     SetPropI0("radio.display_warnings",                      display_warnings);
     SetPropI0("radio.display_pacurr",                        display_pacurr);
+    SetPropI0("radio.ptt_delay",                             ptt_delay);
 
     for (int i = 0; i < 11; i++) {
       SetPropF1("pa_trim[%d]", i,                            pa_trim[i]);

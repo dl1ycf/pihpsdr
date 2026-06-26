@@ -2205,7 +2205,7 @@ static void tci_cmd_trx (CLIENT *client, const TCI_CMD *cmd) {
         client->tx_audio_enabled = 0;
         tci_audio_tx_reset();
         tci_lws_binary_reset (client);
-        radio_set_mox(0);
+        g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
       }
 
       tci_update_audio_global();
