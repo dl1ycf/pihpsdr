@@ -2680,7 +2680,11 @@ static void process_high_priority(const unsigned char *buffer) {
   if (previous_ptt != hpsdr_ptt) {
     // TODO: what if hpsdr_ptt goes to zero while we
     //       are tuning or two-toning?
-    g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(hpsdr_ptt));
+    if (hpsdr_ptt) {
+      g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(1));
+    } else {
+      g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
+    } 
   }
 
   if (enable_tx_inhibit) {

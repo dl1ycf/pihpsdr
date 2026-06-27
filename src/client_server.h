@@ -150,7 +150,7 @@ enum _header_type_enum {
   CLIENT_SERVER_COMMANDS,
 };
 
-#define CLIENT_SERVER_VERSION 0x01300004 // 32-bit version number
+#define CLIENT_SERVER_VERSION 0x01300005 // 32-bit version number
 #define SPECTRUM_DATA_SIZE 4096          // Maximum width of a panadapter
 #define AUDIO_DATA_SIZE 512              // 512 (mono) samples
 
@@ -251,6 +251,8 @@ typedef struct __attribute__((__packed__)) _txmenu_data {
   HEADER header;
   //
   mydouble swr_alarm;
+  //
+  uint16_t ptt_delay;
   //
   uint8_t  tune_drive;
   uint8_t  tune_use_drive;
@@ -376,6 +378,7 @@ typedef struct __attribute__((__packed__)) _radio_data {
   uint16_t cw_keyer_sidetone_frequency;
   uint16_t rx_gain_calibration;
   uint16_t device;
+  uint16_t ptt_delay;
   //
   uint8_t  locked;
   uint8_t  protocol;

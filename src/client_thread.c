@@ -1203,6 +1203,7 @@ static gpointer client_tcp_thread(gpointer arg) {
       }
 
       //
+      ptt_delay = from_16(data.ptt_delay);
       pa_power = from_16(data.pa_power);
       OCfull_tune_time = from_16(data.OCfull_tune_time);
       OCmemory_tune_time = from_16(data.OCmemory_tune_time);

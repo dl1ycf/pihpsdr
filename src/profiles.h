@@ -120,6 +120,7 @@ struct _txprofile {
   int default_filter_low;
   int default_filter_high;
   int use_rx_filter;
+  int ptt_delay;                    // extra delay on TX/RX transition
   double eq_freq[11];               // TX equaliser settings
   double eq_gain[11];
   double cfc_freq[11];              // CFC corner frequencies

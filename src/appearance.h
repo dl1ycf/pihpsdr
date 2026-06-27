@@ -44,6 +44,7 @@
 //
 struct _VFO_BAR_LAYOUT {
   const char *description; // Text appearing in the screen menu combobox
+  int min_meter;           // minimum meter width that fits to this layout
   int width;               // overall width required
   int height;              // overall height required
   int size1;               // Font size for the "LED markers"

@@ -76,6 +76,7 @@ enum _tx_choices {
   TX_AM_CARRIER,
   TX_TUNE_DRIVE,
   TX_DIGI_DRIVE,
+  TX_PTT_DELAY,
   TX_SWR_ALARM,
   TX_COMP_ENABLE,
   TX_CTCSS_ENABLE,
@@ -242,6 +243,10 @@ static void spinbtn_cb(GtkWidget *widget, gpointer data) {
         send_txmenu(cl_sock_tcp);
       }
 
+      break;
+
+    case TX_PTT_DELAY:
+      radio_set_ptt_delay(vi);
       break;
 
     case TX_DIGI_DRIVE:
@@ -777,10 +782,20 @@ void tx_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(tx_grid), btn, col, row, 1, 1);
   g_signal_connect(btn, "value-changed", G_CALLBACK(spinbtn_cb), GINT_TO_POINTER(TX_DIGI_DRIVE));
   col++;
-  btn = gtk_check_button_new_with_label("TX out of band allowed");
+  btn = gtk_check_button_new_with_label("TX out of band");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), tx_out_of_band_allowed);
-  gtk_grid_attach(GTK_GRID(tx_grid), btn, col, row, 2, 1);
+  gtk_grid_attach(GTK_GRID(tx_grid), btn, col, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(chkbtn_cb), GINT_TO_POINTER(TX_OOB_ALLOWED));
+  col++;
+  label = gtk_label_new("PTT delay");
+  gtk_widget_set_name(label, "boldlabel");
+  gtk_widget_set_halign(label, GTK_ALIGN_START);
+  gtk_grid_attach(GTK_GRID(tx_grid), label, col, row, 1, 1);
+  col++;
+  btn = gtk_spin_button_new_with_range(0.0, 500.0, 25.0);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), (double) ptt_delay);
+  gtk_grid_attach(GTK_GRID(tx_grid), btn, col, row, 1, 1);
+  g_signal_connect(btn, "value-changed", G_CALLBACK(spinbtn_cb), GINT_TO_POINTER(TX_PTT_DELAY));
   //
   // CFC container and controls therein
   //

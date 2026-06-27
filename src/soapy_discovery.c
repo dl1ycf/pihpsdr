@@ -447,6 +447,8 @@ void soapy_discovery(const char *hostname) {
   //
   // hook for detecting Plutos over the internet
   //
-  snprintf(driver, sizeof(driver), "plutosdr:%s", hostname);
-  get_info(driver);
+  if (strlen(hostname) > 2) {
+    snprintf(driver, sizeof(driver), "plutosdr:%s", hostname);
+    get_info(driver);
+  }
 }

@@ -37,6 +37,12 @@
 static GtkWidget *meter;
 static cairo_surface_t *meter_surface = NULL;
 
+//
+// rxtxstate "detects" RX/TX transitions
+// to reset exponential averaging and peak values
+//
+static int rxtxstate = 0;
+
 #define CNTMAX 5
 #define EXPAV1 0.75
 #define EXPAV2 0.25
@@ -123,7 +129,7 @@ static void meter_rounded_rect(cairo_t *cr, double x, double y, double w, double
 
 /* ───────────────────────── Dual-scale bar ───────────────────────── */
 static void rxmeter_dualscale(cairo_t *cr, double smtr, int sval, int sval2,
-                              double max_rxlvl, double ref9, double perS) {
+                              double max_rxlvl, double pk, double ref9, double perS) {
   char sf[32];
   cairo_text_extents_t extents;
   double r, g, b;
@@ -135,16 +141,6 @@ static void rxmeter_dualscale(cairo_t *cr, double smtr, int sval, int sval2,
   const double bh  = 13.0 * scalfac;
   const double by  = VFO_HEIGHT * 0.46;
   const double frac = smtr / 114.0;
-  //
-  // peak-hold on the needle position: instant attack, slow release
-  //
-  static double pk = 0.0;
-
-  if (smtr > pk) { pk = smtr; } else { pk -= 1.2; }
-
-  if (pk < smtr)   { pk = smtr; }
-
-  if (pk > 114.0)  { pk = 114.0; }
 
   const double pfrac = pk / 114.0;
   cairo_set_line_width(cr, 1.0);
@@ -257,7 +253,7 @@ static void rxmeter_dualscale(cairo_t *cr, double smtr, int sval, int sval2,
 
 /* ───────────────────── Edgewise moving-coil ───────────────────── */
 static void rxmeter_edgewise(cairo_t *cr, double smtr, int sval, int sval2,
-                             double max_rxlvl) {
+                             double max_rxlvl, double pk) {
   char sf[32];
   cairo_text_extents_t extents;
   double r, g, b, x, y, angle, radians;
@@ -279,16 +275,6 @@ static void rxmeter_edgewise(cairo_t *cr, double smtr, int sval, int sval2,
   const double max_angle = 270.0 + half;
   const double bydb = (max_angle - min_angle) / 114.0;
   const double frac = smtr / 114.0;
-  //
-  // peak-hold needle (instant attack, slow release)
-  //
-  static double pk = 0.0;
-
-  if (smtr > pk) { pk = smtr; } else { pk -= 1.2; }
-
-  if (pk < smtr)  { pk = smtr; }
-
-  if (pk > 114.0) { pk = 114.0; }
 
 #if 0
   //
@@ -436,7 +422,7 @@ static void rxmeter_edgewise(cairo_t *cr, double smtr, int sval, int sval2,
 }
 
 /* ───────────────────── Edgewise TX power meter ───────────────────── */
-static void txmeter_edgewise(cairo_t *cr, double frac, const char *pwrstr,
+static void txmeter_edgewise(cairo_t *cr, double frac, double pk, const char *pwrstr,
                              double swr, int swr_alarm, double interval, int units,
                              double alc, int cwmode) {
   char sf[32];
@@ -453,21 +439,6 @@ static void txmeter_edgewise(cairo_t *cr, double frac, const char *pwrstr,
 
   const double min_angle = 270.0 - half;
   const double max_angle = 270.0 + half;
-
-  if (frac < 0.0) { frac = 0.0; }
-
-  if (frac > 1.0) { frac = 1.0; }
-
-  //
-  // peak-hold (instant attack, slow release)
-  //
-  static double pk = 0.0;
-
-  if (frac > pk) { pk = frac; } else { pk -= 0.012; }
-
-  if (pk < frac) { pk = frac; }
-
-  if (pk > 1.0)  { pk = 1.0; }
 
 #if 0
   //
@@ -610,7 +581,7 @@ static void txmeter_edgewise(cairo_t *cr, double frac, const char *pwrstr,
 }
 
 /* ───────────────────── Dual-scale TX power bar ───────────────────── */
-static void txmeter_powerbar(cairo_t *cr, double frac, const char *pwrstr,
+static void txmeter_powerbar(cairo_t *cr, double frac, double pk, const char *pwrstr,
                              double swr, int swr_alarm, double interval, int units,
                              double alc, int cwmode) {
   char sf[32];
@@ -625,21 +596,6 @@ static void txmeter_powerbar(cairo_t *cr, double frac, const char *pwrstr,
   const double by  = VFO_HEIGHT * 0.50;
   (void) alc;
   (void) cwmode;
-
-  if (frac < 0.0) { frac = 0.0; }
-
-  if (frac > 1.0) { frac = 1.0; }
-
-  //
-  // peak-hold
-  //
-  static double pk = 0.0;
-
-  if (frac > pk) { pk = frac; } else { pk -= 0.012; }
-
-  if (pk < frac) { pk = frac; }
-
-  if (pk > 1.0)  { pk = 1.0; }
 
   //
   // Top readout: power (left), SWR (right)
@@ -749,15 +705,32 @@ void rxmeter_update(double rxlvl, double peak, double gain, double out) {
   static double max_gain  = min_gain;
   static double max_out   = min_out;
   static double max_peak  = min_peak;
+  static double pk        = 0;
   static int max_cnt_lvl  = 0;
   static int max_cnt_gain = 0;
   static int max_cnt_out  = 0;
   static int max_cnt_peak = 0;
+  static int pk_count     = 0;
   char sf[32];
   cairo_t *cr = cairo_create (meter_surface);
   cairo_text_extents_t extents;
   double smtr = 0.0, smtr2, perS, ref9;
   int sval = 0, sval2 = 0;
+
+  if (rxtxstate == 1) {
+    max_cnt_lvl = 0;
+    max_cnt_gain = 0;
+    max_cnt_out = 0;
+    max_cnt_peak = 0;
+    max_rxlvl = min_rxlvl;
+    max_gain = min_gain;
+    max_out = min_out;
+    max_peak = min_peak;
+    pk = 0.0;
+    pk_count = 0;
+    rxtxstate = 0;
+  }
+
 
   //
   // Only the time-averaged values are "on display"
@@ -846,6 +819,27 @@ void rxmeter_update(double rxlvl, double peak, double gain, double out) {
   sval = (smtr + 4.0) * 0.125;
   sval2 = 5 * (int)((smtr2 * 0.28571428571428571428) + 0.5);
   smtr += smtr2;
+
+  //
+  // peak-hold on the needle position:
+  //  - instant attack
+  //  - hold a while (15 frames)
+  //  - then slow release (S9 --> S0 in 60 frames)
+  //
+
+  if (smtr > pk) {
+    pk = smtr;
+    if (pk > 114.0)  { pk = 114.0; }
+    pk_count = 15;
+  } else {
+    if (pk_count > 0) {
+      pk_count--;
+    } else {
+      pk -= 1.2; // 72/60
+      if (pk < 0.0) { pk = 0.0; }
+    }
+  }
+
   //
   // From now on, use time-averaged value (max_rxlvl)
   //
@@ -1110,10 +1104,10 @@ void rxmeter_update(double rxlvl, double peak, double gain, double out) {
     }
     break;
   case EDGEWISE:
-   rxmeter_edgewise(cr, smtr, sval, sval2, max_rxlvl);
+   rxmeter_edgewise(cr, smtr, sval, sval2, max_rxlvl, pk);
    break;
   case DUALSCALE:
-    rxmeter_dualscale(cr, smtr, sval, sval2, max_rxlvl, ref9, perS);
+    rxmeter_dualscale(cr, smtr, sval, sval2, max_rxlvl, pk, ref9, perS);
     break;
   }
 
@@ -1124,15 +1118,20 @@ void rxmeter_update(double rxlvl, double peak, double gain, double out) {
 void txmeter_update(double pwr, double alc, double swr, double mic, double out) {
   if (!meter_surface || !can_transmit) { return; }
 
-  const double min_alc  = -99.0;
-  const double min_pwr  =   0.0;
-  const double min_mic  = -99.0;
-  const double min_out  = -99.0;
+  const double min_alc    = -99.0;
+  const double min_pwr    =   0.0;
+  const double min_mic    = -99.0;
+  const double min_out    = -99.0;
   static double max_alc   = min_alc;
   static double max_pwr   = min_pwr;
   static double max_mic   = min_mic;
   static double max_out   = min_out;
-  static int max_txcount = 0;
+  static double pk        = 0.0;
+  static int max_pwrcount = 0;
+  static int max_alccount = 0;
+  static int max_miccount = 0;
+  static int max_outcount = 0;
+  static int pk_count     = 0;
   char sf[32];
   cairo_t *cr = cairo_create (meter_surface);
   cairo_text_extents_t extents;
@@ -1141,30 +1140,49 @@ void txmeter_update(double pwr, double alc, double swr, double mic, double out) 
   int cwmode = (txmode == modeCWU || txmode == modeCWL);
   const BAND *band = band_get_band(vfo[txvfo].band);
 
-  if (max_txcount > CNTMAX) {
-    max_pwr = EXPAV1 * max_pwr + EXPAV2 * pwr;
-    max_alc = EXPAV1 * max_alc + EXPAV2 * alc;
-    max_mic = EXPAV1 * max_mic + EXPAV2 * mic;
-    max_out = EXPAV1 * max_out + EXPAV2 * out;
-
-    if (max_pwr < min_pwr) { max_pwr = min_pwr; }
-
-    if (max_alc < min_alc) { max_alc = min_alc; }
-
-    if (max_out < min_out) { max_out = min_out; }
-
-    if (max_mic < min_mic) { max_mic = min_mic; }
+  if (rxtxstate == 0) {
+    max_pwrcount = 0;
+    max_alccount = 0;
+    max_miccount = 0;
+    max_outcount = 0;
+    max_alc = min_alc;
+    max_pwr = min_pwr;
+    max_mic = min_mic;
+    max_out = min_out;
+    pk = 0.0;
+    pk_count = 0;
+    rxtxstate = 1;
   }
 
-  if (pwr > max_pwr) { max_pwr = pwr; max_txcount = 0; }
+  if (max_pwrcount > CNTMAX) { max_pwr = EXPAV1 * max_pwr + EXPAV2 * pwr; }
 
-  if (alc > max_alc) { max_alc = alc; max_txcount = 0; }
+  if (max_alccount > CNTMAX) { max_alc = EXPAV1 * max_alc + EXPAV2 * alc; }
 
-  if (mic > max_mic) { max_mic = mic; max_txcount = 0; }
+  if (max_miccount > CNTMAX) { max_mic = EXPAV1 * max_mic + EXPAV2 * mic; }
 
-  if (out > max_out) { max_out = out; max_txcount = 0; }
+  if (max_outcount > CNTMAX) { max_out = EXPAV1 * max_out + EXPAV2 * out; }
 
-  max_txcount++;
+  if (max_pwr < min_pwr) { max_pwr = min_pwr; }
+
+  if (max_alc < min_alc) { max_alc = min_alc; }
+
+  if (max_out < min_out) { max_out = min_out; }
+
+  if (max_mic < min_mic) { max_mic = min_mic; }
+
+  if (pwr > max_pwr) { max_pwr = pwr; max_pwrcount = 0; }
+
+  if (alc > max_alc) { max_alc = alc; max_alccount = 0; }
+
+  if (mic > max_mic) { max_mic = mic; max_miccount = 0; }
+
+  if (out > max_out) { max_out = out; max_outcount = 0; }
+
+  max_pwrcount++;
+  max_outcount++;
+  max_miccount++;
+  max_outcount++;
+
   //
   // From now on, ONLY use time-averaged values
   //
@@ -1208,7 +1226,7 @@ void txmeter_update(double pwr, double alc, double swr, double mic, double out) 
   }
 
   //
-  // Some data common to power meters (only valid for HPSDR)
+  // Some data common to power meters (only needed and valid for HPSDR)
   //
   int units;
   int swr_alarm;
@@ -1216,33 +1234,53 @@ void txmeter_update(double pwr, double alc, double swr, double mic, double out) 
   double interval;
   double frac;
 
-  if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
-    if (band->disablePA || !pa_enabled) {
-      units = 1;
-      interval = 0.1;
+  if (band->disablePA || !pa_enabled) {
+    units = 1;
+    interval = 0.1;
+  } else {
+    int pp = pa_power_list[pa_power];
+    units = (pp <= 1) ? 1 : 2;
+    interval = 0.1 * pp;
+  }
+
+  frac = max_pwr / (10.0 * interval);
+  swr_alarm = (swr > transmitter->swr_alarm);
+
+  if (frac < 0.0) { frac = 0.0; }
+
+  if (frac > 1.0) { frac = 1.0; }
+
+  //
+  // peak-hold on the needle position:
+  //  - instant attack
+  //  - hold a while (15 frames)
+  //  - then slow release (full --> 0 in 80 frames)
+  //
+  if (frac > pk) {
+    pk = frac;
+    pk_count = 15;
+  } else {
+    if (pk_count > 0) {
+      pk_count--;
     } else {
-      int pp = pa_power_list[pa_power];
-      units = (pp <= 1) ? 1 : 2;
-      interval = 0.1 * pp;
+      pk -= 0.0125;  // 1/80
+      if (pk < 0.0) { pk = 0.0; }
     }
+  }
 
-    frac = max_pwr / (10.0 * interval);
-    swr_alarm = (swr > transmitter->swr_alarm);
+  switch (pa_power) {
+  case PA_1W:
+    snprintf(pwrstr, sizeof(pwrstr), "%dmW",   (int)(1000.0 * max_pwr + 0.5));
+    break;
 
-    switch (pa_power) {
-    case PA_1W:
-      snprintf(pwrstr, sizeof(pwrstr), "%dmW",   (int)(1000.0 * max_pwr + 0.5));
-      break;
+  case PA_5W:
+  case PA_10W:
+    snprintf(pwrstr, sizeof(pwrstr), "%0.1fW", max_pwr);
+    break;
 
-    case PA_5W:
-    case PA_10W:
-      snprintf(pwrstr, sizeof(pwrstr), "%0.1fW", max_pwr);
-      break;
-
-    default:
-      snprintf(pwrstr, sizeof(pwrstr), "%dW",    (int)(max_pwr + 0.5));
-      break;
-    }
+  default:
+    snprintf(pwrstr, sizeof(pwrstr), "%dW",    (int)(max_pwr + 0.5));
+    break;
   }
 
   switch (meter_type) {
@@ -1533,10 +1571,10 @@ void txmeter_update(double pwr, double alc, double swr, double mic, double out) 
     }
     break;
   case EDGEWISE:
-   txmeter_edgewise(cr, frac, pwrstr, swr, swr_alarm, interval, units, max_alc, cwmode);
+   txmeter_edgewise(cr, frac, pk, pwrstr, swr, swr_alarm, interval, units, max_alc, cwmode);
    break;
   case DUALSCALE:
-    txmeter_powerbar(cr, frac, pwrstr, swr, swr_alarm, interval, units, max_alc, cwmode);
+    txmeter_powerbar(cr, frac, pk, pwrstr, swr, swr_alarm, interval, units, max_alc, cwmode);
     break;
   }
 
