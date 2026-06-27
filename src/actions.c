@@ -248,6 +248,7 @@ ACTION_TABLE ActionTable[] = {
   {VFO_STEP_PLUS,       "VFO Step +",           "STEP+",        AT_BTN},
   {VFOA,                "VFO A",                "VFOA",         AT_ENC},
   {VFOB,                "VFO B",                "VFOB",         AT_ENC},
+  {MENU_VFO,            "VFO\nMenu",            "VFOM",         AT_BTN},
   {VOX,                 "VOX\nOn/Off",          "VOX",          AT_BTN},
   {VOXLEVEL,            "VOX\nLevel",           "VOXLEV",       AT_KNB | AT_ENC | AT_SLD},
   {WATERFALL_HIGH,      "Wfall\nHigh",          "WFALLH",       AT_ENC},
@@ -1163,6 +1164,7 @@ int process_action(gpointer data) {
     break;
 
   case MENU_FREQUENCY:
+  case MENU_VFO:
     if (a->mode == PRESSED) {
       start_vfo_menu(active_receiver->id);
     }
