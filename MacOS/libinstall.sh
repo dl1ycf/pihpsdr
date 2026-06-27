@@ -126,17 +126,6 @@ fi
 $BREW update
 ################################################################
 #
-# If <homebrew>/Library/Homebrew/extend/os/mac/formula.rb has
-# been modified to enable compilation of some of the SoapySDR
-# modules, this change is lost during "update". The following
-# command restores the last "stashed change"
-#
-################################################################
-
-( cd $BREWDIR && git stash pop )
-
-################################################################
-#
 # All homebrew packages needed for pihpsdr (makedepend and
 # cppcheck are useful for maintainers)
 #
@@ -203,9 +192,11 @@ $BREW install soapysdr
 # so the required option is added to the "standard cmake args"
 # Note this change is lost whenever you update/upgrade homebrew.
 #
-# You can apply the above fix and simply re-run this script,
-# since HOMEBREW will not be re-installed if already present.
-#
+# After applying this fix, you must "lock" the file with "git lock",
+# available after installing the git-extras package. Then it will
+# not be updated when re-running this script which involves a
+# "brew update", but this file will then also not updated so
+# keep this in mind.
 #
 # pothosware is considered "untrusted" in lastest versions of
 # homebrew. So the following statements will fail unless
