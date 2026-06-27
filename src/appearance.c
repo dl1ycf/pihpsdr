@@ -42,11 +42,13 @@ const VFO_BAR_LAYOUT *current_vfo_layout = vfo_layout_list;
 //
 const VFO_BAR_LAYOUT vfo_layout_list[] = {
   //
-  // Our largest layout. Hopefully suitable for those
+  // Our largest layout. Intended for those
   // with impaired vision using a 1920px Screen
+  // This is the "standard layout" scaled with 1.8
   //
   {
-    .description = "VFO for LARGE Screens",
+    .description = "For screens 1888 pix and more",
+    .min_meter = 380,
     .width = 1420,
     .height = 170,
     .size1 = 28,
@@ -117,11 +119,85 @@ const VFO_BAR_LAYOUT vfo_layout_list[] = {
   },
 
   //
-  // A layout tailored for a screen 1600 px wide,
-  // which is the 1280px version scaled with 1.25
+  // This is the "standard layout" scaled with 1.5
   //
   {
-    .description = "VFO for 1600px Screens",
+    .description = "For screens 1632 ... 1856 pix",
+    .min_meter = 350,
+    .width = 1210,
+    .height = 145,
+    .size1 = 24,
+    .size2 = 45,
+    .size3 = 66,
+
+    .vfo_a_l = 5,
+    .vfo_a_r = 525,
+    .vfo_a_y = 105,
+    .vfo_b_l = 735,
+    .vfo_b_r = 1210,
+    .vfo_b_y = 105,
+
+    .mode_x = 5,
+    .mode_y = 36,
+    .agc_x = 375,
+    .agc_y = 36,
+    .nr_x = 525,
+    .nr_y = 36,
+    .nb_x = 600,
+    .nb_y = 36,
+    .anf_x = 660,
+    .anf_y = 36,
+    .snb_x = 735,
+    .snb_y = 36,
+    .div_x = 795,
+    .div_y = 36,
+    .eq_x = 855,
+    .eq_y = 36,
+    .cat_x = 930,
+    .cat_y = 36,
+
+    .cmpr_x = 525,
+    .cmpr_y = 68,
+    .ps_x = 735,
+    .ps_y = 135,
+    .dexp_x = 660,
+    .dexp_y = 68,
+
+    .vox_x = 525,
+    .vox_y = 102,
+    .dup_x = 660,
+    .dup_y = 102,
+
+    .lock_x = 5,
+    .lock_y = 135,
+    .zoom_x = 135,
+    .zoom_y = 135,
+    .ctun_x = 270,
+    .ctun_y = 135,
+    .step_x = 375,
+    .step_y = 135,
+    .split_x = 525,
+    .split_y = 135,
+    .sat_x = 660,
+    .sat_y = 135,
+    .rit_x = 795,
+    .rit_y = 135,
+    .xit_x = 930,
+    .xit_y = 135,
+    .filter_x = 1035,
+    .filter_y = 36,
+    .multifn_x = 1070,
+    .multifn_y = 135,
+    .lat_x = 5,
+    .lat_y = 63
+  },
+
+  //
+  // This is the "standard layout" scaled with 1.25
+  //
+  {
+    .description = "For screens 1408 ... 1600 pix",
+    .min_meter = 320,
     .width = 1005,
     .height = 120,
     .size1 = 20,
@@ -190,13 +266,88 @@ const VFO_BAR_LAYOUT vfo_layout_list[] = {
     .lat_x = 5,
     .lat_y = 52
   },
+
   //
-  // A layout tailored for a screen 1280 px wide:
-  // a Layout with dial digits of size 50, and a "LED" size 20
-  // which requires a width of 875 and a height of 90
+  // This is the "standard layout" scaled with 1.15
   //
   {
-    .description = "VFO for 1280px Screens",
+    .description = "For screens 1280 ... 1376 pix",
+    .min_meter = 290,
+    .width = 925,
+    .height = 109,
+    .size1 = 18,
+    .size2 = 34,
+    .size3 = 50,
+
+    .vfo_a_l = 5,
+    .vfo_a_r = 405,
+    .vfo_a_y = 80,
+    .vfo_b_l = 565,
+    .vfo_b_r = 925,
+    .vfo_b_y = 80,
+
+    .mode_x = 5,
+    .mode_y = 28,
+    .agc_x = 285,
+    .agc_y = 28,
+    .nr_x = 405,
+    .nr_y = 28,
+    .nb_x = 460,
+    .nb_y = 28,
+    .anf_x = 505,
+    .anf_y = 28,
+    .snb_x = 565,
+    .snb_y = 28,
+    .div_x = 610,
+    .div_y = 28,
+    .eq_x = 655,
+    .eq_y = 28,
+    .cat_x = 715,
+    .cat_y = 28,
+
+    .cmpr_x = 405,
+    .cmpr_y = 52,
+    .ps_x = 565,
+    .ps_y = 105,
+    .dexp_x = 505,
+    .dexp_y = 52,
+
+    .vox_x = 405,
+    .vox_y = 78,
+    .dup_x = 505,
+    .dup_y = 78,
+
+    .lock_x = 5,
+    .lock_y = 105,
+    .zoom_x = 105,
+    .zoom_y = 105,
+    .ctun_x = 205,
+    .ctun_y = 105,
+    .step_x = 285,
+    .step_y = 105,
+    .split_x = 405,
+    .split_y = 105,
+    .sat_x = 460,
+    .sat_y = 105,
+    .rit_x = 610,
+    .rit_y = 105,
+    .xit_x = 715,
+    .xit_y = 105,
+    .filter_x = 795,
+    .filter_y = 28,
+    .multifn_x = 820,
+    .multifn_y = 105,
+    .lat_x = 5,
+    .lat_y = 48
+  },
+
+  //
+  // This is the "standard layout". All larger layouts
+  // are derived from this one by simple scaling
+  //
+  {
+    .description = "For screens 1152 ... 1248 pix",
+    .min_meter = 270,
     .width = 805,
     .height = 95,
     .size1 = 16,
@@ -266,12 +417,11 @@ const VFO_BAR_LAYOUT vfo_layout_list[] = {
   },
 
   //
-  // A layout tailored for a screen 1024 px wide:
-  // a Layout with dial digits of size 40, and a "LED" size 17
-  // which requires a width of 745 and a height of 78
+  // This layout is optimised for 1024 pix screens
   //
   {
-    .description = "VFO for 1024px Screens",
+    .description = "For screens 1024 ... 1120 pix",
+    .min_meter = 260,
     .width = 700,
     .height = 82,
     .size1 = 14,
@@ -339,8 +489,86 @@ const VFO_BAR_LAYOUT vfo_layout_list[] = {
     .lat_x = 5,
     .lat_y = 35
   },
+
+  //
+  // This is the "legacy layout" scaled with 1.15
+  //
   {
-    .description = "VFO for 832px Screens",
+    .description = "For screens 928 ... 992 pix",
+    .min_meter = 250,
+    .width = 610,
+    .height = 92,
+    .size1 = 15,
+    .size2 = 20,
+    .size3 = 36,
+
+    .vfo_a_l = 5,
+    .vfo_a_r = 276,
+    .vfo_a_y = 62,
+    .vfo_b_l = 356,
+    .vfo_b_r = 610,
+    .vfo_b_y = 62,
+
+    .mode_x = 5,
+    .mode_y = 18,
+    .agc_x = 201,
+    .agc_y = 18,
+    .nr_x = 276,
+    .nr_y = 18,
+    .nb_x = 324,
+    .nb_y = 18,
+    .anf_x = 356,
+    .anf_y = 18,
+    .snb_x = 391,
+    .snb_y = 18,
+    .div_x = 443,
+    .div_y = 18,
+    .cmpr_x = 529,
+    .cmpr_y = 18,
+    .cat_x = 483,
+    .cat_y = 18,
+
+    .eq_x = 276,
+    .eq_y = 41,
+    .ps_x = 324,
+    .ps_y = 41,
+
+    .vox_x = 276,
+    .vox_y = 63,
+    .dup_x = 324,
+    .dup_y = 63,
+
+    .lock_x = 5,
+    .lock_y = 83,
+    .zoom_x = 69,
+    .zoom_y = 83,
+    .ctun_x = 138,
+    .ctun_y = 83,
+    .step_x = 184,
+    .step_y = 83,
+    .split_x = 286,
+    .split_y = 83,
+    .sat_x = 324,
+    .sat_y = 83,
+    .rit_x = 356,
+    .rit_y = 83,
+    .xit_x = 443,
+    .xit_y = 83,
+    .filter_x = 0,
+    .multifn_x = 529,
+    .multifn_y = 83,
+    .dexp_x = 0,
+    .dexp_y = 0,
+    .lat_x = 5,
+    .lat_y = 37
+  },
+
+  //
+  // This is the "legacy layout"
+  //
+  {
+    .description = "For screens 832 ... 896 pix",
+    .min_meter = 240,
     .width = 530,
     .height = 80,
     .size1 = 13,
@@ -409,10 +637,79 @@ const VFO_BAR_LAYOUT vfo_layout_list[] = {
   },
 
   //
-  // This is for those who want to run piHPDSR on a 640x480 screen
+  // This is "squeezed" layout scaled with 1.2
   //
   {
-    .description = "VFO for SMALL Screens",
+    .description = "For screens 736 ... 800 pix",
+    .min_meter = 225,
+    .width = 444,
+    .height = 100,
+    .size1 = 16,
+    .size2 = 22,
+    .size3 = 28,
+    .vfo_a_l = 5,
+    .vfo_a_r = 222,
+    .vfo_a_y = 49,
+    .vfo_b_l = 240,
+    .vfo_b_r = 444,
+    .vfo_b_y = 49,
+    .mode_x = 5,
+    .mode_y = 18,
+    .zoom_x = 78,
+    .zoom_y = 65,
+    .ps_x = 5,
+    .ps_y = 82,
+    .rit_x = 204,
+    .rit_y = 18,
+    .xit_x = 312,
+    .xit_y = 18,
+    .nb_x = 42,
+    .nb_y = 98,
+    .nr_x = 5,
+    .nr_y = 98,
+    .anf_x = 78,
+    .anf_y = 98,
+    .snb_x = 114,
+    .snb_y = 98,
+    .agc_x = 168,
+    .agc_y = 98,
+    .cmpr_x = 78,
+    .cmpr_y = 82,
+    .eq_x = 168,
+    .eq_y = 82,
+    .div_x = 42,
+    .div_y = 82,
+    .step_x = 258,
+    .step_y = 98,
+    .ctun_x = 258,
+    .ctun_y = 82,
+    .cat_x = 312,
+    .cat_y = 65,
+    .vox_x = 312,
+    .vox_y = 82,
+    .lock_x = 5,
+    .lock_y = 65,
+    .split_x = 204,
+    .split_y = 65,
+    .sat_x = 168,
+    .sat_y = 65,
+    .dup_x = 258,
+    .dup_y = 65,
+    .filter_x = 0,
+    .multifn_x = 360,
+    .multifn_y = 98,
+    .dexp_x = 0,
+    .dexp_y = 0,
+    .lat_x = 5,
+    .lat_y = 32
+  },
+
+  //
+  // This is the "squeezed" layout for the smallest screens
+  //
+  {
+    .description = "For screens up to 704 pix",
+    .min_meter = 210,
     .width = 370,
     .height = 84,
     .size1 = 13,
@@ -474,6 +771,7 @@ const VFO_BAR_LAYOUT vfo_layout_list[] = {
     .lat_x = 5,
     .lat_y = 27
   },
+
   //
   // The last "layout" must have a negative width to
   // mark the end of the list

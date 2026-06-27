@@ -100,6 +100,7 @@ void profiles_save_state(void) {
       //
       // TX profile
       //
+      SetPropI1("modeset.%d.ptt_delay", i,              RXTXprofile[i].tx.ptt_delay);
       SetPropI1("modeset.%d.en_txeq", i,                RXTXprofile[i].tx.en_eq);
       SetPropI1("modeset.%d.compressor", i,             RXTXprofile[i].tx.compressor);
       SetPropF1("modeset.%d.compressor_level", i,       RXTXprofile[i].tx.compressor_level);
@@ -219,6 +220,7 @@ void profiles_restore_state(void) {
       //
       // TX defaults
       //
+      RXTXprofile[i].tx.ptt_delay = 0;
       RXTXprofile[i].tx.en_eq = 0;
       RXTXprofile[i].tx.compressor = 0;
       RXTXprofile[i].tx.compressor_level = 0.0;
@@ -282,6 +284,7 @@ void profiles_restore_state(void) {
         RXTXprofile[i].rx.filter   = filterF5; //  2700 Hz
         RXTXprofile[i].rx.step     = 100;
         RXTXprofile[i].rx.rit_step = 100;
+        RXTXprofile[i].tx.ptt_delay = 250;
         break;
 
       case modeDIGL:
@@ -290,6 +293,7 @@ void profiles_restore_state(void) {
         RXTXprofile[i].rx.filter   = filterF6; //  1000 Hz
         RXTXprofile[i].rx.step     = 50;
         RXTXprofile[i].rx.rit_step = 100;
+        RXTXprofile[i].tx.ptt_delay = 50;
         break;
 
       case modeCWL:
@@ -298,6 +302,7 @@ void profiles_restore_state(void) {
         RXTXprofile[i].rx.filter   = filterF4; //   500 Hz
         RXTXprofile[i].rx.step     = 25;
         RXTXprofile[i].rx.rit_step = 10;
+        RXTXprofile[i].tx.ptt_delay  = 0;
         break;
 
       case modeAM:
@@ -309,6 +314,7 @@ void profiles_restore_state(void) {
         RXTXprofile[i].rx.filter   = filterF3; //  8000 Hz
         RXTXprofile[i].rx.step     = 100;
         RXTXprofile[i].rx.rit_step = 100;
+        RXTXprofile[i].tx.ptt_delay   = 250;
         break;
 
       case PROF_AUDIO:
@@ -316,6 +322,7 @@ void profiles_restore_state(void) {
         RXTXprofile[i].rx.filter   = filterF0; //  The widest one
         RXTXprofile[i].rx.step     = 100;
         RXTXprofile[i].rx.rit_step = 100;
+        RXTXprofile[i].tx.ptt_delay = 50;
         break;
 
       case PROF_CONTEST:
@@ -340,6 +347,7 @@ void profiles_restore_state(void) {
         RXTXprofile[i].tx.eq_gain[8]  =     0.0;
         RXTXprofile[i].tx.eq_gain[9]  =    -1.0;
         RXTXprofile[i].tx.eq_gain[10] =    -1.0;
+        RXTXprofile[i].tx.ptt_delay = 0;
         break;
       }
 
@@ -390,6 +398,7 @@ void profiles_restore_state(void) {
       GetPropI1("modeset.%d.agc_custom_hang", i,        RXTXprofile[i].rx.agc_custom_hang);
       GetPropI1("modeset.%d.agc_custom_slope", i,       RXTXprofile[i].rx.agc_custom_slope);
       GetPropI1("modeset.%d.en_rxeq", i,                RXTXprofile[i].rx.en_eq);
+      GetPropI1("modeset.%d.ptt_delay", i,              RXTXprofile[i].tx.ptt_delay);
       GetPropI1("modeset.%d.en_txeq", i,                RXTXprofile[i].tx.en_eq);
       GetPropI1("modeset.%d.compressor", i,             RXTXprofile[i].tx.compressor);
       GetPropF1("modeset.%d.compressor_level", i,       RXTXprofile[i].tx.compressor_level);
@@ -576,6 +585,7 @@ void profiles_load_tx_profile(TRANSMITTER *tx, int m) {
     send_txprofile(cl_sock_tcp, 0, m);
   } else {
     suppress_popup_sliders++;
+    ptt_delay            = RXTXprofile[m].tx.ptt_delay;
     tx->eq_enable        = RXTXprofile[m].tx.en_eq;
     tx->compressor       = RXTXprofile[m].tx.compressor;
     tx->compressor_level = RXTXprofile[m].tx.compressor_level;
@@ -736,6 +746,7 @@ void profiles_save_tx_profile(TRANSMITTER *tx, int m) {
   if (radio_is_remote) {
     send_txprofile(cl_sock_tcp, 1, m);
   } else {
+    RXTXprofile[m].tx.ptt_delay           = ptt_delay;
     RXTXprofile[m].tx.en_eq               = tx->eq_enable;
     RXTXprofile[m].tx.compressor          = tx->compressor;
     RXTXprofile[m].tx.compressor_level    = tx->compressor_level;

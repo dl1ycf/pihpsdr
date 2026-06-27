@@ -1144,7 +1144,11 @@ static void process_control_bytes(void) {
   if (previous_ptt != hpsdr_ptt) {
     // TODO: what if hpsdr_ptt goes to zero while we
     //       are tuning or two-toning?
-    g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(hpsdr_ptt));
+    if (hpsdr_ptt) {
+      g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(1));
+    } else {
+      g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
+    }
   }
 
   if ((device == DEVICE_HERMES_LITE2) && (control_in[0] & 0x80)) {
