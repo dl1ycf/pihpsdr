@@ -80,12 +80,10 @@
 #define min(x,y) (x<y?x:y)
 #define max(x,y) (x<y?y:x)
 
-const int MIN_METER_WIDTH = 160;
-const int MIN_ADD_METER_WIDTH =  75;
 const int MENU_WIDTH = 60;
 
 int METER_WIDTH = 160;            // re-calculated for the current VFO bar layout
-int ADD_METER_WIDTH = 0;          // re-calculated for the current VFO bar layout
+int ADD_METER_WIDTH = 50;         // re-calculated for the current VFO bar layout
 
 int VFO_HEIGHT = 80;              // taken from the current VFO bar layout
 int VFO_WIDTH = 530;              // taken from the current VFO bar layout
@@ -559,9 +557,7 @@ static void choose_vfo_layout(void) {
   // choose largest possible VFO layout that fits
   //
   const VFO_BAR_LAYOUT *vfl = vfo_layout_list;
-  int avail = display_width[display_size] - MENU_WIDTH - MIN_METER_WIDTH;
-
-  if (extended_meter) { avail -= MIN_ADD_METER_WIDTH; }
+  int avail = display_width[display_size] - MENU_WIDTH;
 
   for (;;) {
     if (vfl->width < 0) {
@@ -569,25 +565,26 @@ static void choose_vfo_layout(void) {
       break;
     }
 
-    if (vfl->width <= avail) { break; }
+    int need = vfl->min_meter;
+
+    if (!extended_meter) { need = (2 * need) / 3; }
+
+    if (vfl->width + need <= avail) { break; }
 
     vfl++;
   }
 
   current_vfo_layout = vfl;
+  METER_WIDTH = (2 * current_vfo_layout->min_meter) / 3;
+
+  if (extended_meter) {
+    ADD_METER_WIDTH = current_vfo_layout->min_meter / 3;
+  } else {
+    ADD_METER_WIDTH = 0;
+  }
 
   VFO_HEIGHT = current_vfo_layout->height;
-  int spare = display_width[display_size] - MENU_WIDTH - MIN_METER_WIDTH - current_vfo_layout->width;
-  METER_WIDTH = MIN_METER_WIDTH;
-  ADD_METER_WIDTH = 0;
-
-  //
-  // If space permits, first add the extended metering
-  //
-  if (spare >= MIN_ADD_METER_WIDTH && extended_meter) {
-    ADD_METER_WIDTH = MIN_ADD_METER_WIDTH;
-    spare -= ADD_METER_WIDTH;
-  }
+  int spare = display_width[display_size] - MENU_WIDTH - current_vfo_layout->min_meter - current_vfo_layout->width;
 
   //
   // If there is more space, extend both meters
@@ -595,7 +592,7 @@ static void choose_vfo_layout(void) {
   if (spare > 0) {
     if (ADD_METER_WIDTH > 0) {
       METER_WIDTH += (2 * spare / 3);
-      ADD_METER_WIDTH += (spare / 3);
+      ADD_METER_WIDTH += spare / 3;
     } else {
       METER_WIDTH += spare;
     }
@@ -610,7 +607,7 @@ static void choose_vfo_layout(void) {
 
   METER_WIDTH += ADD_METER_WIDTH;
   VFO_WIDTH = display_width[display_size] - MENU_WIDTH - METER_WIDTH;
-  //t_print("%s: VFO width = %d height=%d, Meter width=%d, extra width=%d\n", __func__, VFO_WIDTH, VFO_HEIGHT, METER_WIDTH, ADD_METER_WIDTH);
+  //t_print("%s: VFO width = %d(%d) pixels meter=%d\n", __func__, current_vfo_layout->width, VFO_WIDTH, METER_WIDTH);
 }
 
 static guint full_screen_timeout = 0;
