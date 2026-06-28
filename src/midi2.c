@@ -58,6 +58,10 @@ void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
   if (event == MIDI_PITCH) {
     desc = MidiCommandsTable[128];
   } else {
+    if (note < 0 || note > 127) {
+      t_print("%s: invalid MIDI note/controller index=%d\n", __func__, note);
+      return;
+    }
     desc = MidiCommandsTable[note];
   }
 
@@ -158,7 +162,9 @@ void MidiReleaseCommands(void) {
 void MidiAddCommand(int note, struct desc *desc) {
   struct desc *loop;
 
-  if (note < 0 || note > 128) { return; }
+  if (note < 0 || note > 128 || desc == NULL) { return; }
+  desc->next = NULL;
+
 
   //
   // Actions with channel == -1 (ANY) must go to the end of the list
@@ -222,7 +228,9 @@ void midi_save_state(void) {
   int i;
   entry = 0;
   SetPropI0("midiIgnoreCtrlPairs", midiIgnoreCtrlPairs);
-
+  for (i = 0; i < MAX_MIDI_DEVICES; i++) {
+    SetPropS1 ("mididevice[%d].name", i, "NO_MIDI_DEVICE_FOUND");
+  }
   for (i = 0; i < n_midi_devices; i++) {
     if (midi_devices[i].active) {
       SetPropS1("mididevice[%d].name", entry, midi_devices[i].name);
@@ -264,9 +272,7 @@ void midi_save_state(void) {
       cmd = cmd->next;
     }
 
-    if (entry != -1) {
-      SetPropI1("midi[%d].entries", i, entry + 1);
-    }
+    SetPropI1("midi[%d].entries", i, entry + 1);
   }
 }
 
@@ -322,6 +328,9 @@ void midi_restore_state(void) {
       //
       action = NO_ACTION;
       GetPropA3("midi[%d].entry[%d].channel[%d].action", i, entry, channel, action);
+      if (event == EVENT_NONE || type == AT_NONE || action < 0 || action >= ACTIONS) {
+        continue;
+      }
 
       //
       // execute fixed mapping MIDI_KEY-->AT_BTN and MIDI_PITCH-->AT_KNB
@@ -394,9 +403,8 @@ void midi_restore_state(void) {
       // Construct descriptor and add to the list of MIDI commands
       //
       struct desc *desc = g_new(struct desc, 1);
-
-      if (!desc) {
-        fatal_error("FATAL: alloc desc in midi");
+      if (desc == NULL) {
+        t_print ("%s: failed to allocate MIDI command descriptor\n", __func__);
         return;
       }
 
