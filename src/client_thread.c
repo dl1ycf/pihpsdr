@@ -32,6 +32,16 @@
 #include <sys/time.h>
 #include <errno.h>
 
+#ifdef __APPLE__
+#include "MacOS.h"  // emulate clock_gettime on old MacOS systems
+#else
+
+// using clock_nanosleep of librt
+extern int clock_nanosleep(clockid_t __clock_id, int __flags,
+                           __const struct timespec *__req,
+                           struct timespec *__rem);
+#endif
+
 #include "audio.h"
 #include "band.h"
 #include "client_server.h"
@@ -49,6 +59,7 @@
   #include "tci.h"
   #include "tci_audio.h"
 #endif
+#include "transmitter.h"
 #include "tx_panadapter.h"
 #include "vfo.h"
 #include "vox.h"
@@ -64,7 +75,7 @@ static int accumulated_steps[2] = {0, 0};
 static long long accumulated_hz[2] = {0LL, 0LL};
 static int accumulated_round[2] = {FALSE, FALSE};
 guint check_vfo_timer_id = 0;
-static int cl_sock_udp;
+static int cl_sock_udp = -1;
 static struct sockaddr_in server_address;
 
 //
@@ -384,134 +395,140 @@ int radio_connect_remote(char *host, int port, const char *pwd) {
   return 0;
 }
 
-void server_tx_audio(double sample) {
-  //
-  // This is called in the client and collects data to be
-  // sent to the server
-  //
-  static opus_int16 tx_pcm_buf[OPUS_FRAME_SIZE];
-  static int        tx_pcm_idx = 0;
+//
+// In remote operation, this thread is called instead of
+// tx_add_mic_sample. It fires exactly every 2 msec,
+// and then calls for 96 microphone samples which it puts into
+// a buffer. When this is full (after possible compression), it
+// is sent to the server.
+//
+gpointer remote_txaudio_thread(gpointer data) {
+  TRANSMITTER *tx = (TRANSMITTER *) data;
+  struct timespec ts;
+  opus_int16 tx_pcm_buf[OPUS_FRAME_SIZE];
+  int        tx_pcm_idx = 0;
+  int txaudio_buffer_index = 0;
+  TXAUDIO_DATA txaudio_data;
+
+  if (!can_transmit || cl_sock_udp < 0 ) { return NULL; } // PARANOIA
+
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+
+  for (;;) {
+    double peak = 0.0;
+
+    for (int i = 0; i < 96; i++) {
+      double sample = 0.0;
+
+      if (tx->local_audio) {
+        sample = audio_get_next_mic_sample(tx);
+      }
 
 #ifdef TCI
 
-  //
-  // This overwrites the sample if TCI audio is available
-  //
-  if (tci_audio_tx_active) {
-    sample = tci_get_next_mic_sample();
-  }
+      //
+      // This overwrites _sample if TCI audio is available
+      //
+      if (tci_audio_tx_active) {
+        sample = tci_get_next_mic_sample();
+      }
 
 #endif
 
-  if (audio_compression && tx_opus_enc == NULL ) {
-    //
-    // Attempt to init OPUS when coming here for the first time only
-    // Upon failure, continue with PCM
-    //
-    int err;
-    tx_opus_enc = opus_encoder_create(OPUS_SAMPLE_RATE, 1, OPUS_APPLICATION_VOIP, &err);
+      if (sample > peak) { peak = sample; }
 
-    if (err != OPUS_OK || tx_opus_enc == NULL) {
-      t_print("TX Opus encoder create failed: %s\n", opus_strerror(err));
-      tx_opus_enc = NULL;
-      audio_compression = 0;
-    } else {
-      opus_encoder_ctl(tx_opus_enc, OPUS_SET_BITRATE(32000));
-      opus_encoder_ctl(tx_opus_enc, OPUS_SET_COMPLEXITY(5));
-      opus_encoder_ctl(tx_opus_enc, OPUS_SET_SIGNAL(OPUS_SIGNAL_VOICE));
-    }
-  }
+      if (-sample > peak) { peak = -sample; }
 
-  static int txaudio_buffer_index = 0;
-  static TXAUDIO_DATA txaudio_data;
-
-  if (!can_transmit) {
-    return;
-  }
-
-  static double peak = 0.0;
-
-  if (cl_sock_tcp < 0) { return; }
-
-  if (sample > peak) { peak = sample; }
-
-  if (-sample > peak) { peak = -sample; }
-
-  if (tx_opus_enc) {
-    tx_pcm_buf[tx_pcm_idx++] = (opus_int16)(sample * 32767.0);
-
-    if (tx_pcm_idx >= OPUS_FRAME_SIZE) {
-      int txmode = vfo_get_tx_mode();
-
-      if (radio_is_transmitting() && txmode != modeCWU && txmode != modeCWL && !transmitter->tune && !transmitter->twotone) {
+      if (tx_opus_enc) {
         //
-        // The actual transmission of the mic audio samples only takes  place
-        // if we *need* them (note VOX is handled locally)
+        // Put sample into OPUS buffer.
+        // If this if full, compress and send it.
         //
-        static OPUS_AUDIO_DATA tx_pkt;
-        SYNC(tx_pkt.header.sync);
-        tx_pkt.header.data_type = to_16(INFO_TXAUDIO_OPUS);
-        tx_pkt.header.b1 = 0;
-        int nbytes = opus_encode(tx_opus_enc, tx_pcm_buf, OPUS_FRAME_SIZE, tx_pkt.payload, OPUS_MAX_PACKET);
+        tx_pcm_buf[tx_pcm_idx++] = (opus_int16)(sample * 32767.0);
 
-        if (nbytes > 0) {
-          tx_pkt.header.s1 = to_16(nbytes);
-          int xferlen = (int)(sizeof(HEADER) + nbytes);
+        if (tx_pcm_idx >= OPUS_FRAME_SIZE) {
+          int txmode = vfo_get_tx_mode();
 
-          if (send(cl_sock_udp, &tx_pkt, xferlen, 0) < 0) {
-            perror("TXAUDIO_OPUS:UDP:SEND");
+          if (radio_is_transmitting() && txmode != modeCWU && txmode != modeCWL && !transmitter->tune && !transmitter->twotone) {
+            //
+            // The actual transmission of the mic audio samples only takes  place
+            // if we *need* them (note VOX is handled locally)
+            //
+            static OPUS_AUDIO_DATA tx_pkt;
+            SYNC(tx_pkt.header.sync);
+            tx_pkt.header.data_type = to_16(INFO_TXAUDIO_OPUS);
+            tx_pkt.header.b1 = 0;
+            int nbytes = opus_encode(tx_opus_enc, tx_pcm_buf, OPUS_FRAME_SIZE, tx_pkt.payload, OPUS_MAX_PACKET);
+
+            if (nbytes > 0) {
+              tx_pkt.header.s1 = to_16(nbytes);
+              int xferlen = (int)(sizeof(HEADER) + nbytes);
+
+              if (send(cl_sock_udp, &tx_pkt, xferlen, 0) < 0) {
+                perror("TXAUDIO_OPUS:UDP:SEND");
+              }
+            }
+
+            tx_pcm_idx = 0;
+          } else {
+            //
+            // Since we are NOT transmitting, delete first half of the buffer
+            // so that if a RX/TX transition occurs, there  is "some" data available
+            //
+            memcpy(tx_pcm_buf, tx_pcm_buf + (OPUS_FRAME_SIZE / 2), (OPUS_FRAME_SIZE / 2) * sizeof(opus_int16));
+            tx_pcm_idx = (OPUS_FRAME_SIZE / 2);
           }
         }
-
-        tx_pcm_idx = 0;
       } else {
         //
-        // Since we are NOT transmitting, delete first half of the buffer
-        // so that if a RX/TX transition occurs, there  is "some" data available
+        // Put sample into small buffer, if full, send it.
         //
-        memcpy(tx_pcm_buf, tx_pcm_buf + (OPUS_FRAME_SIZE / 2), (OPUS_FRAME_SIZE / 2) * sizeof(opus_int16));
-        tx_pcm_idx = (OPUS_FRAME_SIZE / 2);
+        int32_t s = (int32_t)(sample  * 32766.672 + 32767.5) - 32767;
+        txaudio_data.samples[txaudio_buffer_index++] = to_16(s);
+
+        if (txaudio_buffer_index >= AUDIO_DATA_SIZE) {
+          int txmode = vfo_get_tx_mode();
+
+          if (radio_is_transmitting() && txmode != modeCWU && txmode != modeCWL && !transmitter->tune && !transmitter->twotone) {
+            //
+            // The actual transmission of the mic audio samples only takes  place
+            // if we *need* them (note VOX is handled locally)
+            //
+            SYNC(txaudio_data.header.sync);
+            txaudio_data.header.data_type = to_16(INFO_TXAUDIO);
+            txaudio_data.header.s1 = to_16(txaudio_buffer_index);
+
+            if (send(cl_sock_udp, &txaudio_data, sizeof(TXAUDIO_DATA), 0) < 0) {
+              perror("TXAUDIO:UDP:SEND");
+            }
+
+            txaudio_buffer_index = 0;
+          } else {
+            //
+            // Since we are NOT transmitting, delete first half of the buffer
+            // so that if a RX/TX transition occurs, there  is "some" data available
+            //
+            memcpy(txaudio_data.samples, txaudio_data.samples + (AUDIO_DATA_SIZE / 2), (AUDIO_DATA_SIZE / 2) * sizeof(uint16_t));
+            txaudio_buffer_index = (AUDIO_DATA_SIZE / 2);
+          }
+        }
       }
-
-      vox_update(peak);
-      peak = 0.0;
     }
-
-    return;
-  }
-
-  int32_t s = (int32_t)(sample  * 32766.672 + 32767.5) - 32767;
-  txaudio_data.samples[txaudio_buffer_index++] = to_16(s);
-
-  if (txaudio_buffer_index >= AUDIO_DATA_SIZE) {
-    int txmode = vfo_get_tx_mode();
-
-    if (radio_is_transmitting() && txmode != modeCWU && txmode != modeCWL && !transmitter->tune && !transmitter->twotone) {
-      //
-      // The actual transmission of the mic audio samples only takes  place
-      // if we *need* them (note VOX is handled locally)
-      //
-      SYNC(txaudio_data.header.sync);
-      txaudio_data.header.data_type = to_16(INFO_TXAUDIO);
-      txaudio_data.header.s1 = to_16(txaudio_buffer_index);
-
-      if (send(cl_sock_udp, &txaudio_data, sizeof(TXAUDIO_DATA), 0) < 0) {
-        perror("TXAUDIO:UDP:SEND");
-      }
-
-      txaudio_buffer_index = 0;
-    } else {
-      //
-      // Since we are NOT transmitting, delete first half of the buffer
-      // so that if a RX/TX transition occurs, there  is "some" data available
-      //
-      memcpy(txaudio_data.samples, txaudio_data.samples + (AUDIO_DATA_SIZE / 2), (AUDIO_DATA_SIZE / 2) * sizeof(uint16_t));
-      txaudio_buffer_index = (AUDIO_DATA_SIZE / 2);
-    }
-
     vox_update(peak);
     peak = 0.0;
+    //
+    // Advance time by 2 msec and wait until this is over
+    //
+    ts.tv_nsec += 2000000;
+
+    if (ts.tv_nsec > 1000000000) {
+        ts.tv_nsec -= 1000000000;
+        ts.tv_sec += 1;
+    }
+
+    clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
   }
+  return NULL;
 }
 
 //
@@ -819,33 +836,33 @@ gpointer client_udp_thread(gpointer arg) {
       //
       // Note CAPTURing is only done on the server side
       //
-      if (rx->local_audio) {
-        for (int i = 0; i < numsamples; i++) {
-          double left_sample = from_16(rxdata->samples[i]) * 0.00003051;
-          double right_sample = left_sample;
+      for (int i = 0; i < numsamples; i++) {
+        double left_sample = from_16(rxdata->samples[i]) * 0.00003051;
+        double right_sample = left_sample;
 
-          if (radio_is_transmitting() && (!duplex || mute_rx_while_transmitting)) {
-            left_sample = 0.0;
-            right_sample = 0.0;
-          }
+        if (radio_is_transmitting() && (!duplex || mute_rx_while_transmitting)) {
+          left_sample = 0.0;
+          right_sample = 0.0;
+        }
 
-          if (rx->mute_radio || (rx != active_receiver && rx->mute_when_not_active)) {
-            left_sample = 0.0;
-            right_sample = 0.0;
-          }
+        if (rx->mute_radio || (rx != active_receiver && rx->mute_when_not_active)) {
+          left_sample = 0.0;
+          right_sample = 0.0;
+        }
 
-          if (rx->audio_channel == LEFT)  { right_sample = 0.0; }
+        if (rx->audio_channel == LEFT)  { right_sample = 0.0; }
 
-          if (rx->audio_channel == RIGHT) { left_sample  = 0.0; }
+        if (rx->audio_channel == RIGHT) { left_sample  = 0.0; }
 
 #ifdef TCI
 
-          if (tci_audio_rx_active) {
-            tci_audio_rx_sample(rx, left_sample, right_sample);
-          }
+        if (tci_audio_rx_active) {
+          tci_audio_rx_sample(rx->id, left_sample, right_sample);
+        }
 
 #endif
 
+        if (rx->local_audio) {
           audio_write(rx, left_sample, right_sample);
         }
       }
@@ -861,7 +878,7 @@ gpointer client_udp_thread(gpointer arg) {
 
       RECEIVER *rx = receiver[id];
 
-      if (audio_compression && rx->local_audio) {
+      if (audio_compression) {
         opus_int16 pcm_out[OPUS_FRAME_SIZE * 2]; // why * 2, it is mono
         int encoded_bytes = from_16(pkt->header.s1);
         int nsamples = opus_decode(opus_dec[id], pkt->payload, encoded_bytes, pcm_out, OPUS_FRAME_SIZE, 0);
@@ -882,7 +899,17 @@ gpointer client_udp_thread(gpointer arg) {
 
           if (rx->audio_channel == RIGHT) { left_sample  = 0.0; }
 
-          audio_write(rx, left_sample, right_sample);
+#ifdef TCI
+
+          if (tci_audio_rx_active) {
+            tci_audio_rx_sample(rx->id, left_sample, right_sample);
+          }
+
+#endif
+
+          if (rx->local_audio) {
+            audio_write(rx, left_sample, right_sample);
+          }
         }
       }
     }
@@ -1401,6 +1428,7 @@ static gpointer client_tcp_thread(gpointer arg) {
 
       //
       // When transmitter data is fully received, we can set can_transmit
+      // and start the TX audio thread
       //
       transmitter->id                        = data.id;
       transmitter->dac                       = data.dac;
@@ -1472,6 +1500,7 @@ static gpointer client_tcp_thread(gpointer arg) {
       }
 
       can_transmit = 1;
+      g_thread_new("remote_txaudio", remote_txaudio_thread, transmitter);
       g_idle_add(sliders_drive, GINT_TO_POINTER(100));
       g_idle_add(sliders_mic_gain, GINT_TO_POINTER(100));
       g_idle_add(sliders_cmpr, GINT_TO_POINTER(100));

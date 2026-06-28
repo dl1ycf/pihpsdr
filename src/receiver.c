@@ -1259,7 +1259,7 @@ static void rx_process_buffer(RECEIVER *rx) {
 #ifdef TCI
 
     if (tci_audio_rx_active) {
-      tci_audio_rx_sample(rx, left_sample, right_sample);
+      tci_audio_rx_sample(rx->id, left_sample, right_sample);
     }
 
 #endif

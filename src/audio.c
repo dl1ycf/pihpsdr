@@ -681,15 +681,6 @@ static gpointer tx_audio_thread(gpointer arg) {
       }
 
       //
-      // If we are a client, simply collect and transfer data
-      // to the server without any buffering
-      //
-      if (radio_is_remote) {
-        server_tx_audio(sample);
-        continue;
-      }
-
-      //
       // put sample into ring buffer
       // Note check on the mic ring buffer is not necessary
       // since audio_close_input() waits for this thread to

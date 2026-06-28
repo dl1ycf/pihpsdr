@@ -258,15 +258,6 @@ static gpointer tx_audio_thread(gpointer arg) {
     } else {
       for (int i = 0; i < inp_buffer_size; i++) {
         //
-        // If we are a client, simply collect and transfer data
-        // to the server without any buffering
-        //
-        if (radio_is_remote) {
-          server_tx_audio((double) buffer[i]);
-          continue;
-        }
-
-        //
         // put sample into ring buffer
         //
         int newpt = tx->audio_buffer_inpt + 1;
