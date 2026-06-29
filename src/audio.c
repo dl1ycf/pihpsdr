@@ -300,7 +300,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       //
       if (snd_pcm_delay(rx->audio_handle, &delay) == 0) {
         snd_pcm_sframes_t max = snd_pcm_rewindable(rx->audio_handle);
-        if (delay - cw_mid_water < max) { max = delay - cw_mid_water);
+        if (delay - cw_mid_water < max) { max = delay - cw_mid_water; }
         snd_pcm_rewind(rx->audio_handle, max);
       }
 
