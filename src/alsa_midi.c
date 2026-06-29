@@ -138,7 +138,7 @@ static void *midi_thread(void *arg) {
     // Parse all bytes in the buffer
     //
     for (i = 0; i < ret; i++) {
-      parse_midi_byte((int)buf[i]);
+      parse_midi_byte((int)buf[i], &parser);
     }
   }
 
