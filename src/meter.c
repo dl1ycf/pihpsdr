@@ -43,10 +43,6 @@ static cairo_surface_t *meter_surface = NULL;
 //
 static int rxtxstate = 0;
 
-#define CNTMAX 5
-#define EXPAV1 0.75
-#define EXPAV2 0.25
-
 static gboolean meter_configure_event_cb (GtkWidget *widget, GdkEventConfigure *event, gpointer data) {
   if (meter_surface) {
     cairo_surface_destroy (meter_surface);
@@ -370,37 +366,41 @@ static void rxmeter_edgewise(cairo_t *cr, double smtr, int sval, int sval2,
   }
 
   //
-  // White peak-hold needle
+  // White peak-hold needle: as long as live needle
   //
   angle   = min_angle + pk * bydb;
   radians = angle * M_PI / 180.0;
+  double cosr = cos(radians);  // to be re-used
+  double sinr = sin(radians);  // to be re-used
   cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.9);
   cairo_set_line_width(cr, 1.4 * scalfac);
-  cairo_move_to(cr, cx + (radius - 26.0 * scalfac) * cos(radians),
-                pivot_y + (radius - 26.0 * scalfac) * sin(radians));
-  cairo_line_to(cr, cx + (radius + 4.0 * scalfac) * cos(radians),
-                pivot_y + (radius + 4.0 * scalfac) * sin(radians));
+  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cosr,
+                pivot_y + (radius - 30.0 * scalfac) * sinr);
+  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cosr,
+                pivot_y + (radius + 5.0 * scalfac) * sinr);
   cairo_stroke(cr);
   //
   // Live needle (short, stubby), coloured by zone
   //
   angle   = min_angle + smtr * bydb;
   radians = angle * M_PI / 180.0;
+  cosr = cos(radians);  // to be re-used
+  sinr = sin(radians);  // to be re-used
   meter_zone_rgb(frac, &r, &g, &b);
   cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
   cairo_set_source_rgba(cr, r, g, b, 0.25);          // glow
   cairo_set_line_width(cr, 4.0 * scalfac);
-  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cos(radians),
-                pivot_y + (radius - 30.0 * scalfac) * sin(radians));
-  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cos(radians),
-                pivot_y + (radius + 5.0 * scalfac) * sin(radians));
+  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cosr,
+                pivot_y + (radius - 30.0 * scalfac) * sinr);
+  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cosr,
+                pivot_y + (radius + 5.0 * scalfac) * sinr);
   cairo_stroke(cr);
   cairo_set_source_rgba(cr, r, g, b, 0.96);          // needle
   cairo_set_line_width(cr, 2.2 * scalfac);
-  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cos(radians),
-                pivot_y + (radius - 30.0 * scalfac) * sin(radians));
-  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cos(radians),
-                pivot_y + (radius + 5.0 * scalfac) * sin(radians));
+  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cosr,
+                pivot_y + (radius - 30.0 * scalfac) * sinr);
+  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cosr,
+                pivot_y + (radius + 5.0 * scalfac) * sinr);
   cairo_stroke(cr);
   //
   // Readouts: S-value bottom-left, dBm bottom-right
@@ -526,33 +526,31 @@ static void txmeter_edgewise(cairo_t *cr, double frac, double pk, const char *pw
   //
   angle   = min_angle + pk * (max_angle - min_angle);
   radians = angle * M_PI / 180.0;
+  double cosr=cos(radians);
+  double sinr=sin(radians);
   cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.9);
   cairo_set_line_width(cr, 1.4 * scalfac);
-  cairo_move_to(cr, cx + (radius - 26.0 * scalfac) * cos(radians),
-                pivot_y + (radius - 26.0 * scalfac) * sin(radians));
-  cairo_line_to(cr, cx + (radius + 4.0 * scalfac) * cos(radians),
-                pivot_y + (radius + 4.0 * scalfac) * sin(radians));
+  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cosr, pivot_y + (radius - 30.0 * scalfac) * sinr);
+  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cosr, pivot_y + (radius + 5.0 * scalfac) * sinr);
   cairo_stroke(cr);
   //
   // Live needle
   //
   angle   = min_angle + frac * (max_angle - min_angle);
   radians = angle * M_PI / 180.0;
+  cosr=cos(radians);
+  sinr=sin(radians);
   meter_zone_rgb(frac, &r, &g, &b);
   cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
   cairo_set_source_rgba(cr, r, g, b, 0.25);
   cairo_set_line_width(cr, 4.0 * scalfac);
-  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cos(radians),
-                pivot_y + (radius - 30.0 * scalfac) * sin(radians));
-  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cos(radians),
-                pivot_y + (radius + 5.0 * scalfac) * sin(radians));
+  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cosr, pivot_y + (radius - 30.0 * scalfac) * sinr);
+  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cosr, pivot_y + (radius + 5.0 * scalfac) * sinr);
   cairo_stroke(cr);
   cairo_set_source_rgba(cr, r, g, b, 0.96);
   cairo_set_line_width(cr, 2.2 * scalfac);
-  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cos(radians),
-                pivot_y + (radius - 30.0 * scalfac) * sin(radians));
-  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cos(radians),
-                pivot_y + (radius + 5.0 * scalfac) * sin(radians));
+  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cosr, pivot_y + (radius - 30.0 * scalfac) * sinr);
+  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cosr, pivot_y + (radius + 5.0 * scalfac) * sinr);
   cairo_stroke(cr);
   //
   // Centered text stack: power, SWR, (ALC)
@@ -694,7 +692,7 @@ static void txmeter_powerbar(cairo_t *cr, double frac, double pk, const char *pw
   }
 }
 
-void rxmeter_update(double rxlvl, double peak, double gain, double out) {
+void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out) {
   if (!meter_surface) { return; }
 
   const double min_rxlvl = -200.0;
@@ -731,7 +729,13 @@ void rxmeter_update(double rxlvl, double peak, double gain, double out) {
     rxtxstate = 0;
   }
 
-
+  //
+  // calculate parameters of "fast averaging" such that
+  // it scales well with the frame rate
+  //
+  int CNTMAX = (fps / 2);
+  double EXPAV1 = exp(-2.88/fps);
+  double EXPAV2 = 1.0  - EXPAV1;
   //
   // Only the time-averaged values are "on display"
   // The algorithm to calculate these "sedated" values from the
@@ -823,19 +827,19 @@ void rxmeter_update(double rxlvl, double peak, double gain, double out) {
   //
   // peak-hold on the needle position:
   //  - instant attack
-  //  - hold a while (15 frames)
-  //  - then slow release (S9 --> S0 in 60 frames)
+  //  - hold a while (1.5 sec)
+  //  - then slow release (S9 --> S0 in 6 sec)
   //
 
   if (smtr > pk) {
     pk = smtr;
     if (pk > 114.0)  { pk = 114.0; }
-    pk_count = 15;
+    pk_count = (3 * fps) / 2;
   } else {
     if (pk_count > 0) {
       pk_count--;
     } else {
-      pk -= 1.2; // 72/60
+      pk -= 12.0 / fps;
       if (pk < 0.0) { pk = 0.0; }
     }
   }
@@ -1115,7 +1119,7 @@ void rxmeter_update(double rxlvl, double peak, double gain, double out) {
   gtk_widget_queue_draw (meter);
 }
 
-void txmeter_update(double pwr, double alc, double swr, double mic, double out) {
+void txmeter_update(int fps, double pwr, double alc, double swr, double mic, double out) {
   if (!meter_surface || !can_transmit) { return; }
 
   const double min_alc    = -99.0;
@@ -1153,6 +1157,14 @@ void txmeter_update(double pwr, double alc, double swr, double mic, double out) 
     pk_count = 0;
     rxtxstate = 1;
   }
+
+  //
+  // calculate parameters of "fast averaging" such that
+  // it scales well with the frame rate
+  //
+  int CNTMAX = (fps / 2);
+  double EXPAV1 = exp(-2.88/fps);
+  double EXPAV2 = 1.0  - EXPAV1;
 
   if (max_pwrcount > CNTMAX) { max_pwr = EXPAV1 * max_pwr + EXPAV2 * pwr; }
 
@@ -1253,17 +1265,17 @@ void txmeter_update(double pwr, double alc, double swr, double mic, double out) 
   //
   // peak-hold on the needle position:
   //  - instant attack
-  //  - hold a while (15 frames)
-  //  - then slow release (full --> 0 in 80 frames)
+  //  - hold a while (1.5 sec)
+  //  - then slow release (full --> 0 in 8 seconds)
   //
   if (frac > pk) {
     pk = frac;
-    pk_count = 15;
+    pk_count = (3 * fps) / 2;
   } else {
     if (pk_count > 0) {
       pk_count--;
     } else {
-      pk -= 0.0125;  // 1/80
+      pk -= 0.125 / fps;
       if (pk < 0.0) { pk = 0.0; }
     }
   }

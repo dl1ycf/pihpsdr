@@ -590,7 +590,7 @@ static int rx_update_display(gpointer data) {
       }
 
       rx->rxlvl = level;
-      rxmeter_update(rx->rxlvl, vox_get_peak(), rx->curragc, rx->currout);
+      rxmeter_update(rx->fps, rx->rxlvl, vox_get_peak(), rx->curragc, rx->currout);
     }
 
     g_mutex_lock(&rx->display_mutex);
@@ -1259,7 +1259,7 @@ static void rx_process_buffer(RECEIVER *rx) {
 #ifdef TCI
 
     if (tci_audio_rx_active) {
-      tci_audio_rx_sample(rx, left_sample, right_sample);
+      tci_audio_rx_sample(rx->id, left_sample, right_sample);
     }
 
 #endif

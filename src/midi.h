@@ -16,8 +16,8 @@
 *
 */
 
-#ifndef _MIDI_H_
-#define _MIDI_H_
+#ifndef _PIHPSDR_MIDI_H_
+#define _PIHPSDR_MIDI_H_
 
 #include <gtk/gtk.h>
 
@@ -28,41 +28,30 @@
  *
  * Midi support works in three layers
  *
- * Layer-1: hardware specific
- * --------------------------
+ * Layer-1: hardware specific (alsa_midi.c or mac_midi.c)
+ * ------------------------------------------------------
  *
  * Layer1 either implements a callback function (if the operating system
- * supports MIDI) or a separate thread polling MIDI data. Whenever a
- * MIDI command arrives, such as Note on/off or Midi-Controller value
- * changed, it calls Layer 2.
+ * supports MIDI) or a separate thread polling MIDI data. All bytes of the
+ * MIDI byte stream are then delegated to the parser.
  *
- * Layer-2: MIDI device specific
- * -----------------------------
+ * Layer-2: MIDI specific (midi2.c)
+ * --------------------------------
  *
- * Layer2 translates MIDI commands into pihpsdr actions. This is done with
+ * Layer2 first parses the MIDI bytes and forms MIDI commands, and then
+ * translates MIDI commands into pihpsdr actions. This is done with
  * a table-driven algorithm, such that the same translator can be used for
  * any MIDI device provided the tables have been set up correctly.
  * It seems overly complicated to create a user interface for setting up
  * these tables, instead a standard text file describing the MIDI device
  * is read and the tables are set up.
- * Layer-2 has SDR applications in mind, but is not necessarily specific
- * to pihpsr. It calls the Layer-3 function.
  *
- * Layer-3: pihpsdr specific
- * -------------------------
+ * Layer-3: SDR specific (midi3.c)
+ * -------------------------------
  *
- * Layer 3, finally, implements all the "actions" we can make, such as TUNE
- * or VFO. This Layer calls pihpsdr functions.
+ * Layer 3 mostly just schedules "actions". For VFO commands, it "collects"
+ * several such actions (over a time window of 100 msec) and combines them
  *
- * One word to MIDI channels. Usually, a MIDI device can be configured to use
- * a specific channel, such that different keyboards use different channels.
- * The Layer-2 tables can either specify that the MIDI command has to come from
- * a specific channel, or can specify that the action will be taken not matter which
- * channel the MIDI message comes from. The latter case should be the default, but
- * if we want to connect more than one MIDI device, we need to speficy the channel.
- *
- * In principle this supports more than one MIDI device, but in this case they
- * must generate MIDI events on different channels
  */
 
 typedef struct _midi_device {
@@ -76,6 +65,34 @@ extern MIDI_DEVICE midi_devices[MAX_MIDI_DEVICES];
 extern int n_midi_devices;
 
 extern void get_midi_devices(void);
+
+//
+// Types for a state machine that parses incominig MIDI bytes
+//
+
+typedef  enum {
+  STATE_SKIP,             // skip bytes until command bit is set
+  STATE_ARG1,             // one arg byte to come
+  STATE_ARG2,             // two arg bytes to come
+} MIDI_PARSE_STATE;
+
+typedef enum {
+  CMD_NOTEON,
+  CMD_NOTEOFF,
+  CMD_CTRL,
+  CMD_PITCH,
+} MIDI_PARSE_COMMAND;
+
+//
+// MIDI_PARSER is the state of the parser
+//
+typedef struct {
+  MIDI_PARSE_STATE state;
+  MIDI_PARSE_COMMAND command;
+  int chan;
+  int arg1;
+  int arg2;
+} MIDI_PARSER;
 
 //
 // MIDIevent encodes the actual MIDI event "seen" in Layer-1 and
@@ -135,12 +152,11 @@ void configure_midi_device(gboolean state);
 //
 // Layer-2 entry point (called by Layer1)
 //
-// When Layer-1 has received a MIDI message, it calls
-// NewMidiEvent.
+// When Layer-1 has received a MIDI byte, it calls
+// parse_midi_byte.
 //
 
-void NewMidiEvent(enum MIDIevent event, int channel, int note, int val);
-int ReadLegacyMidiFile(char *filename);
+void parse_midi_byte(int byte, MIDI_PARSER *parser);
 void MidiAddCommand(int note, struct desc *desc);
 void MidiReleaseCommands(void);
 

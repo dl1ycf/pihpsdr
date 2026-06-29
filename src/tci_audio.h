@@ -59,18 +59,12 @@ typedef struct _tci_stream_header {
 #define TCI_AUDIO_RX_FRAME_MAX_BYTES \
   (sizeof(TCI_STREAM_HEADER) + (TCI_RX_AUDIO_FRAME_FRAMES * TCI_AUDIO_CHANNELS * sizeof(float)))
 
-void tci_audio_rx_sample (RECEIVER *rx, float left, float right);
+void tci_audio_rx_sample (int id, double left, double right);
 guint64 tci_audio_get_write_count (int receiver_id);
 guint tci_audio_get_frame (int receiver_id, guint64 *read_count, unsigned char* frame, size_t frame_size,
                            size_t *frame_len);
 void tci_audio_handle_tx_frame (const unsigned char* data, size_t len);
 
 void tci_audio_tx_reset (void);
-guint tci_audio_tx_read (float* out, guint frames);
-guint64 tci_audio_tx_available (void);
-
-void tci_audio_monitor_set_active (int active);
-int tci_audio_monitor_is_active (void);
-guint tci_audio_monitor_read (float* out, guint frames);
 
 #endif

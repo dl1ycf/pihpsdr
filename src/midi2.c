@@ -36,11 +36,18 @@
 #include "main.h"
 #include "message.h"
 #include "midi.h"
+#include "midi_menu.h"
 #include "property.h"
 
 struct desc *MidiCommandsTable[129];
 
-void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
+static int configure = 0;
+
+void configure_midi_device(int st) {
+  configure = st;
+}
+
+static void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
   const struct desc *desc;
   int new;
 #ifdef MIDIDEBUG
@@ -58,6 +65,10 @@ void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
   if (event == MIDI_PITCH) {
     desc = MidiCommandsTable[128];
   } else {
+    if (note < 0 || note > 127) {
+      t_print("%s: invalid MIDI note/controller index=%d\n", __func__, note);
+      return;
+    }
     desc = MidiCommandsTable[note];
   }
 
@@ -108,7 +119,7 @@ void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
       case MIDI_PITCH:
         if (desc->type == AT_KNB) {
           // use upper 7  bits
-          DoTheMidi(desc->action, desc->type, val >> 7);
+          DoTheMidi(desc->action, desc->type, val);
         }
 
         break;
@@ -130,6 +141,122 @@ void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
   }
 }
 
+//
+// Parse next byte of a MIDI byte stream. Update parser state
+// and once a complete command has been processed, fire
+// the MIDI event
+//
+void parse_midi_byte(int byte, MIDI_PARSER *parser) {
+  switch (parser->state) {
+  case STATE_SKIP:
+    parser->chan = byte & 0x0F;
+
+    switch (byte & 0xF0) {
+    case 0x80:      // Note-OFF command
+      parser->command = CMD_NOTEOFF;
+      parser->state = STATE_ARG2;
+      break;
+
+    case 0x90:      // Note-ON command
+      parser->command = CMD_NOTEON;
+      parser->state = STATE_ARG2;
+      break;
+
+    case 0xB0:      // Controller Change
+      parser->command = CMD_CTRL;
+      parser->state = STATE_ARG2;
+      break;
+
+    case 0xE0:      // Pitch Bend
+      parser->command = CMD_PITCH;
+      parser->state = STATE_ARG2;
+      break;
+
+    case 0xA0:      // Polyphonic Pressure: skip args
+    case 0xC0:      // Program change: skip args
+    case 0xD0:      // Channel pressure: skip args
+    case 0xF0:      // System Message: skip args
+    default:        // Remain in STATE_SKIP until "interesting" command seen
+      break;
+    }
+
+    break;
+
+  case STATE_ARG2:        // store byte as first argument
+    parser->arg1 = byte & 0x7F;
+    parser->state = STATE_ARG1;
+    break;
+
+  case STATE_ARG1:        // store byte as second argument, process command
+    parser->arg2 = byte & 0x7F;
+
+    // We have a command!
+    switch (parser->command) {
+    case CMD_NOTEON:
+
+      // Some controllers generate NoteOn
+      // messages with velocity == 0 when releasing
+      // a push-button. This must be interpreted as
+      // a note-off event
+      if (parser->arg2 == 0) {
+        if (configure) {
+          NewMidiConfigureEvent(MIDI_NOTE, parser->chan, parser->arg1, 0);
+        } else {
+          NewMidiEvent(MIDI_NOTE, parser->chan, parser->arg1, 0);
+        }
+      } else {
+        if (configure) {
+          NewMidiConfigureEvent(MIDI_NOTE, parser->chan, parser->arg1, 1);
+        } else {
+          NewMidiEvent(MIDI_NOTE, parser->chan, parser->arg1, 1);
+        }
+      }
+
+      break;
+
+    case CMD_NOTEOFF:
+      if (configure) {
+        NewMidiConfigureEvent(MIDI_NOTE, parser->chan, parser->arg1, 0);
+      } else {
+        NewMidiEvent(MIDI_NOTE, parser->chan, parser->chan, 0);
+      }
+
+      break;
+
+    case CMD_CTRL:
+
+      //
+      // When ignoring "controller pairs", all ControllerChange events
+      // for controllers 32...63 are ignored, since they provide
+      // the least significant bits of a 14-bit argument.
+      // Here we only use the most signifcant 7 bits.
+      //
+      if (!midiIgnoreCtrlPairs || parser->arg1 < 32 || parser->arg1 >= 64) {
+        if (configure) {
+          NewMidiConfigureEvent(MIDI_CTRL, parser->chan, parser->arg1, parser->arg2);
+        } else {
+          NewMidiEvent(MIDI_CTRL, parser->chan, parser->arg1, parser->arg2);
+        }
+      }
+
+      break;
+
+    case CMD_PITCH:
+
+      // PitchBend event. Use only the most significant 7 bits
+      if (configure) {
+        NewMidiConfigureEvent(MIDI_PITCH, parser->chan, 0, parser->arg2);
+      } else {
+        NewMidiEvent(MIDI_PITCH, parser->chan, 0, parser->arg2);
+      }
+
+      break;
+    }
+
+    parser->state = STATE_SKIP;
+    break;
+  }
+}
 /*
  * Release data from MidiCommandsTable
  */
@@ -158,7 +285,9 @@ void MidiReleaseCommands(void) {
 void MidiAddCommand(int note, struct desc *desc) {
   struct desc *loop;
 
-  if (note < 0 || note > 128) { return; }
+  if (note < 0 || note > 128 || desc == NULL) { return; }
+  desc->next = NULL;
+
 
   //
   // Actions with channel == -1 (ANY) must go to the end of the list
@@ -222,7 +351,9 @@ void midi_save_state(void) {
   int i;
   entry = 0;
   SetPropI0("midiIgnoreCtrlPairs", midiIgnoreCtrlPairs);
-
+  for (i = 0; i < MAX_MIDI_DEVICES; i++) {
+    SetPropS1 ("mididevice[%d].name", i, "NO_MIDI_DEVICE_FOUND");
+  }
   for (i = 0; i < n_midi_devices; i++) {
     if (midi_devices[i].active) {
       SetPropS1("mididevice[%d].name", entry, midi_devices[i].name);
@@ -264,9 +395,7 @@ void midi_save_state(void) {
       cmd = cmd->next;
     }
 
-    if (entry != -1) {
-      SetPropI1("midi[%d].entries", i, entry + 1);
-    }
+    SetPropI1("midi[%d].entries", i, entry + 1);
   }
 }
 
@@ -322,6 +451,9 @@ void midi_restore_state(void) {
       //
       action = NO_ACTION;
       GetPropA3("midi[%d].entry[%d].channel[%d].action", i, entry, channel, action);
+      if (event == EVENT_NONE || action < 0 || action >= ACTIONS) {
+        continue;
+      }
 
       //
       // execute fixed mapping MIDI_KEY-->AT_BTN and MIDI_PITCH-->AT_KNB
@@ -394,9 +526,8 @@ void midi_restore_state(void) {
       // Construct descriptor and add to the list of MIDI commands
       //
       struct desc *desc = g_new(struct desc, 1);
-
-      if (!desc) {
-        fatal_error("FATAL: alloc desc in midi");
+      if (desc == NULL) {
+        t_print ("%s: failed to allocate MIDI command descriptor\n", __func__);
         return;
       }
 

@@ -361,18 +361,6 @@ static int pa_in_cb(const void *inputBuffer, void *outputBuffer, unsigned long f
     return paContinue;
   }
 
-  //
-  // If we are a client, simply collect and transfer data
-  // to the server without any buffering
-  //
-  if (radio_is_remote) {
-    for (unsigned int i = 0; i < framesPerBuffer; i++) {
-      server_tx_audio((double) in[i]);
-    }
-
-    return paContinue;
-  }
-
   g_mutex_lock(&tx->audio_mutex);
 
   if (tx->audio_buffer != NULL) {

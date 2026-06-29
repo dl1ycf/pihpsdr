@@ -175,7 +175,7 @@ static void updateEncoderParams(void) {
 
 static void type_changed_cb(GtkWidget *widget, gpointer data) {
   // update actions available for the type
-  const gchar *type = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget));
+  gchar *type = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget));
 
   //
   // This should no longer happen, since we block the signal in updatePanel
@@ -194,6 +194,7 @@ static void type_changed_cb(GtkWidget *widget, gpointer data) {
   gtk_button_set_label(GTK_BUTTON(newAction), ActionTable[thisAction].str);
   updateEncoderParams();
   updateDescription();
+  g_free(type);
 }
 
 static gboolean action_cb(GtkWidget *widget, gpointer data) {
@@ -216,11 +217,11 @@ static void row_inserted_cb(GtkTreeModel *tree_model, GtkTreePath *gpath, GtkTre
 }
 
 static void tree_selection_changed_cb (GtkTreeSelection *sel, gpointer data) {
-  char *str_event;
-  char *str_channel;
-  char *str_note;
-  char *str_type;
-  char *str_action;
+  char *str_event = NULL;
+  char *str_channel = NULL;
+  char *str_note = NULL;
+  char *str_type = NULL;
+  char *str_action = NULL;
   gtk_widget_set_sensitive(delete_b, FALSE);
   gtk_widget_set_sensitive(clear_b, FALSE);
 
@@ -253,11 +254,20 @@ static void tree_selection_changed_cb (GtkTreeSelection *sel, gpointer data) {
       gtk_button_set_label(GTK_BUTTON(newAction), ActionTable[thisAction].str);
       updatePanel(UPDATE_EXISTING);
     }
+    g_free(str_event);
+    g_free(str_channel);
+    g_free(str_note);
+    g_free(str_type);
+    g_free(str_action);
   }
 }
 
 static void find_current_cmd(void) {
   struct desc *cmd;
+  if (thisNote < 0 || thisNote > 128) {
+    current_cmd = NULL;
+    return;
+  }
   cmd = MidiCommandsTable[thisNote];
 
   //
@@ -373,6 +383,12 @@ static void encoderparam_cb(GtkWidget *widget, gpointer user_data) {
 static void clear_cb(GtkWidget *widget, gpointer user_data) {
   gtk_list_store_clear(store);
   MidiReleaseCommands();
+  current_cmd = NULL;
+  thisEvent = EVENT_NONE;
+  thisType = AT_NONE;
+  thisAction = NO_ACTION;
+  gtk_widget_set_sensitive(delete_b, FALSE);
+  gtk_widget_set_sensitive(clear_b, FALSE);
 }
 
 static void add_store(int key, const struct desc *cmd) {
@@ -415,7 +431,7 @@ static void load_store(void) {
   const struct desc *cmd;
   gtk_list_store_clear(store);
 
-  for (int i = 127; i >= 0; i--) {
+  for (int i = 128; i >= 0; i--) {
     cmd = MidiCommandsTable[i];
 
     while (cmd != NULL) {
@@ -429,6 +445,14 @@ static void updateDescription(void) {
   char str_channel[64];
   char str_note[64];
   int  addFlag = 0;
+  if (thisNote < 0 || thisNote > 128) {
+    t_print("%s: invalid MIDI note/controller index=%d\n", __func__, thisNote);
+    return;
+  }
+  if (thisAction < 0 || thisAction >= ACTIONS) {
+    t_print("%s: invalid MIDI action index=%d\n", __func__, thisAction);
+    return;
+  }
   //
   // Add or update a command, both in the MIDI data base and in the
   // sub-window (the "tree")
@@ -440,6 +464,11 @@ static void updateDescription(void) {
     // This is a new Note/Event combination, so we need a new entry
     //
     current_cmd = g_new(struct desc, 1);
+
+    if (current_cmd == NULL) {
+      t_print("%s: failed to allocate MIDI command descriptor\n", __func__);
+      return;
+    }
 
     if (!current_cmd) {
       fatal_error("FATAL: alloc cmd in midi");
@@ -508,6 +537,11 @@ static gboolean delete_cb(GtkButton *widget, GdkEventButton *event, gpointer use
     return FALSE;
   }
 
+  if (thisNote < 0 || thisNote > 128) {
+    t_print("%s: invalid MIDI note/controller index=%d\n", __func__, thisNote);
+    return FALSE;
+  }
+
   // remove from MidiCommandsTable
   if (MidiCommandsTable[thisNote] == current_cmd) {
     MidiCommandsTable[thisNote] = current_cmd->next;
@@ -515,6 +549,10 @@ static gboolean delete_cb(GtkButton *widget, GdkEventButton *event, gpointer use
     current_cmd = NULL;
   } else {
     previous_cmd = MidiCommandsTable[thisNote];
+    if (previous_cmd == NULL) {
+      current_cmd = NULL;
+      return FALSE;
+    }
 
     while (previous_cmd->next != NULL) {
       next_cmd = previous_cmd->next;
@@ -983,12 +1021,15 @@ static int ProcessNewMidiConfigureEvent(void * data) {
   int  channel = mydata->channel;
   int  note = mydata->note;
   int  val = mydata->val;
-  char *str_event;
-  char *str_channel;
-  char *str_note;
-  char *str_type;
-  char *str_action;
+  char *str_event = NULL;
+  char *str_channel = NULL;
+  char *str_note = NULL;
+  char *str_type = NULL;
+  char *str_action = NULL;
   g_free(data);
+  if (dialog == NULL) {
+    return 0;
+  }
 
   if (event == thisEvent && channel == thisChannel && note == thisNote) {
     thisVal = val;
@@ -1059,14 +1100,30 @@ static int ProcessNewMidiConfigureEvent(void * data) {
             }
           }
 
-          gtk_tree_view_set_cursor(GTK_TREE_VIEW(view), gtk_tree_model_get_path(model, &iter), NULL, FALSE);
+          GtkTreePath *path = gtk_tree_model_get_path (model, &iter);
+          gtk_tree_view_set_cursor (GTK_TREE_VIEW (view), path, NULL, FALSE);
+          gtk_tree_path_free (path);
           updatePanel(UPDATE_EXISTING);
           gtk_widget_set_sensitive(delete_b, TRUE);
           gtk_widget_set_sensitive(clear_b, TRUE);
+          g_free (str_event);
+          g_free (str_channel);
+          g_free (str_note);
+          g_free (str_type);
+          g_free (str_action);
           return 0;
         }
       }
-
+      g_free (str_event);
+      g_free (str_channel);
+      g_free (str_note);
+      g_free (str_type);
+      g_free (str_action);
+      str_event = NULL;
+      str_channel = NULL;
+      str_note = NULL;
+      str_type = NULL;
+      str_action = NULL;
       valid = gtk_tree_model_iter_next(model, &iter);
     }
 
@@ -1081,6 +1138,12 @@ static int ProcessNewMidiConfigureEvent(void * data) {
 
 void NewMidiConfigureEvent(enum MIDIevent event, int channel, int note, int val) {
   if (ignore_incoming_events) {
+    return;
+  }
+  if (event == MIDI_PITCH) {
+    note = 128;
+  } else if (note < 0 || note > 127) {
+    t_print("%s: invalid MIDI note/controller index=%d\n", __func__, note);
     return;
   }
 
