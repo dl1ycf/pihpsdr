@@ -535,21 +535,22 @@ void audio_write(RECEIVER *rx, double left, double right) {
 
         default:
           t_print("%s: CATASTROPHIC ERROR: unknown sound format\n", __func__);
+          rc = 0;
           break;
         }
 
         if (rc < 0 ) {
-          t_print("%s: SilenceWriting error=%s\n", snd_strerror(rc));
+          t_print("%s: SilenceWriting error=%s\n", __func__, snd_strerror(rc));
         } else if (rc < num) {
-          t_print("%s: SilenceWriting short=%d\n", (int)(num - rc));
+          t_print("%s: SilenceWriting short=%d\n", __func__ ,(int)(num - rc));
         }
 
         rc = snd_pcm_rewind (rx->audio_handle, out_buflen / 2);
 
         if (rc < 0 ) {
-          t_print("%s: SilenceRewrite error=%s\n", snd_strerror(rc));
+          t_print("%s: SilenceRewrite error=%s\n", __func__, snd_strerror(rc));
         } else if (rc < num) {
-          t_print("%s: SilenceRewrite pos =%d\n", (int)(rc));
+          t_print("%s: SilenceRewind pos =%d\n", __func__, (int)(rc));
         }
 
         rx->cwaudio = 0;
@@ -563,7 +564,7 @@ void audio_write(RECEIVER *rx, double left, double right) {
         rc = snd_pcm_rewind(rx->audio_handle, out_buflen / 2);
 
         if (rc < 0 ) {
-          t_print("%s: Rewind error=%s\n", snd_strerror(rc));
+          t_print("%s: Rewind error=%s\n", __func__, snd_strerror(rc));
         }
       }
 
