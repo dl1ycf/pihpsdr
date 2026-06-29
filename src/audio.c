@@ -301,11 +301,8 @@ void audio_close_input(TRANSMITTER *tx) {
 // sidetone latency, hold the ALSA buffer
 // at low filling, between cw_low_water and cw_high_water.
 //
-// Note that when sending the buffer, delay "jumps" by the buffer size
-//
 
 void tx_audio_write(RECEIVER *rx, double sample) {
-  snd_pcm_sframes_t delay;
   g_mutex_lock(&rx->audio_mutex);
 
   if (rx->audio_handle != NULL && rx->audio_buffer != NULL) {
@@ -547,10 +544,10 @@ void audio_write(RECEIVER *rx, double left, double right) {
       rx->queued = snd_pcm_rewindable(rx->audio_handle);
       snd_pcm_sframes_t rc;
 
-      if (rx->cwaudio != 0) {
+      if (rx->cwaudio != 0 || rx->queued < out_minlen) {
         //
-        // This happens when we come here for the first time, or after a
-        // TX/RX transision.
+        // This happens when we come here for the first time, after a
+        // TX/RX transision, or if the buffer is nearly empty.
         // Rewind buffer and fill with "midlen" silence
         //
         snd_pcm_rewind (rx->audio_handle, snd_pcm_rewindable(rx->audio_handle));
