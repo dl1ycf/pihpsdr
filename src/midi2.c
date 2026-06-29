@@ -36,11 +36,18 @@
 #include "main.h"
 #include "message.h"
 #include "midi.h"
+#include "midi_menu.h"
 #include "property.h"
 
 struct desc *MidiCommandsTable[129];
 
-void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
+static int configure = 0;
+
+void configure_midi_device(int st) {
+  configure = st;
+}
+
+static void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
   const struct desc *desc;
   int new;
 #ifdef MIDIDEBUG
@@ -112,7 +119,7 @@ void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
       case MIDI_PITCH:
         if (desc->type == AT_KNB) {
           // use upper 7  bits
-          DoTheMidi(desc->action, desc->type, val >> 7);
+          DoTheMidi(desc->action, desc->type, val);
         }
 
         break;
@@ -134,6 +141,122 @@ void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
   }
 }
 
+//
+// Parse next byte of a MIDI byte stream. Update parser state
+// and once a complete command has been processed, fire
+// the MIDI event
+//
+void parse_midi_byte(int byte, MIDI_PARSER *parser) {
+  switch (parser->state) {
+  case STATE_SKIP:
+    parser->chan = byte & 0x0F;
+
+    switch (byte & 0xF0) {
+    case 0x80:      // Note-OFF command
+      parser->command = CMD_NOTEOFF;
+      parser->state = STATE_ARG2;
+      break;
+
+    case 0x90:      // Note-ON command
+      parser->command = CMD_NOTEON;
+      parser->state = STATE_ARG2;
+      break;
+
+    case 0xB0:      // Controller Change
+      parser->command = CMD_CTRL;
+      parser->state = STATE_ARG2;
+      break;
+
+    case 0xE0:      // Pitch Bend
+      parser->command = CMD_PITCH;
+      parser->state = STATE_ARG2;
+      break;
+
+    case 0xA0:      // Polyphonic Pressure: skip args
+    case 0xC0:      // Program change: skip args
+    case 0xD0:      // Channel pressure: skip args
+    case 0xF0:      // System Message: skip args
+    default:        // Remain in STATE_SKIP until "interesting" command seen
+      break;
+    }
+
+    break;
+
+  case STATE_ARG2:        // store byte as first argument
+    parser->arg1 = byte & 0x7F;
+    parser->state = STATE_ARG1;
+    break;
+
+  case STATE_ARG1:        // store byte as second argument, process command
+    parser->arg2 = byte & 0x7F;
+
+    // We have a command!
+    switch (parser->command) {
+    case CMD_NOTEON:
+
+      // Some controllers generate NoteOn
+      // messages with velocity == 0 when releasing
+      // a push-button. This must be interpreted as
+      // a note-off event
+      if (parser->arg2 == 0) {
+        if (configure) {
+          NewMidiConfigureEvent(MIDI_NOTE, parser->chan, parser->arg1, 0);
+        } else {
+          NewMidiEvent(MIDI_NOTE, parser->chan, parser->arg1, 0);
+        }
+      } else {
+        if (configure) {
+          NewMidiConfigureEvent(MIDI_NOTE, parser->chan, parser->arg1, 1);
+        } else {
+          NewMidiEvent(MIDI_NOTE, parser->chan, parser->arg1, 1);
+        }
+      }
+
+      break;
+
+    case CMD_NOTEOFF:
+      if (configure) {
+        NewMidiConfigureEvent(MIDI_NOTE, parser->chan, parser->arg1, 0);
+      } else {
+        NewMidiEvent(MIDI_NOTE, parser->chan, parser->chan, 0);
+      }
+
+      break;
+
+    case CMD_CTRL:
+
+      //
+      // When ignoring "controller pairs", all ControllerChange events
+      // for controllers 32...63 are ignored, since they provide
+      // the least significant bits of a 14-bit argument.
+      // Here we only use the most signifcant 7 bits.
+      //
+      if (!midiIgnoreCtrlPairs || parser->arg1 < 32 || parser->arg1 >= 64) {
+        if (configure) {
+          NewMidiConfigureEvent(MIDI_CTRL, parser->chan, parser->arg1, parser->arg2);
+        } else {
+          NewMidiEvent(MIDI_CTRL, parser->chan, parser->arg1, parser->arg2);
+        }
+      }
+
+      break;
+
+    case CMD_PITCH:
+
+      // PitchBend event. Use only the most significant 7 bits
+      if (configure) {
+        NewMidiConfigureEvent(MIDI_PITCH, parser->chan, 0, parser->arg2);
+      } else {
+        NewMidiEvent(MIDI_PITCH, parser->chan, 0, parser->arg2);
+      }
+
+      break;
+    }
+
+    parser->state = STATE_SKIP;
+    break;
+  }
+}
 /*
  * Release data from MidiCommandsTable
  */

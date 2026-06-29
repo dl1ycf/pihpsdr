@@ -61,12 +61,6 @@ static snd_rawmidi_t *midi_input[MAX_MIDI_DEVICES];
 
 static void* midi_thread(void *);
 
-static gboolean configure = FALSE;
-
-void configure_midi_device(gboolean state) {
-  configure = state;
-}
-
 static void *midi_thread(void *arg) {
   int index = (int) (uintptr_t) arg;
   snd_rawmidi_t *input = midi_input[index];
@@ -77,21 +71,8 @@ static void *midi_thread(void *arg) {
   unsigned char byte;
   unsigned short revents;
   int i, ret;
-  int chan = 0, arg1 = 0, arg2;
 
-  enum {
-    STATE_SKIP,             // skip bytes
-    STATE_ARG1,             // one arg byte to come
-    STATE_ARG2,             // two arg bytes to come
-  } state = STATE_SKIP;
-
-  enum {
-    CMD_NOTEON,
-    CMD_NOTEOFF,
-    CMD_CTRL,
-    CMD_PITCH,
-  } command = CMD_NOTEON;
-
+  MIDI_PARSER parser;
   npfds = snd_rawmidi_poll_descriptors_count(input);
 
   if (npfds <= 0) {
@@ -111,6 +92,8 @@ static void *midi_thread(void *arg) {
     midi_devices[index].active = 0;
     return NULL;
   }
+
+  parser.state = STATE_SKIP;
 
   for (;;) {
     ret = poll(pfds, npfds, 250);
@@ -151,115 +134,11 @@ static void *midi_thread(void *arg) {
       continue;
     }
 
-    // process bytes in buffer. Since they no not necessarily form complete messages
-    // we need a state machine here.
+    //
+    // Parse all bytes in the buffer
+    //
     for (i = 0; i < ret; i++) {
-      byte = buf[i];
-
-      switch (state) {
-      case STATE_SKIP:
-        chan = byte & 0x0F;
-
-        switch (byte & 0xF0) {
-        case 0x80:      // Note-OFF command
-          command = CMD_NOTEOFF;
-          state = STATE_ARG2;
-          break;
-
-        case 0x90:      // Note-ON command
-          command = CMD_NOTEON;
-          state = STATE_ARG2;
-          break;
-
-        case 0xB0:      // Controller Change
-          command = CMD_CTRL;
-          state = STATE_ARG2;
-          break;
-
-        case 0xE0:      // Pitch Bend
-          command = CMD_PITCH;
-          state = STATE_ARG2;
-          break;
-
-        case 0xA0:      // Polyphonic Pressure
-        case 0xC0:      // Program change
-        case 0xD0:      // Channel pressure
-        case 0xF0:      // System Message: continue waiting for bit7 set
-        default:        // Remain in STATE_SKIP until bit7 is set
-          break;
-        }
-
-        break;
-
-      case STATE_ARG2:
-        arg1 = byte;
-        state = STATE_ARG1;
-        break;
-
-      case STATE_ARG1:
-        arg2 = byte;
-
-        // We have a command!
-        switch (command) {
-        case CMD_NOTEON:
-
-          // Hercules MIDI controllers generate NoteOn
-          // messages with velocity == 0 when releasing
-          // a push-button
-          if (arg2 == 0) {
-            if (configure) {
-              NewMidiConfigureEvent(MIDI_NOTE, chan, arg1, 0);
-            } else {
-              NewMidiEvent(MIDI_NOTE, chan, arg1, 0);
-            }
-          } else {
-            if (configure) {
-              NewMidiConfigureEvent(MIDI_NOTE, chan, arg1, 1);
-            } else {
-              NewMidiEvent(MIDI_NOTE, chan, arg1, 1);
-            }
-          }
-
-          break;
-
-        case CMD_NOTEOFF:
-          if (configure) {
-            NewMidiConfigureEvent(MIDI_NOTE, chan, arg1, 0);
-          } else {
-            NewMidiEvent(MIDI_NOTE, chan, arg1, 0);
-          }
-
-          break;
-
-        case CMD_CTRL:
-
-          //
-          // When ignoring "controller pairs", all ControllerChange events
-          // for controllers 32...63 are ignored
-          //
-          if (!midiIgnoreCtrlPairs || arg1 < 32 || arg1 >= 64) {
-            if (configure) {
-              NewMidiConfigureEvent(MIDI_CTRL, chan, arg1, arg2);
-            } else {
-              NewMidiEvent(MIDI_CTRL, chan, arg1, arg2);
-            }
-          }
-
-          break;
-
-        case CMD_PITCH:
-          if (configure) {
-            NewMidiConfigureEvent(MIDI_PITCH, chan, 0, arg1 + 128 * arg2);
-          } else {
-            NewMidiEvent(MIDI_PITCH, chan, 0, arg1 + 128 * arg2);
-          }
-
-          break;
-        }
-
-        state = STATE_SKIP;
-        break;
-      }
+      parse_midi_byte((int)buf[i]);
     }
   }
 
