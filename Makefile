@@ -840,8 +840,8 @@ src/client_thread.o: src/bandstack.h src/client_server.h src/mode.h src/ext.h
 src/client_thread.o: src/filter.h src/main.h src/message.h src/meter.h
 src/client_thread.o: src/profiles.h src/radio.h src/adc.h src/discovered.h
 src/client_thread.o: src/rx_panadapter.h src/sliders.h src/actions.h
-src/client_thread.o: src/store.h src/tci.h src/tci_audio.h
-src/client_thread.o: src/tx_panadapter.h src/vfo.h src/vox.h src/waterfall.h
+src/client_thread.o: src/store.h src/tx_panadapter.h src/vfo.h src/vox.h
+src/client_thread.o: src/waterfall.h
 src/css.o: src/css.h src/message.h
 src/cw_menu.o: src/client_server.h src/mode.h src/receiver.h
 src/cw_menu.o: src/transmitter.h src/ext.h src/iambic.h src/message.h
@@ -1031,8 +1031,8 @@ src/receiver.o: src/mode.h src/discovered.h src/ext.h src/filter.h src/main.h
 src/receiver.o: src/meter.h src/message.h src/new_menu.h src/new_protocol.h
 src/receiver.o: src/MacOS.h src/old_protocol.h src/profiles.h src/property.h
 src/receiver.o: src/radio.h src/adc.h src/rx_panadapter.h src/sliders.h
-src/receiver.o: src/actions.h src/soapy_protocol.h src/tci.h src/tci_audio.h
-src/receiver.o: src/vfo.h src/vox.h src/waterfall.h
+src/receiver.o: src/actions.h src/soapy_protocol.h src/vfo.h src/vox.h
+src/receiver.o: src/waterfall.h
 src/rigctl.o: src/actions.h src/agc.h src/andromeda.h src/band.h
 src/rigctl.o: src/bandstack.h src/channel.h src/ext.h src/client_server.h
 src/rigctl.o: src/mode.h src/receiver.h src/transmitter.h src/filter.h
@@ -1042,8 +1042,7 @@ src/rigctl.o: src/property.h src/radio.h src/adc.h src/discovered.h
 src/rigctl.o: src/rigctl.h src/sliders.h src/store.h src/toolbar.h src/vfo.h
 src/rigctl_menu.o: src/band.h src/bandstack.h src/message.h src/new_menu.h
 src/rigctl_menu.o: src/radio.h src/adc.h src/discovered.h src/receiver.h
-src/rigctl_menu.o: src/transmitter.h src/rigctl.h src/tci.h src/vfo.h
-src/rigctl_menu.o: src/mode.h
+src/rigctl_menu.o: src/transmitter.h src/rigctl.h src/vfo.h src/mode.h
 src/rx_menu.o: src/audio.h src/receiver.h src/transmitter.h src/band.h
 src/rx_menu.o: src/bandstack.h src/client_server.h src/mode.h
 src/rx_menu.o: src/discovered.h src/filter.h src/message.h src/new_menu.h
@@ -1130,9 +1129,8 @@ src/transmitter.o: src/meter.h src/message.h src/new_protocol.h src/MacOS.h
 src/transmitter.o: src/old_protocol.h src/ozyio.h src/profiles.h
 src/transmitter.o: src/property.h src/ps_menu.h src/radio.h src/adc.h
 src/transmitter.o: src/discovered.h src/sintab.h src/sliders.h src/actions.h
-src/transmitter.o: src/soapy_protocol.h src/tci.h src/tci_audio.h
-src/transmitter.o: src/toolbar.h src/tx_panadapter.h src/vfo.h src/vox.h
-src/transmitter.o: src/waterfall.h
+src/transmitter.o: src/soapy_protocol.h src/toolbar.h src/tx_panadapter.h
+src/transmitter.o: src/vfo.h src/vox.h src/waterfall.h
 src/tts.o: src/message.h src/radio.h src/adc.h src/discovered.h
 src/tts.o: src/receiver.h src/transmitter.h src/vfo.h src/mode.h src/MacTTS.h
 src/tx_menu.o: src/audio.h src/receiver.h src/transmitter.h src/ext.h
