@@ -451,7 +451,7 @@ void midi_restore_state(void) {
       //
       action = NO_ACTION;
       GetPropA3("midi[%d].entry[%d].channel[%d].action", i, entry, channel, action);
-      if (event == EVENT_NONE || type == AT_NONE || action < 0 || action >= ACTIONS) {
+      if (event == EVENT_NONE || action < 0 || action >= ACTIONS) {
         continue;
       }
 

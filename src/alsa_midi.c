@@ -68,7 +68,6 @@ static void *midi_thread(void *arg) {
   int npfds;
   //struct pollfd *pfds;
   unsigned char buf[32];
-  unsigned char byte;
   unsigned short revents;
   int i, ret;
 
