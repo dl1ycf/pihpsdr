@@ -23,8 +23,8 @@
 #include <gtk/gtk.h>
 
 extern GtkWidget* meter_init(int width, int height);
-extern void rxmeter_update(double rxlvl, double peak, double gain, double out);
-extern void txmeter_update(double pwr, double alc, double swr, double mic, double out);
+extern void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out);
+extern void txmeter_update(int fps, double pwr, double alc, double swr, double mic, double out);
 
 enum _meter_type_const {
   DIGITAL = 0,
