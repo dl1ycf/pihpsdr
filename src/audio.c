@@ -61,7 +61,7 @@
 static const int out_buflen = 48 * (out_latency / 1000);   // Length of ALSA buffer (200 msec) in samples
 static const int out_midlen = 24 * (out_latency / 1000);   // .. at half-filling
 static const int out_minlen =  4 * (out_latency / 1000);   // .. minimum filling
-static const int skip_bufs 19;                             // number of buffers to skip on "short write"
+static const int skip_bufs = 19;                           // number of buffers to skip on "short write"
 
 static const int cw_low_water  =  816;                     // low water mark for CW (17 msec)
 static const int cw_mid_water  =  960;                     // target water mark for CW (20 msec)
