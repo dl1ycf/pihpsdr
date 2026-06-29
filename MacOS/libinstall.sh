@@ -143,6 +143,7 @@ $BREW install opus
 $BREW install miniupnpc
 $BREW install libwebsockets
 $BREW install zlib
+$BREW install git-extras
 
 ################################################################
 #
@@ -168,6 +169,8 @@ $BREW install python-setuptools
 #
 ################################################################
 $BREW install soapysdr
+$BREW install librtlsdr
+$BREW install hackrf
 
 ################################################################
 # HOMEBREW/POTHOSWARE PROBLEM:
@@ -210,15 +213,6 @@ $BREW tap pothosware/pothos
 $BREW reinstall pothosware/pothos/soapyplutosdr
 $BREW reinstall pothosware/pothos/limesuite
 $BREW reinstall pothosware/pothos/soapyrtlsdr
-$BREW reinstall pothosware/pothos/soapyairspy
-#
-# NOTE: due to an error in the homebrew formula, airspayhf will
-#       not build on AppleSilicon macs since its homebrew formula
-#       contains an explicit reference to /usr/local.
-#       If /usr/local is sym-linked to /opt/homebrew/local,
-#       it works fine.
-#
-$BREW reinstall pothosware/pothos/soapyairspyhf
 $BREW reinstall pothosware/pothos/soapyhackrf
 $BREW reinstall pothosware/pothos/soapyredpitaya
 $BREW reinstall pothosware/pothos/soapyrtlsdr
