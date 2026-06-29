@@ -787,7 +787,7 @@ static gboolean tx_update_display(gpointer data) {
     }
 
     if (!duplex) {
-      txmeter_update(tx->fwd, tx->alc, tx->swr, tx->micpeak, tx->outavg);
+      txmeter_update(tx->fps, tx->fwd, tx->alc, tx->swr, tx->micpeak, tx->outavg);
     }
 
     // if "MON" button is active (tx->feedback is TRUE),

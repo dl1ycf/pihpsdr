@@ -590,7 +590,7 @@ static int rx_update_display(gpointer data) {
       }
 
       rx->rxlvl = level;
-      rxmeter_update(rx->rxlvl, vox_get_peak(), rx->curragc, rx->currout);
+      rxmeter_update(rx->fps, rx->rxlvl, vox_get_peak(), rx->curragc, rx->currout);
     }
 
     g_mutex_lock(&rx->display_mutex);

@@ -723,7 +723,7 @@ static int client_spectrum(gpointer ptr) {
     g_mutex_unlock(&rx->display_mutex);
 
     if (rx == active_receiver) {
-      rxmeter_update(rx->rxlvl, vox_get_peak(), rx->curragc, rx->currout);
+      rxmeter_update(rx->fps, rx->rxlvl, vox_get_peak(), rx->curragc, rx->currout);
     }
   }
 
@@ -764,7 +764,7 @@ static int client_spectrum(gpointer ptr) {
     g_mutex_unlock(&tx->display_mutex);
 
     if (!duplex) {
-      txmeter_update(tx->fwd, tx->alc, tx->swr, tx->micpeak, tx->outavg);
+      txmeter_update(tx->fps, tx->fwd, tx->alc, tx->swr, tx->micpeak, tx->outavg);
     }
   }
 
