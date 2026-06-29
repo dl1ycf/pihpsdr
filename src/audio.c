@@ -299,7 +299,9 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       // without any down-slew.
       //
       if (snd_pcm_delay(rx->audio_handle, &delay) == 0) {
-        snd_pcm_rewind(rx->audio_handle, delay - cw_mid_water);
+        snd_pcm_sframes_t max = snd_pcm_rewindable(rx->audio_handle);
+        if (delay - cw_mid_water < max) { max = delay - cw_mid_water);
+        snd_pcm_rewind(rx->audio_handle, max);
       }
 
       rx->cwcount = 0;
@@ -513,21 +515,21 @@ void audio_write(RECEIVER *rx, double left, double right) {
         case SND_PCM_FORMAT_S16_LE: {
           int16_t silence[rx->local_audio_channels * num];
           memset(silence, 0, rx->local_audio_channels * num * sizeof(int16_t));
-          snd_pcm_writei (rx->audio_handle, silence, num);
+          rc = snd_pcm_writei (rx->audio_handle, silence, num);
         }
         break;
 
         case SND_PCM_FORMAT_S32_LE: {
           int32_t silence[rx->local_audio_channels * num];
           memset(silence, 0, rx->local_audio_channels * num * sizeof(int32_t));
-          snd_pcm_writei (rx->audio_handle, silence, num);
+          rc = snd_pcm_writei (rx->audio_handle, silence, num);
         }
         break;
 
         case SND_PCM_FORMAT_FLOAT_LE: {
           float silence[rx->local_audio_channels * num];
           memset(silence, 0, rx->local_audio_channels * num * sizeof(float));
-          snd_pcm_writei (rx->audio_handle, silence, num);
+          rc = snd_pcm_writei (rx->audio_handle, silence, num);
         }
         break;
 
@@ -536,14 +538,33 @@ void audio_write(RECEIVER *rx, double left, double right) {
           break;
         }
 
-        snd_pcm_rewind (rx->audio_handle, out_buflen / 2);
-        delay = out_buflen / 2;
+        if (rc < 0 ) {
+          t_print("%s: SilenceWriting error=%s\n", snd_strerror(rc));
+        } else if (rc < num) {
+          t_print("%s: SilenceWriting short=%d\n", (int)(num - rc));
+        }
+
+        rc = snd_pcm_rewind (rx->audio_handle, out_buflen / 2);
+
+        if (rc < 0 ) {
+          t_print("%s: SilenceRewrite error=%s\n", snd_strerror(rc));
+        } else if (rc < num) {
+          t_print("%s: SilenceRewrite pos =%d\n", (int)(rc));
+        }
+
         rx->cwaudio = 0;
+        if (snd_pcm_delay(rx->audio_handle, &delay) != 0) {
+          delay = 0;
+        }
       }
 
       if (delay > out_maxlen) {
         // output buffer is filling up, rewind until it is half filled
-        snd_pcm_rewind(rx->audio_handle, out_buflen / 2);
+        rc = snd_pcm_rewind(rx->audio_handle, out_buflen / 2);
+
+        if (rc < 0 ) {
+          t_print("%s: Rewind error=%s\n", snd_strerror(rc));
+        }
       }
 
       //
