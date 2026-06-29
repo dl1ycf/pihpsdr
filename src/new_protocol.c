@@ -1766,6 +1766,13 @@ void new_protocol_menu_start(void) {
   micsamples_sequence = 0;
   audio_sequence = 0;
   tx_iq_sequence = 0;
+  pthread_mutex_lock(&send_rxaudio_mutex);
+  rxaudio_inptr = 0;
+  rxaudio_outptr = 0;
+  rxaudio_count = 0;
+  rxaudio_drain = 0;
+  rxaudio_flag = 0;
+  pthread_mutex_unlock(&send_rxaudio_mutex);
   memset(rxcase, 0, sizeof(rxcase));
   memset(rxid, 0, sizeof(rxid));
   memset(ddc_sequence, 0, sizeof(ddc_sequence));
@@ -2761,9 +2768,14 @@ void new_protocol_tx_audio_samples(double sample) {
     //
     rxaudio_drain = 1;
 
-    while (rxaudio_inptr != rxaudio_outptr) { usleep(1000); }
+    while (P2running && rxaudio_inptr != rxaudio_outptr) { usleep(1000); }
 
     rxaudio_drain = 0;
+    if (!P2running) {
+      pthread_mutex_unlock(&send_rxaudio_mutex);
+      return;
+    }
+
     rxaudio_flag = 1;
   }
 

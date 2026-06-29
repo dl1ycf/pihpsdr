@@ -61,25 +61,6 @@ static snd_rawmidi_t *midi_input[MAX_MIDI_DEVICES];
 
 static void* midi_thread(void *);
 
-static enum {
-  STATE_SKIP,             // skip bytes
-  STATE_ARG1,             // one arg byte to come
-  STATE_ARG2,             // two arg bytes to come
-} state = STATE_SKIP;
-
-static enum {
-  CMD_NOTEON,
-  CMD_NOTEOFF,
-  CMD_CTRL,
-  CMD_PITCH,
-} command;
-
-static gboolean configure = FALSE;
-
-void configure_midi_device(gboolean state) {
-  configure = state;
-}
-
 static void *midi_thread(void *arg) {
   int index = (int) (uintptr_t) arg;
   snd_rawmidi_t *input = midi_input[index];
@@ -87,18 +68,34 @@ static void *midi_thread(void *arg) {
   int npfds;
   //struct pollfd *pfds;
   unsigned char buf[32];
-  unsigned char byte;
   unsigned short revents;
-  int i;
-  int chan = 0, arg1 = 0, arg2;
+  int i, ret;
+
+  MIDI_PARSER parser;
   npfds = snd_rawmidi_poll_descriptors_count(input);
+
+  if (npfds <= 0) {
+    t_print("%s: invalid poll descriptor count for port \"%s\": %d\n", __func__, port, npfds);
+    midi_devices[index].active = 0;
+    return NULL;
+  }
+
   // replaced alloca by variable-length array
   struct pollfd pfds[npfds];
   //pfds = alloca(npfds * sizeof(struct pollfd));
-  snd_rawmidi_poll_descriptors(input, pfds, npfds);
+
+  ret = snd_rawmidi_poll_descriptors(input, pfds, npfds);
+
+  if (ret < 0) {
+    t_print("%s: cannot get poll descriptors for port \"%s\": %s\n", __func__, port, snd_strerror(ret));
+    midi_devices[index].active = 0;
+    return NULL;
+  }
+
+  parser.state = STATE_SKIP;
 
   for (;;) {
-    int ret = poll(pfds, npfds, 250);
+    ret = poll(pfds, npfds, 250);
 
     if (!midi_devices[index].active) { break; }
 
@@ -110,17 +107,24 @@ static void *midi_thread(void *arg) {
 
     if (ret <= 0) { continue; }  // nothing arrived, do next poll()
 
-    if (snd_rawmidi_poll_descriptors_revents(input, pfds, npfds, &revents) < 0) {
-      t_print("%s: cannot get poll events: %s\n", __func__, snd_strerror(errno));
-      continue;
+    ret = snd_rawmidi_poll_descriptors_revents(input, pfds, npfds, &revents);
+
+    if (ret < 0) {
+      t_print("%s: cannot get poll events: %s\n", __func__, snd_strerror(ret));
+      midi_devices[index].active = 0;
+      break;
     }
 
-    if (revents & (POLLERR | POLLHUP)) { continue; }
+    if (revents & (POLLERR | POLLHUP)) {
+      t_print("%s: port \"%s\" reported poll error/hangup\n", __func__, port);
+      midi_devices[index].active = 0;
+      break;
+    }
 
     if (!(revents & POLLIN)) { continue; }
 
     // something has arrived
-    ret = snd_rawmidi_read(input, buf, 64);
+    ret = snd_rawmidi_read(input, buf, sizeof(buf));
 
     if (ret == 0) { continue; }
 
@@ -129,115 +133,11 @@ static void *midi_thread(void *arg) {
       continue;
     }
 
-    // process bytes in buffer. Since they no not necessarily form complete messages
-    // we need a state machine here.
+    //
+    // Parse all bytes in the buffer
+    //
     for (i = 0; i < ret; i++) {
-      byte = buf[i];
-
-      switch (state) {
-      case STATE_SKIP:
-        chan = byte & 0x0F;
-
-        switch (byte & 0xF0) {
-        case 0x80:      // Note-OFF command
-          command = CMD_NOTEOFF;
-          state = STATE_ARG2;
-          break;
-
-        case 0x90:      // Note-ON command
-          command = CMD_NOTEON;
-          state = STATE_ARG2;
-          break;
-
-        case 0xB0:      // Controller Change
-          command = CMD_CTRL;
-          state = STATE_ARG2;
-          break;
-
-        case 0xE0:      // Pitch Bend
-          command = CMD_PITCH;
-          state = STATE_ARG2;
-          break;
-
-        case 0xA0:      // Polyphonic Pressure
-        case 0xC0:      // Program change
-        case 0xD0:      // Channel pressure
-        case 0xF0:      // System Message: continue waiting for bit7 set
-        default:        // Remain in STATE_SKIP until bit7 is set
-          break;
-        }
-
-        break;
-
-      case STATE_ARG2:
-        arg1 = byte;
-        state = STATE_ARG1;
-        break;
-
-      case STATE_ARG1:
-        arg2 = byte;
-
-        // We have a command!
-        switch (command) {
-        case CMD_NOTEON:
-
-          // Hercules MIDI controllers generate NoteOn
-          // messages with velocity == 0 when releasing
-          // a push-button
-          if (arg2 == 0) {
-            if (configure) {
-              NewMidiConfigureEvent(MIDI_NOTE, chan, arg1, 0);
-            } else {
-              NewMidiEvent(MIDI_NOTE, chan, arg1, 0);
-            }
-          } else {
-            if (configure) {
-              NewMidiConfigureEvent(MIDI_NOTE, chan, arg1, 1);
-            } else {
-              NewMidiEvent(MIDI_NOTE, chan, arg1, 1);
-            }
-          }
-
-          break;
-
-        case CMD_NOTEOFF:
-          if (configure) {
-            NewMidiConfigureEvent(MIDI_NOTE, chan, arg1, 0);
-          } else {
-            NewMidiEvent(MIDI_NOTE, chan, arg1, 0);
-          }
-
-          break;
-
-        case CMD_CTRL:
-
-          //
-          // When ignoring "controller pairs", all ControllerChange events
-          // for controllers 32...63 are ignored
-          //
-          if (!midiIgnoreCtrlPairs || arg1 < 32 || arg1 >= 64) {
-            if (configure) {
-              NewMidiConfigureEvent(MIDI_CTRL, chan, arg1, arg2);
-            } else {
-              NewMidiEvent(MIDI_CTRL, chan, arg1, arg2);
-            }
-          }
-
-          break;
-
-        case CMD_PITCH:
-          if (configure) {
-            NewMidiConfigureEvent(MIDI_PITCH, chan, 0, arg1 + 128 * arg2);
-          } else {
-            NewMidiEvent(MIDI_PITCH, chan, 0, arg1 + 128 * arg2);
-          }
-
-          break;
-        }
-
-        state = STATE_SKIP;
-        break;
-      }
+      parse_midi_byte((int)buf[i], &parser);
     }
   }
 
@@ -249,27 +149,32 @@ void register_midi_device(int index) {
 
   if (index < 0 || index >= n_midi_devices) { return; }
 
+  if (midi_input[index] != NULL) { return; }
+
   t_print("%s: open MIDI device %d\n", __func__, index);
 
   if ((ret = snd_rawmidi_open(&midi_input[index], NULL, midi_port[index], SND_RAWMIDI_NONBLOCK)) < 0) {
     t_print("%s: cannot open port \"%s\": %s\n", __func__, midi_port[index], snd_strerror(ret));
+    midi_devices[index].active = 0;
+    midi_input[index] = NULL;
     return;
   }
 
   snd_rawmidi_read(midi_input[index], NULL, 0); /* trigger reading */
+  midi_devices[index].active = 1;
   ret = pthread_create(&midi_thread_id[index], NULL, midi_thread, (void *) (uintptr_t) index);
 
-  if (ret < 0) {
-    t_print("%s: Failed to create MIDI read thread\n", __func__);
-
-    if ((ret = snd_rawmidi_close(midi_input[index])) < 0) {
+  if (ret != 0) {
+    t_print("%s: Failed to create MIDI read thread: %s\n", __func__, strerror(ret));
+    midi_devices[index].active = 0;
+    ret = snd_rawmidi_close(midi_input[index]);
+    if (ret < 0) {
       t_print("%s: cannot close port: %s\n", __func__, snd_strerror(ret));
     }
-
+    midi_input[index] = NULL;
     return;
   }
 
-  midi_devices[index].active = 1;
   return;
 }
 
@@ -279,7 +184,7 @@ void close_midi_device(int index) {
 
   if (index < 0 || index >= MAX_MIDI_DEVICES) { return; }
 
-  if (midi_devices[index].active == 0) { return; }
+  if (midi_devices[index].active == 0 && midi_input[index] == NULL) { return; }
 
   //
   // Note that if this is called from get_midi_devices(),
@@ -291,20 +196,21 @@ void close_midi_device(int index) {
   //
   // wait for thread to complete
   //
-  ret = pthread_join(midi_thread_id[index], NULL);
-
-  if (ret  != 0)  {
-    t_print("%s: cannot join: %s\n", __func__, strerror(ret));
-  }
-
-  //
-  // Close MIDI device
-  if ((ret = snd_rawmidi_close(midi_input[index])) < 0) {
-    t_print("%s: cannot close port: %s\n", __func__, snd_strerror(ret));
+  if (midi_input[index] != NULL) {
+    ret = pthread_join(midi_thread_id[index], NULL);
+    if (ret  != 0)  {
+      t_print("%s: cannot join: %s\n", __func__, strerror(ret));
+    }
+    //
+    // Close MIDI device
+    if ((ret = snd_rawmidi_close(midi_input[index])) < 0) {
+      t_print("%s: cannot close port: %s\n", __func__, snd_strerror(ret));
+    }
+    midi_input[index] = NULL;
   }
 }
 
-void get_midi_devices() {
+void get_midi_devices(void) {
   snd_ctl_t *ctl;
   snd_rawmidi_info_t *info;
   int card, device, subs, sub, ret;
@@ -324,13 +230,20 @@ void get_midi_devices() {
 
     if ((ret = snd_ctl_open(&ctl, portname, 0)) < 0) {
       t_print("%s: cannot open control for card %d: %s\n", __func__, card, snd_strerror(ret));
-      return;
+      if ((ret = snd_card_next(&card)) < 0) {
+        t_print("%s: cannot determine card number: %s\n", __func__, snd_strerror(ret));
+        break;
+      }
+      continue;
     }
 
     device = -1;
 
     // loop through devices of the card
     for (;;) {
+      if (n_midi_devices >= MAX_MIDI_DEVICES) {
+        break;
+      }
       if ((ret = snd_ctl_rawmidi_next_device(ctl, &device)) < 0) {
         t_print("%s: cannot determine device number: %s\n", __func__, snd_strerror(ret));
         break;
@@ -352,10 +265,13 @@ void get_midi_devices() {
       }
 
       //t_print("%s: Number of MIDI input devices: %d\n", __func__, subs);
-      if (!subs) { break; }
+      if (!subs) { continue; }
 
       // subs: number of sub-devices to device on card
       for (sub = 0; sub < subs; ++sub) {
+        if (n_midi_devices >= MAX_MIDI_DEVICES) {
+          break;
+        }
         snd_rawmidi_info_set_stream(info, SND_RAWMIDI_STREAM_INPUT);
         snd_rawmidi_info_set_subdevice(info, sub);
         ret = snd_ctl_rawmidi_info(ctl, info);
@@ -378,44 +294,38 @@ void get_midi_devices() {
           snprintf(portname, sizeof(portname), "hw:%d,%d,%d", card, device, sub);
           devnam = subnam;
         }
-
         //
-        // If the name was already present at the same position, just keep
-        // it and do nothing.
-        // If the names do not match and the slot is occupied by a opened device,
-        // close it first
+        // If the name/port is unchanged at the same position, keep the
+        // existing strings and the running thread. If either changes, close
+        // the old device before replacing midi_port[], because the MIDI
+        // thread keeps a local pointer to that string for diagnostics.
         //
         int match = 1;
 
-        if (midi_devices[n_midi_devices].name == NULL) {
-          midi_devices[n_midi_devices].name = g_strdup(devnam);
+        if (midi_devices[n_midi_devices].name == NULL ||
+            strcmp(devnam, midi_devices[n_midi_devices].name) != 0) {
           match = 0;
-        } else {
-          if (strcmp(devnam, midi_devices[n_midi_devices].name)) {
-            g_free(midi_devices[n_midi_devices].name);
-            midi_devices[n_midi_devices].name = g_strdup(devnam);
-            match = 0;
-          }
         }
 
-        if (midi_port[n_midi_devices] == NULL) {
-          midi_port[n_midi_devices] = g_strdup(portname);
+        if (midi_port[n_midi_devices] == NULL ||
+            strcmp(midi_port[n_midi_devices], portname) != 0) {
           match = 0;
-        } else {
-          if (strcmp(midi_port[n_midi_devices], portname)) {
-            g_free(midi_port[n_midi_devices]);
-            midi_port[n_midi_devices] = g_strdup(portname);
-            match = 0;
-          }
         }
 
-        //
-        // Close MIDI device if it was open, except if the device is
-        // the same as before. In this case, just let the thread
-        // proceed
-        //
-        if (match == 0 && midi_devices[n_midi_devices].active) {
+        if (match == 0 && (midi_devices[n_midi_devices].active || midi_input[n_midi_devices] != NULL)) {
           close_midi_device(n_midi_devices);
+        }
+
+        if (midi_devices[n_midi_devices].name == NULL ||
+           strcmp(devnam, midi_devices[n_midi_devices].name) != 0) {
+          g_free(midi_devices[n_midi_devices].name);
+          midi_devices[n_midi_devices].name = g_strdup(devnam);
+        }
+
+        if (midi_port[n_midi_devices] == NULL ||
+            strcmp(midi_port[n_midi_devices], portname) != 0) {
+          g_free(midi_port[n_midi_devices]);
+          midi_port[n_midi_devices] = g_strdup(portname);
         }
 
         n_midi_devices++;
@@ -424,10 +334,28 @@ void get_midi_devices() {
 
     snd_ctl_close(ctl);
 
+    if (n_midi_devices >= MAX_MIDI_DEVICES) {
+      break;
+    }
+
     // next card
     if ((ret = snd_card_next(&card)) < 0) {
       t_print("%s: cannot determine card number: %s\n", __func__, snd_strerror(ret));
       break;
+    }
+  }
+
+  for (int i = n_midi_devices; i < MAX_MIDI_DEVICES; i++) {
+    if (midi_devices[i].active || midi_input[i] != NULL) {
+      close_midi_device(i);
+    }
+    if (midi_devices[i].name != NULL) {
+      g_free(midi_devices[i].name);
+      midi_devices[i].name = NULL;
+    }
+    if (midi_port[i] != NULL) {
+      g_free(midi_port[i]);
+      midi_port[i] = NULL;
     }
   }
 

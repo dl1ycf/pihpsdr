@@ -112,15 +112,10 @@ void tci_audio_set_wakeup_callback (TCI_AUDIO_WAKEUP_CALLBACK callback) {
   tci_audio_wakeup_callback = callback;
 }
 
-void tci_audio_rx_sample (RECEIVER *rx, float left, float right) {
+void tci_audio_rx_sample (int id, double left, double right) {
   TCI_RX_AUDIO_RING *ring;
   guint index;
   int do_wakeup = 0;
-  int id;
-
-  if (rx == NULL) { return; }
-
-  id = rx->id;
 
   if (id < 0 || id >= TCI_RX_AUDIO_MAX_RECEIVERS) { return; }
 
@@ -129,8 +124,8 @@ void tci_audio_rx_sample (RECEIVER *rx, float left, float right) {
   if (!g_mutex_trylock (&ring->mutex)) { return; }
 
   index = (guint) (ring->write_count % TCI_RX_AUDIO_RING_FRAMES);
-  ring->samples[ (index * TCI_AUDIO_CHANNELS)] = left;
-  ring->samples[ (index * TCI_AUDIO_CHANNELS) + 1] = right;
+  ring->samples[ (index * TCI_AUDIO_CHANNELS)] = (float) left;
+  ring->samples[ (index * TCI_AUDIO_CHANNELS) + 1] = (float) right;
   ring->write_count++;
 
   if ((++tci_rx_audio_wakeup_count % TCI_RX_AUDIO_FRAME_FRAMES) == 0) {

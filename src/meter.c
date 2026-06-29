@@ -370,37 +370,41 @@ static void rxmeter_edgewise(cairo_t *cr, double smtr, int sval, int sval2,
   }
 
   //
-  // White peak-hold needle
+  // White peak-hold needle: as long as live needle
   //
   angle   = min_angle + pk * bydb;
   radians = angle * M_PI / 180.0;
+  double cosr = cos(radians);  // to be re-used
+  double sinr = sin(radians);  // to be re-used
   cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.9);
   cairo_set_line_width(cr, 1.4 * scalfac);
-  cairo_move_to(cr, cx + (radius - 26.0 * scalfac) * cos(radians),
-                pivot_y + (radius - 26.0 * scalfac) * sin(radians));
-  cairo_line_to(cr, cx + (radius + 4.0 * scalfac) * cos(radians),
-                pivot_y + (radius + 4.0 * scalfac) * sin(radians));
+  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cosr,
+                pivot_y + (radius - 30.0 * scalfac) * sinr);
+  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cosr,
+                pivot_y + (radius + 5.0 * scalfac) * sinr);
   cairo_stroke(cr);
   //
   // Live needle (short, stubby), coloured by zone
   //
   angle   = min_angle + smtr * bydb;
   radians = angle * M_PI / 180.0;
+  cosr = cos(radians);  // to be re-used
+  sinr = sin(radians);  // to be re-used
   meter_zone_rgb(frac, &r, &g, &b);
   cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
   cairo_set_source_rgba(cr, r, g, b, 0.25);          // glow
   cairo_set_line_width(cr, 4.0 * scalfac);
-  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cos(radians),
-                pivot_y + (radius - 30.0 * scalfac) * sin(radians));
-  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cos(radians),
-                pivot_y + (radius + 5.0 * scalfac) * sin(radians));
+  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cosr,
+                pivot_y + (radius - 30.0 * scalfac) * sinr);
+  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cosr,
+                pivot_y + (radius + 5.0 * scalfac) * sinr);
   cairo_stroke(cr);
   cairo_set_source_rgba(cr, r, g, b, 0.96);          // needle
   cairo_set_line_width(cr, 2.2 * scalfac);
-  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cos(radians),
-                pivot_y + (radius - 30.0 * scalfac) * sin(radians));
-  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cos(radians),
-                pivot_y + (radius + 5.0 * scalfac) * sin(radians));
+  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cosr,
+                pivot_y + (radius - 30.0 * scalfac) * sinr);
+  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cosr,
+                pivot_y + (radius + 5.0 * scalfac) * sinr);
   cairo_stroke(cr);
   //
   // Readouts: S-value bottom-left, dBm bottom-right
@@ -526,33 +530,31 @@ static void txmeter_edgewise(cairo_t *cr, double frac, double pk, const char *pw
   //
   angle   = min_angle + pk * (max_angle - min_angle);
   radians = angle * M_PI / 180.0;
+  double cosr=cos(radians);
+  double sinr=cos(radians);
   cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.9);
   cairo_set_line_width(cr, 1.4 * scalfac);
-  cairo_move_to(cr, cx + (radius - 26.0 * scalfac) * cos(radians),
-                pivot_y + (radius - 26.0 * scalfac) * sin(radians));
-  cairo_line_to(cr, cx + (radius + 4.0 * scalfac) * cos(radians),
-                pivot_y + (radius + 4.0 * scalfac) * sin(radians));
+  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cosr, pivot_y + (radius - 30.0 * scalfac) * sinr);
+  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cosr, pivot_y + (radius + 5.0 * scalfac) * sinr);
   cairo_stroke(cr);
   //
   // Live needle
   //
   angle   = min_angle + frac * (max_angle - min_angle);
   radians = angle * M_PI / 180.0;
+  cosr=cos(radians);
+  sinr=cos(radians);
   meter_zone_rgb(frac, &r, &g, &b);
   cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
   cairo_set_source_rgba(cr, r, g, b, 0.25);
   cairo_set_line_width(cr, 4.0 * scalfac);
-  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cos(radians),
-                pivot_y + (radius - 30.0 * scalfac) * sin(radians));
-  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cos(radians),
-                pivot_y + (radius + 5.0 * scalfac) * sin(radians));
+  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cosr, pivot_y + (radius - 30.0 * scalfac) * sinr);
+  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cosr, pivot_y + (radius + 5.0 * scalfac) * sinr);
   cairo_stroke(cr);
   cairo_set_source_rgba(cr, r, g, b, 0.96);
   cairo_set_line_width(cr, 2.2 * scalfac);
-  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cos(radians),
-                pivot_y + (radius - 30.0 * scalfac) * sin(radians));
-  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cos(radians),
-                pivot_y + (radius + 5.0 * scalfac) * sin(radians));
+  cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cosr, pivot_y + (radius - 30.0 * scalfac) * sinr);
+  cairo_line_to(cr, cx + (radius + 5.0 * scalfac) * cosr, pivot_y + (radius + 5.0 * scalfac) * sinr);
   cairo_stroke(cr);
   //
   // Centered text stack: power, SWR, (ALC)
