@@ -2321,6 +2321,13 @@ void radio_set_zoom(int id, int value) {
   rx->zoom = value;
   rx_update_zoom(rx);
   g_idle_add(sliders_zoom, GINT_TO_POINTER(100 + id));
+
+  if (diversity_enabled && receivers > 1) {
+    int sid = 1 - id;
+    rx = receiver[sid];
+    rx->zoom = value;
+    rx_update_zoom(rx);
+  }
 }
 
 void radio_set_pan(int id, int value) {
@@ -2335,6 +2342,13 @@ void radio_set_pan(int id, int value) {
   rx->pan = value;
   rx_update_pan(rx);
   g_idle_add(sliders_pan, GINT_TO_POINTER(100 + id));
+
+  if (diversity_enabled && receivers > 1) {
+    int sid = 1 - id;
+    rx = receiver[sid];
+    rx->pan = value;
+    rx_update_pan(rx);
+  }
 }
 
 void radio_set_mox(int state) {
@@ -2585,6 +2599,27 @@ void radio_set_diversity(int state) {
 
     if (protocol == ORIGINAL_PROTOCOL && receivers == 1) {
       old_protocol_run();
+    }
+
+    //
+    // In principle we should go to RX1 mode when running DIVERSITY.
+    // However, it might be useful to see both signals, but then
+    // the pandapters must have like sample rate, zoom, pan.
+    // Enforce RX2 running the same sample rate as RX1
+    //
+    if (protocol == NEW_PROTOCOL && receivers == 2 && diversity_enabled) {
+      rx_change_sample_rate(receiver[1], receiver[0]->sample_rate);
+    }
+
+    //
+    // Make RX1 active, and copy Zoom/Pan from RX1 to RX2
+    //
+    if (diversity_enabled && active_receiver->id != 0) {
+      suppress_popup_sliders++;
+      rx_set_active(receiver[0]);
+      radio_set_zoom(1, receiver[0]->zoom);
+      radio_set_pan(1, receiver[0]->pan);
+      suppress_popup_sliders--;
     }
 
     schedule_high_priority();
