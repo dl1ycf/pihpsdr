@@ -241,19 +241,20 @@ unsigned int ADC0 = 0;
 int ptt = 0;
 int ptt_delay = 0;
 int mox = 0;
-int have_rx_gain = 0;
-int have_rx_att = 0;
-int have_alex_att = 0;
-int have_preamp = 0;
-int have_dither = 0;
+int have_rx_gain = 0;                  // RF frontend has RF gain steps
+int have_rx_att = 0;                   // RF frontend has step attenuator
+int have_alex_att = 0;                 // RF frontend has ALEX (switched) attenuator
+int have_preamp = 0;                   // RF frontend has switchable preamp
+int have_dither = 0;                   // RF ADC has a "dither" bit
 int have_saturn_xdma = 0;              // We are running on a G2 *and* the radio is via XDMA
 int have_g2v1 = 0;                     // We are running on a G2V1
 int have_g2v2 = 0;                     // We are running on a G2V2
-int have_lime = 0;
-int have_radioberry1 = 0;
-int have_radioberry2 = 0;
-int have_radioberry3 = 0;
-int rx_gain_calibration = 0;
+int have_lime = 0;                     // We are running a LimeSDR
+int have_pluto = 0;                    // We are running an AdalmPluto
+int have_radioberry1 = 0;              // We are running a RadioBerry V1
+int have_radioberry2 = 0;              // We are running a RadioBerry V2
+int have_radioberry3 = 0;              // We are running a RadioBerry V3
+int rx_gain_calibration = 0;           // RF gain set to this value when "no attenuation"
 
 int split = 0;
 
@@ -1171,8 +1172,9 @@ void radio_start_radio(void) {
     }
   }
 
-  if (device == SOAPYSDR_USB_DEVICE && !strcmp(radio->name, "lime")) {
-    have_lime = 1;
+  if (device == SOAPYSDR_USB_DEVICE) {
+    have_lime  = NOT(strcmp(radio->name, "lime"));
+    have_pluto = NOT(strcmp(radio->name, "plutosdr"));
   }
 
   if (device == NEW_DEVICE_SATURN && (strcmp(radio->network.interface_name, "XDMA") == 0)) {
@@ -3257,11 +3259,12 @@ void radio_set_drive(double value) {
 #ifdef SOAPYSDR
 
     //
-    // LIME: do not change TX drive if not transmitting since the
-    //       TX gain should be kept at zero if not transmitting.
-    //       (TX gain is set on each RX/TX transition anyway)
+    // Do not change TX drive if not transmitting since the
+    // TX gain should be kept at zero if not transmitting.
+    // The TX gain is set on next RX/TX transition in
+    // soapy_protocol_rxtx()
     //
-    if (!have_lime || radio_is_transmitting()) {
+    if (radio_is_transmitting()) {
       soapy_protocol_set_tx_gain(transmitter->drive);
     }
 

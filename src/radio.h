@@ -264,6 +264,7 @@ extern int have_saturn_xdma;           // Running inside a G2 *and* using XDMA i
 extern int have_g2v1;                  // Running inside a G2V1
 extern int have_g2v2;                  // Running inside a G2V2
 extern int have_lime;                  // The radio is a LIME-SDR
+extern int have_pluto;                 // The radio is an Adalm Pluto
 extern int have_radioberry1;           // RadioBerry with first-generation  firmware
 extern int have_radioberry2;           // RadioBerry with second-generation firmware
 extern int have_radioberry3;           // RadioBerry with third-generation firmware (pio support)
@@ -282,14 +283,14 @@ extern int hl2_ah4_atu;
 
 extern int anan10E;
 
-extern int mute_spkr_amp;        // Mute audio amplifier in radio    (ANAN-7000, G2)
-extern int mute_spkr_xmit;       // Mute audio amplifier in radio upon transmitting (ANAN-7000, G2)
+extern int mute_spkr_amp;              // Mute audio amplifier in radio    (ANAN-7000, G2)
+extern int mute_spkr_xmit;             // Mute audio amplifier in radio upon transmitting (ANAN-7000, G2)
 
-extern int VFO_WIDTH;
-extern int VFO_HEIGHT;
-extern int METER_WIDTH;
-extern int ADD_METER_WIDTH;
-extern const int MENU_WIDTH;
+extern int VFO_WIDTH;                  // Width allocated to VFO bar
+extern int VFO_HEIGHT;                 // VFO bar height
+extern int METER_WIDTH;                // Width allocated to the meter
+extern int ADD_METER_WIDTH;            // Wdith allocated to extended part of meter (included in METER_WIDTH)
+extern const int MENU_WIDTH;           // Width of the Menu and Hide/Show buttons
 
 extern int rx_stack_horizontal;
 extern int suppress_popup_sliders;
