@@ -244,6 +244,7 @@ extern int cw_key_hit;
 extern int n_adc;
 
 extern int diversity_enabled;
+extern int p2_angelia_ddc0_map;
 extern double div_cos, div_sin;
 extern double div_gain, div_phase;
 

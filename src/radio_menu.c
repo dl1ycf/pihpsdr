@@ -999,6 +999,23 @@ void radio_menu(GtkWidget *parent) {
     g_signal_connect(Btn, "toggled", G_CALLBACK(toggle_cb), &new_pa_board);
   }
 
+  if (device == NEW_DEVICE_ANGELIA && protocol == NEW_PROTOCOL) {
+    //
+    // Brick3 / ANAN-100D clones: the TX relay/PTT can get stuck after a TX
+    // cycle unless DDC0/DDC1's NCO frequency is kept refreshed during RX.
+    // Enable this if the TX relay fails to release after TX.
+    //
+    row++;
+    hwpanel = 1;
+    Btn = gtk_check_button_new_with_label("Brick3 / ANAN-100D compatibility");
+    gtk_widget_set_halign(Btn, GTK_ALIGN_END);
+    gtk_widget_set_tooltip_text(Btn,
+                                 "Enable if the TX relay fails to release after TX (Brick3/ANAN-100D clones).");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(Btn), p2_angelia_ddc0_map);
+    gtk_grid_attach(GTK_GRID(grid), Btn, 5, row, 2, 1);
+    g_signal_connect(Btn, "toggled", G_CALLBACK(toggle_cb), &p2_angelia_ddc0_map);
+  }
+
   if (device == SOAPYSDR_USB_DEVICE) {
     //
     // SoapySDR radios may have IQ swapped, and we can select

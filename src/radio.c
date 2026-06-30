@@ -281,6 +281,7 @@ int cw_key_hit = 0;
 int n_adc = 1;
 
 int diversity_enabled = 0;
+int p2_angelia_ddc0_map = 0;
 double div_cos = 1.0;      // I factor for diversity
 double div_sin = 1.0;      // Q factor for diversity
 double div_gain = 0.0;     // gain for diversity (in dB)
@@ -3494,6 +3495,7 @@ static void radio_restore_state(void) {
     GetPropI0("enable_tx_inhibit",                           enable_tx_inhibit);
     GetPropI0("radio_sample_rate",                           soapy_radio_sample_rate);
     GetPropI0("diversity_enabled",                           diversity_enabled);
+    GetPropI0("p2_angelia_ddc0_map",                         p2_angelia_ddc0_map);
     GetPropF0("diversity_gain",                              div_gain);
     GetPropF0("diversity_phase",                             div_phase);
     GetPropF0("diversity_cos",                               div_cos);
@@ -3726,6 +3728,7 @@ void radio_save_state(void) {
     SetPropI0("enable_tx_inhibit",                           enable_tx_inhibit);
     SetPropI0("radio_sample_rate",                           soapy_radio_sample_rate);
     SetPropI0("diversity_enabled",                           diversity_enabled);
+    SetPropI0("p2_angelia_ddc0_map",                         p2_angelia_ddc0_map);
     SetPropF0("diversity_gain",                              div_gain);
     SetPropF0("diversity_phase",                             div_phase);
     SetPropF0("diversity_cos",                               div_cos);
