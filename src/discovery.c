@@ -881,8 +881,17 @@ static void discovery(void) {
 #endif
 
   for (int i = 0; i < devices; i++) {
-    if (discovered[i].device == NEW_DEVICE_SATURN &&
-        !strcmp(discovered[i].network.interface_name, "XDMA") && have_i2c) { have_g2v1 = 1; }
+    if (discovered[i].device == NEW_DEVICE_SATURN && !strcmp(discovered[i].network.interface_name, "XDMA")) {
+      //
+      // We are running on the internal compute module of a G2. Depending on the presence of the i2c
+      // front panel, this is a V1 or V2.
+      //
+      if (have_i2c) {
+        have_g2v1 = 1;
+      } else {
+	    have_g2v2 = 1;
+      }
+    }
   }
 
 #ifdef GPIO
@@ -898,7 +907,6 @@ static void discovery(void) {
   // such that in special cases, something can be changed manually.
   //
   gpio_restore_state();
-  have_g2v2 = 1;
 
   if (have_g2v2) {
     if (controller != NO_CONTROLLER) {
