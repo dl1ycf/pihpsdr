@@ -218,7 +218,7 @@ void parse_midi_byte(int byte, MIDI_PARSER *parser) {
       if (configure) {
         NewMidiConfigureEvent(MIDI_NOTE, parser->chan, parser->arg1, 0);
       } else {
-        NewMidiEvent(MIDI_NOTE, parser->chan, parser->chan, 0);
+        NewMidiEvent(MIDI_NOTE, parser->chan, parser->arg1, 0);
       }
 
       break;
