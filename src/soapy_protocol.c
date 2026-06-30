@@ -1222,7 +1222,6 @@ void soapy_protocol_txrx(void) {
     // - execute TRX relay,
     // - set RX gains to nominal value
     //
-    soapy_protocol_set_tx_gain(0);
     soapy_protocol_set_tx_antenna(0); // 0 is NONE
     const char *bank = "MAIN"; //set GPIO to signal the relay to RX
     t_print("%s: Setting LIME GPIO to 0\n", __func__);
@@ -1234,6 +1233,7 @@ void soapy_protocol_txrx(void) {
     }
   }
 
+  // LIME? should we use drive_min or zero?
   soapy_protocol_set_tx_gain(drive_min);
 
   for (int id = 0; id < RECEIVERS; id++) {
