@@ -1748,7 +1748,7 @@ void radio_start_radio(void) {
       // LIME: set TX gain to 30 for the auto-calibration that takes place
       //       upon starting the transmitter
       //
-      soapy_protocol_set_tx_gain(have_lime ? 30 : transmitter->drive);
+      soapy_protocol_set_tx_gain(have_lime ? 30 : drive_min);
       soapy_protocol_set_tx_frequency();
       soapy_protocol_start_transmitter();
 
@@ -1756,7 +1756,7 @@ void radio_start_radio(void) {
         // LIME: set TX gain to 0 to avoid  LO leak. The TX gain
         //       is set to the nominal drive upon RX/TX transistons,
         //       and reset to zero upon TX/RX transitions.
-        soapy_protocol_set_tx_gain(0);
+        soapy_protocol_set_tx_gain(drive_min);
       }
     }
 
@@ -1851,6 +1851,23 @@ void radio_start_radio(void) {
   // mark radio as "running"
   //
   radio_protocol_running = 1;
+
+  //
+  // Some diagnostics for the log file
+  //
+  if (have_rx_gain)      { t_print("%s:Radio has RF programmable gain\n", __func__); }
+  if (have_rx_att)       { t_print("%s:Radio has RF step attenuator gain\n", __func__); }
+  if (have_preamp)       { t_print("%s:Radio has RF HPSDR switchable preamp\n", __func__); }
+  if (have_dither)       { t_print("%s:Radio has ADC HPSDR dither bit\n", __func__); }
+  if (have_alex_att)     { t_print("%s:Radio has ALEX attenuator\n", __func__); }
+  if (have_saturn_xdma)  { t_print("%s:Radio has XDMA-connected FPGA\n", __func__); }
+  if (have_lime)         { t_print("%s:Radio is a Soapy LimeSDR\n", __func__); }
+  if (have_pluto)        { t_print("%s:Radio is a Soapy AdalmPluto\n", __func__); }
+  if (have_radioberry1)  { t_print("%s:Radio is a RadioBerry V1\n", __func__); }
+  if (have_radioberry2)  { t_print("%s:Radio is a RadioBerry V2\n", __func__); }
+  if (have_radioberry3)  { t_print("%s:Radio is a RadioBerry V3\n", __func__); }
+  if (have_g2v1)         { t_print("%s:piHPSDR is running on a G2V1 compute module\n", __func__); }
+  if (have_g2v2)         { t_print("%s:piHPSDR is running on a G2V2 compute module\n", __func__); }
 }
 
 int radio_client_change_receivers(gpointer data) {
