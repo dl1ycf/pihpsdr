@@ -87,26 +87,29 @@ int data_socket = -1;
 
 static volatile int P2running;
 
+// Address for sending General packets
 static struct sockaddr_in base_addr;
 static int base_addr_length;
 
+// Adress for sending RX specific packets
 static struct sockaddr_in receiver_addr;
 static int receiver_addr_length;
 
+// Adress for sending TX specific packets
 static struct sockaddr_in transmitter_addr;
 static int transmitter_addr_length;
 
+// Adress for sending HighPrio packets
 static struct sockaddr_in high_priority_addr;
 static int high_priority_addr_length;
 
+// Address for sending RX audio packets
 static struct sockaddr_in audio_addr;
 static int audio_addr_length;
 
+// Adress for sending TX IQ packets
 static struct sockaddr_in iq_addr;
 static int iq_addr_length;
-
-static struct sockaddr_in data_addr[MAX_DDC];
-static int data_addr_length[MAX_DDC];
 
 static GThread *new_protocol_thread_id;
 static GThread *new_protocol_rxaudio_thread_id;
@@ -118,9 +121,7 @@ static uint32_t general_sequence = 0;
 static uint32_t rx_specific_sequence = 0;
 static uint32_t tx_specific_sequence = 0;
 static uint32_t ddc_sequence[MAX_DDC];
-
 static uint32_t tx_iq_sequence = 0;
-
 static uint32_t highprio_rcvd_sequence = 0;
 static uint32_t micsamples_sequence = 0;
 
@@ -239,17 +240,16 @@ static volatile int mic_inptr = 0;
 static volatile int mic_outptr = 0;
 static volatile int mic_count = 0;
 
-static unsigned char general_buffer[60];
-static unsigned char high_priority_buffer_to_radio[1444];
-static unsigned char transmit_specific_buffer[60];
-static unsigned char receive_specific_buffer[1444];
-
 //
-// new_protocol_receive_specific and friends are not thread-safe, but called
-// periodically from  timer thread *and* asynchronously from everywhere else
+// We cannot consider packet "sends" thread-safe because they involve
+// "someting" in the Saturn XDMA case. These routines are called
+// periodically from  timer thread *and* asynchronously from everywhere else,
 // therefore we need to implement a critical section for each of these functions.
 // The audio buffer needs a mutex since both RX and TX threads may write to
 // this one (CW side tone).
+//
+// TODO: possibly, this mutex need only be applied before/after the actual "send"
+//       and not while preparing the packets.
 //
 
 static pthread_mutex_t rx_spec_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -275,9 +275,9 @@ static void  process_high_priority(const unsigned char *buffer);
 static void  process_mic_data(const unsigned char *buffer);
 
 //
-// Obtain a free buffer. If no one is available allocate
-// extra ones. The buffers are *never* released to the
-// operating system, but marked free upon a protocol restart.
+// Buffer management.
+// The buffers are *never* released to the operating system,
+// but have their own free/used flag.
 //
 static void mark_all_buffers_free(void) {
   ASSERT_SERVER();
@@ -305,7 +305,7 @@ static mybuffer *get_my_buffer(void) {
   }
 
   //
-  // no free buffer found, allocate 64 extra ones
+  // no free buffer found, allocate a bunch of new ones
   // and add to the head of the list
   //
   for (i = 0; i < 64; i++) {
@@ -518,8 +518,8 @@ void new_protocol_init(void) {
 
   //
   // Setup communication (this is also done *once*)
-  // In XDMA mode, just call saturn_init(), in network mode, establish
-  // data socket and port addresses.
+  // In XDMA mode, just call saturn_init().
+  // In network mode, establish data socket and port addresses.
   // Some QoS stuff included here, and the buffer length for incoming UDP packets
   //
   if (have_saturn_xdma) {
@@ -607,7 +607,7 @@ void new_protocol_init(void) {
 
     //
     // Set a time-out on the data_socket, so we will not be trapped "forever"
-    // in rcvfrom(). Note EAGAIN errors from rcvfrom() are then non-fatal.
+    // in rcvfrom(). Therefore, EAGAIN errors from rcvfrom() are non-fatal.
     //
     tv.tv_sec = 0;
     tv.tv_usec = 100000;
@@ -618,37 +618,34 @@ void new_protocol_init(void) {
 
     t_print("new_protocol_init: data_socket %d bound to interface %s:%d\n", data_socket,
             inet_ntoa(radio->network.interface_address.sin_addr), ntohs(radio->network.interface_address.sin_port));
+
+    //
+    // Create addresses for all packet types we are *sending*:
+    // General, RX specific, TX speficic, HighPrio, RX audio, TX IQ
+    //
     memcpy(&base_addr, &radio->network.address, radio->network.address_length);
     base_addr_length = radio->network.address_length;
     base_addr.sin_port = htons(GENERAL_REGISTERS_FROM_HOST_PORT);
-    //t_print("base_addr=%s\n",inet_ntoa(radio->network.address.sin_addr));
+    //
     memcpy(&receiver_addr, &radio->network.address, radio->network.address_length);
     receiver_addr_length = radio->network.address_length;
     receiver_addr.sin_port = htons(RECEIVER_SPECIFIC_REGISTERS_FROM_HOST_PORT);
-    //t_print("receive_addr=%s\n",inet_ntoa(radio->network.address.sin_addr));
+    //
     memcpy(&transmitter_addr, &radio->network.address, radio->network.address_length);
     transmitter_addr_length = radio->network.address_length;
     transmitter_addr.sin_port = htons(TRANSMITTER_SPECIFIC_REGISTERS_FROM_HOST_PORT);
-    //t_print("transmit_addr=%s\n",inet_ntoa(radio->network.address.sin_addr));
+    //
     memcpy(&high_priority_addr, &radio->network.address, radio->network.address_length);
     high_priority_addr_length = radio->network.address_length;
     high_priority_addr.sin_port = htons(HIGH_PRIORITY_FROM_HOST_PORT);
-    //t_print("high_priority_addr=%s\n",inet_ntoa(radio->network.address.sin_addr));
-    //t_print("new_protocol_thread: high_priority_addr setup for port %d\n",HIGH_PRIORITY_FROM_HOST_PORT);
+    //
     memcpy(&audio_addr, &radio->network.address, radio->network.address_length);
     audio_addr_length = radio->network.address_length;
     audio_addr.sin_port = htons(AUDIO_FROM_HOST_PORT);
-    //t_print("audio_addr=%s\n",inet_ntoa(radio->network.address.sin_addr));
+    //
     memcpy(&iq_addr, &radio->network.address, radio->network.address_length);
     iq_addr_length = radio->network.address_length;
     iq_addr.sin_port = htons(TX_IQ_FROM_HOST_PORT);
-
-    //t_print("iq_addr=%s\n",inet_ntoa(radio->network.address.sin_addr));
-    for (i = 0; i < MAX_DDC; i++) {
-      memcpy(&data_addr[i], &radio->network.address, radio->network.address_length);
-      data_addr_length[i] = radio->network.address_length;
-      data_addr[i].sin_port = htons(RX_IQ_TO_HOST_PORT_0 + i);
-    }
   }
 
   //
@@ -661,6 +658,7 @@ static void new_protocol_general(void) {
   ASSERT_SERVER();
   const BAND *band;
   int rc;
+  unsigned char general_buffer[60];
   pthread_mutex_lock(&general_mutex);
   int txvfo = vfo_get_tx_vfo();
   band = band_get_band(vfo[txvfo].band);
@@ -694,8 +692,6 @@ static void new_protocol_general(void) {
     }
   }
 
-  //t_print("Alex Enable=%02X\n",general_buffer[59]);
-  //t_print("new_protocol_general: %s:%d\n",inet_ntoa(base_addr.sin_addr),ntohs(base_addr.sin_port));
   if (have_saturn_xdma) {
     saturn_handle_general_packet(general_buffer);
   } else {
@@ -725,6 +721,7 @@ static void new_protocol_high_priority(void) {
   long long BPFfreq;          // frequency determining the BPF filters
   long long freq;
   uint32_t phase;
+  unsigned char high_priority_buffer_to_radio[1444];
 
   if (data_socket == -1 && !have_saturn_xdma) {
     return;
@@ -797,33 +794,59 @@ static void new_protocol_high_priority(void) {
     high_priority_buffer_to_radio[10] = (phase >> 16) & 0xFF;
     high_priority_buffer_to_radio[11] = (phase >>  8) & 0xFF;
     high_priority_buffer_to_radio[12] = (phase      ) & 0xFF;
-    high_priority_buffer_to_radio[13] = (phase >> 24) & 0xFF;
-    high_priority_buffer_to_radio[14] = (phase >> 16) & 0xFF;
-    high_priority_buffer_to_radio[15] = (phase >>  8) & 0xFF;
-    high_priority_buffer_to_radio[16] = (phase      ) & 0xFF;
+    high_priority_buffer_to_radio[13] = high_priority_buffer_to_radio[ 9];
+    high_priority_buffer_to_radio[14] = high_priority_buffer_to_radio[10];
+    high_priority_buffer_to_radio[15] = high_priority_buffer_to_radio[11];
+    high_priority_buffer_to_radio[16] = high_priority_buffer_to_radio[12];
   } else {
     //
     // Set frequencies for all receivers
     //
     // HERMES/HERMES2/G1 can only use DDC0/1,
     // Beyond that, we use DDC2/3 for "normal RX" and DDC0/1 for a DIV/PS pair
-    int ddc = 0;
-
+    //
+    // NEW: there seems to be hardware which sniffs the ethernet traffic,
+    //      extracts the HighPrio packets sent to the radio, and sets
+    //      band filters based on DDC0/1 frequencies. To make this work,
+    //      we must set DDC0/1 frequencies here even if DDC0/1 are not
+    //      used. In case of transmitting with PURESIGNAL, these are
+    //      overwritten in due course.
+    int angelia = 0;
     if (device == NEW_DEVICE_ANGELIA  || device == NEW_DEVICE_ORION ||
-        device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN) { ddc = 2; }
+        device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN) { angelia = 1; }
 
+    //
+    // So first set DDC0 freq, and possibly DDC1
+    //
     phase = (uint32_t)(((double)DDCfrequency[0]) * 34.952533333333333333333333333333);
-    high_priority_buffer_to_radio[ 9 + (ddc * 4)] = (phase >> 24) & 0xFF;
-    high_priority_buffer_to_radio[10 + (ddc * 4)] = (phase >> 16) & 0xFF;
-    high_priority_buffer_to_radio[11 + (ddc * 4)] = (phase >>  8) & 0xFF;
-    high_priority_buffer_to_radio[12 + (ddc * 4)] = (phase      ) & 0xFF;
+    high_priority_buffer_to_radio[ 9] = (phase >> 24) & 0xFF;
+    high_priority_buffer_to_radio[10] = (phase >> 16) & 0xFF;
+    high_priority_buffer_to_radio[11] = (phase >>  8) & 0xFF;
+    high_priority_buffer_to_radio[12] = (phase      ) & 0xFF;
 
     if (receivers > 1) {
       phase = (uint32_t)(((double)DDCfrequency[1]) * 34.952533333333333333333333333333);
-      high_priority_buffer_to_radio[13 + (ddc * 4)] = (phase >> 24) & 0xFF;
-      high_priority_buffer_to_radio[14 + (ddc * 4)] = (phase >> 16) & 0xFF;
-      high_priority_buffer_to_radio[15 + (ddc * 4)] = (phase >>  8) & 0xFF;
-      high_priority_buffer_to_radio[16 + (ddc * 4)] = (phase      ) & 0xFF;
+      high_priority_buffer_to_radio[13] = (phase >> 24) & 0xFF;
+      high_priority_buffer_to_radio[14] = (phase >> 16) & 0xFF;
+      high_priority_buffer_to_radio[15] = (phase >>  8) & 0xFF;
+      high_priority_buffer_to_radio[16] = (phase      ) & 0xFF;
+    }
+
+    //
+    // For ANGELIA and beyond, copy DDC0/1 to DDC2/3 freq
+    //
+    if (angelia) {
+      high_priority_buffer_to_radio[17] = high_priority_buffer_to_radio[ 9];
+      high_priority_buffer_to_radio[18] = high_priority_buffer_to_radio[10];
+      high_priority_buffer_to_radio[19] = high_priority_buffer_to_radio[11];
+      high_priority_buffer_to_radio[20] = high_priority_buffer_to_radio[12];
+
+      if (receivers > 1) {
+        high_priority_buffer_to_radio[21] = high_priority_buffer_to_radio[13];
+        high_priority_buffer_to_radio[22] = high_priority_buffer_to_radio[14];
+        high_priority_buffer_to_radio[23] = high_priority_buffer_to_radio[15];
+        high_priority_buffer_to_radio[24] = high_priority_buffer_to_radio[16];
+      } 
     }
   }
 
@@ -842,27 +865,31 @@ static void new_protocol_high_priority(void) {
   DUCfrequency = calibrated_frequency(freq);
   phase = (uint32_t)(((double)DUCfrequency) * 34.952533333333333333333333333333);
 
-  if (xmit && transmitter->puresignal) {
-    //
-    // Set DDC0 and DDC1 (synchronized) to the transmit frequency
-    //
-    high_priority_buffer_to_radio[ 9] = (phase >> 24) & 0xFF;
-    high_priority_buffer_to_radio[10] = (phase >> 16) & 0xFF;
-    high_priority_buffer_to_radio[11] = (phase >>  8) & 0xFF;
-    high_priority_buffer_to_radio[12] = (phase      ) & 0xFF;
-    high_priority_buffer_to_radio[13] = (phase >> 24) & 0xFF;
-    high_priority_buffer_to_radio[14] = (phase >> 16) & 0xFF;
-    high_priority_buffer_to_radio[15] = (phase >>  8) & 0xFF;
-    high_priority_buffer_to_radio[16] = (phase      ) & 0xFF;
-  }
-
   //
-  // DUC frequency and drive level
+  // DUC frequency
   //
   high_priority_buffer_to_radio[329] = (phase >> 24) & 0xFF;
   high_priority_buffer_to_radio[330] = (phase >> 16) & 0xFF;
   high_priority_buffer_to_radio[331] = (phase >>  8) & 0xFF;
   high_priority_buffer_to_radio[332] = (phase      ) & 0xFF;
+
+  if (xmit && transmitter->puresignal) {
+    //
+    // Set DDC0 and DDC1 (synchronized) to the transmit frequency
+    //
+    high_priority_buffer_to_radio[ 9] = high_priority_buffer_to_radio[329];
+    high_priority_buffer_to_radio[10] = high_priority_buffer_to_radio[330];
+    high_priority_buffer_to_radio[11] = high_priority_buffer_to_radio[331];
+    high_priority_buffer_to_radio[12] = high_priority_buffer_to_radio[332];
+    high_priority_buffer_to_radio[13] = high_priority_buffer_to_radio[329];
+    high_priority_buffer_to_radio[14] = high_priority_buffer_to_radio[330];
+    high_priority_buffer_to_radio[15] = high_priority_buffer_to_radio[331];
+    high_priority_buffer_to_radio[16] = high_priority_buffer_to_radio[332];
+  }
+
+  //
+  // TX drive level
+  //
   int power = 0;
 
   //
@@ -1453,6 +1480,7 @@ static void new_protocol_high_priority(void) {
 
 static void new_protocol_transmit_specific(void) {
   ASSERT_SERVER();
+  unsigned char transmit_specific_buffer[60];
   pthread_mutex_lock(&tx_spec_mutex);
   int txmode = vfo_get_tx_mode();
   memset(transmit_specific_buffer, 0, sizeof(transmit_specific_buffer));
@@ -1587,6 +1615,7 @@ static void new_protocol_receive_specific(void) {
   ASSERT_SERVER();
   int i;
   int xmit;
+  unsigned char receive_specific_buffer[1444];
   pthread_mutex_lock(&rx_spec_mutex);
   memset(receive_specific_buffer, 0, sizeof(receive_specific_buffer));
   xmit = radio_is_transmitting();
@@ -1784,7 +1813,7 @@ void new_protocol_menu_start(void) {
   if (have_saturn_xdma) {
     saturn_free_buffers();
   } else {
-    (void) get_my_buffer();  // this will pre-allocate
+    (void) get_my_buffer();  // this will pre-allocate a bunch at first start
     mark_all_buffers_free(); // if restarting, set them free
   }
 
@@ -1804,11 +1833,13 @@ void new_protocol_menu_start(void) {
   }
 
   new_protocol_general();
-  usleep(50000);                    // let FPGA digest the port numbers
-  new_protocol_high_priority();
-  usleep(50000);                    // let FPGA digest the "run" command
-  new_protocol_transmit_specific();
+  usleep(100000);                   // let FPGA digest the port numbers
   new_protocol_receive_specific();
+  usleep(50000);
+  new_protocol_transmit_specific();
+  usleep(50000);
+  new_protocol_high_priority();     // post-pone "run" command until here.
+  usleep(50000);                    // let FPGA digest the "run" command
   new_protocol_timer_thread_id = g_thread_new( "P2 task", new_protocol_timer_thread, NULL);
 }
 
@@ -2016,9 +2047,7 @@ static gpointer new_protocol_thread(gpointer data) {
   //
   // This thread should do as little work as possible and avoid any blocking.
   // Ideally, all data is just copied into ring buffers, and other threads
-  // then take care of processing the data. At least, this should apply to the
-  // DDC-IQ and Microphone packets since they eventually get stuck in WDSP
-  // (fexchange calls).
+  // then take care of processing the data.
   //
   while (P2running) {
     int ddc;
@@ -2296,7 +2325,6 @@ static gpointer iq_thread(gpointer data) {
   //
   int nptr, optr;
   uint32_t sequence;
-  uint32_t expected_sequence = 0;
   volatile mybuffer *mybuf;
   const unsigned char *buffer;
 
@@ -2326,24 +2354,6 @@ static gpointer iq_thread(gpointer data) {
     if (mybuf->free) { continue; }
 
     buffer = (unsigned char *) mybuf->buffer;
-    //
-    //  TEMP: perform additional sequence check
-    //
-    sequence = ((uint32_t)(buffer[0] & 0xFF) << 24)
-               + ((uint32_t)(buffer[1] & 0xFF) << 16)
-               + ((uint32_t)(buffer[2] & 0xFF) << 8)
-               + ((uint32_t)(buffer[3] & 0xFF));
-
-    if (expected_sequence == 0) { expected_sequence = sequence; }
-
-    if (sequence != expected_sequence) {
-      t_print("%s: DDC(%d) sequence error: expected %ul got %ul\n", __func__, ddc,
-              (unsigned long) expected_sequence, (unsigned long) sequence);
-      sequence_errors++;
-    }
-
-    expected_sequence = sequence + 1;
-
     //
     //  Now comes the action table:
     //  for each DDC we have set up which action to be taken
@@ -2957,21 +2967,21 @@ void *new_protocol_timer_thread(gpointer arg) {
     case 3:
     case 5:
     case 7:
-      new_protocol_high_priority();           // every 100 msec
       new_protocol_transmit_specific();       // every 200 msec
+      new_protocol_high_priority();           // every 100 msec
       break;
 
     case 2:
     case 4:
     case 6:
-      new_protocol_high_priority();           // every 100 msec
       new_protocol_receive_specific();        // every 200 msec
+      new_protocol_high_priority();           // every 100 msec
       break;
 
     case 8:
-      new_protocol_high_priority();           // every 100 msec
-      new_protocol_receive_specific();        // every 200 msec
       new_protocol_general();                 // every 800 msec
+      new_protocol_receive_specific();        // every 200 msec
+      new_protocol_high_priority();           // every 100 msec
       cycling = 0;
       break;
     }
