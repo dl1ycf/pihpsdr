@@ -79,7 +79,7 @@ static void rx_weak_notify(gpointer data, GObject  *obj) {
 gboolean rx_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer data, int from) {
   const RECEIVER *rx = (RECEIVER *)data;
 
-  if (rx == active_receiver) {
+  if (rx == active_receiver || diversity_enabled) {
     if (event->button == GDK_BUTTON_PRIMARY) {
       last_x = (int)(event->x + 0.5);
       last_y = (int)(event->y + 0.5);
@@ -125,6 +125,17 @@ void rx_set_active(RECEIVER *rx) {
 // cppcheck-suppress constParameterPointer
 gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data, int from) {
   RECEIVER *rx = (RECEIVER *)data;
+  RECEIVER *rx0 = rx;
+  int id = rx->id;
+  int id0 = id;
+
+  //
+  // When running DIVERSITY, horiozontal motion affects RX1 frequency
+  //
+  if (diversity_enabled) {
+    rx0 = receiver[0];
+    id0 = rx0->id;
+  }
 
   if (making_active) {
     making_active = FALSE;
@@ -140,11 +151,9 @@ gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpoin
       int dy = (y - last_y) / 5;
 
       if (event->button == GDK_BUTTON_PRIMARY) {
-        int id = active_receiver->id;
-
         if (has_movedx) {
           // drag
-          vfo_id_move(id, (long long)((x - last_x)*rx->cB), vfo_snap);
+          vfo_id_move(id0, (long long)((x - last_x)*rx0->cB), vfo_snap);
           last_x = x;
         } else {
           //
@@ -156,8 +165,8 @@ gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpoin
           //
           // Add center frequency
           //
-          f += vfo[id].frequency;
-          vfo_id_move_to(id, f, vfo_snap);
+          f += vfo[id0].frequency;
+          vfo_id_move_to(id0, f, vfo_snap);
         }
 
         if (has_movedy && from == 0 && dy) {
@@ -185,6 +194,18 @@ gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpoint
   int x, y;
   GdkModifierType state;
   RECEIVER *rx = (RECEIVER *)data;
+  RECEIVER *rx0 = rx;
+  int id = rx->id;
+  int id0 = id;
+
+  //
+  // When running DIVERSITY, horiozontal motion affects RX1 frequency
+  //
+  if (diversity_enabled) {
+    rx0 = receiver[0];
+    id0 = rx0->id;
+  }
+
   //
   // This solves a problem observed since with GTK about mid-2023:
   // when re-focusing a (sub-)menu window after it has lost focus,
@@ -229,8 +250,7 @@ gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpoint
 
     if (dx != 0) {
       if (has_movedx || dx < -1 || dx > 1) {
-        int id = active_receiver->id;
-        vfo_id_move(id, (long long)((double)dx * rx->cB), FALSE);
+        vfo_id_move(id0, (long long)((double)dx * rx0->cB), FALSE);
         last_x = x;
         has_movedx = TRUE;
       }
@@ -258,6 +278,9 @@ gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpoint
 // cppcheck-suppress constParameterPointer
 gboolean rx_scroll_event(GtkWidget *widget, const GdkEventScroll *event, gpointer data, int from) {
   int step = (event->state & GDK_SHIFT_MASK) ? 10 : 1;
+  int id = active_receiver->id;
+
+  if (diversity_enabled) { id = 0; }
 
   //
   // On one of my Macs, the shift key modifies scroll up/down to scroll left/right,
@@ -265,7 +288,7 @@ gboolean rx_scroll_event(GtkWidget *widget, const GdkEventScroll *event, gpointe
   //
   if (event->direction == GDK_SCROLL_DOWN || event->direction == GDK_SCROLL_RIGHT) { step = -step; }
 
-  vfo_step(step);
+  vfo_id_step(id, step);
   return TRUE;
 }
 

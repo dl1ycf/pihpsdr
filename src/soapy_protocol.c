@@ -1161,12 +1161,16 @@ void soapy_protocol_rxtx(const TRANSMITTER *tx) {
   if (!soapy_device) { return; }
 
   //
-  // Do everything that needs be done for a RX->TX transition
+  // Do everything that needs be done for a RX->TX transition. Most of this
+  // is radio specific, but at the least we
+  // - set the TX drive to its nominal value
+  // - set the TX frequency
   //
   // This is called from rxtx() after the WDSP receivers are slewed down
   // (unless using DUPLEX) and the WDSP transmitter is slewed up.
   //
   // This routine is *never* called if there is no transmitter!
+  //
   //
   if (have_lime) {
     //
@@ -1174,7 +1178,6 @@ void soapy_protocol_rxtx(const TRANSMITTER *tx) {
     // - "mute" receivers if not running duplex,
     // - execute TRX relay via GPIO,
     // - (re-)connect TX antenna (since it was disconnected upon TXRX)
-    // - (re-)set nominal TX drive (since it was set to zero upon TXRX)
     //
     if (!duplex) {
       for (int i = 0; i < RECEIVERS; i++) {
@@ -1188,9 +1191,9 @@ void soapy_protocol_rxtx(const TRANSMITTER *tx) {
     SoapySDRDevice_writeGPIO(soapy_device, bank, 0x01);
     usleep(30000);
     soapy_protocol_set_tx_antenna(tx->antenna);
-    soapy_protocol_set_tx_gain(tx->drive);
   }
 
+  soapy_protocol_set_tx_gain(tx->drive);
   soapy_protocol_set_tx_frequency();
 }
 
@@ -1200,7 +1203,10 @@ void soapy_protocol_txrx(void) {
   if (!soapy_device) { return; }
 
   //
-  // Do everything that needs be done for a TX->RX transition
+  // Do everything that needs be done for a TX->RX transition. Most
+  // of this is radio specific, but at the least we
+  // - set TX gain to minimum
+  // - set all RX frequencies
   //
   // This is called from rxtx() after the WDSP transmitter is slewed down
   // and the WDSP receivers are slewed up (in non-DUPLEX case)
@@ -1216,7 +1222,6 @@ void soapy_protocol_txrx(void) {
     // - execute TRX relay,
     // - set RX gains to nominal value
     //
-    soapy_protocol_set_tx_gain(0);
     soapy_protocol_set_tx_antenna(0); // 0 is NONE
     const char *bank = "MAIN"; //set GPIO to signal the relay to RX
     t_print("%s: Setting LIME GPIO to 0\n", __func__);
@@ -1227,6 +1232,9 @@ void soapy_protocol_txrx(void) {
       soapy_protocol_rx_unattenuate(id);
     }
   }
+
+  // LIME? should we use drive_min or zero?
+  soapy_protocol_set_tx_gain(drive_min);
 
   for (int id = 0; id < RECEIVERS; id++) {
     soapy_protocol_set_rx_frequency(id);
