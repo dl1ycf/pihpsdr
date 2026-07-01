@@ -63,6 +63,9 @@ static void* midi_thread(void *);
 
 static void *midi_thread(void *arg) {
   int index = (int) (uintptr_t) arg;
+
+  if (index < 0 || index >= MAX_MIDI_DEVICES) { return; }
+
   snd_rawmidi_t *input = midi_input[index];
   char *port = midi_port[index];
   int npfds;

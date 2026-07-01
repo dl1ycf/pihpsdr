@@ -108,7 +108,9 @@ typedef struct _client {
   int auto_reporting;               // auto-reporting (AI, ZZAI) 0...3
   int andromeda_type;               // 1:Andromeda, 4:G2Mk1 with CM5 upgrade, 5:G2 ultra
   int last_v;                       // Last push-button state received
-  int last_fa, last_fb, last_md;    // last VFO-A/B frequency and VFO-A mode reported
+  int last_fa, last_fb;             // last VFO-A/B frequency reported
+  int last_md;                      // last VFO-A mode reported
+  int last_ptt;                     // last RX/TX status reported
   int last_led[MAX_ANDROMEDA_LEDS]; // last status of ANDROMEDA LEDs
   int shift;                        // shift state for original ANDROMEDA console
   int *buttonvec;                   // For G2 ANDROMEDA: button action map
@@ -902,6 +904,17 @@ static gboolean autoreport_handler(gpointer data) {
     }
   }
 
+  if (client->auto_reporting > 2) {
+    int state = radio_is_transmitting();
+
+    if (state != client->last_ptt) {
+      char reply[256];
+      snprintf(reply,  sizeof(reply), state ? "TX;" : "RX;");
+      send_resp(client->fd, reply);
+      client->last_ptt = state;
+    }
+  }
+
   return TRUE;
 }
 
@@ -1222,6 +1235,7 @@ static gpointer rigctl_server(gpointer data) {
     tcp_client[spare].last_fa         = -1;
     tcp_client[spare].last_fb         = -1;
     tcp_client[spare].last_md         = -1;
+    tcp_client[spare].last_ptt        = -1;
     tcp_client[spare].last_v          = 0;
     tcp_client[spare].shift           = 0;
     tcp_client[spare].buttonvec       = NULL;
@@ -1450,8 +1464,9 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //RESP      ZZAIx;
       //NOTE      x=0: auto-reporting disabled, x>0: enabled.
       //NOTE      Auto-reporting is affected for the client that sends this command.
-      //CONT      For x=1, only frequency changes are sent via FA/FB commands.
-      //CONT      For x>1, mode changes are also sent via MD commands.
+      //CONT      For x>0, frequency changes are sent via FA/FB commands.
+      //CONT      For x>1, mode changes of VFO-A are sent via MD commands.
+      //CONT      For x>2, RX/TX changes are sent via RX or TX commands.
       //ENDDEF
       if (command[4] == ';') {
         // Query status
@@ -2870,8 +2885,9 @@ static int parse_cmd(gpointer data) {
       //RESP      AIx;
       //NOTE      x=0: auto-reporting disabled, x>0: enabled.
       //NOTE      Auto-reporting is affected for the client that sends this command.
-      //CONT      For x=1, only frequency changes are sent via FA/FB commands.
-      //CONT      For x>1, mode changes are also sent via MD commands.
+      //CONT      For x>0, frequency changes are sent via FA/FB commands.
+      //CONT      For x>1, mode changes of VFO-A are sent via MD commands.
+      //CONT      For x>2, RX/TX changes are sent via RX or TX commands.
       //ENDDEF
       if (command[2] == ';') {
         snprintf(reply,  sizeof(reply), "AI%d;", client->auto_reporting);
@@ -5037,6 +5053,7 @@ int launch_serial_rigctl (int id) {
   serial_client[id].last_fa            = -1;
   serial_client[id].last_fb            = -1;
   serial_client[id].last_md            = -1;
+  serial_client[id].last_ptt           = -1;
   serial_client[id].last_v             = 0;
   serial_client[id].shift              = 0;
   serial_client[id].buttonvec          = NULL;
