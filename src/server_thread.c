@@ -223,9 +223,6 @@ void send_rxspectrum(int id) {
   numsamples = rx->width;
 
   if (numsamples > SPECTRUM_DATA_SIZE) { numsamples = SPECTRUM_DATA_SIZE; }
-
-  numout = 0;
-
   //
   // Compression: make uncompressed data and compress it
   //
@@ -255,7 +252,7 @@ void send_rxspectrum(int id) {
 
   if (numout == 0) {
     //
-    // If compression failed: send un-compressed data
+    // If compression fails: send un-compressed data
     //
     spectrum_data.compressed = 0;
 
@@ -272,24 +269,18 @@ void send_rxspectrum(int id) {
     numout = numsamples;
   }
 
-  if (numout > 0) {
-    //
-    // spectrum commands have a variable length, since this depends on the
-    // width of the screen. To this end, calculate the total number of bytes
-    // in THIS command (xferlen) and the length  of the payload.
-    //
-    int xferlen = sizeof(spectrum_data) - (SPECTRUM_DATA_SIZE - numout) * sizeof(uint8_t);
-    int payload = xferlen - sizeof(HEADER);
+  //
+  // spectrum commands have a variable length, since this depends on the
+  // width of the screen. To this end, calculate the total number of bytes
+  // in THIS command (xferlen) and the length  of the payload.
+  //
+  int xferlen = sizeof(spectrum_data) - (SPECTRUM_DATA_SIZE - numout) * sizeof(uint8_t);
+  int payload = xferlen - sizeof(HEADER);
+  spectrum_data.header.s1 = to_16(payload);
 
-    //cppcheck-suppress knownConditionTrueFalse
-    if (payload > 32000) { fatal_error("FATAL: Spectrum payload too large"); }
-
-    spectrum_data.header.s1 = to_16(payload);
-
-    if (sendto(remoteclient.sock_udp, &spectrum_data, xferlen, 0,
-               (struct sockaddr *)&remoteclient.address, sizeof(remoteclient.address))  < 0) {
-      perror("RXSPEC:UDP:SEND");
-    }
+  if (sendto(remoteclient.sock_udp, &spectrum_data, xferlen, 0,
+             (struct sockaddr *)&remoteclient.address, sizeof(remoteclient.address))  < 0) {
+    perror("RXSPEC:UDP:SEND");
   }
 }
 
@@ -324,13 +315,10 @@ void send_txspectrum(void) {
   numsamples = tx->width;
 
   if (numsamples > SPECTRUM_DATA_SIZE) { numsamples = SPECTRUM_DATA_SIZE; }
-
   //
   // When running duplex, tx->pixels > tx->width, so transfer only central part
   //
   int offset = (tx->pixels - tx->width) / 2;
-  numout = 0;
-
   //
   // Compression: make uncompressed data and compress it
   //
@@ -377,24 +365,18 @@ void send_txspectrum(void) {
     numout = numsamples;
   }
 
-  if (numout > 0) {
-    //
-    // spectrum commands have a variable length, since this depends on the
-    // width of the screen. To this end, calculate the total number of bytes
-    // in THIS command (xferlen) and the length  of the payload.
-    //
-    int xferlen = sizeof(spectrum_data) - (SPECTRUM_DATA_SIZE - numout) * sizeof(uint8_t);
-    int payload = xferlen - sizeof(HEADER);
+  //
+  // spectrum commands have a variable length, since this depends on the
+  // width of the screen. To this end, calculate the total number of bytes
+  // in THIS command (xferlen) and the length  of the payload.
+  //
+  int xferlen = sizeof(spectrum_data) - (SPECTRUM_DATA_SIZE - numout) * sizeof(uint8_t);
+  int payload = xferlen - sizeof(HEADER);
+  spectrum_data.header.s1 = to_16(payload);
 
-    //cppcheck-suppress knownConditionTrueFalse
-    if (payload > 32000) { fatal_error("FATAL: Spectrum payload too large"); }
-
-    spectrum_data.header.s1 = to_16(payload);
-
-    if (sendto(remoteclient.sock_udp, &spectrum_data, xferlen, 0,
-               (struct sockaddr *)&remoteclient.address, sizeof(remoteclient.address))  < 0) {
-      perror("TXSPEC:UDP:SEND");
-    }
+  if (sendto(remoteclient.sock_udp, &spectrum_data, xferlen, 0,
+             (struct sockaddr *)&remoteclient.address, sizeof(remoteclient.address))  < 0) {
+    perror("TXSPEC:UDP:SEND");
   }
 }
 

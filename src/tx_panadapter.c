@@ -113,7 +113,6 @@ static gboolean tx_panadapter_button_release_event_cb (GtkWidget *widget, GdkEve
 
     if (d) {
       tx->panadapter_low += d;
-      t_print("LY=%d Y=%d LOW=%d\n", last_y, y, tx->panadapter_low);
 
       //
       // Keep value within reasonable bounds
@@ -148,7 +147,6 @@ static gboolean tx_panadapter_motion_notify_event_cb (GtkWidget *widget, GdkEven
 
     if (d) {
       tx->panadapter_low += (y - last_y) / 5;
-      t_print("LY=%d Y=%d LOW=%d\n", last_y, y, tx->panadapter_low);
       last_y = y;
 
       //

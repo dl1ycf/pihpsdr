@@ -1765,7 +1765,7 @@ void old_protocol_iq_samples(double isample, double qsample, double side) {
 #else
         sem_post(&txring_sem);
 #endif
-        MEMORY_BARRIER
+        MEMORY_BARRIER;
         txring_inptr = nptr;
         txring_count = 0;
       } else {

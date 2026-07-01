@@ -188,8 +188,7 @@ static volatile int txiq_count            = 0;  // number of samples queued sinc
 static volatile atomic_int rxaudio_inptr  = 0;  // pointer updated when writing into the ring buffer
 static volatile atomic_int rxaudio_outptr = 0;  // pointer updated when reading from the ring buffer
 static volatile int rxaudio_count         = 0;  // number of samples queued since last sem_post
-static volatile int rxaudio_drain         = 0;  // a flag for draining the RX audio buffer
-static volatile int rxaudio_flag          = 0;  // 0: RX, 1: TX
+static volatile int rxaudio_flag          = 0;  // 0: RX or duplex, 1: TX without duplex
 
 static pthread_mutex_t send_rxaudio_mutex   = PTHREAD_MUTEX_INITIALIZER;
 
@@ -1787,7 +1786,8 @@ void new_protocol_menu_stop(void) {
 void new_protocol_menu_start(void) {
   ASSERT_SERVER();
   //
-  // reset sequence numbers, action table, etc.
+  // reset sequence numbers, ring buffers, action table, etc.
+  // no mutex needed since no threads yet spawned off
   //
   high_priority_sequence = 0;
   rx_specific_sequence = 0;
@@ -1796,10 +1796,10 @@ void new_protocol_menu_start(void) {
   micsamples_sequence = 0;
   audio_sequence = 0;
   tx_iq_sequence = 0;
+  //
   rxaudio_inptr = 0;
   rxaudio_outptr = 0;
   rxaudio_count = 0;
-  rxaudio_drain = 0;
   rxaudio_flag = 0;
   txiq_inptr = 0;
   txiq_outptr = 0;
@@ -1808,17 +1808,18 @@ void new_protocol_menu_start(void) {
   mic_outptr = 0;
   high_priority_inptr = 0;
   high_priority_outptr = 0;
-
-  // cannot use mset for atomic variables
+  //
+  // cannot use memset for atomic variables
+  //
   for (int i = 0; i < MAX_DDC; i++) {
     iq_inptr[i] = 0;
     iq_outptr[i] = 0;
     iq_count[i] = 0;
+    ddc_sequence[i] = 0;
   }
 
   memset(rxcase, 0, sizeof(rxcase));
   memset(rxid, 0, sizeof(rxid));
-  memset(ddc_sequence, 0, sizeof(ddc_sequence));
   update_action_table();
 
   //
@@ -1832,6 +1833,9 @@ void new_protocol_menu_start(void) {
   }
 
   P2running = 1;
+  //
+  // Make semaphores for the TXIQ and RXAUDIO tasks, and spawn these threads
+  //
 #ifdef __APPLE__
   txiq_sem = apple_sem(0);
   rxaudio_sem = apple_sem(0);
@@ -1843,17 +1847,23 @@ void new_protocol_menu_start(void) {
   new_protocol_txiq_thread_id = g_thread_new( "P2 TXIQ", new_protocol_txiq_thread, NULL);
 
   if (!have_saturn_xdma) {
+    //
+    // Spawn of "ethernet listening" thread
+    //
     new_protocol_thread_id = g_thread_new( "P2 main", new_protocol_thread, NULL);
   }
 
-  new_protocol_general();
+  new_protocol_general();           // Send general data, including port numbers
   usleep(100000);                   // let FPGA digest the port numbers
-  new_protocol_receive_specific();
-  usleep(50000);
-  new_protocol_transmit_specific();
-  usleep(50000);
-  new_protocol_high_priority();     // post-pone "run" command until here.
-  usleep(50000);                    // let FPGA digest the "run" command
+  new_protocol_receive_specific();  // Send RX parameters
+  usleep(50000);                    // let FPGA digest
+  new_protocol_transmit_specific(); // send TX parameters
+  usleep(50000);                    // let FPGA digest
+  new_protocol_high_priority();     // Send frequencies and "run" command
+  usleep(100000);                   // let FPGA digest the "run" command
+  //
+  // Spawn off a thread that will periodicall send HighPrio, RxSpec, TxSpec, and General packets
+  //
   new_protocol_timer_thread_id = g_thread_new( "P2 task", new_protocol_timer_thread, NULL);
 }
 
@@ -1878,13 +1888,24 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
 
     if (!P2running) { break; }
 
-    nptr = (rxaudio_outptr + 256) & RXAUDIORINGBUFMASK;
+    //
+    // I think we have to use a lock here for the new implementation
+    // of draining. Suppose the producer drains the buffer immediately
+    // *after* the following statement so we miss it. As a consequence,
+    // the data from outptr is shipped out while the producer is
+    // writing into the same location. We need the lock only a short
+    // time, while copying out the data and updating the outptr
+    //
+    pthread_mutex_lock(&send_rxaudio_mutex);
 
-    if (rxaudio_drain) {
-      // remove data from buffer but do not send
-      rxaudio_outptr = nptr;
-      continue;
-    }
+    //
+    // If the producer resets the buffer, the semaphore
+    // may have accumulated some events, so we can end
+    // up here with en empty ring buffer
+    //
+    if (rxaudio_outptr == rxaudio_inptr) { continue; }
+
+    nptr = (rxaudio_outptr + 256) & RXAUDIORINGBUFMASK;
 
     audiobuffer[0] = (audio_sequence >> 24) & 0xFF;
     audiobuffer[1] = (audio_sequence >> 16) & 0xFF;
@@ -1892,8 +1913,9 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
     audiobuffer[3] = (audio_sequence      ) & 0xFF;
     audio_sequence++;
     memcpy(&audiobuffer[4], &RXAUDIORINGBUF[rxaudio_outptr], 256);
-    rxaudio_outptr = nptr;
     MEMORY_BARRIER;
+    rxaudio_outptr = nptr;
+    pthread_mutex_unlock(&send_rxaudio_mutex);
 
     if (have_saturn_xdma) {
       saturn_handle_speaker_audio(audiobuffer);
@@ -1974,9 +1996,6 @@ static gpointer new_protocol_txiq_thread(gpointer data) {
   // Ideally, a TX IQ buffer with 240 sample is sent every 1250 usecs.
   // We thus wait until we have 240 samples, and then send
   // a packet (in network mode) or start DMA (in xdma mode).
-  // After sending a packet in network mode, take care that
-  // after sending a packet, there is a delay of 1000 usec before
-  // sending the next one.
   //
   while (P2running) {
 #ifdef __APPLE__
@@ -1994,11 +2013,11 @@ static gpointer new_protocol_txiq_thread(gpointer data) {
     tx_iq_sequence++;
     nptr = (txiq_outptr + 1440);
 
-    if (nptr > TXIQRINGBUFLEN) nptr = 0;  // length not a power of two
+    if (nptr >= TXIQRINGBUFLEN) { nptr = 0; }  // length not a power of two so we branch
 
     memcpy(&iqbuffer[4], &TXIQRINGBUF[txiq_outptr], 1440);
-    txiq_outptr = nptr;
     MEMORY_BARRIER;
+    txiq_outptr = nptr;
 
     if (have_saturn_xdma) {
       saturn_handle_duc_iq(iqbuffer);
@@ -2009,6 +2028,8 @@ static gpointer new_protocol_txiq_thread(gpointer data) {
       // may sleep longer than intended.
       // FIFO is the coarse (!) estimation of the TX DUC FIFO filling.
       // If we lag behind and FIFO goes low, send packet immediately.
+      // The rationale of all this crap is to avoid over-running the
+      // FPGA TX IQ FIFO if many IQ samples arrive here in a burst.
       //
       struct timespec ts;
       static double last = -9999.9;
@@ -2066,14 +2087,13 @@ static gpointer new_protocol_thread(gpointer data) {
     int sourceport;
     int bytesread;
     mybuffer *mybuf;
-    unsigned char *buffer;
     mybuf = get_my_buffer();
-    buffer = mybuf->buffer;
-    bytesread = recvfrom(data_socket, buffer, NET_BUFFER_SIZE, 0, (struct sockaddr*)&addr, &length);
+    bytesread = recvfrom(data_socket, mybuf->buffer, NET_BUFFER_SIZE, 0, (struct sockaddr*)&addr, &length);
 
     if (!P2running) {
       //
-      // When leaving piHPSDR, it may happen that the protocol has been stopped while
+      // When restarting or leaving piHPSDR, it may happen that the
+      // protocol has been stopped while
       // we were doing "recvfrom". In this case, we want to let the main
       // thread terminate gracefully, including writing the props files.
       //
@@ -2095,7 +2115,6 @@ static gpointer new_protocol_thread(gpointer data) {
 
     sourceport = ntohs(addr.sin_port);
 
-    //t_print("new_protocol_thread: recvd %d bytes on port %d\n",bytesread,sourceport);
     switch (sourceport) {
     case RX_IQ_TO_HOST_PORT_0:
     case RX_IQ_TO_HOST_PORT_1:
@@ -2140,7 +2159,6 @@ static gpointer new_protocol_thread(gpointer data) {
 static gpointer high_priority_thread(gpointer data) {
   ASSERT_SERVER(NULL);
   int nptr;
-  int optr;
   mybuffer *mybuf;
 
   while (1) {
@@ -2149,12 +2167,12 @@ static gpointer high_priority_thread(gpointer data) {
 #else
     sem_wait(&high_priority_sem_buffer);
 #endif
-    optr = high_priority_outptr;
-    nptr = (optr + 1) & HPRIORINGBUFMASK;
 
-    mybuf = (mybuffer *) high_priority_ring[optr];
-    high_priority_outptr = nptr;
+    nptr = (high_priority_outptr + 1) & HPRIORINGBUFMASK;
+
+    mybuf = (mybuffer *) high_priority_ring[high_priority_outptr];
     MEMORY_BARRIER;
+    high_priority_outptr = nptr;
 
     if (mybuf->free) { continue; }
 
@@ -2180,13 +2198,13 @@ static gpointer mic_line_thread(gpointer data) {
 #else
     sem_wait(&mic_line_sem);
 #endif
+
     nptr = (mic_outptr + 1) & MICRINGBUFMASK;
 
     mybuf = (mybuffer *) mic_line_buffer[mic_outptr];
-    mic_outptr = nptr;
     MEMORY_BARRIER;
+    mic_outptr = nptr;
 
-    // This can happen when restarting the protocol
     if (mybuf->free) { continue; }
 
     process_mic_data(mybuf->buffer);
@@ -2205,7 +2223,6 @@ static gpointer mic_line_thread(gpointer data) {
 //
 void saturn_post_high_priority(mybuffer *buffer) {
   ASSERT_SERVER();
-  int iptr;
   int nptr;
 
   if (!P2running) {
@@ -2213,11 +2230,11 @@ void saturn_post_high_priority(mybuffer *buffer) {
     return;
   }
 
-  iptr = high_priority_inptr;
-  nptr = (iptr + 1) & HPRIORINGBUFMASK;
+  nptr = (high_priority_inptr + 1) & HPRIORINGBUFMASK;
 
   if (nptr != high_priority_outptr) {
-    high_priority_ring[iptr] = buffer;
+    high_priority_ring[high_priority_inptr] = buffer;
+    MEMORY_BARRIER;
     high_priority_inptr = nptr;
     MEMORY_BARRIER;
 #ifdef __APPLE__
@@ -2249,6 +2266,7 @@ void saturn_post_micaudio(int bytesread, mybuffer *mybuf) {
 
   if (nptr != mic_outptr) {
     mic_line_buffer[mic_inptr] = mybuf;
+    MEMORY_BARRIER;
     mic_inptr = nptr;
     MEMORY_BARRIER;
 #ifdef __APPLE__
@@ -2299,11 +2317,11 @@ void saturn_post_iq_data(int ddc, mybuffer *mybuf) {
   }
 
   ddc_sequence[ddc] = sequence + 1;
-  int iptr = iq_inptr[ddc];
-  int nptr = (iptr + 1) & RXIQRINGBUFMASK;
+  int nptr = (iq_inptr[ddc] + 1) & RXIQRINGBUFMASK;
 
   if (nptr != iq_outptr[ddc]) {
-    iq_buffer[ddc][iptr] = mybuf;
+    iq_buffer[ddc][iq_inptr[ddc]] = mybuf;
+    MEMORY_BARRIER;
     iq_inptr[ddc] = nptr;
     MEMORY_BARRIER;
 #ifdef __APPLE__
@@ -2322,10 +2340,7 @@ void saturn_post_iq_data(int ddc, mybuffer *mybuf) {
 static gpointer iq_thread(gpointer data) {
   ASSERT_SERVER(NULL);
   int ddc = GPOINTER_TO_INT(data);
-  //
-  // TEMPORARY: additional sequence check here
-  //
-  int nptr, optr;
+  int nptr;
   volatile mybuffer *mybuf;
   const unsigned char *buffer;
 
@@ -2342,12 +2357,14 @@ static gpointer iq_thread(gpointer data) {
 #else
     sem_wait(&iq_sem[ddc]);
 #endif
-    optr = iq_outptr[ddc];
-    nptr = (optr + 1) &RXIQRINGBUFMASK;
 
-    mybuf = iq_buffer[ddc][optr];
-    iq_outptr[ddc] = nptr;
+    if (iq_inptr[ddc] == iq_outptr[ddc]) { continue; }
+
+    nptr = (iq_outptr[ddc] + 1) &RXIQRINGBUFMASK;
+
+    mybuf = iq_buffer[ddc][iq_outptr[ddc]];
     MEMORY_BARRIER;
+    iq_outptr[ddc] = nptr;
 
     // This can happen when restarting the protocol
     if (mybuf->free) { continue; }
@@ -2770,21 +2787,12 @@ void new_protocol_tx_audio_samples(double sample) {
   if (!rxaudio_flag) {
     //
     // First time we arrive here after a RX->TX(CW) transition:
-    // set the "drain" flag, wait until buffer is drained,
-    // then clear the flag.
+    // drain the buffer.
     // This is done to start CW TX with an "empty" buffer in order
     // to minimize CW side tone latency (17 msec measured on my ANAN-7000).
     //
-    rxaudio_drain = 1;
-
-    while (P2running && rxaudio_inptr != rxaudio_outptr) { usleep(1000); }
-
-    rxaudio_drain = 0;
-    if (!P2running) {
-      pthread_mutex_unlock(&send_rxaudio_mutex);
-      return;
-    }
-
+    rxaudio_inptr = rxaudio_outptr;
+    rxaudio_count = 0;
     rxaudio_flag = 1;
   }
 
@@ -2803,7 +2811,9 @@ void new_protocol_tx_audio_samples(double sample) {
     int nptr = (rxaudio_inptr + 256) & RXAUDIORINGBUFMASK;
 
     if (nptr != rxaudio_outptr) {
+      MEMORY_BARRIER;
       rxaudio_inptr = nptr;
+      MEMORY_BARRIER;
 #ifdef __APPLE__
       sem_post(rxaudio_sem);
 #else
@@ -2916,6 +2926,7 @@ void new_protocol_iq_samples(double isample, double qsample) {
 
     if (nptr != txiq_outptr) {
       // free space in ring buffer
+      MEMORY_BARRIER;
       txiq_inptr = nptr;
       MEMORY_BARRIER;
       txiq_count = 0;
@@ -2926,7 +2937,7 @@ void new_protocol_iq_samples(double isample, double qsample) {
 #endif
     } else {
       t_print("%s: output buffer overflow\n", __func__);
-      // skip 4800 samples ( 25 msec @ 192k )
+      // skip 20 buffer = 4800 samples = 25 msec)
       txiq_count = -4800;
     }
   }
