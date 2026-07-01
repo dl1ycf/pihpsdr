@@ -31,6 +31,8 @@
   #include <pulse/simple.h>
 #endif
 
+#include "atomic.h"
+
 enum _audio_channel_enum {
   STEREO = 0,
   LEFT,
@@ -217,8 +219,8 @@ typedef struct _receiver {
   GMutex audio_mutex;                // Mutex that can be used for soundcard output
   double *audio_buffer;              // Buffer that can be used for soundcard output
   int audio_buffer_offset;           // pointer for audio buffer
-  volatile int audio_buffer_inpt;    // pointer for audio buffer
-  volatile int audio_buffer_outpt;   // pointer for audio_buffer
+  volatile atomic_int audio_buffer_inpt;    // pointer for audio buffer
+  volatile atomic_int audio_buffer_outpt;   // pointer for audio_buffer
 
 #if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA)
   // this is only possible for "cppcheck" runs

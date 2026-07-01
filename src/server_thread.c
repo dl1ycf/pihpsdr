@@ -60,6 +60,7 @@
 #include <errno.h>
 
 #include "actions.h"
+#include "atomic.h"
 #include "band.h"
 #include "client_server.h"
 #include "ext.h"
@@ -97,12 +98,13 @@ static RXAUDIO_DATA rxaudio_data[2];  // for up to 2 receivers
 //
 // Audio
 //
-#define MIC_RING_BUFFER_SIZE 9600
-#define MIC_RING_LOW         3000
+#define MIC_RING_BUFFER_SIZE 8192  // 171 msec
+#define MIC_RING_BUFFER_MASK 8191
+#define MIC_RING_LOW         2400  // 50 msec
 
 static double *mic_ring_buffer;
-static volatile int mic_ring_outpt = 0;
-static volatile int mic_ring_inpt = 0;
+static volatile atomic_int mic_ring_outpt = 0;
+static volatile atomic_int mic_ring_inpt = 0;
 
 static GThread *listen_thread_id;
 static GThread *udp_thread_id;
@@ -453,26 +455,19 @@ void remote_rxaudio(const RECEIVER *rx, double sample) {
 double remote_get_mic_sample(void) {
   //
   // return one sample from the audio input ring buffer
-  // If it is empty, return a zero, and continue to return
-  // zero until it is at least filled with  MIC_RING_LOW samples
   //
   double sample;
-  static int is_empty = 1;
-  int numsamples = mic_ring_outpt - mic_ring_inpt;
+  int numsamples = (mic_ring_outpt - mic_ring_inpt) & MIC_RING_BUFFER_MASK;
 
-  if (numsamples < 0) { numsamples += MIC_RING_BUFFER_SIZE; }
-
-  if (numsamples <= 0) { is_empty = 1; }
-
-  if (is_empty && numsamples < MIC_RING_LOW) {
+  //
+  // If there are very few samples, return "silence" until the mic ring
+  // buffer has enough filling
+  //
+  if (numsamples < MIC_RING_LOW) {
     return 0.0;
   }
 
-  is_empty = 0;
-  int newpt = mic_ring_outpt + 1;
-
-  if (newpt == MIC_RING_BUFFER_SIZE) { newpt = 0; }
-
+  int newpt = (mic_ring_outpt + 1) & MIC_RING_BUFFER_MASK;
   MEMORY_BARRIER;
   sample = mic_ring_buffer[mic_ring_outpt];
   // atomic update of read pointer
@@ -959,13 +954,11 @@ static gpointer udp_thread(gpointer arg) {
         int nsamples = opus_decode(tx_opus_dec, data->payload, num, tx_pcm_out, OPUS_FRAME_SIZE, 0);
 
         for (int i = 0; i < nsamples; i++) {
-          int newpt = mic_ring_inpt + 1;
-
-          if (newpt == MIC_RING_BUFFER_SIZE) { newpt = 0; }
+          int newpt = (mic_ring_inpt + 1) & MIC_RING_BUFFER_MASK;
 
           if (newpt != mic_ring_outpt) {
             MEMORY_BARRIER;
-            mic_ring_buffer[mic_ring_inpt] = tx_pcm_out[i] * (1.0 / 32768.0);
+            mic_ring_buffer[mic_ring_inpt] = tx_pcm_out[i] * .00003051;
             MEMORY_BARRIER;
             mic_ring_inpt = newpt;
           }
@@ -978,14 +971,12 @@ static gpointer udp_thread(gpointer arg) {
       const TXAUDIO_DATA *data = (TXAUDIO_DATA *) buffer;
 
       for (unsigned int i = 0; i < num; i++) {
-        int newpt = mic_ring_inpt + 1;
-
-        if (newpt == MIC_RING_BUFFER_SIZE) { newpt = 0; }
+        int newpt = (mic_ring_inpt + 1) & MIC_RING_BUFFER_MASK;
 
         if (newpt != mic_ring_outpt) {
           MEMORY_BARRIER;
           // buffer space available, do the write
-          mic_ring_buffer[mic_ring_inpt] = from_16(data->samples[i]) * 0.00003051; // division by 32768
+          mic_ring_buffer[mic_ring_inpt] = from_16(data->samples[i]) * .00003051;
           MEMORY_BARRIER;
           // atomic update of mic_ring_inpt
           mic_ring_inpt = newpt;

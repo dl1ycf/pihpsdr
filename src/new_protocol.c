@@ -41,6 +41,7 @@
 #include <signal.h>
 
 #include "alex.h"
+#include "atomic.h"
 #include "audio.h"
 #include "band.h"
 #include "discovered.h"
@@ -61,9 +62,9 @@
 #include "vox.h"
 
 #ifdef DUMP_TX_DATA
-  double rxiqi[1000000];
-  double rxiqq[1000000];
-  int  rxiq_count = 0;
+  double dumpiqi[1000000];
+  double dumpiqq[1000000];
+  int  dumpiq_count = 0;
 #endif
 
 #define min(x,y) (x<y?x:y)
@@ -166,27 +167,29 @@ static int local_pa_enable = 0;
 // radio following the pace of incoming mic samples.
 //
 // TXIQRINGBUF must contain a multiple of 1440 bytes (240 samples).
+// (so it cannot be a power of two)
 // RXAUDIORINGBUF must contain a multiple of 256 bytes (64 samples).
 //
 // The ring buffers must be thread-safe.
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define TXIQRINGBUFLEN    97920  // (85 msec)
-#define RXAUDIORINGBUFLEN 16384  // (85 msec)
+#define TXIQRINGBUFLEN     97920  // (85 msec)
+#define RXAUDIORINGBUFLEN  16384  // (85 msec)
+#define RXAUDIORINGBUFMASK 16383
 
 static unsigned char *RXAUDIORINGBUF = NULL;
 static unsigned char *TXIQRINGBUF = NULL;
 
-static volatile int txiq_inptr        = 0;  // pointer updated when writing into the ring buffer
-static volatile int txiq_outptr       = 0;  // pointer updated when reading from the ring buffer
-static volatile int txiq_count        = 0;  // number of samples queued since last sem_post
+static volatile atomic_int txiq_inptr     = 0;  // pointer updated when writing into the ring buffer
+static volatile atomic_int txiq_outptr    = 0;  // pointer updated when reading from the ring buffer
+static volatile int txiq_count            = 0;  // number of samples queued since last sem_post
 
-static volatile int rxaudio_inptr     = 0;  // pointer updated when writing into the ring buffer
-static volatile int rxaudio_outptr    = 0;  // pointer updated when reading from the ring buffer
-static volatile int rxaudio_count     = 0;  // number of samples queued since last sem_post
-static volatile int rxaudio_drain     = 0;  // a flag for draining the RX audio buffer
-static volatile int rxaudio_flag      = 0;  // 0: RX, 1: TX
+static volatile atomic_int rxaudio_inptr  = 0;  // pointer updated when writing into the ring buffer
+static volatile atomic_int rxaudio_outptr = 0;  // pointer updated when reading from the ring buffer
+static volatile int rxaudio_count         = 0;  // number of samples queued since last sem_post
+static volatile int rxaudio_drain         = 0;  // a flag for draining the RX audio buffer
+static volatile int rxaudio_flag          = 0;  // 0: RX, 1: TX
 
 static pthread_mutex_t send_rxaudio_mutex   = PTHREAD_MUTEX_INITIALIZER;
 
@@ -221,23 +224,26 @@ static mybuffer *buflist = NULL;
 //
 // The buffers used by new_protocol_thread
 //
-#define RXIQRINGBUFLEN 512
+#define RXIQRINGBUFLEN  512
+#define RXIQRINGBUFMASK 511
 static volatile mybuffer *iq_buffer[MAX_DDC][RXIQRINGBUFLEN];
-static volatile int iq_inptr[MAX_DDC] = { 0 };
-static volatile int iq_outptr[MAX_DDC] = { 0 };
+static volatile atomic_int iq_inptr[MAX_DDC] = { 0 };
+static volatile atomic_int iq_outptr[MAX_DDC] = { 0 };
 static volatile int iq_count[MAX_DDC] = { 0 };
 
 //static mybuffer *high_priority_buffer;
 
-#define HPRIORINGBUFLEN 64
+#define HPRIORINGBUFLEN  64
+#define HPRIORINGBUFMASK 63
 static volatile mybuffer *high_priority_ring[HPRIORINGBUFLEN];
-static volatile int high_priority_inptr = 0;
-static volatile int high_priority_outptr = 0;
+static volatile atomic_int high_priority_inptr = 0;
+static volatile atomic_int high_priority_outptr = 0;
 
-#define MICRINGBUFLEN 64
+#define MICRINGBUFLEN  64
+#define MICRINGBUFMASK 63
 static volatile mybuffer *mic_line_buffer[MICRINGBUFLEN];
-static volatile int mic_inptr = 0;
-static volatile int mic_outptr = 0;
+static volatile atomic_int mic_inptr = 0;
+static volatile atomic_int mic_outptr = 0;
 static volatile int mic_count = 0;
 
 //
@@ -1790,13 +1796,26 @@ void new_protocol_menu_start(void) {
   micsamples_sequence = 0;
   audio_sequence = 0;
   tx_iq_sequence = 0;
-  pthread_mutex_lock(&send_rxaudio_mutex);
   rxaudio_inptr = 0;
   rxaudio_outptr = 0;
   rxaudio_count = 0;
   rxaudio_drain = 0;
   rxaudio_flag = 0;
-  pthread_mutex_unlock(&send_rxaudio_mutex);
+  txiq_inptr = 0;
+  txiq_outptr = 0;
+  txiq_count = 0;
+  mic_inptr = 0;
+  mic_outptr = 0;
+  high_priority_inptr = 0;
+  high_priority_outptr = 0;
+
+  // cannot use mset for atomic variables
+  for (int i = 0; i < MAX_DDC; i++) {
+    iq_inptr[i] = 0;
+    iq_outptr[i] = 0;
+    iq_count[i] = 0;
+  }
+
   memset(rxcase, 0, sizeof(rxcase));
   memset(rxid, 0, sizeof(rxid));
   memset(ddc_sequence, 0, sizeof(ddc_sequence));
@@ -1859,9 +1878,7 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
 
     if (!P2running) { break; }
 
-    nptr = rxaudio_outptr + 256;
-
-    if (nptr >= RXAUDIORINGBUFLEN) { nptr = 0; }
+    nptr = (rxaudio_outptr + 256) & RXAUDIORINGBUFMASK;
 
     if (rxaudio_drain) {
       // remove data from buffer but do not send
@@ -1875,8 +1892,8 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
     audiobuffer[3] = (audio_sequence      ) & 0xFF;
     audio_sequence++;
     memcpy(&audiobuffer[4], &RXAUDIORINGBUF[rxaudio_outptr], 256);
-    MEMORY_BARRIER;
     rxaudio_outptr = nptr;
+    MEMORY_BARRIER;
 
     if (have_saturn_xdma) {
       saturn_handle_speaker_audio(audiobuffer);
@@ -1975,13 +1992,13 @@ static gpointer new_protocol_txiq_thread(gpointer data) {
     iqbuffer[2] = (tx_iq_sequence >>  8) & 0xFF;
     iqbuffer[3] = (tx_iq_sequence      ) & 0xFF;
     tx_iq_sequence++;
-    nptr = txiq_outptr + 1440;
+    nptr = (txiq_outptr + 1440);
 
-    if (nptr >= TXIQRINGBUFLEN) { nptr = 0; }
+    if (nptr > TXIQRINGBUFLEN) nptr = 0;  // length not a power of two
 
     memcpy(&iqbuffer[4], &TXIQRINGBUF[txiq_outptr], 1440);
-    MEMORY_BARRIER;
     txiq_outptr = nptr;
+    MEMORY_BARRIER;
 
     if (have_saturn_xdma) {
       saturn_handle_duc_iq(iqbuffer);
@@ -2133,13 +2150,11 @@ static gpointer high_priority_thread(gpointer data) {
     sem_wait(&high_priority_sem_buffer);
 #endif
     optr = high_priority_outptr;
-    nptr = optr + 1;
-
-    if (nptr >= HPRIORINGBUFLEN) { nptr = 0; }
+    nptr = (optr + 1) & HPRIORINGBUFMASK;
 
     mybuf = (mybuffer *) high_priority_ring[optr];
-    MEMORY_BARRIER;
     high_priority_outptr = nptr;
+    MEMORY_BARRIER;
 
     if (mybuf->free) { continue; }
 
@@ -2165,13 +2180,11 @@ static gpointer mic_line_thread(gpointer data) {
 #else
     sem_wait(&mic_line_sem);
 #endif
-    nptr = mic_outptr + 1;
-
-    if (nptr >= MICRINGBUFLEN) { nptr = 0; }
+    nptr = (mic_outptr + 1) & MICRINGBUFMASK;
 
     mybuf = (mybuffer *) mic_line_buffer[mic_outptr];
-    MEMORY_BARRIER;
     mic_outptr = nptr;
+    MEMORY_BARRIER;
 
     // This can happen when restarting the protocol
     if (mybuf->free) { continue; }
@@ -2201,14 +2214,12 @@ void saturn_post_high_priority(mybuffer *buffer) {
   }
 
   iptr = high_priority_inptr;
-  nptr = iptr + 1;
-
-  if (nptr >= HPRIORINGBUFLEN) { nptr = 0; }
+  nptr = (iptr + 1) & HPRIORINGBUFMASK;
 
   if (nptr != high_priority_outptr) {
     high_priority_ring[iptr] = buffer;
-    MEMORY_BARRIER;
     high_priority_inptr = nptr;
+    MEMORY_BARRIER;
 #ifdef __APPLE__
     sem_post(high_priority_sem_buffer);
 #else
@@ -2234,19 +2245,17 @@ void saturn_post_micaudio(int bytesread, mybuffer *mybuf) {
     return;
   }
 
-  int nptr = mic_inptr + 1;
-
-  if (nptr >= MICRINGBUFLEN) { nptr = 0; }
+  int nptr = (mic_inptr + 1) & MICRINGBUFMASK;
 
   if (nptr != mic_outptr) {
     mic_line_buffer[mic_inptr] = mybuf;
+    mic_inptr = nptr;
     MEMORY_BARRIER;
 #ifdef __APPLE__
     sem_post(mic_line_sem);
 #else
     sem_post(&mic_line_sem);
 #endif
-    mic_inptr = nptr;
   } else {
     t_print("%s: ring buffer overflow.\n", __func__);
     mybuf->free = 1;
@@ -2291,14 +2300,12 @@ void saturn_post_iq_data(int ddc, mybuffer *mybuf) {
 
   ddc_sequence[ddc] = sequence + 1;
   int iptr = iq_inptr[ddc];
-  int nptr = iptr + 1;
-
-  if (nptr >= RXIQRINGBUFLEN) { nptr = 0; }
+  int nptr = (iptr + 1) & RXIQRINGBUFMASK;
 
   if (nptr != iq_outptr[ddc]) {
     iq_buffer[ddc][iptr] = mybuf;
-    MEMORY_BARRIER;
     iq_inptr[ddc] = nptr;
+    MEMORY_BARRIER;
 #ifdef __APPLE__
     sem_post(iq_sem[ddc]);
 #else
@@ -2319,7 +2326,6 @@ static gpointer iq_thread(gpointer data) {
   // TEMPORARY: additional sequence check here
   //
   int nptr, optr;
-  uint32_t sequence;
   volatile mybuffer *mybuf;
   const unsigned char *buffer;
 
@@ -2337,13 +2343,11 @@ static gpointer iq_thread(gpointer data) {
     sem_wait(&iq_sem[ddc]);
 #endif
     optr = iq_outptr[ddc];
-    nptr = optr + 1;
-
-    if (nptr >= RXIQRINGBUFLEN) { nptr = 0; }
+    nptr = (optr + 1) &RXIQRINGBUFMASK;
 
     mybuf = iq_buffer[ddc][optr];
-    MEMORY_BARRIER;
     iq_outptr[ddc] = nptr;
+    MEMORY_BARRIER;
 
     // This can happen when restarting the protocol
     if (mybuf->free) { continue; }
@@ -2562,16 +2566,16 @@ static void process_ps_iq_data(const unsigned char *buffer) {
     //t_print("%06x,%06x %06x,%06x\n",leftsample0,rightsample0,leftsample1,rightsample1);
 #if defined(DUMP_TX_DATA)
 
-    if ((DUMP_TX_DATA == DUMP_TXFDBK) && (rxiq_count < 1000000)) {
-      rxiqi[rxiq_count] = leftsampledouble1;
-      rxiqq[rxiq_count] = rightsampledouble1;
-      rxiq_count++;
+    if ((DUMP_TX_DATA == DUMP_TXFDBK) && (dumpiq_count < 1000000)) {
+      dumpiqi[dumpiq_count] = leftsampledouble1;
+      dumpiqq[dumpiq_count] = rightsampledouble1;
+      dumpiq_count++;
     }
 
-    if ((DUMP_TX_DATA == DUMP_RXFDBK) && (rxiq_count < 1000000)) {
-      rxiqi[rxiq_count] = leftsampledouble0;
-      rxiqq[rxiq_count] = rightsampledouble0;
-      rxiq_count++;
+    if ((DUMP_TX_DATA == DUMP_RXFDBK) && (dumpiq_count < 1000000)) {
+      dumpiqi[dumpiq_count] = leftsampledouble0;
+      dumpiqq[dumpiq_count] = rightsampledouble0;
+      dumpiq_count++;
     }
 
 #endif
@@ -2796,9 +2800,7 @@ void new_protocol_tx_audio_samples(double sample) {
   rxaudio_count++;
 
   if (rxaudio_count >= 64) {
-    int nptr = rxaudio_inptr + 256;
-
-    if (nptr >= RXAUDIORINGBUFLEN) { nptr = 0; }
+    int nptr = (rxaudio_inptr + 256) & RXAUDIORINGBUFMASK;
 
     if (nptr != rxaudio_outptr) {
       rxaudio_inptr = nptr;
@@ -2854,9 +2856,7 @@ void new_protocol_audio_samples(double left, double right) {
   rxaudio_count++;
 
   if (rxaudio_count >= 64) {
-    int nptr = rxaudio_inptr + 256;
-
-    if (nptr >= RXAUDIORINGBUFLEN) { nptr = 0; }
+    int nptr = (rxaudio_inptr + 256) & RXAUDIORINGBUFMASK;
 
     if (nptr != rxaudio_outptr) {
       rxaudio_inptr = nptr;
@@ -2886,10 +2886,10 @@ void new_protocol_iq_samples(double isample, double qsample) {
 
 #if defined(DUMP_TX_DATA)
 
-  if ((DUMP_TX_DATA == DUMP_TXIQ) && (rxiq_count < 1000000)) {
-    rxiqi[rxiq_count] = isample;
-    rxiqq[rxiq_count] = qsample;
-    rxiq_count++;
+  if ((DUMP_TX_DATA == DUMP_TXIQ) && (dumpiq_count < 1000000)) {
+    dumpiqi[dumpiq_count] = isample;
+    dumpiqq[dumpiq_count] = qsample;
+    dumpiq_count++;
   }
 
 #endif
@@ -2912,10 +2912,12 @@ void new_protocol_iq_samples(double isample, double qsample) {
   if (txiq_count >= 240) {
     int nptr = txiq_inptr + 1440;
 
-    if (nptr >= TXIQRINGBUFLEN) { nptr = 0; }
+    if (nptr >= TXIQRINGBUFLEN) { nptr = 0; } // no mask available
 
     if (nptr != txiq_outptr) {
+      // free space in ring buffer
       txiq_inptr = nptr;
+      MEMORY_BARRIER;
       txiq_count = 0;
 #ifdef __APPLE__
       sem_post(txiq_sem);

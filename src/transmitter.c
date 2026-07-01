@@ -22,6 +22,7 @@
 
 #include <wdsp.h>
 
+#include "atomic.h"
 #include "audio.h"
 #include "band.h"
 #include "bandstack.h"
@@ -69,10 +70,11 @@
 // exclusively by queuing CW events
 //
 #define CW_RING_SIZE 1024
+#define CW_RING_MASK 1023
 static uint8_t cw_ring_state[CW_RING_SIZE];
 static int     cw_ring_wait[CW_RING_SIZE];
-static volatile int cw_ring_inpt = 0;
-static volatile int cw_ring_outpt = 0;
+static volatile atomic_int cw_ring_inpt = 0;
+static volatile atomic_int cw_ring_outpt = 0;
 static int keydown = 0;        // current state of key
 static int cw_delay_time = 0;  // time since last CW event
 
@@ -1422,10 +1424,7 @@ static double next_cw_sidetone_sample(TRANSMITTER *tx, int rfpos) {
       //
       cw_delay_time = 0;
       keydown = cw_ring_state[cw_ring_outpt];
-      int newpt = cw_ring_outpt + 1;
-
-      if (newpt >= CW_RING_SIZE) { newpt -= CW_RING_SIZE; }
-
+      int newpt = (cw_ring_outpt + 1) & CW_RING_MASK;
       MEMORY_BARRIER;
       cw_ring_outpt = newpt;
     }
@@ -1832,16 +1831,14 @@ void tx_queue_cw_event(int down, int wait) {
   //
   int num, newpt;
 
-  if ((num = cw_ring_inpt - cw_ring_outpt) < 0) { num += CW_RING_SIZE; }
+  num = (cw_ring_inpt - cw_ring_outpt) & CW_RING_MASK;
 
   //
   // If buffer is nearly full, make all events key-up
   //
   if (num + 16 > CW_RING_SIZE) { down = 0; }
 
-  newpt = cw_ring_inpt + 1;
-
-  if (newpt == CW_RING_SIZE) { newpt = 1; }
+  newpt = (cw_ring_inpt + 1) & CW_RING_MASK;
 
   if (newpt != cw_ring_outpt) {
     cw_ring_state[cw_ring_inpt] = down;

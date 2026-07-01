@@ -404,9 +404,4 @@ extern void my_combo_attach(GtkGrid *grid, GtkWidget *combo, int row, int col, i
       return ret;                                                             \
    }
 
-//
-// Macro for a memory barrier, preventing changing the execution order
-// or memory accesses (used for ring buffers)
-//
-#define MEMORY_BARRIER asm volatile ("" ::: "memory")
 #endif

@@ -53,7 +53,8 @@
 // Loopback devices, when connected to digimode programs, sometimes
 // deliver audio in large chungs, so we need a large ring buffer as well
 //
-#define MICRINGLEN 6000
+#define MICRINGLEN  8192
+#define MICRINGMASK 8191
 
 #define out_buffer_size  256
 #define inp_buffer_size  256
@@ -260,9 +261,7 @@ static gpointer tx_audio_thread(gpointer arg) {
         //
         // put sample into ring buffer
         //
-        int newpt = tx->audio_buffer_inpt + 1;
-
-        if (newpt == MICRINGLEN) { newpt = 0; }
+        int newpt = (tx->audio_buffer_inpt + 1) & MICRINGMASK;
 
         if (newpt != tx->audio_buffer_outpt) {
           // buffer space available, do the write
@@ -421,10 +420,7 @@ double audio_get_next_mic_sample(TRANSMITTER *tx) {
     // no buffer, or nothing in buffer: insert silence
     sample = 0.0;
   } else {
-    int newpt = tx->audio_buffer_outpt + 1;
-
-    if (newpt == MICRINGLEN) { newpt = 0; }
-
+    int newpt = (tx->audio_buffer_outpt + 1) & MICRINGMASK;
     sample = tx->audio_buffer[tx->audio_buffer_outpt];
     // atomic update of read pointer
     tx->audio_buffer_outpt = newpt;

@@ -38,6 +38,7 @@
 #include <signal.h>
 
 #include "MacOS.h"
+#include "atomic.h"
 #include "audio.h"
 #include "band.h"
 #include "discovered.h"
@@ -223,24 +224,25 @@ static pthread_mutex_t recv_mutex   = PTHREAD_MUTEX_INITIALIZER;
 // in one shot.
 //
 // TXRINGBUFLEN must be a multiple of 1008 bytes (126 samples)
+// (so it cannot be a power of two)
 //
 #define TXRINGBUFLEN 32256     // 80 msec
 static unsigned char *TXRINGBUF = NULL;
-static volatile int txring_inptr  = 0;  // pointer updated when writing into the ring buffer
-static volatile int txring_outptr = 0;  // pointer updated when reading from the ring buffer
+static volatile atomic_int txring_inptr  = 0;  // pointer updated when writing into the ring buffer
+static volatile atomic_int txring_outptr = 0;  // pointer updated when reading from the ring buffer
 static volatile int txring_flag   = 0;  // 0: RX, 1: TX
 static volatile int txring_count  = 0;  // a sample counter
-static volatile int txring_drain  = 0;  // a flag for draining the output buffer
 
 //
 // If we want to store samples of about 75msec, this
 // corresponds to 480 kByte (PS, 5RX, 192k) or
 // 400 kByyte (2RX, 384k), so we use 512k
 //
-#define RXRINGBUFLEN 524288  // must be multiple of 1024 since we queue double-buffers
+#define RXRINGBUFLEN  524288  // must be multiple of 1024 since we queue double-buffers
+#define RXRINGBUFMASK 524287  // must be multiple of 1024 since we queue double-buffers
 static unsigned char *RXRINGBUF = NULL;
-static volatile int rxring_inptr  = 0;  // pointer updated when writing into the ring buffer
-static volatile int rxring_outptr = 0;  // pointer updated when reading from the ring buffer
+static volatile atomic_int rxring_inptr  = 0;  // pointer updated when writing into the ring buffer
+static volatile atomic_int rxring_outptr = 0;  // pointer updated when reading from the ring buffer
 static volatile int rxring_count  = 0;  // a sample counter
 
 static gpointer old_protocol_txiq_thread(gpointer data) {
@@ -260,19 +262,20 @@ static gpointer old_protocol_txiq_thread(gpointer data) {
   //
   // When TXing, a bunch of 1024 TX IQ samples is produced every 21.3 msec.
   //
-  // If "txring_drain" is set, drain the buffer
-  //
   for (;;) {
 #ifdef __APPLE__
     sem_wait(txring_sem);
 #else
     sem_wait(&txring_sem);
 #endif
+
+    if (txring_inptr == txring_outptr) { continue; }
+
     nptr = txring_outptr + 1008;
 
-    if (nptr >= TXRINGBUFLEN) { nptr = 0; }
+    if (nptr >= TXRINGBUFLEN) { nptr = 0; } // length is not a power of two
 
-    if (!P1running || txring_drain) {
+    if (!P1running) {
       txring_outptr = nptr;
       continue;
     }
@@ -1545,9 +1548,7 @@ static void queue_two_ozy_input_buffers(unsigned const char *buf1,
     return;
   }
 
-  int nptr = rxring_inptr + 1024;
-
-  if (nptr >= RXRINGBUFLEN) { nptr = 0; }
+  int nptr = (rxring_inptr + 1024) & RXRINGBUFMASK;
 
   if (nptr != rxring_outptr) {
     memcpy((void *)(&RXRINGBUF[rxring_inptr    ]), buf1, OZY_BUFFER_SIZE);
@@ -1585,9 +1586,7 @@ static gpointer process_ozy_input_buffer_thread(gpointer arg) {
 #else
     sem_wait(&rxring_sem);
 #endif
-    int nptr = rxring_outptr + 1024;
-
-    if (nptr >= RXRINGBUFLEN) { nptr = 0; }
+    int nptr = (rxring_outptr + 1024) & RXRINGBUFMASK;
 
     //
     // This data can change while processing one buffer
@@ -1622,12 +1621,9 @@ void old_protocol_audio_samples(double left, double right) {
     if (txring_flag) {
       //
       // First time we arrive here after a TX->RX transition:
-      // set the "drain" flag, wait 5 msec, clear it
-      // This should drain the txiq ring buffer
+      // reset buffer
       //
-      txring_drain = 1;
-      usleep(5000);
-      txring_drain = 0;
+      txring_inptr = txring_outptr;
       txring_flag = 0;
     }
 
@@ -1662,7 +1658,7 @@ void old_protocol_audio_samples(double left, double right) {
     if (txring_count >= 126) {
       int nptr = txring_inptr + 1008;
 
-      if (nptr >= TXRINGBUFLEN) { nptr = 0; }
+      if (nptr >= TXRINGBUFLEN) { nptr = 0; } // length not a power of two
 
       if (nptr != txring_outptr) {
 #ifdef __APPLE__
@@ -1670,6 +1666,7 @@ void old_protocol_audio_samples(double left, double right) {
 #else
         sem_post(&txring_sem);
 #endif
+        MEMORY_BARRIER;
         txring_inptr = nptr;
         txring_count = 0;
       } else {
@@ -1697,13 +1694,10 @@ void old_protocol_iq_samples(double isample, double qsample, double side) {
     if (!txring_flag) {
       //
       // First time we arrive here after a RX->TX transition:
-      // set the "drain" flag, wait 5 msec, clear it
-      // This should drain the txiq ring buffer (which also
-      // contains the audio samples) for minimum CW side tone latency.
+      // rest txiq ring buffer(which also contains the audio samples)
+      // for minimum CW side tone latency.
       //
-      txring_drain = 1;
-      usleep(5000);
-      txring_drain = 0;
+      txring_inptr = txring_outptr;
       txring_flag = 1;
     }
 
@@ -1763,7 +1757,7 @@ void old_protocol_iq_samples(double isample, double qsample, double side) {
     if (txring_count >= 126) {
       int nptr = txring_inptr + 1008;
 
-      if (nptr >= TXRINGBUFLEN) { nptr = 0; }
+      if (nptr >= TXRINGBUFLEN) { nptr = 0; } // not a power of two
 
       if (nptr != txring_outptr) {
 #ifdef __APPLE__
@@ -1771,6 +1765,7 @@ void old_protocol_iq_samples(double isample, double qsample, double side) {
 #else
         sem_post(&txring_sem);
 #endif
+        MEMORY_BARRIER
         txring_inptr = nptr;
         txring_count = 0;
       } else {
