@@ -811,10 +811,6 @@ static void new_protocol_high_priority(void) {
     //      we must set DDC0/1 frequencies here even if DDC0/1 are not
     //      used. In case of transmitting with PURESIGNAL, these are
     //      overwritten in due course.
-    int angelia = 0;
-    if (device == NEW_DEVICE_ANGELIA  || device == NEW_DEVICE_ORION ||
-        device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN) { angelia = 1; }
-
     //
     // So first set DDC0 freq, and possibly DDC1
     //
@@ -833,20 +829,19 @@ static void new_protocol_high_priority(void) {
     }
 
     //
-    // For ANGELIA and beyond, copy DDC0/1 to DDC2/3 freq
+    // For ANGELIA and beyond, copy DDC0/1 to DDC2/3 freq (if only
+    // one RX, DDC1 freq is zero and it is OK to copy to DDC3)
     //
-    if (angelia) {
+    if (device == NEW_DEVICE_ANGELIA  || device == NEW_DEVICE_ORION ||
+        device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN) {
       high_priority_buffer_to_radio[17] = high_priority_buffer_to_radio[ 9];
       high_priority_buffer_to_radio[18] = high_priority_buffer_to_radio[10];
       high_priority_buffer_to_radio[19] = high_priority_buffer_to_radio[11];
       high_priority_buffer_to_radio[20] = high_priority_buffer_to_radio[12];
-
-      if (receivers > 1) {
-        high_priority_buffer_to_radio[21] = high_priority_buffer_to_radio[13];
-        high_priority_buffer_to_radio[22] = high_priority_buffer_to_radio[14];
-        high_priority_buffer_to_radio[23] = high_priority_buffer_to_radio[15];
-        high_priority_buffer_to_radio[24] = high_priority_buffer_to_radio[16];
-      } 
+      high_priority_buffer_to_radio[21] = high_priority_buffer_to_radio[13];
+      high_priority_buffer_to_radio[22] = high_priority_buffer_to_radio[14];
+      high_priority_buffer_to_radio[23] = high_priority_buffer_to_radio[15];
+      high_priority_buffer_to_radio[24] = high_priority_buffer_to_radio[16];
     }
   }
 
@@ -2701,7 +2696,7 @@ static void process_high_priority(const unsigned char *buffer) {
       g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(1));
     } else {
       g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
-    } 
+    }
   }
 
   if (enable_tx_inhibit) {
