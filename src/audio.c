@@ -172,7 +172,19 @@ int audio_open_output(RECEIVER *rx) {
     return -1;
   }
 
-  rx->cwaudio = 2;
+  //
+  // cwaudio states in ALSA:
+  //
+  // 0: normal audio playback
+  // 1: CW side tone playback
+  // 2: transition to normal occured but no block yet written
+  // 5: initial state after open_output
+  //
+  // After opening, the state sequence is 5 --> 2 --> 0,
+  // when going TX in CW, it goes 0 --> 1,
+  // and after resuming RX, it goes 1 --> 2 --> 0
+  //
+  rx->cwaudio = 5;
   rx->cwcount = 0;
   rx->skipcnt = 0;
   rx->queued = 0;
@@ -311,6 +323,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       // This happens when we come here for the first time after opening
       // the device, or after a RX/TX transition.
       //
+      rx->audio_buffer_offset = 0;
       rx->cwcount = 0;
       rx->cwaudio = 1;
       rx->skipcnt = 0;
@@ -530,6 +543,22 @@ void audio_write(RECEIVER *rx, double left, double right) {
   // lock AFTER checking the "quick return" condition but BEFORE checking the pointers
   g_mutex_lock(&rx->audio_mutex);
 
+  if (rx->cwaudio != 0 && rx->cwaudio != 2) {
+    rx->audio_buffer_offset = 0;
+    rx->cwaudio = 2;
+    snd_pcm_sw_params_t *sw_params;
+    snd_pcm_sw_params_alloca(&sw_params);
+    if (sw_params) {
+      snd_pcm_sw_params_current(rx->audio_handle, sw_params);
+      snd_pcm_sw_params_set_start_threshold(rx->audio_handle, sw_params, out_midlen);
+      snd_pcm_sw_params(rx->audio_handle, sw_params);
+    }
+    //
+    // Note buffer rewind and silence filling is done below, since this also
+    // is the recovery from buffer underrun situations
+    //
+  }
+
   if (rx->audio_handle != NULL && rx->audio_buffer != NULL) {
     if (rx->local_audio_channels == 1) {
       rx->audio_buffer[rx->audio_buffer_offset] = 0.5 * (left + right);
@@ -544,24 +573,18 @@ void audio_write(RECEIVER *rx, double left, double right) {
       rx->queued = snd_pcm_rewindable(rx->audio_handle);
       snd_pcm_sframes_t rc;
 
-      if (rx->cwaudio != 0 || rx->queued < out_minlen) {
+      if (rx->cwaudio == 2 || rx->queued < out_minlen) {
         //
         // This happens when we come here for the first time, after a
         // TX/RX transision, or if the buffer is nearly empty.
-        // Rewind buffer and fill with "midlen" silence
+        // Rewind buffer and fill with "midlen" silence before sending
+        // the actual buffer.
         //
         snd_pcm_rewind (rx->audio_handle, snd_pcm_rewindable(rx->audio_handle));
         snd_pcm_prepare(rx->audio_handle);
         rx->cwaudio = 0;
         rx->skipcnt = 0;
-        rx->queued  = 0;
-        snd_pcm_sw_params_t *sw_params;
-        snd_pcm_sw_params_alloca(&sw_params);
-        if (sw_params) {
-          snd_pcm_sw_params_current(rx->audio_handle, sw_params);
-          snd_pcm_sw_params_set_start_threshold(rx->audio_handle, sw_params, out_midlen);
-          snd_pcm_sw_params(rx->audio_handle, sw_params);
-        }
+        rx->queued = out_midlen;
         switch (rx->audio_format) {
         case SND_PCM_FORMAT_S16_LE: {
           int16_t buffer[rx->local_audio_channels * out_midlen];
@@ -590,8 +613,13 @@ void audio_write(RECEIVER *rx, double left, double right) {
         }
       }
 
-      if (rx->skipcnt > 0) { rx->skipcnt--; }
-      if (rx->skipcnt == 0) {
+      //
+      // Note skipping of audio buffer is only done if we hit a "short write"
+      // This we can risk since the write is non-blocking
+      //
+      if (rx->skipcnt > 0) {
+        rx->skipcnt--;
+      } else {
         //
         // Convert audio data from internal (double) into sound card specific format
         // and send
