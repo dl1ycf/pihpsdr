@@ -247,9 +247,8 @@ static volatile int rxring_count  = 0;  // a sample counter
 
 static gpointer old_protocol_txiq_thread(gpointer data) {
   ASSERT_SERVER(NULL);
-  unsigned char ozy_buffer[OZY_BUFFER_SIZE];
-  int nptr;
-
+  unsigned char ozy_buf1[OZY_BUFFER_SIZE];
+  unsigned char ozy_buf2[OZY_BUFFER_SIZE];
   //
   // Ideally, an output METIS buffer with 126 samples is sent every 2625 usec.
   // We thus wait until we have 126 samples, and then send a packet.
@@ -269,16 +268,29 @@ static gpointer old_protocol_txiq_thread(gpointer data) {
     sem_wait(&txring_sem);
 #endif
 
-    if (txring_inptr == txring_outptr) { continue; }
+    if (!P1running) { continue; }
 
-    nptr = txring_outptr + 1008;
-
-    if (nptr >= TXRINGBUFLEN) { nptr = 0; } // length is not a power of two
-
-    if (!P1running) {
-      txring_outptr = nptr;
+    //
+    // The audio_mutex lock here is needed to avoid race
+    // conditions with buffer draining. After having copied
+    // the data into the local buffer, the lock can be
+    // released.
+    //
+    pthread_mutex_lock(&audio_mutex);
+    if (txring_inptr == txring_outptr) {
+      pthread_mutex_unlock(&audio_mutex);
       continue;
     }
+
+    int nptr = txring_outptr + 1008;
+
+    if (nptr >= TXRINGBUFLEN) { nptr = 0; }
+
+    memcpy(ozy_buf1 + 8, &TXRINGBUF[txring_outptr      ], 504);
+    memcpy(ozy_buf2 + 8, &TXRINGBUF[txring_outptr + 504], 504);
+    MEMORY_BARRIER;
+    txring_outptr = nptr;
+    pthread_mutex_unlock(&audio_mutex);
 
     //
     // We used to have a fixed sleeping time of 2000 usec, and
@@ -334,24 +346,18 @@ static gpointer old_protocol_txiq_thread(gpointer data) {
       clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
     }
 
-    if (pthread_mutex_trylock(&send_mutex) == 0) {
+    if (P1running && pthread_mutex_trylock(&send_mutex) == 0) {
       //
       // If we do not get a lock, this means a protocol restart is
       // attempted from "somewhere else", in this case do not
       // send out data
       //
       FIFO += 126.0;  // number of samples in THIS packet
-      memcpy(ozy_buffer + 8, &TXRINGBUF[txring_outptr    ], 504);
-      ozy_send_buffer(ozy_buffer);
-      memcpy(ozy_buffer + 8, &TXRINGBUF[txring_outptr + 504], 504);
-      ozy_send_buffer(ozy_buffer);
+      ozy_send_buffer(ozy_buf1);
+      ozy_send_buffer(ozy_buf2);
       pthread_mutex_unlock(&send_mutex);
     }
-
-    MEMORY_BARRIER;
-    txring_outptr = nptr;
   }
-
   return NULL;
 }
 
@@ -1658,16 +1664,17 @@ void old_protocol_audio_samples(double left, double right) {
     if (txring_count >= 126) {
       int nptr = txring_inptr + 1008;
 
-      if (nptr >= TXRINGBUFLEN) { nptr = 0; } // length not a power of two
+      if (nptr >= TXRINGBUFLEN) { nptr = 0; }
 
       if (nptr != txring_outptr) {
+        MEMORY_BARRIER;
+        txring_inptr = nptr;
+        MEMORY_BARRIER;
 #ifdef __APPLE__
         sem_post(txring_sem);
 #else
         sem_post(&txring_sem);
 #endif
-        MEMORY_BARRIER;
-        txring_inptr = nptr;
         txring_count = 0;
       } else {
         t_print("%s: output buffer overflow.\n", __func__);
@@ -1757,16 +1764,17 @@ void old_protocol_iq_samples(double isample, double qsample, double side) {
     if (txring_count >= 126) {
       int nptr = txring_inptr + 1008;
 
-      if (nptr >= TXRINGBUFLEN) { nptr = 0; } // not a power of two
+      if (nptr >= TXRINGBUFLEN) { nptr = 0; }
 
       if (nptr != txring_outptr) {
+        MEMORY_BARRIER;
+        txring_inptr = nptr;
+        MEMORY_BARRIER;
 #ifdef __APPLE__
         sem_post(txring_sem);
 #else
         sem_post(&txring_sem);
 #endif
-        MEMORY_BARRIER;
-        txring_inptr = nptr;
         txring_count = 0;
       } else {
         t_print("%s: output buffer overflow.\n", __func__);

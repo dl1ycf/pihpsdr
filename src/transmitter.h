@@ -22,7 +22,7 @@
 
 #include <gtk/gtk.h>
 
-#include "atomic.h" 
+#include "atomic.h"
 
 #define CTCSS_FREQUENCIES 38
 extern double ctcss_frequencies[CTCSS_FREQUENCIES];

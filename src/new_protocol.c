@@ -808,16 +808,11 @@ static void new_protocol_high_priority(void) {
     // Set frequencies for all receivers
     //
     // HERMES/HERMES2/G1 can only use DDC0/1,
-    // Beyond that, we use DDC2/3 for "normal RX" and DDC0/1 for a DIV/PS pair
+    // Beyond that, we use DDC2/3 for "normal RX" and DDC0/1 for a DIV/PS pair.
     //
-    // NEW: there seems to be hardware which sniffs the ethernet traffic,
-    //      extracts the HighPrio packets sent to the radio, and sets
-    //      band filters based on DDC0/1 frequencies. To make this work,
-    //      we must set DDC0/1 frequencies here even if DDC0/1 are not
-    //      used. In case of transmitting with PURESIGNAL, these are
-    //      overwritten in due course.
-    //
-    // So first set DDC0 freq, and possibly DDC1
+    // ATTN: the BRICK3 does automatic band filter switching based on the DDC0/1
+    //       frequencies, therefore we populate these fields even if we are not
+    //       using them. So we *always* first set the DDC0/DDC1 frequencies:
     //
     phase = (uint32_t)(((double)DDCfrequency[0]) * 34.952533333333333333333333333333);
     high_priority_buffer_to_radio[ 9] = (phase >> 24) & 0xFF;
@@ -832,7 +827,7 @@ static void new_protocol_high_priority(void) {
       high_priority_buffer_to_radio[15] = (phase >>  8) & 0xFF;
       high_priority_buffer_to_radio[16] = (phase      ) & 0xFF;
     }
-
+    //
     //
     // For ANGELIA and beyond, copy DDC0/1 to DDC2/3 freq (if only
     // one RX, DDC1 freq is zero and it is OK to copy to DDC3)
@@ -1897,13 +1892,15 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
     // time, while copying out the data and updating the outptr
     //
     pthread_mutex_lock(&send_rxaudio_mutex);
-
     //
     // If the producer resets the buffer, the semaphore
     // may have accumulated some events, so we can end
     // up here with en empty ring buffer
     //
-    if (rxaudio_outptr == rxaudio_inptr) { continue; }
+    if (rxaudio_outptr == rxaudio_inptr) {
+      pthread_mutex_unlock(&send_rxaudio_mutex);
+      continue;
+    }
 
     nptr = (rxaudio_outptr + 256) & RXAUDIORINGBUFMASK;
 
@@ -2011,9 +2008,9 @@ static gpointer new_protocol_txiq_thread(gpointer data) {
     iqbuffer[2] = (tx_iq_sequence >>  8) & 0xFF;
     iqbuffer[3] = (tx_iq_sequence      ) & 0xFF;
     tx_iq_sequence++;
-    nptr = (txiq_outptr + 1440);
+    nptr = txiq_outptr + 1440;
 
-    if (nptr >= TXIQRINGBUFLEN) { nptr = 0; }  // length not a power of two so we branch
+    if (nptr >= TXIQRINGBUFLEN) { nptr = 0; }
 
     memcpy(&iqbuffer[4], &TXIQRINGBUF[txiq_outptr], 1440);
     MEMORY_BARRIER;
@@ -2028,7 +2025,7 @@ static gpointer new_protocol_txiq_thread(gpointer data) {
       // may sleep longer than intended.
       // FIFO is the coarse (!) estimation of the TX DUC FIFO filling.
       // If we lag behind and FIFO goes low, send packet immediately.
-      // The rationale of all this crap is to avoid over-running the
+      // The rationale of all this effort is to avoid over-running the
       // FPGA TX IQ FIFO if many IQ samples arrive here in a burst.
       //
       struct timespec ts;
@@ -2167,9 +2164,7 @@ static gpointer high_priority_thread(gpointer data) {
 #else
     sem_wait(&high_priority_sem_buffer);
 #endif
-
     nptr = (high_priority_outptr + 1) & HPRIORINGBUFMASK;
-
     mybuf = (mybuffer *) high_priority_ring[high_priority_outptr];
     MEMORY_BARRIER;
     high_priority_outptr = nptr;
@@ -2198,9 +2193,7 @@ static gpointer mic_line_thread(gpointer data) {
 #else
     sem_wait(&mic_line_sem);
 #endif
-
     nptr = (mic_outptr + 1) & MICRINGBUFMASK;
-
     mybuf = (mybuffer *) mic_line_buffer[mic_outptr];
     MEMORY_BARRIER;
     mic_outptr = nptr;
@@ -2357,11 +2350,7 @@ static gpointer iq_thread(gpointer data) {
 #else
     sem_wait(&iq_sem[ddc]);
 #endif
-
-    if (iq_inptr[ddc] == iq_outptr[ddc]) { continue; }
-
     nptr = (iq_outptr[ddc] + 1) &RXIQRINGBUFMASK;
-
     mybuf = iq_buffer[ddc][iq_outptr[ddc]];
     MEMORY_BARRIER;
     iq_outptr[ddc] = nptr;
@@ -2922,14 +2911,13 @@ void new_protocol_iq_samples(double isample, double qsample) {
   if (txiq_count >= 240) {
     int nptr = txiq_inptr + 1440;
 
-    if (nptr >= TXIQRINGBUFLEN) { nptr = 0; } // no mask available
+    if (nptr >= TXIQRINGBUFLEN) { nptr = 0; }
 
     if (nptr != txiq_outptr) {
-      // free space in ring buffer
       MEMORY_BARRIER;
       txiq_inptr = nptr;
-      MEMORY_BARRIER;
       txiq_count = 0;
+      MEMORY_BARRIER;
 #ifdef __APPLE__
       sem_post(txiq_sem);
 #else

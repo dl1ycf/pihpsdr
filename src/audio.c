@@ -591,7 +591,7 @@ void audio_write(RECEIVER *rx, double left, double right) {
           int16_t buffer[rx->local_audio_channels * out_midlen];
           memset(buffer, 0, rx->local_audio_channels * out_midlen * sizeof(int16_t));
           snd_pcm_writei (rx->audio_handle, buffer, out_midlen);
-        } 
+        }
         break;
 
         case SND_PCM_FORMAT_S32_LE: {

@@ -395,7 +395,6 @@ static int pa_in_cb(const void *inputBuffer, void *outputBuffer, unsigned long f
       int newpt = (tx->audio_buffer_inpt + 1) & MY_RING_BUFFER_MASK;
 
       if (newpt != tx->audio_buffer_outpt) {
-        MEMORY_BARRIER;
         // buffer space available, do the write
         tx->audio_buffer[tx->audio_buffer_inpt] = in[i];
         MEMORY_BARRIER;
@@ -427,9 +426,7 @@ double audio_get_next_mic_sample(TRANSMITTER *tx) {
   } else {
     int newpt = (tx->audio_buffer_outpt + 1) & MY_RING_BUFFER_MASK;
 
-    MEMORY_BARRIER;
     sample = tx->audio_buffer[tx->audio_buffer_outpt];
-    // atomic update of read pointer
     MEMORY_BARRIER;
     tx->audio_buffer_outpt = newpt;
   }
@@ -688,8 +685,6 @@ void audio_write (RECEIVER *rx, double left, double right) {
       //
       // buffer space available
       //
-      MEMORY_BARRIER;
-
       if (rx->local_audio_channels == 1) {
         buffer[oldpt] = 0.5 * (left + right);
       } else {
@@ -741,7 +736,6 @@ void tx_audio_write(RECEIVER *rx, double sample) {
           }
 
           newpt = (newpt + 1) & MY_RING_BUFFER_MASK;
-          MEMORY_BARRIER;
         }
       } else {
         for (int i = 0; i < CW_LAT_TARGET; i++) {
@@ -755,12 +749,11 @@ void tx_audio_write(RECEIVER *rx, double sample) {
           }
 
           newpt = (newpt + 1) & MY_RING_BUFFER_MASK;
-          MEMORY_BARRIER;
         }
       }
 
-      rx->audio_buffer_inpt = newpt;
       MEMORY_BARRIER;
+      rx->audio_buffer_inpt = newpt;
       avail = CW_LAT_TARGET;
       rx->cwcount = 0;
       rx->cwaudio = 1;
@@ -793,7 +786,6 @@ void tx_audio_write(RECEIVER *rx, double sample) {
         //
         // buffer space available
         //
-        MEMORY_BARRIER;
         rx->audio_buffer[oldpt] = sample;
         MEMORY_BARRIER;
         rx->audio_buffer_inpt = newpt;
@@ -826,7 +818,6 @@ void tx_audio_write(RECEIVER *rx, double sample) {
         //
         // buffer space available
         //
-        MEMORY_BARRIER;
         rx->audio_buffer[2 * oldpt] = sample;
         rx->audio_buffer[2 * oldpt + 1] = sample;
         MEMORY_BARRIER;
