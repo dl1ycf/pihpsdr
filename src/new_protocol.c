@@ -188,7 +188,7 @@ static volatile int txiq_count            = 0;  // number of samples queued sinc
 static volatile atomic_int rxaudio_inptr  = 0;  // pointer updated when writing into the ring buffer
 static volatile atomic_int rxaudio_outptr = 0;  // pointer updated when reading from the ring buffer
 static volatile int rxaudio_count         = 0;  // number of samples queued since last sem_post
-static volatile int rxaudio_flag          = 0;  // 0: RX or duplex, 1: TX without duplex
+static volatile int rxaudio_flag          = 2;  // 0: RX or duplex, 1: TX without duplex
 
 static pthread_mutex_t send_rxaudio_mutex   = PTHREAD_MUTEX_INITIALIZER;
 
@@ -1795,7 +1795,7 @@ void new_protocol_menu_start(void) {
   rxaudio_inptr = 0;
   rxaudio_outptr = 0;
   rxaudio_count = 0;
-  rxaudio_flag = 0;
+  rxaudio_flag = 2;
   txiq_inptr = 0;
   txiq_outptr = 0;
   txiq_count = 0;
@@ -1902,17 +1902,17 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
       continue;
     }
 
+    memcpy(&audiobuffer[4], &RXAUDIORINGBUF[rxaudio_outptr], 256);
     nptr = (rxaudio_outptr + 256) & RXAUDIORINGBUFMASK;
+    MEMORY_BARRIER;
+    rxaudio_outptr = nptr;
+    pthread_mutex_unlock(&send_rxaudio_mutex);
 
     audiobuffer[0] = (audio_sequence >> 24) & 0xFF;
     audiobuffer[1] = (audio_sequence >> 16) & 0xFF;
     audiobuffer[2] = (audio_sequence >>  8) & 0xFF;
     audiobuffer[3] = (audio_sequence      ) & 0xFF;
     audio_sequence++;
-    memcpy(&audiobuffer[4], &RXAUDIORINGBUF[rxaudio_outptr], 256);
-    MEMORY_BARRIER;
-    rxaudio_outptr = nptr;
-    pthread_mutex_unlock(&send_rxaudio_mutex);
 
     if (have_saturn_xdma) {
       saturn_handle_speaker_audio(audiobuffer);
@@ -2773,16 +2773,23 @@ void new_protocol_tx_audio_samples(double sample) {
     return;
   }
 
-  if (!rxaudio_flag) {
+  if (rxaudio_flag != 1) {
     //
     // First time we arrive here after a RX->TX(CW) transition:
-    // drain the buffer.
-    // This is done to start CW TX with an "empty" buffer in order
+    // Reset the buffer and prefill with 64 samples (only).
+    // This is done to start CW TX with an "nearly empty" buffer in order
     // to minimize CW side tone latency (17 msec measured on my ANAN-7000).
     //
-    rxaudio_inptr = rxaudio_outptr;
+    rxaudio_outptr = 0;
+    rxaudio_inptr = 256;
     rxaudio_count = 0;
     rxaudio_flag = 1;
+    memset(RXAUDIORINGBUF, 0, 256);
+#ifdef __APPLE__
+    sem_post(rxaudio_sem);
+#else
+    sem_post(&rxaudio_sem);
+#endif
   }
 
   int iptr = rxaudio_inptr + 4 * rxaudio_count;
@@ -2835,14 +2842,25 @@ void new_protocol_audio_samples(double left, double right) {
     return;
   }
 
-  if (rxaudio_flag) {
+  if (rxaudio_flag != 0) {
     //
     // First time we arrive here after a TX(CW)->RX transition:
-    // no need to drain the audio buffer since it should not
-    // be overly full, and low latency does not matter that
-    // much when RX-ing.
+    // Reset buffer and  pre-fill with 192 samples (4 msec)
     //
+    rxaudio_outptr = 0;
+    rxaudio_inptr = 768;
+    rxaudio_count = 0;
     rxaudio_flag = 0;
+    memset(RXAUDIORINGBUF, 0, 768);
+#ifdef __APPLE__
+    sem_post(rxaudio_sem);
+    sem_post(rxaudio_sem);
+    sem_post(rxaudio_sem);
+#else
+    sem_post(&rxaudio_sem);
+    sem_post(&rxaudio_sem);
+    sem_post(&rxaudio_sem);
+#endif
   }
 
   int iptr = rxaudio_inptr + 4 * rxaudio_count;
