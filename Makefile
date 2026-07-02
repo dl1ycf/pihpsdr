@@ -81,7 +81,7 @@ GIT_COMMIT := $(shell git log --pretty=format:"%h"  -1)
 # Turn off complaints about deprecated functions (new GTK functions are marked deprecated in each
 # release) and against unused parameters (those regularly occur in GTK callbacks).
 #
-CFLAGS?= -O3 -Wall -Wextra -Wimplicit-fallthrough -Wno-unused-parameter -Wno-deprecated-declarations
+CFLAGS?= -O3 -Wall -Wextra -Wimplicit-fallthrough -Wno-unused-parameter -Wno-deprecated-declarations -Wcast-align
 LINK?=   $(CC)
 
 #

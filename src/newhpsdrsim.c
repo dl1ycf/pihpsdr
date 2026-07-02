@@ -521,7 +521,7 @@ void *ddc_specific_thread(void *data) {
         rc = 0;
 
         for (j = 0; j < 8; j++) {
-          rc += (syncddc[i] >> i) & 0x01;
+          rc += (syncddc[i] >> j) & 0x01;
         }
 
         if (rc > 1) {

@@ -80,6 +80,7 @@
 #ifdef __APPLE__
   #include "MacOS.h"  // emulate clock_gettime on old MacOS systems
 #endif
+#include <stdalign.h>
 
 #define EXTERN
 #include "hpsdrsim.h"
@@ -264,7 +265,7 @@ int main(int argc, char *argv[]) {
   uint32_t code;
   int16_t sample;
   struct sockaddr_in addr_udp;
-  uint8_t buffer[1032];
+  alignas(uint32_t) uint8_t buffer[1032];
   struct timeval tv;
   int yes = 1;
   uint8_t *bp;
@@ -1939,9 +1940,6 @@ void *handler_ep6(void *arg) {
         }
 
         for (k = 0; k < receivers; k++) {
-          myisample = 0;
-          myqsample = 0;
-
           switch (rx_adc[k]) {
           case 0: // ADC1
             myisample = adc1isample;

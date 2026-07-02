@@ -247,7 +247,7 @@ void tci_audio_handle_tx_frame (const unsigned char* data, size_t len) {
     frames = TCI_TX_AUDIO_FRAME_FRAMES;
   }
 
-  fps = (float *) (data + 64); // should be aligned for float
+  fps = (float *) (data + 64); // make sure this is aligned for float
   fpt = samples;
 
   for (guint i = 0; i < frames; i++) {
