@@ -60,6 +60,7 @@
 #include <errno.h>
 
 #include "actions.h"
+#include "atomic.h"
 #include "band.h"
 #include "client_server.h"
 #include "ext.h"
@@ -97,12 +98,13 @@ static RXAUDIO_DATA rxaudio_data[2];  // for up to 2 receivers
 //
 // Audio
 //
-#define MIC_RING_BUFFER_SIZE 9600
-#define MIC_RING_LOW         3000
+#define MIC_RING_BUFFER_SIZE 8192  // 171 msec
+#define MIC_RING_BUFFER_MASK 8191
+#define MIC_RING_LOW         2400  // 50 msec
 
 static double *mic_ring_buffer;
-static volatile int mic_ring_outpt = 0;
-static volatile int mic_ring_inpt = 0;
+static volatile atomic_int mic_ring_outpt = 0;
+static volatile atomic_int mic_ring_inpt = 0;
 
 static GThread *listen_thread_id;
 static GThread *udp_thread_id;
@@ -221,9 +223,6 @@ void send_rxspectrum(int id) {
   numsamples = rx->width;
 
   if (numsamples > SPECTRUM_DATA_SIZE) { numsamples = SPECTRUM_DATA_SIZE; }
-
-  numout = 0;
-
   //
   // Compression: make uncompressed data and compress it
   //
@@ -253,7 +252,7 @@ void send_rxspectrum(int id) {
 
   if (numout == 0) {
     //
-    // If compression failed: send un-compressed data
+    // If compression fails: send un-compressed data
     //
     spectrum_data.compressed = 0;
 
@@ -270,24 +269,18 @@ void send_rxspectrum(int id) {
     numout = numsamples;
   }
 
-  if (numout > 0) {
-    //
-    // spectrum commands have a variable length, since this depends on the
-    // width of the screen. To this end, calculate the total number of bytes
-    // in THIS command (xferlen) and the length  of the payload.
-    //
-    int xferlen = sizeof(spectrum_data) - (SPECTRUM_DATA_SIZE - numout) * sizeof(uint8_t);
-    int payload = xferlen - sizeof(HEADER);
+  //
+  // spectrum commands have a variable length, since this depends on the
+  // width of the screen. To this end, calculate the total number of bytes
+  // in THIS command (xferlen) and the length  of the payload.
+  //
+  int xferlen = sizeof(spectrum_data) - (SPECTRUM_DATA_SIZE - numout) * sizeof(uint8_t);
+  int payload = xferlen - sizeof(HEADER);
+  spectrum_data.header.s1 = to_16(payload);
 
-    //cppcheck-suppress knownConditionTrueFalse
-    if (payload > 32000) { fatal_error("FATAL: Spectrum payload too large"); }
-
-    spectrum_data.header.s1 = to_16(payload);
-
-    if (sendto(remoteclient.sock_udp, &spectrum_data, xferlen, 0,
-               (struct sockaddr *)&remoteclient.address, sizeof(remoteclient.address))  < 0) {
-      perror("RXSPEC:UDP:SEND");
-    }
+  if (sendto(remoteclient.sock_udp, &spectrum_data, xferlen, 0,
+             (struct sockaddr *)&remoteclient.address, sizeof(remoteclient.address))  < 0) {
+    perror("RXSPEC:UDP:SEND");
   }
 }
 
@@ -322,13 +315,10 @@ void send_txspectrum(void) {
   numsamples = tx->width;
 
   if (numsamples > SPECTRUM_DATA_SIZE) { numsamples = SPECTRUM_DATA_SIZE; }
-
   //
   // When running duplex, tx->pixels > tx->width, so transfer only central part
   //
   int offset = (tx->pixels - tx->width) / 2;
-  numout = 0;
-
   //
   // Compression: make uncompressed data and compress it
   //
@@ -375,24 +365,18 @@ void send_txspectrum(void) {
     numout = numsamples;
   }
 
-  if (numout > 0) {
-    //
-    // spectrum commands have a variable length, since this depends on the
-    // width of the screen. To this end, calculate the total number of bytes
-    // in THIS command (xferlen) and the length  of the payload.
-    //
-    int xferlen = sizeof(spectrum_data) - (SPECTRUM_DATA_SIZE - numout) * sizeof(uint8_t);
-    int payload = xferlen - sizeof(HEADER);
+  //
+  // spectrum commands have a variable length, since this depends on the
+  // width of the screen. To this end, calculate the total number of bytes
+  // in THIS command (xferlen) and the length  of the payload.
+  //
+  int xferlen = sizeof(spectrum_data) - (SPECTRUM_DATA_SIZE - numout) * sizeof(uint8_t);
+  int payload = xferlen - sizeof(HEADER);
+  spectrum_data.header.s1 = to_16(payload);
 
-    //cppcheck-suppress knownConditionTrueFalse
-    if (payload > 32000) { fatal_error("FATAL: Spectrum payload too large"); }
-
-    spectrum_data.header.s1 = to_16(payload);
-
-    if (sendto(remoteclient.sock_udp, &spectrum_data, xferlen, 0,
-               (struct sockaddr *)&remoteclient.address, sizeof(remoteclient.address))  < 0) {
-      perror("TXSPEC:UDP:SEND");
-    }
+  if (sendto(remoteclient.sock_udp, &spectrum_data, xferlen, 0,
+             (struct sockaddr *)&remoteclient.address, sizeof(remoteclient.address))  < 0) {
+    perror("TXSPEC:UDP:SEND");
   }
 }
 
@@ -458,9 +442,7 @@ double remote_get_mic_sample(void) {
   //
   double sample;
   static int is_empty = 1;
-  int numsamples = mic_ring_outpt - mic_ring_inpt;
-
-  if (numsamples < 0) { numsamples += MIC_RING_BUFFER_SIZE; }
+  int numsamples = (mic_ring_inpt - mic_ring_outpt) & MIC_RING_BUFFER_MASK;
 
   if (numsamples <= 0) { is_empty = 1; }
 
@@ -469,13 +451,8 @@ double remote_get_mic_sample(void) {
   }
 
   is_empty = 0;
-  int newpt = mic_ring_outpt + 1;
-
-  if (newpt == MIC_RING_BUFFER_SIZE) { newpt = 0; }
-
-  MEMORY_BARRIER;
+  int newpt = (mic_ring_outpt + 1) & MIC_RING_BUFFER_MASK;
   sample = mic_ring_buffer[mic_ring_outpt];
-  // atomic update of read pointer
   MEMORY_BARRIER;
   mic_ring_outpt = newpt;
   return sample;
@@ -959,13 +936,10 @@ static gpointer udp_thread(gpointer arg) {
         int nsamples = opus_decode(tx_opus_dec, data->payload, num, tx_pcm_out, OPUS_FRAME_SIZE, 0);
 
         for (int i = 0; i < nsamples; i++) {
-          int newpt = mic_ring_inpt + 1;
-
-          if (newpt == MIC_RING_BUFFER_SIZE) { newpt = 0; }
+          int newpt = (mic_ring_inpt + 1) & MIC_RING_BUFFER_MASK;
 
           if (newpt != mic_ring_outpt) {
-            MEMORY_BARRIER;
-            mic_ring_buffer[mic_ring_inpt] = tx_pcm_out[i] * (1.0 / 32768.0);
+            mic_ring_buffer[mic_ring_inpt] = tx_pcm_out[i] * 0.00003051;
             MEMORY_BARRIER;
             mic_ring_inpt = newpt;
           }
@@ -978,16 +952,12 @@ static gpointer udp_thread(gpointer arg) {
       const TXAUDIO_DATA *data = (TXAUDIO_DATA *) buffer;
 
       for (unsigned int i = 0; i < num; i++) {
-        int newpt = mic_ring_inpt + 1;
-
-        if (newpt == MIC_RING_BUFFER_SIZE) { newpt = 0; }
+        int newpt = (mic_ring_inpt + 1) & MIC_RING_BUFFER_MASK;
 
         if (newpt != mic_ring_outpt) {
-          MEMORY_BARRIER;
           // buffer space available, do the write
           mic_ring_buffer[mic_ring_inpt] = from_16(data->samples[i]) * 0.00003051; // division by 32768
           MEMORY_BARRIER;
-          // atomic update of mic_ring_inpt
           mic_ring_inpt = newpt;
         }
       }

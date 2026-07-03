@@ -515,7 +515,6 @@ gpointer remote_txaudio_thread(gpointer data) {
       }
     }
     vox_update(peak);
-    peak = 0.0;
     //
     // Advance time by 2 msec and wait until this is over
     //

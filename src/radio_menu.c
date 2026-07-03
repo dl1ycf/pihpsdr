@@ -445,7 +445,7 @@ static void max_power_changed_cb(GtkWidget *widget, gpointer data) {
     send_radiomenu(cl_sock_tcp);
     send_patrim(cl_sock_tcp);
   }
-} 
+}
 
 static void ck10mhz_cb(GtkWidget *widget, gpointer data) {
   atlas_clock_source_10mhz = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));

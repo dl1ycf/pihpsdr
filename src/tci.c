@@ -28,6 +28,8 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdalign.h>
 
 #ifdef __APPLE__
   #include <time.h>
@@ -518,17 +520,43 @@ static void tci_handle_binary (CLIENT *client, const unsigned char* data, size_t
   }
 }
 
+//
+// Binary data my come in chunks. It may be a single chunk, it may be multiple.
+// Take care to collect all chunks before calling tci_handle_binary.
+//
 static void tci_handle_binary_lws (CLIENT *client, const unsigned char* data, size_t len, struct lws *wsi) {
   size_t remaining;
   int final;
+  int aligned;
   size_t needed;
+  static int first = 1;
 
   if (client == NULL || data == NULL || wsi == NULL || len == 0) { return; }
+
+  //
+  // This is not strictly portable, but works on most platforms.
+  // The assumption is that the alignment requirement is a power of 2
+  // and that data converted to uintptr_t should be a multiple of
+  // that alignment.
+  //
+  // If we find out that "data" is not aligned for floats, then we
+  // do not directly call tci_handle_binary, but rather memcpy the
+  // data to a newly allocated buffer which is automatically aligned.
+  //
+  // I have found no hint in the libwebsockets documentation, but I think
+  // data is even more strongly aligned.
+  //
+  aligned = ((uintptr_t) data & (alignof(float) -1)) == 0;
+
+  if (!aligned && first) {
+    t_print("TCI%d: binary data from libwebsockets was NOT properly aligned\n", client->seq);
+    first = 0;
+  }
 
   remaining = lws_remaining_packet_payload (wsi);
   final = lws_is_final_fragment (wsi);
 
-  if (client->binary_rx_len == 0 && remaining == 0 && final) {
+  if (client->binary_rx_len == 0 && remaining == 0 && final && aligned) {
     tci_handle_binary (client, data, len);
     return;
   }

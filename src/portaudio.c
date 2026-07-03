@@ -87,7 +87,8 @@ AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
 
 #ifdef __APPLE__
   #define MY_AUDIO_BUFFER_SIZE  128
-  #define MY_RING_BUFFER_SIZE  9600
+  #define MY_RING_BUFFER_SIZE  8192  // 170 msec
+  #define MY_RING_BUFFER_MASK  8191
   #define MY_RING_LOW_WATER     512
   #define MY_RING_HIGH_WATER   9000
   #define CW_LAT_LOW            224
@@ -100,7 +101,8 @@ AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
   // PortAudio under LINUX anyway.
   //
   #define MY_AUDIO_BUFFER_SIZE  256
-  #define MY_RING_BUFFER_SIZE  9600
+  #define MY_RING_BUFFER_SIZE  8192
+  #define MY_RING_BUFFER_MASK  8191
   #define MY_RING_LOW_WATER    2000
   #define MY_RING_HIGH_WATER   9000
   #define CW_LAT_LOW            224
@@ -305,10 +307,7 @@ static int pa_out_cb(const void *inputBuffer, void *outputBuffer, unsigned long 
           *out++ = 0.0;
         } else {
           *out++ = (float) rx->audio_buffer[newpt];
-          newpt++;
-
-          if (newpt >= MY_RING_BUFFER_SIZE) { newpt = 0; }
-
+          newpt = (newpt + 1) & MY_RING_BUFFER_MASK;
           MEMORY_BARRIER;
           rx->audio_buffer_outpt = newpt;
         }
@@ -323,10 +322,7 @@ static int pa_out_cb(const void *inputBuffer, void *outputBuffer, unsigned long 
         } else {
           *out++ = (float) rx->audio_buffer[2 * newpt];
           *out++ = (float) rx->audio_buffer[2 * newpt + 1];
-          newpt++;
-
-          if (newpt >= MY_RING_BUFFER_SIZE) { newpt = 0; }
-
+          newpt = (newpt + 1) & MY_RING_BUFFER_MASK;
           MEMORY_BARRIER;
           rx->audio_buffer_outpt = newpt;
         }
@@ -396,12 +392,9 @@ static int pa_in_cb(const void *inputBuffer, void *outputBuffer, unsigned long f
       //
       // put sample into ring buffer
       //
-      int newpt = tx->audio_buffer_inpt + 1;
-
-      if (newpt == MY_RING_BUFFER_SIZE) { newpt = 0; }
+      int newpt = (tx->audio_buffer_inpt + 1) & MY_RING_BUFFER_MASK;
 
       if (newpt != tx->audio_buffer_outpt) {
-        MEMORY_BARRIER;
         // buffer space available, do the write
         tx->audio_buffer[tx->audio_buffer_inpt] = in[i];
         MEMORY_BARRIER;
@@ -431,13 +424,9 @@ double audio_get_next_mic_sample(TRANSMITTER *tx) {
     // no buffer, or nothing in buffer: insert silence
     sample = 0.0;
   } else {
-    int newpt = tx->audio_buffer_outpt + 1;
+    int newpt = (tx->audio_buffer_outpt + 1) & MY_RING_BUFFER_MASK;
 
-    if (newpt == MY_RING_BUFFER_SIZE) { newpt = 0; }
-
-    MEMORY_BARRIER;
     sample = tx->audio_buffer[tx->audio_buffer_outpt];
-    // atomic update of read pointer
     MEMORY_BARRIER;
     tx->audio_buffer_outpt = newpt;
   }
@@ -630,9 +619,7 @@ void audio_write (RECEIVER *rx, double left, double right) {
   rx->cwaudio = 0;
 
   if (rx->audio_handle != NULL && buffer != NULL) {
-    int avail = rx->audio_buffer_inpt - rx->audio_buffer_outpt;
-
-    if (avail < 0) { avail += MY_RING_BUFFER_SIZE; }
+    int avail = (rx->audio_buffer_inpt - rx->audio_buffer_outpt) & MY_RING_BUFFER_MASK;
 
     if (avail <  MY_RING_LOW_WATER) {
       //
@@ -682,9 +669,7 @@ void audio_write (RECEIVER *rx, double left, double right) {
       // deleting half a buffer size of audio, such that the next overrun is in the distant
       // future.
       //
-      int oldpt = rx->audio_buffer_inpt - avail + MY_RING_BUFFER_SIZE / 2;
-
-      if (oldpt < 0) { oldpt += MY_RING_BUFFER_SIZE; }
+      int oldpt = (rx->audio_buffer_inpt - avail + MY_RING_BUFFER_SIZE / 2) & MY_RING_BUFFER_MASK;
 
       rx->audio_buffer_inpt = oldpt;
       //t_print("%s: buffer was nearly full, deleted audio\n", __func__);
@@ -694,16 +679,12 @@ void audio_write (RECEIVER *rx, double left, double right) {
     // put sample into ring buffer
     //
     int oldpt = rx->audio_buffer_inpt;
-    int newpt = oldpt + 1;
-
-    if (newpt == MY_RING_BUFFER_SIZE) { newpt = 0; }
+    int newpt = (oldpt + 1) & MY_RING_BUFFER_MASK;
 
     if (newpt != rx->audio_buffer_outpt) {
       //
       // buffer space available
       //
-      MEMORY_BARRIER;
-
       if (rx->local_audio_channels == 1) {
         buffer[oldpt] = 0.5 * (left + right);
       } else {
@@ -732,10 +713,8 @@ void tx_audio_write(RECEIVER *rx, double sample) {
 
   if (rx->audio_handle != NULL && rx->audio_buffer != NULL) {
     int oldpt, newpt;
-    int avail = rx->audio_buffer_inpt - rx->audio_buffer_outpt;
+    int avail = (rx->audio_buffer_inpt - rx->audio_buffer_outpt) & MY_RING_BUFFER_MASK;
     int adjust = 0;
-
-    if (avail < 0) { avail += MY_RING_BUFFER_SIZE; }
 
     if (rx->cwaudio == 0) {
       //
@@ -756,10 +735,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
             damp = damp * 0.975;
           }
 
-          newpt++;
-          MEMORY_BARRIER;
-
-          if (newpt >= MY_RING_BUFFER_SIZE) { newpt = 0; }
+          newpt = (newpt + 1) & MY_RING_BUFFER_MASK;
         }
       } else {
         for (int i = 0; i < CW_LAT_TARGET; i++) {
@@ -772,15 +748,12 @@ void tx_audio_write(RECEIVER *rx, double sample) {
             damp = damp * 0.975;
           }
 
-          newpt++;
-          MEMORY_BARRIER;
-
-          if (newpt >= MY_RING_BUFFER_SIZE) { newpt = 0; }
+          newpt = (newpt + 1) & MY_RING_BUFFER_MASK;
         }
       }
 
-      rx->audio_buffer_inpt = newpt;
       MEMORY_BARRIER;
+      rx->audio_buffer_inpt = newpt;
       avail = CW_LAT_TARGET;
       rx->cwcount = 0;
       rx->cwaudio = 1;
@@ -807,15 +780,12 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       // put mono sample into ring buffer
       //
       oldpt = rx->audio_buffer_inpt;
-      newpt = oldpt + 1;
-
-      if (newpt >= MY_RING_BUFFER_SIZE) { newpt = 0; }
+      newpt = (oldpt + 1) & MY_RING_BUFFER_MASK;
 
       if (newpt != rx->audio_buffer_outpt) {
         //
         // buffer space available
         //
-        MEMORY_BARRIER;
         rx->audio_buffer[oldpt] = sample;
         MEMORY_BARRIER;
         rx->audio_buffer_inpt = newpt;
@@ -830,15 +800,9 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       //
       oldpt = rx->audio_buffer_inpt;
       rx->audio_buffer[oldpt] = 0.0;
-      oldpt++;
-
-      if (oldpt >= MY_RING_BUFFER_SIZE) { oldpt = 0; }
-
+      oldpt = (oldpt + 1) & MY_RING_BUFFER_MASK;
       rx->audio_buffer[oldpt] = 0.0;
-      oldpt++;
-
-      if (oldpt >= MY_RING_BUFFER_SIZE) { oldpt = 0; }
-
+      oldpt = (oldpt + 1) & MY_RING_BUFFER_MASK;
       MEMORY_BARRIER;
       rx->audio_buffer_inpt = oldpt;
       break;
@@ -848,15 +812,12 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       // put stereo sample into ring buffer
       //
       oldpt = rx->audio_buffer_inpt;
-      newpt = oldpt + 1;
-
-      if (newpt >= MY_RING_BUFFER_SIZE) { newpt = 0; }
+      newpt = (oldpt + 1) & MY_RING_BUFFER_MASK;
 
       if (newpt != rx->audio_buffer_outpt) {
         //
         // buffer space available
         //
-        MEMORY_BARRIER;
         rx->audio_buffer[2 * oldpt] = sample;
         rx->audio_buffer[2 * oldpt + 1] = sample;
         MEMORY_BARRIER;
@@ -873,15 +834,10 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       oldpt = rx->audio_buffer_inpt;
       rx->audio_buffer[2 * oldpt] = 0.0;
       rx->audio_buffer[2 * oldpt + 1] = 0.0;
-      oldpt++;
-
-      if (oldpt >= MY_RING_BUFFER_SIZE) { oldpt = 0; }
-
+      oldpt = (oldpt + 1) & MY_RING_BUFFER_MASK;
       rx->audio_buffer[2 * oldpt] = 0.0;
       rx->audio_buffer[2 * oldpt + 1] = 0.0;
-      oldpt++;
-
-      if (oldpt >= MY_RING_BUFFER_SIZE) { oldpt = 0; }
+      oldpt = (oldpt + 1) & MY_RING_BUFFER_MASK;
 
       MEMORY_BARRIER;
       rx->audio_buffer_inpt = oldpt;

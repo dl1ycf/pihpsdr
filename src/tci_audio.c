@@ -247,7 +247,12 @@ void tci_audio_handle_tx_frame (const unsigned char* data, size_t len) {
     frames = TCI_TX_AUDIO_FRAME_FRAMES;
   }
 
-  fps = (float *) (data + 64); // should be aligned for float
+  //
+  // If the memory from libsockets should not be aligned, we
+  // make a memcpy in tci_handle_binary_lws(), so data,
+  // and data+64 as well, is properly aligned for floats
+  //
+  fps = (float *) (data + 64); // CAST OK
   fpt = samples;
 
   for (guint i = 0; i < frames; i++) {

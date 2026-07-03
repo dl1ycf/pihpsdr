@@ -53,7 +53,8 @@
 // ALSA loopback devices, when connected to digimode programs, sometimes
 // deliver audio in large chungs, so we need a large ring buffer as well
 //
-#define MICRINGLEN 6000
+#define MICRINGLEN  8192
+#define MICRINGMASK 8191
 
 #define inp_buffer_size 256
 #define out_buffer_size 256
@@ -590,7 +591,7 @@ void audio_write(RECEIVER *rx, double left, double right) {
           int16_t buffer[rx->local_audio_channels * out_midlen];
           memset(buffer, 0, rx->local_audio_channels * out_midlen * sizeof(int16_t));
           snd_pcm_writei (rx->audio_handle, buffer, out_midlen);
-        } 
+        }
         break;
 
         case SND_PCM_FORMAT_S32_LE: {
@@ -763,14 +764,12 @@ static gpointer tx_audio_thread(gpointer arg) {
       // complete.
       //
       if (tx->audio_buffer != NULL) {
-        int newpt = tx->audio_buffer_inpt + 1;
-
-        if (newpt == MICRINGLEN) { newpt = 0; }
+        int newpt = (tx->audio_buffer_inpt + 1) & MICRINGMASK;
 
         if (newpt != tx->audio_buffer_outpt) {
           // buffer space available, do the write
           tx->audio_buffer[tx->audio_buffer_inpt] = sample;
-          // atomic update of tx->audio_buffer_outpt
+          MEMORY_BARRIER;
           tx->audio_buffer_inpt = newpt;
         }
       }
@@ -794,12 +793,9 @@ double audio_get_next_mic_sample(TRANSMITTER *tx) {
     // no buffer, or nothing in buffer: insert silence
     sample = 0.0;
   } else {
-    int newpt = tx->audio_buffer_outpt + 1;
-
-    if (newpt == MICRINGLEN) { newpt = 0; }
-
+    int newpt = (tx->audio_buffer_outpt + 1) & MICRINGMASK;
     sample = tx->audio_buffer[tx->audio_buffer_outpt];
-    // atomic update of read pointer
+    MEMORY_BARRIER;
     tx->audio_buffer_outpt = newpt;
   }
 

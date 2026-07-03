@@ -1205,7 +1205,7 @@ static gpointer saturn_rx_thread(gpointer arg) {
           exit(1);
         } else {                                                                          // analyse word, then process
           // cppcheck-suppress constVariablePointer
-          uint32_t *LongWordPtr = (uint32_t*)DMAReadPtr;                                  // get 32 bit ptr (CAST OK)
+          uint32_t *LongWordPtr = (uint32_t*)DMAReadPtr;  // CAST OK
           RateWord = *LongWordPtr;                                                        // read rate word
 
           if (RateWord != PrevRateWord) {
@@ -1217,13 +1217,13 @@ static gpointer saturn_rx_thread(gpointer arg) {
           if (DecodeByteCount >= ((FrameLength + 1) * 8)) {                               // if bytes for header & frame
             //THEN COPY DMA DATA TO I / Q BUFFERS
             DMAReadPtr += 8;                                                              // point to 1st location past rate word
-            SrcWordPtr = (uint16_t*)DMAReadPtr;                                           // 16-bit chunk (CAST OK)
+            SrcWordPtr = (uint16_t*)DMAReadPtr; // CAST OK
 
             for (int DDC = 0; DDC < VNUMDDC; DDC++) {
               HdrWord = DDCCounts[DDC];                                                   // number of words for this DDC. reuse variable
 
               if (HdrWord != 0) {
-                DestWordPtr = (uint16_t *)IQHeadPtr[DDC];                                 // (CAST OK)
+                DestWordPtr = (uint16_t *)IQHeadPtr[DDC]; // CAST OK
 
                 for (unsigned int Cntr = 0; Cntr < HdrWord; Cntr++) {                     // count 64 bit words
                   *DestWordPtr++ = *SrcWordPtr++;                                         // move 48 bits of sample data

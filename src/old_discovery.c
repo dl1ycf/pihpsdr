@@ -148,7 +148,7 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
       //
       struct hostent *entry = gethostbyname(ipaddr_radio);
       if (entry != NULL && entry->h_addr_list[0] != 0) {
-        to_addr.sin_addr = *(struct in_addr *)entry->h_addr_list[0];
+        memcpy(&to_addr.sin_addr, entry->h_addr_list[0], sizeof(struct in_addr));
       } else {
         return;
       }
@@ -181,7 +181,7 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
       //
       struct hostent *entry = gethostbyname(ipaddr_radio);
       if (entry != NULL && entry->h_addr_list[0] != 0) {
-        to_addr.sin_addr = *(struct in_addr *)entry->h_addr_list[0];
+        memcpy(&to_addr.sin_addr, entry->h_addr_list[0], sizeof(struct in_addr)) ;
       } else {
         return;
       }

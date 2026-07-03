@@ -22,6 +22,8 @@
 
 #include <gtk/gtk.h>
 
+#include "atomic.h"
+
 #define CTCSS_FREQUENCIES 38
 extern double ctcss_frequencies[CTCSS_FREQUENCIES];
 
@@ -93,8 +95,8 @@ typedef struct _transmitter {
   GMutex audio_mutex;                 // Mutex to be used with sound card input
   GThread * audio_thread_id;          // Microphone reading thread
   int audio_flag;
-  volatile int audio_buffer_inpt;     // pointer for audio buffer
-  volatile int audio_buffer_outpt;    // pointer for audio buffer
+  volatile atomic_int audio_buffer_inpt;     // pointer for audio buffer
+  volatile atomic_int audio_buffer_outpt;    // pointer for audio buffer
   volatile int audio_running;         // used in mic thread to see whether input is still running
   double *audio_buffer;               // audio buffer for sound card input
 
