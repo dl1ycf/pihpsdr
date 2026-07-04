@@ -125,20 +125,20 @@ void profile_menu(GtkWidget *parent) {
     gtk_widget_set_name(lbl, "boldlabel");
     gtk_widget_set_halign(lbl, GTK_ALIGN_START);
     gtk_grid_attach(GTK_GRID(grid), lbl, 0, p + 3, 1, 1);
-    btn = gtk_button_new_with_label("Restore");
+    btn = gtk_button_new_with_label("Load RX");
     gtk_grid_attach(GTK_GRID(grid), btn, 2, p + 3, 1, 1);
     g_signal_connect(btn, "button-press-event", G_CALLBACK(load_rx_cb), GINT_TO_POINTER(p + MODES));
-    btn = gtk_button_new_with_label("Save");
+    btn = gtk_button_new_with_label("Save RX");
     gtk_grid_attach(GTK_GRID(grid), btn, 3, p + 3, 1, 1);
     g_signal_connect(btn, "button-press-event", G_CALLBACK(save_rx_cb), GINT_TO_POINTER(p + MODES));
 
     if (can_transmit) {
       lbl = gtk_label_new("     ");
       gtk_grid_attach(GTK_GRID(grid), lbl, 4, p + 3, 1, 1);
-      btn = gtk_button_new_with_label("Restore");
+      btn = gtk_button_new_with_label("Load TX");
       gtk_grid_attach(GTK_GRID(grid), btn, 5, p + 3, 1, 1);
       g_signal_connect(btn, "button-press-event", G_CALLBACK(load_tx_cb), GINT_TO_POINTER(p + MODES));
-      btn = gtk_button_new_with_label("Save");
+      btn = gtk_button_new_with_label("Save TX");
       gtk_grid_attach(GTK_GRID(grid), btn, 6, p + 3, 1, 1);
       g_signal_connect(btn, "button-press-event", G_CALLBACK(save_tx_cb), GINT_TO_POINTER(p + MODES));
     }

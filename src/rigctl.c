@@ -2033,7 +2033,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //SET       ZZGTx;
       //READ      ZZGT;
       //RESP      ZZGTx;
-      //NOTE      x=0...6 for AGC OFF,LONG,SLOW,MEDIUM,FAST,CUSTOM,FIXED
+      //NOTE      x=0...6 for AGC OFF, LONG, SLOW, MEDIUM, FAST, CUSTOM, FIXED
       //ENDDEF
       if (command[4] == ';') {
         snprintf(reply,  sizeof(reply), "ZZGT%d;", receiver[0]->agc);
@@ -2055,7 +2055,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //SET       ZZGUx;
       //READ      ZZGU;
       //RESP      ZZGUx;
-      //NOTE      x=0...6 for AGC OFF,LONG,SLOW,MEDIUM,FAST,CUSTOM,FIXED
+      //NOTE      x=0...6 for AGC OFF, LONG, SLOW, MEDIUM, FAST, CUSTOM, FIXED
       //ENDDEF
       if (receivers > 1) {
         if (command[4] == ';') {
