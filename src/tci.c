@@ -2224,7 +2224,7 @@ static void tci_cmd_trx (CLIENT *client, const TCI_CMD *cmd) {
           tci_send_text (client, "audio_stream_sample_type:float32;");
           tci_send_text (client, "audio_stream_channels:1;");
           tci_send_text (client, "audio_stream_samples:512;");
-          tci_send_text (client, "tx_stream_audio_buffering:0;");
+          tci_send_text (client, "tx_stream_audio_buffering:50;");
           tci_send_text (client, "audio_start:0;");
         }
 
