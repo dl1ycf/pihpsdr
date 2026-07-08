@@ -44,7 +44,13 @@ typedef void (*TCI_AUDIO_WAKEUP_CALLBACK) (void);
 void tci_audio_set_wakeup_callback (TCI_AUDIO_WAKEUP_CALLBACK callback);
 double tci_get_next_mic_sample();
 
-typedef struct _tci_stream_header {
+//
+// BigEndian NOTE: TCI has all binary data in little-endian,
+// so the piHPSDR TCI code will currently not work on BigEndian
+// CPUs where a big-to-little endian conversion is required
+//
+//
+typedef struct __attribute__((__packed__)) _tci_stream_header {
   uint32_t receiver;
   uint32_t sample_rate;
   uint32_t format;
@@ -56,14 +62,16 @@ typedef struct _tci_stream_header {
   uint32_t reserv[8];
 } TCI_STREAM_HEADER;
 
-#define TCI_AUDIO_RX_FRAME_MAX_BYTES \
-  (sizeof(TCI_STREAM_HEADER) + (TCI_RX_AUDIO_FRAME_FRAMES * TCI_AUDIO_CHANNELS * sizeof(float)))
+typedef struct __attribute__((__packed__)) _tci_stream {
+  TCI_STREAM_HEADER header;
+  float    audio[TCI_RX_AUDIO_FRAME_FRAMES * TCI_AUDIO_CHANNELS];
+} TCI_STREAM;
 
 void tci_audio_rx_sample (int id, double left, double right);
 guint64 tci_audio_get_write_count (int receiver_id);
-guint tci_audio_get_frame (int receiver_id, guint64 *read_count, unsigned char* frame, size_t frame_size,
+guint tci_audio_get_frame (int receiver_id, guint64 *read_count, TCI_STREAM *stream, size_t frame_size,
                            size_t *frame_len);
-void tci_audio_handle_tx_frame (const unsigned char* data, size_t len);
+void tci_audio_handle_tx_frame (const TCI_STREAM *stream, size_t len);
 
 void tci_audio_tx_reset (void);
 

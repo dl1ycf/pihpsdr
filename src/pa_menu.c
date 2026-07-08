@@ -51,10 +51,10 @@ static int which_container = PA_CONTAINER;
 static void update() {
   char text[16];
   int digits;
-  double low, high;
   double increment = 0.1 * pa_power_list[pa_power];
 
   for (int i = 1; i < 11; i++) {
+    double low, high;
     GtkAdjustment *adjustment = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(spinbtn[i]));
     high = 5 * i * increment;
     switch (pa_power) {
@@ -165,6 +165,7 @@ static void pa_value_changed_cb(GtkWidget *widget, gpointer data) {
   }
 }
 
+//cppcheck-suppress constParameterCallback
 static gboolean reset_trim_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
   reset();
 

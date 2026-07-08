@@ -68,6 +68,7 @@ MIDI_PARSER parser_array[MAX_MIDI_DEVICES];
 // We process *all* data but only generate calls to layer-2 for Note On/Off
 // and ControllerChange events.
 //
+//cppcheck-suppress constParameterCallback
 static void ReadMIDIdevice(const MIDIPacketList *pktlist, void *refCon, void *connRefCon) {
   int index = GPOINTER_TO_INT(connRefCon);
 

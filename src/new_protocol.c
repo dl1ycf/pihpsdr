@@ -371,7 +371,7 @@ static void update_action_table(void) {
   // determine the actions to be taken when a DDC packet arrives
   //
   int flag = 0;
-  int xmit = radio_is_transmitting(); // store such that it cannot change while building the flag
+  int xmit = radio_is_transmitting() | hpsdr_ptt; // store such that it cannot change while building the flag
   //
   // newdev means: Use DDC2/3 for normal receive, HERMES/HERMES2/G1 use DDC0/1
   //
@@ -662,7 +662,6 @@ void new_protocol_init(void) {
 static void new_protocol_general(void) {
   ASSERT_SERVER();
   const BAND *band;
-  int rc;
   unsigned char general_buffer[60];
   pthread_mutex_lock(&general_mutex);
   int txvfo = vfo_get_tx_vfo();
@@ -700,14 +699,13 @@ static void new_protocol_general(void) {
   if (have_saturn_xdma) {
     saturn_handle_general_packet(general_buffer);
   } else {
-    if ((rc = sendto(data_socket, general_buffer, sizeof(general_buffer), 0, (struct sockaddr * )&base_addr,
-                     base_addr_length)) < 0) {
+    ssize_t rc = sendto(data_socket, general_buffer, sizeof(general_buffer), 0,
+                        (struct sockaddr * )&base_addr, base_addr_length);
+    if (rc < 0) {
       g_idle_add(fatal_error, "FATAL: P2 GP send failed (Network down?)");
       P2running = 0;
-    }
-
-    if (rc != sizeof(general_buffer)) {
-      t_print("sendto socket for general: %d rather than %ld\n", rc, (long)sizeof(general_buffer));
+    } else if (rc != sizeof(general_buffer)) {
+      t_print("sendto socket for general: %ld rather than %ld\n", (long) rc, (long)sizeof(general_buffer));
     }
   }
 
@@ -1451,19 +1449,16 @@ static void new_protocol_high_priority(void) {
   //
   // Send the HighPrio buffer to the radio
   //
-  //t_print("new_protocol_high_priority: %s:%d\n",inet_ntoa(high_priority_addr.sin_addr),ntohs(high_priority_addr.sin_port));
   if (have_saturn_xdma) {
     saturn_handle_high_priority(high_priority_buffer_to_radio);
   } else {
-    int rc;
+    ssize_t rc = sendto(data_socket, high_priority_buffer_to_radio, sizeof(high_priority_buffer_to_radio), 0,
+                     (struct sockaddr * )&high_priority_addr, high_priority_addr_length);
 
-    if ((rc = sendto(data_socket, high_priority_buffer_to_radio, sizeof(high_priority_buffer_to_radio), 0,
-                     (struct sockaddr * )&high_priority_addr, high_priority_addr_length)) < 0) {
+    if (rc < 0) {
       g_idle_add(fatal_error, "FATAL: HP send failed (Network down?)");
       P2running = 0;
-    }
-
-    if (rc != sizeof(high_priority_buffer_to_radio)) {
+    } else if (rc != sizeof(high_priority_buffer_to_radio)) {
       t_print("sendto socket for high_priority: %d rather than %ld\n", rc, (long)sizeof(high_priority_buffer_to_radio));
     }
   }
@@ -1585,19 +1580,15 @@ static void new_protocol_transmit_specific(void) {
     transmit_specific_buffer[59] = transmitter->attenuation;
   }
 
-  //t_print("new_protocol_transmit_specific: %s:%d\n",inet_ntoa(transmitter_addr.sin_addr),ntohs(transmitter_addr.sin_port));
   if (have_saturn_xdma) {
     saturn_handle_duc_specific(transmit_specific_buffer);
   } else {
-    int rc;
-
-    if ((rc = sendto(data_socket, transmit_specific_buffer, sizeof(transmit_specific_buffer), 0,
-                     (struct sockaddr * )&transmitter_addr, transmitter_addr_length)) < 0) {
+    ssize_t rc = sendto(data_socket, transmit_specific_buffer, sizeof(transmit_specific_buffer), 0,
+                        (struct sockaddr * )&transmitter_addr, transmitter_addr_length);
+    if (rc < 0) {
       g_idle_add(fatal_error, "FATAL: P2 TxSpec send failed (Network down?)");
       P2running = 0;
-    }
-
-    if (rc != sizeof(transmit_specific_buffer)) {
+    } else if (rc != sizeof(transmit_specific_buffer)) {
       t_print("sendto socket for transmit_specific: %d rather than %ld\n", rc, (long)sizeof(transmit_specific_buffer));
     }
   }
@@ -1613,7 +1604,7 @@ static void new_protocol_receive_specific(void) {
   unsigned char receive_specific_buffer[1444];
   pthread_mutex_lock(&rx_spec_mutex);
   memset(receive_specific_buffer, 0, sizeof(receive_specific_buffer));
-  xmit = radio_is_transmitting();
+  xmit = radio_is_transmitting() | hpsdr_ptt;
   receive_specific_buffer[0] = (rx_specific_sequence >> 24) & 0xFF;
   receive_specific_buffer[1] = (rx_specific_sequence >> 16) & 0xFF;
   receive_specific_buffer[2] = (rx_specific_sequence >>  8) & 0xFF;
@@ -1692,15 +1683,13 @@ static void new_protocol_receive_specific(void) {
   if (have_saturn_xdma) {
     saturn_handle_ddc_specific(receive_specific_buffer);
   } else {
-    int rc;
+    ssize_t rc = sendto(data_socket, receive_specific_buffer, sizeof(receive_specific_buffer), 0,
+                        (struct sockaddr * )&receiver_addr, receiver_addr_length);
 
-    if ((rc = sendto(data_socket, receive_specific_buffer, sizeof(receive_specific_buffer), 0,
-                     (struct sockaddr * )&receiver_addr, receiver_addr_length)) < 0) {
+    if (rc < 0) {
       g_idle_add(fatal_error, "FATAL: P2 RxSpec send failed (Network down?)");
       P2running = 0;
-    }
-
-    if (rc != sizeof(receive_specific_buffer)) {
+    } else if (rc != sizeof(receive_specific_buffer)) {
       t_print("sendto socket for receive_specific: %d rather than %ld\n", rc, (long)sizeof(receive_specific_buffer));
     }
   }
@@ -1968,14 +1957,13 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
       }
 
       FIFO += 64.0;  // number of samples in THIS packet
-      int rc = sendto(data_socket, audiobuffer, sizeof(audiobuffer), 0, (struct sockaddr*)&audio_addr, audio_addr_length);
+      ssize_t rc = sendto(data_socket, audiobuffer, sizeof(audiobuffer), 0,
+                          (struct sockaddr*)&audio_addr, audio_addr_length);
 
       if (rc < 0) {
         g_idle_add(fatal_error, "FATAL: P2 Audio send failed (Network down?)");
         P2running = 0;
-      }
-
-      if (rc != sizeof(audiobuffer)) {
+      } else if (rc != sizeof(audiobuffer)) {
         t_print("sendto socket failed for %ld bytes of audio: %d\n", (long)sizeof(audiobuffer), rc);
       }
     }
@@ -2061,9 +2049,13 @@ static gpointer new_protocol_txiq_thread(gpointer data) {
 
       FIFO += 240.0;  // number of samples in THIS packet
 
-      if (sendto(data_socket, iqbuffer, sizeof(iqbuffer), 0, (struct sockaddr * )&iq_addr, iq_addr_length) < 0) {
+      ssize_t rc = sendto(data_socket, iqbuffer, sizeof(iqbuffer), 0, (struct sockaddr * )&iq_addr, iq_addr_length);
+
+      if (rc < 0) {
         g_idle_add(fatal_error, "FATAL: P2 TX IQ send failed (Network down?)");
         P2running = 0;
+      } else if (rc != sizeof(iqbuffer)) {
+        t_print("sendto socket for TX IQ: %ld rather than %ld\n", (long) rc, (long)sizeof(iqbuffer));
       }
     }
   }

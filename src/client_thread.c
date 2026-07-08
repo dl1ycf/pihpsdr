@@ -402,7 +402,7 @@ int radio_connect_remote(char *host, int port, const char *pwd) {
 // a buffer. When this is full (after possible compression), it
 // is sent to the server.
 //
-gpointer remote_txaudio_thread(gpointer data) {
+static gpointer remote_txaudio_thread(gpointer data) {
   TRANSMITTER *tx = (TRANSMITTER *) data;
   struct timespec ts;
   opus_int16 tx_pcm_buf[OPUS_FRAME_SIZE];

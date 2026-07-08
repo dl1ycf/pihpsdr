@@ -182,7 +182,6 @@ void register_midi_device(int index) {
 }
 
 void close_midi_device(int index) {
-  int ret;
   t_print("%s: index=%d\n", __func__, index);
 
   if (index < 0 || index >= MAX_MIDI_DEVICES) { return; }
@@ -200,6 +199,7 @@ void close_midi_device(int index) {
   // wait for thread to complete
   //
   if (midi_input[index] != NULL) {
+    int ret;
     ret = pthread_join(midi_thread_id[index], NULL);
     if (ret  != 0)  {
       t_print("%s: cannot join: %s\n", __func__, strerror(ret));

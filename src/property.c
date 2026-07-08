@@ -31,15 +31,13 @@
 PROPERTY* properties = NULL;
 
 void clearProperties(void) {
-  if (properties != NULL) {
-    // free all the properties
-    PROPERTY *next;
-
-    while (properties != NULL) {
-      next = properties->next_property;
-      g_free(properties);
-      properties = next;
-    }
+  while (properties != NULL) {
+    PROPERTY *tmp=properties;
+    properties = properties->next_property;
+    // now "tmp" is removed from the list so we can release memory
+    g_free(tmp->name);
+    g_free(tmp->value);
+    g_free(tmp);
   }
 }
 
@@ -116,7 +114,7 @@ void loadProperties(const char* filename) {
     }
 
     if (version >= 0.0 && version != PROPERTY_VERSION) {
-      properties = NULL;
+      clearProperties();
       t_print("loadProperties: version=%f expected version=%f ignoring\n", version, PROPERTY_VERSION);
     }
 

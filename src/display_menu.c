@@ -218,7 +218,7 @@ static void tx_frames_per_second_value_changed_cb(GtkWidget *widget, gpointer da
 }
 
 static void panadapter_high_value_changed_cb(GtkWidget *widget, gpointer data) {
-  RECEIVER *myrx = (RECEIVER *)data;
+  const RECEIVER *myrx = (RECEIVER *)data;
   int value = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
   radio_set_panhigh(myrx->id, value);
 }
@@ -229,7 +229,7 @@ static void tx_panadapter_high_value_changed_cb(GtkWidget *widget, gpointer data
 }
 
 static void panadapter_low_value_changed_cb(GtkWidget *widget, gpointer data) {
-  RECEIVER *myrx = (RECEIVER *)data;
+  const RECEIVER *myrx = (RECEIVER *)data;
   int value = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
   radio_set_panlow(myrx->id, value);
 }
@@ -240,7 +240,7 @@ static void tx_panadapter_low_value_changed_cb(GtkWidget *widget, gpointer data)
 }
 
 static void panadapter_step_value_changed_cb(GtkWidget *widget, gpointer data) {
-  RECEIVER *myrx = (RECEIVER *)data;
+  const RECEIVER *myrx = (RECEIVER *)data;
   int value = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
   radio_set_panstep(myrx->id, value);
 }

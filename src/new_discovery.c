@@ -184,7 +184,7 @@ static void p2_discover(struct ifaddrs* iface, int discflag) {
       //
       // if no legal "dotted" address, try if it is a valid hostname
       //
-      struct hostent *entry = gethostbyname(ipaddr_radio);
+      const struct hostent *entry = gethostbyname(ipaddr_radio);
       if (entry != NULL && entry->h_addr_list[0] != 0) {
         memcpy(&to_addr.sin_addr, entry->h_addr_list[0], sizeof(struct in_addr));
       } else {

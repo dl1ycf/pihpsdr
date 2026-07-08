@@ -572,7 +572,6 @@ void audio_write(RECEIVER *rx, double left, double right) {
 
     if (rx->audio_buffer_offset >= out_buffer_size) {
       rx->queued = snd_pcm_rewindable(rx->audio_handle);
-      snd_pcm_sframes_t rc;
 
       if (rx->cwaudio == 2 || rx->queued < out_minlen) {
         //
@@ -621,6 +620,7 @@ void audio_write(RECEIVER *rx, double left, double right) {
       if (rx->skipcnt > 0) {
         rx->skipcnt--;
       } else {
+        snd_pcm_sframes_t rc;
         //
         // Convert audio data from internal (double) into sound card specific format
         // and send

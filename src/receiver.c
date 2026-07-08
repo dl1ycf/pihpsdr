@@ -125,7 +125,7 @@ void rx_set_active(RECEIVER *rx) {
 // cppcheck-suppress constParameterPointer
 gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data, int from) {
   RECEIVER *rx = (RECEIVER *)data;
-  RECEIVER *rx0 = rx;
+  const RECEIVER *rx0 = rx;
   int id = rx->id;
   int id0 = id;
 
@@ -194,7 +194,7 @@ gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpoint
   int x, y;
   GdkModifierType state;
   RECEIVER *rx = (RECEIVER *)data;
-  RECEIVER *rx0 = rx;
+  const RECEIVER *rx0 = rx;
   int id = rx->id;
   int id0 = id;
 

@@ -42,6 +42,7 @@
 #include "actions.h"
 #include "agc.h"
 #include "andromeda.h"
+#include "atomic.h"
 #include "band.h"
 #include "bandstack.h"
 #include "channel.h"
@@ -203,9 +204,11 @@ void shutdown_tcp_rigctl(void) {
 //
 
 #define CW_BUF_SIZE 512
+#define CW_BUF_MASK 511
 #define NSEC_PER_SEC 1000000000L
 static char cw_buf[CW_BUF_SIZE];
-static int  cw_buf_in = 0, cw_buf_out = 0;
+static atomic_int cw_buf_in = 0;
+static atomic_int cw_buf_out = 0;
 
 static int dotsamples;
 static int dashsamples;
@@ -576,11 +579,7 @@ static gpointer rigctl_cw_thread(gpointer data) {
     // Take one character from the ring buffer
     //
     cwchar = cw_buf[cw_buf_out];
-    i = cw_buf_out + 1;
-
-    if (i >= CW_BUF_SIZE) { i = 0; }
-
-    cw_buf_out = i;
+    cw_buf_out = (cw_buf_out + 1) & CW_BUF_MASK;
 
     //
     // Special character sequences or characters:
@@ -1083,9 +1082,7 @@ void rigctl_purge_cw() {
 void rigctl_queue_cw_char(const char c) {
   if (c < ' ') { return; } // suppress non-printable characters including \0
 
-  int new = cw_buf_in + 1;
-
-  if (new >= CW_BUF_SIZE) { new = 0; }
+  int new = (cw_buf_in + 1) & CW_BUF_MASK;
 
   // If space left in buffer, queue character
   if (new != cw_buf_out) {
@@ -3467,9 +3464,7 @@ static int parse_cmd(gpointer data) {
         // reply "buffer full" condition if the buffer contains
         // more than (CW_BUF_SIZE-24) characters.
         //
-        int avail = cw_buf_in - cw_buf_out;
-
-        if (avail < 0) { avail += CW_BUF_SIZE; }
+        int avail = (cw_buf_in - cw_buf_out) & CW_BUF_MASK;
 
         if (avail < CW_BUF_SIZE - 24) {
           snprintf(reply,  sizeof(reply), "KY0;");

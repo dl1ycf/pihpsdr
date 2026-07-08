@@ -183,81 +183,59 @@ static guint tci_audio_copy (int receiver_id, guint64 *read_count, float* out, g
 }
 
 
-guint tci_audio_get_frame (int receiver_id, guint64 *read_count, unsigned char* frame, size_t frame_size,
-                           size_t *frame_len) {
-  float audio[TCI_RX_AUDIO_FRAME_FRAMES * TCI_AUDIO_CHANNELS];
-  TCI_STREAM_HEADER header;
+guint tci_audio_get_frame (int receiver_id, guint64 *read_count, TCI_STREAM *stream, size_t frame_size, size_t *frame_len) {
   guint frames;
-  size_t data_bytes;
 
-  if (frame_len != NULL) {
-    *frame_len = 0;
-  }
+  if (frame_len != NULL) { *frame_len = 0; }
 
-  if (read_count == NULL || frame == NULL || frame_len == NULL) { return 0; }
+  if (read_count == NULL || stream == NULL || frame_len == NULL) { return 0; }
 
-  if (frame_size < TCI_AUDIO_RX_FRAME_MAX_BYTES) { return 0; }
+  if (frame_size < sizeof(TCI_STREAM)) { return 0; }
 
-  frames = tci_audio_copy (receiver_id, read_count, audio, TCI_RX_AUDIO_FRAME_FRAMES);
+  frames = tci_audio_copy (receiver_id, read_count, stream->audio, TCI_RX_AUDIO_FRAME_FRAMES);
 
   if (frames == 0) { return 0; }
 
-  memset (&header, 0, sizeof (header));
-  header.receiver = (uint32_t) receiver_id;
-  header.sample_rate = TCI_AUDIO_SAMPLE_RATE;
-  header.format = TCI_AUDIO_FORMAT_FLOAT32;
-  header.length = (uint32_t) (frames * TCI_AUDIO_CHANNELS);
-  header.type = TCI_STREAM_RX_AUDIO;
-  header.channels = TCI_AUDIO_CHANNELS;
-  data_bytes = (size_t) frames * TCI_AUDIO_CHANNELS * sizeof (float);
-  memcpy (frame, &header, sizeof (header));
-  memcpy (frame + sizeof (header), audio, data_bytes);
-  *frame_len = sizeof (header) + data_bytes;
+  memset (stream, 0, 64);
+  stream->header.receiver = (uint32_t) receiver_id;
+  stream->header.sample_rate = TCI_AUDIO_SAMPLE_RATE;
+  stream->header.format = TCI_AUDIO_FORMAT_FLOAT32;
+  stream->header.length = (uint32_t) (frames * TCI_AUDIO_CHANNELS);
+  stream->header.type = TCI_STREAM_RX_AUDIO;
+  stream->header.channels = TCI_AUDIO_CHANNELS;
+  *frame_len = 64 + sizeof(float)*frames;
   return frames;
 }
 
-void tci_audio_handle_tx_frame (const unsigned char* data, size_t len) {
-  TCI_STREAM_HEADER header;
-  size_t payload_bytes;
+void tci_audio_handle_tx_frame (const TCI_STREAM *stream, size_t len) {
   size_t sample_count;
 
-  if (data == NULL || len < 64) { return; }
+  if (stream == NULL || len < sizeof(TCI_STREAM_HEADER)) { return; }
 
-  memcpy (&header, data, sizeof (header));
+  if (stream->header.type != TCI_STREAM_TX_AUDIO) { return; }
 
-  if (header.type != TCI_STREAM_TX_AUDIO) { return; }
-
-  payload_bytes = len - 64;
-
-  if (payload_bytes < sizeof (float)) { return; }
-
-  if (header.length <= 0 || (64 + ((size_t) header.length * sizeof (float))) > len) {
-    return;
-  }
-
-  sample_count = (size_t) header.length;
+  sample_count = (size_t) stream->header.length;
 
   if (sample_count < 2) { return; }
 
+  if (len <  sizeof(TCI_STREAM_HEADER) + sizeof (float) * sample_count) { return; }
+
+  //
+  // Reduce TX audio to mono and put into ring buffer
+  //
   float samples[TCI_TX_AUDIO_FRAME_FRAMES];
-  float *fps, *fpt;
-  guint frames = (guint) (sample_count / 2);
+  unsigned int frames = (sample_count / 2);
 
   if (frames > TCI_TX_AUDIO_FRAME_FRAMES) {
     frames = TCI_TX_AUDIO_FRAME_FRAMES;
   }
 
-  //
-  // If the memory from libsockets should not be aligned, we
-  // make a memcpy in tci_handle_binary_lws(), so data,
-  // and data+64 as well, is properly aligned for floats
-  //
-  fps = (float *) (data + 64); // CAST OK
-  fpt = samples;
+  const float *fps = stream->audio;
+  float *fpt = samples;
 
-  for (guint i = 0; i < frames; i++) {
-    *fpt++ = *fps++;
-    fps++; // skip right sample
+  for (unsigned int i = 0; i < frames; i++) {
+    *fpt++ = *fps++;  // use left sample
+    fps++;            // skip right sample
   }
 
   tci_audio_tx_push_block (samples, frames);

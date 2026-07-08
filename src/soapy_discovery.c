@@ -425,7 +425,6 @@ static void get_info(char *DriverHost) {
 
 void soapy_discovery(const char *hostname) {
   size_t length;
-  char driver[256];
   SoapySDRKwargs input_args = { 0 };
   t_print("%s\n", __func__);
   rtlsdr_count = 0;
@@ -448,6 +447,7 @@ void soapy_discovery(const char *hostname) {
   // hook for detecting Plutos over the internet
   //
   if (strlen(hostname) > 2) {
+    char driver[256];
     snprintf(driver, sizeof(driver), "plutosdr:%s", hostname);
     get_info(driver);
   }

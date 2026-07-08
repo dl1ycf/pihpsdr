@@ -1894,11 +1894,11 @@ static int server_command(gpointer data) {
   break;
 
   case CMD_RXPROFILE: {
-    int num = from_16(header->s1);
     int id = header->b1;
-    int what = header->b2;
 
     if (id <  receivers) {
+      int what = header->b2;
+      int num = from_16(header->s1);
       switch (what) {
       case 0:
         profiles_load_rx_profile(receiver[id], num);

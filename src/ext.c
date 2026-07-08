@@ -77,7 +77,6 @@ int ext_radio_toggle_mox(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
-// cppcheck-suppress constParameterPointer
 int ext_radio_set_mox(gpointer data) {
   radio_set_mox(GPOINTER_TO_INT(data));
   return G_SOURCE_REMOVE;

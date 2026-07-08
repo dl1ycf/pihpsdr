@@ -146,7 +146,7 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
       //
       // if no legal "dotted" address, try if it is a valid hostname
       //
-      struct hostent *entry = gethostbyname(ipaddr_radio);
+      const struct hostent *entry = gethostbyname(ipaddr_radio);
       if (entry != NULL && entry->h_addr_list[0] != 0) {
         memcpy(&to_addr.sin_addr, entry->h_addr_list[0], sizeof(struct in_addr));
       } else {
@@ -179,7 +179,7 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
       //
       // if no legal "dotted" address, try if it is a valid hostname
       //
-      struct hostent *entry = gethostbyname(ipaddr_radio);
+      const struct hostent *entry = gethostbyname(ipaddr_radio);
       if (entry != NULL && entry->h_addr_list[0] != 0) {
         memcpy(&to_addr.sin_addr, entry->h_addr_list[0], sizeof(struct in_addr)) ;
       } else {
@@ -432,10 +432,13 @@ static gpointer p1_discover_receive_thread(gpointer data) {
               discovered[devices].device = DEVICE_HERMES_LITE2;
               t_print("==> HL2: Gateware Major Version=%d Minor Version=%d\n", buffer[9], buffer[21]);
 
-              if (buffer[11] & 0xA0) {
-                t_print("==> HL2: fixed IP %d.%d.%d.%d (DHCP overrides)\n", buffer[13], buffer[14], buffer[15], buffer[16]);
-              } else if (buffer[11] & 0x80) {
-                t_print("==> HL2: fixed IP %d.%d.%d.%d (DHCP ignored)\n", buffer[13], buffer[14], buffer[15], buffer[16]);
+              // HL2 MCP4662 byte 6, bits 5,6,7
+              if (buffer[11] & 0x80) {
+                if (buffer[11] & 0x20) {
+                  t_print("==> HL2: fixed IP %d.%d.%d.%d (DHCP overrides)\n", buffer[13], buffer[14], buffer[15], buffer[16]);
+                } else {
+                  t_print("==> HL2: fixed IP %d.%d.%d.%d (overrides DHCP)\n", buffer[13], buffer[14], buffer[15], buffer[16]);
+                }
               }
 
               if (buffer[11] & 0x40) {
