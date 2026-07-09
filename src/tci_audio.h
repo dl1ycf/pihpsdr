@@ -64,13 +64,12 @@ typedef struct __attribute__((__packed__)) _tci_stream_header {
 
 typedef struct __attribute__((__packed__)) _tci_stream {
   TCI_STREAM_HEADER header;
-  float    audio[TCI_RX_AUDIO_FRAME_FRAMES * TCI_AUDIO_CHANNELS];
+  float    audio[8192];        // given here as float not uint8_t
 } TCI_STREAM;
 
 void tci_audio_rx_sample (int id, double left, double right);
-guint64 tci_audio_get_write_count (int receiver_id);
-guint tci_audio_get_frame (int receiver_id, guint64 *read_count, TCI_STREAM *stream, size_t frame_size,
-                           size_t *frame_len);
+unsigned int tci_audio_get_write_count (int receiver_id);
+unsigned int tci_audio_get_frame (int receiver_id, unsigned int *read_count, TCI_STREAM *stream, size_t frame_size, size_t *frame_len);
 void tci_audio_handle_tx_frame (const TCI_STREAM *stream, size_t len);
 
 void tci_audio_tx_reset (void);
