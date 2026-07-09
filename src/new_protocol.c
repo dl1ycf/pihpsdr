@@ -2281,14 +2281,8 @@ void saturn_post_iq_data(int ddc, mybuffer *mybuf) {
     return;
   }
 
-  if (iq_count[ddc] < 0) {
-    iq_count[ddc]++;
-    mybuf->free = 1;
-    return;
-  }
-
   //
-  // Check sequence HERE
+  // Check sequence
   //
   uint32_t sequence = ((uint32_t)(mybuf->buffer[0] & 0xFF) << 24)
                       + ((uint32_t)(mybuf->buffer[1] & 0xFF) << 16)
@@ -2302,6 +2296,16 @@ void saturn_post_iq_data(int ddc, mybuffer *mybuf) {
   }
 
   ddc_sequence[ddc] = sequence + 1;
+
+  //
+  // Skip packet, if ring buffer overflow condition was set
+  //
+  if (iq_count[ddc] < 0) {
+    iq_count[ddc]++;
+    mybuf->free = 1;
+    return;
+  }
+
   int nptr = (iq_inptr[ddc] + 1) & RXIQRINGBUFMASK;
 
   if (nptr != iq_outptr[ddc]) {
