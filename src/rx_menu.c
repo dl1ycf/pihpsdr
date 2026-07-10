@@ -91,11 +91,25 @@ static void sample_rate_cb(GtkToggleButton *widget, gpointer data) {
   if (sscanf(p, "%d", &samplerate) != 1) { return; }
 
   if (radio_is_remote) {
-    send_sample_rate(cl_sock_tcp, myid, samplerate);
+    if (protocol == NEW_PROTOCOL) {
+      // change sample rate for current RX only
+      send_sample_rate(cl_sock_tcp, myid, samplerate);
+    } else {
+      // change sample rate for all receivers
+      for (int id = 0; id < RECEIVERS; id++) {
+        send_sample_rate(cl_sock_tcp, id, samplerate);
+      }
+    }
     return;
   }
 
-  rx_change_sample_rate(myrx, samplerate);
+  if (protocol == NEW_PROTOCOL) {
+    // change sample rate for THIS receiver only
+    rx_change_sample_rate(myrx, samplerate);
+  } else {
+    // change sample rate for everything
+    radio_change_sample_rate(samplerate);
+  }
 }
 
 static void adc_cb(GtkToggleButton *widget, gpointer data) {
@@ -232,6 +246,8 @@ void rx_menu(GtkWidget *parent) {
   dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
   char text[64];
+  int rate;
+  int maxrate;
   //
   // This guards against changing the active receivere while the menu is open
   //
@@ -256,55 +272,48 @@ void rx_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), btn, 0, 0, 1, 1);
   int row = 1;
 
-  if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
-    switch (protocol) {
-    case NEW_PROTOCOL: { // Sample rate in RX menu only for P2
-      lbl = gtk_label_new("Sample Rate");
-      gtk_widget_set_name(lbl, "boldlabel");
-      gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-      gtk_grid_attach(GTK_GRID(grid), lbl, 0, row, 1, 1);
-      btn = gtk_combo_box_text_new();
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "48000");
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "96000");
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "192000");
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "384000");
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "768000");
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "1536000");
+  lbl = gtk_label_new("Sample Rate");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), lbl, 0, row, 1, 1);
+  btn = gtk_combo_box_text_new();
 
-      switch (myrx->sample_rate) {
-      case 48000:
-        gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 0);
-        break;
-
-      case 96000:
-        gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 1);
-        break;
-
-      case 192000:
-        gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 2);
-        break;
-
-      case 384000:
-        gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 3);
-        break;
-
-      case 768000:
-        gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 4);
-        break;
-
-      case 1536000:
-        gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 5);
-        break;
-      }
-
-      my_combo_attach(GTK_GRID(grid), btn, 1, row, 1, 1);
-      g_signal_connect(btn, "changed", G_CALLBACK(sample_rate_cb), NULL);
-    }
-
-    row++;
+  switch (protocol) {
+  case ORIGINAL_PROTOCOL:
+    maxrate = 384000;
     break;
+  case NEW_PROTOCOL:
+    maxrate = 1536000;
+    break;
+  case SOAPYSDR_PROTOCOL:
+   maxrate = radio->soapy.sample_rate;
+   break;
+  }
+
+  rate = 48000;
+
+  while (rate <= maxrate) {
+    snprintf(text, sizeof(text),"%d", rate);
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, text);
+    rate = 2 * rate;
+  }
+
+  rate = 48000;
+
+  for (int i = 0; i < 10; i++) {
+    if (rate == myrx->sample_rate) {
+      gtk_combo_box_set_active(GTK_COMBO_BOX(btn), i);
+      break;
     }
 
+  rate = 2 * rate;
+  }
+
+  my_combo_attach(GTK_GRID(grid), btn, 1, row, 1, 1);
+  g_signal_connect(btn, "changed", G_CALLBACK(sample_rate_cb), NULL);
+  row++;
+
+  if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
     if (filter_board == ALEX && myadc == 0 && have_alex_att) {
       //
       // The "Alex ATT" only exists for ADC1
@@ -327,10 +336,8 @@ void rx_menu(GtkWidget *parent) {
     //
     // HPSDR:    If there is more than one ADC, let the user associate an ADC
     //           with the current receiver.
-    // SOAPYSDR: RX1 is hard-wired to ADC1, and RX2 to ADC2, so rx->id and rx->adc are
-    //           the same for SOAPY.
     //
-    if (n_adc > 1 && protocol != SOAPYSDR_PROTOCOL) {
+    if (n_adc > 1) {
       lbl = gtk_label_new("Select ADC");
       gtk_widget_set_name(lbl, "boldlabel");
       gtk_widget_set_halign(lbl, GTK_ALIGN_END);
