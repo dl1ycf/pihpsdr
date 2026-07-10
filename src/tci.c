@@ -101,6 +101,7 @@ typedef struct _client {
   int running;                  // set this to zero to close client connection
   int tx_owner;                 // indicates whether this client is entitled to do TX
   guint tci_timer;              // GTK id  of the periodic task
+  guint tci_clearmox_timer;     // Timer for "delayed" TX->RX transition
   long long last_fa;            // last VFO-A  freq reported
   long long last_fb;            // last VFO-B  freq reported
   long long last_fx;            // last TX     freq reported
@@ -2178,6 +2179,7 @@ static int tci_radio_clear_mox(gpointer data) {
   CLIENT *client = (CLIENT *) data;
   client->tx_audio_enabled = 0;
   client->last_trx = 0;
+  client->tci_clearmox_timer = 0;
   radio_set_mox(0);
   tci_send_mox(client);
   tci_update_audio_global();
@@ -2225,6 +2227,13 @@ static void tci_cmd_trx (CLIENT *client, const TCI_CMD *cmd) {
     if (client->tx_owner) {
       if (state) {
         if (source_tci) {
+          //
+          // Clear a possibly pending TX->RX transition
+          //
+          if (client->tci_clearmox_timer != 0) {
+            g_source_remove(client->tci_clearmox_timer);
+            client->tci_clearmox_timer = 0;
+          }
           tci_audio_tx_reset();
           client->tx_audio_enabled = 1;
           client->tx_audio_rx_count = 0;
@@ -2244,7 +2253,7 @@ static void tci_cmd_trx (CLIENT *client, const TCI_CMD *cmd) {
         int delay = client->tx_audio_enabled ? 50 : 0;
         // Use a fixed "PTT delay" for TCI audio,
         // 50 msec if TCI audio was active, no delay if no TCI audio
-        g_timeout_add(delay, tci_radio_clear_mox, client);
+        client->tci_clearmox_timer = g_timeout_add(delay, tci_radio_clear_mox, client);
       }
     } else {
       // This is the response to a trx:0 command
@@ -3110,11 +3119,21 @@ static void tci_cmd_stop (CLIENT *client, const TCI_CMD *cmd) {
   if (client->tx_owner) {
     client->tx_owner = 0;
     tci_transmitter_owned = 0;
-    //
-    // If the last trx command from this client was "go TX", then
-    // put piHPSDR into RX mode
-    //
+
+    if (client->tci_clearmox_timer != 0) {
+      g_source_remove(client->tci_clearmox_timer);
+      client->tci_clearmox_timer = 0;
+    }
+
     if (client->last_trx) {
+      //
+      // If the last trx command from this client was "go TX", then
+      // put piHPSDR into RX mode
+      //
+      if (client->tci_clearmox_timer != 0) {
+        g_source_remove(client->tci_clearmox_timer);
+        client->tci_clearmox_timer = 0;
+      }
       radio_set_mox(0);
       client->last_trx = 0;
     }
@@ -3775,6 +3794,11 @@ static int tci_lws_callback (struct lws *wsi, enum lws_callback_reasons reason,
       // If the last trx command from this client was "go TX", then
       // put piHPSDR into RX mode
       //
+      if (client->tci_clearmox_timer != 0) {
+        g_source_remove(client->tci_clearmox_timer);
+        client->tci_clearmox_timer = 0;
+      }
+
       if (client->last_trx) {
         g_idle_add(ext_radio_set_mox,GINT_TO_POINTER(0));
         client->last_trx = 0;
