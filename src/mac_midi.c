@@ -71,12 +71,9 @@ MIDI_PARSER parser_array[MAX_MIDI_DEVICES];
 //cppcheck-suppress constParameterCallback
 static void ReadMIDIdevice(const MIDIPacketList *pktlist, void *refCon, void *connRefCon) {
   int index = GPOINTER_TO_INT(connRefCon);
-
   if (index < 0 || index >= MAX_MIDI_DEVICES) { return; }
-
   MIDI_PARSER *parser = parser_array + index;
   MIDIPacket *packet = (MIDIPacket *)pktlist->packet;
-
   //
   // loop through all bytes of all packets in the current list
   //
@@ -84,7 +81,6 @@ static void ReadMIDIdevice(const MIDIPacketList *pktlist, void *refCon, void *co
     for (int i = 0; i < packet->length; i++) {
       parse_midi_byte((int) packet->data[i], parser);
     }
-
     packet = MIDIPacketNext(packet);
   }
 }
@@ -101,11 +97,8 @@ static MIDIEndpointRef mySources[MAX_MIDI_DEVICES];
 
 void close_midi_device(int index) {
   t_print("%s index=%d\n", __func__, index);
-
   if (index < 0 || index >= MAX_MIDI_DEVICES) { return; }
-
   if (midi_devices[index].active == 0 && myMIDIports[index] == 0 && myClients[index] == 0) { return; }
-
   //
   // This should release the resources associated with the pending connection
   //
@@ -132,36 +125,28 @@ void close_midi_device(int index) {
 void register_midi_device(int index) {
   OSStatus osret;
   t_print("%s: index=%d\n", __func__, index);
-
   //
   //  Register a callback routine for the device
   //
   if (index < 0 || index >= n_midi_devices) { return; }
-
   if (myClients[index] != 0 || myMIDIports[index] != 0) { return; }
-
   myClients[index] = 0;
   myMIDIports[index] = 0;
   mySources[index] = 0;
   MIDIEndpointRef source = MIDIGetSource(index);
-
   if (source == 0) {
     t_print("%s: MIDIGetSource failed for index=%d\n", __func__, index);
     midi_devices[index].active = 0;
     return;
   }
-
   //Create client and port, and connect
   osret = MIDIClientCreate(CFSTR("piHPSDR"), NULL, NULL, &myClients[index]);
-
   if (osret != 0) {
     t_print("%s: MIDIClientCreate failed with ret=%d\n", __func__, (int) osret);
     midi_devices[index].active = 0;
     return;
   }
-
   osret = MIDIInputPortCreate(myClients[index], CFSTR("FromMIDI"), ReadMIDIdevice, NULL, &myMIDIports[index]);
-
   if (osret != 0) {
     t_print("%s: MIDIInputPortCreate failed with ret=%d\n", __func__, (int) osret);
     MIDIClientDispose(myClients[index]);
@@ -169,9 +154,7 @@ void register_midi_device(int index) {
     midi_devices[index].active = 0;
     return;
   }
-
   osret = MIDIPortConnectSource(myMIDIports[index], source, GINT_TO_POINTER(index));
-
   if (osret != 0) {
     t_print("%s: MIDIPortConnectSource failed with ret=%d\n", __func__, (int) osret);
     MIDIPortDispose(myMIDIports[index]);
@@ -181,7 +164,6 @@ void register_midi_device(int index) {
     midi_devices[index].active = 0;
     return;
   }
-
   //
   // Now we have successfully opened the device.
   //
@@ -196,14 +178,12 @@ void get_midi_devices(void) {
   CFStringRef pname;   // MacOS name of the device
   char name[128];      // C name of the device
   static int first = 1;
-
   if (first) {
     //
     // perhaps not necessary in C, but good programming practise:
     // initialise the table upon the first call
     //
     first = 0;
-
     for (i = 0; i < MAX_MIDI_DEVICES; i++) {
       midi_devices[i].name = NULL;
       midi_devices[i].active = 0;
@@ -214,7 +194,6 @@ void get_midi_devices(void) {
       parser_array[i].arg2 = 0;
     }
   }
-
   //
   //  This is called at startup (via midi_restore) and each time
   //  the MIDI menu is opened. So we have to take care that this
@@ -228,19 +207,14 @@ void get_midi_devices(void) {
   //
   n = MIDIGetNumberOfSources();
   n_midi_devices = 0;
-
   for (i = 0; i < n; i++) {
     MIDIEndpointRef dev = MIDIGetSource(i);
-
     if (dev != 0) {
       OSStatus osret = MIDIObjectGetStringProperty(dev, kMIDIPropertyName, &pname);
-
       if (osret != 0) { continue; } // in this case pname is invalid
-
       if (!CFStringGetCString(pname, name, sizeof(name), kCFStringEncodingUTF8)) {
         snprintf(name, sizeof(name), "NoPort%d", n_midi_devices);
       }
-
       CFRelease(pname);
       //
       // Some users have reported that MacOS reports a string of length zero
@@ -248,9 +222,7 @@ void get_midi_devices(void) {
       // "NoPort<n>"
       //
       if (strlen(name) == 0) { snprintf(name, sizeof(name), "NoPort%d", n_midi_devices); }
-
       t_print("%s: %s\n", __func__, name);
-
       if (midi_devices[n_midi_devices].name != NULL) {
         if (strncmp(name, midi_devices[n_midi_devices].name, sizeof(name))) {
           //
@@ -260,7 +232,6 @@ void get_midi_devices(void) {
           if (midi_devices[n_midi_devices].active || myMIDIports[n_midi_devices] != 0 || myClients[n_midi_devices] != 0) {
             close_midi_device(n_midi_devices);
           }
-
           g_free(midi_devices[n_midi_devices].name);
           midi_devices[n_midi_devices].name = g_strdup(name);
         } else {
@@ -277,19 +248,15 @@ void get_midi_devices(void) {
         midi_devices[n_midi_devices].name = g_strdup(name);
         midi_devices[n_midi_devices].active = 0;
       }
-
       n_midi_devices++;
     }
-
     //
     // If there are more devices than we have slots in our Table
     // just stop processing.
     //
     if (n_midi_devices >= MAX_MIDI_DEVICES) { break; }
   }
-
   t_print("%s: number of devices=%d\n", __func__, n_midi_devices);
-
   //
   // Get rid of all devices lingering around above the high-water mark
   // (this happens in the case of hot-unplugging)
@@ -298,7 +265,6 @@ void get_midi_devices(void) {
     if (midi_devices[i].active || myMIDIports[i] != 0 || myClients[i] != 0) {
       close_midi_device(i);
     }
-
     if (midi_devices[i].name != NULL) {
       g_free(midi_devices[i].name);
       midi_devices[i].name = NULL;

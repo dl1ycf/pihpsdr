@@ -153,36 +153,30 @@ int rigctl_tcp_running(void) {
 void shutdown_tcp_rigctl(void) {
   t_print("%s: server_socket=%d\n", __func__, server_socket);
   tcp_running = 0;
-
   //
   // Gracefully terminate all active TCP connections
   //
   for (int id = 0; id < MAX_TCP_CLIENTS; id++) {
     tcp_client[id].running = 0;
-
     if (tcp_client[id].andromeda_timer != 0) {
       g_source_remove(tcp_client[id].andromeda_timer);
       tcp_client[id].andromeda_timer = 0;
     }
-
     if (tcp_client[id].auto_timer != 0) {
       g_source_remove(tcp_client[id].auto_timer);
       tcp_client[id].auto_timer = 0;
     }
-
     if (tcp_client[id].fd != -1) {
       t_print("%s: closing client socket: %d\n", __func__, tcp_client[id].fd);
       shutdown(tcp_client[id].fd, SHUT_RDWR);
       close(tcp_client[id].fd);
       tcp_client[id].fd = -1;
     }
-
     if (tcp_client[id].thread_id) {
       g_thread_join(tcp_client[id].thread_id);
       tcp_client[id].thread_id = NULL;
     }
   }
-
   //
   // Close server socket
   //
@@ -192,7 +186,6 @@ void shutdown_tcp_rigctl(void) {
     close(server_socket);
     server_socket = -1;
   }
-
   if (rigctl_server_thread_id != NULL) {
     g_thread_join(rigctl_server_thread_id);
     rigctl_server_thread_id = NULL;
@@ -221,56 +214,44 @@ static int dashsamples;
 //
 static void send_dash(void) {
   struct timespec ts;
-
   if (cw_key_hit) { return; }
-
   clock_gettime(CLOCK_MONOTONIC, &ts);
   tx_queue_cw_event(1, 0);             // immediate key-down
   tx_queue_cw_event(0, dashsamples);   // wait a dash length, then key-up
   tx_queue_cw_event(0, dotsamples);    // wait a dot length, then key-up
   ts.tv_nsec += (dashsamples + dotsamples) * 20833;
-
   while (ts.tv_nsec > NSEC_PER_SEC) {
     ts.tv_nsec -= NSEC_PER_SEC;
     ts.tv_sec++;
   }
-
   clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
 }
 
 static void send_dot(void) {
   struct timespec ts;
-
   if (cw_key_hit) { return; }
-
   clock_gettime(CLOCK_MONOTONIC, &ts);
   tx_queue_cw_event(1, 0);            // immediate key-down
   tx_queue_cw_event(0, dotsamples);   // wait dot length, then key-up
   tx_queue_cw_event(0, dotsamples);   // wait dash length, then key-up
   ts.tv_nsec += (2 * dotsamples) * 20833;
-
   while (ts.tv_nsec > NSEC_PER_SEC) {
     ts.tv_nsec -= NSEC_PER_SEC;
     ts.tv_sec++;
   }
-
   clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
 }
 
 static void send_space(int len) {
   struct timespec ts;
-
   if (cw_key_hit) { return; }
-
   clock_gettime(CLOCK_MONOTONIC, &ts);
   tx_queue_cw_event(0, len * dotsamples);  // wait, then key-up
   ts.tv_nsec += (len * dotsamples) * 20833;
-
   while (ts.tv_nsec > NSEC_PER_SEC) {
     ts.tv_nsec -= NSEC_PER_SEC;
     ts.tv_sec++;
   }
-
   clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
 }
 
@@ -281,178 +262,141 @@ static int join_cw_characters = 0;
 
 static void rigctl_send_cw_char(char cw_char) {
   const char *pattern;
-
   switch (cw_char) {
   case 'a':
   case 'A':
     pattern =  ".-";
     break;
-
   case 'b':
   case 'B':
     pattern =  "-...";
     break;
-
   case 'c':
   case 'C':
     pattern = "-.-.";
     break;
-
   case 'd':
   case 'D':
     pattern = "-..";
     break;
-
   case 'e':
   case 'E':
     pattern = ".";
     break;
-
   case 'f':
   case 'F':
     pattern = "..-.";
     break;
-
   case 'g':
   case 'G':
     pattern = "--.";
     break;
-
   case 'h':
   case 'H':
     pattern = "....";
     break;
-
   case 'i':
   case 'I':
     pattern = "..";
     break;
-
   case 'j':
   case 'J':
     pattern = ".---";
     break;
-
   case 'k':
   case 'K':
     pattern = "-.-";
     break;
-
   case 'l':
   case 'L':
     pattern = ".-..";
     break;
-
   case 'm':
   case 'M':
     pattern = "--";
     break;
-
   case 'n':
   case 'N':
     pattern = "-.";
     break;
-
   case 'o':
   case 'O':
     pattern = "---";
     break;
-
   case 'p':
   case 'P':
     pattern = ".--.";
     break;
-
   case 'q':
   case 'Q':
     pattern = "--.-";
     break;
-
   case 'r':
   case 'R':
     pattern = ".-.";
     break;
-
   case 's':
   case 'S':
     pattern = "...";
     break;
-
   case 't':
   case 'T':
     pattern = "-";
     break;
-
   case 'u':
   case 'U':
     pattern = "..-";
     break;
-
   case 'v':
   case 'V':
     pattern = "...-";
     break;
-
   case 'w':
   case 'W':
     pattern = ".--";
     break;
-
   case 'x':
   case 'X':
     pattern = "-..-";
     break;
-
   case 'y':
   case 'Y':
     pattern = "-.--";
     break;
-
   case 'z':
   case 'Z':
     pattern = "--..";
     break;
-
   case '0':
     pattern = "-----";
     break;
-
   case '1':
     pattern = ".----";
     break;
-
   case '2':
     pattern = "..---";
     break;
-
   case '3':
     pattern = "...--";
     break;
-
   case '4':
     pattern = "....-";
     break;
-
   case '5':
     pattern = ".....";
     break;
-
   case '6':
     pattern = "-....";
     break;
-
   case '7':
     pattern = "--...";
     break;
-
   case '8':
     pattern = "---..";
     break;
-
   case '9':
     pattern = "----.";
     break;
-
   //
   //     DL1YCF:
   //     added some signs from ITU Recommendation M.1677-1 (2009)
@@ -461,78 +405,60 @@ static void rigctl_send_cw_char(char cw_char) {
   case '.':
     pattern = ".-.-.-";
     break;
-
   case ',':
     pattern = "--..--";
     break;
-
   case ':':
     pattern = "---..";
     break;
-
   case '?':
     pattern = "..--..";
     break;
-
   case '\'':
     pattern = ".----.";
     break;
-
   case '-':
     pattern = "-....-";
     break;
-
   case '/':
     pattern = "-..-.";
     break;
-
   case '(':
     pattern = "-.--.";
     break;
-
   case ')':
     pattern = "-.--.-";
     break;
-
   case '"':
     pattern = ".-..-.";
     break;
-
   case '=':
     pattern = "-...-";
     break;
-
   case '+':
     pattern = ".-.-.";
     break;
-
   case '@':
     pattern = ".--.-.";
     break;
-
   //
   //     Often used, but not ITU: Ampersand for "wait"
   //
   case '&':
     pattern = ".-...";
     break;
-
   default:
     pattern = "";
   }
-
   while (*pattern != '\0') {
     if (*pattern == '-') {
       send_dash();
     }
-
     if (*pattern == '.') {
       send_dot();
     }
-
     pattern++;
   }
-
   // The last element (dash or dot) sent already has one dotlen space appended.
   // If the current character is another "printable" sign, we need an additional
   // pause of 2 dotlens to form the inter-character spacing of 3 dotlens.
@@ -556,7 +482,6 @@ static gpointer rigctl_cw_thread(gpointer data) {
   char cwchar;
   int  buffered_speed = 0;
   int  bracket_command = 0;
-
   for (;;) {
     // wait for CW data (periodically look every 100 msec)
     if (cw_buf_in == cw_buf_out) {
@@ -564,23 +489,19 @@ static gpointer rigctl_cw_thread(gpointer data) {
       usleep(100000L);
       continue;
     }
-
     //
     // if TX mode is not CW, drain ring buffer
     //
     int txmode = vfo_get_tx_mode();
-
     if (txmode != modeCWU && txmode != modeCWL) {
       cw_buf_out = cw_buf_in;
       continue;
     }
-
     //
     // Take one character from the ring buffer
     //
     cwchar = cw_buf[cw_buf_out];
     cw_buf_out = (cw_buf_out + 1) & CW_BUF_MASK;
-
     //
     // Special character sequences or characters:
     //
@@ -595,32 +516,26 @@ static gpointer rigctl_cw_thread(gpointer data) {
         buffered_speed = (5 * cw_keyer_speed) / 4;
         cwchar = 0;
         break;
-
       case '-':
         buffered_speed = (3 * cw_keyer_speed) / 4;
         cwchar = 0;
         break;
-
       case '.':
         join_cw_characters = 1;
         cwchar = 0;
         break;
       }
-
       bracket_command = 0;
     }
-
     if (cwchar == '[') {
       bracket_command = 1;
       cwchar = 0;
     }
-
     if (cwchar == ']') {
       buffered_speed = 0;
       join_cw_characters = 0;
       cwchar = 0;
     }
-
     // The dot and dash length may have changed, so recompute them here
     // This means that we can change the speed (KS command) while
     // the buffer is being sent
@@ -631,11 +546,8 @@ static gpointer rigctl_cw_thread(gpointer data) {
       dotsamples = 57600 / cw_keyer_speed;
       dashsamples = (3456 * cw_keyer_weight) / cw_keyer_speed;
     }
-
     CAT_cw_is_active = 1;
-
     if (!radio_is_remote) { schedule_transmit_specific(); }
-
     if (!mox) {
       // activate PTT
       g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(1));
@@ -643,19 +555,14 @@ static gpointer rigctl_cw_thread(gpointer data) {
       // Note that if out-of-band, we would wait
       // forever here, so allow at most 200 msec
       i = 200;
-
       while (!mox && i-- > 0) { usleep(1000L); }
-
       // still no MOX? --> silently discard CW character and give up
       if (!mox) {
         CAT_cw_is_active = 0;
-
         if (!radio_is_remote) { schedule_transmit_specific(); }
-
         continue;
       }
     }
-
     // At this point, mox == 1 and CAT_cw_active == 1
     if (cw_key_hit) {
       //
@@ -664,9 +571,7 @@ static gpointer rigctl_cw_thread(gpointer data) {
       // Do not remove PTT in the latter case
       buffered_speed = 0;
       CAT_cw_is_active = 0;
-
       if (!radio_is_remote) { schedule_transmit_specific(); }
-
       //
       // keep draining ring buffer until it stays empty for 0.5 seconds
       // This is necessary: after aborting a very long CW
@@ -679,7 +584,6 @@ static gpointer rigctl_cw_thread(gpointer data) {
       } while (cw_buf_out != cw_buf_in);
     } else {
       if (cwchar) { rigctl_send_cw_char(cwchar); }
-
       //
       // Character has been sent, so continue.
       // Since the second character possibly comes 250 msec after
@@ -688,16 +592,11 @@ static gpointer rigctl_cw_thread(gpointer data) {
       //
       for (i = 0; i < 5; i++ ) {
         if (cw_buf_in != cw_buf_out) { break; }
-
         usleep(50000);
       }
-
       if (cw_buf_in != cw_buf_out) { continue; }
-
       CAT_cw_is_active = 0;
-
       if (!radio_is_remote) { schedule_transmit_specific(); }
-
       //
       // Buffer completely sent: remove PTT.
       // However, if CAT-CW was cancelled due to hitting a
@@ -709,14 +608,11 @@ static gpointer rigctl_cw_thread(gpointer data) {
         // otherwise there might be a race condition when sending
         // the next character really soon
         i = 10;
-
         while (mox && (i--) > 0) { usleep(50000L); }
-
         buffered_speed = 0;
       }
     }
   }
-
   //NOTREACHED: this thread is started once and for ever
   return NULL;
 }
@@ -734,12 +630,9 @@ static void send_resp (int fd, char * msg) {
     //
     return;
   }
-
   if (rigctl_debug) { t_print("RIGCTL: RESP=%s\n", msg); }
-
   int length = strlen(msg);
   int count = 0;
-
   while (length > 0) {
     //
     // Since this is in the GTK event queue, we cannot try
@@ -747,15 +640,11 @@ static void send_resp (int fd, char * msg) {
     // up immediately, for rc == 0 we try at most 10 times.
     //
     int rc = write(fd, msg, length);
-
     if (rc < 0) { return; }
-
     if (rc == 0) {
       count++;
-
       if (count > 10) { return; }
     }
-
     length -= rc;
     msg += rc;
   }
@@ -763,92 +652,72 @@ static void send_resp (int fd, char * msg) {
 
 static int wdspmode(int kmode) {
   int wmode;
-
   switch (kmode) {
   case 1:                // Kenwood LSB
     wmode = modeLSB;
     break;
-
   case 2:                // Kenwood USB
     wmode = modeUSB;
     break;
-
   case 3:                // Kenwood CW (upper side band)
     wmode = modeCWU;
     break;
-
   case 4:                // Kenwood FM
     wmode = modeFMN;
     break;
-
   case 5:                // Kenwood AM
     wmode = modeAM;
     break;
-
   case 6:                // Kenwood FSK (lower side band)
     wmode = modeDIGL;
     break;
-
   case 7:                // Kenwood CW-R (lower side band)
     wmode = modeCWL;
     break;
-
   case 9:                // Kenwood FSK-R (upper side band)
     wmode = modeDIGU;
     break;
-
   default:
     // NOTREACHED?
     wmode = modeLSB;
     break;
   }
-
   return wmode;
 }
 
 static int ts2000_mode(int wmode) {
   int kmode;
-
   switch (wmode) {
   case modeLSB:
     kmode = 1;  // Kenwood LDB
     break;
-
   case modeUSB:
     kmode = 2;  // Kenwood USB
     break;
-
   case modeCWL:
     kmode = 7;  // Kenwood CW-R
     break;
-
   case modeCWU:
     kmode = 3;  // Kenwood CW
     break;
-
   case modeFMN:
     kmode = 4;  // Kenwood FM
     break;
-
   case modeAM:
   case modeSAM:
     kmode = 5;  // Kenwood AM
     break;
-
   case modeDIGL:
     kmode = 6;  // Kenwood FSK
     break;
-
   case modeDIGU:
     kmode = 9;  // Kenwood FSK-R
     break;
-
   default:
     // NOTREACHED?
     kmode = 1;  // LSB
     break;
   }
-
   return kmode;
 }
 
@@ -864,7 +733,6 @@ static gboolean autoreport_handler(gpointer data) {
   // Auto-reporting to a FIFO is suppressed because all data sent there will
   // be echoed back and then be read again.
   //
-
   if (client->fifo || !client->running) {
     //
     // return and remove timer
@@ -872,18 +740,15 @@ static gboolean autoreport_handler(gpointer data) {
     client->auto_timer = 0;
     return G_SOURCE_REMOVE;
   }
-
   if (client->auto_reporting > 0) {
     long long fa = vfo[VFO_A].ctun ? vfo[VFO_A].ctun_frequency : vfo[VFO_A].frequency;
     long long fb = vfo[VFO_B].ctun ? vfo[VFO_B].ctun_frequency : vfo[VFO_B].frequency;
-
     if (fa != client->last_fa) {
       char reply[256];
       snprintf(reply,  sizeof(reply), "FA%011lld;", fa);
       send_resp(client->fd, reply);
       client->last_fa = fa;
     }
-
     if (fb != client->last_fb) {
       char reply[256];
       snprintf(reply,  sizeof(reply), "FB%011lld;", fb);
@@ -891,10 +756,8 @@ static gboolean autoreport_handler(gpointer data) {
       client->last_fb = fb;
     }
   }
-
   if (client->auto_reporting > 1) {
     int md = vfo[VFO_A].mode;
-
     if (md != client->last_md) {
       char reply[256];
       snprintf(reply,  sizeof(reply), "MD%1d;", ts2000_mode(md));
@@ -902,10 +765,8 @@ static gboolean autoreport_handler(gpointer data) {
       client->last_md = md;
     }
   }
-
   if (client->auto_reporting > 2) {
     int state = radio_is_transmitting();
-
     if (state != client->last_ptt) {
       char reply[256];
       snprintf(reply,  sizeof(reply), state ? "TX;" : "RX;");
@@ -913,7 +774,6 @@ static gboolean autoreport_handler(gpointer data) {
       client->last_ptt = state;
     }
   }
-
   return TRUE;
 }
 
@@ -924,7 +784,6 @@ static gboolean andromeda_handler(gpointer data) {
   //
   CLIENT *client = (CLIENT *)data;
   char reply[256];
-
   if (!client->running || client->andromeda_type == 4) {
     //
     // If the client is no longer running, remove source.
@@ -934,7 +793,6 @@ static gboolean andromeda_handler(gpointer data) {
     client->andromeda_timer = 0;
     return G_SOURCE_REMOVE;
   }
-
   //
   // Do not proceed until Andromeda version is known
   // Send a ZZZS command and re-trigger the handler
@@ -944,10 +802,8 @@ static gboolean andromeda_handler(gpointer data) {
     send_resp(client->fd, reply);
     return TRUE;
   }
-
   for (int led = 0; led < MAX_ANDROMEDA_LEDS; led++) {
     int new = client->last_led[led];
-
     if (client->andromeda_type == 1) {
       //
       // Original ANDROMEDA console
@@ -956,57 +812,44 @@ static gboolean andromeda_handler(gpointer data) {
       case 1:
         new = mox;
         break;
-
       case 2:
         // ATU has TUNE solution
         break;
-
       case 3:
         new = can_transmit ? transmitter->tune : 0;
         break;
-
       case 4:
-
         // According to the ANAN document this is LED #5
         if (can_transmit) {
           new = transmitter->puresignal;
         } else {
           new = 0;
         }
-
         break;
-
       case 5:
         // According to the ANAN document this is LED #5
         new = diversity_enabled;
         break;
-
       case 6:
         new = client->shift;
         break;
-
       case 7:
         new = vfo[active_receiver->id].ctun;
         break;
-
       case 8:
         new = vfo[active_receiver->id].rit_enabled;
         break;
-
       case 9:
         new = vfo[vfo_get_tx_vfo()].xit_enabled;
         break;
-
       case 10:
         new = (active_receiver->id  == 0);
         break;
-
       case 11:
         new = locked;
         break;
       }
     }
-
     if (client->andromeda_type == 5) {
       //
       // G2Mk2 (a.k.a. G2 Ultra) console
@@ -1015,42 +858,33 @@ static gboolean andromeda_handler(gpointer data) {
       case 1:
         new = mox;
         break;
-
       case 2:
         new = can_transmit ? transmitter->tune : 0;
         break;
-
       case 3:
         if (can_transmit) {
           new = transmitter->puresignal;
         } else {
           new = 0;
         }
-
         break;
-
       case 4:
         new = auto_tune_flag;
         break;
-
       case 6:
         new = vfo[active_receiver->id].rit_enabled;
         break;
-
       case 7:
         new = vfo[vfo_get_tx_vfo()].xit_enabled;
         break;
-
       case 8:
         new = (active_receiver->id  == 0);
         break;
-
       case 9:
         new = locked;
         break;
       }
     }
-
     //
     // if LED status changed, send it via ZZZI command
     //
@@ -1060,7 +894,6 @@ static gboolean andromeda_handler(gpointer data) {
       client->last_led[led] = new;
     }
   }
-
   return TRUE;
 }
 
@@ -1081,9 +914,7 @@ void rigctl_purge_cw() {
 
 void rigctl_queue_cw_char(const char c) {
   if (c < ' ') { return; } // suppress non-printable characters including \0
-
   int new = (cw_buf_in + 1) & CW_BUF_MASK;
-
   // If space left in buffer, queue character
   if (new != cw_buf_out) {
     cw_buf[cw_buf_in] = c;
@@ -1094,9 +925,7 @@ void rigctl_queue_cw_char(const char c) {
 void rigctl_queue_cw_string(const char *str) {
   for (;;) {
     char c = *str++;
-
     if (c == '\0') { break; }
-
     rigctl_queue_cw_char(c);
   }
 }
@@ -1108,10 +937,8 @@ void rigctl_queue_cw_text(const int pos) {
   // be thread-safe with CAT CW.
   //
   const char *text = predef_cwtxt[pos];
-
   for (unsigned int i = 0; i <= strlen(text); i++) {
     char c = text[i];
-
     if (c == '#') {
       for (unsigned int j = 0; j < strlen(predef_call); j++) {
         rigctl_queue_cw_char(predef_call[j]);
@@ -1137,12 +964,10 @@ static gpointer rigctl_server(gpointer data) {
   int on = 1;
   t_print("%s: starting TCP server on port %d\n", __func__, port);
   server_socket = socket(AF_INET, SOCK_STREAM, 0);
-
   if (server_socket < 0) {
     t_perror("rigctl_server: listen socket failed");
     return NULL;
   }
-
   setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
   setsockopt(server_socket, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
   // bind to listening port
@@ -1150,46 +975,39 @@ static gpointer rigctl_server(gpointer data) {
   server_address.sin_family = AF_INET;
   server_address.sin_addr.s_addr = htonl(INADDR_ANY);
   server_address.sin_port = htons(port);
-
   if (bind(server_socket, (struct sockaddr * )&server_address, sizeof(server_address)) < 0) {
     t_perror("rigctl_server: listen socket bind failed");
     close(server_socket);
     return NULL;
   }
-
   for (int id = 0; id < MAX_TCP_CLIENTS; id++) {
     tcp_client[id].fd = -1;
     tcp_client[id].fifo = 0;
     tcp_client[id].auto_reporting = 0;
   }
-
   // listen with a max queue of 3
   if (listen(server_socket, 3) < 0) {
     t_perror("rigctl_server: listen failed");
     close(server_socket);
     return NULL;
   }
-
   while (tcp_running) {
     int spare;
     //
     // find a spare slot
     //
     spare = -1;
-
     for (int id = 0; id < MAX_TCP_CLIENTS; id++) {
       if (tcp_client[id].fd == -1) {
         spare = id;
         break;
       }
     }
-
     // if all slots are in use, wait and continue
     if (spare < 0) {
       usleep(100000L);
       continue;
     }
-
     //
     // A slot is available, try to get connection via accept()
     // (this initialises fd, address, address_length)
@@ -1197,28 +1015,23 @@ static gpointer rigctl_server(gpointer data) {
     t_print("%s: slot= %d waiting for connection\n", __func__, spare);
     tcp_client[spare].fd = accept(server_socket, (struct sockaddr*)&tcp_client[spare].address,
                                   &tcp_client[spare].address_length);
-
     if (tcp_client[spare].fd < 0) {
       // no error reporting, this could be because rigtcl is being shut down
       tcp_client[spare].fd = -1;
       continue;
     }
-
     t_print("%s: slot= %d connected with fd=%d\n", __func__, spare, tcp_client[spare].fd);
     //
     // Setting TCP_NODELAY may (or may not) improve responsiveness
     // by *disabling* Nagle's algorithm for clustering small packets
     //
 #ifdef __APPLE__
-
     if (setsockopt(tcp_client[spare].fd, IPPROTO_TCP, TCP_NODELAY, (void *)&on, sizeof(on)) < 0) {
 #else
-
     if (setsockopt(tcp_client[spare].fd, SOL_TCP, TCP_NODELAY, (void *)&on, sizeof(on)) < 0) {
 #endif
       t_perror("TCP_NODELAY");
     }
-
     //
     // Initialise client data structure
     //
@@ -1237,11 +1050,9 @@ static gpointer rigctl_server(gpointer data) {
     tcp_client[spare].shift           = 0;
     tcp_client[spare].buttonvec       = NULL;
     tcp_client[spare].encodervec      = NULL;
-
     for (int i = 0; i < MAX_ANDROMEDA_LEDS; i++) {
       tcp_client[spare].last_led[i] = -1;
     }
-
     //
     // Spawn off thread that "does" the connection
     //
@@ -1250,7 +1061,6 @@ static gpointer rigctl_server(gpointer data) {
     // Launch auto-reporter task
     //
     tcp_client[spare].auto_timer = g_timeout_add(750, autoreport_handler, &tcp_client[spare]);
-
     //
     // If ANDROMEDA is enabled for TCP, lauch periodic ANDROMEDA task
     //
@@ -1259,7 +1069,6 @@ static gpointer rigctl_server(gpointer data) {
       tcp_client[spare].andromeda_timer = g_timeout_add(500, andromeda_handler, &tcp_client[spare]);
     }
   }
-
   close(server_socket);
   return NULL;
 }
@@ -1269,9 +1078,7 @@ static gpointer rigctl_client (gpointer data) {
   t_print("%s: starting rigctl_client: socket=%d\n", __func__, client->fd);
   g_mutex_lock(&mutex_numcat);
   cat_control++;
-
   if (rigctl_debug) { t_print("RIGCTL: CTLA INC cat_control=%d\n", cat_control); }
-
   g_mutex_unlock(&mutex_numcat);
   g_idle_add(ext_vfo_update, NULL);
   int i;
@@ -1279,7 +1086,6 @@ static gpointer rigctl_client (gpointer data) {
   char  cmd_input[MAXDATASIZE] ;
   char *command = g_new(char, MAXDATASIZE);
   int command_index = 0;
-
   while (client->running && (numbytes = recv(client->fd, cmd_input, MAXDATASIZE - 2, 0)) > 0 ) {
     for (i = 0; i < numbytes; i++) {
       //
@@ -1289,15 +1095,11 @@ static gpointer rigctl_client (gpointer data) {
       if (cmd_input[i] < 32) {
         continue;
       }
-
       command[command_index] = cmd_input[i];
       command_index++;
-
       if (cmd_input[i] == ';') {
         command[command_index] = '\0';
-
         if (rigctl_debug) { t_print("RIGCTL: command=%s\n", command); }
-
         COMMAND *info = g_new(COMMAND, 1);
         info->client = client;
         info->command = command;
@@ -1307,7 +1109,6 @@ static gpointer rigctl_client (gpointer data) {
       }
     }
   }
-
   // Release the last "command" buffer (that has not yet been used)
   g_free(command);
   t_print("%s: Leaving rigctl_client thread\n", __func__);
@@ -1316,23 +1117,19 @@ static gpointer rigctl_client (gpointer data) {
   // but even the we should decrement cat_control
   //
   client->running = 0;
-
   if (client->fd != -1) {
     if (client->andromeda_timer != 0) {
       g_source_remove(client->andromeda_timer);
       client->andromeda_timer = 0;
     }
-
     if (client->auto_timer != 0) {
       g_source_remove(client->auto_timer);
       client->auto_timer = 0;
     }
-
     shutdown(client->fd, SHUT_RDWR);
     close(client->fd);
     client->fd = -1;
   }
-
   // Decrement CAT_CONTROL
   g_mutex_lock(&mutex_numcat);
   cat_control--;
@@ -1345,12 +1142,10 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
   gboolean implemented = TRUE;
   char reply[256];
   reply[0] = '\0';
-
   switch (command[2]) {
   case 'A': //ZZAx
     switch (command[3]) {
     case 'C': //ZZAC
-
       //CATDEF    ZZAC
       //DESCR     Set/read VFO-A step size
       //SET       ZZACxx;
@@ -1375,11 +1170,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         g_idle_add(ext_vfo_update, NULL);
       } else {
       }
-
       break;
-
     case 'D': //ZZAD
-
       //CATDEF    ZZAD
       //DESCR     Move down VFO-A frequency by a selected step
       //SET       ZZACxx;
@@ -1391,11 +1183,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         vfo_id_move(VFO_A, -hz, FALSE);
       } else {
       }
-
       break;
-
     case 'E': //ZZAE
-
       //CATDEF    ZZAE
       //DESCR     Move down VFO-A frequency by several steps
       //SET       ZZAExx;
@@ -1405,11 +1194,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         int steps = atoi(&command[4]);
         vfo_id_step(VFO_A, -steps);
       }
-
       break;
-
     case 'F': //ZZAF
-
       //CATDEF    ZZAF
       //DESCR     Move up VFO-A frequency by several steps
       //SET       ZZAFxx;
@@ -1419,11 +1205,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         int steps = atoi(&command[4]);
         vfo_id_step(VFO_A, steps);
       }
-
       break;
-
     case 'G': //ZZAG
-
       //CATDEF    ZZAG
       //DESCR     Set/Read RX1 volume (AF slider)
       //SET       ZZAGxxx;
@@ -1438,22 +1221,17 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       } else {
         int gain = atoi(&command[4]);
         double volume;
-
         if (gain < 2) {
           volume = -40.0;
         } else {
           volume = 20.0 * log10(0.01 * (double) gain);
         }
-
         suppress_popup_sliders++;
         radio_set_af_gain(0, volume);
         suppress_popup_sliders--;
       }
-
       break;
-
     case 'I': //ZZAI
-
       //CATDEF    ZZAI
       //DESCR     Set/Read auto-reporting
       //SET       ZZAIx;
@@ -1471,18 +1249,13 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         send_resp(client->fd, reply) ;
       } else if (command[5] == ';') {
         client->auto_reporting = command[4] - '0';
-
         if (client->auto_reporting < 0) { client->auto_reporting = 0; }
-
         if (client->auto_reporting > 3) { client->auto_reporting = 3; }
       } else {
         implemented = FALSE;
       }
-
       break;
-
     case 'R': //ZZAR
-
       //CATDEF    ZZAR
       //DESCR     Set/Read RX1 AGC gain
       //SET       ZZARxxxx;
@@ -1500,11 +1273,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         radio_set_agc_gain(VFO_A, (double)threshold);
         suppress_popup_sliders--;
       }
-
       break;
-
     case 'S': //ZZAS
-
       //CATDEF    ZZAS
       //DESCR     Set/Read RX2 AGC gain
       //SET       ZZASxxxx;
@@ -1526,11 +1296,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       } else {
         implemented = FALSE;
       }
-
       break;
-
     case 'U': //ZZAU
-
       //CATDEF    ZZAU
       //DESCR     Move up VFO-A frequency by selected step
       //SET       ZZAUxx;
@@ -1542,20 +1309,15 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         vfo_id_move(VFO_A, hz, FALSE);
       } else {
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'B': //ZZBx
     switch (command[3]) {
     case 'A': //ZZBA
-
       //CATDEF    ZZBA
       //DESCR     Move VFO-B one band down
       //SET       ZZBA;
@@ -1568,11 +1330,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           implemented = FALSE;
         }
       }
-
       break;
-
     case 'B': //ZZBB
-
       //CATDEF    ZZBB
       //DESCR     Move VFO-B one band up
       //SET       ZZBB;
@@ -1585,11 +1344,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           implemented = FALSE;
         }
       }
-
       break;
-
     case 'D': //ZZBD
-
       //CATDEF    ZZBD
       //DESCR     Move VFO-A one band down
       //SET       ZZBD;
@@ -1598,11 +1354,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       if (command[4] == ';') {
         band_minus(receiver[0]->id);
       }
-
       break;
-
     case 'E': //ZZBE
-
       //CATDEF    ZZBE
       //DESCR     Move down VFO-B frequency by multiple steps
       //SET       ZZBExx;
@@ -1612,11 +1365,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         int steps = atoi(&command[4]);
         vfo_id_step(VFO_B, -steps);
       }
-
       break;
-
     case 'F': //ZZBF
-
       //CATDEF    ZZBF
       //DESCR     Move up VFO-B frequency by multiple steps
       //SET       ZZBFxx;
@@ -1626,11 +1376,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         int steps = atoi(&command[4]);
         vfo_id_step(VFO_B, +steps);
       }
-
       break;
-
     case 'M': //ZZBM
-
       //CATDEF    ZZBM
       //DESCR     Move down VFO-B frequency by selected step.
       //SET       ZZBMxx;
@@ -1642,11 +1389,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         vfo_id_move(VFO_B, -hz, FALSE);
       } else {
       }
-
       break;
-
     case 'P': //ZZBP
-
       //CATDEF    ZZBP
       //DESCR     Move up VFO-B frequency by selected step.
       //SET       ZZBPxx;
@@ -1657,15 +1401,11 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         long long hz = (long long) vfo_get_step_from_index(step_index);
         vfo_id_move(VFO_B, hz, FALSE);
       }
-
       break;
-
     case 'S':
     case 'T': { //ZZBS and ZZBT
       int v = VFO_A;
-
       if (command[3] == 'T') { v = VFO_B; }
-
       //CATDEF    ZZBS
       //DESCR     Set/Read VFO-A band
       //SET       ZZBSxxx;
@@ -1682,148 +1422,113 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //ENDDEF
       if (command[4] == ';') {
         int b;
-
         switch (vfo[v].band) {
         case band136:
           b = 136;
           break;
-
         case band472:
           b = 472;
           break;
-
         case band160:
           b = 160;
           break;
-
         case band80:
           b = 80;
           break;
-
         case band60:
           b = 60;
           break;
-
         case band40:
           b = 40;
           break;
-
         case band30:
           b = 30;
           break;
-
         case band20:
           b = 20;
           break;
-
         case band17:
           b = 17;
           break;
-
         case band15:
           b = 15;
           break;
-
         case band12:
           b = 12;
           break;
-
         case band10:
           b = 10;
           break;
-
         case band6:
           b = 6;
           break;
-
         case bandGen:
           b = 888;
           break;
-
         case bandWWV:
           b = 999;
           break;
-
         default:
           b = 20;
           break;
         }
-
         snprintf(reply,  sizeof(reply), "ZZB%c%03d;", 'S' + v, b);
         send_resp(client->fd, reply) ;
       } else if (command[7] == ';') {
         int band = band20;
         int b = atoi(&command[4]);
-
         switch (b) {
         case 136:
           band = band136;
           break;
-
         case 472:
           band = band472;
           break;
-
         case 160:
           band = band160;
           break;
-
         case 80:
           band = band80;
           break;
-
         case 60:
           band = band60;
           break;
-
         case 40:
           band = band40;
           break;
-
         case 30:
           band = band30;
           break;
-
         case 20:
           band = band20;
           break;
-
         case 17:
           band = band17;
           break;
-
         case 15:
           band = band15;
           break;
-
         case 12:
           band = band12;
           break;
-
         case 10:
           band = band10;
           break;
-
         case 6:
           band = band6;
           break;
-
         case 888:
           band = bandGen;
           break;
-
         case 999:
           band = bandWWV;
           break;
         }
-
         vfo_id_band_changed(v, band);
       }
     }
     break;
-
     case 'U': //ZZBU
-
       //CATDEF    ZZBU
       //DESCR     Move VFO-A one band up
       //SET       ZZBU;
@@ -1832,24 +1537,18 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       if (command[4] == ';') {
         band_plus(receiver[0]->id);
       }
-
       break;
-
     case 'Y': //ZZBY
       // closes console (ignored)
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'C': //ZZCx
     switch (command[3]) {
     case 'N': //ZZCN
-
       //CATDEF    ZZCN
       //DESCR     Set/Read VFO-A CTUN status
       //SET       ZZCNx;
@@ -1865,11 +1564,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         vfo_id_ctun_update(VFO_A, state);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 'O': //ZZCO
-
       //CATDEF    ZZCO
       //DESCR     Set/Read VFO-B CTUN status
       //SET       ZZCOx;
@@ -1886,20 +1582,15 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         vfo_id_ctun_update(VFO_B, state);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'F': //ZZFx
     switch (command[3]) {
     case 'A': //ZZFA
-
       //CATDEF    ZZFA
       //DESCR     Set/Read VFO-A frequency
       //SET       ZZFAxxxxxxxxxxx;
@@ -1913,18 +1604,14 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         } else {
           snprintf(reply,  sizeof(reply), "ZZFA%011lld;", vfo[VFO_A].frequency);
         }
-
         send_resp(client->fd, reply) ;
       } else if (command[15] == ';') {
         long long f = atoll(&command[4]);
         vfo_id_set_frequency(VFO_A, f);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 'B': //ZZFB
-
       //CATDEF    ZZFB
       //DESCR     Set/Read VFO-B frequency
       //SET       ZZFBxxxxxxxxxxx;
@@ -1938,18 +1625,14 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         } else {
           snprintf(reply,  sizeof(reply), "ZZFB%011lld;", vfo[VFO_B].frequency);
         }
-
         send_resp(client->fd, reply) ;
       } else if (command[15] == ';') {
         long long f = atoll(&command[4]);
         vfo_id_set_frequency(VFO_B, f);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 'H': //ZZFH
-
       //CATDEF    ZZFH
       //DESCR     Set/Read RX1 filter high water
       //SET       ZZFHxxxxx;
@@ -1966,23 +1649,18 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         int fh = atoi(&command[4]);
         fh = fmin(9999, fh);
         fh = fmax(-9999, fh);
-
         // make sure filter is filterVar1
         if (vfo[VFO_A].filter != filterVar1) {
           vfo_id_filter_changed(VFO_A, filterVar1);
         }
-
         FILTER *mode_filters = filters[vfo[VFO_A].mode];
         FILTER *filter = &mode_filters[filterVar1];
         filter->high = fh;
         vfo_id_filter_changed(VFO_A, filterVar1);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 'L': //ZZFL
-
       //CATDEF    ZZFL
       //DESCR     Set/Read RX1 filter low water
       //SET       ZZFLxxxxx;
@@ -1999,32 +1677,25 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         int fl = atoi(&command[4]);
         fl = fmin(9999, fl);
         fl = fmax(-9999, fl);
-
         // make sure filter is filterVar1
         if (vfo[VFO_A].filter != filterVar1) {
           vfo_id_filter_changed(VFO_A, filterVar1);
         }
-
         FILTER *mode_filters = filters[vfo[VFO_A].mode];
         FILTER *filter = &mode_filters[filterVar1];
         filter->low = fl;
         vfo_id_filter_changed(VFO_A, filterVar1);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'G': //ZZGx
     switch (command[3]) {
     case 'T': //ZZGT
-
       //CATDEF    ZZGT
       //DESCR     Set/Read RX1 AGC
       //SET       ZZGTx;
@@ -2042,11 +1713,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         rx_set_agc(receiver[0]);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 'U': //ZZGU
-
       //CATDEF    ZZGU
       //DESCR     Set/Read RX2 AGC
       //SET       ZZGUx;
@@ -2066,20 +1734,15 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           g_idle_add(ext_vfo_update, NULL);
         }
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'L': //ZZLx
     switch (command[3]) {
     case 'A': //ZZLA
-
       //CATDEF    ZZLA
       //DESCR     Set/Read RX1 volume (AF slider)
       //SET       ZZLAxxx;
@@ -2094,23 +1757,18 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       } else {
         int gain = atoi(&command[4]);
         double volume;
-
         // gain is 0..100
         if (gain < 2) {
           volume = -40.0;
         } else {
           volume = 20.0 * log10(0.01 * (double) gain);
         }
-
         suppress_popup_sliders++;
         radio_set_af_gain(0, volume);
         suppress_popup_sliders--;
       }
-
       break;
-
     case 'C': //ZZLC
-
       //CATDEF    ZZLC
       //DESCR     Set/Read RX2 volume (AF slider)
       //SET       ZZLCxxx;
@@ -2126,24 +1784,19 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         } else {
           int gain = atoi(&command[4]);
           double volume;
-
           // gain is 0..100
           if (gain < 2) {
             volume = -40.0;
           } else {
             volume = 20.0 * log10(0.01 * (double) gain);
           }
-
           suppress_popup_sliders++;
           radio_set_af_gain(1, volume);
           suppress_popup_sliders--;
         }
       }
-
       break;
-
     case 'I': //ZZLI
-
       //CATDEF    ZZLI
       //DESCR     Set/Read PURESIGNAL status
       //SET       ZZLIx;
@@ -2160,23 +1813,17 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           int ps = atoi(&command[4]);
           tx_ps_onoff(transmitter, ps);
         }
-
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'M': //ZZMx
     switch (command[3]) {
     case 'A':  //ZZMA
-
       //CATDEF    ZZMA
       //DESCR     Mute/Unmute RX1
       //SET       ZZMAx;
@@ -2191,11 +1838,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         int mute = atoi(&command[4]);
         receiver[0]->mute_radio = mute;
       }
-
       break;
-
     case 'B': //ZZMB
-
       //CATDEF    ZZMB
       //DESCR     Mute/Unmute RX2
       //SET       ZZMBx;
@@ -2212,11 +1856,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           receiver[1]->mute_radio = mute;
         }
       }
-
       break;
-
     case 'D': //ZZMD
-
       //CATDEF    ZZMD
       //DESCR     Set/Read VFO-A modes
       //SET       ZZMDxx;
@@ -2232,11 +1873,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       } else if (command[6] == ';') {
         vfo_id_mode_changed(VFO_A, atoi(&command[4]));
       }
-
       break;
-
     case 'E': //ZZME
-
       //CATDEF    ZZME
       //DESCR     Set/Read VFO-B modes
       //SET       ZZMEx;
@@ -2250,11 +1888,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       } else if (command[6] == ';') {
         vfo_id_mode_changed(VFO_A, atoi(&command[4]));
       }
-
       break;
-
     case 'G': //ZZMG
-
       //CATDEF    ZZMG
       //DESCR     Set/Read Mic gain (Mic gain slider)
       //SET       ZZMGxxx;
@@ -2275,20 +1910,15 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       } else {
         implemented = FALSE;
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'S': //ZZSx
     switch (command[3]) {
     case 'A': //ZZSA
-
       //CATDEF    ZZSA
       //DESCR     Move down VFO-A frequency one step
       //SET       ZZSA;
@@ -2297,11 +1927,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       if (command[4] == ';') {
         vfo_id_step(VFO_A, -1);
       }
-
       break;
-
     case 'B': //ZZSB
-
       //CATDEF    ZZSB
       //DESCR     Move up VFO-A frequency one step
       //SET       ZZSB;
@@ -2310,11 +1937,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       if (command[4] == ';') {
         vfo_id_step(VFO_A, 1);
       }
-
       break;
-
     case 'G': //ZZSG
-
       //CATDEF    ZZSG
       //DESCR     Move down VFO-B frequency one step
       //SET       ZZSG;
@@ -2323,11 +1947,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       if (command[4] == ';') {
         vfo_id_step(VFO_B, -1);
       }
-
       break;
-
     case 'H': //ZZSH
-
       //CATDEF    ZZSH
       //DESCR     Move up VFO-B frequency one step
       //SET       ZZSG;
@@ -2336,20 +1957,15 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       if (command[4] == ';') {
         vfo_id_step(VFO_B, 1);
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'T': //ZZTx
     switch (command[3]) {
     case 'X': //ZZTX
-
       //CATDEF    ZZTX
       //DESCR     Get/Set MOX status
       //SET       ZZTXx;
@@ -2368,20 +1984,15 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
         }
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'U': //ZZUx
     switch (command[3]) {
     case 'U': //ZZUT
-
       //CATDEF    ZZUT
       //DESCR     Get/Set TwoTone status
       //SET       ZZUTx;
@@ -2397,16 +2008,12 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           radio_set_twotone(transmitter, atoi(&command[4]));
         }
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'V': //ZZVx
     switch (command[3]) {
     case 'S': { //ZZVS
@@ -2416,7 +2023,6 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //NOTE      The contents (frequencies, CTUN mode, filters, etc.) of VFO A and B are exchanged.
       //ENDDEF
       int i = atoi(&command[4]);
-
       if (i == 0) {
         vfo_a_to_b();
       } else if (i == 1) {
@@ -2426,18 +2032,14 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       }
     }
     break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'X': //ZZXx
     switch (command[3]) {
     case 'V': //ZZXV
-
       //CATDEF    ZZXV
       //DESCR     Get extended status information
       //READ      ZZVS;
@@ -2449,58 +2051,44 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //ENDDEF
       if (command[4] == ';') {
         int status = 0;
-
         if (vfo[VFO_A].rit_enabled) {
           // cppcheck-suppress badBitmaskCheck
           status = status | 0x01;
         }
-
         if (locked) {
           status = status | 0x02;
           status = status | 0x04;
         }
-
         if (split) {
           status = status | 0x08;
         }
-
         if (vfo[VFO_A].ctun) {
           status = status | 0x10;
         }
-
         if (vfo[VFO_B].ctun) {
           status = status | 0x20;
         }
-
         if (mox) {
           status = status | 0x40;
         }
-
         if (can_transmit && transmitter->tune) {
           status = status | 0x80;
         }
-
         if (vfo[vfo_get_tx_vfo()].xit_enabled) {
           status = status | 0x100;
         }
-
         snprintf(reply,  sizeof(reply), "ZZXV%03d;", status);
         send_resp(client->fd, reply);
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'Y': //ZZYx
     switch (command[3]) {
     case 'R': //ZZYR
-
       //CATDEF    ZZYR
       //DESCR     Get/Set active receiver
       //SET       ZZYRx;
@@ -2513,29 +2101,22 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         send_resp(client->fd, reply);
       } else if (command[5] == ';') {
         int v = atoi(&command[4]);
-
         if (v >= 0 && v < receivers) {
           schedule_action(v == 0 ? RX1 : RX2, PRESSED, 0);
         } else {
           implemented = FALSE;
         }
-
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'Z': //ZZZx
     switch (command[3]) {
     case 'A': //ZZZA
-
       //CATDEF    ZZZA
       //DESCR     Warning from a PA
       //SET       ZZZDxx;
@@ -2547,7 +2128,6 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
 #if 0
         static int pastate = 0;
         int x = 10 * (command[4] - '0') + (command[5] - '0');
-
         if (x == 0) {
           pastate = 0;
         } else if ( x == 64) {
@@ -2555,17 +2135,13 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         } else {
           pastate |= x;
         }
-
 #endif
       } else {
         // unexpected command format
         implemented = FALSE;
       }
-
       break;
-
     case 'D': //ZZZD
-
       //CATDEF    ZZZD
       //DESCR     Move down frequency of active receiver
       //SET       ZZZDxx;
@@ -2578,23 +2154,18 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //ENDDEF
       if (command[6] == ';') {
         int steps = 10 * (command[4] - '0') + (command[5] - '0');
-
         if (steps <= 30) {
           steps = andromeda_vfo_speedup[steps];
         } else {
           steps *= andromeda_vfo_speedup[31];
         }
-
         schedule_action(VFO, RELATIVE, -steps);
       } else {
         // unexpected command format
         implemented = FALSE;
       }
-
       break;
-
     case 'E': //ZZZE ANDROMEDA command
-
       //CATDEF    ZZZE
       //DESCR     Handle ANDROMEDA encoders
       //SET       ZZZExxy;
@@ -2609,22 +2180,18 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         int v, p;
         p = 10 * (command[4] - '0') + (command[5] - '0');
         v = command[6] - '0';
-
         if (p > 50) {
           p -= 50;
           v = -v;
         }
-
         if (v == 0) {
           // This should not happen, but if, just do nothing
           break;
         }
-
         //
         // At this place, p is the encoder number (1...20) and
         // v the number of ticks (-9 ... 9)
         //
-
         if (client->andromeda_type == 1) {
           andromeda_execute_encoder(p, v);
         } else {
@@ -2639,9 +2206,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         // unexpected command format
         implemented = FALSE;
       }
-
       break;
-
     case 'I': //ZZZI ANDROMEDA info
       //CATDEF    ZZZI
       //DESCR     ANDROMEDA reports
@@ -2652,9 +2217,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //ENDDEF
       implemented = FALSE;  // this command should never ARRIVE from the console
       break;
-
     case 'P': //ZZZP ANDROMEDA command
-
       //CATDEF    ZZZP
       //DESCR     Handle ANDROMEDA push-buttons
       //SET       ZZZPxxy;
@@ -2665,7 +2228,6 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       if (command[7] == ';') {
         int p = 10 * (command[4] - '0') + (command[5] - '0');
         int v = (command[6] - '0');
-
         //
         // The Andromeda console will send a v=0 --> v=1 --> v=0 sequence for a short press,
         // so we have characteristic transitions tr01 (0-->1, upon pressing), tr12 (1-->2, after waiting),
@@ -2688,7 +2250,6 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         // NOTE: Rick's code for the original ANDROMEDA console went to andromeda.c
         //
         //
-
         if (client->andromeda_type == 1) {
           client->shift = andromeda_execute_button(v, p);
         } else {
@@ -2700,17 +2261,11 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
           tr12 = 0;  // indicates a v=1 --> v=2 transision
           tr10 = 0;  // indicates a v=1 --> v=0 transision
           tr20 = 0;  // indicates a v=2 --> v=0 transision
-
           if (client->last_v == 0 && v == 1) { tr01 = 1; }
-
           if (client->last_v == 1 && v == 2) { tr12 = 1; }
-
           if (client->last_v == 1 && v == 0) { tr10 = 1; }
-
           if (client->last_v == 2 && v == 0) { tr20 = 1; }
-
           client->last_v = v;
-
           if (g2panel_menu_is_open) {
             //
             // It is enough to "fire" this upon initial press
@@ -2723,7 +2278,6 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
             g2panel_execute_button(client->andromeda_type, client->buttonvec, p, tr01, tr10, tr12, tr20);
           }
         }
-
         //
         // Schedule LED update, in case the state has changed
         //
@@ -2732,11 +2286,8 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         // all ANDROMEDA types, unexpected command format
         implemented = FALSE;
       }
-
       break;
-
     case 'S': //ZZZS ANDROMEDA command
-
       //CATDEF    ZZZS
       //DESCR     Log ANDROMEDA version
       //SET       ZZZSxxyyzzz;
@@ -2756,25 +2307,19 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         t_print("RIGCTL:INFO: Andromeda Client: Type:%c%c h/w:%c%c s/w:%c%c%c\n",
                 command[4], command[5],
                 command[6], command[7], command[8], command[9], command[10]);
-
         if (client->andromeda_type == 4 || client->andromeda_type == 5) {
           //
           // Initialise commands.
           //
           if (client->buttonvec) { g_free(client->buttonvec); }
-
           if (client->encodervec) { g_free(client->encodervec); }
-
           client->buttonvec  = g2panel_default_buttons(client->andromeda_type);
           client->encodervec = g2panel_default_encoders(client->andromeda_type);
           g2panel_restore_state(client->andromeda_type, client->buttonvec, client->encodervec);
         }
       }
-
       break;
-
     case 'U': //ZZZU ANDROMEDA command operating on VFO of active receiver
-
       //CATDEF    ZZZU
       //DESCR     Move up frequency of active receiver
       //SET       ZZZUxx;
@@ -2787,30 +2332,23 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //ENDDEF
       if (command[6] == ';') {
         int steps = 10 * (command[4] - '0') + (command[5] - '0');
-
         if (steps <= 30) {
           steps = andromeda_vfo_speedup[steps];
         } else {
           steps *= andromeda_vfo_speedup[31];
         }
-
         schedule_action(VFO, RELATIVE, steps);
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   default:
     implemented = FALSE;
     break;
   }
-
   return implemented;
 }
 
@@ -2822,10 +2360,8 @@ static int parse_cmd(gpointer data) {
   char reply[256];
   reply[0] = '\0';
   gboolean implemented = TRUE;
-
   switch (command[0]) {
   case '#':
-
     //CATDEF    \#S
     //DESCR     Shutdown Console
     //SET       \#S;
@@ -2835,18 +2371,14 @@ static int parse_cmd(gpointer data) {
     } else {
       implemented = FALSE;
     }
-
     break;
-
   case 'A':
     switch (command[1]) {
     case 'C': //AC
       // set/read internal atu status
       implemented = FALSE;
       break;
-
     case 'G': //AG
-
       //CATDEF    AG
       //DESCR     Sets/Reads audio volume (AF slider)
       //SET       AGxyyy;
@@ -2857,7 +2389,6 @@ static int parse_cmd(gpointer data) {
       //ENDDEF
       if (command[3] == ';') {
         int id = SET(command[2] == '1');
-
         if (id >= 0 && id < receivers) {
           snprintf(reply,  sizeof(reply), "AG%1d%03d;", id, (int)(255.0 * pow(10.0, 0.05 * receiver[id]->volume)));
           send_resp(client->fd, reply);
@@ -2870,11 +2401,8 @@ static int parse_cmd(gpointer data) {
         radio_set_af_gain(id, vol);
         suppress_popup_sliders--;
       }
-
       break;
-
     case 'I': //AI
-
       //CATDEF    AI
       //DESCR     Sets/Reads auto reporting status
       //SET       AIx;
@@ -2891,48 +2419,37 @@ static int parse_cmd(gpointer data) {
         send_resp(client->fd, reply) ;
       } else if (command[3] == ';') {
         client->auto_reporting = command[2] - '0';
-
         if (client->auto_reporting < 0) { client->auto_reporting = 0; }
-
         if (client->auto_reporting > 3) { client->auto_reporting = 3; }
       }
-
       break;
-
     case 'L': // AL
       // set/read Auto Notch level
       implemented = FALSE;
       break;
-
     case 'M': // AM
       // set/read Auto Mode
       implemented = FALSE;
       break;
-
     case 'N': // AN
       // set/read Antenna Connection
       implemented = FALSE;
       break;
-
     case 'S': // AS
       // set/read Auto Mode Function Parameters
       implemented = FALSE;
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'B':
     switch (command[1]) {
     case 'C': //BC
       // set/read Beat Canceller
       implemented = FALSE;
       break;
-
     case 'D': //BD
       //CATDEF    BD
       //DESCR     VFO-A Band down
@@ -2941,12 +2458,10 @@ static int parse_cmd(gpointer data) {
       //ENDDEF
       band_minus(receiver[0]->id);
       break;
-
     case 'P': //BP
       // set/read Manual Beat Canceller frequency
       implemented = FALSE;
       break;
-
     case 'U': //BU
       //CATDEF    BU
       //DESCR     VFO-A Band up
@@ -2955,43 +2470,34 @@ static int parse_cmd(gpointer data) {
       //ENDDEF
       band_plus(receiver[0]->id);
       break;
-
     case 'Y': //BY
       // read busy signal
       implemented = FALSE;
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'C':
     switch (command[1]) {
     case 'A': //CA
       // set/read CW Auto Tune
       implemented = FALSE;
       break;
-
     case 'G': //CG
       // set/read Carrier Gain
       implemented = FALSE;
       break;
-
     case 'I': //CI
       // sets the current frequency to the CALL Channel
       implemented = FALSE;
       break;
-
     case 'M': //CM
       // sets/reads the Packet Cluster Tune function
       implemented = FALSE;
       break;
-
     case 'N': //CN
-
       //CATDEF    CN
       //DESCR     Sets/Reads the CTCSS frequency
       //SET       CNxx;
@@ -3020,11 +2526,8 @@ static int parse_cmd(gpointer data) {
           g_idle_add(ext_vfo_update, NULL);
         }
       }
-
       break;
-
     case 'T': //CT
-
       //CATDEF    CT
       //DESCR     Enable/Disable CTCSS
       //SET       CTx;
@@ -3042,23 +2545,18 @@ static int parse_cmd(gpointer data) {
           g_idle_add(ext_vfo_update, NULL);
         }
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'D':
     switch (command[1]) {
     case 'C': //DC
       // set/read TX band status
       implemented = FALSE;
       break;
-
     case 'N': //DN
       //CATDEF    DN
       //DESCR     VFO-A down  one step
@@ -3067,37 +2565,29 @@ static int parse_cmd(gpointer data) {
       //ENDDEF
       vfo_id_step(VFO_A, -1);
       break;
-
     case 'Q': //DQ
       // set/read DCS function status
       implemented = FALSE;
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'E':
     switch (command[1]) {
     case 'X': //EX
       // set/read the extension menu
       implemented = FALSE;
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'F':
     switch (command[1]) {
     case 'A': //FA
-
       //CATDEF    FA
       //DESCR     Set/Read VFO-A frequency
       //SET       FAxxxxxxxxxxx;
@@ -3111,18 +2601,14 @@ static int parse_cmd(gpointer data) {
         } else {
           snprintf(reply,  sizeof(reply), "FA%011lld;", vfo[VFO_A].frequency);
         }
-
         send_resp(client->fd, reply) ;
       } else if (command[13] == ';') {
         long long f = atoll(&command[2]);
         vfo_id_set_frequency(VFO_A, f);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 'B': //FB
-
       //CATDEF    FB
       //DESCR     Set/Read VFO-B frequency
       //SET       FBxxxxxxxxxxx;
@@ -3136,28 +2622,22 @@ static int parse_cmd(gpointer data) {
         } else {
           snprintf(reply,  sizeof(reply), "FB%011lld;", vfo[VFO_B].frequency);
         }
-
         send_resp(client->fd, reply) ;
       } else if (command[13] == ';') {
         long long f = atoll(&command[2]);
         vfo_id_set_frequency(VFO_B, f);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 'C': //FC
       // set/read the sub receiver VFO frequency menu
       implemented = FALSE;
       break;
-
     case 'D': //FD
       // set/read the filter display dot pattern
       implemented = FALSE;
       break;
-
     case 'R': //FR
-
       //CATDEF    FR
       //DESCR     Set/Read active receiver
       //SET       FRx;
@@ -3170,23 +2650,17 @@ static int parse_cmd(gpointer data) {
         send_resp(client->fd, reply) ;
       } else if (command[3] == ';') {
         int id = SET(command[2] == '1');
-
         if (receivers > id) {
           schedule_action(id == 0 ? RX1 : RX2, PRESSED, 0);
         }
-
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 'S': //FS
       // set/read the fine tune function status
       implemented = FALSE;
       break;
-
     case 'T': //FT
-
       //CATDEF    FT
       //DESCR     Set/Read Split status
       //SET       FTx;
@@ -3201,11 +2675,8 @@ static int parse_cmd(gpointer data) {
         int id = SET(command[2] == '1');
         radio_set_split(id);
       }
-
       break;
-
     case 'W': //FW
-
       //CATDEF    FW
       //DESCR     Set/Read VFO-A filter width (CW, AM, FM)
       //SET       FWxxxx;
@@ -3220,27 +2691,22 @@ static int parse_cmd(gpointer data) {
         int val = 0;
         FILTER *mode_filters = filters[vfo[VFO_A].mode];
         const FILTER *filter = &mode_filters[vfo[VFO_A].filter];
-
         switch (vfo[VFO_A].mode) {
         case modeCWL:
         case modeCWU:
           val = filter->low * 2;
           break;
-
         case modeAM:
         case modeSAM:
           val = filter->low >= -4000;
           break;
-
         case modeFMN:
           val = vfo[VFO_A].deviation == 5000;
           break;
-
         default:
           implemented = FALSE;
           break;
         }
-
         if (implemented) {
           snprintf(reply,  sizeof(reply), "FW%04d;", val);
           send_resp(client->fd, reply) ;
@@ -3250,19 +2716,16 @@ static int parse_cmd(gpointer data) {
         if (vfo[VFO_A].filter != filterVar1) {
           vfo_id_filter_changed(VFO_A, filterVar1);
         }
-
         FILTER *mode_filters = filters[vfo[VFO_A].mode];
         FILTER *filter = &mode_filters[filterVar1];
         int fw = atoi(&command[2]);
         filter->low = fw;
-
         switch (vfo[VFO_A].mode) {
         case modeCWL:
         case modeCWU:
           filter->low = fw / 2;
           filter->high = fw / 2;
           break;
-
         case modeFMN:
           if (fw == 0) {
             filter->low = -5500;
@@ -3273,16 +2736,12 @@ static int parse_cmd(gpointer data) {
             filter->high = 8000;
             vfo[VFO_A].deviation = 5000;
           }
-
           rx_set_filter(receiver[0]);
-
           if (can_transmit) {
             tx_set_filter(transmitter);
           }
-
           g_idle_add(ext_vfo_update, NULL);
           break;
-
         case modeAM:
         case modeSAM:
           if (fw == 0) {
@@ -3292,33 +2751,25 @@ static int parse_cmd(gpointer data) {
             filter->low = -8000;
             filter->high = 8000;
           }
-
           break;
-
         default:
           implemented = FALSE;
           break;
         }
-
         if (implemented) {
           vfo_id_filter_changed(VFO_A, filterVar1);
           g_idle_add(ext_vfo_update, NULL);
         }
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'G':
     switch (command[1]) {
     case 'T': //GT
-
       //CATDEF    GT
       //DESCR     Set/Read RX1 AGC
       //SET       GTxxx;
@@ -3335,25 +2786,19 @@ static int parse_cmd(gpointer data) {
         rx_set_agc(receiver[0]);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'H':
     switch (command[1]) {
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'I':
     switch (command[1]) {
     case 'D': //ID
@@ -3366,7 +2811,6 @@ static int parse_cmd(gpointer data) {
       snprintf(reply,  sizeof(reply), "%s", "ID019;");
       send_resp(client->fd, reply);
       break;
-
     case 'F': { //IF
       //CATDEF    IF
       //DESCR     Get VFO-A Frequency/Mode etc.
@@ -3392,13 +2836,11 @@ static int parse_cmd(gpointer data) {
       int tx_xit_en = 0;
       int tx_ctcss_en = 0;
       int tx_ctcss = 0;
-
       if (can_transmit) {
         tx_xit_en   = vfo[vfo_get_tx_vfo()].xit_enabled;
         tx_ctcss    = transmitter->ctcss + 1;
         tx_ctcss_en = transmitter->ctcss_enabled;
       }
-
       snprintf(reply,  sizeof(reply), "IF%011lld%04d%+06lld%d%d%d%02d%d%d%d%d%d%d%02d%d;",
                vfo[VFO_A].ctun ? vfo[VFO_A].ctun_frequency : vfo[VFO_A].frequency,
                vfo[VFO_A].step, vfo[VFO_A].rit, vfo[VFO_A].rit_enabled, tx_xit_en,
@@ -3406,27 +2848,21 @@ static int parse_cmd(gpointer data) {
       send_resp(client->fd, reply);
     }
     break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'J':
     switch (command[1]) {
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'K':
     switch (command[1]) {
     case 'S': //KS
-
       //CATDEF    KS
       //DESCR     Set CW speed
       //SET       KSxxx;
@@ -3439,16 +2875,12 @@ static int parse_cmd(gpointer data) {
         send_resp(client->fd, reply);
       } else if (command[5] == ';') {
         int speed = atoi(&command[2]);
-
         if (speed >= 1 && speed <= 60) {
           radio_set_cw_speed(speed);
         }
       }
-
       break;
-
     case 'Y': //KY
-
       //CATDEF    KY
       //DESCR     Send Morse/query Morse buffer
       //SET       KYxyyy...yyy;
@@ -3465,13 +2897,11 @@ static int parse_cmd(gpointer data) {
         // more than (CW_BUF_SIZE-24) characters.
         //
         int avail = (cw_buf_in - cw_buf_out) & CW_BUF_MASK;
-
         if (avail < CW_BUF_SIZE - 24) {
           snprintf(reply,  sizeof(reply), "KY0;");
         } else {
           snprintf(reply,  sizeof(reply), "KY1;");
         }
-
         send_resp(client->fd, reply);
       } else {
         //
@@ -3482,33 +2912,25 @@ static int parse_cmd(gpointer data) {
         // the standard says they are exactly 24 characters long.
         //
         int j = 3;
-
         for (unsigned int i = 3; i < strlen(command); i++) {
           if (command[i] == ';') { break; }
-
           if (command[i] != ' ') { j = i; }
         }
-
         // j points to the last non-blank character, or to the first blank
         // in an empty string
         for (int i = 3; i <= j; i++) {
           rigctl_queue_cw_char(command[i]);
         }
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'L':
     switch (command[1]) {
     case 'K': //LK
-
       //CATDEF    LK
       //DESCR     Set/Read Lock status
       //SET       LKxx;
@@ -3524,35 +2946,27 @@ static int parse_cmd(gpointer data) {
         locked = atoi(&command[2]);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 'M': //LM
       // set/read keyer recording status
       implemented = FALSE;
       break;
-
     case 'T': //LT
       // set/read ALT fucntion status
       implemented = FALSE;
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'M':
     switch (command[1]) {
     case 'C': //MC
       // set/read Memory Channel
       implemented = FALSE;
       break;
-
     case 'D': //MD
-
       //CATDEF    MD
       //DESCR     Set/Read VFO-A modes
       //SET       MDx;
@@ -3570,16 +2984,12 @@ static int parse_cmd(gpointer data) {
         int mode = wdspmode(atoi(&command[2]));
         vfo_id_mode_changed(VFO_A, mode);
       }
-
       break;
-
     case 'F': //MF
       // set/read Menu
       implemented = FALSE;
       break;
-
     case 'G': //MG
-
       //CATDEF    MG
       //DESCR     Set/Read Mic gain (Mic gain slider)
       //SET       MGxxx;
@@ -3594,11 +3004,8 @@ static int parse_cmd(gpointer data) {
         } else if (command[5] == ';') {
           double gain = (double)atoi(&command[2]);
           gain = ((gain / 100.0) * 62.0) - 12.0;
-
           if (gain < -12.0) { gain = -12.0; }
-
           if (gain > 50.0) { gain = 50.0; }
-
           suppress_popup_sliders++;
           radio_set_mic_gain(gain);
           suppress_popup_sliders--;
@@ -3606,45 +3013,35 @@ static int parse_cmd(gpointer data) {
       } else {
         implemented = FALSE;
       }
-
       break;
-
     case 'L': //ML
       // set/read Monitor Function Level
       implemented = FALSE;
       break;
-
     case 'O': //MO
       // set/read Monitor Function On/Off
       implemented = FALSE;
       break;
-
     case 'R': //MR
       // read Memory Channel
       implemented = FALSE;
       break;
-
     case 'U': //MU
       // set/read Memory Group
       implemented = FALSE;
       break;
-
     case 'W': //MW
       // Write Memory Channel
       implemented = FALSE;
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'N':
     switch (command[1]) {
     case 'B': //NB
-
       //CATDEF    NB
       //DESCR     Set/Read RX1 noise blanker
       //SET       NBx;
@@ -3659,16 +3056,12 @@ static int parse_cmd(gpointer data) {
         receiver[0]->nb = atoi(&command[2]);
         rx_set_noise(receiver[0]);
       }
-
       break;
-
     case 'L': //NL
       // set/read noise blanker level
       implemented = FALSE;
       break;
-
     case 'R': //NR
-
       //CATDEF    NR
       //DESCR     Set/Read RX1 noise reduction
       //SET       NRx;
@@ -3683,11 +3076,8 @@ static int parse_cmd(gpointer data) {
         receiver[0]->nr = atoi(&command[2]);
         rx_set_noise(receiver[0]);
       }
-
       break;
-
     case 'T': //NT
-
       //CATDEF    NT
       //DESCR     Set/Read RX1 auto notch filter
       //SET       NTx;
@@ -3702,44 +3092,34 @@ static int parse_cmd(gpointer data) {
         receiver[0]->anf = atoi(&command[2]);
         rx_set_noise(receiver[0]);
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'O':
     switch (command[1]) {
     case 'F': //OF
       // set/read offset frequency
       implemented = FALSE;
       break;
-
     case 'I': //OI
       // set/read offset frequency
       implemented = FALSE;
       break;
-
     case 'S': //OS
       // set/read offset function status
       implemented = FALSE;
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'P':
     switch (command[1]) {
     case 'A': //PA
-
       //CATDEF    PA
       //DESCR     Set/Read RX1 preamp status
       //SET       PAx;
@@ -3755,16 +3135,12 @@ static int parse_cmd(gpointer data) {
       } else if (command[4] == ';') {
         adc[receiver[0]->adc].preamp = (command[2] == '1');
       }
-
       break;
-
     case 'B': //PB
       // set/read FRU-3A playback status
       implemented = FALSE;
       break;
-
     case 'C': //PC
-
       //CATDEF    PC
       //DESCR     Set/Read TX power (Drive slider)
       //SET       PCxxx;
@@ -3782,21 +3158,16 @@ static int parse_cmd(gpointer data) {
           suppress_popup_sliders--;
         }
       }
-
       break;
-
     case 'I': //PI
       // store in program memory channel
       implemented = FALSE;
       break;
-
     case 'K': //PK
       // read packet cluster data
       implemented = FALSE;
       break;
-
     case 'L': //PL
-
       //CATDEF    PL
       //DESCR     Set/Read TX compressor level
       //SET       PLxxxyyy;
@@ -3818,21 +3189,16 @@ static int parse_cmd(gpointer data) {
           g_idle_add(ext_vfo_update, NULL);
         }
       }
-
       break;
-
     case 'M': //PM
       // recall program memory
       implemented = FALSE;
       break;
-
     case 'R': //PR
       // set/read speech processor function
       implemented = FALSE;
       break;
-
     case 'S': //PS
-
       //CATDEF    PS
       //DESCR     Set/Read power status
       //SET       PSx;
@@ -3847,7 +3213,6 @@ static int parse_cmd(gpointer data) {
         send_resp(client->fd, reply);
       } else if (command[3] == ';') {
         int pwrc = atoi(&command[2]);
-
         if ( pwrc == 0 ) {
           radio_shutdown();
         } else {
@@ -3855,44 +3220,34 @@ static int parse_cmd(gpointer data) {
           // snprintf(reply,  sizeof(reply), "PS1;");
         }
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'Q':
     switch (command[1]) {
     case 'C': //QC
       // set/read DCS code
       implemented = FALSE;
       break;
-
     case 'I': //QI
       // store in quick memory
       implemented = FALSE;
       break;
-
     case 'R': //QR
       // set/read quick memory channel data
       implemented = FALSE;
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'R':
     switch (command[1]) {
     case 'A': //RA
-
       //CATDEF    RA
       //DESCR     Set/Read RX1 attenuator or RX1 gain
       //SET       RAxx;
@@ -3906,35 +3261,29 @@ static int parse_cmd(gpointer data) {
       // set/read Attenuator function
       if (command[2] == ';') {
         int result = 0;
-
         if (have_rx_gain) {
           // map gain value -12...48 to 0...99
           // note adc.gain is double
           double val = adc[receiver[0]->adc].gain + 12.0;
           result = (int)((val / 60.0) * 99.0);
         }
-
         if (have_rx_att) {
           // map att value -31 ... 0 to 0...99
           // note adc.attenuation is integer
           double val = (double)(adc[receiver[0]->adc].attenuation);
           result = (int)((val / 31.0) * 99.0);
         }
-
         if (result < 0) { result = 0; }
-
         snprintf(reply,  sizeof(reply), "RA%02d00;", result);
         send_resp(client->fd, reply);
       } else if (command[4] == ';') {
         double val = (double)(atoi(&command[2])) / 99.0;    // 0.00 ... 1.00
-
         if (have_rx_gain) {
           val = (val * 60.0) - 12.0;                        // -12.0 ... 48.00
           suppress_popup_sliders++;
           radio_set_rf_gain(VFO_A, val);
           suppress_popup_sliders--;
         }
-
         if (have_rx_att) {
           // mapp 0...99 scale to 0...31
           val = (val * 31.0);                               // 0.0 ... 31.0
@@ -3943,11 +3292,8 @@ static int parse_cmd(gpointer data) {
           suppress_popup_sliders--;
         }
       }
-
       break;
-
     case 'C': //RC
-
       //CATDEF    RC
       //DESCR     Clear VFO-A RIT value
       //SET       RC;
@@ -3956,11 +3302,8 @@ static int parse_cmd(gpointer data) {
         vfo[VFO_A].rit = 0;
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 'D': //RD
-
       //CATDEF    RD
       //DESCR     Set or Decrement VFO-A RIT value
       //SET       RDxxxxx;
@@ -3973,32 +3316,25 @@ static int parse_cmd(gpointer data) {
         } else {
           vfo[VFO_A].rit -= 50;
         }
-
         g_idle_add(ext_vfo_update, NULL);
       } else if (command[7] == ';') {
         vfo[VFO_A].rit = -atoi(&command[2]);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 'G': //RG
       // set/read RF gain status
       implemented = FALSE;
       break;
-
     case 'L': //RL
       // set/read noise reduction level
       implemented = FALSE;
       break;
-
     case 'M': //RM
       // set/read meter function
       implemented = FALSE;
       break;
-
     case 'T': //RT
-
       //CATDEF    RT
       //DESCR     Read/Set VFO-A RIT status
       //SET       RTx;
@@ -4013,11 +3349,8 @@ static int parse_cmd(gpointer data) {
         vfo[VFO_A].rit_enabled = atoi(&command[2]);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 'U': //RU
-
       //CATDEF    RU
       //DESCR     Set or Increment VFO-A RIT value
       //SET       RUxxxxx;
@@ -4030,17 +3363,13 @@ static int parse_cmd(gpointer data) {
         } else {
           vfo[VFO_A].rit += 50;
         }
-
         g_idle_add(ext_vfo_update, NULL);
       } else if (command[7] == ';') {
         vfo[VFO_A].rit = atoi(&command[2]);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 'X': //RX
-
       //CATDEF    RX
       //DESCR     Enter RX mode
       //SET       RX;
@@ -4048,20 +3377,15 @@ static int parse_cmd(gpointer data) {
       if (command[2] == ';') {
         g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'S':
     switch (command[1]) {
     case 'A': //SA
-
       //CATDEF    SA
       //DESCR     Set/Read SAT mode
       //SET       SAxyzsbcdeeeeeeee;
@@ -4095,21 +3419,16 @@ static int parse_cmd(gpointer data) {
       } else {
         implemented = FALSE;
       }
-
       break;
-
     case 'B': //SB
       // set/read SUB,TF-W status
       implemented = FALSE;
       break;
-
     case 'C': //SC
       // set/read SCAN function status
       implemented = FALSE;
       break;
-
     case 'D': //SD
-
       //CATDEF    SD
       //DESCR     Set/Read CW break-in hang time
       //SET       SDxxxx;
@@ -4128,11 +3447,8 @@ static int parse_cmd(gpointer data) {
       } else {
         implemented = FALSE;
       }
-
       break;
-
     case 'H': //SH
-
       //CATDEF    SH
       //DESCR     Set/Read VFO-A filter high-water (LSB, USB, DIGL, DIGU only)
       //SET       SHxx;
@@ -4148,23 +3464,19 @@ static int parse_cmd(gpointer data) {
         FILTER *mode_filters = filters[vfo[VFO_A].mode];
         const FILTER *filter = &mode_filters[vfo[VFO_A].filter];
         int fh, high = 0;
-
         switch (vfo[VFO_A].mode) {
         case modeLSB:
         case modeDIGL:
           high = abs(filter->low);
           break;
-
         case modeUSB:
         case modeDIGU:
           high = filter->high;
           break;
-
         default:
           implemented = FALSE;
           break;
         }
-
         if (high <= 1400) {
           fh = 0;
         } else if (high <= 1600) {
@@ -4190,7 +3502,6 @@ static int parse_cmd(gpointer data) {
         } else {
           fh = 11;
         }
-
         if (implemented) {
           snprintf(reply,  sizeof(reply), "SH%02d;", fh);
           send_resp(client->fd, reply) ;
@@ -4200,94 +3511,72 @@ static int parse_cmd(gpointer data) {
         if (vfo[VFO_A].filter != filterVar1) {
           vfo_id_filter_changed(VFO_A, filterVar1);
         }
-
         FILTER *mode_filters = filters[vfo[VFO_A].mode];
         FILTER *filter = &mode_filters[filterVar1];
         int i = atoi(&command[2]);
         int fh;
-
         switch (i) {
         case 0:
           fh = 1400;
           break;
-
         case 1:
           fh = 1600;
           break;
-
         case 2:
           fh = 1800;
           break;
-
         case 3:
           fh = 2000;
           break;
-
         case 4:
           fh = 2200;
           break;
-
         case 5:
           fh = 2400;
           break;
-
         case 6:
           fh = 2600;
           break;
-
         case 7:
           fh = 2800;
           break;
-
         case 8:
           fh = 3000;
           break;
-
         case 9:
           fh = 3400;
           break;
-
         case 10:
           fh = 4000;
           break;
-
         case 11:
           fh = 5000;
           break;
-
         default:
           fh = 100;
           break;
         }
-
         switch (vfo[VFO_A].mode) {
         case modeUSB:
         case modeDIGU:
           filter->high = fh;
           break;
-
         case modeLSB:
         case modeDIGL:
           filter->low = -fh;
           break;
-
         default:
           implemented = FALSE;
         }
-
         vfo_id_filter_changed(VFO_A, filterVar1);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 'I': //SI
       // enter satellite memory name
       implemented = FALSE;
       break;
-
     case 'L': //SL
-
       //CATDEF    SL
       //DESCR     Set/Read VFO-A filter low-water (LSB, USB, DIGL, DIGU only)
       //SET       SLxx;
@@ -4304,11 +3593,9 @@ static int parse_cmd(gpointer data) {
         const FILTER *filter = &mode_filters[vfo[VFO_A].filter];
         int fl = 2;
         int low = filter->low;
-
         if (vfo[VFO_A].mode == modeLSB || vfo[VFO_A].mode == modeDIGL) {
           low = abs(filter->high);
         }
-
         if (low <= 10) {
           fl = 0;
         } else if (low <= 50) {
@@ -4334,7 +3621,6 @@ static int parse_cmd(gpointer data) {
         } else {
           fl = 11;
         }
-
         snprintf(reply,  sizeof(reply), "SL%02d;", fl);
         send_resp(client->fd, reply) ;
       } else if (command[4] == ';') {
@@ -4342,86 +3628,66 @@ static int parse_cmd(gpointer data) {
         if (vfo[VFO_A].filter != filterVar1) {
           vfo_id_filter_changed(VFO_A, filterVar1);
         }
-
         FILTER *mode_filters = filters[vfo[VFO_A].mode];
         FILTER *filter = &mode_filters[filterVar1];
         int i = atoi(&command[2]);
         int fl = 100;
-
         switch (i) {
         case 0:
           fl = 10;
           break;
-
         case 1:
           fl = 50;
           break;
-
         case 2:
           fl = 100;
           break;
-
         case 3:
           fl = 200;
           break;
-
         case 4:
           fl = 300;
           break;
-
         case 5:
           fl = 400;
           break;
-
         case 6:
           fl = 500;
           break;
-
         case 7:
           fl = 600;
           break;
-
         case 8:
           fl = 700;
           break;
-
         case 9:
           fl = 800;
           break;
-
         case 10:
           fl = 900;
           break;
-
         case 11:
           fl = 1000;
           break;
-
         default:
           fl = 100;
           break;
         }
-
         switch (vfo[VFO_A].mode) {
         case modeLSB:
         case modeDIGL:
           filter->high = -fl;
           break;
-
         case modeUSB:
         case modeDIGU:
           filter->low = fl;
           break;
         }
-
         vfo_id_filter_changed(VFO_A, filterVar1);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 'M': //SM
-
       //CATDEF    SM
       //DESCR     Read S-meter
       //READ      SMx;
@@ -4431,23 +3697,16 @@ static int parse_cmd(gpointer data) {
       //ENDDEF
       if (command[3] == ';') {
         int id = atoi(&command[2]);
-
         if (id >= 0 && id < receivers) {
           int val = (int)((receiver[id]->rxlvl + 127.0) * 0.277778);
-
           if (val > 30) { val = 30; }
-
           if (val < 0 ) { val = 0; }
-
           snprintf(reply,  sizeof(reply), "SM%d%04d;", id, val);
           send_resp(client->fd, reply);
         }
       }
-
       break;
-
     case 'Q': //SQ
-
       //CATDEF    SQ
       //DESCR     Set/Read squelch level (Squelch slider)
       //SET       SQxyyy;
@@ -4458,7 +3717,6 @@ static int parse_cmd(gpointer data) {
       //ENDDEF
       if (command[3] == ';') {
         int id = atoi(&command[2]);
-
         if (id >= 0 && id < receivers) {
           snprintf(reply,  sizeof(reply), "SQ%d%03d;", id, (int)((double)receiver[id]->squelch / 100.0 * 255.0 + 0.5));
           send_resp(client->fd, reply);
@@ -4471,75 +3729,59 @@ static int parse_cmd(gpointer data) {
         radio_set_squelch(id, val);
         suppress_popup_sliders--;
       }
-
       break;
-
     case 'R': //SR
       // reset transceiver
       implemented = FALSE;
       break;
-
     case 'S': //SS
       // set/read program scan pause frequency
       implemented = FALSE;
       break;
-
     case 'T': //ST
       // set/read MULTI/CH channel frequency steps
       implemented = FALSE;
       break;
-
     case 'U': //SU
       // set/read program scan pause frequency
       implemented = FALSE;
       break;
-
     case 'V': //SV
       // execute memory transfer function
       implemented = FALSE;
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'T':
     switch (command[1]) {
     case 'C': //TC
       // set/read internal TNC mode
       implemented = FALSE;
       break;
-
     case 'D': //TD
       // send DTMF memory channel data
       implemented = FALSE;
       break;
-
     case 'I': //TI
       // read TNC LED status
       implemented = FALSE;
       break;
-
     case 'N': //TN
       // set/read sub-tone frequency
       implemented = FALSE;
       break;
-
     case 'O': //TO
       // set/read TONE function
       implemented = FALSE;
       break;
-
     case 'S': //TS
       // set/read TF-SET function
       implemented = FALSE;
       break;
-
     case 'X': //TX
-
       //CATDEF    TX
       //DESCR     Enter TX mode
       //SET       TX;
@@ -4548,11 +3790,8 @@ static int parse_cmd(gpointer data) {
       if (command[2] == ';') {
         radio_set_mox(1);
       }
-
       break;
-
     case 'Y': //TY
-
       //CATDEF    TY
       //DESCR     Read firmware version
       //READ      TY;
@@ -4562,25 +3801,19 @@ static int parse_cmd(gpointer data) {
       if (command[2] == ';') {
         send_resp(client->fd, "TY000;");
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'U':
     switch (command[1]) {
     case 'L': //UL
       // detects the PLL unlock status
       implemented = FALSE;
       break;
-
     case 'P': //UP
-
       //CATDEF    UP
       //DESCR     Move VFO-A one step up
       //SET       UP;
@@ -4589,25 +3822,19 @@ static int parse_cmd(gpointer data) {
       if (command[2] == ';') {
         vfo_id_step(VFO_A, 1);
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'V':
     switch (command[1]) {
     case 'D': //VD
       // set/read VOX delay time
       implemented = FALSE;
       break;
-
     case 'G': //VG
-
       //CATDEF    VG
       //DESCR     Set/Read VOX threshold
       //SET       VGxxx;
@@ -4623,16 +3850,12 @@ static int parse_cmd(gpointer data) {
         vox_threshold = atof(&command[2]) / 9.0;
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 'R': //VR
       // emulate VOICE1 or VOICE2 key
       implemented = FALSE;
       break;
-
     case 'X': //VX
-
       //CATDEF    VX
       //DESCR     Set/Read VOX status
       //SET       VXx;
@@ -4647,29 +3870,22 @@ static int parse_cmd(gpointer data) {
         vox_enabled = atoi(&command[2]);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'W':
     switch (command[1]) {
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'X':
     switch (command[1]) {
     case 'T': //XT
-
       //CATDEF    XT
       //DESCR     Set/Read XIT status
       //SET       XTx;
@@ -4685,49 +3901,37 @@ static int parse_cmd(gpointer data) {
           vfo_xit_onoff(SET(atoi(&command[2])));
         }
       }
-
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'Y':
     switch (command[1]) {
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   case 'Z':
     switch (command[1]) {
     case 'Z':
       implemented = parse_extended_cmd (command, client);
       break;
-
     default:
       implemented = FALSE;
       break;
     }
-
     break;
-
   default:
     implemented = FALSE;
     break;
   }
-
   if (!implemented) {
     if (rigctl_debug) { t_print("RIGCTL: UNIMPLEMENTED COMMAND: %s\n", info->command); }
-
     send_resp(client->fd, "?;");
   }
-
   client->done = 1; // possibly inform server that command is finished
   g_free(info->command);
   g_free(info);
@@ -4738,12 +3942,10 @@ static int parse_cmd(gpointer data) {
 static int set_interface_attribs (int fd, speed_t speed, int parity) {
   struct termios tty;
   memset (&tty, 0, sizeof tty);
-
   if (tcgetattr (fd, &tty) != 0) {
     t_perror ("RIGCTL (tcgetattr)");
     return -1;
   }
-
   cfsetospeed (&tty, speed);
   cfsetispeed (&tty, speed);
   tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
@@ -4763,12 +3965,10 @@ static int set_interface_attribs (int fd, speed_t speed, int parity) {
   tty.c_cflag |= parity;
   tty.c_cflag &= ~CSTOPB;
   tty.c_cflag &= ~CRTSCTS;
-
   if (tcsetattr (fd, TCSANOW, &tty) != 0) {
     t_perror( "RIGCTL (tcsetattr)");
     return -1;
   }
-
   return 0;
 }
 
@@ -4776,23 +3976,18 @@ static void set_blocking (int fd, int should_block) {
   struct termios tty;
   memset (&tty, 0, sizeof tty);
   int flags = fcntl(fd, F_GETFL, 0);
-
   if (should_block) {
     flags &= ~O_NONBLOCK;
   } else {
     flags |= O_NONBLOCK;
   }
-
   fcntl(fd, F_SETFL, flags);
-
   if (tcgetattr (fd, &tty) != 0) {
     t_perror ("RIGCTL (tggetattr)");
     return;
   }
-
   tty.c_cc[VMIN]  = SET(should_block);
   tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
-
   if (tcsetattr (fd, TCSANOW, &tty) != 0) {
     t_perror("RIGCTL (tcsetattr)");
   }
@@ -4814,7 +4009,6 @@ static gpointer serial_server(gpointer data) {
   g_mutex_unlock(&mutex_numcat);
   g_idle_add(ext_vfo_update, NULL);
   client->running = TRUE;
-
   while (client->running) {
     //
     // If the "serial line" is a FIFO, we must not drain it
@@ -4833,16 +4027,12 @@ static gpointer serial_server(gpointer data) {
         usleep(50000L);
         break;
       }
-
       usleep(50000L);
       client->busy--;
     }
-
     client->busy = 0;
     client->done = 0;
-
     if (!client->running) { break; }
-
     //
     // Blocking I/O with a time-out
     //
@@ -4850,13 +4040,10 @@ static gpointer serial_server(gpointer data) {
     FD_SET(client->fd, &fds);
     tv.tv_usec = 250000; // 250 msec
     tv.tv_sec = 0;
-
     if (select(client->fd + 1, &fds, NULL, NULL, &tv) <= 0) {
       continue;
     }
-
     int numbytes = read (client->fd, cmd_input, sizeof cmd_input);
-
     //
     // On my MacOS using a FIFO, I have seen that numbytes can be -1
     // (with errno = EAGAIN) although the select() indicated that data
@@ -4865,7 +4052,6 @@ static gpointer serial_server(gpointer data) {
     // shut down by the rigctl menu.
     //
     if (!client->running) { break; }
-
     if (numbytes > 0) {
       for (i = 0; i < numbytes; i++) {
         //
@@ -4875,15 +4061,11 @@ static gpointer serial_server(gpointer data) {
         if (cmd_input[i] < 32) {
           continue;
         }
-
         command[command_index] = cmd_input[i];
         command_index++;
-
         if (cmd_input[i] == ';') {
           command[command_index] = '\0';
-
           if (rigctl_debug) { t_print("RIGCTL: serial command=%s\n", command); }
-
           COMMAND *info = g_new(COMMAND, 1);
           info->client = client;
           info->command = command;
@@ -4895,7 +4077,6 @@ static gpointer serial_server(gpointer data) {
       }
     }
   }
-
   // Release the last "command" buffer (that has not yet been used)
   g_free(command);
   g_mutex_lock(&mutex_numcat);
@@ -4917,14 +4098,10 @@ static gpointer ptt_server(gpointer data) {
   status &= ~TIOCM_RTS;
   status |=  TIOCM_DTR;
   ioctl(client->fd, TIOCMSET, &status);
-
   while (client->running) {
     usleep(100000);
-
     if (ioctl(client->fd, TIOCMGET, &status) == -1) { continue; }
-
     int new = SET(status & TIOCM_CTS);
-
     //
     // Connect RTS with CTS to activate PTT
     // (schedule action only if changed)
@@ -4933,25 +4110,20 @@ static gpointer ptt_server(gpointer data) {
       pttin = new;
       schedule_action(PTT, pttin ? PRESSED : RELEASED, 0);
     }
-
     new = radio_is_transmitting();
-
     //
     // Set RTS to the transmitting state (if changed)
     //
     if (pttout != new) {
       pttout = new;
-
       if (pttout) {
         status |= TIOCM_RTS;
       } else {
         status &= ~TIOCM_RTS;
       }
-
       ioctl(client->fd, TIOCMSET, &status);
     }
   }
-
   t_print("%s: exiting\n", __func__);
   return NULL;
 }
@@ -4966,20 +4138,16 @@ int launch_serial_ptt(int id) {
   // later.
   //
   fd = open (SerialPorts[id].port, O_RDWR | O_NOCTTY | O_SYNC | O_NONBLOCK);
-
   if (fd < 0) {
     t_perror("RIGCTL (open ptt)");
     return 0 ;
   }
-
   t_print("%s: ptt port fd=%d\n", __func__, fd);
   speed = B1200;  // not used anyway
-
   if (set_interface_attribs (fd, speed, 0) != 0) {
     close(fd);
     return 0;
   }
-
   //
   // set RTS=OFF (used for PTT out) and DTR=ON (used as voltage source for CTS input)
   //
@@ -5001,17 +4169,14 @@ int launch_serial_rigctl (int id) {
   // later.
   //
   fd = open (SerialPorts[id].port, O_RDWR | O_NOCTTY | O_SYNC | O_NONBLOCK);
-
   if (fd < 0) {
     t_perror("RIGCTL (open serial)");
     return 0 ;
   }
-
   t_print("%s: serial port fd=%d\n", __func__, fd);
   serial_client[id].fd = fd;
   // hard-wired parity = NONE
   speed = SerialPorts[id].speed;
-
   //
   // ANDROMEDA normally uses a hard-wired baud rate 9600, but
   // autodetected serial ports may differ
@@ -5019,10 +4184,8 @@ int launch_serial_rigctl (int id) {
   if (SerialPorts[id].andromeda && !SerialPorts[id].g2) {
     speed = B9600;
   }
-
   t_print("%s: Speed (baud rate code)=%d\n", __func__, (int) speed);
   serial_client[id].fifo = 0;
-
   if (set_interface_attribs (fd, speed, 0) == 0) {
     set_blocking (fd, 1);                   // set blocking
   } else {
@@ -5034,7 +4197,6 @@ int launch_serial_rigctl (int id) {
     t_print("%s: serial port is probably a FIFO\n", __func__);
     serial_client[id].fifo = 1;
   }
-
   //
   // Initialise the rest of the CLIENT data structure
   // (except fd and fifo)
@@ -5053,11 +4215,9 @@ int launch_serial_rigctl (int id) {
   serial_client[id].shift              = 0;
   serial_client[id].buttonvec          = NULL;
   serial_client[id].encodervec         = NULL;
-
   for (int i = 0; i < MAX_ANDROMEDA_LEDS; i++) {
     serial_client[id].last_led[i] = -1;
   }
-
   //
   // Spawn off server thread
   //
@@ -5066,7 +4226,6 @@ int launch_serial_rigctl (int id) {
   // Launch auto-reporter task
   //
   serial_client[id].auto_timer = g_timeout_add(750, autoreport_handler, &serial_client[id]);
-
   //
   // If this is a serial line to an ANDROMEDA controller, initialise it and start a periodic GTK task
   //
@@ -5079,19 +4238,16 @@ int launch_serial_rigctl (int id) {
     // Note this will send a ZZZS; command upon first invocation
     serial_client[id].andromeda_timer = g_timeout_add(500, andromeda_handler, &serial_client[id]);
   }
-
   return 1;
 }
 
 void disable_serial_ptt(int id) {
   t_print("%s: Close Serial Port %s\n", __func__, SerialPorts[id].port);
   serial_client[id].running = FALSE;
-
   if (serial_client[id].thread_id) {
     g_thread_join(serial_client[id].thread_id);
     serial_client[id].thread_id = NULL;
   }
-
   if (serial_client[id].fd >= 0) {
     close(serial_client[id].fd);
     serial_client[id].fd = -1;
@@ -5101,19 +4257,15 @@ void disable_serial_ptt(int id) {
 // Serial Port close
 void disable_serial_rigctl (int id) {
   t_print("%s: Close Serial Port %s\n", __func__, SerialPorts[id].port);
-
   if (serial_client[id].andromeda_timer != 0) {
     g_source_remove(serial_client[id].andromeda_timer);
     serial_client[id].andromeda_timer = 0;
   }
-
   if (serial_client[id].auto_timer != 0) {
     g_source_remove(serial_client[id].auto_timer);
     serial_client[id].auto_timer = 0;
   }
-
   serial_client[id].running = FALSE;
-
   if (serial_client[id].fifo) {
     //
     // If the "serial port" is a fifo then the serial thread
@@ -5123,13 +4275,11 @@ void disable_serial_rigctl (int id) {
     //
     write (serial_client[id].fd, "ID;", 3);
   }
-
   // wait for the serial server actually terminating
   if (serial_client[id].thread_id) {
     g_thread_join(serial_client[id].thread_id);
     serial_client[id].thread_id = NULL;
   }
-
   if (serial_client[id].fd >= 0) {
     close(serial_client[id].fd);
     serial_client[id].fd = -1;
@@ -5150,7 +4300,6 @@ void rigctl_restore_state(void) {
   GetPropI0("rigctl_tcp_andromeda",                          rigctl_tcp_andromeda);
   GetPropI0("rigctl_tcp_autoreporting",                      rigctl_tcp_autoreporting);
   GetPropI0("rigctl_port_base",                              rigctl_tcp_port);
-
   for (int id = 0; id <= MAX_SERIAL; id++) {
     //
     // Do not overwrite an auto-detected port
@@ -5161,19 +4310,15 @@ void rigctl_restore_state(void) {
       GetPropI1("rigctl_serial_andromeda[%d]", id,           SerialPorts[id].andromeda);
       GetPropI1("rigctl_serial_baud_rate[%i]", id,           SerialPorts[id].speed);
       GetPropI1("rigctl_serial_autoreporting[%d]", id,       SerialPorts[id].autoreporting);
-
       if (SerialPorts[id].andromeda) {
         SerialPorts[id].speed = B9600;
       }
     }
   }
-
   GetPropS0("rigctl_cw_call",                                predef_call);
-
   for (int i = 0; i < 5; i++) {
     GetPropS1("rigctl_cw_text[%d]", i,                       predef_cwtxt[i]);
   }
-
   //
   // G2 panel settings are restored when the panel is detected
   //
@@ -5184,7 +4329,6 @@ void rigctl_save_state(void) {
   SetPropI0("rigctl_tcp_andromeda",                          rigctl_tcp_andromeda);
   SetPropI0("rigctl_tcp_autoreporting",                      rigctl_tcp_autoreporting);
   SetPropI0("rigctl_port_base",                              rigctl_tcp_port);
-
   for (int id = 0; id <= MAX_SERIAL; id++) {
     SetPropI1("rigctl_serial_enable[%d]", id,                SerialPorts[id].enable);
     SetPropI1("rigctl_serial_andromeda[%d]", id,             SerialPorts[id].andromeda);
@@ -5192,13 +4336,10 @@ void rigctl_save_state(void) {
     SetPropS1("rigctl_serial_port[%d]", id,                  SerialPorts[id].port);
     SetPropI1("rigctl_serial_autoreporting[%d]", id,         SerialPorts[id].autoreporting);
   }
-
   SetPropS0("rigctl_cw_call",                                predef_call);
-
   for (int i = 0; i < 5; i++) {
     SetPropS1("rigctl_cw_text[%d]", i,                       predef_cwtxt[i]);
   }
-
   //
   // Save Andromeda controller settings. Only types 4 and 5 are saved.
   // Only the first controller found is saved, and the search order is:
@@ -5216,7 +4357,6 @@ void rigctl_save_state(void) {
       return;
     }
   }
-
   for (int id = 0; id < MAX_TCP_CLIENTS; id++) {
     if (tcp_client[id].running &&
         (tcp_client[id].andromeda_type == 4 || tcp_client[id].andromeda_type == 5) &&

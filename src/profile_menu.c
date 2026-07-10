@@ -63,7 +63,6 @@ static gboolean load_tx_cb(GtkWidget *widget, GdkEventButton *event, gpointer da
     int m = GPOINTER_TO_INT(data);
     profiles_load_tx_profile(transmitter, m);
   }
-
   return FALSE;
 }
 
@@ -73,7 +72,6 @@ static gboolean save_tx_cb(GtkWidget *widget, GdkEventButton *event, gpointer da
     int m = GPOINTER_TO_INT(data);
     profiles_save_tx_profile(transmitter, m);
   }
-
   return FALSE;
 }
 
@@ -103,7 +101,6 @@ void profile_menu(GtkWidget *parent) {
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_CENTER);
   gtk_grid_attach(GTK_GRID(grid), lbl, 2, 1, 2, 1);
-
   if (can_transmit) {
     lbl = gtk_label_new("     ");
     gtk_grid_attach(GTK_GRID(grid), lbl, 4, 1, 1, 1);
@@ -112,14 +109,12 @@ void profile_menu(GtkWidget *parent) {
     gtk_widget_set_halign(lbl, GTK_ALIGN_CENTER);
     gtk_grid_attach(GTK_GRID(grid), lbl, 5, 1, 2, 1);
   }
-
   sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
   gtk_widget_set_size_request(sep, -1, 3);
   gtk_grid_attach(GTK_GRID(grid), sep, 0, 2, 7, 1);
   sep = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
   gtk_widget_set_size_request(sep, 3, -1);
   gtk_grid_attach(GTK_GRID(grid), sep, 1, 2, 1, NUMPROFILES + 1);
-
   for (int p = 0; p < NUMPROFILES; p++) {
     lbl = gtk_label_new(names[p]);
     gtk_widget_set_name(lbl, "boldlabel");
@@ -131,7 +126,6 @@ void profile_menu(GtkWidget *parent) {
     btn = gtk_button_new_with_label("Save RX");
     gtk_grid_attach(GTK_GRID(grid), btn, 3, p + 3, 1, 1);
     g_signal_connect(btn, "button-press-event", G_CALLBACK(save_rx_cb), GINT_TO_POINTER(p + MODES));
-
     if (can_transmit) {
       lbl = gtk_label_new("     ");
       gtk_grid_attach(GTK_GRID(grid), lbl, 4, p + 3, 1, 1);
@@ -143,7 +137,6 @@ void profile_menu(GtkWidget *parent) {
       g_signal_connect(btn, "button-press-event", G_CALLBACK(save_tx_cb), GINT_TO_POINTER(p + MODES));
     }
   }
-
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);

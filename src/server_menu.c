@@ -54,7 +54,6 @@ static char wan_ip_addr[64] = { 0 };
 
 static void cleanup(void) {
   g_source_remove(button_timer_id);
-
   if (dialog != NULL) {
     GtkWidget *tmp = dialog;
     dialog = NULL;
@@ -62,7 +61,6 @@ static void cleanup(void) {
     sub_menu = NULL;
     active_menu  = NO_MENU;
   }
-
   radio_save_state();
 }
 
@@ -80,17 +78,14 @@ static void* network_bkgd_thread(void *arg) {
   char url[1024];
   char result[64];
   int rc;
-
   for (;;) {
     if (ip_counter == 0) {
       snprintf(url, sizeof(url), "https://ipv4.icanhazip.com");
       rc = run_curl(url, result, sizeof(result), 5);
-
       if (rc != 0) {
         snprintf(url, sizeof(url), "https://ipinfo.io/ip");
         rc = run_curl(url, result, sizeof(result), 5);
       }
-
       if (rc != 0) {
         snprintf(wan_ip_addr, sizeof(wan_ip_addr), "%s", "Not available.");
       } else {
@@ -98,22 +93,17 @@ static void* network_bkgd_thread(void *arg) {
         // copy up to the first new-line
         //
         char *cp = strchr(result, '\n');
-
         if (cp) { *cp = '\0'; }
-
         snprintf(wan_ip_addr, sizeof(wan_ip_addr), "%s", result);
       }
-
       ip_counter = 1200;
     }
-
     if (server_duckdns) {
       if (fire_duck || duck_counter == 0) {
         fire_duck = 0;
         duck_status = 1;
         snprintf(url, sizeof(url), "https://www.duckdns.org/update?domains=%s&token=%s&ip=",
                  duckdns_host, duckdns_token);
-
         if (run_curl(url, result, sizeof(result), 5) == 0) {
           if (strncmp(result, "OK", 2) == 0) {
             duck_status = 2;
@@ -125,15 +115,12 @@ static void* network_bkgd_thread(void *arg) {
         } else {
           duck_status = 3;
         }
-
         duck_counter = 1200;
       }
     } else {
       duck_status = 0;
     }
-
 #ifdef PORTFORWARD
-
     if (server_port_fwd) {
       if (fire_port) {
         struct UPNPDev *devlist = NULL;
@@ -151,7 +138,6 @@ static void* network_bkgd_thread(void *arg) {
         devlist = upnpDiscover(2000, NULL, NULL, 0, 0, &error);
 #endif
         error = UPNPDISCOVER_UNKNOWN_ERROR;
-
         if (devlist) {
 #if (MINIUPNPC_API_VERSION >= 18)
           /* miniupnpc 2.2.5+ adds wan_addr param */
@@ -163,7 +149,6 @@ static void* network_bkgd_thread(void *arg) {
           int  igd_status = UPNP_GetValidIGD(devlist, &urls, &data,
                                              lan_addr, sizeof(lan_addr));
 #endif
-
           if (igd_status == 1 || igd_status == 2) {
             snprintf(port_str, sizeof(port_str), "%d", listen_port);
             /* Remove any stale mapping first (best-effort, ignore failure) */
@@ -175,10 +160,8 @@ static void* network_bkgd_thread(void *arg) {
                                         "0");    /* leaseDuration — 0 = permanent */
             FreeUPNPUrls(&urls);
           }
-
           freeUPNPDevlist(devlist);
         }
-
         if (error == UPNPCOMMAND_SUCCESS) {
           port_status = 2;
         } else {
@@ -188,30 +171,22 @@ static void* network_bkgd_thread(void *arg) {
     } else {
       port_status = 0;
     }
-
 #endif
-
     if (ip_counter > 0) { ip_counter--; }
-
     if (duck_counter > 0) { duck_counter--; }
-
     usleep(250000);
   }
-
   return NULL;
 }
 
 void start_network_helper() {
   pthread_t network_thread_id;
-
   if (!thread_spawned) {
     thread_spawned = 1;
-
     if (pthread_create(&network_thread_id, NULL, network_bkgd_thread, NULL) < 0) {
       t_print("%s: thread creation failed", __func__);
       thread_spawned = 0;
     }
-
     pthread_detach(network_thread_id);
   }
 }
@@ -221,44 +196,34 @@ static int button_colour_timer(gpointer arg) {
   case 0:
     gtk_widget_set_name(DuckUpdateBtn, "button");
     break;
-
   case 1:
     gtk_widget_set_name(DuckUpdateBtn, "yellowbutton");
     break;
-
   case 2:
     gtk_widget_set_name(DuckUpdateBtn, "greenbutton");
     break;
-
   case 3:
     gtk_widget_set_name(DuckUpdateBtn, "redbutton");
     break;
-
   case 4:
     gtk_widget_set_name(DuckUpdateBtn, "orangebutton");
     break;
   }
-
 #ifdef PORTFORWARD
-
   switch (port_status) {
   case 0:
     gtk_widget_set_name(PortUpdateBtn, "button");
     break;
-
   case 1:
     gtk_widget_set_name(PortUpdateBtn, "yellowbutton");
     break;
-
   case 2:
     gtk_widget_set_name(PortUpdateBtn, "greenbutton");
     break;
-
   case 3:
     gtk_widget_set_name(PortUpdateBtn, "redbutton");
     break;
   }
-
 #endif
   gtk_label_set_text(GTK_LABEL(WanLbl), wan_ip_addr);
   return G_SOURCE_CONTINUE;
@@ -266,10 +231,8 @@ static int button_colour_timer(gpointer arg) {
 
 static void server_duckdns_cb(GtkWidget *widget, gpointer data) {
   server_duckdns = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-
   if (server_duckdns) {
     if (!thread_spawned) { start_network_helper(); }
-
     fire_duck = 1;
   }
 }
@@ -278,7 +241,6 @@ static void server_duckdns_cb(GtkWidget *widget, gpointer data) {
 static gboolean duck_update_cb(GtkWidget *widget, gpointer data) {
   // do not fire while trying
   if (duck_status != 210) { fire_duck = 1; }
-
   return FALSE;
 }
 
@@ -287,16 +249,13 @@ static gboolean duck_update_cb(GtkWidget *widget, gpointer data) {
 static gboolean port_update_cb(GtkWidget *widget, gpointer data) {
   // do not fire while trying
   if (port_status != 1) { fire_port = 1; }
-
   return FALSE;
 }
 
 static void server_port_cb(GtkWidget *widget, gpointer data) {
   server_port_fwd = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-
   if (server_port_fwd) {
     if (!thread_spawned) { start_network_helper(); }
-
     fire_port = 1;
   }
 }
@@ -313,7 +272,6 @@ static void duck_token_cb(GtkWidget *widget, GdkEventButton *event, gpointer dat
 
 static void server_enable_cb(GtkWidget *widget, gpointer data) {
   hpsdr_server = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-
   if (hpsdr_server) {
     create_hpsdr_server();
   } else {

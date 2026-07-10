@@ -52,7 +52,6 @@ static void update() {
   char text[16];
   int digits;
   double increment = 0.1 * pa_power_list[pa_power];
-
   for (int i = 1; i < 11; i++) {
     double low, high;
     GtkAdjustment *adjustment = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(spinbtn[i]));
@@ -63,14 +62,12 @@ static void update() {
       digits = 3;
       snprintf(text, sizeof(text), "%0.3fW", i * increment);
       break;
-
     case PA_5W:
     case PA_10W:
       low = 0.1;
       digits = 1;
       snprintf(text, sizeof(text), "%0.1fW", i * increment);
       break;
-
     case PA_30W:
     case PA_50W:
     case PA_100W:
@@ -78,7 +75,6 @@ static void update() {
       digits = 0;
       snprintf(text, sizeof(text), "%dW", (int) (i * increment));
       break;
-
     default:
       low = 5;
       digits = 0;
@@ -86,21 +82,17 @@ static void update() {
       snprintf(text, sizeof(text), "%dW", (int) (i * increment));
       break;
     }
-
     gtk_label_set_text(GTK_LABEL(spinlbl[i]), text);
     gtk_adjustment_configure (adjustment, pa_trim[i], low, high, low, low, low);
     gtk_spin_button_set_digits(GTK_SPIN_BUTTON(spinbtn[i]), digits);
   }
-
 }
 
 static void reset() {
   double increment = 0.1 * pa_power_list[pa_power];
-
   for (int i = 1; i < 11; i++) {
     pa_trim[i] = i * increment;
   }
-
   update();
 }
 
@@ -111,22 +103,18 @@ static void sel_cb(GtkWidget *widget, gpointer data) {
   //
   int c = GPOINTER_TO_INT(data);
   GtkWidget *my_container;
-
   switch (c) {
   case PA_CONTAINER:
     my_container = pa_container;
     break;
-
   case WATT_CONTAINER:
     my_container = watt_container;
     break;
-
   default:
     // We should never come here
     return;
     break;
   }
-
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
     gtk_widget_show(my_container);
     gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
@@ -156,7 +144,6 @@ static void pa_value_changed_cb(GtkWidget *widget, gpointer data) {
   int b = GPOINTER_TO_INT(data);
   BAND *band = band_get_band(b);
   band->pa_calibration = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-
   if (radio_is_remote) {
     send_band_data(cl_sock_tcp, b);
     return;
@@ -168,11 +155,9 @@ static void pa_value_changed_cb(GtkWidget *widget, gpointer data) {
 //cppcheck-suppress constParameterCallback
 static gboolean reset_trim_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
   reset();
-
   if (radio_is_remote) {
     send_patrim(cl_sock_tcp);
   }
-
   return FALSE;
 }
 
@@ -180,7 +165,6 @@ static void trim_changed_cb(GtkWidget *widget, gpointer data) {
   int i = GPOINTER_TO_INT(data);
   int k, flag;
   flag = 0;
-
   //
   // The 'flag' indicates that we do a single-shot calibration,
   // that is, the pa_trim[] values reflect a constant
@@ -191,16 +175,12 @@ static void trim_changed_cb(GtkWidget *widget, gpointer data) {
   //
   if (i == 10) {
     flag = 1;
-
     for (k = 1; k < 10; k++) {
       double fac = ((double) k * pa_trim[10]) / ( 10.0 * pa_trim[k]);
-
       if ( fac < 0.99 || fac > 1.01) { flag = 0; }
     }
   }
-
   pa_trim[i] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-
   if (flag) {
     // note that we have i==10 if the flag is nonzero.
     for (k = 1; k < 10; k++) {
@@ -208,7 +188,6 @@ static void trim_changed_cb(GtkWidget *widget, gpointer data) {
       gtk_spin_button_set_value(GTK_SPIN_BUTTON(spinbtn[k]), (double)pa_trim[k]);
     }
   }
-
   if (radio_is_remote) {
     send_patrim(cl_sock_tcp);
   }
@@ -250,29 +229,23 @@ void pa_menu(GtkWidget *parent) {
   gtk_widget_set_size_request(sep, -1, 3);
   gtk_grid_attach(GTK_GRID(grid), sep, 0, row, 9, 1);
   row++;
-
-
   pa_container = gtk_fixed_new();
   gtk_grid_attach(GTK_GRID(grid), pa_container, 0, row, 9, 1);
   GtkWidget *pa_grid = gtk_grid_new();
   gtk_grid_set_column_spacing (GTK_GRID(pa_grid), 5);
   gtk_grid_set_row_spacing (GTK_GRID(pa_grid), 5);
   gtk_container_add(GTK_CONTAINER(pa_container), pa_grid);
-
-
   watt_container = gtk_fixed_new();
   gtk_grid_attach(GTK_GRID(grid), watt_container, 0, row, 9, 1);
   GtkWidget *watt_grid = gtk_grid_new();
   gtk_grid_set_column_spacing (GTK_GRID(watt_grid), 5);
   gtk_grid_set_row_spacing (GTK_GRID(watt_grid), 5);
   gtk_container_add(GTK_CONTAINER(watt_container), watt_grid);
-
   //
   // Populate "Calibration" container
   //
   int bands = radio_max_band();
   int b = 0;
-
   if (tx_out_of_band_allowed) {
     //
     // If out-of-band TXing is allowed, we need a PA calibration value
@@ -290,7 +263,6 @@ void pa_menu(GtkWidget *parent) {
     g_signal_connect(btn, "value_changed", G_CALLBACK(pa_value_changed_cb), GINT_TO_POINTER(bandGen));
     b++;
   }
-
   for (int i = 0; i <= bands; i++) {
     const BAND *band = band_get_band(i);
     GtkWidget *band_label = gtk_label_new(band->title);
@@ -304,11 +276,8 @@ void pa_menu(GtkWidget *parent) {
     g_signal_connect(pa_r, "value_changed", G_CALLBACK(pa_value_changed_cb), GINT_TO_POINTER(i));
     b++;
   }
-
-
   for (int i = BANDS; i < BANDS + XVTRS; i++) {
     const BAND *band = band_get_band(i);
-
     if (strlen(band->title) > 0) {
       lbl = gtk_label_new(band->title);
       gtk_widget_set_name(lbl, "boldlabel");
@@ -320,37 +289,30 @@ void pa_menu(GtkWidget *parent) {
       b++;
     }
   }
-
   //
   // Populate "Watt" container
   //
   row = 1;
   col = 0;
-
   for (int i = 1; i < 11; i++) {
     spinlbl[i] = gtk_label_new(NULL);
     gtk_widget_set_halign(spinlbl[i], GTK_ALIGN_END);
     gtk_widget_set_name(spinlbl[i], "boldlabel");
     gtk_grid_attach(GTK_GRID(watt_grid), spinlbl[i], col++, row, 1, 1);
-
     spinbtn[i] = gtk_spin_button_new_with_range(0.001, 1.0, 0.001);
     gtk_grid_attach(GTK_GRID(watt_grid), spinbtn[i], col++, row, 1, 1);
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(spinbtn[i]), (double)i);
     g_signal_connect(spinbtn[i], "value_changed", G_CALLBACK(trim_changed_cb), GINT_TO_POINTER(i));
-
     if (col == 4) {
       row++;
       col = 0;
     }
   }
-
   update();
-
   btn = gtk_button_new_with_label("Reset Watt Meter Calibration");
   gtk_widget_set_name(btn, "boldlabel");
   gtk_grid_attach(GTK_GRID(watt_grid), btn, 0, row, 2, 1);
   g_signal_connect(btn, "button-press-event", G_CALLBACK(reset_trim_cb), NULL);
-
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);

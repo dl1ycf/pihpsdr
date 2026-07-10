@@ -260,12 +260,10 @@ static int keyer_init(void) {
 #endif
   running = 1;
   rc = pthread_create(&keyer_thread_id, NULL, keyer_thread, NULL);
-
   if (rc < 0) {
     g_idle_add(fatal_error, "WARNING: Could not start keyer thread");
     running = 0;
   }
-
   return 0;
 }
 
@@ -286,7 +284,6 @@ void keyer_update(void) {
   dot_length = 1200 / cw_keyer_speed;
   dot_samples = 57600 / cw_keyer_speed;
   dash_samples = (3456 * cw_keyer_weight) / cw_keyer_speed;
-
   if (cw_keys_reversed) {
     kdot  = &kcwr;
     kdash = &kcwl;
@@ -298,7 +295,6 @@ void keyer_update(void) {
     kmeml = &dot_memory;
     kmemr = &dash_memory;
   }
-
   if (cw_keyer_internal == 0) {
     if (!running) { keyer_init(); }
   } else {
@@ -319,25 +315,20 @@ static int enforce_cw_vox;
 
 void keyer_event(int left, int state) {
   if (!running) { return; }
-
   if (state) {
     // This is to remember whether the key stroke interrupts a running CAT CW
     // Since in this case we return to RX after vox delay.
     if (CAT_cw_is_active) { enforce_cw_vox = 1; }
   }
-
   if (left) {
     // left paddle hit or released
     kcwl = state;
-
     if (state) { *kmeml = 1; } // trigger dot/dash memory
   } else {
     // right paddle hit or released
     kcwr = state;
-
     if (state) { *kmemr = 1; } // trigger dot/dash memory
   }
-
   if (state) {
 #ifdef __APPLE__
     sem_post(cw_event);
@@ -358,7 +349,6 @@ static void* keyer_thread(void *arg) {
   int moxbefore;
   int cwvox;
   t_print("%s: running= %d\n", __func__, running);
-
   while (running) {
     enforce_cw_vox = 0;
 #ifdef __APPLE__
@@ -366,10 +356,8 @@ static void* keyer_thread(void *arg) {
 #else
     sem_wait(&cw_event);
 #endif
-
     // swallow any cw_events posted during the last "cw hang" time.
     if (!kcwl && !kcwr) { continue; }
-
     //
     // Normally the keyer will be used in "break-in" mode, that is, we switch to TX
     // automatically here, and after a certain "hang" time we will switch back to RX
@@ -387,11 +375,8 @@ static void* keyer_thread(void *arg) {
     //
     txmode = vfo_get_tx_mode();
     moxbefore = mox;
-
     if (enforce_cw_vox) { moxbefore = 0; }
-
     cwvox = 0; // if not using CW break-in this will stay at zero
-
     if (cw_breakin && (txmode == modeCWU || txmode == modeCWL)) {
       g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(1));
       //
@@ -402,14 +387,10 @@ static void* keyer_thread(void *arg) {
       // give up after 200 msec.
       //
       i = 200;
-
       while (!mox && i-- > 0) { usleep(1000L); }
-
       cwvox = (int) cw_keyer_hang_time;
     }
-
     key_state = CHECK;
-
     while (key_state != EXITLOOP || cwvox > 0) {
       //
       // if key_state == EXITLOOP and cwvox == 0, then
@@ -419,15 +400,12 @@ static void* keyer_thread(void *arg) {
       // (that is, for *all* states except EXITLOOP and CHECK)
       //
       if (cwvox > 0 && key_state != EXITLOOP && key_state != CHECK) { cwvox = (int) cw_keyer_hang_time; }
-
       clock_gettime(CLOCK_MONOTONIC, &loop_delay);
-
       switch (key_state) {
       case EXITLOOP:
         // If we arrive here, cwvox is greater than zero, since key_state==EXITLOOP
         // AND cwvox==0 leaves the outer "while" loop.
         cwvox--;
-
         // If CW-vox still hanging, continue "busy-spinning"
         if (cwvox == 0) {
           // we have just reduced cwvox from 1 to 0.
@@ -439,30 +417,24 @@ static void* keyer_thread(void *arg) {
             // in order not to be
             // "caught" here.
             i = 250;
-
             while (mox && i-- > 0) { usleep(1000L); }
           }
         } else {
           key_state = CHECK;
         }
-
         // wait 1 msec
         loop_delay.tv_nsec += 1000000;
         break;
-
       case CHECK: // check for key press
         key_state = EXITLOOP;  // default next state
-
         // Do not decrement cwvox until zero here, otherwise
         // we won't enter the code 10 lines above that de-activates MOX.
         if (cwvox > 1) { cwvox--; }
-
         if (cw_keyer_mode == KEYER_STRAIGHT) {       // Straight/External key or bug
           if (*kdot) {
             // "bug" mode: dot key activates automatic dots
             key_state = PREDOT;
           }
-
           // If both paddles are pressed (should not happen), then
           // the dash paddle wins.
           if (*kdash) {                  // send manual dashes
@@ -479,19 +451,14 @@ static void* keyer_thread(void *arg) {
           // I think a "simultaneous squeeze" means a dot-dash sequence, since in
           // a dash-dot sequence there is a larger time window to hit the dot.
           if (*kdash) { key_state = PREDASH; }
-
           if (*kdot) { key_state = PREDOT; }
         }
-
         if (key_state == CHECK) {
           // wait 1 msec
           loop_delay.tv_nsec += 1000000;
         }
-
         break;
-
       case STRAIGHT:
-
         //
         // Wait for dash paddle being released in "straight key" mode.
         //
@@ -506,9 +473,7 @@ static void* keyer_thread(void *arg) {
         } else {
           loop_delay.tv_nsec += 1000000;
         }
-
         break;
-
       case PREDOT:
         //
         // start sending the dot
@@ -536,18 +501,14 @@ static void* keyer_thread(void *arg) {
         loop_delay.tv_nsec += (2 * dot_samples) * 20833;
         key_state = AFTERDOT;
         break;
-
       case AFTERDOT:
-
         //
         // This is executed at the end of the inter-element dot-following pause
         //
         if (cw_keyer_mode == KEYER_STRAIGHT) {
           // bug mode: continue sending dots or exit, depending on current dot key status
           key_state = EXITLOOP;
-
           if (*kdot) { key_state = PREDOT; }
-
           // end of bug/straight case
         } else {
           //
@@ -559,7 +520,6 @@ static void* keyer_thread(void *arg) {
           // dot, produce a dash in either case
           //
           if (cw_keyer_mode == KEYER_MODE_A && !*kdot && !*kdash) { dash_held = 0; }
-
           if (dash_memory || *kdash || dash_held) {
             key_state = PREDASH;
           } else if (*kdot) {                             // dot still held, so send a dot
@@ -571,12 +531,9 @@ static void* keyer_thread(void *arg) {
           } else {
             key_state = EXITLOOP;
           }
-
           // end of iambic case, key_state has been set
         }
-
         break;
-
       case PREDASH:
         //
         // start sending the dot
@@ -601,9 +558,7 @@ static void* keyer_thread(void *arg) {
         loop_delay.tv_nsec += (dash_samples + dot_samples) * 20833;
         key_state = AFTERDASH;
         break;
-
       case AFTERDASH:
-
         //
         // This is executed at the end of the inter-element dot-following pause
         //
@@ -615,7 +570,6 @@ static void* keyer_thread(void *arg) {
         // dash, produce a dot in either case
         //
         if (cw_keyer_mode == KEYER_MODE_A && !*kdot && !*kdash) { dot_held = 0; }
-
         if (dot_memory || *kdot || dot_held) {
           key_state = PREDOT;
         } else if (*kdash) {
@@ -627,14 +581,11 @@ static void* keyer_thread(void *arg) {
         } else {
           key_state = EXITLOOP;
         }
-
         break;
-
       case LETTERSPACE:
         // Add letter space (3 x dot delay) to end of character and check if a paddle is pressed during this time.
         // Actually add 2 x dot_length since we already have a dot delay at the end of the character.
         kdelay++;
-
         if (kdelay > 2 * dot_length) {
           if (dot_memory) {       // check if a dot or dash paddle was pressed during the delay.
             key_state = PREDOT;
@@ -642,24 +593,19 @@ static void* keyer_thread(void *arg) {
             key_state = PREDASH;
           } else { key_state = EXITLOOP; } // no memories set so restart
         }
-
         loop_delay.tv_nsec += 1000000;
         break;
-
       default:
         t_print("%s: unknown state=%d", __func__, (int) key_state);
         key_state = EXITLOOP;
       }
-
       while (loop_delay.tv_nsec >= NSEC_PER_SEC) {
         loop_delay.tv_nsec -= NSEC_PER_SEC;
         loop_delay.tv_sec++;
       }
-
       clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &loop_delay, NULL);
     }
   }
-
   t_print("%s: EXIT\n", __func__);
   return NULL;
 }

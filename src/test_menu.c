@@ -54,27 +54,22 @@ static gboolean delete_cb(void) {
 
 static gboolean repeat_cb(gpointer data) {
   int retval = TRUE;
-
   switch (repeat_state) {
   case 0:
   default:
     repeat_timer = 0;
     retval = G_SOURCE_REMOVE;
     break;
-
   case 1:
     schedule_action(test_action, PRESSED, 1);
     break;
-
   case 2:
     schedule_action(test_action, RELATIVE, -1);
     break;
-
   case 3:
     schedule_action(test_action, RELATIVE, 1);
     break;
   }
-
   return retval;
 }
 
@@ -84,7 +79,6 @@ static void test_action_changed_cb(GtkWidget *widget, gpointer data) {
   gtk_widget_set_sensitive(test_press, FALSE);
   gtk_widget_set_sensitive(test_ccw, FALSE);
   gtk_widget_set_sensitive(test_cw, FALSE);
-
   if (ActionTable[test_action].type & AT_BTN) {
     gtk_widget_set_sensitive(test_press, TRUE);
   } else if (ActionTable[test_action].type & AT_ENC) {
@@ -93,11 +87,9 @@ static void test_action_changed_cb(GtkWidget *widget, gpointer data) {
   } else if (ActionTable[test_action].type & AT_KNB) {
     gtk_widget_set_sensitive(test_slider, TRUE);
   }
-
   if (repeat_timer != 0) {
     g_source_remove(repeat_timer);
   }
-
   repeat_timer = 0;
   repeat_state = 0;
 }
@@ -105,14 +97,11 @@ static void test_action_changed_cb(GtkWidget *widget, gpointer data) {
 // cppcheck-suppress constParameterCallback
 static gboolean test_press_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
   if (event->type != GDK_BUTTON_PRESS) { return TRUE; }
-
   repeat_state = 1;
   schedule_action(test_action, PRESSED, 1);
-
   if (repeat_timer != 0) {
     g_source_remove(repeat_timer);
   }
-
   repeat_timer = g_timeout_add(500, repeat_cb, NULL);
   return FALSE;
 }
@@ -120,11 +109,9 @@ static gboolean test_press_cb(GtkWidget *widget, GdkEventButton *event, gpointer
 // cppcheck-suppress constParameterCallback
 static gboolean test_release_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
   repeat_state = 0;
-
   if (repeat_timer != 0) {
     g_source_remove(repeat_timer);
   }
-
   repeat_timer = 0;
   schedule_action(test_action, RELEASED, 1);
   return FALSE;
@@ -133,14 +120,11 @@ static gboolean test_release_cb(GtkWidget *widget, GdkEventButton *event, gpoint
 // cppcheck-suppress constParameterCallback
 static gboolean test_ccw_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
   if (event->type != GDK_BUTTON_PRESS) { return TRUE; }
-
   repeat_state = 2;
   schedule_action(test_action, RELATIVE, -1);
-
   if (repeat_timer != 0) {
     g_source_remove(repeat_timer);
   }
-
   repeat_timer = g_timeout_add(250, repeat_cb, NULL);
   return FALSE;
 }
@@ -148,14 +132,11 @@ static gboolean test_ccw_cb(GtkWidget *widget, GdkEventButton *event, gpointer d
 // cppcheck-suppress constParameterCallback
 static gboolean test_cw_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
   if (event->type != GDK_BUTTON_PRESS) { return TRUE; }
-
   repeat_state = 3;
   schedule_action(test_action, RELATIVE, 1);
-
   if (repeat_timer != 0) {
     g_source_remove(repeat_timer);
   }
-
   repeat_timer = g_timeout_add(250, repeat_cb, NULL);
   return FALSE;
 }
@@ -171,7 +152,6 @@ static gboolean cancel_repeat_cb(GtkWidget *widget, GdkEventButton *event, gpoin
   if (repeat_timer != 0) {
     g_source_remove(repeat_timer);
   }
-
   repeat_timer = 0;
   repeat_state = 0;
   return FALSE;

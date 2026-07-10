@@ -119,38 +119,31 @@ int action_dialog(GtkWidget *parent, int filter, enum ACTION currentAction) {
   gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(sw), TRUE);
   int col = 0;
   int row = 0;
-
   for (int i = 0; i < ACTIONS; i++) {
     if ((ActionTable[i].type & filter) || (ActionTable[i].type == AT_NONE)) {
       GtkWidget *button = gtk_toggle_button_new_with_label(ActionTable[i].str);
       gtk_widget_set_name(button, "small_toggle_button");
       gtk_grid_attach(GTK_GRID(scrgrd), button, col, row, 1, 1);
-
       if (ActionTable[i].action == currentAction) {
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(button), TRUE);
       }
-
       choice = g_new0(CHOICE, 1);
       choice->action = i;
       choice->button = button;
       choice->signal_id = g_signal_connect(button, "toggled", G_CALLBACK(action_select_cb), choice);
       choice->previous = previous;
       previous = choice;
-
       if (ActionTable[i].action == currentAction) {
         previous_button = button;
         previous_signal_id = choice->signal_id;
       }
-
       col++;
-
       if (col == GRID_WIDTH) {
         col = 0;
         row++;
       }
     }
   }
-
   gtk_container_add(GTK_CONTAINER(sw), scrgrd);
   gtk_widget_show_all(sw);
   //
@@ -159,14 +152,12 @@ int action_dialog(GtkWidget *parent, int filter, enum ACTION currentAction) {
   gtk_widget_get_preferred_size(sw, &min, &nat);
   width  = nat.width;
   height = nat.height;
-
   //
   // Limit the window to display size
   //
   if (width > display_width[0] - 50) {
     width  = display_width[0] - 50;
   }
-
   //
   // This dialog can become very tall, so restrict its height
   // even if display size permits
@@ -174,11 +165,9 @@ int action_dialog(GtkWidget *parent, int filter, enum ACTION currentAction) {
   if (height > 500) {
     height = 500;
   }
-
   if (height > display_height[0] - 100) {
     height = display_height[0] - 100;
   }
-
   //
   // For some reason, the set_size_request below doew not work until
   // setting propagation of natural widths to FALSE
@@ -194,14 +183,12 @@ int action_dialog(GtkWidget *parent, int filter, enum ACTION currentAction) {
   //
   gtk_widget_show_all(dialog);
   gtk_dialog_run(GTK_DIALOG(dialog));
-
   // free up choice structures
   while (previous != NULL) {
     choice = previous;
     previous = choice->previous;
     g_free(choice);
   }
-
   return ret_action;
 }
 

@@ -287,7 +287,6 @@ static void  process_mic_data(const unsigned char *buffer);
 static void mark_all_buffers_free(void) {
   ASSERT_SERVER();
   mybuffer *bp = buflist;
-
   while (bp) {
     bp->free = 1;
     bp = bp->next;
@@ -298,24 +297,20 @@ static mybuffer *get_my_buffer(void) {
   ASSERT_SERVER(NULL);
   int i;
   mybuffer *bp = buflist;
-
   while (bp) {
     if (bp->free) {
       // found free buffer. Mark as used and return that one.
       bp->free = 0;
       return bp;
     }
-
     bp = bp->next;
   }
-
   //
   // no free buffer found, allocate a bunch of new ones
   // and add to the head of the list
   //
   for (i = 0; i < 64; i++) {
     bp = g_new(mybuffer, 1);
-
     if (!bp) {
       fatal_error("FATAL: P2: out of memory");
     } else {
@@ -325,7 +320,6 @@ static mybuffer *get_my_buffer(void) {
       num_buf++;
     }
   }
-
   t_print("%s: number of buffers increased to %d\n", __func__, num_buf);
   // Mark the first buffer in list as used and return that one.
   buflist->free = 0;
@@ -334,7 +328,6 @@ static mybuffer *get_my_buffer(void) {
 
 void schedule_high_priority(void) {
   ASSERT_SERVER();
-
   if (protocol == NEW_PROTOCOL) {
     new_protocol_high_priority();
   }
@@ -342,7 +335,6 @@ void schedule_high_priority(void) {
 
 void schedule_general(void) {
   ASSERT_SERVER();
-
   if (protocol == NEW_PROTOCOL) {
     new_protocol_general();
   }
@@ -350,7 +342,6 @@ void schedule_general(void) {
 
 void schedule_receive_specific(void) {
   ASSERT_SERVER();
-
   if (protocol == NEW_PROTOCOL) {
     new_protocol_receive_specific();
   }
@@ -358,7 +349,6 @@ void schedule_receive_specific(void) {
 
 void schedule_transmit_specific(void) {
   ASSERT_SERVER();
-
   if (protocol == NEW_PROTOCOL) {
     new_protocol_transmit_specific();
   }
@@ -377,17 +367,11 @@ static void update_action_table(void) {
   //
   int newdev = (device == NEW_DEVICE_ANGELIA  || device == NEW_DEVICE_ORION ||
                 device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN);
-
   if (duplex && xmit) { flag += 10000; }
-
   if (newdev) { flag += 1000; }
-
   if (xmit) { flag += 100; }
-
   if (transmitter->puresignal && xmit) { flag += 10; }
-
   if (diversity_enabled && !xmit) { flag += 1; }
-
   // Note that the PureSignal and DUPLEX flags are only set in the TX cases, since they
   // make no difference upon RXing
   // Note further, we do not use the diversity mixer upon transmitting.
@@ -413,53 +397,42 @@ static void update_action_table(void) {
   rxcase[1] = RXACTION_SKIP;
   rxcase[2] = RXACTION_SKIP;
   rxcase[3] = RXACTION_SKIP;
-
   switch (flag) {
   case       0:                                                       // HERMES, RX, no DIVERSITY
   case   10100:                                                       // HERMES, TX, no PureSignal, DUPLEX
     rxid[0] = 0;
     rxcase[0] = RXACTION_NORMAL;
-
     if (receivers > 1) {
       rxid[1] = 1;
       rxcase[1] = RXACTION_NORMAL;
     }
-
     break;
-
   case     1:                                                         // never occurs since HERMES has only 1 ADC
   case  1001:                                                         // ORION, RX, DIVERSITY
     rxid[0] = 0;
     rxcase[0] = RXACTION_DIV;
     break;
-
   case  100:                                                          // HERMES, TX, no PureSignal, no DUPLEX
   case 1100:                                                          // ORION, TX, no PureSignal, no DUPLEX
     // just skip samples
     break;
-
   case  110:                                                          // HERMES, TX, PureSignal, no DUPLEX
   case 1110:                                                          // Orion TX, PureSignal, no DUPLEX
   case 10110:                                                         // HERMES, TX, DUPLEX, PS: duplex is ignored
     rxcase[0] = RXACTION_PS;
     break;
-
   case 11110:                                                         // ORION, TX, PureSignal, DUPLEX
     rxcase[0] = RXACTION_PS;
     __attribute__((fallthrough));
-
   case 1000:                                                          // ORION, RX, no DIVERSITY
   case 11100:                                                         // ORION, TX, no PureSignal, DUPLEX
     rxid[2] = 0;
     rxcase[2] = RXACTION_NORMAL;
-
     if (receivers > 1) {
       rxid[3] = 1;
       rxcase[3] = RXACTION_NORMAL;
     }
-
     break;
-
   default:
     t_print("ACTION TABLE: case not handled: %d\n", flag);
     break;
@@ -470,7 +443,6 @@ void new_protocol_init(void) {
   ASSERT_SERVER();
   struct timeval tv;
   int i;
-
   //
   // This function initialises the P2 engine and does everything that
   // is only done once. Actions needed for a normal P2 restart are
@@ -483,12 +455,10 @@ void new_protocol_init(void) {
     t_print("%s: WARNING: TXIQRINGBUF non-NULL\n", __func__);
     g_free(TXIQRINGBUF);
   }
-
   if (RXAUDIORINGBUF != NULL) {
     t_print("%s: WARNING: RXAUDIO_RINGGBUF non-NULL\n", __func__);
     g_free(RXAUDIORINGBUF);
   }
-
   TXIQRINGBUF = g_new(unsigned char, TXIQRINGBUFLEN);
   RXAUDIORINGBUF = g_new(unsigned char, RXAUDIORINGBUFLEN);
   //
@@ -498,29 +468,23 @@ void new_protocol_init(void) {
 #ifdef __APPLE__
   high_priority_sem_buffer = apple_sem(0);
   mic_line_sem = apple_sem(0);
-
   for (i = 0; i < MAX_DDC; i++) {
     iq_sem[i] = apple_sem(0);
   }
-
 #else
   (void)sem_init(&high_priority_sem_buffer, 0, 0); // check return value!
   (void)sem_init(&mic_line_sem, 0, 0); // check return value!
-
   for (i = 0; i < MAX_DDC; i++) {
     (void)sem_init(&iq_sem[i], 0, 0); // check return value!
   }
-
 #endif
   high_priority_thread_id = g_thread_new( "P2 HP", high_priority_thread, NULL);
   mic_line_thread_id = g_thread_new( "P2 MIC", mic_line_thread, NULL);
-
   for (i = 0; i < MAX_DDC; i++) {
     char text[16];
     snprintf(text, sizeof(text), "P2 DDC%d", i);
     iq_thread_id[i] = g_thread_new(text, iq_thread, GINT_TO_POINTER(i));
   }
-
   //
   // Setup communication (this is also done *once*)
   // In XDMA mode, just call saturn_init().
@@ -531,12 +495,10 @@ void new_protocol_init(void) {
     saturn_init();
   } else {
     data_socket = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-
     if (data_socket < 0) {
       t_perror("Could not create data socket");
       g_idle_add(fatal_error, "FATAL: P2 could not create data socket");
     }
-
     int optval = 1;
     socklen_t optlen = sizeof(optval);
     setsockopt(data_socket, SOL_SOCKET, SO_REUSEADDR, &optval, optlen);
@@ -560,33 +522,25 @@ void new_protocol_init(void) {
     // then getsockopt() returns: RCVBUF: 0x80000, SNDBUF: 0x20000
     //
     optval = 0x80000;
-
     if (setsockopt(data_socket, SOL_SOCKET, SO_RCVBUF, &optval, optlen) < 0) {
       t_perror("data_socket: set SO_RCVBUF");
     }
-
     optval = 0x20000;
-
     if (setsockopt(data_socket, SOL_SOCKET, SO_SNDBUF, &optval, optlen) < 0) {
       t_perror("data_socket: set SO_SNDBUF");
     }
-
     optlen = sizeof(optval);
-
     if (getsockopt(data_socket, SOL_SOCKET, SO_RCVBUF, &optval, &optlen) < 0) {
       t_perror("data_socket: get SO_RCVBUF");
     } else {
       if (optlen == sizeof(optval)) { t_print("%s: UDP Socket RCV buf size=%x\n", __func__, optval); }
     }
-
     optlen = sizeof(optval);
-
     if (getsockopt(data_socket, SOL_SOCKET, SO_SNDBUF, &optval, &optlen) < 0) {
       t_perror("data_socket: get SO_SNDBUF");
     } else {
       if (optlen == sizeof(optval)) { t_print("%s: UDP Socket SND buf size=%x\n", __func__, optval); }
     }
-
     optlen = sizeof(optval);
 #ifdef IPTOS_DSCP_EF
     optval = IPTOS_DSCP_EF;
@@ -598,32 +552,26 @@ void new_protocol_init(void) {
     //
     optval = 0xB8;
 #endif
-
     if (setsockopt(data_socket, IPPROTO_IP, IP_TOS, &optval, optlen) < 0) {
       t_perror("data_socket: IP_TOS");
     }
-
     // bind to the interface
     if (bind(data_socket, (struct sockaddr * )&radio->network.interface_address,
              radio->network.interface_length) < 0) {
       t_perror("bind socket failed for data_socket");
       g_idle_add(fatal_error, "FATAL: P2 Bind failed for data socket");
     }
-
     //
     // Set a time-out on the data_socket, so we will not be trapped "forever"
     // in rcvfrom(). Therefore, EAGAIN errors from rcvfrom() are non-fatal.
     //
     tv.tv_sec = 0;
     tv.tv_usec = 100000;
-
     if (setsockopt(data_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
       t_perror("Set RCVTIMEO on data_socket");
     }
-
     t_print("new_protocol_init: data_socket %d bound to interface %s:%d\n", data_socket,
             inet_ntoa(radio->network.interface_address.sin_addr), ntohs(radio->network.interface_address.sin_port));
-
     //
     // Create addresses for all packet types we are *sending*:
     // General, RX specific, TX speficic, HighPrio, RX audio, TX IQ
@@ -652,7 +600,6 @@ void new_protocol_init(void) {
     iq_addr_length = radio->network.address_length;
     iq_addr.sin_port = htons(TX_IQ_FROM_HOST_PORT);
   }
-
   //
   // This does all the work which has to be done both at startup and upon each restart
   //
@@ -674,7 +621,6 @@ static void new_protocol_general(void) {
   // use defaults apart from
   general_buffer[37] = 0x08; //  phase word (not frequency)
   general_buffer[38] = 0x01; //  enable hardware timer
-
   if (!pa_enabled || band->disablePA) {
     local_pa_enable = 0;
     general_buffer[58] = 0x00;
@@ -682,12 +628,10 @@ static void new_protocol_general(void) {
     local_pa_enable = 1;
     general_buffer[58] = 0x01; // enable PA
   }
-
   // t_print("new_protocol_general: PA Enable=%02X\n",general_buffer[58]);
   if (filter_board == APOLLO) {
     general_buffer[58] |= 0x02; // enable APOLLO tuner
   }
-
   if (filter_board == ALEX) {
     if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN) {
       general_buffer[59] = 0x03; // enable Alex 0 and 1
@@ -695,7 +639,6 @@ static void new_protocol_general(void) {
       general_buffer[59] = 0x01; // enable Alex 0
     }
   }
-
   if (have_saturn_xdma) {
     saturn_handle_general_packet(general_buffer);
   } else {
@@ -708,7 +651,6 @@ static void new_protocol_general(void) {
       t_print("sendto socket for general: %ld rather than %ld\n", (long) rc, (long)sizeof(general_buffer));
     }
   }
-
   general_sequence++;
   pthread_mutex_unlock(&general_mutex);
 }
@@ -725,11 +667,9 @@ static void new_protocol_high_priority(void) {
   long long freq;
   uint32_t phase;
   unsigned char high_priority_buffer_to_radio[1444];
-
   if (data_socket == -1 && !have_saturn_xdma) {
     return;
   }
-
   pthread_mutex_lock(&hi_prio_mutex);
   memset(high_priority_buffer_to_radio, 0, sizeof(high_priority_buffer_to_radio));
   //
@@ -749,7 +689,6 @@ static void new_protocol_high_priority(void) {
   high_priority_buffer_to_radio[2] = (high_priority_sequence >>  8) & 0xFF;
   high_priority_buffer_to_radio[3] = (high_priority_sequence      ) & 0xFF;
   high_priority_buffer_to_radio[4] = P2running;
-
   if (xmit) {
     if (txmode == modeCWU || txmode == modeCWL) {
       //
@@ -773,7 +712,6 @@ static void new_protocol_high_priority(void) {
       high_priority_buffer_to_radio[4] |= 0x02;
     }
   }
-
   //
   //  Set DDC frequencies for RX1 and RX2
   //
@@ -782,10 +720,8 @@ static void new_protocol_high_priority(void) {
     freq = vfo[id].frequency - vfo[id].lo;  // uncorrected DDC freq
     DDCfrequency[id] = calibrated_frequency(freq);
   }
-
   // CW mode from the Host; disabled since pihpsdr does not use this CW option.
   high_priority_buffer_to_radio[5] = 0x00;
-
   if (diversity_enabled && !xmit) {
     //
     // Use frequency of first receiver for both DDC0 and DDC1
@@ -817,7 +753,6 @@ static void new_protocol_high_priority(void) {
     high_priority_buffer_to_radio[10] = (phase >> 16) & 0xFF;
     high_priority_buffer_to_radio[11] = (phase >>  8) & 0xFF;
     high_priority_buffer_to_radio[12] = (phase      ) & 0xFF;
-
     if (receivers > 1) {
       phase = (uint32_t)(((double)DDCfrequency[1]) * 34.952533333333333333333333333333);
       high_priority_buffer_to_radio[13] = (phase >> 24) & 0xFF;
@@ -842,22 +777,18 @@ static void new_protocol_high_priority(void) {
       high_priority_buffer_to_radio[24] = high_priority_buffer_to_radio[16];
     }
   }
-
   //
   //  Set DUC frequency.
   //  txfreq is the "on the air" frequency for out-of-band checking
   //
   txfreq = vfo[txvfo].ctun ? vfo[txvfo].ctun_frequency : vfo[txvfo].frequency;
-
   if (vfo[txvfo].xit_enabled) {
     txfreq += vfo[txvfo].xit;
   }
-
   // apply *relative* frequency calibration to the DUC frequency
   freq = txfreq - vfo[txvfo].lo;  // uncorrected DUC freq
   DUCfrequency = calibrated_frequency(freq);
   phase = (uint32_t)(((double)DUCfrequency) * 34.952533333333333333333333333333);
-
   //
   // DUC frequency
   //
@@ -865,7 +796,6 @@ static void new_protocol_high_priority(void) {
   high_priority_buffer_to_radio[330] = (phase >> 16) & 0xFF;
   high_priority_buffer_to_radio[331] = (phase >>  8) & 0xFF;
   high_priority_buffer_to_radio[332] = (phase      ) & 0xFF;
-
   if (xmit && transmitter->puresignal) {
     //
     // Set DDC0 and DDC1 (synchronized) to the transmit frequency
@@ -879,12 +809,10 @@ static void new_protocol_high_priority(void) {
     high_priority_buffer_to_radio[15] = high_priority_buffer_to_radio[331];
     high_priority_buffer_to_radio[16] = high_priority_buffer_to_radio[332];
   }
-
   //
   // TX drive level
   //
   int power = 0;
-
   //
   // Fast "out-of-band" check. If out-of-band, set TX drive to zero.
   // This already happens during RX and is effective if the
@@ -894,9 +822,7 @@ static void new_protocol_high_priority(void) {
   if ((txfreq >= txband->frequencyMin && txfreq <= txband->frequencyMax) || tx_out_of_band_allowed) {
     power = transmitter->drive_level;
   }
-
   high_priority_buffer_to_radio[345] = power & 0xFF;
-
   //
   // RigCtl CAT port
   //
@@ -907,19 +833,16 @@ static void new_protocol_high_priority(void) {
     high_priority_buffer_to_radio[1398] = 0;
     high_priority_buffer_to_radio[1399] = 0;
   }
-
   //
   // band specific OpenCollector outputs
   //
   if (xmit) {
     high_priority_buffer_to_radio[1401] = txband->OCtx << 1;
-
     if (transmitter->tune) {
       if (full_tune || memory_tune) {
         struct timeval te;
         gettimeofday(&te, NULL);
         long long now = te.tv_sec * 1000LL + te.tv_usec / 1000;
-
         if (tune_timeout > now) {
           high_priority_buffer_to_radio[1401] |= OCtune << 1;
         }
@@ -930,7 +853,6 @@ static void new_protocol_high_priority(void) {
   } else {
     high_priority_buffer_to_radio[1401] = rxband->OCrx << 1;
   }
-
   //
   // Orion2/G2 XVTR relay and audio disable
   //
@@ -945,7 +867,6 @@ static void new_protocol_high_priority(void) {
       //
       high_priority_buffer_to_radio[1400] |= ANAN7000_HIPRIO1400_XVTR_OUT;
     }
-
     //
     // On ANAN-7000 and G2, one can "mute" the stereo amplifier. This affects speakers,
     // headphone, and LineOut. Some have reported that distorted audio goes to the speakers
@@ -962,7 +883,6 @@ static void new_protocol_high_priority(void) {
       high_priority_buffer_to_radio[1400] |= ANAN7000_HIPRIO1400_SPKR_MUTE;
     }
   }
-
   //
   //  ALEX bits. Note the "Jan 2023 protocol update":
   //  - the upper 16 bits of alex0 reflect the upper 16
@@ -985,7 +905,6 @@ static void new_protocol_high_priority(void) {
   //
   uint32_t alex0 = 0x00000000;
   uint32_t alex1 = 0x00000000;
-
   if (have_alex_att && filter_board == ALEX) {
     //
     // ANAN7000/8000 and SATURN do not have ALEX attenuators.
@@ -994,21 +913,17 @@ static void new_protocol_high_priority(void) {
     case 0:
       alex0 |= ALEX_ATTENUATION_0dB;
       break;
-
     case 1:
       alex0 |= ALEX_ATTENUATION_10dB;
       break;
-
     case 2:
       alex0 |= ALEX_ATTENUATION_20dB;
       break;
-
     case 3:
       alex0 |= ALEX_ATTENUATION_30dB;
       break;
     }
   }
-
   //
   // T/R relay and PS bit
   //
@@ -1020,21 +935,15 @@ static void new_protocol_high_priority(void) {
   //    But we have to keep this "safety belt" for some time.
   //
   local_pa_enable = 0;
-
   if (!txband->disablePA  && pa_enabled) {
     local_pa_enable = 1;
-
     if (xmit) { alex0 |= ALEX_TX_RELAY; }
-
     alex1 |= ALEX_TX_RELAY;
   }
-
   if (transmitter->puresignal) {
     if (xmit) {alex0 |= ALEX_PS_BIT; }
-
     alex1 |= ALEX_PS_BIT;
   }
-
   //
   // Set RX filters
   //
@@ -1045,11 +954,9 @@ static void new_protocol_high_priority(void) {
     // variant of the Saturn/Orion2 case
     //
     BPFfreq = DDCfrequency[rxvfo];       // RX frequency of active receiver
-
     if (adc[0].filter_bypass) {
       BPFfreq = 0LL;
     }
-
     if (BPFfreq < 1500000LL) {
       alex0 |= ALEX_ANAN7000_RX_BYPASS_BPF;
     } else if (BPFfreq < 2100000LL) {
@@ -1065,9 +972,7 @@ static void new_protocol_high_priority(void) {
     } else {
       alex0 |= ALEX_ANAN7000_RX_6_PRE_BPF;
     }
-
     break;
-
   case NEW_DEVICE_SATURN:
   case NEW_DEVICE_ORION2:
     //
@@ -1079,25 +984,20 @@ static void new_protocol_high_priority(void) {
     // ADC0 band pass
     //
     BPFfreq = 0LL;
-
     if (receivers > 1) {
       if (receiver[othervfo]->adc == 0) {
         BPFfreq = DDCfrequency[othervfo];   // Take frequency of non-active receiver
       }
     }
-
     if (receiver[rxvfo]->adc == 0) {
       BPFfreq = DDCfrequency[rxvfo];       // Take (overwrite with) frequency of active receiver
     }
-
     if (diversity_enabled) {
       BPFfreq = DDCfrequency[0];
     }
-
     if (adc[0].filter_bypass) {
       BPFfreq = 0LL;
     }
-
     if (BPFfreq < 1500000LL) {
       alex0 |= ALEX_ANAN7000_RX_BYPASS_BPF;
     } else if (BPFfreq < 2100000LL) {
@@ -1113,30 +1013,24 @@ static void new_protocol_high_priority(void) {
     } else {
       alex0 |= ALEX_ANAN7000_RX_6_PRE_BPF;
     }
-
     //
     // ADC1 band pass
     //
     BPFfreq = 0LL;
-
     if (receivers > 1) {
       if (receiver[othervfo]->adc == 1) {
         BPFfreq = DDCfrequency[othervfo];   // Take frequency of non-active receiver
       }
     }
-
     if (receiver[rxvfo]->adc == 1) {
       BPFfreq = DDCfrequency[rxvfo];       // Take (overwrite with) frequency of active receiver
     }
-
     if (diversity_enabled) {
       BPFfreq = DDCfrequency[0];
     }
-
     if (adc[1].filter_bypass) {
       BPFfreq = 0LL;
     }
-
     if (BPFfreq < 1500000LL) {
       alex1 |= ALEX_ANAN7000_RX_BYPASS_BPF;
     } else if (BPFfreq < 2100000LL) {
@@ -1152,7 +1046,6 @@ static void new_protocol_high_priority(void) {
     } else {
       alex1 |= ALEX_ANAN7000_RX_6_PRE_BPF;
     }
-
     //
     // The main purpose of RX2 is DIVERSITY. Therefore,
     // ground RX2 upon TX *always*. This needs to be
@@ -1161,9 +1054,7 @@ static void new_protocol_high_priority(void) {
     if (xmit) {
       alex1 |= ALEX1_ANAN7000_RX_GNDonTX;
     }
-
     break;
-
   default:
     //
     //      Old (ANAN-100/200) high-pass filters
@@ -1171,24 +1062,19 @@ static void new_protocol_high_priority(void) {
     //      HPF filter settings depend on MIN(rx1freq,rx2freq)
     //
     HPFfreq = 0LL;
-
     if (receiver[0]->adc == 0) {
       HPFfreq = DDCfrequency[0];
     }
-
     if (receivers > 1) {
       if (receiver[1]->adc == 0 && DDCfrequency[1] < DDCfrequency[0]) {
         HPFfreq = DDCfrequency[1];
       }
     }
-
     // Bypass HPFs if using EXT1 for PureSignal feedback!
     if (xmit && transmitter->puresignal && adc[2].antenna == 6) { HPFfreq = 0LL; }
-
     if (adc[0].filter_bypass) {
       HPFfreq = 0LL;
     }
-
     if (HPFfreq < 1800000LL) {
       alex0 |= ALEX_BYPASS_HPF;
     } else if (HPFfreq < 6500000LL) {
@@ -1204,10 +1090,8 @@ static void new_protocol_high_priority(void) {
     } else {
       alex0 |= ALEX_6M_PREAMP;
     }
-
     break;
   }
-
   //
   //   Pre-Orion2 boards: If using Ant1/2/3, the RX signal goes through the TX low-pass
   //                      filters. Therefore we must set these according to the ADC0
@@ -1218,27 +1102,22 @@ static void new_protocol_high_priority(void) {
   //                      go through the TX LPF filters
   //
   LPFfreq = DUCfrequency;
-
   if (!xmit
       && (device != NEW_DEVICE_ORION2 && device != NEW_DEVICE_SATURN && device != NEW_DEVICE_G1)
       && adc[0].antenna < 3) {
     LPFfreq = 40000000LL;  // disable the LPF
-
     if (receiver[0]->adc == 0) {
       LPFfreq = DDCfrequency[0];
     }
-
     if (receivers > 1) {
       if (receiver[1]->adc == 0 && DDCfrequency[1] > DDCfrequency[0]) {
         LPFfreq = DDCfrequency[1];
       }
     }
-
     if (adc[0].filter_bypass) {
       LPFfreq = 40000000LL;   // disable LPF
     }
   }
-
   if (LPFfreq > 35600000LL) {
     alex0 |= ALEX_6_BYPASS_LPF;
   } else if (LPFfreq > 24000000LL) {
@@ -1254,7 +1133,6 @@ static void new_protocol_high_priority(void) {
   } else {
     alex0 |= ALEX_160_LPF;
   }
-
   //
   // Set LPF in alex1 word according to DUC frequency
   //
@@ -1273,7 +1151,6 @@ static void new_protocol_high_priority(void) {
   } else {
     alex1 |= ALEX_160_LPF;
   }
-
   //
   //  Set bits that route Ext1/Ext2/XVRTin to the RX
   //
@@ -1284,18 +1161,15 @@ static void new_protocol_high_priority(void) {
   //            and uses ALEX0(14) to connnect Ext/XvrtIn to the RX.
   //
   rxant = adc[0].antenna;                      // 0,1,2  or 3,4,5
-
   if (xmit && transmitter->puresignal) {
     rxant = adc[2].antenna;     // 0, 6, or 7
   }
-
   if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN || device == NEW_DEVICE_G1) {
     rxant += 100;
   } else if (new_pa_board) {
     // New-PA setting invalid on ANAN-7000,8000
     rxant += 1000;
   }
-
   //
   // There are several combination which do not exist (no jacket present)
   // or which do not work (using EXT1-on-TX with ANAN-7000).
@@ -1310,47 +1184,37 @@ static void new_protocol_high_priority(void) {
   case 1006:        // HERMES, new PA, PSTX, EXT1-for-PS
     alex0 |= ALEX_RX_ANTENNA_EXT1 | ALEX_RX_ANTENNA_BYPASS;
     break;
-
   case 4:           // HERMES, old PA, no PSTX, EXT2
     alex0 |= ALEX_RX_ANTENNA_EXT2 | ALEX_RX_ANTENNA_BYPASS;
     break;
-
   case 5:           // HERMES, old PA, no PSTX, XVTR-IN
     alex0 |= ALEX_RX_ANTENNA_XVTR | ALEX_RX_ANTENNA_BYPASS;
     break;
-
   case 104:         // ORION2, EXT2, no PSTX: does not exist, fall back to EXT1
   case 103:         // ORION2, EXT1, no PSTX
     alex0 |= ALEX_RX_ANTENNA_EXT1 | ALEX0_ANAN7000_RX_SELECT;
     break;
-
   case 105:         // ORION2, no PSTX, XVTR-IN
     alex0 |= ALEX_RX_ANTENNA_XVTR | ALEX0_ANAN7000_RX_SELECT;
     break;
-
   case 106:         // ORION2, PSTX, EXT1-for-PS: does not exist, fall back to ByPass
   case 107:         // ORION2, PSTX, Bypass
     alex0 |= ALEX_RX_ANTENNA_BYPASS;
     break;
-
   case 1003:        // HERMES, new PA, no PSTX, EXT1
     alex0 |= ALEX_RX_ANTENNA_EXT1;
     break;
-
   case 1004:        // HERMES, new PA, no PSTX, EXT2
     alex0 |= ALEX_RX_ANTENNA_EXT2;
     break;
-
   case 1005:        // HERMES, new PA, no PSTX, XVTR-IN
     alex0 |= ALEX_RX_ANTENNA_XVTR;
     break;
-
   case 7:           // HERMES, old PA, PSTX, Bypass: does not exist, fall back to new PA board
   case 1007:        // HERMES, new PA, PSTX, Bypass
     alex0 |= ALEX_RX_ANTENNA_BYPASS;
     break;
   }
-
   //
   //  Now we set the bits for Ant1/2/3 (RX and TX may be different).
   //  If receiving, let alex0 reflect the ANT1/2/3 setting for RX
@@ -1358,7 +1222,6 @@ static void new_protocol_high_priority(void) {
   //
   txant = transmitter->antenna;
   rxant = adc[0].antenna;
-
   //
   // PARANOIA:
   // TX antenna outside allowed range: this cannot happen.
@@ -1371,42 +1234,34 @@ static void new_protocol_high_priority(void) {
     transmitter->antenna = 0;
     txant = 0;
   }
-
   //
   // If *not* using ANT1,2,3 for RX: we can reduce "relay chatter"
   // and leave the ANT1/2/2 setting in the TX state. If transmitting,
   // use TX setting for alex0 anyway.
   //
   if (rxant > 2 || xmit) { rxant = txant; }
-
   switch (rxant) {
   case 0:  // ANT 1
     alex0 |= ALEX_TX_ANTENNA_1;
     break;
-
   case 1:  // ANT 2
     alex0 |= ALEX_TX_ANTENNA_2;
     break;
-
   case 2:  // ANT 3
     alex0 |= ALEX_TX_ANTENNA_3;
     break;
   }
-
   switch (txant) {
   case 0:  // ANT 1
     alex1 |= ALEX_TX_ANTENNA_1;
     break;
-
   case 1:  // ANT 2
     alex1 |= ALEX_TX_ANTENNA_2;
     break;
-
   case 2:  // ANT 3
     alex1 |= ALEX_TX_ANTENNA_3;
     break;
   }
-
   high_priority_buffer_to_radio[1432] = (alex0 >> 24) & 0xFF;
   high_priority_buffer_to_radio[1433] = (alex0 >> 16) & 0xFF;
   high_priority_buffer_to_radio[1434] = (alex0 >>  8) & 0xFF;
@@ -1421,13 +1276,11 @@ static void new_protocol_high_priority(void) {
   // ADC step attenuator of ADC0 and ADC1
   //
   high_priority_buffer_to_radio[1443] = adc[0].attenuation;
-
   if (diversity_enabled) {
     high_priority_buffer_to_radio[1442] = adc[0].attenuation; // DIVERSITY: ADC0 att value for ADC1 as well
   } else {
     high_priority_buffer_to_radio[1442] = adc[1].attenuation;
   }
-
   //
   //  Upon transmitting with PA enabled, set the attenuators to maximum attenuation
   //  Exception: use value of transmitter->attenuation if transmitting with PURESIGNAL.
@@ -1441,11 +1294,9 @@ static void new_protocol_high_priority(void) {
     high_priority_buffer_to_radio[1442] = 31;
     high_priority_buffer_to_radio[1443] = 31;
   }
-
   if (xmit && transmitter->puresignal) {
     high_priority_buffer_to_radio[1442] = transmitter->attenuation;
   }
-
   //
   // Send the HighPrio buffer to the radio
   //
@@ -1453,8 +1304,7 @@ static void new_protocol_high_priority(void) {
     saturn_handle_high_priority(high_priority_buffer_to_radio);
   } else {
     ssize_t rc = sendto(data_socket, high_priority_buffer_to_radio, sizeof(high_priority_buffer_to_radio), 0,
-                     (struct sockaddr * )&high_priority_addr, high_priority_addr_length);
-
+                        (struct sockaddr * )&high_priority_addr, high_priority_addr_length);
     if (rc < 0) {
       g_idle_add(fatal_error, "FATAL: HP send failed (Network down?)");
       P2running = 0;
@@ -1462,7 +1312,6 @@ static void new_protocol_high_priority(void) {
       t_print("sendto socket for high_priority: %d rather than %ld\n", rc, (long)sizeof(high_priority_buffer_to_radio));
     }
   }
-
   high_priority_sequence++;
   update_action_table();
   pthread_mutex_unlock(&hi_prio_mutex);
@@ -1480,7 +1329,6 @@ static void new_protocol_transmit_specific(void) {
   transmit_specific_buffer[3] = (tx_specific_sequence      ) & 0xFF;
   transmit_specific_buffer[4] = 1; // 1 DAC
   transmit_specific_buffer[5] = 0; //  default no CW
-
   if ((txmode == modeCWU || txmode == modeCWL) && cw_keyer_internal
       && !CAT_cw_is_active
       && !MIDI_cw_is_active) {
@@ -1488,41 +1336,32 @@ static void new_protocol_transmit_specific(void) {
     // Set this byte only if in CW, and if using "CW handled in radio"
     //
     transmit_specific_buffer[5] |= 0x02;
-
     if (cw_keys_reversed) {
       transmit_specific_buffer[5] |= 0x04;
     }
-
     if (cw_keyer_mode == KEYER_MODE_A) {
       transmit_specific_buffer[5] |= 0x08;
     }
-
     if (cw_keyer_mode == KEYER_MODE_B) {
       transmit_specific_buffer[5] |= 0x28;
     }
-
     if (cw_keyer_sidetone_volume != 0) {
       transmit_specific_buffer[5] |= 0x10;
     }
-
     if (cw_keyer_spacing) {
       transmit_specific_buffer[5] |= 0x40;
     }
-
     if (cw_breakin) {
       transmit_specific_buffer[5] |= 0x80;
     }
   }
-
   //
   // This is a quirk working around a bug in the
   // FPGA iambic keyer
   //
   uint8_t rfdelay = cw_keyer_ptt_delay;
   uint8_t rfmax = 900 / cw_keyer_speed;
-
   if (rfdelay > rfmax) { rfdelay = rfmax; }
-
   transmit_specific_buffer[ 6] = cw_keyer_sidetone_volume & 0x7F;
   transmit_specific_buffer[ 7] = (cw_keyer_sidetone_frequency >> 8) & 0xFF;
   transmit_specific_buffer[ 8] = (cw_keyer_sidetone_frequency     ) & 0xFF;
@@ -1536,31 +1375,24 @@ static void new_protocol_transmit_specific(void) {
   transmit_specific_buffer[16] = 0;   // should be 24:  TX IQ sample width 24 bits
   transmit_specific_buffer[17] = cw_ramp_width;
   transmit_specific_buffer[50] = 0;
-
   if (mic_linein) {
     transmit_specific_buffer[50] |= 0x01;
   }
-
   if (mic_boost) {
     transmit_specific_buffer[50] |= 0x02;
   }
-
   if (orion_mic_ptt_enabled == 0) { // set if disabled
     transmit_specific_buffer[50] |= 0x04;
   }
-
   if (orion_mic_ptt_tip) {
     transmit_specific_buffer[50] |= 0x08;
   }
-
   if (orion_mic_bias_enabled) {
     transmit_specific_buffer[50] |= 0x10;
   }
-
   if (g2_mic_input_xlr) {
     transmit_specific_buffer[50] |= 0x20;
   }
-
   //
   // A value of 0..31 represents a LineIn gain of -12.0 .. 34.5 in 1.5 dB steps
   //
@@ -1570,16 +1402,13 @@ static void new_protocol_transmit_specific(void) {
   //
   transmit_specific_buffer[59] = adc[0].attenuation;
   transmit_specific_buffer[58] = diversity_enabled ? adc[0].attenuation : adc[1].attenuation;
-
   if (local_pa_enable) {
     transmit_specific_buffer[58] = 31;   // ADC1
     transmit_specific_buffer[59] = 31;   // ADC0
   }
-
   if (transmitter->puresignal) {
     transmit_specific_buffer[59] = transmitter->attenuation;
   }
-
   if (have_saturn_xdma) {
     saturn_handle_duc_specific(transmit_specific_buffer);
   } else {
@@ -1592,7 +1421,6 @@ static void new_protocol_transmit_specific(void) {
       t_print("sendto socket for transmit_specific: %d rather than %ld\n", rc, (long)sizeof(transmit_specific_buffer));
     }
   }
-
   tx_specific_sequence++;
   pthread_mutex_unlock(&tx_spec_mutex);
 }
@@ -1612,31 +1440,25 @@ static void new_protocol_receive_specific(void) {
   receive_specific_buffer[4] = n_adc; // number of ADCs
   receive_specific_buffer[5] = adc[0].dither | (adc[1].dither << 1);
   receive_specific_buffer[6] = adc[0].random | (adc[1].random << 1);
-
   for (i = 0; i < receivers; i++) {
     // note that for HERMES, receiver[i] is associated with DDC(i) but beyond
     // (that is, ANGELIA, ORION, ORION2, G2) receiver[i] is associated with DDC(i+2)
     int ddc = i;
-
     if (device == NEW_DEVICE_ANGELIA  || device == NEW_DEVICE_ORION ||
         device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN) { ddc = 2 + i; }
-
     if (!xmit && !diversity_enabled) {
       // normal RX without diversity
       receive_specific_buffer[7] |= (1 << ddc); // DDC enable
     }
-
     if (xmit && duplex) {
       // transmitting with duplex
       receive_specific_buffer[7] |= (1 << ddc); // DDC enable
     }
-
     receive_specific_buffer[17 + (ddc * 6)] = receiver[i]->adc;
     receive_specific_buffer[18 + (ddc * 6)] = ((receiver[i]->sample_rate / 1000) >> 8) & 0xFF;
     receive_specific_buffer[19 + (ddc * 6)] = ((receiver[i]->sample_rate / 1000)     ) & 0xFF;
     receive_specific_buffer[22 + (ddc * 6)] = 24;
   }
-
   if (transmitter->puresignal && xmit) {
     //
     //    Some things are fixed.
@@ -1657,7 +1479,6 @@ static void new_protocol_receive_specific(void) {
     receive_specific_buffer[1363] = 0x02;                        // sync DDC1 to DDC0
     receive_specific_buffer[7] |= 1;                             // enable  DDC0
   }
-
   if (diversity_enabled && !xmit) {
     //
     //    Some things are fixed.
@@ -1678,14 +1499,12 @@ static void new_protocol_receive_specific(void) {
     receive_specific_buffer[1363] = 0x02;                                          // sync DDC1 to DDC0
     receive_specific_buffer[7] = 1;                                                // enable  DDC0 but disable all others
   }
-
   //t_print("new_protocol_receive_specific: %s:%d enable=%02X\n",inet_ntoa(receiver_addr.sin_addr),ntohs(receiver_addr.sin_port),receive_specific_buffer[7]);
   if (have_saturn_xdma) {
     saturn_handle_ddc_specific(receive_specific_buffer);
   } else {
     ssize_t rc = sendto(data_socket, receive_specific_buffer, sizeof(receive_specific_buffer), 0,
                         (struct sockaddr * )&receiver_addr, receiver_addr_length);
-
     if (rc < 0) {
       g_idle_add(fatal_error, "FATAL: P2 RxSpec send failed (Network down?)");
       P2running = 0;
@@ -1693,7 +1512,6 @@ static void new_protocol_receive_specific(void) {
       t_print("sendto socket for receive_specific: %d rather than %ld\n", rc, (long)sizeof(receive_specific_buffer));
     }
   }
-
   rx_specific_sequence++;
   update_action_table();
   pthread_mutex_unlock(&rx_spec_mutex);
@@ -1727,16 +1545,13 @@ void new_protocol_menu_stop(void) {
   sem_destroy(&txiq_sem);
   sem_destroy(&rxaudio_sem);
 #endif
-
   if (!have_saturn_xdma) {
     g_thread_join(new_protocol_thread_id);
   }
-
   g_thread_join(new_protocol_timer_thread_id);
   new_protocol_high_priority();
   // let the FPGA rest a while
   usleep(200000); // 200 ms
-
   if (data_socket >= 0) {
     //
     // drain all data that might still wait in the data_socket.
@@ -1748,17 +1563,13 @@ void new_protocol_menu_stop(void) {
     char *buffer = g_new(char, NET_BUFFER_SIZE);
     tv.tv_usec = 50000;
     tv.tv_sec = 0;
-
     if (buffer != NULL) {
       while (1) {
         FD_ZERO(&fds);
         FD_SET(data_socket, &fds);
-
         if (select(data_socket + 1, &fds, NULL, NULL, &tv) <=  0) { break; }
-
         recvfrom(data_socket, buffer, NET_BUFFER_SIZE, 0, (struct sockaddr*)&addr, &length);
       }
-
       g_free(buffer);
     }
   }
@@ -1801,11 +1612,9 @@ void new_protocol_menu_start(void) {
     iq_count[i] = 0;
     ddc_sequence[i] = 0;
   }
-
   memset(rxcase, 0, sizeof(rxcase));
   memset(rxid, 0, sizeof(rxid));
   update_action_table();
-
   //
   // Mark all buffers free.
   //
@@ -1815,7 +1624,6 @@ void new_protocol_menu_start(void) {
     (void) get_my_buffer();  // this will pre-allocate a bunch at first start
     mark_all_buffers_free(); // if restarting, set them free
   }
-
   P2running = 1;
   //
   // Make semaphores for the TXIQ and RXAUDIO tasks, and spawn these threads
@@ -1829,14 +1637,12 @@ void new_protocol_menu_start(void) {
 #endif
   new_protocol_rxaudio_thread_id = g_thread_new( "P2 SPKR", new_protocol_rxaudio_thread, NULL);
   new_protocol_txiq_thread_id = g_thread_new( "P2 TXIQ", new_protocol_txiq_thread, NULL);
-
   if (!have_saturn_xdma) {
     //
     // Spawn of "ethernet listening" thread
     //
     new_protocol_thread_id = g_thread_new( "P2 main", new_protocol_thread, NULL);
   }
-
   new_protocol_general();           // Send general data, including port numbers
   usleep(100000);                   // let FPGA digest the port numbers
   new_protocol_receive_specific();  // Send RX parameters
@@ -1855,7 +1661,6 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
   ASSERT_SERVER(NULL);
   int nptr;
   unsigned char audiobuffer[260];
-
   //
   // Ideally, a RX audio buffer with 64 samples is sent every 1333 usecs.
   // We thus wait until we have 64 samples, and then send a packet
@@ -1869,9 +1674,7 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
 #else
     sem_wait(&rxaudio_sem);
 #endif
-
     if (!P2running) { break; }
-
     //
     // I think we have to use a lock here for the new implementation
     // of draining. Suppose the producer drains the buffer immediately
@@ -1890,19 +1693,16 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
       pthread_mutex_unlock(&send_rxaudio_mutex);
       continue;
     }
-
     memcpy(&audiobuffer[4], &RXAUDIORINGBUF[rxaudio_outptr], 256);
     nptr = (rxaudio_outptr + 256) & RXAUDIORINGBUFMASK;
     MEMORY_BARRIER;
     rxaudio_outptr = nptr;
     pthread_mutex_unlock(&send_rxaudio_mutex);
-
     audiobuffer[0] = (audio_sequence >> 24) & 0xFF;
     audiobuffer[1] = (audio_sequence >> 16) & 0xFF;
     audiobuffer[2] = (audio_sequence >>  8) & 0xFF;
     audiobuffer[3] = (audio_sequence      ) & 0xFF;
     audio_sequence++;
-
     if (have_saturn_xdma) {
       saturn_handle_speaker_audio(audiobuffer);
     } else {
@@ -1924,11 +1724,9 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
       now = ts.tv_sec + 1.0E-9 * ts.tv_nsec;
       FIFO -= (now - last) * 48000.0;
       last = now;
-
       if (FIFO < 0.0) {
         FIFO = 0.0;
       }
-
       //
       // Depending on how we estimate the FIFO filling, wait
       // 1000usec, or 300 usec, or nothing, before sending
@@ -1937,29 +1735,23 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
       if (FIFO > 500.0) {
         // Wait about 1000 usec before sending the next packet.
         ts.tv_nsec += 1000000;
-
         if (ts.tv_nsec > 999999999) {
           ts.tv_sec++;
           ts.tv_nsec -= 1000000000;
         }
-
         clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
       } else if (FIFO > 250.0) {
         // Wait about 300 usec before sending the next packet.
         ts.tv_nsec += 300000;
-
         if (ts.tv_nsec > 999999999) {
           ts.tv_sec++;
           ts.tv_nsec -= 1000000000;
         }
-
         clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
       }
-
       FIFO += 64.0;  // number of samples in THIS packet
       ssize_t rc = sendto(data_socket, audiobuffer, sizeof(audiobuffer), 0,
                           (struct sockaddr*)&audio_addr, audio_addr_length);
-
       if (rc < 0) {
         g_idle_add(fatal_error, "FATAL: P2 Audio send failed (Network down?)");
         P2running = 0;
@@ -1968,7 +1760,6 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
       }
     }
   }
-
   return NULL;
 }
 
@@ -1976,7 +1767,6 @@ static gpointer new_protocol_txiq_thread(gpointer data) {
   ASSERT_SERVER(NULL);
   int nptr;
   unsigned char iqbuffer[1444];
-
   //
   // Ideally, a TX IQ buffer with 240 sample is sent every 1250 usecs.
   // We thus wait until we have 240 samples, and then send
@@ -1988,22 +1778,17 @@ static gpointer new_protocol_txiq_thread(gpointer data) {
 #else
     sem_wait(&txiq_sem);
 #endif
-
     if (!P2running) { break; }
-
     iqbuffer[0] = (tx_iq_sequence >> 24) & 0xFF;
     iqbuffer[1] = (tx_iq_sequence >> 16) & 0xFF;
     iqbuffer[2] = (tx_iq_sequence >>  8) & 0xFF;
     iqbuffer[3] = (tx_iq_sequence      ) & 0xFF;
     tx_iq_sequence++;
     nptr = txiq_outptr + 1440;
-
     if (nptr >= TXIQRINGBUFLEN) { nptr = 0; }
-
     memcpy(&iqbuffer[4], &TXIQRINGBUF[txiq_outptr], 1440);
     MEMORY_BARRIER;
     txiq_outptr = nptr;
-
     if (have_saturn_xdma) {
       saturn_handle_duc_iq(iqbuffer);
     } else {
@@ -2024,33 +1809,26 @@ static gpointer new_protocol_txiq_thread(gpointer data) {
       now = ts.tv_sec + 1.0E-9 * ts.tv_nsec;
       FIFO -= (now - last) * 192000.0;
       last = now;
-
       if (FIFO < 0.0) {
         //
         // normally this occurs at the RX-TX transition
         //
         FIFO = 0.0;
       }
-
       if (FIFO > 1250.0)  {
         //
         // Wait about 1000 usec before sending the next packet.
         // In reality, it takes a little longer before we resume work
         //
         ts.tv_nsec += 1000000;
-
         if (ts.tv_nsec > 999999999) {
           ts.tv_sec++;
           ts.tv_nsec -= 1000000000;
         }
-
         clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
       }
-
       FIFO += 240.0;  // number of samples in THIS packet
-
       ssize_t rc = sendto(data_socket, iqbuffer, sizeof(iqbuffer), 0, (struct sockaddr * )&iq_addr, iq_addr_length);
-
       if (rc < 0) {
         g_idle_add(fatal_error, "FATAL: P2 TX IQ send failed (Network down?)");
         P2running = 0;
@@ -2059,13 +1837,11 @@ static gpointer new_protocol_txiq_thread(gpointer data) {
       }
     }
   }
-
   return NULL;
 }
 
 static gpointer new_protocol_thread(gpointer data) {
   ASSERT_SERVER(NULL);
-
   //
   // This thread should do as little work as possible and avoid any blocking.
   // Ideally, all data is just copied into ring buffers, and other threads
@@ -2078,7 +1854,6 @@ static gpointer new_protocol_thread(gpointer data) {
     mybuffer *mybuf;
     mybuf = get_my_buffer();
     bytesread = recvfrom(data_socket, mybuf->buffer, NET_BUFFER_SIZE, 0, (struct sockaddr*)&addr, &length);
-
     if (!P2running) {
       //
       // When restarting or leaving piHPSDR, it may happen that the
@@ -2089,21 +1864,17 @@ static gpointer new_protocol_thread(gpointer data) {
       mybuf->free = 1;
       break;
     }
-
     if (bytesread < 0) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         mybuf->free = 1;
         continue;
       }
-
       t_perror("recvfrom socket failed for new_protocol_thread");
       g_idle_add(fatal_error, "FATAL: P2 receive (Network problem?)");
       P2running = 0;
       break;
     }
-
     sourceport = ntohs(addr.sin_port);
-
     switch (sourceport) {
     case RX_IQ_TO_HOST_PORT_0:
     case RX_IQ_TO_HOST_PORT_1:
@@ -2116,7 +1887,6 @@ static gpointer new_protocol_thread(gpointer data) {
       ddc = sourceport - RX_IQ_TO_HOST_PORT_0;
       saturn_post_iq_data(ddc, mybuf);
       break;
-
     case COMMAND_RESPONSE_TO_HOST_PORT:
       //
       // Ignore these packets silently. They occur when
@@ -2126,22 +1896,18 @@ static gpointer new_protocol_thread(gpointer data) {
       //
       mybuf->free = 1;
       break;
-
     case HIGH_PRIORITY_TO_HOST_PORT:
       saturn_post_high_priority(mybuf);
       break;
-
     case MIC_LINE_TO_HOST_PORT:
       saturn_post_micaudio(bytesread, mybuf);
       break;
-
     default:
       t_print("new_protocol_thread: Unknown port %d\n", sourceport);
       mybuf->free = 1;
       break;
     }
   }
-
   return NULL;
 }
 
@@ -2149,7 +1915,6 @@ static gpointer high_priority_thread(gpointer data) {
   ASSERT_SERVER(NULL);
   int nptr;
   mybuffer *mybuf;
-
   while (1) {
 #ifdef __APPLE__
     sem_wait(high_priority_sem_buffer);
@@ -2160,13 +1925,10 @@ static gpointer high_priority_thread(gpointer data) {
     mybuf = (mybuffer *) high_priority_ring[high_priority_outptr];
     MEMORY_BARRIER;
     high_priority_outptr = nptr;
-
     if (mybuf->free) { continue; }
-
     process_high_priority(mybuf->buffer);
     mybuf->free = 1;
   }
-
   return NULL;
 }
 
@@ -2174,7 +1936,6 @@ static gpointer mic_line_thread(gpointer data) {
   ASSERT_SERVER(NULL);
   mybuffer *mybuf;
   int nptr;
-
   //
   // Ideally, a mic sample buffer with 64 samples arrives
   // every 1333 usec, but they may come in bursts
@@ -2189,13 +1950,10 @@ static gpointer mic_line_thread(gpointer data) {
     mybuf = (mybuffer *) mic_line_buffer[mic_outptr];
     MEMORY_BARRIER;
     mic_outptr = nptr;
-
     if (mybuf->free) { continue; }
-
     process_mic_data(mybuf->buffer);
     mybuf->free = 1;
   }
-
   return NULL;
 }
 
@@ -2209,14 +1967,11 @@ static gpointer mic_line_thread(gpointer data) {
 void saturn_post_high_priority(mybuffer *buffer) {
   ASSERT_SERVER();
   int nptr;
-
   if (!P2running) {
     buffer->free = 1;
     return;
   }
-
   nptr = (high_priority_inptr + 1) & HPRIORINGBUFMASK;
-
   if (nptr != high_priority_outptr) {
     high_priority_ring[high_priority_inptr] = buffer;
     MEMORY_BARRIER;
@@ -2235,20 +1990,16 @@ void saturn_post_high_priority(mybuffer *buffer) {
 
 void saturn_post_micaudio(int bytesread, mybuffer *mybuf) {
   ASSERT_SERVER();
-
   if (!P2running) {
     mybuf->free = 1;
     return;
   }
-
   if (mic_count < 0) {
     mic_count++;
     mybuf->free = 1;
     return;
   }
-
   int nptr = (mic_inptr + 1) & MICRINGBUFMASK;
-
   if (nptr != mic_outptr) {
     mic_line_buffer[mic_inptr] = mybuf;
     MEMORY_BARRIER;
@@ -2269,18 +2020,15 @@ void saturn_post_micaudio(int bytesread, mybuffer *mybuf) {
 
 void saturn_post_iq_data(int ddc, mybuffer *mybuf) {
   ASSERT_SERVER();
-
   if (ddc < 0 || ddc >= MAX_DDC) {
     t_print("%s: invalid DDC(%d) seen!\n", __func__, ddc);
     mybuf->free = 1;
     return;
   }
-
   if (!P2running) {
     mybuf->free = 1;
     return;
   }
-
   //
   // Check sequence
   //
@@ -2288,15 +2036,12 @@ void saturn_post_iq_data(int ddc, mybuffer *mybuf) {
                       + ((uint32_t)(mybuf->buffer[1] & 0xFF) << 16)
                       + ((uint32_t)(mybuf->buffer[2] & 0xFF) << 8)
                       + ((uint32_t)(mybuf->buffer[3] & 0xFF));
-
   if (ddc_sequence[ddc] != sequence) {
     t_print("%s: DDC(%d) sequence error: expected %lu got %lu\n", __func__, ddc,
             (unsigned long) ddc_sequence[ddc], (unsigned long) sequence);
     sequence_errors++;
   }
-
   ddc_sequence[ddc] = sequence + 1;
-
   //
   // Skip packet, if ring buffer overflow condition was set
   //
@@ -2305,9 +2050,7 @@ void saturn_post_iq_data(int ddc, mybuffer *mybuf) {
     mybuf->free = 1;
     return;
   }
-
   int nptr = (iq_inptr[ddc] + 1) & RXIQRINGBUFMASK;
-
   if (nptr != iq_outptr[ddc]) {
     iq_buffer[ddc][iq_inptr[ddc]] = mybuf;
     MEMORY_BARRIER;
@@ -2332,7 +2075,6 @@ static gpointer iq_thread(gpointer data) {
   int nptr;
   volatile mybuffer *mybuf;
   const unsigned char *buffer;
-
   //
   // At a regular pace, a buffer with 238 samples arrives
   // every 4960 usec at 48k and every 155 usec at 1536k,
@@ -2350,10 +2092,8 @@ static gpointer iq_thread(gpointer data) {
     mybuf = iq_buffer[ddc][iq_outptr[ddc]];
     MEMORY_BARRIER;
     iq_outptr[ddc] = nptr;
-
     // This can happen when restarting the protocol
     if (mybuf->free) { continue; }
-
     buffer = (unsigned char *) mybuf->buffer;
     //
     //  Now comes the action table:
@@ -2363,23 +2103,18 @@ static gpointer iq_thread(gpointer data) {
     switch (rxcase[ddc]) {
     case RXACTION_SKIP:
       break;
-
     case RXACTION_NORMAL:
       process_iq_data(buffer, receiver[rxid[ddc]]);
       break;
-
     case RXACTION_PS:
       process_ps_iq_data(buffer);
       break;
-
     case RXACTION_DIV:
       process_div_iq_data(buffer);
       break;
     }
-
     mybuf->free = 1;
   }
-
   return NULL;
 }
 
@@ -2418,29 +2153,22 @@ static void process_iq_data(const unsigned char *buffer, RECEIVER *rx) {
   t_print("%s: rx=%d bitspersample=%d samplesperframe=%d\n", __func__, rx->id, bitspersample, samplesperframe);
 #endif
 #ifdef RXIQDUMP
-
   if (dump_ptr < 6 * NUMDUMP && rx->anf == 1) {
     if (dump_ptr == 0) { t_print("Start RXIQ dump.\n"); }
-
     for (int i = 16; i < 16 + 6 * samplesperframe; i++) {
       dumpiqbuf[dump_ptr++] = buffer[i];
-
       if (dump_ptr >= 6 * NUMDUMP) {
         int fd = open("RXIQDUMP", O_CREAT | O_WRONLY, 0600);
-
         if (fd >= 0) {
           write (fd, dumpiqbuf, 6 * NUMDUMP);
         }
-
         t_print("RXIQ dumped.\n");
         break;
       }
     }
   }
-
 #endif
   b = 16;
-
   for (int i = 0; i < samplesperframe; i++) {
     leftsample   = (int)((signed char) buffer[b++]) << 16;
     leftsample  |= (int)((((unsigned char)buffer[b++]) << 8) & 0xFF00);
@@ -2486,7 +2214,6 @@ static void process_div_iq_data(const unsigned char*buffer) {
 #endif
   b = 16;
   int i;
-
   for (i = 0; i < samplesperframe; i += 2) {
     leftsample0   = (int)((signed char) buffer[b++]) << 16;
     leftsample0  |= (int)((((unsigned char)buffer[b++]) << 8) & 0xFF00);
@@ -2508,7 +2235,6 @@ static void process_div_iq_data(const unsigned char*buffer) {
     // Feed ADC1 and ADC2 data to the DIVERSITY mixer
     //
     rx_add_div_iq_samples(receiver[0], leftsampledouble0, rightsampledouble0, leftsampledouble1, rightsampledouble1);
-
     //
     // if RX2 exists, feed ADC2 data to  RX2
     //
@@ -2546,7 +2272,6 @@ static void process_ps_iq_data(const unsigned char *buffer) {
 #endif
   b = 16;
   int i;
-
   for (i = 0; i < samplesperframe; i += 2) {
     leftsample0   = (int)((signed char) buffer[b++]) << 16;
     leftsample0  |= (int)((((unsigned char)buffer[b++]) << 8) & 0xFF00);
@@ -2567,19 +2292,16 @@ static void process_ps_iq_data(const unsigned char *buffer) {
     tx_add_ps_iq_samples(transmitter, leftsampledouble1, rightsampledouble1, leftsampledouble0, rightsampledouble0);
     //t_print("%06x,%06x %06x,%06x\n",leftsample0,rightsample0,leftsample1,rightsample1);
 #if defined(DUMP_TX_DATA)
-
     if ((DUMP_TX_DATA == DUMP_TXFDBK) && (dumpiq_count < 1000000)) {
       dumpiqi[dumpiq_count] = leftsampledouble1;
       dumpiqq[dumpiq_count] = rightsampledouble1;
       dumpiq_count++;
     }
-
     if ((DUMP_TX_DATA == DUMP_RXFDBK) && (dumpiq_count < 1000000)) {
       dumpiqi[dumpiq_count] = leftsampledouble0;
       dumpiqq[dumpiq_count] = rightsampledouble0;
       dumpiq_count++;
     }
-
 #endif
   }
 }
@@ -2605,14 +2327,12 @@ static void process_high_priority(const unsigned char *buffer) {
   static unsigned int adc0_acc = 0;
   static unsigned int adc1_acc = 0;
   sequence = ((buffer[0] & 0xFF) << 24) + ((buffer[1] & 0xFF) << 16) + ((buffer[2] & 0xFF) << 8) + (buffer[3] & 0xFF);
-
   if (sequence != highprio_rcvd_sequence) {
     t_print("HighPrio SeqErr Expected=%lu Seen=%lu\n", (unsigned long) highprio_rcvd_sequence,
             (unsigned long) sequence);
     highprio_rcvd_sequence = sequence;
     sequence_errors++;
   }
-
   highprio_rcvd_sequence++;
   previous_ptt = hpsdr_ptt;
   previous_dot = hpsdr_dot;
@@ -2620,7 +2340,6 @@ static void process_high_priority(const unsigned char *buffer) {
   hpsdr_ptt  = (buffer[4]     ) & 0x01;
   hpsdr_dot  = (buffer[4] >> 1) & 0x01;
   hpsdr_dash = (buffer[4] >> 2) & 0x01;
-
   //
   // Do this as fast as possible in case of a RX/TX  transition
   // induced by the radio (in case different RX/TX settings
@@ -2632,7 +2351,6 @@ static void process_high_priority(const unsigned char *buffer) {
   if (previous_ptt == 0 && hpsdr_ptt == 1) {
     new_protocol_high_priority();
   }
-
   tx_fifo_overrun |= (buffer[4] & 0x40) >> 6;
   tx_fifo_underrun |= (buffer[4] & 0x20) >> 5;
   adc[0].overload |= buffer[5] & 0x01;
@@ -2649,9 +2367,7 @@ static void process_high_priority(const unsigned char *buffer) {
   ex_acc = (15 * ex_acc) / 16  + val;
   val = ((buffer[14] & 0xFF) << 8) | (buffer[15] & 0xFF);
   fwd_acc = (15 * fwd_acc) / 16 + val;
-
   if (val > alex_forward_max) { alex_forward_max = val; }
-
   val = ((buffer[22] & 0xFF) << 8) | (buffer[23] & 0xFF);
   rev_acc = (15 * rev_acc) / 16 + val;
   val = ((buffer[55] & 0xFF) << 8) | (buffer[56] & 0xFF);
@@ -2667,14 +2383,12 @@ static void process_high_priority(const unsigned char *buffer) {
   // Stops CAT cw transmission if radio reports "CW action"
   //
   hpsdr_cw = 0;
-
   if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN) {
     //
     // These devices reflect a "keyer CW input" in bit 3 of byte59
     // and this is active-high (!)
     hpsdr_cw = buffer[59] & 0x08;
   }
-
   if (hpsdr_dash || hpsdr_dot || hpsdr_cw) {
     //
     // If currently a CAT or Keyer CW transmission is running,
@@ -2685,16 +2399,12 @@ static void process_high_priority(const unsigned char *buffer) {
       MIDI_cw_is_active = 0;
       new_protocol_transmit_specific();
     }
-
     cw_key_hit = 1;
   }
-
   if (!cw_keyer_internal) {
     if (hpsdr_dash != previous_dash) { keyer_event(0, hpsdr_dash); }
-
     if (hpsdr_dot  != previous_dot ) { keyer_event(1, hpsdr_dot ); }
   }
-
   if (previous_ptt != hpsdr_ptt) {
     // TODO: what if hpsdr_ptt goes to zero while we
     //       are tuning or two-toning?
@@ -2704,28 +2414,23 @@ static void process_high_priority(const unsigned char *buffer) {
       g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
     }
   }
-
   if (enable_tx_inhibit) {
     if (device == NEW_DEVICE_ORION2  || device == NEW_DEVICE_SATURN) {
       data = (buffer[59] >> 1) & 0x01;   // use IO5 (active=0) on Anan-7000/8000/G2
     } else {
       data = buffer[59] & 0x01;          // use IO4 (active=0) on all other gear
     }
-
     if (!TxInhibit && data == 0) {
       TxInhibit = 1;
       g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(0));
     }
-
     if (data == 1) { TxInhibit = 0; }
   } else {
     TxInhibit = 0;
   }
-
   if (enable_auto_tune) {
     data = (buffer[59] >> 2) & 0x01;  // use IO6 (active=0)
     auto_tune_end = data;
-
     if (data == 0 && !auto_tune_flag) {
       radio_start_auto_tune();
     }
@@ -2740,15 +2445,12 @@ static void process_mic_data(const unsigned char *buffer) {
   int b;
   int i;
   sequence = ((buffer[0] & 0xFF) << 24) + ((buffer[1] & 0xFF) << 16) + ((buffer[2] & 0xFF) << 8) + (buffer[3] & 0xFF);
-
   if (sequence != micsamples_sequence) {
     t_print("MicSample SeqErr Expected=%lu Seen=%lu\n", (unsigned long) micsamples_sequence, (unsigned long) sequence);
     sequence_errors++;
   }
-
   micsamples_sequence = sequence + 1;
   b = 4;
-
   for (i = 0; i < MIC_SAMPLES; i++) {
     int16_t s = (buffer[b++] << 8);
     s |= (buffer[b++] & 0xFF);
@@ -2762,13 +2464,11 @@ static void process_mic_data(const unsigned char *buffer) {
 void new_protocol_tx_audio_samples(double sample) {
   ASSERT_SERVER();
   pthread_mutex_lock(&send_rxaudio_mutex);
-
   if (rxaudio_count < 0) {
     rxaudio_count++;
     pthread_mutex_unlock(&send_rxaudio_mutex);
     return;
   }
-
   if (rxaudio_flag != 1) {
     //
     // First time we arrive here after a RX->TX(CW) transition:
@@ -2787,7 +2487,6 @@ void new_protocol_tx_audio_samples(double sample) {
     sem_post(&rxaudio_sem);
 #endif
   }
-
   int iptr = rxaudio_inptr + 4 * rxaudio_count;
   //
   // Note tx_audio_write is always mono
@@ -2798,10 +2497,8 @@ void new_protocol_tx_audio_samples(double sample) {
   RXAUDIORINGBUF[iptr++] = (s >> 8) & 0xFF;
   RXAUDIORINGBUF[iptr++] = (s     ) & 0xFF;
   rxaudio_count++;
-
   if (rxaudio_count >= 64) {
     int nptr = (rxaudio_inptr + 256) & RXAUDIORINGBUFMASK;
-
     if (nptr != rxaudio_outptr) {
       MEMORY_BARRIER;
       rxaudio_inptr = nptr;
@@ -2818,7 +2515,6 @@ void new_protocol_tx_audio_samples(double sample) {
       rxaudio_count = -4096;
     }
   }
-
   pthread_mutex_unlock(&send_rxaudio_mutex);
 }
 
@@ -2827,17 +2523,13 @@ void new_protocol_tx_audio_samples(double sample) {
 //
 void new_protocol_audio_samples(double left, double right) {
   ASSERT_SERVER();
-
   if (radio_is_transmitting() && !duplex) { return; }
-
   pthread_mutex_lock(&send_rxaudio_mutex);
-
   if (rxaudio_count < 0) {
     rxaudio_count++;
     pthread_mutex_unlock(&send_rxaudio_mutex);
     return;
   }
-
   if (rxaudio_flag != 0) {
     //
     // First time we arrive here after a TX(CW)->RX transition:
@@ -2858,7 +2550,6 @@ void new_protocol_audio_samples(double left, double right) {
     sem_post(&rxaudio_sem);
 #endif
   }
-
   int iptr = rxaudio_inptr + 4 * rxaudio_count;
   int32_t ls = (int32_t)(left  * 32766.672 + 32767.5) - 32767;
   int32_t rs = (int32_t)(right * 32766.672 + 32767.5) - 32767;
@@ -2867,10 +2558,8 @@ void new_protocol_audio_samples(double left, double right) {
   RXAUDIORINGBUF[iptr++] = (rs >> 8) & 0xFF;
   RXAUDIORINGBUF[iptr++] = (rs     ) & 0xFF;
   rxaudio_count++;
-
   if (rxaudio_count >= 64) {
     int nptr = (rxaudio_inptr + 256) & RXAUDIORINGBUFMASK;
-
     if (nptr != rxaudio_outptr) {
       rxaudio_inptr = nptr;
 #ifdef __APPLE__
@@ -2885,26 +2574,21 @@ void new_protocol_audio_samples(double left, double right) {
       rxaudio_count = -4096;
     }
   }
-
   pthread_mutex_unlock(&send_rxaudio_mutex);
 }
 
 void new_protocol_iq_samples(double isample, double qsample) {
   ASSERT_SERVER();
-
   if (txiq_count < 0) {
     txiq_count++;
     return;
   }
-
 #if defined(DUMP_TX_DATA)
-
   if ((DUMP_TX_DATA == DUMP_TXIQ) && (dumpiq_count < 1000000)) {
     dumpiqi[dumpiq_count] = isample;
     dumpiqq[dumpiq_count] = qsample;
     dumpiq_count++;
   }
-
 #endif
   int iptr = txiq_inptr + 6 * txiq_count;
   //
@@ -2921,12 +2605,9 @@ void new_protocol_iq_samples(double isample, double qsample) {
   TXIQRINGBUF[iptr++] = (qs >>  8) & 0xFF;
   TXIQRINGBUF[iptr++] = (qs      ) & 0xFF;
   txiq_count++;
-
   if (txiq_count >= 240) {
     int nptr = txiq_inptr + 1440;
-
     if (nptr >= TXIQRINGBUFLEN) { nptr = 0; }
-
     if (nptr != txiq_outptr) {
       MEMORY_BARRIER;
       txiq_inptr = nptr;
@@ -2968,10 +2649,8 @@ void *new_protocol_timer_thread(gpointer arg) {
   //
   int cycling = 0;
   usleep(100000);                               // wait for things to settle down
-
   while (P2running) {
     cycling++;
-
     switch (cycling) {
     case 1:
     case 3:
@@ -2980,14 +2659,12 @@ void *new_protocol_timer_thread(gpointer arg) {
       new_protocol_transmit_specific();       // every 200 msec
       new_protocol_high_priority();           // every 100 msec
       break;
-
     case 2:
     case 4:
     case 6:
       new_protocol_receive_specific();        // every 200 msec
       new_protocol_high_priority();           // every 100 msec
       break;
-
     case 8:
       new_protocol_general();                 // every 800 msec
       new_protocol_receive_specific();        // every 200 msec
@@ -2995,9 +2672,7 @@ void *new_protocol_timer_thread(gpointer arg) {
       cycling = 0;
       break;
     }
-
     usleep(100000);
   }
-
   return NULL;
 }

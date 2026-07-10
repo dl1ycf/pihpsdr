@@ -53,7 +53,6 @@ int andromeda_execute_button(int v, int p) {
     case 28:
       schedule_action(tb_actions[tb_function[0]][p - 21], (v == 0) ? PRESSED : RELEASED, 0);
       break;
-
     case 46: // SDR On
       if (v == 0) {
         if (longpress) {
@@ -66,62 +65,48 @@ int andromeda_execute_button(int v, int p) {
         new_menu();
         longpress = 1;
       }
-
       break;
     }
-
   if (numpad_active && v == 0) switch (p) {
     case 30: // Band Buttons
       schedule_action(NUMPAD_1, PRESSED, 0);
       break;
-
     case 31:
       schedule_action(NUMPAD_2, PRESSED, 0);
       break;
-
     case 32:
       schedule_action(NUMPAD_3, PRESSED, 0);
       break;
-
     case 33:
       schedule_action(NUMPAD_4, PRESSED, 0);
       break;
-
     case 34:
       schedule_action(NUMPAD_5, PRESSED, 0);
       break;
-
     case 35:
       schedule_action(NUMPAD_6, PRESSED, 0);
       break;
-
     case 36:
       schedule_action(NUMPAD_7, PRESSED, 0);
       break;
-
     case 37:
       schedule_action(NUMPAD_8, PRESSED, 0);
       break;
-
     case 38:
       schedule_action(NUMPAD_9, PRESSED, 0);
       break;
-
     case 39:
       schedule_action(NUMPAD_DEC, PRESSED, 0);
       break;
-
     case 40:
       schedule_action(NUMPAD_0, PRESSED, 0);
       break;
-
     case 41: {
       schedule_action(NUMPAD_ENTER, PRESSED, 0);
       numpad_active = 0;
       locked = 0;
     }
     break;
-
     case 45: {
       schedule_action(NUMPAD_MHZ, PRESSED, 0);
       numpad_active = 0;
@@ -130,37 +115,27 @@ int andromeda_execute_button(int v, int p) {
     } else if (!locked) switch (p) {
     case 1: // Rx1 AF Mute
       if (v == 0) { receiver[0]->mute_radio ^= 1; }
-
       break;
-
     case 3: // Rx2 AF Mute
       if (v == 0) { receiver[1]->mute_radio ^= 1; }
-
       break;
-
     case 5: // Filter Cut Defaults
       schedule_action(FILTER_CUT_DEFAULT, (v == 0) ? PRESSED : RELEASED, 0);
       break;
-
     case 7: // Diversity Enable
       if (RECEIVERS == 2 && n_adc > 1) {
         schedule_action(DIV, (v == 0) ? PRESSED : RELEASED, 0);
       }
-
       break;
-
     case 9: // RIT/XIT Clear
       schedule_action(RIT_CLEAR, (v == 0) ? PRESSED : RELEASED, 0);
       schedule_action(XIT_CLEAR, (v == 0) ? PRESSED : RELEASED, 0);
       break;
-
     case 29: // Shift
       if (v == 0) {
         shift ^= 1;
       }
-
       break;
-
     case 30: // Band Buttons
     case 31:
     case 32:
@@ -175,7 +150,6 @@ int andromeda_execute_button(int v, int p) {
     case 41:
       if (shift && v == 0) {
         int band = band20;
-
         if (p == 30) { band = band160; }
         else if (p == 31) { band = band80; }
         else if (p == 32) { band = band60; }
@@ -188,7 +162,6 @@ int andromeda_execute_button(int v, int p) {
         else if (p == 39) { band = band10; }
         else if (p == 40) { band = band6; }
         else if (p == 41) { band = bandGen; }
-
         vfo_id_band_changed(active_receiver->id ? VFO_B : VFO_A, band);
         shift = 0;
       } else if (!shift && v == 1) {
@@ -211,9 +184,7 @@ int andromeda_execute_button(int v, int p) {
           schedule_action(NUMPAD_CL, PRESSED, 0);               // U3 start Freq entry
         }
       }
-
       break;
-
     case 42: // RIT/XIT
       if (v == 0) {
         if (!vfo[active_receiver->id].rit_enabled && !vfo[vfo_get_tx_vfo()].xit_enabled) {
@@ -228,12 +199,9 @@ int andromeda_execute_button(int v, int p) {
           vfo_id_rit_onoff(active_receiver->id, 0);
           vfo_xit_onoff(0);
         }
-
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 43: // switch receivers
       if (receivers == 2) {
         if (v == 0) {
@@ -242,41 +210,31 @@ int andromeda_execute_button(int v, int p) {
           } else {
             schedule_action(RX1, PRESSED, 0);
           }
-
           g_idle_add(ext_vfo_update, NULL);
         }
       }
-
       break;
-
     case 45: // ctune
       if (v == 1) {
         schedule_action(CTUN, PRESSED, 0);
         g_idle_add(ext_vfo_update, NULL);
       }
-
       break;
-
     case 47: // MOX
       if (v == 0) {
       } else {
         radio_toggle_mox();
       }
-
       break;
-
     case 48: // TUNE
       if (v == 0) {
       } else {
         radio_toggle_tune();
       }
-
       break;
-
     case 50: // TWO TONE
       schedule_action(TWO_TONE, (v == 0) ? PRESSED : RELEASED, 0);
       break;
-
     case 49: // PS ON
       if (v == 0) {
         if (longpress) {
@@ -290,10 +248,8 @@ int andromeda_execute_button(int v, int p) {
         start_ps_menu();
         longpress = 1;
       }
-
       break;
     }
-
   if (p == 44) { // VFO lock
     if (v == 0) {
       if (numpad_active) {
@@ -306,7 +262,6 @@ int andromeda_execute_button(int v, int p) {
       }
     }
   }
-
   return shift;
 }
 
@@ -324,52 +279,41 @@ void andromeda_execute_encoder(int p, int v) {
     case 1:
       schedule_action(AF_GAIN_RX1, RELATIVE, v);
       break;
-
     case 2:
       schedule_action(AGC_GAIN_RX1, RELATIVE, v);
       break;
-
     // Enc3/4: "RX2 AF/RF"
     case 3:
       schedule_action(AF_GAIN_RX2, RELATIVE, v);
       break;
-
     case 4:
       schedule_action(AGC_GAIN_RX2, RELATIVE, v);
       break;
-
     // Enc5/6: "IF FILTER HIGH/LOW CUT"
     case 5:
       schedule_action(FILTER_CUT_HIGH, RELATIVE, v);
       break;
-
     case 6:
       schedule_action(FILTER_CUT_LOW, RELATIVE, v);
       break;
-
     // Enc7/8: "DIVERSITY GAIN/PHASE"
     case 7:
       schedule_action(DIV_GAIN, RELATIVE, v);
       break;
-
     case 8:
       schedule_action(DIV_PHASE, RELATIVE, v);
       break;
-
     // Enc9/10: "RIT/XIT"
     case 9: // RIT of the VFO of the active receiver
       schedule_action(RIT, RELATIVE, v);
       break;
-
     case 10:
       schedule_action(XIT, RELATIVE, v);
       break;
-
     //Enc11/12: "MULTI/DRIVE", but here implemented as "MIC/DRIVE"
     case 11:
       schedule_action(MIC_GAIN, RELATIVE, v);
       break;
-
     case 12:
       schedule_action(DRIVE, RELATIVE, v);
       break;

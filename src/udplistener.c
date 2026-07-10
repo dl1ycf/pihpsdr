@@ -71,7 +71,6 @@ int main() {
   int ptyfd = posix_openpt(O_RDWR);
   grantpt(ptyfd);
   unlockpt(ptyfd);
-
   if (fork() == 0) {
     //
     // Child process: connect pipe to stdin
@@ -109,17 +108,14 @@ int main() {
     //
     exit(1);
   }
-
   //
   // Let things settle for one second, then prepeare for UDP listening
   //
   sleep(1);
-
   if ((udpsock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
     perror("SOCKET");
     exit(1);
   }
-
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -131,12 +127,10 @@ int main() {
   tv.tv_sec = 0;
   tv.tv_usec = 50000;
   setsockopt(udpsock, SOL_SOCKET, SO_RCVTIMEO, (void *)&tv, sizeof(tv));
-
   if (bind(udpsock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
     perror("BIND");
     exit(1);
   }
-
   for (;;) {
     //
     // Infinite loop: get UDP packet,
@@ -146,12 +140,10 @@ int main() {
     //
     lenaddr = sizeof(from);
     bytes = recvfrom(udpsock, msg, 128, 0, (struct sockaddr *)&from, &lenaddr);
-
     if (bytes <= 0) {
       usleep(100000);
       continue;
     }
-
     msg[bytes++] = '\n';                                  // form EOL terminated string
     write (ptyfd, msg, bytes);                            // send it to TTS application
   }

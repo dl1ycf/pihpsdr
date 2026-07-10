@@ -402,7 +402,6 @@ BAND *band_get_band(int b) {
 
 void radio_change_region(int r) {
   region = r;
-
   switch (region) {
   case REGION_UK:
     channel_entries = UK_CHANNEL_ENTRIES;
@@ -411,7 +410,6 @@ void radio_change_region(int r) {
     bandstack60.current_entry = 0;
     bandstack60.entry = bandstack_entries60_UK;
     break;
-
   case REGION_OTHER:
     channel_entries = OTHER_CHANNEL_ENTRIES;
     band_channels_60m = &band_channels_60m_OTHER[0];
@@ -419,7 +417,6 @@ void radio_change_region(int r) {
     bandstack60.current_entry = 0;
     bandstack60.entry = bandstack_entries60_OTHER;
     break;
-
   case REGION_WRC15:
     channel_entries = WRC15_CHANNEL_ENTRIES;
     band_channels_60m = &band_channels_60m_WRC15[0];
@@ -436,13 +433,11 @@ void band_save_state(void) {
     // Skip non-assigned transverter bands
     //
     if (strlen(bands[b].title) == 0) { continue; }
-
     if (b >= BANDS) {
       SetPropI1("band.%d.frequencyLO", b,        bands[b].frequencyLO);
       SetPropI1("band.%d.errorLO", b,            bands[b].errorLO);
       SetPropI1("band.%d.gaincalib", b,          bands[b].gaincalib);
     }
-
     SetPropS1("band.%d.title", b,              bands[b].title);
     SetPropI1("band.%d.frequencyMin", b,       bands[b].frequencyMin);
     SetPropI1("band.%d.frequencyMax", b,       bands[b].frequencyMax);
@@ -453,22 +448,18 @@ void band_save_state(void) {
     SetPropI1("band.%d.panhigh", b,            bands[b].panhigh);
     SetPropI1("band.%d.panlow", b,             bands[b].panlow);
     SetPropI1("band.%d.panstep", b,            bands[b].panstep);
-
     if (have_rx_att) {
       SetPropI1("band.%d.attenuation", b,        bands[b].attenuation);
     }
-
     if (have_rx_gain) {
       SetPropF1("band.%d.gain", b,               bands[b].gain);
     }
-
     SetPropI1("band.%d.alexRxAntenna", b,      bands[b].RxAntenna);
     SetPropI1("band.%d.alexTxAntenna", b,      bands[b].TxAntenna);
     SetPropI1("band.%d.alexAttenuation", b,    bands[b].alexAttenuation);
     SetPropF1("band.%d.pa_calibration", b,     bands[b].pa_calibration);
     SetPropI1("band.%d.OCrx", b,               bands[b].OCrx);
     SetPropI1("band.%d.OCtx", b,               bands[b].OCtx);
-
     for (int stack = 0; stack < bands[b].bandstack->entries; stack++) {
       BANDSTACK_ENTRY *entry = bands[b].bandstack->entry;
       entry += stack;
@@ -498,11 +489,9 @@ void band_restore_state(void) {
     if (device == DEVICE_HERMES_LITE2) {
       bands[b].pa_calibration = 40.5;
     }
-
     if (have_rx_gain) {
       bands[b].gain = rx_gain_calibration;
     }
-
     //
     // For the "normal" (non-XVTR) bands, do not change the title,
     // and do not fill in XVTR-specific data. There is no GUI for these bands
@@ -515,7 +504,6 @@ void band_restore_state(void) {
       GetPropI1("band.%d.errorLO", b,          bands[b].errorLO);
       GetPropI1("band.%d.gaincalib", b,        bands[b].gaincalib);
     }
-
     GetPropI1("band.%d.frequencyMin", b,       bands[b].frequencyMin);
     GetPropI1("band.%d.frequencyMax", b,       bands[b].frequencyMax);
     GetPropI1("band.%d.disablePA", b,          bands[b].disablePA);
@@ -525,22 +513,18 @@ void band_restore_state(void) {
     GetPropI1("band.%d.panhigh", b,            bands[b].panhigh);
     GetPropI1("band.%d.panlow", b,             bands[b].panlow);
     GetPropI1("band.%d.panstep", b,            bands[b].panstep);
-
     if (have_rx_att) {
       GetPropI1("band.%d.attenuation", b,      bands[b].attenuation);
     }
-
     if (have_rx_gain) {
       GetPropF1("band.%d.gain", b,             bands[b].gain);
     }
-
     GetPropI1("band.%d.alexRxAntenna", b,      bands[b].RxAntenna);
     GetPropI1("band.%d.alexTxAntenna", b,      bands[b].TxAntenna);
     GetPropI1("band.%d.alexAttenuation", b,    bands[b].alexAttenuation);
     GetPropF1("band.%d.pa_calibration", b,     bands[b].pa_calibration);
     GetPropI1("band.%d.OCrx", b,               bands[b].OCrx);
     GetPropI1("band.%d.OCtx", b,               bands[b].OCtx);
-
     for (int stack = 0; stack < bands[b].bandstack->entries; stack++) {
       BANDSTACK_ENTRY *entry = bands[b].bandstack->entry;
       entry += stack;
@@ -554,7 +538,6 @@ void band_restore_state(void) {
       GetPropI2("band.%d.stack.%d.ctcss", b, stack,          entry->ctcss);
     }
   }
-
   for (int b = 0; b < BANDS + XVTRS; b++) {
     //
     // Some sanity checks
@@ -562,16 +545,13 @@ void band_restore_state(void) {
     if (bands[b].bandstack->current_entry >= bands[b].bandstack->entries) {
       bands[b].bandstack->current_entry = 0;
     }
-
     if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
       if (bands[b].TxAntenna > 2 || bands[b].TxAntenna < 0) {
         bands[b].TxAntenna = 0;
       }
-
       if (bands[b].pa_calibration < 38.8) {
         bands[b].pa_calibration = 38.8;
       }
-
       if (bands[b].pa_calibration > 70.0) {
         bands[b].pa_calibration = 70.0;
       }
@@ -582,7 +562,6 @@ void band_restore_state(void) {
 int get_band_from_frequency(long long f) {
   int b;
   int found = -1;
-
   //
   // do not search non-xvtr bands if frequency not supported
   // by the radio
@@ -590,7 +569,6 @@ int get_band_from_frequency(long long f) {
   if (f >= radio->frequency_min && f <= radio->frequency_max) {
     for (b = 0; b < BANDS; b++) {
       const BAND *band = band_get_band(b);
-
       if (strlen(band->title) > 0) {
         if (f >= band->frequencyMin && f <= band->frequencyMax) {
           found = b;
@@ -599,14 +577,12 @@ int get_band_from_frequency(long long f) {
       }
     }
   }
-
   //
   // start a new search on the xvtr bands such that if an xvtr
   // band produces a match, it will take precedence
   //
   for (b = BANDS; b < BANDS + XVTRS; b++) {
     const BAND *band = band_get_band(b);
-
     if (strlen(band->title) > 0) {
       if (f >= band->frequencyMin && f <= band->frequencyMax) {
         found = b;
@@ -614,7 +590,6 @@ int get_band_from_frequency(long long f) {
       }
     }
   }
-
   //
   // If no band has been found:
   //  - use bandWWV if the frequency is (close to) 2.5, 5.0, 10.0, 15.0, 20.0, or 25.0 MHz
@@ -626,20 +601,13 @@ int get_band_from_frequency(long long f) {
   //
   if (found < 0) {
     found = bandGen;
-
     if (llabs(f -  2500000LL) <= 1000) { found = bandWWV; }
-
     if (llabs(f -  5000000LL) <= 1000) { found = bandWWV; }
-
     if (llabs(f - 10000000LL) <= 1000) { found = bandWWV; }
-
     if (llabs(f - 15000000LL) <= 1000) { found = bandWWV; }
-
     if (llabs(f - 20000000LL) <= 1000) { found = bandWWV; }
-
     if (llabs(f - 25000000LL) <= 1000) { found = bandWWV; }
   }
-
   return found;
 }
 
@@ -650,17 +618,14 @@ char* getFrequencyInfo(long long frequency, int filter_low, int filter_high) {
   long long flow = frequency + (long long)filter_low;
   long long fhigh = frequency + (long long)filter_high;
   int b;
-
   for (b = 0; b < BANDS + XVTRS; b++) {
     BAND *band = band_get_band(b);
-
     if (strlen(band->title) > 0) {
       if (flow >= band->frequencyMin && fhigh <= band->frequencyMax) {
         if (b == band60) {
           for (i = 0; i < channel_entries; i++) {
             long long low_freq = band_channels_60m[i].frequency - (band_channels_60m[i].width / (long long)2);
             long long hi_freq = band_channels_60m[i].frequency + (band_channels_60m[i].width / (long long)2);
-
             if (flow >= low_freq && fhigh <= hi_freq) {
               result = band->title;
               break;
@@ -673,7 +638,6 @@ char* getFrequencyInfo(long long frequency, int filter_low, int filter_high) {
       }
     }
   }
-
   t_print("%s: %lld H7z ==>  %s\n", __func__, frequency, result);
   return result;
 }
@@ -685,22 +649,17 @@ int TransmitAllowed(void) {
   long long txfreq, flow, fhigh;
   int txb, txvfo, txmode;
   const BAND *txband;
-
   //
   // If there is no transmitter, we cannot transmit
   //
   if (!can_transmit) { return 0; }
-
   //
   // quick return if out-of-band TX is enabled
   //
   if (tx_out_of_band_allowed) { return 1; }
-
   txvfo = vfo_get_tx_vfo();
   txb = vfo[txvfo].band;
-
   if (txb == bandGen || txb  == bandWWV || txb  == bandAIR) { return 0; }
-
   //
   // Determine the edges of our band
   // and the edges of our TX signal
@@ -708,32 +667,26 @@ int TransmitAllowed(void) {
   txband = band_get_band(vfo[txvfo].band);
   txfreq = vfo_get_tx_freq();
   txmode = vfo_get_tx_mode();
-
   switch (txmode) {
   case modeCWU:
     flow = fhigh = txfreq;
     break;
-
   case modeCWL:
     flow = fhigh = txfreq;
     break;
-
   default:
     flow = txfreq + transmitter->filter_low;
     fhigh = txfreq + transmitter->filter_high;
     break;
   }
-
   if (txb == band60) {
     //
     // For 60m band, ensure signal is within one of the "channels"
     //
     result = 0;
-
     for (int i = 0; i < channel_entries; i++) {
       long long low_freq = band_channels_60m[i].frequency - (band_channels_60m[i].width / (long long)2);
       long long hi_freq = band_channels_60m[i].frequency + (band_channels_60m[i].width / (long long)2);
-
       if (flow >= low_freq && fhigh <= hi_freq) {
         result = 1;
         break;
@@ -745,22 +698,17 @@ int TransmitAllowed(void) {
     //
     result = flow >= txband->frequencyMin && fhigh <= txband->frequencyMax;
   }
-
   return result;
 }
 
 void band_plus(int id) {
   int b = vfo[id].band;
   int found = 0;
-
   while (!found) {
     const BAND *band;
     b++;
-
     if (b >= BANDS + XVTRS) { b = 0; }
-
     band = (BAND*)band_get_band(b);
-
     //
     // a) skip non-assigned transverter bands.
     // b) skip bands where the band failed (frequency
@@ -769,7 +717,6 @@ void band_plus(int id) {
     //
     if (strlen(band->title) > 0) {
       vfo_id_band_changed(id, b);
-
       if (vfo[id].band == b) { found = 1; }
     }
   }
@@ -778,15 +725,11 @@ void band_plus(int id) {
 void band_minus(int id) {
   int b = vfo[id].band;
   int found = 0;
-
   while (!found) {
     const BAND *band;
     b--;
-
     if (b < 0) { b = BANDS + XVTRS - 1; }
-
     band = (BAND*)band_get_band(b);
-
     //
     // a) skip non-assigned transverter bands.
     // b) skip bands where the band failed (frequency
@@ -795,7 +738,6 @@ void band_minus(int id) {
     //
     if (strlen(band->title) > 0) {
       vfo_id_band_changed(id, b);
-
       if (vfo[id].band == b) { found = 1; }
     }
   }

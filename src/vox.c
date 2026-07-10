@@ -52,14 +52,11 @@ void vox_clear(void) {
 
 void vox_update(double lvl) {
   peak = lvl;
-
   //
   // As long as a client controls us, VOX is done there
   //
   if (remoteclient.running) { return; }
-
   if (!can_transmit) { return; }
-
   if (vox_enabled && !mox && !transmitter->tune && !TxInhibit) {
     if (peak > vox_threshold) {
       // we use the value of vox_timeout to determine whether
@@ -77,11 +74,9 @@ void vox_update(double lvl) {
         g_idle_add(ext_radio_set_vox, GINT_TO_POINTER(1));
         g_idle_add(ext_vfo_update, NULL);
       }
-
       // re-init "vox hang" time
       vox_timeout = g_timeout_add((int)vox_hang, vox_timeout_cb, NULL);
     }
-
     // if peak is not above threshold, do nothing (this shall be done later in the timeout event
   }
 }

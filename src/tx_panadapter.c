@@ -53,11 +53,9 @@ tx_panadapter_configure_event_cb (GtkWidget         *widget,
   TRANSMITTER *tx = (TRANSMITTER *)data;
   int mywidth = gtk_widget_get_allocated_width (tx->panadapter);
   int myheight = gtk_widget_get_allocated_height (tx->panadapter);
-
   if (tx->panadapter_surface) {
     cairo_surface_destroy (tx->panadapter_surface);
   }
-
   tx->panadapter_surface = cairo_image_surface_create (CAIRO_FORMAT_RGB24, mywidth, myheight);
   cairo_t *cr = cairo_create(tx->panadapter_surface);
   cairo_set_source_rgba(cr, COLOUR_PAN_BACKGND);
@@ -75,12 +73,10 @@ tx_panadapter_draw_cb (GtkWidget *widget,
                        cairo_t   *cr,
                        gpointer   data) {
   TRANSMITTER *tx = (TRANSMITTER *)data;
-
   if (tx->panadapter_surface) {
     cairo_set_source_surface (cr, tx->panadapter_surface, 0.0, 0.0);
     cairo_paint (cr);
   }
-
   return FALSE;
 }
 
@@ -90,43 +86,33 @@ static gboolean tx_panadapter_button_press_event_cb (GtkWidget *widget, GdkEvent
   case GDK_BUTTON_SECONDARY:
     g_idle_add(ext_start_tx_menu, NULL);
     break;
-
   case GDK_BUTTON_PRIMARY:
     last_y = (int)(event->y + 0.5);
     pressed = 1;
     break;
-
   default:
     break;
   }
-
   return TRUE;
 }
 
 // cppcheck-suppress constParameterCallback
 static gboolean tx_panadapter_button_release_event_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   TRANSMITTER *tx = (TRANSMITTER *)data;
-
   if (event->button == GDK_BUTTON_PRIMARY && pressed) {
     int y = (int)(event->y + 0.5);
     int d = (y - last_y) / 5;
-
     if (d) {
       tx->panadapter_low += d;
-
       //
       // Keep value within reasonable bounds
       //
       if (tx->panadapter_low < -100) { tx->panadapter_low = -100; }
-
       if (tx->panadapter_low > tx->panadapter_high - 60) { tx->panadapter_low = tx->panadapter_high - 60; }
-
       last_y = y;
     }
-
     pressed = 0;
   }
-
   return TRUE;
 }
 
@@ -136,7 +122,6 @@ static gboolean tx_panadapter_motion_notify_event_cb (GtkWidget *widget, GdkEven
   int x, y;
   GdkModifierType state;
   int button_down = (event->state & (GDK_BUTTON1_MASK | GDK_BUTTON2_MASK)) != 0;
-
   if (pressed && button_down) {
     gdk_window_get_device_position (event->window,
                                     event->device,
@@ -144,27 +129,22 @@ static gboolean tx_panadapter_motion_notify_event_cb (GtkWidget *widget, GdkEven
                                     &y,
                                     &state);
     int d = (y - last_y) / 5;
-
     if (d) {
       tx->panadapter_low += (y - last_y) / 5;
       last_y = y;
-
       //
       // Keep value within reasonable bounds
       //
       if (tx->panadapter_low < -100) { tx->panadapter_low = -100; }
-
       if (tx->panadapter_low > tx->panadapter_high - 60) { tx->panadapter_low = tx->panadapter_high - 60; }
     }
   }
-
   return TRUE;
 }
 
 
 void tx_panadapter_update(TRANSMITTER *tx) {
   if (!tx || !tx->panadapter_surface) { return; }
-
   int mywidth = gtk_widget_get_allocated_width (tx->panadapter);
   int myheight = gtk_widget_get_allocated_height (tx->panadapter);
   int txvfo = vfo_get_tx_vfo();
@@ -179,10 +159,8 @@ void tx_panadapter_update(TRANSMITTER *tx) {
   cairo_paint (cr);
   // filter
   filter_left = filter_right = 0.5 * mywidth;
-
   if (txmode != modeCWU && txmode != modeCWL) {
     cairo_set_source_rgba(cr, COLOUR_PAN_FILTER);
-
     if (txmode == modeFMN) {
       //
       // The bandpass filter used in FM  is applied *before* the FM
@@ -194,11 +172,9 @@ void tx_panadapter_update(TRANSMITTER *tx) {
       filter_left = (double)mywidth / 2.0 + ((double)tx->filter_low / hz_per_pixel);
       filter_right = (double)mywidth / 2.0 + ((double)tx->filter_high / hz_per_pixel);
     }
-
     cairo_rectangle(cr, filter_left, 0.0, filter_right - filter_left, (double)myheight);
     cairo_fill(cr);
   }
-
   // plot the levels   0, -20,  40, ... dBm (bright turquoise line with label)
   // additionally, plot the levels in steps of the chosen panadapter step size
   // (dark turquoise line without label)
@@ -207,11 +183,9 @@ void tx_panadapter_update(TRANSMITTER *tx) {
   cairo_set_line_width(cr, PAN_LINE_THICK);
   cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
   cairo_set_font_size(cr, 12.0 * scalfac);
-
   for (int i = tx->panadapter_high; i >= tx->panadapter_low; i--) {
     if ((abs(i) % tx->panadapter_step) == 0) {
       double y = (double)(tx->panadapter_high - i) * dbm_per_line;
-
       if ((abs(i) % 20) == 0) {
         char v[32];
         cairo_set_source_rgba(cr, COLOUR_PAN_LINE);
@@ -229,21 +203,17 @@ void tx_panadapter_update(TRANSMITTER *tx) {
       }
     }
   }
-
   // plot frequency markers
   long long half = tx->dialog ? 3000LL : 12000LL; //(long long)(tx->output_rate/2);
   long long frequency;
-
   if (vfo[txvfo].ctun) {
     frequency = vfo[txvfo].ctun_frequency;
   } else {
     frequency = vfo[txvfo].frequency;
   }
-
   double vfofreq = (double)mywidth * 0.5;
   long long min_display = frequency - half;
   long long max_display = frequency + half;
-
   if (tx->dialog == NULL) {
     long long f;
     const long long divisor = 5000;
@@ -257,10 +227,8 @@ void tx_panadapter_update(TRANSMITTER *tx) {
     cairo_set_line_width(cr, PAN_LINE_THIN);
     cairo_text_extents_t extents;
     f = ((min_display / divisor) * divisor) + divisor;
-
     while (f < max_display) {
       double x = (double)(f - min_display) / hz_per_pixel;
-
       //
       // Skip vertical line if it is in the filter area, since
       // one might want to see a PureSignal Feedback there
@@ -270,7 +238,6 @@ void tx_panadapter_update(TRANSMITTER *tx) {
         cairo_move_to(cr, x, 10.0 * scalfac);
         cairo_line_to(cr, x, (double)myheight);
       }
-
       //
       // For frequency marker lines very close to the left or right
       // edge, do not print a frequency since this probably won't fit
@@ -278,7 +245,6 @@ void tx_panadapter_update(TRANSMITTER *tx) {
       //
       if ((f >= min_display + divisor / 2) && (f <= max_display - divisor / 2)) {
         char v[32];
-
         //
         // For frequencies larger than 10 GHz, we cannot
         // display all digits here
@@ -288,33 +254,26 @@ void tx_panadapter_update(TRANSMITTER *tx) {
         } else {
           snprintf(v, sizeof(v), "%0lld.%03lld", f / 1000000, (f % 1000000) / 1000);
         }
-
         cairo_text_extents(cr, v, &extents);
         cairo_move_to(cr, x - (extents.width / 2.0), 10.0 * scalfac);
         cairo_show_text(cr, v);
       }
-
       f += divisor;
     }
-
     cairo_stroke(cr);
   }
-
   // band edges
   int b = vfo[txvfo].band;
   const BAND *band = band_get_band(b);
-
   if (band->frequencyMin != 0LL) {
     cairo_set_source_rgba(cr, COLOUR_ALARM);
     cairo_set_line_width(cr, PAN_LINE_EXTRA);
-
     if ((min_display < band->frequencyMin) && (max_display > band->frequencyMin)) {
       int i = (band->frequencyMin - min_display) / (long long)hz_per_pixel;
       cairo_move_to(cr, (double)i, 0.0);
       cairo_line_to(cr, (double)i, (double)myheight);
       cairo_stroke(cr);
     }
-
     if ((min_display < band->frequencyMax) && (max_display > band->frequencyMax)) {
       int i = (band->frequencyMax - min_display) / (long long)hz_per_pixel;
       cairo_move_to(cr, (double)i, 0.0);
@@ -322,7 +281,6 @@ void tx_panadapter_update(TRANSMITTER *tx) {
       cairo_stroke(cr);
     }
   }
-
   // cursor
   cairo_set_source_rgba(cr, COLOUR_ALARM);
   cairo_set_line_width(cr, PAN_LINE_THIN);
@@ -332,13 +290,11 @@ void tx_panadapter_update(TRANSMITTER *tx) {
   // signal
   double s1;
   int offset;
-
   if (radio_is_remote) {
     offset = 0;
   } else {
     offset  = (tx->pixels / 2) - (mywidth / 2);
   }
-
   samples[offset] = -200.0;
   samples[offset + mywidth - 1] = -200.0;
   s1 = (double)samples[offset];
@@ -346,7 +302,6 @@ void tx_panadapter_update(TRANSMITTER *tx) {
              * (double) myheight
              / (tx->panadapter_high - tx->panadapter_low));
   cairo_move_to(cr, 0.0, s1);
-
   for (int i = 1; i < mywidth; i++) {
     double s2;
     s2 = (double)samples[i + offset];
@@ -355,7 +310,6 @@ void tx_panadapter_update(TRANSMITTER *tx) {
                / (tx->panadapter_high - tx->panadapter_low));
     cairo_line_to(cr, (double)i, s2);
   }
-
   if (tx->display_filled) {
     cairo_set_source_rgba(cr, COLOUR_PAN_FILL2);
     cairo_close_path (cr);
@@ -365,7 +319,6 @@ void tx_panadapter_update(TRANSMITTER *tx) {
     cairo_set_source_rgba(cr, COLOUR_PAN_LINE1);
     cairo_set_line_width(cr, PAN_LINE_THICK);
   }
-
   cairo_stroke(cr);
   //
   // When doing CW, the signal is produced outside WDSP, so
@@ -374,34 +327,28 @@ void tx_panadapter_update(TRANSMITTER *tx) {
   // within the PS menu.
   //
   int cwmode = (txmode == modeCWL || txmode == modeCWU) && !tx->twotone;
-
   if (tx->puresignal && !cwmode) {
     cairo_set_source_rgba(cr, COLOUR_OK);
     cairo_set_font_size(cr, 12.0 * scalfac);
     cairo_move_to(cr, mywidth / 2 + 10 * scalfac, myheight - 10 * scalfac);
     cairo_show_text(cr, "PureSignal");
-
     if (tx->psinfo[14] == 0) {
       cairo_set_source_rgba(cr, COLOUR_ALARM);
     } else {
       cairo_set_source_rgba(cr, COLOUR_OK);
     }
-
     if (tx->dialog) {
       cairo_move_to(cr, (mywidth / 2) + 10 * scalfac, myheight - 30 * scalfac);
     } else {
       cairo_move_to(cr, (mywidth / 2) + 10 + 100 * scalfac, myheight - 10 * scalfac);
     }
-
     cairo_show_text(cr, "Correcting");
   }
-
   if (tx->dialog) {
     char text[64];
     cairo_set_source_rgba(cr, COLOUR_ALARM);
     cairo_set_font_size(cr, 16.0 * scalfac);
     double row = 0.0;
-
     if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
       //
       // Power values not available for SoapySDR
@@ -419,7 +366,6 @@ void tx_panadapter_update(TRANSMITTER *tx) {
       cairo_move_to(cr, 10, row);
       cairo_show_text(cr, text);
     }
-
     if (!cwmode) {
       row += 16;
       snprintf(text, sizeof(text), "ALC %2.1f dB", transmitter->alc);
@@ -427,7 +373,6 @@ void tx_panadapter_update(TRANSMITTER *tx) {
       cairo_show_text(cr, text);
     }
   }
-
   if (tx->panadapter_peaks_on != 0) {
     int num_peaks = tx->panadapter_num_peaks;
     gboolean peaks_in_passband = SET(tx->panadapter_peaks_in_passband_filled);
@@ -437,45 +382,36 @@ void tx_panadapter_update(TRANSMITTER *tx) {
     int ignore_range = (mywidth + ignore_range_divider - 1) / ignore_range_divider; // Round up
     double peaks[num_peaks];
     int peak_positions[num_peaks];
-
     for (int a = 0; a < num_peaks; a++) {
       peaks[a] = -200;
       peak_positions[a] = 0;
     }
-
     // Calculate the noise level if needed
     double noise_level = 0.0;
-
     if (hide_noise) {
       // Dynamically allocate a copy of samples for sorting
       double *sorted_samples = g_new(double, mywidth);
-
       if (sorted_samples != NULL) {
         for (int i = 0; i < mywidth; i++) {
           sorted_samples[i] = (double)samples[i + offset];
         }
-
         qsort(sorted_samples, mywidth, sizeof(double), compare_doubles);
         int index = (int)((noise_percentile / 100.0) * mywidth);
         noise_level = sorted_samples[index] + 3.0;
         g_free(sorted_samples);
       }
     }
-
     // Detect peaks
     double filter_left_bound = peaks_in_passband ? filter_left : 0;
     double filter_right_bound = peaks_in_passband ? filter_right : mywidth;
-
     for (int i = 1; i < mywidth - 1; i++) {
       if (i >= filter_left_bound && i <= filter_right_bound) {
         double s = (double)samples[i + offset];
-
         // Check if the point is a peak
         if ((!hide_noise || s >= noise_level) && s > samples[i - 1 + offset] && s > samples[i + 1 + offset]) {
           int replace_index = -1;
           int start_range = i - ignore_range;
           int end_range = i + ignore_range;
-
           // Check if the peak is within the ignore range of any existing peak
           for (int j = 0; j < num_peaks; j++) {
             if (peak_positions[j] >= start_range && peak_positions[j] <= end_range) {
@@ -488,7 +424,6 @@ void tx_panadapter_update(TRANSMITTER *tx) {
               }
             }
           }
-
           // Replace the existing peak if a higher peak is found within the ignore range
           if (replace_index >= 0) {
             peaks[replace_index] = s;
@@ -498,13 +433,11 @@ void tx_panadapter_update(TRANSMITTER *tx) {
           else if (replace_index == -1) {
             // Find the index of the lowest peak
             int lowest_peak_index = 0;
-
             for (int j = 1; j < num_peaks; j++) {
               if (peaks[j] < peaks[lowest_peak_index]) {
                 lowest_peak_index = j;
               }
             }
-
             // Replace the lowest peak if the current peak is higher
             if (s > peaks[lowest_peak_index]) {
               peaks[lowest_peak_index] = s;
@@ -514,7 +447,6 @@ void tx_panadapter_update(TRANSMITTER *tx) {
         }
       }
     }
-
     // Sort peaks in descending order
     for (int i = 0; i < num_peaks - 1; i++) {
       for (int j = i + 1; j < num_peaks; j++) {
@@ -528,18 +460,15 @@ void tx_panadapter_update(TRANSMITTER *tx) {
         }
       }
     }
-
     // Draw peak values on the chart
     cairo_set_source_rgba(cr, COLOUR_PAN_TEXT); // Set text color
     cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
     cairo_set_font_size(cr, 12.0 * scalfac);
     double previous_text_positions[num_peaks][2]; // Store previous text positions (x, y)
-
     for (int j = 0; j < num_peaks; j++) {
       previous_text_positions[j][0] = -1; // Initialise x positions
       previous_text_positions[j][1] = -1; // Initialise y positions
     }
-
     for (int j = 0; j < num_peaks; j++) {
       if (peak_positions[j] > 0) {
         char peak_label[32];
@@ -551,21 +480,17 @@ void tx_panadapter_update(TRANSMITTER *tx) {
         double text_y = floor((tx->panadapter_high - peaks[j])
                               * (double)myheight
                               / (tx->panadapter_high - tx->panadapter_low)) - 5;
-
         // Ensure text stays within the drawing area
         if (text_y < extents.height) {
           text_y = extents.height; // Push text down to fit inside the top boundary
         }
-
         // Adjust position to avoid overlap with previous labels
         for (int k = 0; k < j; k++) {
           double prev_x = previous_text_positions[k][0];
           double prev_y = previous_text_positions[k][1];
-
           if (prev_x >= 0 && prev_y >= 0) {
             double distance_x = fabs(text_x - prev_x);
             double distance_y = fabs(text_y - prev_y);
-
             if (distance_y < extents.height && distance_x < extents.width) {
               // Try moving vertically first
               if (text_y + extents.height < myheight) {
@@ -583,7 +508,6 @@ void tx_panadapter_update(TRANSMITTER *tx) {
             }
           }
         }
-
         // Draw text
         cairo_move_to(cr, text_x - (extents.width / 2.0), text_y);
         cairo_show_text(cr, peak_label);
@@ -593,11 +517,9 @@ void tx_panadapter_update(TRANSMITTER *tx) {
       }
     }
   }
-
   if (tx->dialog == NULL) {
     display_panadapter_messages(cr, mywidth, tx->fps);
   }
-
   cairo_destroy (cr);
   gtk_widget_queue_draw (tx->panadapter);
 }

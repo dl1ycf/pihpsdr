@@ -1,7 +1,6 @@
 --style=java
 --indent=spaces=2
 --indent-preproc-block
---break-blocks
 --pad-oper
 --pad-header
 --delete-empty-lines

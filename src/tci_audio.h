@@ -69,7 +69,8 @@ typedef struct __attribute__((__packed__)) _tci_stream {
 
 void tci_audio_rx_sample (int id, double left, double right);
 unsigned int tci_audio_get_write_count (int receiver_id);
-unsigned int tci_audio_get_frame (int receiver_id, unsigned int *read_count, TCI_STREAM *stream, size_t frame_size, size_t *frame_len);
+unsigned int tci_audio_get_frame (int receiver_id, unsigned int *read_count, TCI_STREAM *stream, size_t frame_size,
+                                  size_t *frame_len);
 void tci_audio_handle_tx_frame (const TCI_STREAM *stream, size_t len);
 
 void tci_audio_tx_reset (void);

@@ -47,7 +47,6 @@ static gboolean meter_configure_event_cb (GtkWidget *widget, GdkEventConfigure *
   if (meter_surface) {
     cairo_surface_destroy (meter_surface);
   }
-
   meter_surface = cairo_image_surface_create (CAIRO_FORMAT_RGB24, METER_WIDTH, VFO_HEIGHT);
   /* Initialise the surface to black */
   cairo_t *cr;
@@ -114,7 +113,6 @@ static void meter_zone_rgb(double f, double *r, double *g, double *b) {
 
 static void meter_rounded_rect(cairo_t *cr, double x, double y, double w, double h, double r) {
   if (r > 0.5 * h) { r = 0.5 * h; }
-
   cairo_new_sub_path(cr);
   cairo_arc(cr, x + w - r, y + r,     r, -M_PI / 2.0, 0.0);
   cairo_arc(cr, x + w - r, y + h - r, r,  0.0,         M_PI / 2.0);
@@ -137,7 +135,6 @@ static void rxmeter_dualscale(cairo_t *cr, double smtr, int sval, int sval2,
   const double bh  = 13.0 * scalfac;
   const double by  = VFO_HEIGHT * 0.46;
   const double frac = smtr / 114.0;
-
   const double pfrac = pk / 114.0;
   cairo_set_line_width(cr, 1.0);
   //
@@ -145,10 +142,8 @@ static void rxmeter_dualscale(cairo_t *cr, double smtr, int sval, int sval2,
   //
   cairo_set_source_rgba(cr, COLOUR_METER);
   cairo_set_font_size(cr, 13.0 * scalfac);
-
   if (sval2 > 0) { snprintf(sf, sizeof(sf), "S%d+%d", sval, sval2); }
   else           { snprintf(sf, sizeof(sf), "S%d", sval); }
-
   cairo_move_to(cr, bx, 15.0 * scalfac);
   cairo_show_text(cr, sf);
   snprintf(sf, sizeof(sf), "%d dBm", (int)(max_rxlvl - 0.5));
@@ -161,7 +156,6 @@ static void rxmeter_dualscale(cairo_t *cr, double smtr, int sval, int sval2,
   // agrees with the bar, whatever the band / 3 dB-per-S setting)
   //
   cairo_set_font_size(cr, 8.5 * scalfac);
-
   for (int s = 1; s <= 9; s += 4) {            // S1 / S5 / S9 only: keeps dBm labels apart
     double f  = (double)(s * 8) / 114.0;
     double tx = bx + f * bw;
@@ -175,7 +169,6 @@ static void rxmeter_dualscale(cairo_t *cr, double smtr, int sval, int sval2,
     cairo_move_to(cr, tx - 0.5 * extents.width, by - 10.0 * scalfac);
     cairo_show_text(cr, sf);
   }
-
   //
   // Trough
   //
@@ -189,18 +182,14 @@ static void rxmeter_dualscale(cairo_t *cr, double smtr, int sval, int sval2,
   meter_rounded_rect(cr, bx, by, bw, bh, 4.0 * scalfac);
   cairo_clip(cr);
   const int nsteps = 96;
-
   for (int i = 0; i < nsteps; i++) {
     double f = (double)i / nsteps;
-
     if (f > frac) { break; }
-
     meter_zone_rgb(f, &r, &g, &b);
     cairo_set_source_rgba(cr, r, g, b, 0.95);
     cairo_rectangle(cr, bx + f * bw, by, bw / nsteps + 0.6, bh);
     cairo_fill(cr);
   }
-
   cairo_restore(cr);
   //
   // Peak marker
@@ -216,7 +205,6 @@ static void rxmeter_dualscale(cairo_t *cr, double smtr, int sval, int sval2,
   // S-unit ticks + labels BELOW the bar
   //
   cairo_set_font_size(cr, 9.0 * scalfac);
-
   for (int s = 1; s <= 9; s += 2) {
     double f  = (double)(s * 8) / 114.0;
     double tx = bx + f * bw;
@@ -230,9 +218,7 @@ static void rxmeter_dualscale(cairo_t *cr, double smtr, int sval, int sval2,
     cairo_move_to(cr, tx - 0.5 * extents.width, by + bh + 17.0 * scalfac);
     cairo_show_text(cr, sf);
   }
-
   cairo_set_font_size(cr, 8.0 * scalfac);
-
   for (int k = 1; k <= 3; k++) {
     double f  = (double)(72 + 14 * k) / 114.0;
     double tx = bx + f * bw;
@@ -264,14 +250,11 @@ static void rxmeter_edgewise(cairo_t *cr, double smtr, int sval, int sval2,
   const double pivot_y = VFO_HEIGHT * 1.95;
   const double radius  = VFO_HEIGHT * 1.58;
   double half = asin(fmin(0.9, ((w / 2.0) - 14.0 * scalfac) / radius)) * 180.0 / M_PI;
-
   if (half > 30.0) { half = 30.0; }
-
   const double min_angle = 270.0 - half;
   const double max_angle = 270.0 + half;
   const double bydb = (max_angle - min_angle) / 114.0;
   const double frac = smtr / 114.0;
-
 #if 0
   //
   // Brushed-dark face for a little depth (over the VFO background)
@@ -300,12 +283,9 @@ static void rxmeter_edgewise(cairo_t *cr, double smtr, int sval, int sval2,
   //
   {
     const int nsteps = 80;
-
     for (int i = 0; i < nsteps; i++) {
       double f = (double)i / nsteps;
-
       if (f > frac) { break; }
-
       double a1 = (min_angle + f * (max_angle - min_angle)) * M_PI / 180.0;
       double a2 = (min_angle + (f + 1.0 / nsteps) * (max_angle - min_angle)) * M_PI / 180.0;
       meter_zone_rgb(f, &r, &g, &b);
@@ -320,7 +300,6 @@ static void rxmeter_edgewise(cairo_t *cr, double smtr, int sval, int sval2,
   //
   cairo_set_line_width(cr, 1.4 * scalfac);
   cairo_set_font_size(cr, 9.0 * scalfac);
-
   for (int s = 1; s <= 9; s++) {
     angle   = min_angle + (double)(s * 8) * bydb;
     radians = angle * M_PI / 180.0;
@@ -332,7 +311,6 @@ static void rxmeter_edgewise(cairo_t *cr, double smtr, int sval, int sval2,
     cairo_move_to(cr, cx + ri * cos(radians), pivot_y + ri * sin(radians));
     cairo_line_to(cr, cx + ro * cos(radians), pivot_y + ro * sin(radians));
     cairo_stroke(cr);
-
     if (s % 2) {
       snprintf(sf, sizeof(sf), "%d", s);
       cairo_text_extents(cr, sf, &extents);
@@ -342,13 +320,11 @@ static void rxmeter_edgewise(cairo_t *cr, double smtr, int sval, int sval2,
       cairo_show_text(cr, sf);
     }
   }
-
   //
   // Red over-S9 ticks (+20/+40/+60)
   //
   cairo_set_source_rgba(cr, COLOUR_ALARM);
   cairo_set_font_size(cr, 8.0 * scalfac);
-
   for (int k = 1; k <= 3; k++) {
     angle   = min_angle + (double)(72 + 14 * k) * bydb;
     radians = angle * M_PI / 180.0;
@@ -364,7 +340,6 @@ static void rxmeter_edgewise(cairo_t *cr, double smtr, int sval, int sval2,
     cairo_move_to(cr, x - 0.5 * extents.width, y + 0.35 * extents.height);
     cairo_show_text(cr, sf);
   }
-
   //
   // White peak-hold needle: as long as live needle
   //
@@ -407,10 +382,8 @@ static void rxmeter_edgewise(cairo_t *cr, double smtr, int sval, int sval2,
   //
   cairo_set_source_rgba(cr, COLOUR_METER);
   cairo_set_font_size(cr, 15.0 * scalfac);
-
   if (sval2 > 0) { snprintf(sf, sizeof(sf), "S%d+%d", sval, sval2); }
   else           { snprintf(sf, sizeof(sf), "S%d", sval); }
-
   cairo_move_to(cr, ADD_METER_WIDTH + 6.0 * scalfac, VFO_HEIGHT - 6.0 * scalfac);
   cairo_show_text(cr, sf);
   cairo_set_source_rgba(cr, COLOUR_ATTN);
@@ -434,12 +407,9 @@ static void txmeter_edgewise(cairo_t *cr, double frac, double pk, const char *pw
   const double pivot_y = VFO_HEIGHT * 1.95;
   const double radius  = VFO_HEIGHT * 1.58;
   double half = asin(fmin(0.9, (0.37 * w / radius))) * 180.0 / M_PI;
-
   if (half > 30.0) { half = 30.0; }
-
   const double min_angle = 270.0 - half;
   const double max_angle = 270.0 + half;
-
 #if 0
   //
   // Brushed-dark face
@@ -468,12 +438,9 @@ static void txmeter_edgewise(cairo_t *cr, double frac, double pk, const char *pw
   //
   {
     const int nsteps = 80;
-
     for (int i = 0; i < nsteps; i++) {
       double f = (double)i / nsteps;
-
       if (f > frac) { break; }
-
       double a1 = (min_angle + f * (max_angle - min_angle)) * M_PI / 180.0;
       double a2 = (min_angle + (f + 1.0 / nsteps) * (max_angle - min_angle)) * M_PI / 180.0;
       meter_zone_rgb(f, &r, &g, &b);
@@ -488,7 +455,6 @@ static void txmeter_edgewise(cairo_t *cr, double frac, double pk, const char *pw
   //
   cairo_set_line_width(cr, 1.4 * scalfac);
   cairo_set_font_size(cr, 8.0 * scalfac);
-
   for (int t = 0; t <= 10; t++) {
     double f = (double)t / 10.0;
     angle   = min_angle + f * (max_angle - min_angle);
@@ -500,19 +466,15 @@ static void txmeter_edgewise(cairo_t *cr, double frac, double pk, const char *pw
     cairo_move_to(cr, cx + ri * cos(radians), pivot_y + ri * sin(radians));
     cairo_line_to(cr, cx + ro * cos(radians), pivot_y + ro * sin(radians));
     cairo_stroke(cr);
-
     if (t % 2 == 0) {
       double val = f * 10.0 * interval;
-
       if (units == 1) {
         snprintf(sf, sizeof(sf), "%0.1f", val);
       } else {
         int p = (int)(val + 0.5);
-
         if (p == 1000) { snprintf(sf, sizeof(sf), "1K"); }
         else           { snprintf(sf, sizeof(sf), "%d", p); }
       }
-
       cairo_text_extents(cr, sf, &extents);
       x = cx + (ro + 7.0 * scalfac) * cos(radians);
       y = pivot_y + (ro + 7.0 * scalfac) * sin(radians);
@@ -520,14 +482,13 @@ static void txmeter_edgewise(cairo_t *cr, double frac, double pk, const char *pw
       cairo_show_text(cr, sf);
     }
   }
-
   //
   // White peak-hold needle
   //
   angle   = min_angle + pk * (max_angle - min_angle);
   radians = angle * M_PI / 180.0;
-  double cosr=cos(radians);
-  double sinr=sin(radians);
+  double cosr = cos(radians);
+  double sinr = sin(radians);
   cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.9);
   cairo_set_line_width(cr, 1.4 * scalfac);
   cairo_move_to(cr, cx + (radius - 30.0 * scalfac) * cosr, pivot_y + (radius - 30.0 * scalfac) * sinr);
@@ -538,8 +499,8 @@ static void txmeter_edgewise(cairo_t *cr, double frac, double pk, const char *pw
   //
   angle   = min_angle + frac * (max_angle - min_angle);
   radians = angle * M_PI / 180.0;
-  cosr=cos(radians);
-  sinr=sin(radians);
+  cosr = cos(radians);
+  sinr = sin(radians);
   meter_zone_rgb(frac, &r, &g, &b);
   cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
   cairo_set_source_rgba(cr, r, g, b, 0.25);
@@ -560,15 +521,12 @@ static void txmeter_edgewise(cairo_t *cr, double frac, double pk, const char *pw
   cairo_text_extents(cr, pwrstr, &extents);
   cairo_move_to(cr, cx - 0.5 * extents.width, VFO_HEIGHT - 32.0 * scalfac);
   cairo_show_text(cr, pwrstr);
-
   if (swr_alarm) { cairo_set_source_rgba(cr, COLOUR_ALARM); }
   else           { cairo_set_source_rgba(cr, COLOUR_METER); }
-
   snprintf(sf, sizeof(sf), "SWR %1.1f:1", swr);
   cairo_text_extents(cr, sf, &extents);
   cairo_move_to(cr, cx - 0.5 * extents.width, VFO_HEIGHT - 17.0 * scalfac);
   cairo_show_text(cr, sf);
-
   if (!cwmode && ADD_METER_WIDTH == 0) {
     cairo_set_source_rgba(cr, COLOUR_METER);
     snprintf(sf, sizeof(sf), "ALC %2.0f dB", alc);
@@ -591,7 +549,6 @@ static void txmeter_powerbar(cairo_t *cr, double frac, double pk, const char *pw
   const double bw  = w - 36.0 * scalfac;
   const double bh  = 13.0 * scalfac;
   const double by  = VFO_HEIGHT * 0.50;
-
   //
   // Top readout: power (left), SWR (right)
   //
@@ -599,10 +556,8 @@ static void txmeter_powerbar(cairo_t *cr, double frac, double pk, const char *pw
   cairo_set_font_size(cr, 13.0 * scalfac);
   cairo_move_to(cr, bx, 15.0 * scalfac);
   cairo_show_text(cr, pwrstr);
-
   if (swr_alarm) { cairo_set_source_rgba(cr, COLOUR_ALARM); }
   else           { cairo_set_source_rgba(cr, COLOUR_OK); }
-
   snprintf(sf, sizeof(sf), "SWR %1.1f:1", swr);
   cairo_text_extents(cr, sf, &extents);
   cairo_move_to(cr, bx + bw - extents.width, 15.0 * scalfac);
@@ -611,7 +566,6 @@ static void txmeter_powerbar(cairo_t *cr, double frac, double pk, const char *pw
   // Percent scale ABOVE the bar (0 / 50 / 100)
   //
   cairo_set_font_size(cr, 8.0 * scalfac);
-
   for (int t = 0; t <= 10; t += 5) {
     double f  = (double)t / 10.0;
     double tx = bx + f * bw;
@@ -625,7 +579,6 @@ static void txmeter_powerbar(cairo_t *cr, double frac, double pk, const char *pw
     cairo_move_to(cr, tx - 0.5 * extents.width, by - 10.0 * scalfac);
     cairo_show_text(cr, sf);
   }
-
   //
   // Trough + graded fill (clipped to the rounded trough)
   //
@@ -636,18 +589,14 @@ static void txmeter_powerbar(cairo_t *cr, double frac, double pk, const char *pw
   meter_rounded_rect(cr, bx, by, bw, bh, 4.0 * scalfac);
   cairo_clip(cr);
   const int nsteps = 96;
-
   for (int i = 0; i < nsteps; i++) {
     double f = (double)i / nsteps;
-
     if (f > frac) { break; }
-
     meter_zone_rgb(f, &r, &g, &b);
     cairo_set_source_rgba(cr, r, g, b, 0.95);
     cairo_rectangle(cr, bx + f * bw, by, bw / nsteps + 0.6, bh);
     cairo_fill(cr);
   }
-
   cairo_restore(cr);
   //
   // White peak marker
@@ -663,7 +612,6 @@ static void txmeter_powerbar(cairo_t *cr, double frac, double pk, const char *pw
   // Native scale (W, or 0..1 when PA disabled) BELOW the bar
   //
   cairo_set_font_size(cr, 8.0 * scalfac);
-
   for (int t = 0; t <= 10; t += 2) {
     double f  = (double)t / 10.0;
     double tx = bx + f * bw;
@@ -673,16 +621,13 @@ static void txmeter_powerbar(cairo_t *cr, double frac, double pk, const char *pw
     cairo_line_to(cr, tx, by + bh + 7.0 * scalfac);
     cairo_stroke(cr);
     double val = f * 10.0 * interval;
-
     if (units == 1) {
       snprintf(sf, sizeof(sf), "%0.1f", val);
     } else {
       int p = (int)(val + 0.5);
-
       if (p == 1000) { snprintf(sf, sizeof(sf), "1K"); }
       else           { snprintf(sf, sizeof(sf), "%d", p); }
     }
-
     cairo_text_extents(cr, sf, &extents);
     cairo_move_to(cr, tx - 0.5 * extents.width, by + bh + 16.0 * scalfac);
     cairo_show_text(cr, sf);
@@ -691,7 +636,6 @@ static void txmeter_powerbar(cairo_t *cr, double frac, double pk, const char *pw
 
 void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out) {
   if (!meter_surface) { return; }
-
   const double min_rxlvl = -200.0;
   const double min_gain  =  -99.0;
   const double min_out   =  -99.0;
@@ -711,7 +655,6 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
   cairo_text_extents_t extents;
   double smtr = 0.0, smtr2, perS, ref9;
   int sval = 0, sval2 = 0;
-
   if (rxtxstate == 1) {
     max_cnt_lvl = 0;
     max_cnt_gain = 0;
@@ -725,13 +668,12 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
     pk_count = 0;
     rxtxstate = 0;
   }
-
   //
   // calculate parameters of "fast averaging" such that
   // it scales well with the frame rate
   //
   int CNTMAX = (fps / 2);
-  double EXPAV1 = exp(-2.88/fps);
+  double EXPAV1 = exp(-2.88 / fps);
   double EXPAV2 = 1.0  - EXPAV1;
   //
   // Only the time-averaged values are "on display"
@@ -744,7 +686,6 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
   //
   // A new max value will therefore be immediately visible, the display stays (if not surpassed) for
   // CNTMAX cycles and then the displayed value will gradually approach the new one(s).
-
   //
   // Map peak value to a "dB" scale. 8.68589 = 20 / log(10)
   //
@@ -753,33 +694,19 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
   } else {
     peak = -99.0;
   }
-
   if (++max_cnt_lvl  > CNTMAX) { max_rxlvl = EXPAV1 * max_rxlvl + EXPAV2 * rxlvl;}
-
   if (++max_cnt_peak > CNTMAX) { max_peak  = EXPAV1 * max_peak  + EXPAV2 * peak ;}
-
   if (++max_cnt_gain > CNTMAX) { max_gain  = EXPAV1 * max_gain  + EXPAV2 * gain ;}
-
   if (++max_cnt_out  > CNTMAX) { max_out   = EXPAV1 * max_out   + EXPAV2 * out  ;}
-
   if (max_rxlvl < min_rxlvl) { max_rxlvl = min_rxlvl; }
-
   if (max_peak  < min_peak ) { max_peak  = min_peak; }
-
   if (max_gain  < min_gain ) { max_gain  = min_gain; }
-
   if (max_out   < min_out  ) { max_out   = min_out; }
-
   // Fast attack
-
   if (rxlvl > max_rxlvl) { max_rxlvl = rxlvl; max_cnt_lvl = 0; }
-
   if (peak  > max_peak ) { max_peak  = peak;  max_cnt_peak = 0; }
-
   if (gain  > max_gain ) { max_gain  = gain;  max_cnt_gain = 0; }
-
   if (out   > max_out  ) { max_out   = out;   max_cnt_out = 0; }
-
   //
   // Calculate S-meter reflection smtr
   // smtr : goes from  0.0 to  72.0 for S0 ... S9
@@ -796,7 +723,6 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
       perS = 6.0;
       smtr = 1.33333333 * (fmax(-147.0, max_rxlvl) + 147.0);
     }
-
     smtr2 = 0.7 * (max_rxlvl + 93.0);
   } else {
     ref9 = -73.0;
@@ -807,27 +733,20 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
       perS = 6.0;
       smtr = 1.33333333 * (fmax(-127.0, max_rxlvl) + 127.0);
     }
-
     smtr2 = 0.7 * (max_rxlvl + 73);
   }
-
   if (smtr > 72.0) { smtr = 72.0; }
-
   if (smtr2 <  0.0) { smtr2 =  0.0; }
-
   if (smtr2 > 42.0) { smtr2 = 42.0; }
-
   sval = (smtr + 4.0) * 0.125;
   sval2 = 5 * (int)((smtr2 * 0.28571428571428571428) + 0.5);
   smtr += smtr2;
-
   //
   // peak-hold on the needle position:
   //  - instant attack
   //  - hold a while (1.5 sec)
   //  - then slow release (S9 --> S0 in 6 sec)
   //
-
   if (smtr > pk) {
     pk = smtr;
     if (pk > 114.0)  { pk = 114.0; }
@@ -840,14 +759,12 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
       if (pk < 0.0) { pk = 0.0; }
     }
   }
-
   //
   // From now on, use time-averaged value (max_rxlvl)
   //
   cairo_set_source_rgba(cr, COLOUR_VFO_BACKGND);
   cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
   cairo_paint (cr);
-
   if (ADD_METER_WIDTH > 0) {
     double scalfac = ADD_METER_WIDTH * 0.01333;
     double Y1 =  (0.5 * VFO_HEIGHT) + 8.0 * scalfac;
@@ -884,7 +801,6 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
     cairo_show_text(cr, sf);
     cairo_stroke(cr);
   }
-
   switch (meter_type) {
   case ANALOG: {
     //
@@ -900,7 +816,6 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
     double radius = cy - 35.0 * scalfac;
     double min_angle, max_angle, bydb;
     double cx = cy + ADD_METER_WIDTH - 5;
-
     if (cy - 0.342 * radius < VFO_HEIGHT - 5) {
       min_angle = 200.0;
       max_angle = 340.0;
@@ -911,7 +826,6 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
       min_angle = 220.0;
       max_angle = 320.0;
     }
-
     bydb = (max_angle - min_angle) / 114.0;
 #if 0
     // ── Radial face gradient (dark glass look) ──────────────────────────────
@@ -936,17 +850,13 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
     {
       int   ARC_STEPS = 80;
       double needle_pcnt = smtr / 114.0;
-
       for (int si = 0; si < ARC_STEPS; si++) {
         double pcnt = (double)si / ARC_STEPS;
-
         if (pcnt > needle_pcnt) { break; }
-
         double a1 = (min_angle + pcnt * (max_angle - min_angle)) * M_PI / 180.0;
         double a2 = (min_angle + (pcnt + 1.0 / ARC_STEPS) * (max_angle - min_angle)) * M_PI / 180.0;
         // Colour: green(S0) → yellow-green(S5) → amber(S9) → red(S9+60)
         double r_col, g_col, b_col;
-
         if (pcnt < 0.40) {
           double t = pcnt / 0.40;
           r_col = 0.22 + t * (0.55 - 0.22);
@@ -963,7 +873,6 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
           g_col = 0.647 - t * (0.647 - 0.318);
           b_col = t * 0.286;
         }
-
         cairo_set_line_width(cr, 10.0 * scalfac);
         cairo_set_source_rgba(cr, r_col, g_col, b_col, 0.88);
         cairo_arc(cr, cx, cy, radius, a1, a2);
@@ -972,17 +881,14 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
     }
     // ── Tick marks (outside the arc band, colour-coded) ────────────────────
     cairo_set_line_width(cr, 1.5 * scalfac);
-
     for (i = 1; i < 10; i++) {
       angle   = ((double)i * 8.0 * bydb) + min_angle;
       radians = angle * M_PI / 180.0;
       double pcnt = (double)(i * 8) / 114.0;
       double rc, gc, bc;
-
       if (pcnt < 0.40)        { rc = 0.22;  gc = 0.83;  bc = 0.33;  }
       else if (pcnt < 0.647)  { rc = 0.941; gc = 0.647; bc = 0.0;   }
       else                    { rc = 0.973; gc = 0.318; bc = 0.286;  }
-
       cairo_set_source_rgba(cr, rc, gc, bc, 0.75);
       double r_in  = (i % 2 == 1) ? radius + 12.0 * scalfac : radius + 14.0 * scalfac;
       double r_out = radius + 18.0 * scalfac;
@@ -991,7 +897,6 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
       cairo_arc(cr, cx, cy, r_out, radians, radians);
       cairo_line_to(cr, x, y);
       cairo_stroke(cr);
-
       if (i % 2 == 1) {
         // major tick label
         snprintf(sf, sizeof(sf), "%d", i);
@@ -1005,10 +910,8 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
         cairo_set_font_size(cr, 12.0 * scalfac);
         cairo_show_text(cr, sf);
       }
-
       cairo_new_path(cr);
     }
-
     for (i = 1; i <= 3; i++) {
       angle   = bydb * (double)(14 * i + 72) + min_angle;
       radians = angle * M_PI / 180.0;
@@ -1031,16 +934,13 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
       cairo_show_text(cr, sf);
       cairo_new_path(cr);
     }
-
     // ── Slim needle with radial-gradient pivot dot ──────────────────────────
     {
       double needle_pcnt = smtr / 114.0;
       double rc, gc, bc;
-
       if (needle_pcnt < 0.40)       { rc = 0.22;  gc = 0.83;  bc = 0.33; }
       else if (needle_pcnt < 0.647) { rc = 0.941; gc = 0.647; bc = 0.0;  }
       else                          { rc = 0.973; gc = 0.318; bc = 0.286; }
-
       angle   = min_angle + smtr * bydb;
       radians = angle * M_PI / 180.0;
       double tip_x = cx + (radius + 10) * cos(radians);
@@ -1075,8 +975,8 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
     cairo_set_font_size(cr, 16.0 * scalfac);
     cairo_move_to(cr, cx - 0.5 * extents.width, cy - radius + 30.0 * scalfac);
     cairo_show_text(cr, sf);
-    }
-    break;
+  }
+  break;
   case DIGITAL: {
     //
     // Digital RX meter
@@ -1095,32 +995,28 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
     cairo_set_font_size(cr, 32.0 * scalfac);
     snprintf(sf, sizeof(sf), "S9+55");
     cairo_text_extents(cr, sf, &extents);
-
     if (sval2 > 0) {
       snprintf(sf, sizeof(sf), "S%d+%d", sval, sval2);
     } else {
       snprintf(sf, sizeof(sf), "S%d", sval);
     }
-
     cairo_move_to(cr, METER_WIDTH - 5 - extents.width, Y2);
     cairo_show_text(cr, sf);
-    }
-    break;
+  }
+  break;
   case EDGEWISE:
-   rxmeter_edgewise(cr, smtr, sval, sval2, max_rxlvl, pk);
-   break;
+    rxmeter_edgewise(cr, smtr, sval, sval2, max_rxlvl, pk);
+    break;
   case DUALSCALE:
     rxmeter_dualscale(cr, smtr, sval, sval2, max_rxlvl, pk, ref9, perS);
     break;
   }
-
   cairo_destroy(cr);
   gtk_widget_queue_draw (meter);
 }
 
 void txmeter_update(int fps, double pwr, double alc, double swr, double mic, double out) {
   if (!meter_surface || !can_transmit) { return; }
-
   const double min_alc    = -99.0;
   const double min_pwr    =   0.0;
   const double min_mic    = -99.0;
@@ -1142,7 +1038,6 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
   int txmode = vfo[txvfo].mode;
   int cwmode = (txmode == modeCWU || txmode == modeCWL) && !transmitter->tune && !transmitter->twotone;
   const BAND *band = band_get_band(vfo[txvfo].band);
-
   if (rxtxstate == 0) {
     max_pwrcount = 0;
     max_alccount = 0;
@@ -1156,51 +1051,35 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
     pk_count = 0;
     rxtxstate = 1;
   }
-
   //
   // calculate parameters of "fast averaging" such that
   // it scales well with the frame rate
   //
   int CNTMAX = (fps / 2);
-  double EXPAV1 = exp(-2.88/fps);
+  double EXPAV1 = exp(-2.88 / fps);
   double EXPAV2 = 1.0  - EXPAV1;
-
   if (max_pwrcount > CNTMAX) { max_pwr = EXPAV1 * max_pwr + EXPAV2 * pwr; }
-
   if (max_alccount > CNTMAX) { max_alc = EXPAV1 * max_alc + EXPAV2 * alc; }
-
   if (max_miccount > CNTMAX) { max_mic = EXPAV1 * max_mic + EXPAV2 * mic; }
-
   if (max_outcount > CNTMAX) { max_out = EXPAV1 * max_out + EXPAV2 * out; }
-
   if (max_pwr < min_pwr) { max_pwr = min_pwr; }
-
   if (max_alc < min_alc) { max_alc = min_alc; }
-
   if (max_out < min_out) { max_out = min_out; }
-
   if (max_mic < min_mic) { max_mic = min_mic; }
-
   if (pwr > max_pwr) { max_pwr = pwr; max_pwrcount = 0; }
-
   if (alc > max_alc) { max_alc = alc; max_alccount = 0; }
-
   if (mic > max_mic) { max_mic = mic; max_miccount = 0; }
-
   if (out > max_out) { max_out = out; max_outcount = 0; }
-
   max_pwrcount++;
   max_outcount++;
   max_miccount++;
   max_outcount++;
-
   //
   // From now on, ONLY use time-averaged values
   //
   cairo_set_source_rgba(cr, COLOUR_VFO_BACKGND);
   cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
   cairo_paint (cr);
-
   if (ADD_METER_WIDTH > 0 && !cwmode) {
     double scalfac = ADD_METER_WIDTH * 0.01333;
     double Y1 =  (0.5 * VFO_HEIGHT) + 8.0 * scalfac;
@@ -1235,7 +1114,6 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
     cairo_show_text(cr, sf);
     cairo_stroke(cr);
   }
-
   //
   // Some data common to power meters (only needed and valid for HPSDR)
   //
@@ -1244,7 +1122,6 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
   char pwrstr[32];
   double interval;
   double frac;
-
   if (band->disablePA || !pa_enabled) {
     units = 1;
     interval = 0.1;
@@ -1253,14 +1130,10 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
     units = (pp <= 1) ? 1 : 2;
     interval = 0.1 * pp;
   }
-
   frac = max_pwr / (10.0 * interval);
   swr_alarm = (swr > transmitter->swr_alarm);
-
   if (frac < 0.0) { frac = 0.0; }
-
   if (frac > 1.0) { frac = 1.0; }
-
   //
   // peak-hold on the needle position:
   //  - instant attack
@@ -1278,22 +1151,18 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
       if (pk < 0.0) { pk = 0.0; }
     }
   }
-
   switch (pa_power) {
   case PA_1W:
     snprintf(pwrstr, sizeof(pwrstr), "%dmW",   (int)(1000.0 * max_pwr + 0.5));
     break;
-
   case PA_5W:
   case PA_10W:
     snprintf(pwrstr, sizeof(pwrstr), "%0.1fW", max_pwr);
     break;
-
   default:
     snprintf(pwrstr, sizeof(pwrstr), "%dW",    (int)(max_pwr + 0.5));
     break;
   }
-
   switch (meter_type) {
   case ANALOG: {
     //
@@ -1304,11 +1173,9 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
     double radius = cy - 35.0 * scalfac;
     //
     double cx = cy + ADD_METER_WIDTH - 5;
-
     if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
       double angle, radians, min_angle, max_angle;
       double x, y;
-
       if (cy - 0.342 * radius < VFO_HEIGHT - 5) {
         min_angle = 200.0;
         max_angle = 340.0;
@@ -1319,7 +1186,6 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
         min_angle = 220.0;
         max_angle = 320.0;
       }
-
 #if 0
       // ── Radial face gradient ──────────────────────────────────────────────
       // deactivated -- colours must be calculated from COLOUR_VFO_BACKGROUND
@@ -1343,21 +1209,15 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
       // TX power colour: green(low) → amber(mid) → red(high)
       {
         double needle_angle = max_pwr * (max_angle - min_angle) / (10.0 * interval) + min_angle;
-
         if (needle_angle > max_angle + 5) { needle_angle = max_angle + 5; }
-
         double needle_pcnt = (needle_angle - min_angle) / (max_angle - min_angle);
         int ARC_STEPS = 80;
-
         for (int si = 0; si < ARC_STEPS; si++) {
           double fr = (double)si / ARC_STEPS;
-
           if (fr > needle_pcnt) { break; }
-
           double a1 = (min_angle + fr * (max_angle - min_angle)) * M_PI / 180.0;
           double a2 = (min_angle + (fr + 1.0 / ARC_STEPS) * (max_angle - min_angle)) * M_PI / 180.0;
           double rc, gc, bc;
-
           if (fr < 0.50) {
             double t = fr / 0.50;
             rc = 0.22 * t;
@@ -1374,7 +1234,6 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
             gc = 0.647 - t * (0.647 - 0.318);
             bc = t * 0.286;
           }
-
           cairo_set_line_width(cr, 10.0 * scalfac);
           cairo_set_source_rgba(cr, rc, gc, bc, 0.88);
           cairo_arc(cr, cx, cy, radius, a1, a2);
@@ -1383,11 +1242,9 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
       }
       // ── Tick marks (colour-coded, outside arc band) ───────────────────────
       cairo_set_line_width(cr, 1.5 * scalfac);
-
       for (int i = 0; i <= 100; i++) {
         angle   = (double)i * 0.01 * max_angle + (double)(100 - i) * 0.01 * min_angle;
         radians = angle * M_PI / 180.0;
-
         if ((i % 10) == 0) {
           double fr = (double)i / 100.0;
           double rc = fr < 0.5 ? 0.22 * fr / 0.5 : 0.22 + (fr - 0.5) / 0.5 * (0.941 - 0.22);
@@ -1401,22 +1258,18 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
           cairo_arc(cr, cx, cy, r_out, radians, radians);
           cairo_line_to(cr, x, y);
           cairo_stroke(cr);
-
           if ((i % 20) == 0) {
             switch (units) {
             case 1:
               snprintf(sf, sizeof(sf), "%0.1f", 0.1 * interval * i);
               break;
-
             case 2: {
               int p = (int)(0.1 * interval * i);
-
               if (p == 1000) { snprintf(sf, sizeof(sf), "1K"); }
               else           { snprintf(sf, sizeof(sf), "%d", p); }
             }
             break;
             }
-
             cairo_text_extents(cr, sf, &extents);
             cairo_arc(cr, cx, cy, r_out + 4 * scalfac, radians, radians);
             cairo_get_current_point(cr, &x, &y);
@@ -1428,24 +1281,18 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
             cairo_show_text(cr, sf);
           }
         }
-
         cairo_new_path(cr);
       }
-
       // ── Slim needle with pivot dot ────────────────────────────────────────
       {
         angle = max_pwr * (max_angle - min_angle) / (10.0 * interval) + min_angle;
-
         if (angle > max_angle + 5) { angle = max_angle + 5; }
-
         radians = angle * M_PI / 180.0;
         double needle_pcnt = (angle - min_angle) / (max_angle - min_angle);
         double rc, gc, bc;
-
         if (needle_pcnt < 0.50)      { rc = 0.22 * needle_pcnt / 0.50; gc = 0.83; bc = 0.20 * (1.0 - needle_pcnt / 0.50); }
         else if (needle_pcnt < 0.80) { rc = 0.22 + (needle_pcnt - 0.50) / 0.30 * (0.941 - 0.22); gc = 0.65; bc = 0.0; }
         else                         { rc = 0.973; gc = 0.318; bc = 0.286; }
-
         double tip_x  = cx + (radius + 10) * cos(radians);
         double tip_y  = cy + (radius + 10) * sin(radians);
         double base_x = cx - 8.0 * cos(radians);
@@ -1471,38 +1318,31 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
       // ── Text: power value (Option 3 placement) ────────────────────────────
       cairo_set_source_rgba(cr, COLOUR_METER);
       cairo_set_font_size(cr, 12.0 * scalfac);
-
       switch (pa_power) {
       case PA_1W:
         snprintf(sf, sizeof(sf), "%dmW",   (int)(1000.0 * max_pwr + 0.5));
         break;
-
       case PA_5W:
       case PA_10W:
         snprintf(sf, sizeof(sf), "%0.1fW", max_pwr);
         break;
-
       default:
         snprintf(sf, sizeof(sf), "%dW",    (int)(max_pwr + 0.5));
         break;
       }
-
       cairo_text_extents(cr, sf, &extents);
       cairo_move_to(cr, cx - 0.5 * extents.width, VFO_HEIGHT - 32 * scalfac);
       cairo_show_text(cr, sf);
-
       if (swr > transmitter->swr_alarm) {
         cairo_set_source_rgba(cr, COLOUR_ALARM);
       } else {
         cairo_set_source_rgba(cr, COLOUR_METER);
       }
-
       snprintf(sf, sizeof(sf), "SWR %1.1f:1", swr);
       cairo_text_extents(cr, sf, &extents);
       cairo_move_to(cr, cx - 0.5 * extents.width, VFO_HEIGHT - 17 * scalfac);
       cairo_show_text(cr, sf);
     }
-
     if (!cwmode && ADD_METER_WIDTH == 0) {
       cairo_set_source_rgba(cr, COLOUR_METER);
       snprintf(sf, sizeof(sf), "ALC %2.0f dB", max_alc);
@@ -1510,8 +1350,8 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
       cairo_move_to(cr, cx - 0.5 * extents.width, VFO_HEIGHT - 5);
       cairo_show_text(cr, sf);
     }
-    }
-    break;
+  }
+  break;
   case DIGITAL: {
     //
     // Digital TX meter
@@ -1520,7 +1360,6 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
     cairo_set_line_width(cr, PAN_LINE_THICK);
     cairo_set_source_rgba(cr, COLOUR_METER);
     double Y4 = VFO_HEIGHT - 10.0 * scalfac;
-
     if (!cwmode && ADD_METER_WIDTH == 0) {
       cairo_set_font_size(cr, 16.0 * scalfac);
       cairo_set_source_rgba(cr, COLOUR_METER);  // revert to white color
@@ -1528,10 +1367,8 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
       cairo_move_to(cr, 5, Y4);
       cairo_show_text(cr, sf);
     }
-
     if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
       double Y2 = Y4 - 24.0 * scalfac;
-
       //
       // Power/SWR not available for SOAPY.
       //
@@ -1540,44 +1377,38 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
       } else {
         cairo_set_source_rgba(cr, COLOUR_OK); // display SWR in white color
       }
-
       cairo_set_font_size(cr, 18.0 * scalfac);
       snprintf(sf, sizeof(sf), "SWR %1.1f:1", swr);
       cairo_text_extents(cr, sf, &extents);
       cairo_move_to(cr, METER_WIDTH - 5 - extents.width, Y4);
       cairo_show_text(cr, sf);
-
       switch (pa_power) {
       case PA_1W:
         snprintf(sf, sizeof(sf), "%d mW", (int)(1000.0 * max_pwr + 0.5));
         break;
-
       case PA_5W:
       case PA_10W:
         snprintf(sf, sizeof(sf), "%0.1f W", max_pwr);
         break;
-
       default:
         snprintf(sf, sizeof(sf), "%d W", (int)(max_pwr + 0.5));
         break;
       }
-
       cairo_set_font_size(cr, 32.0 * scalfac);
       cairo_set_source_rgba(cr, COLOUR_ATTN);
       cairo_text_extents(cr, sf, &extents);
       cairo_move_to(cr, METER_WIDTH - 5 - extents.width, Y2);
       cairo_show_text(cr, sf);
-      }
     }
-    break;
+  }
+  break;
   case EDGEWISE:
-   txmeter_edgewise(cr, frac, pk, pwrstr, swr, swr_alarm, interval, units, max_alc, cwmode);
-   break;
+    txmeter_edgewise(cr, frac, pk, pwrstr, swr, swr_alarm, interval, units, max_alc, cwmode);
+    break;
   case DUALSCALE:
     txmeter_powerbar(cr, frac, pk, pwrstr, swr, swr_alarm, interval, units);
     break;
   }
-
   cairo_destroy(cr);
   gtk_widget_queue_draw (meter);
 }

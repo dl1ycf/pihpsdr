@@ -61,9 +61,7 @@ static void tcp_autoreporting_cb(GtkWidget *widget, gpointer data) {
 
 static void rigctl_value_changed_cb(GtkWidget *widget, gpointer data) {
   if (rigctl_tcp_enable) { shutdown_tcp_rigctl(); }
-
   rigctl_tcp_port = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-
   if (rigctl_tcp_enable) { launch_tcp_rigctl(); }
 }
 
@@ -74,7 +72,6 @@ static void rigctl_debug_cb(GtkWidget *widget, gpointer data) {
 #ifdef TCI
 static void tci_enable_cb(GtkWidget *widget, gpointer data) {
   tci_enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-
   if (tci_enable) {
     launch_tci();
   } else {
@@ -84,9 +81,7 @@ static void tci_enable_cb(GtkWidget *widget, gpointer data) {
 
 static void tci_port_changed_cb(GtkWidget *widget, gpointer data) {
   if (tci_enable) { shutdown_tci(); }
-
   tci_port = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-
   if (tci_enable) { launch_tci(); }
 }
 
@@ -94,7 +89,6 @@ static void tci_port_changed_cb(GtkWidget *widget, gpointer data) {
 
 static void rigctl_tcp_enable_cb(GtkWidget *widget, gpointer data) {
   rigctl_tcp_enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-
   if (rigctl_tcp_enable) {
     launch_tcp_rigctl();
   } else {
@@ -109,7 +103,6 @@ static void rigctl_tcp_enable_cb(GtkWidget *widget, gpointer data) {
 static void serial_port_cb(GtkWidget *widget, gpointer data) {
   int id = GPOINTER_TO_INT(data);
   const char *cp = gtk_entry_get_text(GTK_ENTRY(widget));
-
   //
   // - If the serial port is already running, do not allow changes.
   // - If the name occurs for the "auto-detected" port, do not allow
@@ -144,7 +137,6 @@ static void serial_autoreporting_cb(GtkWidget *widget, gpointer data) {
 static void andromeda_cb(GtkWidget *widget, gpointer data) {
   int id = GPOINTER_TO_INT(data);
   SerialPorts[id].andromeda = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-
   if (SerialPorts[id].andromeda) {
     gtk_combo_box_set_active(GTK_COMBO_BOX(serial_speed[id]), 1);
     SerialPorts[id].speed = B9600;
@@ -153,7 +145,6 @@ static void andromeda_cb(GtkWidget *widget, gpointer data) {
 
 static void ptt_enable_cb(GtkWidget *widget, gpointer data) {
   int id = GPOINTER_TO_INT(data);
-
   if ((SerialPorts[id].enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)))) {
     if (launch_serial_ptt(id) == 0) {
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), FALSE);
@@ -162,13 +153,11 @@ static void ptt_enable_cb(GtkWidget *widget, gpointer data) {
   } else {
     disable_serial_ptt(id);
   }
-
   t_print("%s: Serial PTT : ID=%d Enabled=%d\n", __func__, id, SerialPorts[id].enable);
 }
 
 static void serial_enable_cb(GtkWidget *widget, gpointer data) {
   int id = GPOINTER_TO_INT(data);
-
   if ((SerialPorts[id].enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)))) {
     if (launch_serial_rigctl(id) == 0) {
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), FALSE);
@@ -177,7 +166,6 @@ static void serial_enable_cb(GtkWidget *widget, gpointer data) {
   } else {
     disable_serial_rigctl(id);
   }
-
   t_print("%s: Serial enable : ID=%d Enabled=%d\n", __func__, id, SerialPorts[id].enable);
 }
 
@@ -186,7 +174,6 @@ static void speed_cb(GtkWidget *widget, gpointer data) {
   int id = GPOINTER_TO_INT(data);
   int bd = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
   speed_t new;
-
   //
   // If ANDROMEDA is active, keep 9600
   //
@@ -194,7 +181,6 @@ static void speed_cb(GtkWidget *widget, gpointer data) {
     gtk_combo_box_set_active(GTK_COMBO_BOX(widget), 1);
     return;
   }
-
   //
   // Do nothing if the baud rate is already effective.
   // If a serial client is already running and the baud rate is changed, we close and re-open it
@@ -204,36 +190,28 @@ static void speed_cb(GtkWidget *widget, gpointer data) {
   default:
     new = B4800;
     break;
-
   case 1:
     new = B9600;
     break;
-
   case 2:
     new = B19200;
     break;
-
   case 3:
     new = B38400;
     break;
   }
-
   if (new == SerialPorts[id].speed) {
     return;
   }
-
   SerialPorts[id].speed = new;
-
   if (SerialPorts[id].enable) {
     t_print("%s: closing/re-opening serial port %s\n", __func__, SerialPorts[id].port);
     disable_serial_rigctl(id);
-
     if (launch_serial_rigctl(id) == 0) {
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(serial_enable[id]), FALSE);
       SerialPorts[id].enable = 0;
     }
   }
-
   t_print("%s: Baud rate changed: Port=%s SpeedCode=%d\n", __func__, SerialPorts[id].port,
           (int) SerialPorts[id].speed);
 }
@@ -307,7 +285,6 @@ void rigctl_menu(GtkWidget *parent) {
   w = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
   gtk_widget_set_size_request(w, -1, 3);
   gtk_grid_attach(GTK_GRID(grid), w, 0, row, 7, 1);
-
   /* Put the Serial Port stuff here, one port per line */
   for (int i = 0; i <= MAX_SERIAL; i++) {
     char str[512];
@@ -321,13 +298,11 @@ void rigctl_menu(GtkWidget *parent) {
     gtk_widget_set_name(w, "boldlabel");
     gtk_widget_set_halign(w, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), w, 0, row, 1, 1);
-
     if (!SerialPorts[i].g2) {
       w = gtk_entry_new();
       gtk_entry_set_text(GTK_ENTRY(w), SerialPorts[i].port);
       gtk_grid_attach(GTK_GRID(grid), w, 1, row, 2, 1);
       g_signal_connect(w, "changed", G_CALLBACK(serial_port_cb), GINT_TO_POINTER(i));
-
       if (is_ptt) {
         serial_enable[i] = gtk_check_button_new_with_label("Enable (serial port for PTT in/out)");
         gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (serial_enable[i]), SerialPorts[i].enable);
@@ -339,26 +314,21 @@ void rigctl_menu(GtkWidget *parent) {
         gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(serial_speed[i]), NULL, "9600 Bd");
         gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(serial_speed[i]), NULL, "19200 Bd");
         gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(serial_speed[i]), NULL, "38400 Bd");
-
         switch (SerialPorts[i].speed) {
         case B9600:
           gtk_combo_box_set_active(GTK_COMBO_BOX(serial_speed[i]), 1);
           break;
-
         case B19200:
           gtk_combo_box_set_active(GTK_COMBO_BOX(serial_speed[i]), 2);
           break;
-
         case B38400:
           gtk_combo_box_set_active(GTK_COMBO_BOX(serial_speed[i]), 3);
           break;
-
         default:
           SerialPorts[i].speed = B4800;
           gtk_combo_box_set_active(GTK_COMBO_BOX(serial_speed[i]), 0);
           break;
         }
-
         my_combo_attach(GTK_GRID(grid), serial_speed[i], 3, row, 1, 1);
         g_signal_connect(serial_speed[i], "changed", G_CALLBACK(speed_cb), GINT_TO_POINTER(i));
         serial_enable[i] = gtk_check_button_new_with_label("Enable");
@@ -388,7 +358,6 @@ void rigctl_menu(GtkWidget *parent) {
       gtk_grid_attach(GTK_GRID(grid), w, 1, row, 5, 1);
     }
   }
-
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);

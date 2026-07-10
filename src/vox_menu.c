@@ -52,18 +52,15 @@ static int vox_timeout_cb(gpointer data) {
 static int level_update(gpointer data) {
   if (run_level) {
     gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(level), peak);
-
     if (peak > vox_threshold) {
       // red indicator
       led_color = led_red;
       led_set_color(led);
-
       if (hold == 0) {
         hold = 1;
       } else {
         g_source_remove(vox_timeout);
       }
-
       vox_timeout = g_timeout_add((int)vox_hang, vox_timeout_cb, NULL);
     } else {
       // green indicator
@@ -73,7 +70,6 @@ static int level_update(gpointer data) {
       }
     }
   }
-
   return 0;
 }
 
@@ -83,7 +79,6 @@ static gpointer level_thread(gpointer arg) {
     g_idle_add(level_update, NULL);
     usleep(100000); // 100ms
   }
-
   return NULL;
 }
 

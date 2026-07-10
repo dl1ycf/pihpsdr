@@ -267,9 +267,7 @@ static gpointer old_protocol_txiq_thread(gpointer data) {
 #else
     sem_wait(&txring_sem);
 #endif
-
     if (!P1running) { continue; }
-
     //
     // The audio_mutex lock here is needed to avoid race
     // conditions with buffer draining. After having copied
@@ -281,17 +279,13 @@ static gpointer old_protocol_txiq_thread(gpointer data) {
       pthread_mutex_unlock(&audio_mutex);
       continue;
     }
-
     int nptr = txring_outptr + 1008;
-
     if (nptr >= TXRINGBUFLEN) { nptr = 0; }
-
     memcpy(ozy_buf1 + 8, &TXRINGBUF[txring_outptr      ], 504);
     memcpy(ozy_buf2 + 8, &TXRINGBUF[txring_outptr + 504], 504);
     MEMORY_BARRIER;
     txring_outptr = nptr;
     pthread_mutex_unlock(&audio_mutex);
-
     //
     // We used to have a fixed sleeping time of 2000 usec, and
     // observed that the sleep was sometimes too long, especially
@@ -311,11 +305,9 @@ static gpointer old_protocol_txiq_thread(gpointer data) {
     now = ts.tv_sec + 1.0E-9 * ts.tv_nsec;
     FIFO -= (now - last) * 48000.0;
     last = now;
-
     if (FIFO < 0.0) {
       FIFO = 0.0;
     }
-
     //
     // Depending on how we estimate the FIFO filling, wait
     // 2000usec, or 500 usec, or nothing before sending
@@ -327,25 +319,20 @@ static gpointer old_protocol_txiq_thread(gpointer data) {
     if (FIFO > 1500.0) {
       // Wait about 2000 usec before sending the next packet.
       ts.tv_nsec += 2000000;
-
       if (ts.tv_nsec > 999999999) {
         ts.tv_sec++;
         ts.tv_nsec -= 1000000000;
       }
-
       clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
     } else if (FIFO > 300.0) {
       // Wait about 500 usec before sending the next packet.
       ts.tv_nsec += 500000;
-
       if (ts.tv_nsec > 999999999) {
         ts.tv_sec++;
         ts.tv_nsec -= 1000000000;
       }
-
       clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
     }
-
     if (P1running && pthread_mutex_trylock(&send_mutex) == 0) {
       //
       // If we do not get a lock, this means a protocol restart is
@@ -365,7 +352,6 @@ void old_protocol_stop(void) {
   ASSERT_SERVER();
   t_print("%s\n", __func__);
   P1running = 0;
-
   if (device != DEVICE_OZY) {
     pthread_mutex_lock(&send_mutex);
     metis_start_stop(0);
@@ -385,15 +371,12 @@ void old_protocol_set_mic_sample_rate(int rate) {
 void old_protocol_init(int rate) {
   ASSERT_SERVER();
   t_print("old_protocol_init: num_hpsdr_receivers=%d\n", how_many_receivers());
-
   if (TXRINGBUF == NULL) {
     TXRINGBUF = g_new(unsigned char, TXRINGBUFLEN);
   }
-
   if (RXRINGBUF == NULL) {
     RXRINGBUF = g_new(unsigned char, RXRINGBUFLEN);
   }
-
 #ifdef __APPLE__
   txring_sem = apple_sem(0);
   rxring_sem = apple_sem(0);
@@ -404,7 +387,6 @@ void old_protocol_init(int rate) {
   old_protocol_set_mic_sample_rate(rate);
   g_thread_new("P1 out", old_protocol_txiq_thread, NULL);
   g_thread_new("P1 proc", process_ozy_input_buffer_thread, NULL);
-
   //
   // if we have a USB interfaced Ozy device:
   //
@@ -417,16 +399,13 @@ void old_protocol_init(int rate) {
 #endif
   } else {
     t_print("old_protocol starting receive thread\n");
-
     if (radio->use_tcp) {
       open_tcp_socket();
     } else  {
       open_udp_socket();
     }
-
     g_thread_new( "METIS", receive_thread, NULL);
   }
-
   old_protocol_run();
 }
 
@@ -468,7 +447,6 @@ static gpointer ozy_i2c_thread(gpointer arg) {
   int last_penny = 0;  // unused value
   t_print( "old_protocol: OZY I2C read thread\n");
   cycle = 0;
-
   for (;;) {
     if (P1running) {
       switch (cycle) {
@@ -477,26 +455,21 @@ static gpointer ozy_i2c_thread(gpointer arg) {
         // This value is nowhere used
         cycle = 1;
         break;
-
       case 1:
         ozy_i2c_readpwr(I2C_PENNY_FWD);
         ozy_i2c_readpwr(I2C_PENNY_REV);
         // penny_fp and penny_rp are used in transmitter.c
         cycle = 2;
         break;
-
       case 2:
         ozy_i2c_readpwr(I2C_MERC1_ADC_OFS);
         adc[0].overload |= mercury_overload[0];
-
         if (mercury_software_version[1]) {
           ozy_i2c_readpwr(I2C_MERC2_ADC_OFS);
           adc[1].overload |= mercury_overload[1];
         }
-
         cycle = 3;
         break;
-
       case 3:
         if (mic_linein) {
           // map floating point LineInGain value (-34.0 ... 12)
@@ -505,20 +478,16 @@ static gpointer ozy_i2c_thread(gpointer arg) {
         } else {
           penny = mic_boost ? 1 : 4;
         }
-
         if (penny != last_penny) {
           writepenny(0, penny);
           last_penny = penny;
         }
-
         cycle = 0;
         break;
       }
     }
-
     usleep(50000);
   }
-
   return NULL;  /* NOTREACHED */
 }
 
@@ -531,15 +500,12 @@ static gpointer ozy_ep6_rx_thread(gpointer arg) {
   ASSERT_SERVER(NULL);
   t_print( "old_protocol: USB EP6 receive_thread\n");
   static unsigned char ep6_inbuffer[EP6_BUFFER_SIZE];
-
   for (;;) {
     int bytes = ozy_read(EP6_IN_ID, ep6_inbuffer, EP6_BUFFER_SIZE); // read a 2K buffer at a time
-
     //
     // If the protocol has been stopped, just swallow all incoming packets
     //
     if (!P1running) { continue; }
-
     //t_print("%s: read %d bytes\n",__func__,bytes);
     if (bytes == 0) {
       t_print("old_protocol_ep6_read: ozy_read returned 0 bytes... retrying\n");
@@ -554,7 +520,6 @@ static gpointer ozy_ep6_rx_thread(gpointer arg) {
       queue_two_ozy_input_buffers(&ep6_inbuffer[1024], &ep6_inbuffer[1536]);
     }
   }
-
   return NULL;  /*NOTREACHED*/
 }
 
@@ -563,33 +528,26 @@ static gpointer ozy_ep6_rx_thread(gpointer arg) {
 static void open_udp_socket(void) {
   ASSERT_SERVER();
   int tmp;
-
   if (data_socket >= 0) {
     tmp = data_socket;
     data_socket = -1;
     usleep(100000);
     close(tmp);
   }
-
   tmp = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-
   if (tmp < 0) {
     t_perror("P1 create data socket");
     g_idle_add(fatal_error, "FATAL: P1 could not create data socket");
     return;
   }
-
   int optval = 1;
   socklen_t optlen = sizeof(optval);
-
   if (setsockopt(tmp, SOL_SOCKET, SO_REUSEADDR, &optval, optlen) < 0) {
     t_perror("data_socket: SO_REUSEADDR");
   }
-
   if (setsockopt(tmp, SOL_SOCKET, SO_REUSEPORT, &optval, optlen) < 0) {
     t_perror("data_socket: SO_REUSEPORT");
   }
-
   //
   // We need a receive buffer with a decent size, to be able to
   // store several incoming packets if they arrive in a burst.
@@ -608,33 +566,25 @@ static void open_udp_socket(void) {
   // then getsockopt() returns: RCVBUF: 0x40000, SNDBUF: 0x10000
   //
   optval = 0x40000;
-
   if (setsockopt(tmp, SOL_SOCKET, SO_RCVBUF, &optval, optlen) < 0) {
     t_perror("data_socket: set SO_RCVBUF");
   }
-
   optval = 0x10000;
-
   if (setsockopt(tmp, SOL_SOCKET, SO_SNDBUF, &optval, optlen) < 0) {
     t_perror("data_socket: set SO_SNDBUF");
   }
-
   optlen = sizeof(optval);
-
   if (getsockopt(tmp, SOL_SOCKET, SO_RCVBUF, &optval, &optlen) < 0) {
     t_perror("data_socket: get SO_RCVBUF");
   } else {
     if (optlen == sizeof(optval)) { t_print("UDP Socket RCV buf size=%d\n", optval); }
   }
-
   optlen = sizeof(optval);
-
   if (getsockopt(tmp, SOL_SOCKET, SO_SNDBUF, &optval, &optlen) < 0) {
     t_perror("data_socket: get SO_SNDBUF");
   } else {
     if (optlen == sizeof(optval)) { t_print("UDP Socket SND buf size=%d\n", optval); }
   }
-
   optlen = sizeof(optval);
 #ifdef IPTOS_DSCP_EF
   optval = IPTOS_DSCP_EF;
@@ -646,11 +596,9 @@ static void open_udp_socket(void) {
   //
   optval = 0xB8;
 #endif
-
   if (setsockopt(tmp, IPPROTO_IP, IP_TOS, &optval, optlen) < 0) {
     t_perror("data_socket: IP_TOS");
   }
-
   //
   // set a timeout for receive
   // This is necessary because we might already "sit" in an UDP recvfrom() call while
@@ -660,20 +608,16 @@ static void open_udp_socket(void) {
   struct timeval tv;
   tv.tv_sec = 0;
   tv.tv_usec = 100000;
-
   if (setsockopt(tmp, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
     t_perror("data_socket: SO_RCVTIMEO");
   }
-
   // bind to the interface
   t_print("binding UDP socket to %s:%d\n", inet_ntoa(radio->network.interface_address.sin_addr),
           ntohs(radio->network.interface_address.sin_port));
-
   if (bind(tmp, (struct sockaddr * )&radio->network.interface_address, radio->network.interface_length) < 0) {
     t_perror("P1: bind socket");
     g_idle_add(fatal_error, "FATAL: P1 could not bind data socket");
   }
-
   memcpy(&data_addr, &radio->network.address, radio->network.address_length);
   data_addr.sin_port = htons(DATA_PORT);
   //
@@ -687,41 +631,33 @@ static void open_udp_socket(void) {
 static void open_tcp_socket(void) {
   ASSERT_SERVER();
   int tmp;
-
   if (tcp_socket >= 0) {
     tmp = tcp_socket;
     tcp_socket = -1;
     usleep(100000);
     close(tmp);
   }
-
   memcpy(&data_addr, &radio->network.address, radio->network.address_length);
   data_addr.sin_port = htons(DATA_PORT);
   data_addr.sin_family = AF_INET;
   t_print("Trying to open TCP connection to %s\n", inet_ntoa(radio->network.address.sin_addr));
   tmp = socket(AF_INET, SOCK_STREAM, 0);
-
   if (tmp < 0) {
     t_perror("P1: create TCP socket");
     g_idle_add(fatal_error, "FATAL: P1 could not create TCP socket");
     return;
   }
-
   int optval = 1;
   socklen_t optlen = sizeof(optval);
-
   if (setsockopt(tmp, SOL_SOCKET, SO_REUSEADDR, &optval, optlen) < 0) {
     t_perror("tcp_socket: SO_REUSEADDR");
   }
-
   if (setsockopt(tmp, SOL_SOCKET, SO_REUSEPORT, &optval, optlen) < 0) {
     t_perror("tcp_socket: SO_REUSEPORT");
   }
-
   if (connect(tmp, (const struct sockaddr *)&data_addr, sizeof(data_addr)) < 0) {
     t_perror("tcp_socket: connect");
   }
-
   //
   // We need a receive buffer with a decent size, to be able to
   // store several incoming packets if they arrive in a burst.
@@ -740,33 +676,25 @@ static void open_tcp_socket(void) {
   // then getsockopt() returns: RCVBUF: 0x40000, SNDBUF: 0x10000
   //
   optval = 0x40000;
-
   if (setsockopt(tmp, SOL_SOCKET, SO_RCVBUF, &optval, optlen) < 0) {
     t_perror("tcp_socket: set SO_RCVBUF");
   }
-
   optval = 0x10000;
-
   if (setsockopt(tmp, SOL_SOCKET, SO_SNDBUF, &optval, optlen) < 0) {
     t_perror("tcp_socket: set SO_SNDBUF");
   }
-
   optlen = sizeof(optval);
-
   if (getsockopt(tmp, SOL_SOCKET, SO_RCVBUF, &optval, &optlen) < 0) {
     t_perror("tcp_socket: get SO_RCVBUF");
   } else {
     if (optlen == sizeof(optval)) { t_print("TCP Socket RCV buf size=%d\n", optval); }
   }
-
   optlen = sizeof(optval);
-
   if (getsockopt(tmp, SOL_SOCKET, SO_SNDBUF, &optval, &optlen) < 0) {
     t_perror("tcp_socket: get SO_SNDBUF");
   } else {
     if (optlen == sizeof(optval)) { t_print("TCP Socket SND buf size=%d\n", optval); }
   }
-
   optlen = sizeof(optval);
 #ifdef IPTOS_DSCP_EF
   optval = IPTOS_DSCP_EF;
@@ -778,11 +706,9 @@ static void open_tcp_socket(void) {
   //
   optval = 0xB8;
 #endif
-
   if (setsockopt(tmp, IPPROTO_IP, IP_TOS, &optval, optlen) < 0) {
     t_perror("tcp_socket: IP_TOS");
   }
-
   //
   // Set value of tcp_socket only after everything succeeded
   //
@@ -800,30 +726,23 @@ static int metis_read(unsigned char *buffer, int len) {
   socklen_t length = sizeof(addr);
   int bytes_read;
   int ret = -1;
-
   if (tcp_socket > 0) {
     // TCP messages may be split, so collect exactly 1032 bytes.
     // Remember, this is a STREAMING protocol.
     bytes_read = 0;
     int left = len;
-
     while (left > 0) {
       ret = recvfrom(tcp_socket, buffer + bytes_read, (size_t)(left), 0, NULL, 0);
-
       if (ret < 0 && errno == EAGAIN) { continue; } // time-out
-
       if (ret < 0) { break; }                       // error
-
       bytes_read += ret;
       left -= ret;
     }
-
     if (ret < 0) {
       bytes_read = ret;                        // error case: discard whole packet
     }
   } else if (data_socket >= 0) {
     bytes_read = recvfrom(data_socket, buffer, len, 0, (struct sockaddr*)&addr, &length);
-
     if (bytes_read < 0 && errno != EAGAIN) { t_perror("old_protocol recvfrom UDP"); }
   } else {
     //
@@ -833,27 +752,23 @@ static int metis_read(unsigned char *buffer, int len) {
     usleep(100000);
     bytes_read = 0;
   }
-
   if (bytes_read == 1032 && buffer[0] == 0xEF && buffer[1] == 0xFE && buffer[3] == 6) {
     //
     // This is the data frame we are looking for
     //
     uint32_t sequence = ((buffer[4] & 0xFF) << 24) + ((buffer[5] & 0xFF) << 16) + ((buffer[6] & 0xFF) << 8) +
                         (buffer[7] & 0xFF);
-
     // A sequence error with a seqnum of zero usually indicates a METIS restart
     // and is no error condition
     if (sequence != 0 && sequence != last_seq_num + 1) {
       t_print("SEQ ERROR: last %ld, recvd %ld\n", (long) last_seq_num, (long) sequence);
       sequence_errors++;
     }
-
     last_seq_num = sequence;
     ret = 0;
   } else if (bytes_read > 12) {
     t_print("%s: Invalid packet Header=%02x%02x EP=%d len=%d\n", __func__, buffer[0], buffer[1], buffer[3], bytes_read);
   }
-
   return ret;
 }
 
@@ -862,9 +777,7 @@ static gpointer receive_thread(gpointer arg) {
   unsigned char buffer[2000];
   int ret;
   t_print( "old_protocol: receive_thread\n");
-
   if (device == DEVICE_OZY) { return NULL; }  // should not happen
-
   for (;;) {
     //
     // This thread never exits.
@@ -873,7 +786,6 @@ static gpointer receive_thread(gpointer arg) {
       usleep(20000);
       continue;
     }
-
     //
     // This mutex blocks, if metis_read() is exectued from outside
     // this thread, e.g. when restarting the protocol
@@ -881,13 +793,11 @@ static gpointer receive_thread(gpointer arg) {
     if (pthread_mutex_trylock(&recv_mutex) == 0) {
       ret = P1running ? metis_read(buffer, 1032) : -1;
       pthread_mutex_unlock(&recv_mutex);
-
       if (ret >= 0) {
         queue_two_ozy_input_buffers(&buffer[8], &buffer[520]);
       }
     }
   }
-
   return NULL;
 }
 
@@ -908,7 +818,6 @@ static int rx_feedback_channel(void) {
   // Else, use the last RX before the TX feedback channel.
   //
   int ret;
-
   switch (device) {
   case DEVICE_METIS:
   case DEVICE_HERMES_LITE:
@@ -916,30 +825,25 @@ static int rx_feedback_channel(void) {
   case DEVICE_HERMES2:
     ret = 0;
     break;
-
   case DEVICE_HERMES:
     // Note Anan-10E and Anan-100B behave like HERMES2
     ret = anan10E ? 0 : 2;
     break;
-
   case DEVICE_G1:
   case DEVICE_STEMLAB:
   case DEVICE_STEMLAB_Z20:
   case DEVICE_HERMES_LITE2:
     ret = 2;
     break;
-
   case DEVICE_ANGELIA:
   case DEVICE_ORION:
   case DEVICE_ORION2:
     ret = 3;
     break;
-
   default:
     ret = 0;
     break;
   }
-
   return ret;
 }
 
@@ -953,7 +857,6 @@ static int tx_feedback_channel(void) {
   // This is hard-coded in the firmware.
   //
   int ret;
-
   switch (device) {
   case DEVICE_METIS:
   case DEVICE_HERMES_LITE:
@@ -961,30 +864,25 @@ static int tx_feedback_channel(void) {
   case DEVICE_HERMES2:
     ret = 1;
     break;
-
   case DEVICE_HERMES:
     // Note Anan-10E and Anan-100B behave like HERMES2
     ret = anan10E ? 1 : 3;
     break;
-
   case DEVICE_G1:
   case DEVICE_STEMLAB:
   case DEVICE_STEMLAB_Z20:
   case DEVICE_HERMES_LITE2:
     ret = 3;
     break;
-
   case DEVICE_ANGELIA:
   case DEVICE_ORION:
   case DEVICE_ORION2:
     ret = 4;
     break;
-
   default:
     ret = 1;
     break;
   }
-
   return ret;
 }
 
@@ -996,7 +894,6 @@ static long long channel_freq(int chan) {
   //
   int vfonum;
   long long freq;
-
   // RX1 and RX2 are normally used for the first and second receiver.
   // all other channels are used for PureSignal and get the DUC frequency
   // use channel_freq(-1) to determine the DUC freq
@@ -1004,39 +901,32 @@ static long long channel_freq(int chan) {
   case 0:
     vfonum = receiver[0]->id;
     break;
-
   case 1:
     if (diversity_enabled) {
       vfonum = receiver[0]->id;
     } else {
       vfonum = receiver[1]->id;
     }
-
     break;
-
   default:   // TX frequency used for all other channels
     vfonum = -1;
     break;
   }
-
   // Radios (especially with small FPGAs) may use RX1/RX2 for feedback while transmitting,
   //
   if (radio_is_transmitting() && transmitter->puresignal && (chan == rx_feedback_channel()
       || chan == tx_feedback_channel())) {
     vfonum = -1;
   }
-
   if (vfonum < 0) {
     //
     // indicates that we should use the TX frequency.
     //
     vfonum = vfo_get_tx_vfo();
     freq = vfo[vfonum].ctun ? vfo[vfonum].ctun_frequency : vfo[vfonum].frequency;
-
     if (vfo[vfonum].xit_enabled) {
       freq += vfo[vfonum].xit;
     }
-
     freq -= vfo[vfonum].lo;
   } else {
     //
@@ -1045,7 +935,6 @@ static long long channel_freq(int chan) {
     //
     freq = vfo[vfonum].frequency - vfo[vfonum].lo;
   }
-
   return calibrated_frequency(freq);
 }
 
@@ -1056,9 +945,7 @@ static int how_many_receivers(void) {
   // When PureSignal is active, we need to include the TX DAC channel.
   //
   int ret = receivers;          // 1 or 2
-
   if (diversity_enabled) { ret = 2; } // need both RX channels, even if there is only one RX
-
   //
   // Always return 2 so the number of HPSDR-RX is NEVER changed.
   // With 2 RX you can do 1RX or 2RX modes, and it is
@@ -1069,7 +956,6 @@ static int how_many_receivers(void) {
   //    sample rates but this is simply safer.
   //
   if (device == DEVICE_OZY) { return 2; }
-
   // for PureSignal, the number of receivers needed is hard-coded below.
   // we need at least 2, and up to 5 for Orion2 boards. This is so because
   // the TX DAC is hard-wired to RX2 for limited-capacity FPGAS, to
@@ -1083,31 +969,26 @@ static int how_many_receivers(void) {
     case DEVICE_HERMES2:
       ret = 2; // TX feedback hard-wired to RX2
       break;
-
     case DEVICE_HERMES:
       // Note Anan-10E and Anan-100B behave like METIS
       ret = anan10E ? 2 : 4;
       break;
-
     case DEVICE_G1:
     case DEVICE_STEMLAB:
     case DEVICE_STEMLAB_Z20:
     case DEVICE_HERMES_LITE2:
       ret = 4; // TX feedback hard-wired to RX4
       break;
-
     case DEVICE_ANGELIA:
     case DEVICE_ORION:
     case DEVICE_ORION2:
       ret = 5; // TX feedback hard-wired to RX5
       break;
-
     default:
       ret = 2; // This is the minimum for PureSignal
       break;
     }
   }
-
   return ret;
 }
 
@@ -1149,7 +1030,6 @@ static void process_control_bytes(void) {
   static unsigned int adc1_acc = 0;
   previous_ptt = hpsdr_ptt;
   hpsdr_ptt  = (control_in[0]     ) & 0x01;
-
   if (previous_ptt != hpsdr_ptt) {
     // TODO: what if hpsdr_ptt goes to zero while we
     //       are tuning or two-toning?
@@ -1159,7 +1039,6 @@ static void process_control_bytes(void) {
       g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
     }
   }
-
   if ((device == DEVICE_HERMES_LITE2) && (control_in[0] & 0x80)) {
     //
     // The HL2 sends specific ACK responses if bit7 of C0 is set
@@ -1169,7 +1048,6 @@ static void process_control_bytes(void) {
     // a HL2 IO-board.
     //
     int addr = (control_in[0] & 0x7E) >> 1;
-
     //
     // Since querying the IOB is the only "I2C read" we do, the ACK can only refer
     // to the IOB query.
@@ -1182,32 +1060,25 @@ static void process_control_bytes(void) {
       t_print("HL2IOB: board detected\n");
       hl2_iob_present = 1;
     }
-
     return;
   }
-
   previous_dot = hpsdr_dot;
   previous_dash = hpsdr_dash;
   hpsdr_dash = (control_in[0] >> 1) & 0x01;
   hpsdr_dot  = (control_in[0] >> 2) & 0x01;
-
   // Stops CAT cw transmission if radio reports "CW action"
   if (hpsdr_dash || hpsdr_dot) {
     CAT_cw_is_active = 0;
     MIDI_cw_is_active = 0;
     cw_key_hit = 1;
   }
-
   if (!cw_keyer_internal) {
     if (hpsdr_dash != previous_dash) { keyer_event(0, hpsdr_dash); }
-
     if (hpsdr_dot  != previous_dot ) { keyer_event(1, hpsdr_dot ); }
   }
-
   switch ((control_in[0] >> 3) & 0x1F) {
   case 0:
     adc[0].overload |= (control_in[1] & 0x01);
-
     //
     // Hermes IOx inputs (x=1,2,3,4), used for TxInhibit and AutoTune
     // This inputs are active if the bit is cleared
@@ -1218,39 +1089,32 @@ static void process_control_bytes(void) {
       } else {
         data = (control_in[1] >> 1) & 0x01;  // Use IO1 (active=0) on all other gear
       }
-
       if (!TxInhibit && data == 0) {
         TxInhibit = 1;
         g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(0));
       }
-
       if (data == 1) { TxInhibit = 0; }
     } else {
       TxInhibit = 0;
     }
-
     if (enable_auto_tune) {
       data = (control_in[1] >> 3) & 0x01;   // Use IO3 (active=0)
       auto_tune_end = data;
-
       if (data == 0 && !auto_tune_flag) {
         radio_start_auto_tune();
       }
     } else {
       auto_tune_end = 1;
     }
-
     if (device == DEVICE_METIS || device == DEVICE_OZY) {
       //
       // These software versions are zero for HERMES and beyond
       //
       static int penelope_software_version = 0;
-
       if (mercury_software_version[0] != control_in[2]) {
         mercury_software_version[0] = control_in[2];
         t_print("  Mercury Software version: %d (0x%0X)\n", mercury_software_version[0], mercury_software_version[0]);
       }
-
       if (penelope_software_version != control_in[3] && control_in[3] != 0xFF) {
         penelope_software_version = control_in[3];
         t_print("  Penelope Software version: %d (0x%0X)\n", penelope_software_version, penelope_software_version);
@@ -1282,22 +1146,16 @@ static void process_control_bytes(void) {
         // as soon as a "no underflow" condition is seen.
         //
         if ((control_in[3] & 0xC0) != 0x80) { tx_fifo_flag = 1; }
-
         if ((control_in[3] & 0xC0) == 0x80 && tx_fifo_flag) { tx_fifo_underrun = 1; }
-
         if ((control_in[3] & 0xC0) == 0xC0) { tx_fifo_overrun = 1; }
       }
     }
-
     static int metis_software_version = -1;
-
     if (metis_software_version != control_in[4]) {
       metis_software_version = control_in[4];
       t_print("FPGA firmware version: %d.%d\n", metis_software_version / 10, metis_software_version % 10);
     }
-
     break;
-
   case 1:
     // Note HL2 uses this for the temperature
     val = ((control_in[1] & 0xFF) << 8) | (control_in[2] & 0xFF); // HL2
@@ -1306,11 +1164,8 @@ static void process_control_bytes(void) {
     val = ((control_in[3] & 0xFF) << 8) | (control_in[4] & 0xFF);
     fwd_acc = (15 * fwd_acc) / 16 + val;
     alex_forward_power = fwd_acc / 16;
-
     if (val > alex_forward_max) { alex_forward_max = val; }
-
     break;
-
   case 2:
     val = ((control_in[1] & 0xFF) << 8) | (control_in[2] & 0xFF);
     rev_acc = (15 * rev_acc) / 16 + val;
@@ -1319,17 +1174,14 @@ static void process_control_bytes(void) {
     adc0_acc = (15 * adc0_acc) / 16 + val;
     ADC0 = adc0_acc / 16;
     break;
-
   case 3:
     val  = ((control_in[1] & 0xFF) << 8) | (control_in[2] & 0xFF);
     adc1_acc = (15 * adc1_acc) / 16 + val;
     ADC1 = adc1_acc / 16;
     break;
-
   case 4:
     adc[0].overload |= control_in[1] & 0x01;
     adc[1].overload |= control_in[2] & 0x01;
-
     if (device == DEVICE_METIS || device == DEVICE_OZY) {
       //
       // If  Mercury card #1 is reported, assign RX1 with the first card (ADC1),
@@ -1340,11 +1192,9 @@ static void process_control_bytes(void) {
         t_print("Mercury 1 Software version: %d.%d\n", mercury_software_version[0] / 10, mercury_software_version[0] % 10);
         receiver[0]->adc = 0;
       }
-
       if (mercury_software_version[1] != control_in[2] >> 1 && control_in[2] >> 1 != 0x7F) {
         mercury_software_version[1] = control_in[2] >> 1;
         t_print("Mercury 2 Software version: %d.%d\n", mercury_software_version[1] / 10, mercury_software_version[1] % 10);
-
         if (receivers > 1) { receiver[1]->adc = 1; }
       }
     }
@@ -1362,53 +1212,42 @@ static int st_txfdbk;
 
 static void process_ozy_byte(int b) {
   ASSERT_SERVER();
-
   switch (state) {
   case SYNC_0:
     if (b == SYNC) {
       state++;
     }
-
     break;
-
   case SYNC_1:
     if (b == SYNC) {
       state++;
     } else {
       state = SYNC_0;
     }
-
     break;
-
   case SYNC_2:
     if (b == SYNC) {
       state++;
     } else {
       state = SYNC_0;
     }
-
     break;
-
   case CONTROL_0:
     control_in[0] = b;
     state++;
     break;
-
   case CONTROL_1:
     control_in[1] = b;
     state++;
     break;
-
   case CONTROL_2:
     control_in[2] = b;
     state++;
     break;
-
   case CONTROL_3:
     control_in[3] = b;
     state++;
     break;
-
   case CONTROL_4:
     control_in[4] = b;
     process_control_bytes();
@@ -1417,37 +1256,30 @@ static void process_ozy_byte(int b) {
     nsamples = 0;
     state++;
     break;
-
   case LEFT_SAMPLE_HI:
     left_sample = (int)((signed char)b << 16);
     state++;
     break;
-
   case LEFT_SAMPLE_MID:
     left_sample |= (int)((((unsigned char)b) << 8) & 0xFF00);
     state++;
     break;
-
   case LEFT_SAMPLE_LOW:
     left_sample |= (int)((unsigned char)b & 0xFF);
     left_sample_double = (double)left_sample * 1.1920928955078125E-7;
     state++;
     break;
-
   case RIGHT_SAMPLE_HI:
     right_sample = (int)((signed char)b << 16);
     state++;
     break;
-
   case RIGHT_SAMPLE_MID:
     right_sample |= (int)((((unsigned char)b) << 8) & 0xFF00);
     state++;
     break;
-
   case RIGHT_SAMPLE_LOW:
     right_sample |= (int)((unsigned char)b & 0xFF);
     right_sample_double = (double)right_sample * 1.1920928955078125E-7;
-
     if (radio_is_transmitting() && transmitter->puresignal) {
       //
       // transmitting with PureSignal. Get sample pairs and feed to pscc
@@ -1459,14 +1291,12 @@ static void process_ozy_byte(int b) {
         left_sample_double_tx = left_sample_double;
         right_sample_double_tx = right_sample_double;
       }
-
       // this is pure paranoia, it allows for st_txfdbk < st_rxfdbk
       if (nreceiver + 1 == st_num_hpsdr_receivers) {
         tx_add_ps_iq_samples(transmitter, left_sample_double_tx, right_sample_double_tx, left_sample_double_rx,
                              right_sample_double_rx);
       }
     }
-
     if (!radio_is_transmitting() && diversity_enabled) {
       //
       // receiving with DIVERSITY. Get sample pairs and feed to diversity mixer.
@@ -1480,11 +1310,9 @@ static void process_ozy_byte(int b) {
         right_sample_double_aux = right_sample_double;
         rx_add_div_iq_samples(receiver[0], left_sample_double_main, right_sample_double_main, left_sample_double_aux,
                               right_sample_double_aux);
-
         if (receivers > 1) { rx_add_iq_samples(receiver[1], left_sample_double_aux, right_sample_double_aux); }
       }
     }
-
     if ((!radio_is_transmitting() || duplex) && !diversity_enabled) {
       //
       // RX without DIVERSITY. Feed samples to RX1 and RX2
@@ -1495,31 +1323,24 @@ static void process_ozy_byte(int b) {
         rx_add_iq_samples(receiver[1], left_sample_double, right_sample_double);
       }
     }
-
     nreceiver++;
-
     if (nreceiver == st_num_hpsdr_receivers) {
       state = MIC_SAMPLE_HI;
     } else {
       state = LEFT_SAMPLE_HI;
     }
-
     break;
-
   case MIC_SAMPLE_HI:
     next_mic_sample = (b << 8);
     state = MIC_SAMPLE_LOW;
     break;
-
   case MIC_SAMPLE_LOW:
     next_mic_sample |= (b & 0xFF);
     mic_samples++;
-
     if (mic_samples >= mic_sample_divisor) { // reduce to 48000
       tx_add_mic_sample(transmitter, next_mic_sample * 0.00003051);
       mic_samples = 0;
     }
-
     //
     // With the MIC_SAMPLE_LOW, a complete sample has been received
     // (consisting of RX IQ for all receivers and the mic samples).
@@ -1527,14 +1348,12 @@ static void process_ozy_byte(int b) {
     // processed, or go to LEFT_SAMPL_HI to process the next sample.
     //
     nsamples++;
-
     if (nsamples == iq_samples) {
       state = SYNC_0;
     } else {
       nreceiver = 0;
       state = LEFT_SAMPLE_HI;
     }
-
     break;
   }
 }
@@ -1542,7 +1361,6 @@ static void process_ozy_byte(int b) {
 static void queue_two_ozy_input_buffers(unsigned const char *buf1,
                                         unsigned const char *buf2) {
   ASSERT_SERVER();
-
   //
   // To achieve minimum overhead in the RX thread, the data is
   // simply put into a large ring buffer. We queue two buffers
@@ -1553,9 +1371,7 @@ static void queue_two_ozy_input_buffers(unsigned const char *buf1,
     rxring_count++;
     return;
   }
-
   int nptr = (rxring_inptr + 1024) & RXRINGBUFMASK;
-
   if (nptr != rxring_outptr) {
     memcpy((void *)(&RXRINGBUF[rxring_inptr    ]), buf1, OZY_BUFFER_SIZE);
     memcpy((void *)(&RXRINGBUF[rxring_inptr + OZY_BUFFER_SIZE]), buf2, OZY_BUFFER_SIZE);
@@ -1576,7 +1392,6 @@ static void queue_two_ozy_input_buffers(unsigned const char *buf1,
 
 static gpointer process_ozy_input_buffer_thread(gpointer arg) {
   ASSERT_SERVER(NULL);
-
   //
   // This thread constantly monitors the input ring buffer and
   // processes the data whenever a bunch is available. Note this
@@ -1593,37 +1408,30 @@ static gpointer process_ozy_input_buffer_thread(gpointer arg) {
     sem_wait(&rxring_sem);
 #endif
     int nptr = (rxring_outptr + 1024) & RXRINGBUFMASK;
-
     //
     // This data can change while processing one buffer
     //
     st_num_hpsdr_receivers = how_many_receivers();
     st_rxfdbk = rx_feedback_channel();
     st_txfdbk = tx_feedback_channel();
-
     for (int i = 0; i < 1024; i++) {
       process_ozy_byte(RXRINGBUF[rxring_outptr + i] & 0xFF);
     }
-
     MEMORY_BARRIER;
     rxring_outptr = nptr;
   }
-
   return NULL;
 }
 
 void old_protocol_audio_samples(double left, double right) {
   ASSERT_SERVER();
-
   if (!radio_is_transmitting()) {
     pthread_mutex_lock(&audio_mutex);
-
     if (txring_count < 0) {
       txring_count++;
       pthread_mutex_unlock(&audio_mutex);
       return;
     }
-
     if (txring_flag) {
       //
       // First time we arrive here after a TX->RX transition:
@@ -1632,7 +1440,6 @@ void old_protocol_audio_samples(double left, double right) {
       txring_inptr = txring_outptr;
       txring_flag = 0;
     }
-
     int iptr = txring_inptr + 8 * txring_count;
     //
     // The HL2 makes no use of audio samples, but instead
@@ -1642,7 +1449,6 @@ void old_protocol_audio_samples(double left, double right) {
     //
     int32_t ls = (int32_t)(left  * 32766.672 + 32767.5) - 32767;
     int32_t rs = (int32_t)(right * 32766.672 + 32767.5) - 32767;
-
     if (device == DEVICE_HERMES_LITE2 && !hl2_audio_codec) {
       TXRINGBUF[iptr++] = 0;
       TXRINGBUF[iptr++] = 0;
@@ -1654,18 +1460,14 @@ void old_protocol_audio_samples(double left, double right) {
       TXRINGBUF[iptr++] = (rs >> 8) & 0xFF;
       TXRINGBUF[iptr++] = (rs     ) & 0xFF;
     }
-
     TXRINGBUF[iptr++] = 0;
     TXRINGBUF[iptr++] = 0;
     TXRINGBUF[iptr++] = 0;
     TXRINGBUF[iptr++] = 0;
     txring_count++;
-
     if (txring_count >= 126) {
       int nptr = txring_inptr + 1008;
-
       if (nptr >= TXRINGBUFLEN) { nptr = 0; }
-
       if (nptr != txring_outptr) {
         MEMORY_BARRIER;
         txring_inptr = nptr;
@@ -1681,23 +1483,19 @@ void old_protocol_audio_samples(double left, double right) {
         txring_count = -1260;
       }
     }
-
     pthread_mutex_unlock(&audio_mutex);
   }
 }
 
 void old_protocol_iq_samples(double isample, double qsample, double side) {
   ASSERT_SERVER();
-
   if (radio_is_transmitting()) {
     pthread_mutex_lock(&audio_mutex);
-
     if (txring_count < 0) {
       txring_count++;
       pthread_mutex_unlock(&audio_mutex);
       return;
     }
-
     if (!txring_flag) {
       //
       // First time we arrive here after a RX->TX transition:
@@ -1707,7 +1505,6 @@ void old_protocol_iq_samples(double isample, double qsample, double side) {
       txring_inptr = txring_outptr;
       txring_flag = 1;
     }
-
     int iptr = txring_inptr + 8 * txring_count;
     //
     // In P1, TX samples are signed 16-bit quantities.
@@ -1720,7 +1517,6 @@ void old_protocol_iq_samples(double isample, double qsample, double side) {
     int32_t is = (int32_t)(isample * 32766.672 + 32767.5) - 32767;
     int32_t qs = (int32_t)(qsample * 32766.672 + 32767.5) - 32767;
     int32_t sd = (int32_t)(side    * 32766.672 + 32767.5) - 32767;
-
     //
     // The HL2 makes no use of audio samples, but instead
     // uses them to write to extended addrs which we do not
@@ -1738,7 +1534,6 @@ void old_protocol_iq_samples(double isample, double qsample, double side) {
       TXRINGBUF[iptr++] = (sd >> 8) & 0xFF;
       TXRINGBUF[iptr++] = (sd     ) & 0xFF;
     }
-
     if (device == DEVICE_HERMES_LITE2) {
       //
       // The "CWX" method in the HL2 firmware behaves erroneously
@@ -1758,14 +1553,10 @@ void old_protocol_iq_samples(double isample, double qsample, double side) {
       TXRINGBUF[iptr++] = (qs >> 8) & 0xFF;
       TXRINGBUF[iptr++] = (qs     ) & 0xFF;
     }
-
     txring_count++;
-
     if (txring_count >= 126) {
       int nptr = txring_inptr + 1008;
-
       if (nptr >= TXRINGBUFLEN) { nptr = 0; }
-
       if (nptr != txring_outptr) {
         MEMORY_BARRIER;
         txring_inptr = nptr;
@@ -1781,7 +1572,6 @@ void old_protocol_iq_samples(double isample, double qsample, double side) {
         txring_count = -1260;
       }
     }
-
     pthread_mutex_unlock(&audio_mutex);
   }
 }
@@ -1801,7 +1591,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
   buffer[SYNC0] = SYNC;
   buffer[SYNC1] = SYNC;
   buffer[SYNC2] = SYNC;
-
   if (metis_offset == 8) {
     //
     // Every second packet is a "C0=0" packet
@@ -1809,25 +1598,20 @@ static void ozy_send_buffer(unsigned char *buffer) {
     //
     buffer[C0] = 0x00;
     buffer[C1] = 0x00;
-
     switch (receiver[0]->sample_rate) {
     case 48000:
       buffer[C1] |= SPEED_48K;
       break;
-
     case 96000:
       buffer[C1] |= SPEED_96K;
       break;
-
     case 192000:
       buffer[C1] |= SPEED_192K;
       break;
-
     case 384000:
       buffer[C1] |= SPEED_384K;
       break;
     }
-
     // set more bits for Atlas based device
     // CONFIG_BOTH seems to be critical to getting ozy to respond
     if ((device == DEVICE_OZY) || (device == DEVICE_METIS)) {
@@ -1845,41 +1629,33 @@ static void ozy_send_buffer(unsigned char *buffer) {
       // and CONFIG_BOTH becomes effective.
       //
       buffer[C1] |= CONFIG_MERCURY;
-
       if (atlas_penelope) {
         buffer[C1] |= CONFIG_PENELOPE;
       }
-
       if (atlas_mic_source) {
         buffer[C1] |= PENELOPE_MIC;
         buffer[C1] |= CONFIG_PENELOPE;
       }
-
       if (atlas_clock_source_128mhz) {
         buffer[C1] |= MERCURY_122_88MHZ_SOURCE;  // Mercury provides 122 MHz
       } else {
         buffer[C1] |= PENELOPE_122_88MHZ_SOURCE; // Penelope provides 122 MHz
         buffer[C1] |= CONFIG_PENELOPE;
       }
-
       switch (atlas_clock_source_10mhz) {
       case 0:
         buffer[C1] |= ATLAS_10MHZ_SOURCE;      // ATLAS provides 10 MHz
         break;
-
       case 1:
         buffer[C1] |= PENELOPE_10MHZ_SOURCE;   // Penelope provides 10 MHz
         buffer[C1] |= CONFIG_PENELOPE;
         break;
-
       case 2:
         buffer[C1] |= MERCURY_10MHZ_SOURCE;    // Mercury provides 10 MHz
         break;
       }
     }
-
 #ifdef USBOZY
-
     //
     // This is for "Janus only" operation
     //
@@ -1891,20 +1667,16 @@ static void ozy_send_buffer(unsigned char *buffer) {
       metis_offset = 8; // take care next packet is a C0=0 packet
       return;
     }
-
 #endif
     buffer[C2] = 0x00;
     buffer[C3] = 0x00;
-
     if (radio_is_transmitting()) {
       buffer[C2] |= txband->OCtx << 1;
-
       if (transmitter->tune) {
         if (full_tune || memory_tune) {
           struct timeval te;
           gettimeofday(&te, NULL);
           long long now = te.tv_sec * 1000LL + te.tv_usec / 1000;
-
           if (tune_timeout > now) {
             buffer[C2] |= OCtune << 1;
           }
@@ -1915,11 +1687,9 @@ static void ozy_send_buffer(unsigned char *buffer) {
     } else {
       buffer[C2] |= rxband->OCrx << 1;
     }
-
     if ((have_alex_att && filter_board == ALEX) || filter_board == CHARLY25) {
       buffer[C3] = adc[0].alex_attenuation & 0x03;
     }
-
     //
     // The protocol does not have different random/dither bits for different Mercury
     // cards, therefore we OR the settings for both ADCs that may be present
@@ -1927,11 +1697,9 @@ static void ozy_send_buffer(unsigned char *buffer) {
     if (adc[0].random || adc[1].random) {
       buffer[C3] |= LT2208_RANDOM_ON;
     }
-
     if (adc[0].dither || adc[1].dither) {
       buffer[C3] |= LT2208_DITHER_ON;
     }
-
     //
     // Some  HL2 firmware variants (ab-) uses this bit for indicating an audio codec is present
     // We also  accept explicit use  of the "dither" box
@@ -1939,16 +1707,13 @@ static void ozy_send_buffer(unsigned char *buffer) {
     if (device == DEVICE_HERMES_LITE2 && hl2_audio_codec) {
       buffer[C3] |= LT2208_DITHER_ON;
     }
-
     if (filter_board == CHARLY25 && adc[0].preamp) {
       buffer[C3] |= LT2208_GAIN_ON;
     }
-
     //
     // Set ALEX RX1_ANT and RX1_OUT
     //
     i = adc[0].antenna;
-
     //
     // Upon TX, we might have to activate a different RX path for the
     // attenuated feedback signal. Use antenna == 0, if
@@ -1956,14 +1721,12 @@ static void ozy_send_buffer(unsigned char *buffer) {
     // If feedback is to the second ADC, leave RX1 ANT settings untouched
     //
     if (radio_is_transmitting() && transmitter->puresignal) { i = adc[2].antenna; }
-
     if (device == DEVICE_ORION2 || device == DEVICE_G1) {
       i += 100;
     } else if (new_pa_board) {
       // New-PA setting invalid on ANAN-7000,8000
       i += 1000;
     }
-
     //
     // There are several combination which do not exist (no jacket present)
     // or which do not work (using EXT1-on-TX with ANAN-7000).
@@ -1978,63 +1741,50 @@ static void ozy_send_buffer(unsigned char *buffer) {
     case 1006:
       buffer[C3] |= 0xC0;
       break;
-
     case 4:           // EXT2 with old pa board
       buffer[C3] |= 0xA0;
       break;
-
     case 5:           // XVTR with old pa board
       buffer[C3] |= 0xE0;
       break;
-
     case 104:         // EXT2 with ANAN-7000: does not exist, use EXT1
     case 103:         // EXT1 with ANAN-7000
       buffer[C3] |= 0x40;
       break;
-
     case 105:         // XVTR with ANAN-7000
       buffer[C3] |= 0x60;
       break;
-
     case 106:         // EXT1-on-TX with ANAN-7000: does not exist, use ByPass
     case 107:         // Bypass-on-TX with ANAN-7000
       buffer[C3] |= 0x20;
       break;
-
     case 1003:        // EXT1 with new PA board
       buffer[C3] |= 0x40;
       break;
-
     case 1004:        // EXT2 with new PA board
       buffer[C3] |= 0x20;
       break;
-
     case 1005:        // XVRT with new PA board
       buffer[C3] |= 0x60;
       break;
-
     case 7:           // Bypass-on-TX: assume new PA board
     case 1007:
       buffer[C3] |= 0x80;
       break;
     }
-
     //
     // ALWAYS set the duplex bit "on". This bit indicates to the
     // FPGA that the TX frequency can be different from the RX
     // frequency, which is the case with Split, XIT, CTUN
     //
     buffer[C4] = 0x04;
-
     //
     // This is used to phase-synchronize RX1 and RX2 on some boards
     // and enforces that the RX1 and RX2 frequencies are the same.
     //
     if (diversity_enabled) { buffer[C4] |= 0x80; }
-
     // 0 ... 7 maps on 1 ... 8 receivers
     buffer[C4] |= ((num_hpsdr_receivers - 1) & 0x07) << 3;
-
     //
     //  Now we set the bits for Ant1/2/3 (RX and TX may be different)
     //  ATTENTION:
@@ -2055,7 +1805,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
     //
     if (radio_is_transmitting() || hpsdr_ptt) {
       i = transmitter->antenna;
-
       //
       // TX antenna outside allowd range: this cannot happen.
       // Out of paranoia: print warning and choose ANT1
@@ -2067,33 +1816,27 @@ static void ozy_send_buffer(unsigned char *buffer) {
       }
     } else {
       i = adc[0].antenna;
-
       //
       // Not using ANT1,2,3: can leave relais in TX state unless using new PA board
       //
       if (i > 2 && !new_pa_board) { i = transmitter->antenna; }
     }
-
     switch (i) {
     case 0:  // ANT 1
       buffer[C4] |= 0x00;
       break;
-
     case 1:  // ANT 2
       buffer[C4] |= 0x01;
       break;
-
     case 2:  // ANT 3
       buffer[C4] |= 0x02;
       break;
-
     default:
       // this happens only with the new pa board and using EXT1/EXT2/XVTR
       // here we have to disconnect ANT1,2,3
       buffer[C4] |= 0x03;
       break;
     }
-
     // end of "C0=0" packet
   } else {
     // metis_offset !=8: send the other C&C packets in round-robin
@@ -2102,7 +1845,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
     buffer[C2] = 0x00;
     buffer[C3] = 0x00;
     buffer[C4] = 0x00;
-
     switch (p1_command_loop) {
     case 1: { // tx frequency
       buffer[C0] = 0x02;
@@ -2114,7 +1856,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
       p1_command_loop = 2;
     }
     break;
-
     case 2: // rx frequency
       if (current_rx < num_hpsdr_receivers) {
         buffer[C0] = 0x04 + (current_rx * 2);
@@ -2125,16 +1866,13 @@ static void ozy_send_buffer(unsigned char *buffer) {
         buffer[C4] = DDCfrequency;
         current_rx++;
       }
-
       // if we have reached the last RX channel, wrap around
       // and proceed with the next "command"
       if (current_rx >= num_hpsdr_receivers) {
         current_rx = 0;
         p1_command_loop = 3;
       }
-
       break;
-
     case 3: { // TX drive level, filters, etc.
       int power = 0;
       //
@@ -2145,11 +1883,9 @@ static void ozy_send_buffer(unsigned char *buffer) {
       //
       int v = vfo_get_tx_vfo();
       long long TXfreq = vfo[v].ctun ? vfo[v].ctun_frequency : vfo[v].frequency;
-
       if (vfo[v].xit_enabled) {
         TXfreq += vfo[v].xit;
       }
-
       //
       // Fast "out-of-band" check. If out-of-band, set TX drive to zero.
       // This already happens during RX and is effective if the
@@ -2159,35 +1895,25 @@ static void ozy_send_buffer(unsigned char *buffer) {
       if ((TXfreq >= txband->frequencyMin && TXfreq <= txband->frequencyMax) || tx_out_of_band_allowed) {
         power = transmitter->drive_level;
       }
-
       buffer[C0] = 0x12;
       buffer[C1] = power & 0xFF;
-
       if (mic_boost) { buffer[C2] |= 0x01; }
-
       if (mic_linein) { buffer[C2] |= 0x02; }
-
       if (filter_board == APOLLO) { buffer[C2] |= 0x2C; }
-
       if ((filter_board == APOLLO) && transmitter->tune) { buffer[C2] |= 0x10; }
-
       // Alex 6M low noise amplifier
       if (rxb == band6) { buffer[C3] = buffer[C3] | 0x40; }
-
       if (txband->disablePA || !pa_enabled) {
         buffer[C3] |= 0x80; // disable Alex T/R relay
-
         if (radio_is_transmitting()) {
           buffer[C2] |= 0x40; // Manual Filter Selection
           buffer[C3] |= 0x20; // bypass all RX filters
         }
       }
-
       if (!radio_is_transmitting() && adc[0].filter_bypass) {
         buffer[C2] |= 0x40; // Manual Filter Selection
         buffer[C3] |= 0x20; // bypass all RX filters
       }
-
       //
       // If using PureSignal and a feedback to EXT1, we have to manually activate the RX HPF/BPF
       // filters and select "bypass" since the feedback signal must arrive at the board
@@ -2207,7 +1933,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
         // the Angelia firmware routes 12m through the 17/15m LPF.
         //
         long long HPSDRfrequency = TXfreq - vfo[v].lo;
-
         if (HPSDRfrequency > 35600000L) {            // > 10m so use 6m LPF
           buffer[C4] = 0x10;
         } else if (HPSDRfrequency > 24000000L)  {    // > 15m so use 10/12m LPF
@@ -2224,7 +1949,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
           buffer[C4] = 0x08;
         }
       }
-
       if (device == DEVICE_HERMES_LITE2) {
         // do not set any Apollo/Alex bits (ADDR=0x09 bits 0:23)
         // ADDR=0x09 bit 19 follows "PA enable" state
@@ -2233,7 +1957,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
         buffer[C2] = 0x00;
         buffer[C3] = 0x00;
         buffer[C4] = 0x00;
-
         if (pa_enabled && !txband->disablePA) {
           //
           // Enable PA
@@ -2246,40 +1969,30 @@ static void ozy_send_buffer(unsigned char *buffer) {
           //
           buffer[C2] |= 0x04;
         }
-
         if (transmitter->tune && hl2_ah4_atu) { buffer[C2] |= 0x10; }
       }
-
       p1_command_loop = 4;
     }
     break;
-
     case 4:
       buffer[C0] = 0x14;
-
       if (have_preamp) {
         buffer[C1] = adc[0].preamp | (adc[1].preamp << 1);
       }
-
       if (orion_mic_ptt_enabled == 0) {
         buffer[C1] |= 0x40;
       }
-
       if (orion_mic_bias_enabled) {
         buffer[C1] |= 0x20;
       }
-
       if (orion_mic_ptt_tip) {
         buffer[C1] |= 0x10;
       }
-
       // map input value -34 ... +12 onto 0 ... 31
       buffer[C2] |=  (int)((linein_gain + 34.0) * 0.6739 + 0.5);
-
       if (transmitter->puresignal) {
         buffer[C2] |= 0x40;
       }
-
       // upon TX, use transmitter->attenuation
       // Usually the firmware takes care of this, but it is no
       // harm to do this here as well
@@ -2290,45 +2003,35 @@ static void ozy_send_buffer(unsigned char *buffer) {
         // of C4 to allow using the full range in bits 0-5.
         //
         int rxgain = adc[active_receiver->adc].gain + 12; // -12..48 to 0..60
-
         if (radio_is_transmitting()) {
           //
           // If have_rx_gain, the "TX attenuation range" is extended from
           // -29 to +31 which is then mapped to 60 ... 0
           //
           if (pa_enabled && !txband->disablePA) { rxgain = 0; }
-
           if (transmitter->puresignal) { rxgain = 31 - transmitter->attenuation; }
         }
-
         if (rxgain <  0) { rxgain = 0; }
-
         if (rxgain > 60) { rxgain = 60; }
-
         buffer[C4] = 0x40 | rxgain;
       } else {
         //
         // Standard HPSDR ADC0 attenuator
         //
         buffer[C4] = 0x20 | (adc[0].attenuation & 0x1F);
-
         if (radio_is_transmitting()) {
           if (pa_enabled && !txband->disablePA) {
             buffer[C4] = 0x3F;
           }
-
           if (transmitter->puresignal) {
             buffer[C4] = 0x20 | (transmitter->attenuation & 0x1F);
           }
         }
       }
-
       p1_command_loop = 5;
       break;
-
     case 5:
       buffer[C0] = 0x16;
-
       if (n_adc == 2) {
         //
         // Setting of the ADC1 step attenuator
@@ -2340,25 +2043,20 @@ static void ozy_send_buffer(unsigned char *buffer) {
         } else {
           buffer[C1] = 0x20 | (adc[1].attenuation & 0x1F);
         }
-
         if (radio_is_transmitting() && pa_enabled && !txband->disablePA) {
           buffer[C1] = 0x3F;
         }
       }
-
       if (cw_keys_reversed != 0) {
         buffer[C2] |= 0x40;
       }
-
       buffer[C3] = cw_keyer_speed | (cw_keyer_mode << 6);
       buffer[C4] = cw_keyer_weight | (cw_keyer_spacing << 7);
       p1_command_loop = 6;
       break;
-
     case 6:
       // need to add tx attenuation and rx ADC selection
       buffer[C0] = 0x1C;
-
       // set adc of the two RX associated with the two piHPSDR receivers
       if (diversity_enabled) {
         // use ADC0 for RX1 and ADC1 for RX2 (fixed setting)
@@ -2367,7 +2065,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
         buffer[C1] |= receiver[0]->adc & 0x03;
         buffer[C1] |= (receiver[1]->adc & 0x03) << 2;
       }
-
       //
       // This is probably never needed. It allows to assign ADC1
       // to the RX feedback channel (this is currently not allowed in the GUI).
@@ -2375,39 +2072,29 @@ static void ozy_send_buffer(unsigned char *buffer) {
       if (rxfdbkchan > 1 && rxfdbkchan < 4 && transmitter->puresignal) {
         buffer[C1] |= ((receiver[PS_RX_FEEDBACK]->adc & 0x03) << (2 * rxfdbkchan));
       }
-
       //
       // Setting of the ADC0 step attenuator while transmitting
       //
       if (device == DEVICE_HERMES_LITE2) {
         // bit7: enable TX att, bit6: enable 6-bit value, bit5:0 value
         int rxgain = adc[active_receiver->adc].gain + 12; // -12..48 to 0..60
-
         if (pa_enabled && !txband->disablePA)  { rxgain = 0; }
-
         if (transmitter->puresignal) { rxgain = 31 - transmitter->attenuation; }
-
         if (rxgain <  0) { rxgain = 0; }
-
         if (rxgain > 60) { rxgain = 60; }
-
         buffer[C3] = 0xC0 | rxgain;
       } else {
         if (pa_enabled && !txband->disablePA)  {
           buffer[C3] = 0x1F;
         }
-
         if (transmitter->puresignal) {
           buffer[C3] = transmitter->attenuation & 0x1F;
         }
       }
-
       p1_command_loop = 7;
       break;
-
     case 7:
       buffer[C0] = 0x1E;
-
       if ((txmode == modeCWU || txmode == modeCWL) && !transmitter->tune
           && !transmitter->twotone
           && cw_keyer_internal
@@ -2415,21 +2102,17 @@ static void ozy_send_buffer(unsigned char *buffer) {
           && !CAT_cw_is_active) {
         buffer[C1] |= 0x01;
       }
-
       //
       // This is a quirk working around a bug in the
       // FPGA iambic keyer
       //
       uint8_t rfdelay = cw_keyer_ptt_delay;
       uint8_t rfmax = 900 / cw_keyer_speed;
-
       if (rfdelay > rfmax) { rfdelay = rfmax; }
-
       buffer[C2] = cw_keyer_sidetone_volume;
       buffer[C3] = rfdelay;
       p1_command_loop = 8;
       break;
-
     case 8:
       buffer[C0] = 0x20;
       buffer[C1] = (cw_keyer_hang_time >> 2) & 0xFF;
@@ -2438,7 +2121,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
       buffer[C4] = cw_keyer_sidetone_frequency & 0x0F;
       p1_command_loop = 9;
       break;
-
     case 9:
       buffer[C0] = 0x22;
       // Some "harmless" PWM min/max values
@@ -2448,25 +2130,20 @@ static void ozy_send_buffer(unsigned char *buffer) {
       buffer[C4] = 0;
       p1_command_loop = 10;
       break;
-
     case 10:
       //
       // This is possibly only relevant for Orion-II boards
       //
       buffer[C0] = 0x24;
-
       if (radio_is_transmitting()) {
         buffer[C1] |= 0x80; // ground RX2 on transmit, bit0-6 are Alex2 filters
       }
-
       if (adc[0].antenna == 5) { // XVTR
         buffer[C2] |= 0x02;          // Alex2 XVTR enable
       }
-
       if (transmitter->puresignal) {
         buffer[C2] |= 0x40;       // Synchronize RX5 and TX frequency on transmit (ANAN-7000)
       }
-
       if (adc[1].filter_bypass) {
         //
         // This becomes only effective if manual filter selection is enabled
@@ -2474,7 +2151,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
         //
         buffer[C1] |= 0x20; // bypass filters
       }
-
       //
       // This was the last command defined in the HPSDR document so we
       // roll back to the first command.
@@ -2485,9 +2161,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
       } else {
         p1_command_loop = 1;
       }
-
       break;
-
     case 11: {
       //
       // HermesLite-II stuff
@@ -2544,9 +2218,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
       buffer[C0] = 0x2E;
       buffer[C3] = 20; // 20 msec PTT hang time, only bits 4:0
       buffer[C4] = 40; // 40 msec TX latency,    only bits 6:0
-
       if (!transmitter->tune) { hl2_last_tune = 0; }
-
       //
       // When start TUNEing and an IO-board is detected,
       // write '1' into the tuner register as fast as possible
@@ -2561,11 +2233,9 @@ static void ozy_send_buffer(unsigned char *buffer) {
         hl2_last_tune = 1;
         break;  // do not execute the next tick of HL2IOB state machine
       }
-
       //
       switch (hl2_command_loop) {
       case 0:
-
         //
         // The default PTThang/TXlatency packet will be sent
         // each time the command loop state is zero
@@ -2580,11 +2250,8 @@ static void ozy_send_buffer(unsigned char *buffer) {
         } else {
           hl2_command_loop = 1;
         }
-
         break;
-
       case 1:
-
         //
         // If there is no HL2 IO board presend, do not query
         // at high rate. We arrive here every 75 msec,
@@ -2603,10 +2270,8 @@ static void ozy_send_buffer(unsigned char *buffer) {
         } else {
           hl2_query_count--;
         }
-
         hl2_command_loop = 0;
         break;
-
       case 2:
         //
         // - determine TX, RX1, and RX2  dial (!) frequency.
@@ -2620,33 +2285,25 @@ static void ozy_send_buffer(unsigned char *buffer) {
         // Leave C0-C4 untouched such that PTThang/TXlateny is actually sent
         //
         hl2_iob_tx_freq = vfo[txvfo].ctun ? vfo[txvfo].ctun_frequency : vfo[txvfo].frequency;
-
         if (vfo[txvfo].xit_enabled) {
           hl2_iob_tx_freq += vfo[txvfo].xit;
         }
-
         hl2_iob_rx1_code = (int)(0.5 + 15.47 * log((double)vfo[VFO_A].frequency / 18748.1));
         hl2_iob_rx2_code = (int)(0.5 + 15.47 * log((double)vfo[VFO_B].frequency / 18748.1));
-
         // if there is only one RX, send RX1 freq code twice to overwrite any data
         // still stored.
         if (receivers < 2) {
           hl2_iob_rx2_code = hl2_iob_rx1_code;
         }
-
         hl2_iob_rfmode = 0;
-
         if (adc[0].antenna != 0) {
           hl2_iob_rfmode = 1;
-
           if (transmitter->puresignal) {
             hl2_iob_rfmode = 2;
           }
         }
-
         hl2_command_loop = 3;
         break;
-
       case 3:
         // send MSByte (bits 32-39) of TX frequency
         buffer[C0] = 0x7A;                         // I2C-2 without ACK
@@ -2656,7 +2313,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
         buffer[C4] = (hl2_iob_tx_freq >> 32) & 0xFF; // bits 32-39
         hl2_command_loop = 4;
         break;
-
       case 4:
         // send bits 24-31 of TX frequency
         buffer[C0] = 0x7A;                         // I2C-2 without ACK
@@ -2666,7 +2322,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
         buffer[C4] = (hl2_iob_tx_freq >> 24) & 0xFF; // bits 24-31
         hl2_command_loop = 5;
         break;
-
       case 5:
         // send bits 16-23 of TX frequency
         buffer[C0] = 0x7A;                         // I2C-2 without ACK
@@ -2676,7 +2331,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
         buffer[C4] = (hl2_iob_tx_freq >> 16) & 0xFF; // bits 16-23
         hl2_command_loop = 6;
         break;
-
       case 6:
         // send bits 8-15 of TX frequency
         buffer[C0] = 0x7A;                         // I2C-2 without ACK
@@ -2686,7 +2340,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
         buffer[C4] = (hl2_iob_tx_freq >>  8) & 0xFF; // bits 8-15
         hl2_command_loop = 7;
         break;
-
       case 7:
         // send LSByte (bits 0-7) of TX frequency
         // This transfers 40-bit TXfreq data from the latch
@@ -2699,7 +2352,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
         hl2_command_loop = 8;
         //t_print("HL2IOB: Sent TX freq %lld\n", hl2_iob_tx_freq);
         break;
-
       case 8:
         buffer[C0] = 0x7A;                         // I2C-2 without ACK
         buffer[C1] = 0x06;                         // write
@@ -2709,7 +2361,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
         hl2_command_loop = 9;
         //t_print("HL2IOB: Sent RF INP MODE %d\n", hl2_iob_rfmode);
         break;
-
       case 9:
         buffer[C0] = 0x7A;                         // I2C-2 without ACK
         buffer[C1] = 0x06;                         // write
@@ -2719,7 +2370,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
         hl2_command_loop = 10;
         //t_print("HL2IOB: Sent RX1 freq code %d\n", hl2_iob_rx1_code);
         break;
-
       case 10:
         buffer[C0] = 0x7A;                         // I2C-2 without ACK
         buffer[C1] = 0x06;                         // write
@@ -2729,7 +2379,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
         hl2_command_loop = 0;
         //t_print("HL2IOB: Sent RX2 freq code %d\n", hl2_iob_rx2_code);
         break;
-
       case 20:
         //
         // Send data pairs for CL1/CL2 jack re-programming
@@ -2737,7 +2386,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
         buffer[C0] = 0x78;                         // I2C-1 without ACK
         buffer[C1] = 0x06;                         // write
         buffer[C2] = 0xEA;                         // i2c addr
-
         if (hl2_new_cl1_setting) {
           buffer[C3] =  HL2CL1on[hl2_cl1_loop++];
           buffer[C4] =  HL2CL1on[hl2_cl1_loop++];
@@ -2745,15 +2393,12 @@ static void ozy_send_buffer(unsigned char *buffer) {
           buffer[C3] =  HL2CL1off[hl2_cl1_loop++];
           buffer[C4] =  HL2CL1off[hl2_cl1_loop++];
         }
-
         if (hl2_cl1_loop > 47) {
           t_print("HL2: reprogrammed CL1/CL2 (%d)\n", hl2_new_cl1_setting);
           hl2_command_loop = 0;
         }
-
         break;
       }
-
       //
       // This was the last command we use out of the extended HL2 command set,
       // so roll back to the first one. It is obvious how to extend this
@@ -2764,7 +2409,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
     break;
     }
   }
-
   // set mox
   if (radio_is_transmitting()) {
     if (txmode == modeCWU || txmode == modeCWL) {
@@ -2787,7 +2431,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
       buffer[C0] |= 0x01;
     }
   }
-
   //
   // if we have a USB interfaced Ozy device:
   //
@@ -2798,7 +2441,6 @@ static void ozy_send_buffer(unsigned char *buffer) {
   } else {
     metis_write(0x02, buffer);
   }
-
   //t_print("C0=%02X C1=%02X C2=%02X C3=%02X C4=%02X\n",
   //                buffer[C0],buffer[C1],buffer[C2],buffer[C3],buffer[C4]);
 }
@@ -2808,7 +2450,6 @@ static void ozyusb_write(unsigned char* buffer) {
   ASSERT_SERVER();
   int i;
   i = ozy_write(EP2_OUT_ID, buffer, OZY_BUFFER_SIZE);
-
   if (i != OZY_BUFFER_SIZE) {
     if (i == USB_TIMEOUT) {
       t_print("%s: ozy_write timeout\n", __func__);
@@ -2816,7 +2457,6 @@ static void ozyusb_write(unsigned char* buffer) {
       t_print("%s: ozy_write returned %d\n", __func__, i);
     }
   }
-
   //
   // DL1YCF:
   // Although the METIS offset is not used for OZY, we have to maintain it
@@ -2836,7 +2476,6 @@ static void metis_write(unsigned char ep, unsigned const char* buffer) {
   ASSERT_SERVER();
   int i;
   static unsigned char metis_buffer[1032];
-
   //
   // This alternately fill the data from buffer into the lower or upper half
   // of metis_buffer, and if the upper half has been filled, sends this
@@ -2845,7 +2484,6 @@ static void metis_write(unsigned char ep, unsigned const char* buffer) {
   for (i = 0; i < OZY_BUFFER_SIZE; i++) {
     metis_buffer[i + metis_offset] = buffer[i];
   }
-
   if (metis_offset == 8) {
     metis_offset = 520;
   } else {
@@ -2867,7 +2505,6 @@ void old_protocol_run(void) {
   ASSERT_SERVER();
   unsigned char buffer[2000];
   t_print("%s\n", __func__);
-
   //
   // In TCP-ONLY mode, we possibly need to re-connect
   // since if we come from a METIS-stop, the server
@@ -2875,13 +2512,11 @@ void old_protocol_run(void) {
   // has been opened, it is never closed.
   //
   if (radio->use_tcp && tcp_socket < 1) { open_tcp_socket(); }
-
   //
   // Stop "other" METIS send/receive operations
   //
   pthread_mutex_lock(&send_mutex);
   pthread_mutex_lock(&recv_mutex);
-
   //
   // Start sequence. This sequence includes
   // - resetting the C&C indices (metis_offset, current_rx, command)
@@ -2894,7 +2529,6 @@ void old_protocol_run(void) {
   // Note OZY: four 512-byte packets are sent and no response
   // is waited for.
   //
-
   for (int i = 0; i < 10; i++) {
     memset(buffer, 0, OZY_BUFFER_SIZE);
     metis_offset = 8;
@@ -2906,19 +2540,14 @@ void old_protocol_run(void) {
     ozy_send_buffer(buffer);  // sends C1=0 packet
     ozy_send_buffer(buffer);  // sends C1=4 packet
     usleep(20000);
-
     if (device == DEVICE_OZY) { break; }
-
     //
     // The next lines are never executed for OZY
     //
     metis_start_stop(1);      // sends METIS start packet
-
     if (metis_read(buffer, 1032)  ==  0) { break; }  // valid packet received
-
     usleep(20000);
   }
-
   pthread_mutex_unlock(&send_mutex);
   pthread_mutex_unlock(&recv_mutex);
   P1running = 1;
@@ -2929,20 +2558,16 @@ static void metis_start_stop(int cmd) {
   int i;
   unsigned char buffer[1032];
   t_print("%s: %d\n", __func__, cmd);
-
   if (device == DEVICE_OZY) { return; }
-
   buffer[0] = 0xEF;
   buffer[1] = 0xFE;
   buffer[2] = 0x04; // start/stop command
   buffer[3] = cmd;  // send EP6 and EP4 data (0x00=stop)
-
   if (tcp_socket < 0) {
     // use UDP  -- send a short packet
     for (i = 4; i < 64; i++) {
       buffer[i] = 0x00;
     }
-
     metis_send_buffer(buffer, 64);
   } else {
     // use TCP -- send a long packet
@@ -2951,11 +2576,9 @@ static void metis_start_stop(int cmd) {
     // Then, send the start/stop buffer with a length of 1032
     //
     usleep(100000);
-
     for (i = 4; i < 1032; i++) {
       buffer[i] = 0x00;
     }
-
     metis_send_buffer(buffer, 1032);
     //
     // Wait a while before resuming sending TX/audio packets.
@@ -2963,7 +2586,6 @@ static void metis_start_stop(int cmd) {
     //
     usleep(100000);
   }
-
   if (cmd == 0 && tcp_socket >= 0) {
     // We just have sent a METIS stop in TCP
     // Radio will close the TCP connection, therefore we do this as well
@@ -2977,7 +2599,6 @@ static void metis_start_stop(int cmd) {
 
 static void metis_send_buffer(const unsigned char* buffer, int length) {
   ASSERT_SERVER();
-
   //
   // Send using either the UDP or TCP socket. Do not use TCP for
   // packets that are not 1032 bytes long
@@ -2988,7 +2609,6 @@ static void metis_send_buffer(const unsigned char* buffer, int length) {
       t_print("PROGRAMMING ERROR: TCP LENGTH != 1032\n");
       g_idle_add(fatal_error, "FATAL: P1 Programming Error in metis_send_buffer");
     }
-
     if (sendto(tcp_socket, buffer, length, 0, NULL, 0) != length) {
       t_perror("sendto socket failed for TCP metis_send_data\n");
     }
@@ -2996,7 +2616,6 @@ static void metis_send_buffer(const unsigned char* buffer, int length) {
     int bytes_sent;
     //t_print("%s: sendto %d for %s:%d length=%d\n",__func__,data_socket,inet_ntoa(data_addr.sin_addr),ntohs(data_addr.sin_port),length);
     bytes_sent = sendto(data_socket, buffer, length, 0, (struct sockaddr*)&data_addr, sizeof(data_addr));
-
     if (bytes_sent != length) {
       t_print("%s: UDP sendto failed: %d: %s\n", __func__, errno, strerror(errno));
     }

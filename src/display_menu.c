@@ -66,26 +66,21 @@ static void sel_cb(GtkWidget *widget, gpointer data) {
   //
   int c = GPOINTER_TO_INT(data);
   GtkWidget *my_container;
-
   switch (c) {
   case RX1_CONTAINER:
     my_container = rx1_container;
     break;
-
   case RX2_CONTAINER:
     my_container = rx2_container;
     break;
-
   case TX_CONTAINER:
     my_container = tx_container;
     break;
-
   default:
     // We should never come here
     my_container = NULL;
     break;
   }
-
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
     gtk_widget_show(my_container);
     which_container = c;
@@ -97,25 +92,20 @@ static void sel_cb(GtkWidget *widget, gpointer data) {
 static void detector_cb(GtkToggleButton *widget, gpointer data) {
   RECEIVER *myrx = (RECEIVER *)data;
   int val = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
-
   switch (val) {
   case 0:
     myrx->display_detector_mode = DET_PEAK;
     break;
-
   case 1:
     myrx->display_detector_mode = DET_ROSENFELL;
     break;
-
   case 2:
     myrx->display_detector_mode = DET_AVERAGE;
     break;
-
   case 3:
     myrx->display_detector_mode = DET_SAMPLEHOLD;
     break;
   }
-
   if (radio_is_remote) {
     send_display(cl_sock_tcp, myrx->id);
   } else {
@@ -126,25 +116,20 @@ static void detector_cb(GtkToggleButton *widget, gpointer data) {
 static void average_cb(GtkToggleButton *widget, gpointer data) {
   RECEIVER *myrx = (RECEIVER *)data;
   int val = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
-
   switch (val) {
   case 0:
     myrx->display_average_mode = AVG_NONE;
     break;
-
   case 1:
     myrx->display_average_mode = AVG_RECURSIVE;
     break;
-
   case 2:
     myrx->display_average_mode = AVG_TIMEWINDOW;
     break;
-
   case 3:
     myrx->display_average_mode = AVG_LOGRECURSIVE;
     break;
   }
-
   if (radio_is_remote) {
     send_display(cl_sock_tcp, myrx->id);
   } else {
@@ -160,7 +145,6 @@ static void panadapter_peaks_on_cb(GtkWidget *widget, gpointer data) {
 static void time_value_changed_cb(GtkWidget *widget, gpointer data) {
   RECEIVER *myrx = (RECEIVER *)data;
   myrx->display_average_time = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-
   if (radio_is_remote) {
     send_display(cl_sock_tcp, myrx->id);
   } else {
@@ -197,9 +181,7 @@ static void frames_per_second_value_changed_cb(GtkWidget *widget, gpointer data)
   myrx->fps = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
   int old = myrx->display_panadapter;
   myrx->display_panadapter = (myrx->fps > 1);
-
   if (old != myrx->display_panadapter) { radio_reconfigure(); }
-
   if (radio_is_remote) {
     send_rxfps(cl_sock_tcp, myrx->id, myrx->fps);
   } else {
@@ -209,7 +191,6 @@ static void frames_per_second_value_changed_cb(GtkWidget *widget, gpointer data)
 
 static void tx_frames_per_second_value_changed_cb(GtkWidget *widget, gpointer data) {
   transmitter->fps = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
-
   if (radio_is_remote) {
     send_txfps(cl_sock_tcp, transmitter->fps);
   } else {
@@ -362,7 +343,6 @@ void display_menu(GtkWidget *parent) {
   GtkWidget *tx_grid = gtk_grid_new();
   mbtn = gtk_radio_button_new_with_label_from_widget(NULL, "RX1 Settings");
   col = 3;
-
   if (can_transmit) {
     btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(mbtn), "TX settings");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), 0);
@@ -374,7 +354,6 @@ void display_menu(GtkWidget *parent) {
     gtk_container_add(GTK_CONTAINER(tx_container), tx_grid);
     col--;
   }
-
   if (receivers > 1) {
     btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(mbtn), "RX2 settings");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), 0);
@@ -386,7 +365,6 @@ void display_menu(GtkWidget *parent) {
     gtk_container_add(GTK_CONTAINER(rx2_container), rx2_grid);
     col--;
   }
-
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(mbtn), 1);
   gtk_grid_attach(GTK_GRID(grid), mbtn, col, row, 1, 1);
   g_signal_connect(mbtn, "toggled", G_CALLBACK(sel_cb), GINT_TO_POINTER(RX1_CONTAINER));
@@ -394,7 +372,6 @@ void display_menu(GtkWidget *parent) {
   gtk_grid_set_column_spacing(GTK_GRID(rx1_grid), 10);
   gtk_grid_set_row_homogeneous(GTK_GRID(rx1_grid), TRUE);
   gtk_container_add(GTK_CONTAINER(rx1_container), rx1_grid);
-
   for (int id = 0; id < receivers; id++) {
     RECEIVER *myrx = receiver[id];
     GtkWidget *mygrid = (id == 0) ? rx1_grid : rx2_grid;
@@ -481,14 +458,12 @@ void display_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(mygrid), btn, col + 1, row, 1, 1);
     row++;
     g_signal_connect(btn, "toggled", G_CALLBACK(waterfall_automatic_cb), myrx);
-
     if (!radio_is_remote && id == 0) {
       btn = gtk_check_button_new_with_label("Display Warnings");
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), display_warnings);
       gtk_grid_attach(GTK_GRID(mygrid), btn, col, row, 2, 1);
       g_signal_connect(btn, "toggled", G_CALLBACK(display_warnings_cb), NULL);
     }
-
     col = 2;
     row = 0;
     label = gtk_label_new("Detector");
@@ -500,25 +475,20 @@ void display_menu(GtkWidget *parent) {
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(detector_combo), NULL, "Rosenfell");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(detector_combo), NULL, "Average");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(detector_combo), NULL, "Sample");
-
     switch (myrx->display_detector_mode) {
     case DET_PEAK:
       gtk_combo_box_set_active(GTK_COMBO_BOX(detector_combo), 0);
       break;
-
     case DET_ROSENFELL:
       gtk_combo_box_set_active(GTK_COMBO_BOX(detector_combo), 1);
       break;
-
     case DET_AVERAGE:
       gtk_combo_box_set_active(GTK_COMBO_BOX(detector_combo), 2);
       break;
-
     case DET_SAMPLEHOLD:
       gtk_combo_box_set_active(GTK_COMBO_BOX(detector_combo), 3);
       break;
     }
-
     my_combo_attach(GTK_GRID(mygrid), detector_combo, col + 1, row, 1, 1);
     g_signal_connect(detector_combo, "changed", G_CALLBACK(detector_cb), myrx);
     row++;
@@ -531,25 +501,20 @@ void display_menu(GtkWidget *parent) {
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(average_combo), NULL, "Recursive");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(average_combo), NULL, "Time Window");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(average_combo), NULL, "Log Recursive");
-
     switch (myrx->display_average_mode) {
     case AVG_NONE:
       gtk_combo_box_set_active(GTK_COMBO_BOX(average_combo), 0);
       break;
-
     case AVG_RECURSIVE:
       gtk_combo_box_set_active(GTK_COMBO_BOX(average_combo), 1);
       break;
-
     case AVG_TIMEWINDOW:
       gtk_combo_box_set_active(GTK_COMBO_BOX(average_combo), 2);
       break;
-
     case AVG_LOGRECURSIVE:
       gtk_combo_box_set_active(GTK_COMBO_BOX(average_combo), 3);
       break;
     }
-
     my_combo_attach(GTK_GRID(mygrid), average_combo, col + 1, row, 1, 1);
     g_signal_connect(average_combo, "changed", G_CALLBACK(average_cb), myrx);
     row++;
@@ -605,12 +570,11 @@ void display_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(mygrid), btn, col + 1, row, 1, 1);
     g_signal_connect(btn, "value_changed", G_CALLBACK(panadapter_ignore_noise_percentile_value_changed_cb), myrx);
   }
-
   //
   // Since the RECEIVER and TRANSMITTER data structures are different, we have to repeat code
   // since the presets and callbacks are different
   //
-    if (can_transmit) {
+  if (can_transmit) {
     row = 0;
     col = 0;
     label = gtk_label_new("Frames/sec");
@@ -653,7 +617,6 @@ void display_menu(GtkWidget *parent) {
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), transmitter->display_filled);
     gtk_grid_attach(GTK_GRID(tx_grid), btn, col, row, 1, 1);
     g_signal_connect(btn, "toggled", G_CALLBACK(tx_filled_cb), NULL);
-
     if (!radio_is_remote) {
       row += 5;
       btn = gtk_check_button_new_with_label("Display PA current");
@@ -661,7 +624,6 @@ void display_menu(GtkWidget *parent) {
       gtk_grid_attach(GTK_GRID(tx_grid), btn, col, row, 2, 1);
       g_signal_connect(btn, "toggled", G_CALLBACK(tx_display_pacurr_cb), NULL);
     }
-
     row = 4;
     col = 2;
     btn = gtk_check_button_new_with_label("Label Strongest Peaks");

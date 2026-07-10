@@ -61,48 +61,40 @@ static void diversity_cb(GtkWidget *widget, gpointer data) {
 static void gain_coarse_changed_cb(GtkWidget *widget, gpointer data) {
   gain_coarse = gtk_range_get_value(GTK_RANGE(widget));
   div_gain = gain_coarse + gain_fine;
-
   if (radio_is_remote) {
     send_diversity(cl_sock_tcp, diversity_enabled, div_gain, div_phase);
     return;
   }
-
   radio_calc_div_params();
 }
 
 static void gain_fine_changed_cb(GtkWidget *widget, gpointer data) {
   gain_fine = gtk_range_get_value(GTK_RANGE(widget));
   div_gain = gain_coarse + gain_fine;
-
   if (radio_is_remote) {
     send_diversity(cl_sock_tcp, diversity_enabled, div_gain, div_phase);
     return;
   }
-
   radio_calc_div_params();
 }
 
 static void phase_coarse_changed_cb(GtkWidget *widget, gpointer data) {
   phase_coarse = gtk_range_get_value(GTK_RANGE(widget));
   div_phase = phase_coarse + phase_fine;
-
   if (radio_is_remote) {
     send_diversity(cl_sock_tcp, diversity_enabled, div_gain, div_phase);
     return;
   }
-
   radio_calc_div_params();
 }
 
 static void phase_fine_changed_cb(GtkWidget *widget, gpointer data) {
   phase_fine = gtk_range_get_value(GTK_RANGE(widget));
   div_phase = phase_coarse + phase_fine;
-
   if (radio_is_remote) {
     send_diversity(cl_sock_tcp, diversity_enabled, div_gain, div_phase);
     return;
   }
-
   radio_calc_div_params();
 }
 
@@ -115,24 +107,16 @@ void diversity_menu(GtkWidget *parent) {
   gtk_header_bar_set_title(GTK_HEADER_BAR(headerbar), "piHPSDR - Diversity");
   g_signal_connect (dialog, "delete_event", G_CALLBACK (close_cb), NULL);
   g_signal_connect (dialog, "destroy", G_CALLBACK (close_cb), NULL);
-
   //
   // set coarse/fine values from "sanitized" actual values
   //
   if (div_gain >  27.0) { div_gain = 27.0; }
-
   if (div_gain < -27.0) { div_gain = -27.0; }
-
   while (div_phase >  180.0) { div_phase -= 360.0; }
-
   while (div_phase < -180.0) { div_phase += 360.0; }
-
   gain_coarse = 2.0 * round(0.5 * div_gain);
-
   if (div_gain >  25.0) { gain_coarse = 25.0; }
-
   if (div_gain < -25.0) { gain_coarse = -25.0; }
-
   gain_fine = div_gain - gain_coarse;
   phase_coarse = 4.0 * round(div_phase * 0.25);
   phase_fine = div_phase - phase_coarse;

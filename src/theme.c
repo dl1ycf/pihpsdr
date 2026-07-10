@@ -592,13 +592,11 @@ const THEME *theme_get_active(void) {
   if (active_theme_index < 0 || active_theme_index >= num_themes) {
     active_theme_index = 0;
   }
-
   return &themes[active_theme_index];
 }
 
 void theme_set() {
   if (active_theme_index < 0 || active_theme_index >= num_themes) { active_theme_index = 0; }
-
   GtkSettings *settings = gtk_settings_get_default();
   g_object_set(settings, "gtk-application-prefer-dark-theme", gtk_dark_theme, NULL);
   g_idle_add(ext_vfo_update, NULL);

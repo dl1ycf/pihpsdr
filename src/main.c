@@ -87,7 +87,6 @@ static GtkWidget *status_label;
 void status_text(const char *text) {
   gtk_label_set_text(GTK_LABEL(status_label), text);
   usleep(100000);
-
   while (gtk_events_pending ()) {
     gtk_main_iteration ();
   }
@@ -102,7 +101,6 @@ static void* wisdom_thread(void *arg) {
   } else {
     t_print("%s: Re-using existing WDSP wisdom file.\n", __func__);
   }
-
   wisdom_running = 0;
   return NULL;
 }
@@ -112,7 +110,6 @@ static gboolean main_delete (GtkWidget *widget) {
   if (radio != NULL) {
     radio_stop_program();
   }
-
   _exit(0);
 }
 
@@ -142,21 +139,17 @@ static int init(gpointer data) {
   status_text("Checking FFTW Wisdom file ...");
   wisdom_running = 1;
   pthread_create(&wisdom_thread_id, NULL, wisdom_thread, wisdom_directory);
-
   while (wisdom_running) {
     // wait for the wisdom thread to complete, meanwhile
     // handling any GTK events.
     usleep(100000); // 100ms
-
     while (gtk_events_pending ()) {
       gtk_main_iteration ();
     }
-
     snprintf(text, sizeof(text), "Do not close window until wisdom plans are completed ...\n\n... %s",
              wisdom_get_status());
     status_text(text);
   }
-
   //
   // If requested, try to quickly start in client mode
   // Get audio compression and reconnection options from props file first,
@@ -167,14 +160,11 @@ static int init(gpointer data) {
     loadProperties("remote.props");
     GetPropI0("audio_compression", audio_compression);
     GetPropI0("auto_reconnect", remote_auto_reconnect);
-
     for (int i = 0; i < 60; i++) {
       if (radio_connect_remote(client_host, client_port, client_pwd) == 0) { return 0; }
-
       usleep(250000);
     }
   }
-
   //
   // When widsom plans are complete, start discovery process
   //
@@ -199,19 +189,15 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   //
   load_font(0);
   GdkDisplay *display = gdk_display_get_default();
-
   if (display == NULL) {
     t_print("%s: FATAL: no default display!\n", __func__);
     _exit(0);
   }
-
   screen = gdk_display_get_default_screen(display);
-
   if (screen == NULL) {
     t_print("%s: FATAL: no default screen!\n", __func__);
     _exit(0);
   }
-
   //
   // Create top window with minimum size
   //
@@ -251,17 +237,14 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   display_height[1] = 500;
   display_size   = 1;  // Custom
   t_print("%s: Monitor: width=%d height=%d\n", __func__, display_width[0], display_height[0]);
-
   //
   // Go to full-screen mode for screens smaller than 832x500
   //
   if (display_width[0] < 850 && display_height[0] < 500) {
     display_size = 0;   // FullScreen
   }
-
   t_print("%s: display_width=%d display_height=%d\n", __func__,
           display_width[display_size], display_height[display_size]);
-
   if (display_size == 0) {
     t_print("%s: Going full screen\n", __func__);
     gtk_window_fullscreen_on_monitor(GTK_WINDOW(top_window), screen, this_monitor);
@@ -269,7 +252,6 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
     t_print("%s: display_width=%d display_height=%d\n", __func__,
             display_width[display_size], display_height[display_size]);
   }
-
   g_signal_connect (top_window, "delete-event", G_CALLBACK (main_delete), NULL);
   topgrid = gtk_grid_new();
   gtk_widget_set_size_request(topgrid, display_width[display_size], display_height[display_size]);
@@ -282,12 +264,10 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   // in the code and need not fiddle around with the question from where to load it.
   //
   GtkWidget *image = piHPSDR_logo();
-
   if (image) {
     gtk_grid_attach(GTK_GRID(topgrid), image, 0, 0, 1, 10);
     gtk_widget_set_valign(image, GTK_ALIGN_FILL | GTK_ALIGN_START);
   }
-
   int row = 0;
   label = gtk_label_new("piHPSDR V3");
   gtk_widget_set_halign(label, GTK_ALIGN_START);
@@ -316,7 +296,6 @@ int main(int argc, char **argv) {
   GtkApplication *pihpsdr;
   int rc;
   char name[1024];
-
   //
   // If invoked with -V, print version and FPGA firmware compatibility information
   //
@@ -325,31 +304,23 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Compile-time options      : %sAudioModule=%s\n", build_options, build_audio);
     exit(0);
   }
-
   //
   // If invoked with -TestMenu, then set a flag for using the test menu
   // (debug and program development only)
   //
   if (argc >= 2 && !strcmp("-TestMenu", argv[1])) {
     open_test_menu = 1;
-
     for (int i = 2; i < argc; i++) { argv[i - 1] = argv[i]; }
-
     argc--;
   }
-
   snprintf(client_pgm, sizeof(client_pgm), "%s", argv[0]);
-
   if (argc >= 5 && !strcmp("-client", argv[1])) {
     do_client = 1;
     snprintf(client_host, sizeof(client_host), "%s", argv[2]);
     snprintf(client_pwd, sizeof(client_pwd), "%s", argv[4]);
     client_port = atoi(argv[3]);
-
     for (int i = 5; i < argc; i++) { argv[i - 4] = argv[i]; }
-
     argc -= 4;
-
     //
     // PARANOIA: if we come from an exexle(), file descriptors may
     //           still be open (BUT, this applies to many other things)
@@ -359,7 +330,6 @@ int main(int argc, char **argv) {
       close(i);
     }
   }
-
   //
   // The following call will most likely fail (until this program
   // has the privileges to reduce the nice value). But if the
@@ -397,13 +367,10 @@ int fatal_error(gpointer data) {
   //
   const gchar *msg = (gchar *) data;
   static int quit = 0;
-
   if (quit) {
     return G_SOURCE_REMOVE;
   }
-
   quit = 1;
-
   if (top_window) {
     GtkDialogFlags flags = GTK_DIALOG_DESTROY_WITH_PARENT;
     GtkWidget *dialog = gtk_message_dialog_new_with_markup (GTK_WINDOW(top_window),
@@ -416,11 +383,9 @@ int fatal_error(gpointer data) {
     gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
   }
-
   if (!strncmp(msg, "FATAL", 5)) {
     exit(1);
   }
-
   quit = 0;
   return G_SOURCE_REMOVE;
 }
@@ -438,13 +403,11 @@ struct _curlbuf {
 //cppcheck-suppress constParameterCallback
 static size_t curl_cb(char *ptr, size_t size, size_t nmemb, void *data) {
   struct _curlbuf *result = (struct _curlbuf *) data;
-
   //
   // copy all into our result buffer until it is (nearly full)
   //
   if (result->len > size * nmemb + 1) { result->len = size * nmemb + 1; }
   while (result->pos < result->len - 1) { result->buf[result->pos++] = *ptr++; }
-
   //
   // Add a trailing zero, but this is overwritten when the next chunk comes
   //
@@ -460,26 +423,20 @@ int run_curl(const char *url, char*buf, size_t buflen, int time) {
   curlbuf.len = buflen;
   curlbuf.pos = 0;
   *buf = 0;
-
   if (!curl_handle) { return -1; }
-
   ret = -1;
-
   do {
     curl_easy_setopt(curl_handle, CURLOPT_URL, url);
     curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, (long) time);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, &curlbuf);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, curl_cb);
     CURLcode cerr = curl_easy_perform(curl_handle);
-
     if (cerr  != CURLE_OK) {
       t_print("%s: %s\n", __func__, curl_easy_strerror(ret));
       break;
     }
-
     ret = 0;
   } while (0);
-
   curl_easy_cleanup(curl_handle);
   return ret;
 }

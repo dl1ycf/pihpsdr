@@ -70,7 +70,6 @@ void sliders_menu(GtkWidget *parent) {
   gtk_widget_set_name(close_b, "close_button");
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 1, 1);
-
   for (int pos = 0; pos < 9; pos++) {
     int col = pos % 3;
     int row = pos / 3 + 1;
@@ -78,7 +77,6 @@ void sliders_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(grid), w, col, row, 1, 1);
     g_signal_connect(w, "button-press-event", G_CALLBACK(slider_cb), (gpointer) &slider_functions[pos]);
   }
-
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);

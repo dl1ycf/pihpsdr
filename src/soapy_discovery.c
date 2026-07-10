@@ -43,32 +43,26 @@ static void get_info(char *DriverHost) {
   char driver[256];
   char hostname[128];
   char *cp;
-
   //
   // If called with an argument of form driver:host,
   // init driver and host
   //
   snprintf(driver, sizeof(driver), "%s", DriverHost);
   cp = strchr(driver, ':');
-
-  if (cp && *(cp+1) != 0) {
+  if (cp && *(cp + 1) != 0) {
     *cp = 0;
     snprintf(hostname, sizeof(hostname), "%s", cp + 1);
   } else {
     snprintf(hostname, sizeof(hostname), "%s", "USB");
   }
-
   t_print("%s: Driver=%s Hostname=%s\n", __func__, driver, hostname);
-
   int rxincompatible = 0;
   int txincompatible = 0;
   *fw_version = *gw_version = *hw_version = *p_version = 0;
-
   if (devices >= MAX_DEVICES) {
     t_print("%s: MAX_DEVICES met for driver=%s\n", __func__, driver);
     return;
   }
-
   memset(&discovered[devices], 0, sizeof(DISCOVERED));
   discovered[devices].device = SOAPYSDR_USB_DEVICE;
   discovered[devices].protocol = SOAPYSDR_PROTOCOL;
@@ -76,11 +70,9 @@ static void get_info(char *DriverHost) {
   discovered[devices].status = STATE_AVAILABLE;
   snprintf(discovered[devices].soapy.hostname, sizeof(discovered[devices].soapy.hostname), "%s", hostname);
   SoapySDRKwargs_set(&args, "driver", driver);
-
   if (hostname[0] != 0) {
     SoapySDRKwargs_set(&args, "hostname", hostname);
   }
-
   //
   // In case more than one RTLsdr or SDRplay devices are connected,
   // enumerate them
@@ -96,15 +88,12 @@ static void get_info(char *DriverHost) {
     SoapySDRKwargs_set(&args, "label", label);
     discovered[devices].soapy.sdrplay_count = sdrplay_count++;
   }
-
   SoapySDRDevice *sdr = SoapySDRDevice_make(&args);
   SoapySDRKwargs_clear(&args);
-
   if (sdr == NULL) {
     t_print("%s: could not query device for %s\n", __func__, DriverHost);
     return;
   }
-
   software_version = 0;
   //
   const char *driverkey = SoapySDRDevice_getDriverKey(sdr);
@@ -114,54 +103,43 @@ static void get_info(char *DriverHost) {
   char *hardwarekey = SoapySDRDevice_getHardwareKey(sdr);
   t_print("%s: HardwareKey=%s\n", __func__, hardwarekey);
   snprintf(discovered[devices].soapy.hardware_key, sizeof(discovered[devices].soapy.hardware_key), "%s", hardwarekey);
-
   snprintf(discovered[devices].soapy.hostname, sizeof(discovered[devices].soapy.hostname), "%s", hostname);
   SoapySDRKwargs info = SoapySDRDevice_getHardwareInfo(sdr);
-
   for (size_t i = 0; i < info.size; i++) {
     t_print("%s: hardware info key=%s val=%s\n", __func__, info.keys[i], info.vals[i]);
-
     if (strcmp(info.keys[i], "firmwareVersion") == 0) {
       snprintf(fw_version, sizeof(fw_version), " fw=%s", info.vals[i]);
     }
-
     if (strcmp(info.keys[i], "gatewareVersion") == 0) {
       snprintf(gw_version, sizeof(gw_version), " gw=%s", info.vals[i]);
       software_version = (int)(atof(info.vals[i]) * 100.0);
     }
-
     if (strcmp(info.keys[i], "hardwareVersion") == 0) {
       snprintf(hw_version, sizeof(hw_version), " hw=%s", info.vals[i]);
     }
-
     if (strcmp(info.keys[i], "protocolVersion") == 0) {
       snprintf(p_version, sizeof(p_version), " p=%s", info.vals[i]);
     }
   }
-
   discovered[devices].software_version = software_version;
   snprintf(discovered[devices].soapy.version, sizeof(discovered[devices].soapy.version),
            "%s%s%s%s", fw_version, gw_version, hw_version, p_version);
   //
   size_t rx_channels = SoapySDRDevice_getNumChannels(sdr, SOAPY_SDR_RX);
   t_print("%s: Rx channels: %ld\n", __func__, (long) rx_channels);
-
   if (rx_channels > 2) {
     t_print("%s: Using only 2 RX channels!", __func__);
     rx_channels = 2;
   }
-
   discovered[devices].soapy.rx_channels = rx_channels;
   discovered[devices].supported_receivers = rx_channels;
   discovered[devices].adcs = rx_channels;
   size_t tx_channels = SoapySDRDevice_getNumChannels(sdr, SOAPY_SDR_TX);
   t_print("%s: Tx channels: %ld\n", __func__, (long) tx_channels);
-
   if (tx_channels > 1) {
     t_print("%s: Using only 1 TX channel!", __func__);
     tx_channels = 1;
   }
-
   //
   // IMPORTANT: the sample rate must be a power-of-two multiple of 48k, so the
   //            allowed sample rates are 48k, 96k, 192k, 384k, 768k, 1536k, ...
@@ -171,16 +149,13 @@ static void get_info(char *DriverHost) {
   // but the list of "exceptions" can be extended.
   //
   sample_rate = 768000;
-
   if (strcmp(driver, "rtlsdr") == 0) {
     sample_rate = 1536000;
   } else if (strcmp(driver, "radioberry") == 0) {
     sample_rate = 48000;
   }
-
   t_print("%s: piHPSDR will use sample_rate=%d\n", __func__, sample_rate);
   discovered[devices].soapy.sample_rate = sample_rate;
-
   for (size_t id = 0; id < rx_channels; id++) {
     int rc;
     SoapySDRRange range;
@@ -194,33 +169,25 @@ static void get_info(char *DriverHost) {
     double scale;
     int fullduplex = SoapySDRDevice_getFullDuplex(sdr, SOAPY_SDR_RX, id);
     t_print("%s: RX%d full duplex=%d\n", __func__,  (int) (id + 1), fullduplex);
-
     if (!fullduplex) {
       txincompatible = 1;
     }
-
     ranges = SoapySDRDevice_getSampleRateRange(sdr, SOAPY_SDR_RX, id, &length);
-
     for (size_t i = 0; i < length; i++) {
       t_print("%s: RX%d sample rate available: %20.6f -> %20.6f\n", __func__,
               (int)(id + 1), ranges[i].minimum, ranges[i].maximum);
     }
-
     free(ranges);  // allocated within SoapySDR so use free() rather than g_free()
     bandwidths = SoapySDRDevice_listBandwidths(sdr, SOAPY_SDR_RX, id, &length);
-
     for (size_t i = 0; i < length; i++) {
       t_print("%s: RX%d bandwidth available: %20.6f\n", __func__, (int)(id + 1), bandwidths[i]);
     }
-
     free(bandwidths);  // allocated within SoapySDR so use free() rather than g_free()
     ranges = SoapySDRDevice_getFrequencyRange(sdr, SOAPY_SDR_RX, id, &length);
-
     for (size_t i = 0; i < length; i++) {
       t_print("%s: RX%d freq range [%f MHz -> %f MHz step=%f]\n", __func__,
               (int)(id + 1), ranges[i].minimum * 1E-6, ranges[i].maximum * 1E-6, ranges[i].step);
     }
-
     if (id == 0 && length > 0) {
       //
       // Let the first RX1 frequency range determine the radio frequency range
@@ -228,19 +195,14 @@ static void get_info(char *DriverHost) {
       discovered[devices].frequency_min = ranges[0].minimum;
       discovered[devices].frequency_max = ranges[0].maximum;
     }
-
     free(ranges);  // allocated within SoapySDR so use free() rather than g_free()
     antennas = SoapySDRDevice_listAntennas(sdr, SOAPY_SDR_RX, id, &length);
-
     if (length > 8) { length = 8; }
-
     discovered[devices].soapy.rx[id].antennas = length;
-
     for (size_t i = 0; i < length; i++) {
       t_print( "%s: RX%d antenna: %s\n", __func__, (int)(id + 1), antennas[i]);
       snprintf(discovered[devices].soapy.rx[id].antenna[i], 64, "%s", antennas[i]);
     }
-
     range = SoapySDRDevice_getGainRange(sdr, SOAPY_SDR_RX, id);
     t_print("%s: RX%d total gain available: %f -> %f step=%f\n", __func__,
             (int)(id + 1), range.minimum, range.maximum, range.step);
@@ -248,11 +210,8 @@ static void get_info(char *DriverHost) {
     discovered[devices].soapy.rx[id].gain_min  = range.minimum;
     discovered[devices].soapy.rx[id].gain_max  = range.maximum;
     gains = SoapySDRDevice_listGains(sdr, SOAPY_SDR_RX, id, &length);
-
     if (length > 8) { length = 8; }
-
     discovered[devices].soapy.rx[id].gains = length;
-
     for (size_t i = 0; i < length; i++) {
       range = SoapySDRDevice_getGainElementRange(sdr, SOAPY_SDR_RX, id, gains[i]);
       t_print("%s: RX%d gain element available: %s, %f -> %f step=%f\n", __func__,
@@ -262,7 +221,6 @@ static void get_info(char *DriverHost) {
       discovered[devices].soapy.rx[id].gain_elem_min[i] = range.minimum;
       discovered[devices].soapy.rx[id].gain_elem_max[i] = range.maximum;
     }
-
     rc = SoapySDRDevice_hasGainMode(sdr, SOAPY_SDR_RX, id);
     t_print("%s: RX%d has_automatic_gain=%d\n", __func__, (int)(id + 1), rc);
     discovered[devices].soapy.rx[id].has_automatic_gain = rc;
@@ -270,13 +228,10 @@ static void get_info(char *DriverHost) {
     t_print("%s: RX%d has_automatic_dc_offset_correction=%d\n", __func__, (int)(id + 1), rc);
     formats = SoapySDRDevice_getStreamFormats(sdr, SOAPY_SDR_RX, id, &length);
     int foundcf32 = 0;
-
     for (size_t i = 0; i < length; i++) {
       t_print( "%s: RX%d format available: %s\n", __func__, (int)(id + 1), formats[i]);
-
       if (!strcmp(formats[i], SOAPY_SDR_CF32)) { foundcf32 = 1; }
     }
-
     //
     // The piHPSDR Soapy module ALWAYS uses CF32 in the Soapy streams
     //
@@ -284,12 +239,10 @@ static void get_info(char *DriverHost) {
       t_print("%s: RX%d INCOMPATIBLE, does not allow %s format\n", __func__, (int)(id + 1), SOAPY_SDR_CF32);
       rxincompatible = 1;
     }
-
     free(formats);  // allocated within SoapySDR so use free() rather than g_free()
     nativeformat = SoapySDRDevice_getNativeStreamFormat(sdr, SOAPY_SDR_RX, id, &scale);
     t_print("%s: RX%d native format: %s (max=%f)\n", __func__,  (int)(id + 1), nativeformat, scale);
   }
-
   //
   // This code is essentially a duplicate of the RX channel query code
   // and this could be "fused"
@@ -306,56 +259,41 @@ static void get_info(char *DriverHost) {
     double scale;
     int fullduplex = SoapySDRDevice_getFullDuplex(sdr, SOAPY_SDR_TX, 0);
     t_print("%s: TX full duplex =%d\n", __func__, fullduplex);
-
     if (!fullduplex) {
       txincompatible = 1;
       t_print("%s: Device restricted to HALF DUPLEX\n", __func__);
     }
-
     ranges = SoapySDRDevice_getSampleRateRange(sdr, SOAPY_SDR_TX, 0, &length);
-
     for (size_t i = 0; i < length; i++) {
       t_print("%s: TX sample rate available: %20.6f -> %20.6f\n", __func__,
               ranges[i].minimum, ranges[i].maximum);
     }
-
     free(ranges); // allocated within SoapySDR so use free() rather than g_free()
     bandwidths = SoapySDRDevice_listBandwidths(sdr, SOAPY_SDR_TX, 0, &length);
-
     for (size_t i = 0; i < length; i++) {
       t_print("%s: TX bandwidth available: %20.6f\n", __func__, bandwidths[i]);
     }
-
     free(bandwidths);  // allocated within SoapySDR so use free() rather than g_free()
     ranges = SoapySDRDevice_getFrequencyRange(sdr, SOAPY_SDR_TX, 0, &length);
-
     for (size_t i = 0; i < length; i++) {
       t_print("%s: TX freq range [%f MHz -> %f MHz step=%f]\n", __func__,
               ranges[i].minimum * 1E-6, ranges[i].maximum * 1E-6, ranges[i].step);
     }
-
     antennas = SoapySDRDevice_listAntennas(sdr, SOAPY_SDR_TX, 0, &length);
-
     if (length > 8) { length = 8; }
-
     discovered[devices].soapy.tx.antennas = length;
-
     for (size_t i = 0; i < length; i++) {
       t_print( "%s: TX antenna: %s\n", __func__, antennas[i]);
       snprintf(discovered[devices].soapy.tx.antenna[i], 64, "%s", antennas[i]);
     }
-
     range = SoapySDRDevice_getGainRange(sdr, SOAPY_SDR_TX, 0);
     t_print("%s: TX total gain available: %f -> %f step=%f\n", __func__, range.minimum, range.maximum, range.step);
     discovered[devices].soapy.tx.gain_step = range.step;
     discovered[devices].soapy.tx.gain_min  = range.minimum;
     discovered[devices].soapy.tx.gain_max  = range.maximum;
     gains = SoapySDRDevice_listGains(sdr, SOAPY_SDR_TX, 0, &length);
-
     if (length > 8) { length = 8; }
-
     discovered[devices].soapy.tx.gains = length;
-
     for (size_t i = 0; i < length; i++) {
       range = SoapySDRDevice_getGainElementRange(sdr, SOAPY_SDR_TX, 0, gains[i]);
       t_print("%s: TX gain element available: %s, %f -> %f step=%f\n", __func__,
@@ -365,16 +303,12 @@ static void get_info(char *DriverHost) {
       discovered[devices].soapy.tx.gain_elem_min[i] = range.minimum;
       discovered[devices].soapy.tx.gain_elem_max[i] = range.maximum;
     }
-
     formats = SoapySDRDevice_getStreamFormats(sdr, SOAPY_SDR_TX, 0, &length);
     int foundcf32 = 0;
-
     for (size_t i = 0; i < length; i++) {
       t_print( "%s: TX format available: %s\n", __func__, formats[i]);
-
       if (!strcmp(formats[i], SOAPY_SDR_CF32)) { foundcf32 = 1; }
     }
-
     //
     // The piHPSDR Soapy module ALWAYS uses CF32 in the Soapy streams
     //
@@ -382,23 +316,19 @@ static void get_info(char *DriverHost) {
       t_print("%s: TX INCOMPATIBLE, does not allow %s format\n", __func__, SOAPY_SDR_CF32);
       txincompatible = 1;
     }
-
     free(formats);  // allocated within SoapySDR so use free() rather than g_free()
     nativeformat = SoapySDRDevice_getNativeStreamFormat(sdr, SOAPY_SDR_TX, 0, &scale);
     t_print("%s: TX native format: %s (max=%f)\n", __func__,  nativeformat, scale);
   }
-
   //
   // sensors are there for all channels
   //
   size_t sensors;
   char **sensor = SoapySDRDevice_listSensors(sdr, &sensors);
-
   for (size_t i = 0; i < sensors; i++) {
     const char *value = SoapySDRDevice_readSensor(sdr, sensor[i]);
     t_print( "%s: Sensor:   %s=%s\n", __func__, sensor[i], value);
   }
-
   //
   // The TX is "incompatible" if it does not support CF32 format, or if the device is not full duplex
   // NOTE: pihpsdr needs the Soapy RX thread running while TXing, since it produces the heart beat
@@ -409,7 +339,6 @@ static void get_info(char *DriverHost) {
   if (txincompatible) {
     tx_channels = 0;
   }
-
   discovered[devices].soapy.tx_channels = tx_channels;  // 0 or 1
   discovered[devices].dacs = tx_channels;               // 0 or 1
   //
@@ -432,7 +361,6 @@ void soapy_discovery(const char *hostname) {
   //SoapySDRKwargs_set(&input_args, "hostname", "pluto.local");
   SoapySDRKwargs *results = SoapySDRDevice_enumerate(&input_args, &length);
   t_print("%s: length=%d\n", __func__, (int)length);
-
   for (size_t i = 0; i < length; i++) {
     for (size_t j = 0; j < results[i].size; j++) {
       if (strcmp(results[i].keys[j], "driver") == 0 && strcmp(results[i].vals[j], "audio") != 0) {
@@ -440,9 +368,7 @@ void soapy_discovery(const char *hostname) {
       }
     }
   }
-
   SoapySDRKwargsList_clear(results, length);
-
   //
   // hook for detecting Plutos over the internet
   //

@@ -58,11 +58,9 @@ static int apply(gpointer data) {
   rx_stack_horizontal          = my_rx_stack_horizontal;
   //
   radio_reconfigure_screen();
-
   if (radio_is_remote) {
     send_screen(cl_sock_tcp, rx_stack_horizontal, display_width[my_display_size]);
   }
-
   return G_SOURCE_REMOVE;
 }
 
@@ -70,7 +68,6 @@ static void schedule_apply(void) {
   if (apply_timeout > 0) {
     g_source_remove(apply_timeout);
   }
-
   apply_timeout = g_timeout_add(500, apply, NULL);
 }
 
@@ -166,11 +163,9 @@ void screen_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), label, col, row, 1, 1);
   col++;
   button = gtk_combo_box_text_new();
-
   for (int i = 0; i < num_css_fonts; i++) {
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(button), NULL, cssfont[i]);
   }
-
   gtk_combo_box_set_active(GTK_COMBO_BOX(button), which_css_font);
   my_combo_attach(GTK_GRID(grid), button, col, row, 2, 1);
   font_signal_id = g_signal_connect(button, "changed", G_CALLBACK(font_cb), NULL);
@@ -184,13 +179,11 @@ void screen_menu(GtkWidget *parent) {
   size_b = gtk_combo_box_text_new();
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(size_b), NULL, "Full Screen");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(size_b), NULL, "Custom");
-
   for (int i = 2; i < 6; i++) {
     char txt[64];
     snprintf(txt, sizeof(txt), "%d * %d", display_width[i], display_height[i]);
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(size_b), NULL, txt);
   }
-
   gtk_combo_box_set_active(GTK_COMBO_BOX(size_b), my_display_size);
   my_combo_attach(GTK_GRID(grid), size_b, col, row, 2, 1);
   g_signal_connect(size_b, "changed", G_CALLBACK(size_cb), NULL);

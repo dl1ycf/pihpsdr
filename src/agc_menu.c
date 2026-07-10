@@ -66,7 +66,6 @@ static void agc_cb (GtkToggleButton *widget, gpointer data) {
   gtk_widget_set_sensitive(cust_decay, (val == AGC_CUSTOM));
   gtk_widget_set_sensitive(cust_hang, (val == AGC_CUSTOM));
   gtk_widget_set_sensitive(cust_slope, (val == AGC_CUSTOM));
-
   //
   // When switching from some other AGC mode to FIXED, then set the AGC gain slider
   // to 60 dB, otherwise this may blow off your ears
@@ -76,7 +75,6 @@ static void agc_cb (GtkToggleButton *widget, gpointer data) {
     radio_set_agc_gain(myrx->id, 60.0);
     suppress_popup_sliders--;
   }
-
   myrx->agc = val;
   rx_set_agc(myrx);
   g_idle_add(ext_vfo_update, NULL);

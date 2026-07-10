@@ -57,13 +57,11 @@ static void oc_rx_cb(GtkWidget *widget, gpointer data) {
   int oc = (GPOINTER_TO_UINT(data)) & 0xF;
   BAND *band = band_get_band(b);
   int mask = 0x01 << (oc - 1);
-
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
     band->OCrx |= mask;
   } else {
     band->OCrx &= ~mask;
   }
-
   if (radio_is_remote) {
     send_band_data(cl_sock_tcp, b);
   } else {
@@ -76,13 +74,11 @@ static void oc_tx_cb(GtkWidget *widget, gpointer data) {
   int oc = (GPOINTER_TO_UINT(data)) & 0xF;
   BAND *band = band_get_band(b);
   int mask = 0x01 << (oc - 1);
-
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
     band->OCtx |= mask;
   } else {
     band->OCtx &= ~mask;
   }
-
   if (radio_is_remote) {
     send_band_data(cl_sock_tcp, b);
   } else {
@@ -93,13 +89,11 @@ static void oc_tx_cb(GtkWidget *widget, gpointer data) {
 static void oc_tune_cb(GtkWidget *widget, gpointer data) {
   int oc = (GPOINTER_TO_UINT(data)) & 0xF;
   int mask = 0x01 << (oc - 1);
-
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
     OCtune |= mask;
   } else {
     OCtune &= ~mask;
   }
-
   if (radio_is_remote) {
     send_radiomenu(cl_sock_tcp);
   } else {
@@ -109,7 +103,6 @@ static void oc_tune_cb(GtkWidget *widget, gpointer data) {
 
 static void oc_full_tune_time_cb(GtkWidget *widget, gpointer data) {
   OCfull_tune_time = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
-
   if (radio_is_remote) {
     send_radiomenu(cl_sock_tcp);
   } else {
@@ -119,7 +112,6 @@ static void oc_full_tune_time_cb(GtkWidget *widget, gpointer data) {
 
 static void oc_memory_tune_time_cb(GtkWidget *widget, gpointer data) {
   OCmemory_tune_time = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
-
   if (radio_is_remote) {
     send_radiomenu(cl_sock_tcp);
   } else {
@@ -182,7 +174,6 @@ void oc_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(scrgrd), lbl, 16, 1, 1, 1);
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_CENTER);
-
   for (i = 1; i < 8; i++) {
     char oc_id[16];
     snprintf(oc_id, sizeof(oc_id), "%d", i);
@@ -193,7 +184,6 @@ void oc_menu(GtkWidget *parent) {
     gtk_widget_set_name(lbl, "boldlabel");
     gtk_grid_attach(GTK_GRID(scrgrd), lbl, i + 8, 1, 1, 1);
   }
-
   int bands = radio_max_band();
   int row = 2;
   //
@@ -203,16 +193,13 @@ void oc_menu(GtkWidget *parent) {
   // and are filtered out
   //
   i = bandGen;
-
   for (;;) {
     const BAND *band = band_get_band(i);
-
     if (strlen(band->title) > 0) {
       lbl = gtk_label_new(band->title);
       gtk_widget_set_name(lbl, "boldlabel");
       gtk_grid_attach(GTK_GRID(scrgrd), lbl, 0, row, 1, 1);
       int mask;
-
       for (j = 1; j < 8; j++) {
         mask = 0x01 << (j - 1);
         GtkWidget *oc_rx_b = gtk_check_button_new();
@@ -224,10 +211,8 @@ void oc_menu(GtkWidget *parent) {
         gtk_grid_attach(GTK_GRID(scrgrd), oc_tx_b, j + 8, row, 1, 1);
         g_signal_connect(oc_tx_b, "toggled", G_CALLBACK(oc_tx_cb), GINT_TO_POINTER(j + (i << 4)));
       }
-
       row++;
     }
-
     // update "loop index"
     if (i == bandGen) {
       i = 0;
@@ -236,12 +221,9 @@ void oc_menu(GtkWidget *parent) {
     } else {
       i++;
     }
-
     if (i >= BANDS + XVTRS) { break; }
   }
-
   int mask;
-
   for (j = 1; j < 8; j++) {
     char oc_id[16];
     snprintf(oc_id, sizeof(oc_id), "%d", j);
@@ -252,7 +234,6 @@ void oc_menu(GtkWidget *parent) {
     gtk_widget_set_halign(oc_tune_b, GTK_ALIGN_CENTER);
     g_signal_connect(oc_tune_b, "toggled", G_CALLBACK(oc_tune_cb), GINT_TO_POINTER(j));
   }
-
   j = 9;
   lbl = gtk_label_new("Full Tune (ms)");
   gtk_widget_set_name(lbl, "boldlabel");
@@ -282,18 +263,15 @@ void oc_menu(GtkWidget *parent) {
   gtk_widget_get_preferred_size(sw, &min, &nat);
   width  = nat.width + 25;
   height = nat.height;
-
   //
   // Limit the window to display size
   //
   if (width > display_width[0] - 50) {
     width  = display_width[0] - 50;
   }
-
   if (height > display_height[0] - 100) {
     height = display_height[0] - 100;
   }
-
   //
   // For some reason, the set_size_request below doew not work until
   // setting propagation of natural widths to FALSE

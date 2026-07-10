@@ -89,11 +89,9 @@ void theme_menu(GtkWidget *parent) {
                   0, row, 3, 1);
   GtkSettings *settings = gtk_settings_get_default();
   gchar *theme_name = NULL;
-
   if (settings) {
     g_object_get(settings, "gtk-theme-name", &theme_name, NULL);
   }
-
   if (theme_name) {
     row++;
     label = gtk_label_new("GTK Theme Name");
@@ -106,7 +104,6 @@ void theme_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(grid), label, 1, row, 1, 1);
     g_free(theme_name);
   }
-
   row++;
   label = gtk_label_new("GTK Dark Theme");
   gtk_widget_set_name(label, "boldlabel");
@@ -124,11 +121,9 @@ void theme_menu(GtkWidget *parent) {
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
   GtkWidget *combo = gtk_combo_box_text_new();
-
   for (int i = 0; i < num_themes; i++) {
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo), NULL, themes[i].name);
   }
-
   gtk_combo_box_set_active(GTK_COMBO_BOX(combo), active_theme_index);
   gtk_widget_set_hexpand(combo, TRUE);
   my_combo_attach(GTK_GRID(grid), combo, 1, row, 2, 1);

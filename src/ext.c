@@ -61,7 +61,6 @@ int ext_vfo_update(gpointer data) {
   if (vfo_timeout == 0) {
     vfo_timeout = g_timeout_add(100, vfo_timeout_cb, NULL);
   }
-
   return G_SOURCE_REMOVE;
 }
 

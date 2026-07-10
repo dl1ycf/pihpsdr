@@ -37,9 +37,7 @@ static void cw_changed(void) {
   // inform the local keyer about CW parameter changes
   // NewProtocol: rely on periodically sent HighPrio packets
   keyer_update();
-
   if (!radio_is_remote) { schedule_transmit_specific(); }
-
   //
   // speed and side tone frequency are displayed in the VFO bar
   //
@@ -64,7 +62,6 @@ static gboolean close_cb(void) {
 
 static void sel_cb(GtkWidget *widget, gpointer data) {
   GtkWidget *cnt = (GtkWidget *) data;
-
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
     gtk_widget_show(cnt);
     gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
@@ -78,12 +75,10 @@ static void text_cb(GtkWidget *widget, gpointer data) {
   const char *text = gtk_entry_get_text(GTK_ENTRY(widget));
   snprintf(cwtxt, 256, "%s", text);
   char *cp = cwtxt;
-
   while (*cp) {
     *cp = toupper(*cp);
     cp++;
   }
-
   gtk_entry_set_text(GTK_ENTRY(widget), cwtxt);
 }
 
@@ -136,7 +131,6 @@ static void cw_keyer_sidetone_level_value_changed_cb(GtkWidget *widget, gpointer
 static void cw_keyer_sidetone_frequency_value_changed_cb(GtkWidget *widget, gpointer data) {
   cw_keyer_sidetone_frequency = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
   cw_changed();
-
   if (radio_is_remote) {
     send_sidetone_freq(cl_sock_tcp, cw_keyer_sidetone_frequency);
   } else {
@@ -207,14 +201,12 @@ void cw_menu(GtkWidget *parent) {
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), (double)cw_keyer_speed);
   gtk_grid_attach(GTK_GRID(op_grid), btn, 1, row, 1, 1);
   g_signal_connect(btn, "value_changed", G_CALLBACK(cw_keyer_speed_value_changed_cb), NULL);
-
   if (!radio_is_remote) {
     btn = gtk_check_button_new_with_label("CW handled in Radio");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), cw_keyer_internal);
     gtk_grid_attach(GTK_GRID(op_grid), btn, 2, row, 1, 1);
     g_signal_connect(btn, "toggled", G_CALLBACK(cw_keyer_internal_cb), NULL);
   }
-
   row++;
   lbl = gtk_label_new("Hang time (ms)");
   gtk_widget_set_name(lbl, "boldlabel");
@@ -293,7 +285,6 @@ void cw_menu(GtkWidget *parent) {
   gtk_entry_set_text(GTK_ENTRY(btn), predef_call);
   gtk_grid_attach(GTK_GRID(cw_grid), btn, 2, 0, 8, 1);
   g_signal_connect(btn, "changed", G_CALLBACK(text_cb), predef_call);
-
   for (int i = 0; i < 5; i++) {
     char text[256];
     lbl = gtk_label_new("");
@@ -309,7 +300,6 @@ void cw_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(cw_grid), btn, 1, i + 1, 9, 1);
     g_signal_connect(btn, "changed", G_CALLBACK(text_cb), predef_cwtxt[i]);
   }
-
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
   gtk_widget_hide(cwtxt_container);

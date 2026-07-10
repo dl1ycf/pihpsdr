@@ -58,13 +58,10 @@ void DoTheMidi(int action, enum ACTIONtype type, int val) {
   case AT_BTN:
     schedule_action(action, val ? PRESSED : RELEASED, 0);
     break;
-
   case AT_KNB:
     schedule_action(action, ABSOLUTE, val);
     break;
-
   case AT_ENC:
-
     //
     // There are "big wheel" encoders at various MIDI consoles that can produce MIDI events
     // with rather high frequency, and these are usually used for VFO, VFOA, VFOB
@@ -75,37 +72,26 @@ void DoTheMidi(int action, enum ACTIONtype type, int val) {
     switch (action) {
     case VFOA:
       vfoa_timer.val += val;
-
       if (vfoa_timer.timeout == 0) {
         vfoa_timer.timeout = g_timeout_add(100, vfo_timeout_cb, &vfoa_timer);
       }
-
       break;
-
     case VFOB:
       vfob_timer.val += val;
-
       if (vfob_timer.timeout == 0) {
         vfob_timer.timeout = g_timeout_add(100, vfo_timeout_cb, &vfob_timer);
       }
-
       break;
-
     case VFO:
       vfo_timer.val += val;
-
       if (vfo_timer.timeout == 0) {
         vfo_timer.timeout = g_timeout_add(100, vfo_timeout_cb, &vfo_timer);
       }
-
       break;
-
     default:
       schedule_action(action, RELATIVE, val);
     }
-
     break;
-
   default:
     // other types cannot happen for MIDI
     break;

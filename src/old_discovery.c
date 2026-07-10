@@ -65,7 +65,6 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
   fd_set fds;
   unsigned char buffer[1032];
   int len;
-
   switch (discflag) {
   case 1:
     //
@@ -75,34 +74,28 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
     t_print("%s: looking for HPSDR devices on %s\n", __func__, interface_name);
     // send a broadcast to locate hpsdr boards on the network
     discovery_socket = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-
     if (discovery_socket < 0) {
       t_perror("socket() failed for p1 discovery broadcast socket");
       return;
     }
-
     memcpy(&interface_addr, iface->ifa_addr, sizeof(interface_addr));
     memcpy(&interface_netmask, iface->ifa_netmask, sizeof(interface_netmask));
     // bind to this interface and the discovery port
     interface_addr.sin_family = AF_INET;
     interface_addr.sin_port = htons(0); // system assigned port
-
     if (bind(discovery_socket, (struct sockaddr * )&interface_addr, sizeof(interface_addr)) < 0) {
       t_perror("bind() failed for P1 discovery broadcast socket");
       close (discovery_socket);
       return;
     }
-
     // allow broadcast on the socket
     int on = 1;
     rc = setsockopt(discovery_socket, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on));
-
     if (rc != 0) {
       t_print("%s: cannot set SO_BROADCAST: rc=%d\n", __func__, rc);
       close (discovery_socket);
       return;
     }
-
     // setup to address
     to_addr.sin_family = AF_INET;
     to_addr.sin_port = htons(DISCOVERY_PORT);
@@ -115,7 +108,6 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
     //          | (ntohl(interface_netmask.sin_addr.s_addr) ^ 0xFFFFFFFF));
     //
 #ifdef __APPLE__
-
     //
     // MacOS fails for broadcasts to the loopback interface(s).
     // so if this is a loopback, simply use the loopback addr
@@ -127,10 +119,8 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
       //
       to_addr.sin_addr = interface_addr.sin_addr;
     }
-
 #endif
     break;
-
   case 2:
     //
     // Send METIS detection packet via UDP to ipaddr_radio
@@ -141,7 +131,6 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
     memset(&to_addr, 0, sizeof(to_addr));
     to_addr.sin_family = AF_INET;
     to_addr.sin_port = htons(DISCOVERY_PORT);
-
     if (inet_aton(ipaddr_radio, &to_addr.sin_addr) == 0) {
       //
       // if no legal "dotted" address, try if it is a valid hostname
@@ -153,17 +142,13 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
         return;
       }
     }
-
     t_print("%s: trying UDP connection with IP %s\n", __func__, inet_ntoa(to_addr.sin_addr));
     discovery_socket = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-
     if (discovery_socket < 0) {
       t_perror("socket() failed for p1 discovery UDP socket");
       return;
     }
-
     break;
-
   case 3:
     //
     // Send METIS detection packet via TCP to ipaddr_radio
@@ -174,7 +159,6 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
     to_addr.sin_family = AF_INET;
     interface_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     to_addr.sin_port = htons(DISCOVERY_PORT);
-
     if (inet_aton(ipaddr_radio, &to_addr.sin_addr) == 0) {
       //
       // if no legal "dotted" address, try if it is a valid hostname
@@ -186,15 +170,12 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
         return;
       }
     }
-
     t_print("%s: trying TCP connection IP %s\n", __func__, inet_ntoa(to_addr.sin_addr));
     discovery_socket = socket(AF_INET, SOCK_STREAM, 0);
-
     if (discovery_socket < 0) {
       t_perror("socket() failed for p1 discovery TCP socket");
       return;
     }
-
     //
     // Here I tried a bullet-proof approach to connect() such that the program
     // does not "hang" under any circumstances.
@@ -209,26 +190,22 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
     flags = fcntl(discovery_socket, F_GETFL, 0);
     fcntl(discovery_socket, F_SETFL, flags | O_NONBLOCK);
     rc = connect(discovery_socket, (const struct sockaddr *)&to_addr, sizeof(to_addr));
-
     if ((rc < 0) && (errno != EINPROGRESS)) {
       t_perror("connect() failed for p1 discovery TCP socket");
       close(discovery_socket);
       return;
     }
-
     // Step 2. Use select to wait for the connection
     tv.tv_sec = 3;
     tv.tv_usec = 0;
     FD_ZERO(&fds);
     FD_SET(discovery_socket, &fds);
     rc = select(discovery_socket + 1, NULL, &fds, NULL, &tv);
-
     if (rc < 0) {
       t_perror("select() failed on p1 discovery TCP socket");
       close(discovery_socket);
       return;
     }
-
     // If no connection occured, return
     if (rc == 0) {
       // select timed out
@@ -236,41 +213,34 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
       close(discovery_socket);
       return;
     }
-
     // Step 3. select() succeeded. Check success of connect()
     optlen = sizeof(int);
     rc = getsockopt(discovery_socket, SOL_SOCKET, SO_ERROR, &optval, &optlen);
-
     if (rc < 0) {
       // this should very rarely happen
       t_perror("getsockopt() failed on p1 discovery TCP socket");
       close(discovery_socket);
       return;
     }
-
     if (optval != 0) {
       // connect did not succeed
       t_print("%s: connect() on TCP socket did not succeed\n", __func__);
       close(discovery_socket);
       return;
     }
-
     // Step 4. reset the socket to normal (blocking) mode
     fcntl(discovery_socket, F_SETFL, flags &  ~O_NONBLOCK);
     break;
-
   default:
     return;
     break;
   }
-
   optval = 1;
   setsockopt(discovery_socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
   setsockopt(discovery_socket, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
   rc = devices;
   // start a receive thread to collect discovery response packets
   discover_thread_id = g_thread_new( "old discover receive", p1_discover_receive_thread, GINT_TO_POINTER(discflag));
-
   // send discovery packet
   // If this is a TCP connection, send a "long" packet
   switch (discflag) {
@@ -278,38 +248,30 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
   case 2:
     len = 63; // send UDP packet
     break;
-
   case 3:
     len = 1032; // send TCP packet
     break;
   }
-
   buffer[0] = 0xEF;
   buffer[1] = 0xFE;
   buffer[2] = 0x02;
-
   for (int i = 3; i < len; i++) {
     buffer[i] = 0x00;
   }
-
   if (sendto(discovery_socket, buffer, len, 0, (struct sockaddr * )&to_addr, sizeof(to_addr)) < 0) {
     t_perror("sendto() failed for p1 discovery socket");
     close (discovery_socket);
     return;
   }
-
   // wait for receive thread to complete
   g_thread_join(discover_thread_id);
   close(discovery_socket);
-
   switch (discflag) {
   case 1:
     t_print("%s: exiting discover for %s\n", __func__, iface->ifa_name);
     break;
-
   case 2:
     t_print("%s: exiting UDP discover for IP %s\n", __func__, ipaddr_radio);
-
     if (devices == rc + 1) {
       //
       // METIS detection UDP packet sent to fixed IP address got a valid response.
@@ -319,12 +281,9 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
       snprintf(discovered[rc].network.interface_name, sizeof(discovered[rc].network.interface_name), "UDP");
       discovered[rc].use_routing = 1;
     }
-
     break;
-
   case 3:
     t_print("%s: exiting TCP discover for IP %s\n", __func__, ipaddr_radio);
-
     if (devices == rc + 1) {
       //
       // METIS detection TCP packet sent to fixed IP address got a valid response.
@@ -337,7 +296,6 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
       discovered[rc].use_routing = 1;
       discovered[rc].use_tcp = 1;
     }
-
     break;
   }
 }
@@ -354,7 +312,6 @@ static gpointer p1_discover_receive_thread(gpointer data) {
   tv.tv_usec = 0;
   setsockopt(discovery_socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
   len = sizeof(addr);
-
   while (1) {
     if (flag != 1 && devices > oldnumdev) {
       //
@@ -363,57 +320,45 @@ static gpointer p1_discover_receive_thread(gpointer data) {
       //
       break;
     }
-
     int bytes_read = recvfrom(discovery_socket, buffer, sizeof(buffer), 1032, (struct sockaddr*)&addr, &len);
-
     if (bytes_read < 0) {
       break;
     }
-
     if (bytes_read == 0) { break; }
-
     t_print("%s: received %d bytes\n", __func__, bytes_read);
-
     if ((buffer[0] & 0xFF) == 0xEF && (buffer[1] & 0xFF) == 0xFE) {
       int status = buffer[2] & 0xFF;
-
       if (status == 2 || status == 3) {
         if (devices < MAX_DEVICES) {
           discovered[devices].protocol = ORIGINAL_PROTOCOL;
           discovered[devices].device = buffer[10] & 0xFF;
           discovered[devices].software_version = buffer[9] & 0xFF;
-
           switch (discovered[devices].device) {
           case DEVICE_METIS:
             snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Metis");
             discovered[devices].frequency_min = 0.0;
             discovered[devices].frequency_max = 61440000.0;
             break;
-
           case DEVICE_HERMES2:
             snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Hermes2 (Anan-10E/100B)");
             discovered[devices].frequency_min = 0.0;
             discovered[devices].frequency_max = 61440000.0;
             break;
-
           case DEVICE_HERMES:
             snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Hermes");
             discovered[devices].frequency_min = 0.0;
             discovered[devices].frequency_max = 61440000.0;
             break;
-
           case DEVICE_ANGELIA:
             snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Angelia");
             discovered[devices].frequency_min = 0.0;
             discovered[devices].frequency_max = 61440000.0;
             break;
-
           case DEVICE_ORION:
             snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Orion");
             discovered[devices].frequency_min = 0.0;
             discovered[devices].frequency_max = 61440000.0;
             break;
-
           case DEVICE_HERMES_LITE:
             //
             // HermesLite V2 boards use
@@ -424,14 +369,12 @@ static gpointer p1_discover_receive_thread(gpointer data) {
             // so the official version number e.g. 73.2 stems from buf9=73 and buf21=2
             //
             discovered[devices].software_version = 10 * (buffer[9] & 0xFF) + (buffer[21] & 0xFF);
-
             if (discovered[devices].software_version < 400) {
               snprintf(discovered[devices].name, sizeof(discovered[devices].name), "HermesLite V1");
             } else {
               snprintf(discovered[devices].name, sizeof(discovered[devices].name), "HermesLite V2");
               discovered[devices].device = DEVICE_HERMES_LITE2;
               t_print("==> HL2: Gateware Major Version=%d Minor Version=%d\n", buffer[9], buffer[21]);
-
               // HL2 MCP4662 byte 6, bits 5,6,7
               if (buffer[11] & 0x80) {
                 if (buffer[11] & 0x20) {
@@ -440,28 +383,23 @@ static gpointer p1_discover_receive_thread(gpointer data) {
                   t_print("==> HL2: fixed IP %d.%d.%d.%d (overrides DHCP)\n", buffer[13], buffer[14], buffer[15], buffer[16]);
                 }
               }
-
               if (buffer[11] & 0x40) {
                 t_print("==> HL2 MAC addr modified: <...>:%02x:%02x\n", buffer[17], buffer[18]);
               }
             }
-
             discovered[devices].frequency_min = 0.0;
             discovered[devices].frequency_max = 38400000.0;
             break;
-
           case DEVICE_ORION2:
             snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Orion2");
             discovered[devices].frequency_min = 0.0;
             discovered[devices].frequency_max = 61440000.0;
             break;
-
           case DEVICE_G1:
             snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Anan G1");
             discovered[devices].frequency_min = 0.0;
             discovered[devices].frequency_max = 61440000.0;
             break;
-
           case DEVICE_STEMLAB:
             // This is in principle the same as HERMES but has two ADCs
             // (and therefore, can do DIVERSITY).
@@ -471,7 +409,6 @@ static gpointer p1_discover_receive_thread(gpointer data) {
             discovered[devices].frequency_min = 0.0;
             discovered[devices].frequency_max = 61440000.0;
             break;
-
           case DEVICE_STEMLAB_Z20:
             // This is in principle the same as HERMES but has two ADCs
             // (and therefore, can do DIVERSITY).
@@ -481,18 +418,15 @@ static gpointer p1_discover_receive_thread(gpointer data) {
             discovered[devices].frequency_min = 0.0;
             discovered[devices].frequency_max = 61440000.0;
             break;
-
           default:
             snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Unknown");
             discovered[devices].frequency_min = 0.0;
             discovered[devices].frequency_max = 61440000.0;
             break;
           }
-
           for (i = 0; i < 6; i++) {
             discovered[devices].network.mac_address[i] = buffer[i + 3];
           }
-
           discovered[devices].status = status;
           memcpy((void*)&discovered[devices].network.address, (void*)&addr, sizeof(addr));
           discovered[devices].network.address_length = sizeof(addr);
@@ -528,7 +462,6 @@ static gpointer p1_discover_receive_thread(gpointer data) {
       }
     }
   }
-
   g_thread_exit(NULL);
   return NULL;
 }
@@ -540,11 +473,9 @@ void p1_discovery(void) {
   //
   int previous_devices = devices;
   p1_discover(NULL, 2);
-
   if (tcp_enable) {
     p1_discover(NULL, 3);
   }
-
   //
   // If we have been successful with the fixed IP address,
   // assume that we want that radio, and do not discover any
@@ -553,10 +484,8 @@ void p1_discovery(void) {
   if (devices <= previous_devices) {
     getifaddrs(&addrs);
     ifa = addrs;
-
     while (ifa) {
       g_main_context_iteration(NULL, 0);
-
       //
       // Sometimes there are many (virtual) interfaces, and some
       // of them are very unlikely to offer a radio connection.
@@ -578,10 +507,8 @@ void p1_discovery(void) {
           p1_discover(ifa, 1);   // send UDP broadcast packet to interface
         }
       }
-
       ifa = ifa->ifa_next;
     }
-
     freeifaddrs(addrs);
   }
 }

@@ -32,7 +32,7 @@ PROPERTY* properties = NULL;
 
 void clearProperties(void) {
   while (properties != NULL) {
-    PROPERTY *tmp=properties;
+    PROPERTY *tmp = properties;
     properties = properties->next_property;
     // now "tmp" is removed from the list so we can release memory
     g_free(tmp->name);
@@ -52,7 +52,6 @@ void loadProperties(const char* filename) {
   PROPERTY* property;
   int lines = 0;
   clearProperties();
-
   /////////////////////////////////////////////////////////////////////////////////////////
   //
   // TEMPORARY HOOK:
@@ -76,27 +75,21 @@ void loadProperties(const char* filename) {
              radio->network.mac_address[5]);
     f = fopen(oldstyle_path, "r");
   }
-
   //
   /////////////////////////////////////////////////////////////////////////////////////////
-
   if (f) {
     const char* value;
     const char* name;
     char string[256];
     double version = -1;
-
     while (fgets(string, sizeof(string), f)) {
       lines++;
-
       if (string[0] != '#') {
         name = strtok(string, "=");
         value = strtok(NULL, "\n");
-
         // Beware of "illegal" lines in corrupted files
         if (name != NULL && value != NULL) {
           property = g_new(PROPERTY, 1);
-
           if (!property) {
             fatal_error("FATAL: property alloc");
           } else {
@@ -105,22 +98,18 @@ void loadProperties(const char* filename) {
             property->next_property = properties;
             properties = property;
           }
-
           if (strcmp(name, "property_version") == 0) {
             version = atof(value);
           }
         }
       }
     }
-
     if (version >= 0.0 && version != PROPERTY_VERSION) {
       clearProperties();
       t_print("loadProperties: version=%f expected version=%f ignoring\n", version, PROPERTY_VERSION);
     }
-
     fclose(f);
   }
-
   t_print("loadProperties: %s, lines read: %d\n", filename, lines);
 }
 
@@ -134,25 +123,20 @@ void saveProperties(const char* filename) {
   const PROPERTY* property;
   FILE* f = fopen(filename, "w+");
   char line[1024];
-
   if (!f) {
     t_print("can't open %s\n", filename);
     return;
   }
-
   snprintf(line, sizeof(line), "%0.2f", PROPERTY_VERSION);
   setProperty("property_version", line);
   property = properties;
-
   while (property) {
     if (*property->value) {
       snprintf(line, sizeof(line), "%s=%s\n", property->name, property->value);
       fwrite(line, 1, strlen(line), f);
     }
-
     property = property->next_property;
   }
-
   fclose(f);
 }
 
@@ -167,16 +151,13 @@ void saveProperties(const char* filename) {
 char* getProperty(const char* name) {
   char* value = NULL;
   PROPERTY* property = properties;
-
   while (property) {
     if (strcmp(name, property->name) == 0) {
       value = property->value;
       break;
     }
-
     property = property->next_property;
   }
-
   return value;
 }
 
@@ -189,15 +170,12 @@ char* getProperty(const char* name) {
 */
 void setProperty(const char* name, const char* value) {
   PROPERTY* property = properties;
-
   while (property) {
     if (strcmp(name, property->name) == 0) {
       break;
     }
-
     property = property->next_property;
   }
-
   if (property) {
     // just update
     g_free(property->value);
@@ -205,7 +183,6 @@ void setProperty(const char* name, const char* value) {
   } else {
     // new property
     property = g_new(PROPERTY, 1);
-
     if (!property) {
       fatal_error("FATAL: property alloc");
     } else {
@@ -228,18 +205,15 @@ void setProperty(const char* name, const char* value) {
 double myatof(const char* string) {
   char *lstr = g_strdup(string);
   double ret;
-
   //
   // Emergency fallback (will work in 99.99% of the cases)
   //
   if (lstr == NULL) {
     return atof(string);
   }
-
   for (char *cp = lstr; *cp; cp++) {
     if (*cp == ',') { *cp = '.'; }
   }
-
   ret = atof(lstr);
   g_free(lstr);
   return ret;
