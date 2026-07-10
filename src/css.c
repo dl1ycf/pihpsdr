@@ -100,6 +100,7 @@ char *css =
   "  #orangebutton   { background-image: none; background-color: rgb(100%, 50%, 20%); color: rgb(0%,0%,0%);}\n"
   "  #yellowbutton   { background-image: none; background-color: rgb(100%, 100%, 20%); color: rgb(0%,0%,0%);}\n"
   "  #greenbutton { background-image: none; background-color: rgb(20%, 100%, 20%); color: rgb(0%,0%,0%);}\n"
+  "  #bluebutton { background-image: none; background-color: rgb(20%, 20%, 100%); color: rgb(100%,100%,100%);}\n"
   "  checkbutton label { font-size: 15px; }\n"
   "  spinbutton { font-size: 15px; }\n"
   "  radiobutton label  { font-size: 15px; }\n"
