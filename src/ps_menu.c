@@ -460,30 +460,8 @@ static void enable_cb(GtkWidget *widget, gpointer data) {
   }
 }
 
-static void tol_cb(GtkWidget *widget, gpointer data) {
-  transmitter->ps_ptol = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
-
-  if (radio_is_remote) {
-    send_psparams(cl_sock_tcp, transmitter);
-  } else {
-    tx_ps_setparams(transmitter);
-    ps_off_on();
-  }
-}
-
 static void oneshot_cb(GtkWidget *widget, gpointer data) {
   transmitter->ps_oneshot = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
-
-  if (radio_is_remote) {
-    send_psparams(cl_sock_tcp, transmitter);
-  } else {
-    tx_ps_setparams(transmitter);
-    ps_off_on();
-  }
-}
-
-static void map_cb(GtkWidget *widget, gpointer data) {
-  transmitter->ps_map = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
 
   if (radio_is_remote) {
     send_psparams(cl_sock_tcp, transmitter);
@@ -672,17 +650,6 @@ void ps_menu(GtkWidget *parent) {
 
   my_combo_attach(GTK_GRID(grid), ps_ant_combo, col, row, 1, 1);
   g_signal_connect(ps_ant_combo, "changed", G_CALLBACK(ps_ant_cb), NULL);
-  col++;
-  GtkWidget *map_b = gtk_check_button_new_with_label("PS MAP");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (map_b), transmitter->ps_map);
-  gtk_grid_attach(GTK_GRID(grid), map_b, col, row, 1, 1);
-  g_signal_connect(map_b, "toggled", G_CALLBACK(map_cb), NULL);
-  col++;
-  GtkWidget *tol_b = gtk_check_button_new_with_label("PS Relax Tolerance");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (tol_b), transmitter->ps_ptol);
-  gtk_grid_attach(GTK_GRID(grid), tol_b, col, row, 2, 1);
-  g_signal_connect(tol_b, "toggled", G_CALLBACK(tol_cb), NULL);
-  col++;
   col++;
   GtkWidget *oneshot_b = gtk_check_button_new_with_label("OneShot");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (oneshot_b), transmitter->ps_oneshot);

@@ -2607,9 +2607,7 @@ static int server_command(gpointer data) {
   case CMD_PSPARAMS:
     if (can_transmit) {
       const PS_PARAMS  *command = (PS_PARAMS *)data;
-      transmitter->ps_ptol = command->ps_ptol;
       transmitter->ps_oneshot = command->ps_oneshot;
-      transmitter->ps_map = command->ps_map;
       transmitter->ps_setpk = from_double(command->ps_setpk);
       tx_ps_setparams(transmitter);
     }

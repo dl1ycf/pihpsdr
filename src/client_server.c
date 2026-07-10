@@ -1274,9 +1274,7 @@ void send_psparams(int s, const TRANSMITTER *tx) {
   PS_PARAMS params;
   SYNC(params.header.sync);
   params.header.data_type = to_16(CMD_PSPARAMS);
-  params.ps_ptol = tx->ps_ptol;
   params.ps_oneshot = tx->ps_oneshot;
-  params.ps_map = tx->ps_map;
   params.ps_setpk = to_double(tx->ps_setpk);
   send_tcp(s, (char *)&params, sizeof(PS_PARAMS));
 }
