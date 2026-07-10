@@ -133,8 +133,9 @@ extern int clock_nanosleep(clockid_t __clock_id, int __flags,
 // These give about -24 dBc at full drive, that is
 // about the value a reasonable amp gives.
 //
-#define IM3a  0.60
-#define IM3b  0.20
+#define IM0  0.75
+#define IM1  0.20
+#define IM2  0.05
 
 //
 // Digital Inputs, reported to the SDR program

@@ -1069,8 +1069,8 @@ void *rx_thread(void *data) {
           qrsample = qsample[rxptr++];
           if (rxptr >= NEWRTXLEN) { rxptr = 0; }
           if (myadc == 0) {
-            double fac = txatt0_dbl * txdrv_dbl * (IM3a + IM3b * (irsample * irsample + qrsample * qrsample) * txdrv_dbl *
-                                                   txdrv_dbl);
+            double ampl = irsample * irsample + qrsample * qrsample;
+            double fac = txatt0_dbl * (IM0 + IM1 * ampl + IM2 * ampl * ampl);
             i0sample += irsample * fac;
             q0sample += qrsample * fac;
           }

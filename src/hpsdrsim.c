@@ -1454,7 +1454,7 @@ void *handler_ep6(void *arg) {
   struct timespec delay;
   long wait;
   int noiseIQpt, divpt, rxptr;
-  double i1, q1, fac1, fac1a, fac2, fac3, fac4;
+  double i1, q1, ampl, fac1, fac1a, fac2, fac3, fac4;
   unsigned int seed;
   int decimation;
   seed = ((uintptr_t) &seed) & 0xffffff;
@@ -1620,9 +1620,10 @@ void *handler_ep6(void *arg) {
       for (j = 0; j < n; j++) {
         // ADC1: noise + weak tone on RX, feedback sig. on TX (except STEMlab)
         if (ptt && (ODEVICE != DEV_C25)) {
-          i1 = isample[rxptr] * txdrv_dbl;
-          q1 = qsample[rxptr] * txdrv_dbl;
-          fac3 = IM3a + IM3b * (i1 * i1 + q1 * q1);
+          i1 = isample[rxptr];
+          q1 = qsample[rxptr];
+          ampl = i1 * i1 + q1 * q1;
+          fac3 = txdrv_dbl * (IM0 + IM1 * ampl + IM2 * ampl *ampl);
           adc1isample = (txatt_dbl * i1 * fac3 + noiseItab[noiseIQpt] * p1noisefac) * 8388607.0;
           adc1qsample = (txatt_dbl * q1 * fac3 + noiseItab[noiseIQpt] * p1noisefac) * 8388607.0;
         } else if (diversity && do_tone == 1) {
@@ -1646,7 +1647,7 @@ void *handler_ep6(void *arg) {
         if (ptt && (ODEVICE == DEV_C25)) {
           i1 = isample[rxptr] * txdrv_dbl;
           q1 = qsample[rxptr] * txdrv_dbl;
-          fac3 = IM3a + IM3b * (i1 * i1 + q1 * q1);
+          fac3 = IM0 + IM1 * ampl + IM2 * ampl *ampl;
           adc2isample = (txatt_dbl * i1 * fac3 + noiseItab[noiseIQpt] * p1noisefac) * 8388607.0;
           adc2qsample = (txatt_dbl * q1 * fac3 + noiseItab[noiseIQpt] * p1noisefac) * 8388607.0;
         } else if (diversity) {
