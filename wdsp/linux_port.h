@@ -39,7 +39,7 @@ john.d.melton@googlemail.com
 #define String char *
 #define LONG long
 #define DWORD long
-#define HANDLE void *
+#define HANDLE int *
 #define WINAPI
 #define FALSE 0
 #define TRUE 1
@@ -78,12 +78,16 @@ void my_free(void *p);
 #define Sleep(ms) usleep((ms)*1000)
 
 #define CreateSemaphore(a,b,c,d) LinuxCreateSemaphore(a,b,c,d)
+#define CreateSemaphoreW(a,b,c,d) LinuxCreateSemaphore(a,b,c,d)
 #define WaitForSingleObject(x, y) LinuxWaitForSingleObject(x, y)
+#define WaitForMultipleObjects(a, b, c, d) LinuxWaitForMultipleObjects(a, b, c, d)
 #define ReleaseSemaphore(x,y,z) LinuxReleaseSemaphore(x,y,z)
 #define SetEvent(x) LinuxSetEvent(x)
 #define ResetEvent(x) LinuxResetEvent(x)
 
 #define INFINITE -1
+#define WAIT_OBJECT_0 0
+#define INT_MAX 2147483647
 
 void QueueUserWorkItem(void *function,void *context,int flags);
 
@@ -100,7 +104,8 @@ void DeleteCriticalSection(pthread_mutex_t *mutex);
 
 sem_t *LinuxCreateSemaphore(int attributes,int initial_count,int maximum_count,char *name);
 
-int LinuxWaitForSingleObject(sem_t *sem,int x);
+int LinuxWaitForSingleObject(sem_t *sem,int ms);
+int LinuxWaitForMultipleObjects(int num, sem_t **sem, int waitall, int ms);
 
 void LinuxReleaseSemaphore(sem_t *sem,int release_count, int* previous_count);
 

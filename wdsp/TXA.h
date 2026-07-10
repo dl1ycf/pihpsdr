@@ -1,4 +1,4 @@
-/*	TXA.h
+/*  TXA.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -153,8 +153,7 @@ struct _txa
 	} calcc;
 	struct
 	{
-		IQC p0, p1;
-		// p0 for dsp-synchronized reference, p1 for other
+		IQC p;
 	} iqc;
 	struct
 	{

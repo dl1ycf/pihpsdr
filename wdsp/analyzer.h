@@ -1,4 +1,4 @@
-/*	analyzer.h
+/*  analyzer.h
 
 This file is part of a program that implements a Spectrum Analyzer
 used in conjunction with software-defined-radio hardware.
@@ -67,14 +67,14 @@ typedef struct _dp
 	double f_max;											// frequency at last pixel (for calibration)
 	int cal_changed;										// flag to indicate that the calibration data has changed
 
-	double *window;											// pointer to buffer to hold window coefficients	
+	double *window;											// pointer to buffer to hold window coefficients
 	double *result[dMAX_STITCH];							// pointers to buffer to hold elimination results for each sub-span
 	dOUTREAL *pixels[dMAX_PIXOUTS][dNUM_PIXEL_BUFFS];		// pointers pixel output buffers
 	double *t_pixels[dMAX_PIXOUTS];							// pointer to temporary pixel buffer									//pointer to temporary pixel buffer for non-averaged data
 	int w_pix_buff[dMAX_PIXOUTS];							// number of pixel buffer owned by writing process
 	int r_pix_buff[dMAX_PIXOUTS];							// number of pixel buffer owned by reading process
 	int last_pix_buff[dMAX_PIXOUTS];						// number of the last pixel buffer written
-	volatile LONG pb_ready[dMAX_PIXOUTS][dNUM_PIXEL_BUFFS]; // if value is 0, this data has already been read; 1 = fresh data to read
+	volatile LONG pb_ready[dMAX_PIXOUTS][dNUM_PIXEL_BUFFS];	// if value is 0, this data has already been read; 1 = fresh data to read
 	int num_average[dMAX_PIXOUTS];							// number of spans to average to create the pixels
 	int avail_frames[dMAX_PIXOUTS];							// number of pixel frames currently available to average
 	int av_in_idx[dMAX_PIXOUTS];							// input index in averaging pixel buffer ring
@@ -206,10 +206,10 @@ void SnapSpectrum(	int disp,
 
 extern __declspec( dllexport )
 void SnapSpectrumTimeout (int disp,
-						  int ss,
-						  int LO,
-						  double* snap_buff,
-						  DWORD timeout,
-						  int* flag);
+	                      int ss,
+	                      int LO,
+	                      double* snap_buff,
+	                      DWORD timeout,
+	                      int* flag);
 
 #endif

@@ -194,7 +194,7 @@ RNNR create_rnnr(int run, int position, int size, double* in, double* out, int r
 	a->run = run;
 	a->position = position;
 	a->rate = rate; // not used currently, but here for future use
-	a->st = rnnoise_create(_rnnr_model);	
+	a->st = rnnoise_create(_rnnr_model);
 	a->frame_size = rnnoise_get_frame_size();
 	a->in = in;
 	a->out = out;

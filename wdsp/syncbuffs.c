@@ -1,4 +1,4 @@
-/*	syncbuffs.c
+/*  syncbuffs.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -57,7 +57,7 @@ SYNCB create_syncbuffs (int accept, int nstreams, int max_insize, int max_outsiz
 	a->r1_unqueuedsamps = 0;
 	a->Sem_BuffReady = CreateSemaphore(0, 0, 1000, 0);
 	InitializeCriticalSectionAndSpinCount ( &a->csIN, 2500 );
-	InitializeCriticalSectionAndSpinCount ( &a->csOUT,	2500 );
+	InitializeCriticalSectionAndSpinCount ( &a->csOUT,  2500 );
 	start_syncbthread (a);
 	return a;
 }
@@ -70,9 +70,9 @@ void destroy_syncbuffs (SYNCB a)
 	EnterCriticalSection (&a->csOUT);				// block the syncb thread before syncbdata()
 	Sleep (25);										// wait for the thread to arrive at the top of the syncb_main() loop
 	InterlockedBitTestAndReset(&a->run, 0);			// set a trap for the syncb thread
-	ReleaseSemaphore(a->Sem_BuffReady, 1, 0);		// be sure the syncb thread can pass WaitForSingleObject in syncb_main() //
+	ReleaseSemaphore(a->Sem_BuffReady, 1, 0);		// be sure the syncb thread can pass WaitForSingleObject in syncb_main()
 	LeaveCriticalSection (&a->csOUT);				// let the thread pass to the trap in syncbdata()
-	LeaveCriticalSection (&a->csIN);				
+	LeaveCriticalSection (&a->csIN);
 	Sleep (2);										// wait for the syncb thread to die
 	DeleteCriticalSection (&a->csOUT);
 	DeleteCriticalSection (&a->csIN);
@@ -114,8 +114,8 @@ void Syncbound (SYNCB a, int nsamples, double** in)
 		}
 		for (i = 0; i < a->nstreams; i++)
 		{
-			memcpy (a->r1_baseptr[i] + 2 * a->r1_inidx, in[i],			   first  * sizeof (complex));
-			memcpy (a->r1_baseptr[i],					in[i] + 2 * first, second * sizeof (complex));
+			memcpy (a->r1_baseptr[i] + 2 * a->r1_inidx, in[i],             first  * sizeof (complex));
+			memcpy (a->r1_baseptr[i],                   in[i] + 2 * first, second * sizeof (complex));
 		}
 		if ((a->r1_unqueuedsamps += nsamples) >= a->r1_outsize)
 		{
@@ -151,8 +151,8 @@ void syncbdata (SYNCB a)
 	}
 	for (i = 0; i < a->nstreams; i++)
 	{
-		memcpy (a->out[i],			   a->r1_baseptr[i] + 2 * a->r1_outidx, first  * sizeof (complex));
-		memcpy (a->out[i] + 2 * first, a->r1_baseptr[i],					second * sizeof (complex));
+		memcpy (a->out[i],             a->r1_baseptr[i] + 2 * a->r1_outidx, first  * sizeof (complex));
+		memcpy (a->out[i] + 2 * first, a->r1_baseptr[i],                    second * sizeof (complex));
 	}
 	if ((a->r1_outidx += a->r1_outsize) >= a->r1_active_buffsize)
 		a->r1_outidx -= a->r1_active_buffsize;
@@ -162,7 +162,7 @@ void syncbdata (SYNCB a)
 void syncb_main (void *p)
 {
 	SYNCB a = (SYNCB)p;
-	
+
 	while (_InterlockedAnd (&a->run, 1))
 	{
 		WaitForSingleObject (a->Sem_BuffReady,INFINITE);
@@ -179,7 +179,7 @@ void SetSYNCBRingOutsize (SYNCB a, int size)
 	EnterCriticalSection (&a->csOUT);				// block the syncb thread before syncbdata()
 	Sleep (25);										// wait for the thread to arrive at the top of the syncb_main() loop
 	InterlockedBitTestAndReset(&a->run, 0);			// set a trap for the syncb thread
-	ReleaseSemaphore(a->Sem_BuffReady, 1, 0);		// be sure the syncb thread can pass WaitForSingleObject in syncb_main() //
+	ReleaseSemaphore(a->Sem_BuffReady, 1, 0);		// be sure the syncb thread can pass WaitForSingleObject in syncb_main()
 	LeaveCriticalSection (&a->csOUT);				// let the thread pass to the trap in syncbdata()
 	Sleep (2);										// wait for the syncb thread to die
 	flush_syncbuffs(a);								// restore ring to pristine condition
@@ -239,8 +239,8 @@ void xdumfilt (DUMFILT a)
 			first = a->opsize;
 			second = 0;
 		}
-		memcpy (a->ring + 2 * a->inidx, a->in,			   first  * sizeof (complex));
-		memcpy (a->ring,				a->in + 2 * first, second * sizeof (complex));
+		memcpy (a->ring + 2 * a->inidx, a->in,             first  * sizeof (complex));
+		memcpy (a->ring,                a->in + 2 * first, second * sizeof (complex));
 		if ((a->inidx += a->opsize) > a->rsize) a->inidx -= a->rsize;
 		if (a->opsize > a->rsize - a->outidx)
 		{
@@ -252,8 +252,8 @@ void xdumfilt (DUMFILT a)
 			first = a->opsize;
 			second = 0;
 		}
-		memcpy (a->out,				a->ring + 2 * a->outidx, first	* sizeof (complex));
-		memcpy (a->out + 2 * first, a->ring,				 second * sizeof (complex));
+		memcpy (a->out,             a->ring + 2 * a->outidx, first  * sizeof (complex));
+		memcpy (a->out + 2 * first, a->ring,                 second * sizeof (complex));
 		if ((a->outidx += a->opsize) > a->rsize) a->outidx -= a->rsize;
 	}
 }

@@ -1,4 +1,4 @@
-/*	apfshadow.c
+/*  apfshadow.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -96,16 +96,16 @@ void SetRXASPCWRun (int channel, int run)
 	a->run = run;
 	switch (a->selection)
 	{
-	case 0: // Double-pole
+	case 0:	// Double-pole
 		SetRXADoublepoleRun (channel, a->run);
 		break;
-	case 1: // Matched
+	case 1:	// Matched
 		SetRXAMatchedRun (channel, a->run);
 		break;
-	case 2: // Gaussian
+	case 2:	// Gaussian
 		SetRXAGaussianRun (channel, a->run);
 		break;
-	case 3: // Bi-quad
+	case 3:	// Bi-quad
 		SetRXABiQuadRun (channel, a->run);
 		break;
 	default:
@@ -120,16 +120,16 @@ void SetRXASPCWFreq (int channel, double f_center)
 	a->f_center = f_center;
 	switch (a->selection)
 	{
-	case 0: // Double-pole
+	case 0:	// Double-pole
 		SetRXADoublepoleFreqs (channel, a->f_center, a->bandwidth);
 		break;
-	case 1: // Matched
+	case 1:	// Matched
 		SetRXAMatchedFreqs (channel, a->f_center, a->bandwidth);
 		break;
-	case 2: // Gaussian
+	case 2:	// Gaussian
 		SetRXAGaussianFreqs (channel, a->f_center, a->bandwidth);
 		break;
-	case 3: // Bi-quad
+	case 3:	// Bi-quad
 		SetRXABiQuadFreq (channel, a->f_center);
 		break;
 	default:
@@ -144,16 +144,16 @@ void SetRXASPCWBandwidth (int channel, double bandwidth)
 	a->bandwidth = bandwidth;
 	switch (a->selection)
 	{
-	case 0: // Double-pole
+	case 0:	// Double-pole
 		SetRXADoublepoleFreqs (channel, a->f_center, a->bandwidth);
 		break;
-	case 1: // Matched
+	case 1:	// Matched
 		SetRXAMatchedFreqs (channel, a->f_center, a->bandwidth);
 		break;
-	case 2: // Gaussian
+	case 2:	// Gaussian
 		SetRXAGaussianFreqs (channel, a->f_center, a->bandwidth);
 		break;
-	case 3: // Bi-quad
+	case 3:	// Bi-quad
 		SetRXABiQuadBandwidth (channel, a->bandwidth);
 		break;
 	default:
@@ -168,16 +168,16 @@ void SetRXASPCWGain (int channel, double gain)
 	a->gain = gain;
 	switch (a->selection)
 	{
-	case 0: // Double-pole
+	case 0:	// Double-pole
 		SetRXADoublepoleGain (channel, a->gain);
 		break;
-	case 1: // Matched
+	case 1:	// Matched
 		SetRXAMatchedGain (channel, sqrt(2.0) * a->gain);
 		break;
-	case 2: // Gaussian
+	case 2:	// Gaussian
 		SetRXAGaussianGain (channel, sqrt(2.0) * a->gain);
 		break;
-	case 3: // Bi-quad
+	case 3:	// Bi-quad
 		SetRXABiQuadGain (channel, a->gain);
 		break;
 	default:

@@ -1,4 +1,4 @@
-/*	doublepole.h
+/*  doublepole.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -47,7 +47,7 @@ typedef struct _doublepole
 	double samplerate;			// sample_rate (samples/sec)
 	double gain;				// gain to be applied to filter output
 	double scale;				// internal filter scale factor based upon gain
-	int mode;					// Mode to get output:	0 => CWL; 1 => CWU; 2 => CWL + CWU
+	int mode;					// Mode to get output:  0 => CWL; 1 => CWU; 2 => CWL + CWU
 	FIRCORE p;
 } doublepole, *DOUBLEPOLE;
 

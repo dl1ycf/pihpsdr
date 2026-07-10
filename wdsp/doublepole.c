@@ -179,7 +179,7 @@ DOUBLEPOLE create_doublepole (int run, int position, int size, double* in, doubl
 	a->nc = calc_dpole_nc (a->samplerate, a->bandwidth);
 	if (a->size > a->nc) a->nc = a->size;
 	double* impulse = build_doublepole_1eff (a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale);
-	a->p = create_fircore (a->size, a->in, a->out, a->nc, 0, impulse);
+	a->p = create_fircore (a->size, a->in, a->out, a->nc, 0, 4, impulse);
 	_aligned_free (impulse);
 	return a;
 }

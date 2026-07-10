@@ -1,4 +1,4 @@
-/*	iobuffs.h
+/*  iobuffs.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -29,26 +29,26 @@ warren@wpratt.com
 #include "comm.h"
 typedef struct _iobf
 {
-	int	  channel;
-	int	  in_size;								// input number of complex samples in a fexchange call
-	int	  out_size;								// output number of complex samples in a fexchange call
-	int	  r1_outsize;							// number of complex samples taken out of the input-pseudo-ring for processing
-	int	  r2_insize;							// number of processed complex samples returned into the output-pseudo-ring
-	int	  r1_size;								// size of a single maximum sized transfer
-	int	  r2_size;								// size of a single maximum sized transfer
-	int	  r1_active_buffsize;					// size of input pseudo-ring (in complex samples)
-	int	  r2_active_buffsize;					// size of output pseudo-ring (in complex samples)
-	
+	int   channel;
+	int   in_size;								// input number of complex samples in a fexchange call
+	int   out_size;								// output number of complex samples in a fexchange call
+	int   r1_outsize;							// number of complex samples taken out of the input-pseudo-ring for processing
+	int   r2_insize;							// number of processed complex samples returned into the output-pseudo-ring
+	int   r1_size;								// size of a single maximum sized transfer
+	int   r2_size;								// size of a single maximum sized transfer
+	int   r1_active_buffsize;					// size of input pseudo-ring (in complex samples)
+	int   r2_active_buffsize;					// size of output pseudo-ring (in complex samples)
+
 	double* r1_baseptr;							// pointer to input pseudo-ring
-	int	  r1_inidx;								// in 'double', actual index into the buffer is 2 times this
-	int	  r1_outidx;							// in 'double', actual index into the buffer is 2 times this
-	int	  r1_unqueuedsamps;						// number of input samples not yet queued/released for execution
+	int   r1_inidx;								// in 'double', actual index into the buffer is 2 times this
+	int   r1_outidx;							// in 'double', actual index into the buffer is 2 times this
+	int   r1_unqueuedsamps;						// number of input samples not yet queued/released for execution
 
 	double* r2_baseptr;							// pointer to output pseudo-ring
-	int	  r2_inidx;								// in 'double', actual index into the buffer is 2 times this
-	int	  r2_outidx;							// in 'double', actual index into the buffer is 2 times this
-	int	  r2_havesamps;							// number of processed samples in output pseudo-ring
-	int	  r2_unqueuedsamps;						// number of output samples not yet queued / released for output
+	int   r2_inidx;								// in 'double', actual index into the buffer is 2 times this
+	int   r2_outidx;							// in 'double', actual index into the buffer is 2 times this
+	int   r2_havesamps;							// number of processed samples in output pseudo-ring
+	int   r2_unqueuedsamps;						// number of output samples not yet queued / released for output
 	CRITICAL_SECTION r2_ControlSection;
 
 	int bfo;									// block_for_output, wait until output is available before proceeding

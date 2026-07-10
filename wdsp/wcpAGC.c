@@ -1,4 +1,4 @@
-/*	wcpAGC.c
+/*  wcpAGC.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -26,7 +26,7 @@ or by paper mail at
 
 Warren Pratt
 11303 Empire Grade
-Santa Cruz, CA	95060
+Santa Cruz, CA  95060
 
 */
 
@@ -173,14 +173,14 @@ void xwcpagc (WCPAGC a)
 			}
 			return;
 		}
-	
+
 		for (i = 0; i < a->io_buffsize; i++)
 		{
 			if (++a->out_index >= a->ring_buffsize)
 				a->out_index -= a->ring_buffsize;
 			if (++a->in_index >= a->ring_buffsize)
 				a->in_index -= a->ring_buffsize;
-	
+
 			a->out_sample[0] = a->ring[2 * a->out_index + 0];
 			a->out_sample[1] = a->ring[2 * a->out_index + 1];
 			a->abs_out_sample = a->abs_ring[a->out_index];
@@ -377,30 +377,30 @@ SetRXAAGCMode (int channel, int mode)
 	EnterCriticalSection (&ch[channel].csDSP);
 	switch (mode)
 	{
-		case 0: //agcOFF
+		case 0:	//agcOFF
 			rxa[channel].agc.p->mode = 0;
 			loadWcpAGC ( rxa[channel].agc.p );
 			break;
-		case 1: //agcLONG
+		case 1:	//agcLONG
 			rxa[channel].agc.p->mode = 1;
 			rxa[channel].agc.p->hangtime = 2.000;
 			rxa[channel].agc.p->tau_decay = 2.000;
 			loadWcpAGC ( rxa[channel].agc.p );
 			break;
-		case 2: //agcSLOW
+		case 2:	//agcSLOW
 			rxa[channel].agc.p->mode = 2;
 			rxa[channel].agc.p->hangtime = 1.000;
 			rxa[channel].agc.p->tau_decay = 0.500;
 			loadWcpAGC ( rxa[channel].agc.p );
 			break;
-		case 3: //agcMED
+		case 3:	//agcMED
 			rxa[channel].agc.p->mode = 3;
 			rxa[channel].agc.p->hang_thresh = 1.0;
 			rxa[channel].agc.p->hangtime = 0.000;
 			rxa[channel].agc.p->tau_decay = 0.250;
 			loadWcpAGC ( rxa[channel].agc.p );
 			break;
-		case 4: //agcFAST
+		case 4:	//agcFAST
 			rxa[channel].agc.p->mode = 4;
 			rxa[channel].agc.p->hang_thresh = 1.0;
 			rxa[channel].agc.p->hangtime = 0.000;
@@ -441,7 +441,7 @@ SetRXAAGCHang (int channel, int hang)
 	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
-PORT void				
+PORT void
 GetRXAAGCHangLevel(int channel, double *hangLevel)
 //for line on bandscope
 {
@@ -450,7 +450,7 @@ GetRXAAGCHangLevel(int channel, double *hangLevel)
 	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
-PORT void			
+PORT void
 SetRXAAGCHangLevel(int channel, double hangLevel)
 //for line on bandscope
 {
@@ -469,7 +469,7 @@ SetRXAAGCHangLevel(int channel, double hangLevel)
 	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
-PORT void				
+PORT void
 GetRXAAGCHangThreshold(int channel, int *hangthreshold)
 //for slider in setup
 {
@@ -488,7 +488,7 @@ SetRXAAGCHangThreshold (int channel, int hangthreshold)
 	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
-PORT void				
+PORT void
 GetRXAAGCThresh(int channel, double *thresh, double size, double rate)
 //for line on bandscope.
 {
@@ -500,7 +500,7 @@ GetRXAAGCThresh(int channel, double *thresh, double size, double rate)
 	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
-PORT void				
+PORT void
 SetRXAAGCThresh(int channel, double thresh, double size, double rate)
 //for line on bandscope
 {
@@ -514,7 +514,7 @@ SetRXAAGCThresh(int channel, double thresh, double size, double rate)
 	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
-PORT void			
+PORT void
 GetRXAAGCTop(int channel, double *max_agc)
 //for AGC Max Gain in setup
 {

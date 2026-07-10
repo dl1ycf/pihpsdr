@@ -1,4 +1,4 @@
-/*	gain.c
+/*  gain.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -95,7 +95,7 @@ void setSize_gain (GAIN a, int size)
 
 /********************************************************************************************************
 *																										*
-*										  POINTER-BASED PROPERTIES										*
+*									      POINTER-BASED PROPERTIES										*
 *																										*
 ********************************************************************************************************/
 

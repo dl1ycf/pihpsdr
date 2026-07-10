@@ -1,4 +1,4 @@
-/*	anr.c
+/*  anr.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -67,10 +67,10 @@ ANR create_anr	(
 	a->den_mult = den_mult;
 	a->lincr = lincr;
 	a->ldecr = ldecr;
-	
+
 	memset (a->d, 0, sizeof(double) * ANR_DLINE_SIZE);
 	memset (a->w, 0, sizeof(double) * ANR_DLINE_SIZE);
-	
+
 	return a;
 }
 
@@ -81,11 +81,11 @@ void destroy_anr (ANR a)
 
 void xanr (ANR a, int position)
 {
-	int i, j, idx;
-	double c0, c1;
-	double y, error, sigma, inv_sigp;
+    int i, j, idx;
+    double c0, c1;
+    double y, error, sigma, inv_sigp;
 	double nel, nev;
-	if (a->run && (a->position == position))
+    if (a->run && (a->position == position))
 	{
 		for (i = 0; i < a->buff_size; i++)
 		{
@@ -171,7 +171,7 @@ SetRXAANRRun (int channel, int run)
 	{
 		RXAbp1Check (channel, rxa[channel].amd.p->run, rxa[channel].snba.p->run,
 			rxa[channel].emnr.p->run, rxa[channel].anf.p->run, run,
-			rxa[channel].rnnr.p->run, rxa[channel].sbnr.p->run);  // NR3 + NR4 support
+            rxa[channel].rnnr.p->run, rxa[channel].sbnr.p->run); // NR3 + NR4 support
 		EnterCriticalSection (&ch[channel].csDSP);
 		a->run = run;
 		RXAbp1Set (channel);

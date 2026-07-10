@@ -1,4 +1,4 @@
-/*	gen.h
+/*  gen.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -34,7 +34,7 @@ typedef struct _gen
 	double* in;					// input buffer (retained in case I want to mix in a generated signal)
 	double* out;				// output buffer
 	double rate;				// sample rate
-	int mode;					
+	int mode;
 	struct _tone
 	{
 		double mag;

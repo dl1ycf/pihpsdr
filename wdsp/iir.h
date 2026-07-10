@@ -1,8 +1,8 @@
-/*	iir.h
+/*  iir.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2014, 2022, 2023 Warren Pratt, NR0V
+Copyright (C) 2014, 2022, 2023, 2026 Warren Pratt, NR0V
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -165,48 +165,7 @@ extern void setSize_mpeak (MPEAK a, int size);
 
 /********************************************************************************************************
 *																										*
-*											 Phase Rotator												*
-*																										*
-********************************************************************************************************/
-
-#ifndef _phrot_h
-#define _phrot_h
-
-typedef struct _phrot
-{
-	int reverse;
-	int run;
-	int size;
-	double* in;
-	double* out;
-	int rate;
-	double fc;
-	int nstages;
-	// normalized such that a0 = 1
-	double a1, b0, b1;
-	double *x0, *x1, *y0, *y1;
-	CRITICAL_SECTION cs_update;
-} phrot, *PHROT;
-
-extern PHROT create_phrot (int run, int size, double* in, double* out, int rate, double fc, int nstages);
-
-extern void destroy_phrot (PHROT a);
-
-extern void flush_phrot (PHROT a);
-
-extern void xphrot (PHROT a);
-
-extern void setBuffers_phrot (PHROT a, double* in, double* out);
-
-extern void setSamplerate_phrot (PHROT a, int rate);
-
-extern void setSize_phrot (PHROT a, int size);
-
-#endif
-
-/********************************************************************************************************
-*																										*
-*									Complex Bi-Quad Low-Pass											*
+*									Complex Bi-Quad Low-Pass				     						*
 *																										*
 ********************************************************************************************************/
 
@@ -247,7 +206,7 @@ extern void setSize_bqlp(BQLP a, int size);
 
 /********************************************************************************************************
 *																										*
-*									   Double Bi-Quad Low-Pass											*
+*									   Double Bi-Quad Low-Pass				     						*
 *																										*
 ********************************************************************************************************/
 
@@ -272,7 +231,7 @@ extern void setSize_dbqlp(BQLP a, int size);
 
 /********************************************************************************************************
 *																										*
-*									Complex Bi-Quad Band-Pass											*
+*									Complex Bi-Quad Band-Pass				     						*
 *																										*
 ********************************************************************************************************/
 
@@ -313,7 +272,7 @@ extern void setSize_bqbp(BQBP a, int size);
 
 /********************************************************************************************************
 *																										*
-*									  Double Bi-Quad Band-Pass											*
+*									  Double Bi-Quad Band-Pass				     						*
 *																										*
 ********************************************************************************************************/
 
@@ -338,7 +297,7 @@ extern void setSize_dbqbp(BQBP a, int size);
 
 /********************************************************************************************************
 *																										*
-*									   Double Single-Pole High-Pass										*
+*									   Double Single-Pole High-Pass				   						*
 *																										*
 ********************************************************************************************************/
 
@@ -377,7 +336,7 @@ extern void setSize_dsphp(SPHP a, int size);
 
 /********************************************************************************************************
 *																										*
-*									 Complex Single-Pole High-Pass										*
+*								     Complex Single-Pole High-Pass				     					*
 *																										*
 ********************************************************************************************************/
 

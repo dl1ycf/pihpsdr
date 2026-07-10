@@ -77,17 +77,42 @@ void DeleteCriticalSection(pthread_mutex_t *mutex) {
 	pthread_mutex_destroy(mutex);
 }
 
+int LinuxWaitForMultipleObjects(int num, sem_t **sem, int waitall, int ms) {
+  if (!waitall && ms == INFINITE) {
+    //
+    // As far as I can see, this is the only case we need in WDSP
+    // This is my first try, it involves really busy waiting
+    //
+    for (;;) {
+      for (int i = 0; i < num; i++) {
+        if (sem_trywait(sem[i]) == 0) { return i; }
+      }
+      // If none of the semaphores is ready, sleep 1 ms and continue
+      Sleep(1);
+    }
+    // THIS WILL WAIT FOREVER
+  } else {
+    printf("WaitForMultipleObjects illegal parameters\n");
+    _exit(8);
+  }
+}
+
 int LinuxWaitForSingleObject(sem_t *sem,int ms) {
 	int result=0;
 	if(ms==INFINITE) {
 		// wait for the lock
 		result=sem_wait(sem);
-	} else {
-		for (int i = 0; i < ms; i++) {
-		  result=sem_trywait(sem);
-		  if (result == 0) break;
-		  Sleep(1);
-		}
+	} else if (ms == 0) {
+      // return immediately but report whether semaphore is ready
+      result = sem_trywait(sem);
+    } else {
+      // "busy waiting", THIS COULD BE IMPROVED
+      for (int i = 0; i < ms; i++) {
+        result=sem_trywait(sem);
+        if (result == 0) break;
+        // If not ready, sleep 1 ms and continue
+        Sleep(1);
+      }
 	}
 
 	return result;

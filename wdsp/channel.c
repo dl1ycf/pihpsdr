@@ -1,4 +1,4 @@
-/*	channel.c
+/*  channel.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -36,20 +36,20 @@ void start_thread (int channel)
 
 void pre_main_build (int channel)
 {
-	if (ch[channel].in_rate	 >= ch[channel].dsp_rate)
-		ch[channel].dsp_insize	= ch[channel].dsp_size * (ch[channel].in_rate  / ch[channel].dsp_rate);
+	if (ch[channel].in_rate  >= ch[channel].dsp_rate)
+		ch[channel].dsp_insize  = ch[channel].dsp_size * (ch[channel].in_rate  / ch[channel].dsp_rate);
 	else
-		ch[channel].dsp_insize	= ch[channel].dsp_size / (ch[channel].dsp_rate /  ch[channel].in_rate);
+		ch[channel].dsp_insize  = ch[channel].dsp_size / (ch[channel].dsp_rate /  ch[channel].in_rate);
 
 	if (ch[channel].out_rate >= ch[channel].dsp_rate)
 		ch[channel].dsp_outsize = ch[channel].dsp_size * (ch[channel].out_rate / ch[channel].dsp_rate);
 	else
 		ch[channel].dsp_outsize = ch[channel].dsp_size / (ch[channel].dsp_rate / ch[channel].out_rate);
 
-	if (ch[channel].in_rate	 >= ch[channel].out_rate)
-		ch[channel].out_size	= ch[channel].in_size  / (ch[channel].in_rate  / ch[channel].out_rate);
+	if (ch[channel].in_rate  >= ch[channel].out_rate)
+		ch[channel].out_size    = ch[channel].in_size  / (ch[channel].in_rate  / ch[channel].out_rate);
 	else
-		ch[channel].out_size	= ch[channel].in_size  * (ch[channel].out_rate /  ch[channel].in_rate);
+		ch[channel].out_size    = ch[channel].in_size  * (ch[channel].out_rate /  ch[channel].in_rate);
 
 	InitializeCriticalSectionAndSpinCount ( &ch[channel].csDSP, 2500 );
 	InitializeCriticalSectionAndSpinCount ( &ch[channel].csEXCH,  2500 );
@@ -62,7 +62,7 @@ void post_main_build (int channel)
 	InterlockedBitTestAndSet (&ch[channel].run, 0);
 	start_thread (channel);
 	if (ch[channel].state == 1)
-		InterlockedBitTestAndSet (&ch[channel].exchange, 0);
+	 	InterlockedBitTestAndSet (&ch[channel].exchange, 0);
 }
 
 void build_channel (int channel)
@@ -98,7 +98,7 @@ void OpenChannel (int channel, int in_size, int dsp_size, int input_samplerate, 
 		InterlockedBitTestAndSet (&ch[channel].exchange, 0);
 	}
 #if !defined(linux) && !defined(__APPLE__)
-	_MM_SET_FLUSH_ZERO_MODE (_MM_FLUSH_ZERO_ON);
+    _MM_SET_FLUSH_ZERO_MODE (_MM_FLUSH_ZERO_ON);
 #endif
 }
 
@@ -115,7 +115,7 @@ void pre_main_destroy (int channel)
 void post_main_destroy (int channel)
 {
 	destroy_iobuffs (channel);
-	DeleteCriticalSection ( &ch[channel].csEXCH	 );
+	DeleteCriticalSection ( &ch[channel].csEXCH  );
 	DeleteCriticalSection ( &ch[channel].csDSP );
 }
 
@@ -246,7 +246,7 @@ void SetAllRates (int channel, int in_rate, int dsp_rate, int out_rate)
 	{
 		pre_main_destroy (channel);
 		post_main_destroy (channel);
-		ch[channel].in_rate	 = in_rate;
+		ch[channel].in_rate  = in_rate;
 		ch[channel].dsp_rate = dsp_rate;
 		ch[channel].out_rate = out_rate;
 		pre_main_build (channel);

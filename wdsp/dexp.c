@@ -1,4 +1,4 @@
-/*	dexp.c
+/*  dexp.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -110,9 +110,9 @@ void calc_slews (DEXP a)
 
 void calc_buffs (DEXP a)
 {
-	a->trigsig	 = (double *)malloc0 (2 * a->size * sizeof(complex));	// allow for double-sized output of filter
-	a->delsig	 = (double *)malloc0 (	  a->size * sizeof(complex));
-	a->audbuffer = (double *)malloc0 (	  a->size * sizeof(complex));
+	a->trigsig   = (double *)malloc0 (2 * a->size * sizeof(complex));	// allow for double-sized output of filter
+	a->delsig    = (double *)malloc0 (    a->size * sizeof(complex));
+	a->audbuffer = (double *)malloc0 (    a->size * sizeof(complex));
 }
 
 void decalc_buffs (DEXP a)
@@ -157,10 +157,10 @@ void calc_filter (DEXP a)
 {
 	double* impulse;
 	// 2.0 gain on filter is somewhat arbitrarily chosen to get trigger input similar to that without the filter, knowing
-	//	  that for any reasonable use of the filter there will be a reduction in trigger signal.
+	//    that for any reasonable use of the filter there will be a reduction in trigger signal.
 	impulse = fir_bandpass (a->nc, a->low_cut, a->high_cut, a->rate, a->wintype, 1, 2.0/(double)(2 * a->size));
 	// print_impulse ("scf.txt", a->nc, impulse, 1, 0);
-	a->p = create_fircore (a->size, a->in, a->trigsig, a->nc, 1, impulse);
+	a->p = create_fircore (a->size, a->in, a->trigsig, a->nc, 1, 4, impulse);
 	_aligned_free (impulse);
 	a->scdring = calc_delring (a->size + a->nc / 2, a->size, a->nc / 64, a->in, a->delsig);
 }
@@ -244,7 +244,7 @@ void flush_dexp (int id)
 	DEXP a = pdexp[id];
 	memset (a->audbuffer, 0, a->size * sizeof (complex));
 	memset (a->trigsig, 0, a->size * sizeof (complex));
-	memset (a->delsig,	0, a->size * sizeof (complex));
+	memset (a->delsig,  0, a->size * sizeof (complex));
 	a->avsig = 0.0;
 	a->state = 0;
 	a->count = 0;
@@ -279,7 +279,7 @@ void xdexp (int id)
 	}
 	else
 	{
-		memcpy (a->delsig,	a->in, a->size * sizeof (complex));
+		memcpy (a->delsig,  a->in, a->size * sizeof (complex));
 		memcpy (a->trigsig, a->in, a->size * sizeof (complex));
 	}
 	// ******* END SIDE-CHANNEL FILTER *******
@@ -306,7 +306,7 @@ void xdexp (int id)
 	{
 		sig = sqrt (a->trigsig[2 * i + 0] * a->trigsig[2 * i + 0] + a->trigsig[2 * i + 1] * a->trigsig[2 * i + 1]);
 		a->avsig = a->avm * a->avsig + a->onem_avm * sig;
-		if (a->avsig > max)	 max = a->avsig;
+		if (a->avsig > max)  max = a->avsig;
 		switch (a->state)
 		{
 		case DEXP_LOW:
@@ -417,9 +417,9 @@ PORT
 void SetDEXPSize (int id, int size)
 {
 	// There are some constraints on the input/output buffer sizes.
-	//	 * must be a power-of-two
-	//	 * must be less than or equal to 'nc', the number of filter coefficients, which is also a power-of-two
-	//	 * must be less than 'rate' samples because of the sizing of 'audring'
+	//   * must be a power-of-two
+	//   * must be less than or equal to 'nc', the number of filter coefficients, which is also a power-of-two
+	//   * must be less than 'rate' samples because of the sizing of 'audring'
 	DEXP a = pdexp[id];
 	EnterCriticalSection (&a->cs_update);
 	decalc_filter (a);
@@ -517,8 +517,8 @@ void SetDEXPHoldTime (int id, double time)
 PORT
 void SetDEXPExpansionRatio (int id, double ratio)
 {
-	// Set expansion ratio.	 High_gain = 1.0; Low_gain = 1.0/exp_ratio.
-	// Range of 1.0 - 30.0 should be good.	Could use dB:  0.0 - 30.0dB.
+	// Set expansion ratio.  High_gain = 1.0; Low_gain = 1.0/exp_ratio.
+	// Range of 1.0 - 30.0 should be good.  Could use dB:  0.0 - 30.0dB.
 	DEXP a = pdexp[id];
 	EnterCriticalSection (&a->cs_update);
 	decalc_dexp (a);
@@ -555,7 +555,7 @@ void SetDEXPAttackThreshold (int id, double thresh)
 PORT
 void SetDEXPFilterTaps (int id, int taps)
 {
-	// Set number of taps.	Must be a power of two and an even multiple of 'size'.
+	// Set number of taps.  Must be a power of two and an even multiple of 'size'.
 	DEXP a = pdexp[id];
 	EnterCriticalSection (&a->cs_update);
 	decalc_filter (a);
@@ -568,8 +568,8 @@ PORT
 void SetDEXPWindowType (int id, int type)
 {
 	// Set filter window type.
-	//	 * 0 - 4-term Blackman-Harris.
-	//	 * 1 - 7-term Blackman-Harris.
+	//   * 0 - 4-term Blackman-Harris.
+	//   * 1 - 7-term Blackman-Harris.
 	DEXP a = pdexp[id];
 	EnterCriticalSection (&a->cs_update);
 	decalc_filter (a);

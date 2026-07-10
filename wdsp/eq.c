@@ -1,8 +1,8 @@
-/*	eq.c
+/*  eq.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2013, 2016, 2017, 2025 Warren Pratt, NR0V
+Copyright (C) 2013, 2016, 2017, 2025, 2026 Warren Pratt, NR0V
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 The author can be reached by email at
 
-warren@wpratt.com
+warren@pratt.one
 
 */
 
@@ -36,47 +36,75 @@ int fEQcompare (const void * a, const void * b)
 		return 1;
 }
 
-double* eq_impulse (int N, int nfreqs, double* F, double* G, double samplerate, double scale, int ctfmode, int wintype)
+typedef struct _eqimp
 {
-	// check for previous in the cache
-	struct Params
-	{
-		int		N;
-		int		nfreqs;
-		int		ctfmode;
-		int		wintype;
-		double	samplerate;
-		double	scale;
-	};
+	int nfreqs;
+	int nc;
+	int wintype;
+	int max_freqs;
+	double* fp;
+	double* gp;
+	double* A;
+	double* sary;
+	NURBS pnurbs;
+	FSAMP pfsamp;
+} eqimp, *EQIMP;
 
-	struct Params params;
-	memset(&params, 0, sizeof(params));
-	params.N = N;
-	params.nfreqs = nfreqs;
-	params.ctfmode = ctfmode;
-	params.wintype = wintype;
-	params.samplerate = samplerate;
-	params.scale = scale;
+EQIMP create_eqimp(int nfreqs, int nc, int wintype, int max_freqs)
+{
+	EQIMP a = (EQIMP)malloc0(sizeof(eqimp));
+	a->nfreqs = nfreqs;
+	a->nc = nc;
+	a->wintype = wintype;
+	a->max_freqs = max_freqs;
+	a->fp = (double*)malloc0((a->max_freqs + 2) * sizeof(double));
+	a->gp = (double*)malloc0((a->max_freqs + 2) * sizeof(double));
+	a->A  = (double*)malloc0((a->nc / 2 + 1) * sizeof(double));
+	a->sary = (double*)malloc0(2 * a->max_freqs * sizeof(double));
+	a->pnurbs = create_nurbs(nfreqs - 1, 3, 0, 0, 1024,
+		EQ_MAXIMUM_CONTROL_POINTS,
+		EQ_MAXIMUM_DEGREE,
+		EQ_MAXIMUM_U_VALUES,
+		EQ_MAXIMUM_FPTS);
+	a->pfsamp = create_fsamp(a->nc, a->wintype);
+	return a;
+}
 
-	HASH_T h = fnv1a_hash(&params, sizeof(params));
+void destroy_eqimp(EQIMP a)
+{
+	destroy_fsamp(a->pfsamp);
+	destroy_nurbs(a->pnurbs);
+	_aligned_free(a->sary);
+	_aligned_free(a->A);
+	_aligned_free(a->gp);
+	_aligned_free(a->fp);
+	_aligned_free(a);
+}
 
-	size_t arr_len = (nfreqs + 1) * sizeof(double);
-	HASH_T hf = fnv1a_hash((uint8_t*)F, arr_len);
-	h ^= hf + GOLDEN_RATIO + (h << 6) + (h >> 2);
-	HASH_T hg = fnv1a_hash((uint8_t*)G, arr_len);
-	h ^= hg + GOLDEN_RATIO + (h << 6) + (h >> 2);
+void setWintype_eqimp (EQIMP a, int wintype)
+{
+	destroy_fsamp (a->pfsamp);
+	a->wintype = wintype;
+	a->pfsamp  = create_fsamp (a->nc, wintype);
+}
 
-	double* imp = get_impulse_cache_entry(EQ_CACHE, h, N);
-	if (imp) return imp;
-	//
+#ifndef M_LN2_10
+#define M_LN2_10 3.32192809488736234787
+#endif
 
-	double* fp = (double *) malloc0 ((nfreqs + 2)	* sizeof (double));
-	double* gp = (double *) malloc0 ((nfreqs + 2)	* sizeof (double));
-	double* A  = (double *) malloc0 ((N / 2 + 1) * sizeof (double));
-	double* sary = (double *) malloc0 (2 * nfreqs * sizeof (double));
+void eq_impulse (EQIMP a, int N, int nfreqs, double* F, double* G,
+	double samplerate, double scale, int ctfmode, int wintype, int deg,
+	double* impulse)
+{
+	NURBS pnurbs = a->pnurbs;
+	FSAMP pfsamp = a->pfsamp;
+	double* fp = a->fp;
+	double* gp = a->gp;
+	double* A  = a->A;
+	double* sary = a->sary;
 	double gpreamp, f, frac;
-	double* impulse;
-	int i, j, mid;
+	int i, j, k;
+	int mid, low, high;
 	fp[0] = 0.0;
 	fp[nfreqs + 1] = 1.0;
 	gpreamp = G[0];
@@ -101,97 +129,122 @@ double* eq_impulse (int N, int nfreqs, double* F, double* G, double samplerate, 
 	gp[0] = gp[1];
 	gp[nfreqs + 1] = gp[nfreqs];
 	mid = N / 2;
-	j = 0;
 	if (N & 1)
 	{
-		for (i = 0; i <= mid; i++)
-		{
-			f = (double)i / (double)mid;
-			while (f > fp[j + 1]) j++;
-			frac = (f - fp[j]) / (fp[j + 1] - fp[j]);
-			A[i] = pow (10.0, 0.05 * (frac * gp[j + 1] + (1.0 - frac) * gp[j] + gpreamp)) * scale;
-		}
+		low = (int)(fp[1] * mid);
+		high = (int)(fp[nfreqs] * mid + 0.5);
 	}
 	else
 	{
-		for (i = 0; i < mid; i++)
-		{
-			f = ((double)i + 0.5) / (double)mid;
-			while (f > fp[j + 1]) j++;
-			frac = (f - fp[j]) / (fp[j + 1] - fp[j]);
-			A[i] = pow (10.0, 0.05 * (frac * gp[j + 1] + (1.0 - frac) * gp[j] + gpreamp)) * scale;
-		}
+		low = (int)(fp[1] * mid - 0.5);
+		high = (int)(fp[nfreqs] * mid - 0.5);
 	}
-	if (ctfmode == 0)
+	if (deg == 0)	// OLD linear method (degree = 1)
 	{
-		int k, low, high;
-		double lowmag, highmag, flow4, fhigh4;
+		j = 0;
 		if (N & 1)
 		{
-			low = (int)(fp[1] * mid);
-			high = (int)(fp[nfreqs] * mid + 0.5);
-			lowmag = A[low];
-			highmag = A[high];
-			flow4 = pow((double)low / (double)mid, 4.0);
-			fhigh4 = pow((double)high / (double)mid, 4.0);
-			k = low;
-			while (--k >= 0)
+			for (i = 0; i <= mid; i++)
 			{
-				f = (double)k / (double)mid;
-				lowmag *= (f * f * f * f) / flow4;
-				if (lowmag < 1.0e-100) lowmag = 1.0e-100;
-				A[k] = lowmag;
-			}
-			k = high;
-			while (++k <= mid)
-			{
-				f = (double)k / (double)mid;
-				highmag *= fhigh4 / (f * f * f * f);
-				if (highmag < 1.0e-100) highmag = 1.0e-100;
-				A[k] = highmag;
+				f = (double)i / (double)mid;
+				while (f > fp[j + 1]) j++;
+				frac = (f - fp[j]) / (fp[j + 1] - fp[j]);
+				A[i] = exp2 (M_LN2_10 * 0.05 * (frac * gp[j + 1] + (1.0 - frac) * gp[j] + gpreamp)) * scale;
 			}
 		}
 		else
 		{
-			low = (int)(fp[1] * mid - 0.5);
-			high = (int)(fp[nfreqs] * mid - 0.5);
-			lowmag = A[low];
-			highmag = A[high];
-			flow4 = pow((double)low / (double)mid, 4.0);
-			fhigh4 = pow((double)high / (double)mid, 4.0);
-			k = low;
-			while (--k >= 0)
+			for (i = 0; i < mid; i++)
 			{
-				f = (double)k / (double)mid;
-				lowmag *= (f * f * f * f) / flow4;
-				if (lowmag < 1.0e-100) lowmag = 1.0e-100;
-				A[k] = lowmag;
-			}
-			k = high;
-			while (++k < mid)
-			{
-				f = (double)k / (double)mid;
-				highmag *= fhigh4 / (f * f * f * f);
-				if (highmag < 1.0e-100) highmag = 1.0e-100;
-				A[k] = highmag;
+				f = ((double)i + 0.5) / (double)mid;
+				while (f > fp[j + 1]) j++;
+				frac = (f - fp[j]) / (fp[j + 1] - fp[j]);
+				A[i] = exp2 (M_LN2_10 * 0.05 * (frac * gp[j + 1] + (1.0 - frac) * gp[j] + gpreamp)) * scale;
 			}
 		}
 	}
-	if (N & 1)
-		impulse = fir_fsamp_odd(N, A, 1, 1.0, wintype);
-	else
-		impulse = fir_fsamp(N, A, 1, 1.0, wintype);
+	else			// NEW NURBS curves (degrees 1 - 16)
+	{
+		if (pnurbs != NULL)
+		{
+			pnurbs->n = nfreqs - 1;
+			pnurbs->p = deg;
+			pnurbs->fpts = high - low + 1;
+			if (pnurbs->n    >= EQ_MAXIMUM_CONTROL_POINTS  ||
+				pnurbs->p    >  EQ_MAXIMUM_DEGREE          ||
+				pnurbs->upts >  EQ_MAXIMUM_U_VALUES        ||
+				pnurbs->fpts >  EQ_MAXIMUM_FPTS)           return;
+			for (i = 0, j = 1; j <= nfreqs; i += 2, j++)
+			{
+				pnurbs->CP[i + 0] = fp[j];
+				pnurbs->CP[i + 1] = gp[j];
+			}
+			BuildSpline(pnurbs->n, pnurbs->p, pnurbs->r, pnurbs->umethod, pnurbs->U, pnurbs->CP, pnurbs->W, pnurbs->upts,
+				pnurbs->Xs, pnurbs->Ys, pnurbs->Uout, pnurbs->fpts, pnurbs->Xf, pnurbs->Yf);
+			for (i = low, j = 0; i <= high; i++, j++)
+			{
+				A[i] = exp2 (M_LN2_10 * 0.05 * (pnurbs->Yf[j] + gpreamp)) * scale;
+			}
+		}
+	}
+	switch (ctfmode)
+	{
+		double lowmag, highmag, flow4, fhigh4;
+		case 0:			// only option currently coded
+		default:
+			if (N & 1)
+			{
+				lowmag = A[low];
+				highmag = A[high];
+				flow4 = pow ((double)low / (double)mid, 4.0);
+				fhigh4 = pow ((double)high / (double)mid, 4.0);
+				k = low;
+				while (--k >= 0)
+				{
+					f = (double)k / (double)mid;
+					lowmag *= (f * f * f * f) / flow4;
+					if (lowmag < 1.0e-100) lowmag = 1.0e-100;
+					A[k] = lowmag;
+				}
+				k = high;
+				while (++k <= mid)
+				{
+					f = (double)k / (double)mid;
+					highmag *= fhigh4 / (f * f * f * f);
+					if (highmag < 1.0e-100) highmag = 1.0e-100;
+					A[k] = highmag;
+				}
+			}
+			else
+			{
+				lowmag = A[low];
+				highmag = A[high];
+				flow4 = pow ((double)low / (double)mid, 4.0);
+				fhigh4 = pow ((double)high / (double)mid, 4.0);
+				k = low;
+				while (--k >= 0)
+				{
+					f = (double)k / (double)mid;
+					lowmag *= (f * f * f * f) / flow4;
+					if (lowmag < 1.0e-100) lowmag = 1.0e-100;
+					A[k] = lowmag;
+				}
+				k = high;
+				while (++k < mid)
+				{
+					f = (double)k / (double)mid;
+					highmag *= fhigh4 / (f * f * f * f);
+					if (highmag < 1.0e-100) highmag = 1.0e-100;
+					A[k] = highmag;
+				}
+			}
+			break;
+	}
+	fsamp_exec (pfsamp, A, impulse, 1, 1.0);
 	// print_impulse("eq.txt", N, impulse, 1, 0);
-	_aligned_free (sary);
-	_aligned_free (A);
-	_aligned_free (gp);
-	_aligned_free (fp);
-
-	// store in cache
-	add_impulse_to_cache(EQ_CACHE, h, N, impulse);
-
-	return impulse;
+	return;
 }
+
 
 /********************************************************************************************************
 *																										*
@@ -199,11 +252,11 @@ double* eq_impulse (int N, int nfreqs, double* F, double* G, double samplerate, 
 *																										*
 ********************************************************************************************************/
 
-EQP create_eqp (int run, int size, int nc, int mp, double *in, double *out, int nfreqs, double* F, double* G, int ctfmode, int wintype, int samplerate)
+EQP create_eqp (int run, int size, int nc, int mp, double *in, double *out,
+	int nfreqs, double* F, double* G, int ctfmode, int wintype, int samplerate)
 {
-	// NOTE:  'nc' must be >= 'size'
+	// NOTE:  'nc' must be >= 'size', both powers-of-two
 	EQP a = (EQP) malloc0 (sizeof (eqp));
-	double* impulse;
 	a->run = run;
 	a->size = size;
 	a->nc = nc;
@@ -211,22 +264,33 @@ EQP create_eqp (int run, int size, int nc, int mp, double *in, double *out, int 
 	a->in = in;
 	a->out = out;
 	a->nfreqs = nfreqs;
-	a->F = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
-	a->G = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
+	a->max_freqs = EQ_MAXIMUM_CONTROL_POINTS;
+	a->F = (double *) malloc0 ((a->max_freqs + 1) * sizeof (double));
+	a->G = (double *) malloc0 ((a->max_freqs + 1) * sizeof (double));
 	memcpy (a->F, F, (nfreqs + 1) * sizeof (double));
 	memcpy (a->G, G, (nfreqs + 1) * sizeof (double));
 	a->ctfmode = ctfmode;
 	a->wintype = wintype;
 	a->samplerate = (double)samplerate;
-	impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G, a->samplerate, 1.0 / (2.0 * a->size), a->ctfmode, a->wintype);
-	a->p = create_fircore (a->size, a->in, a->out, a->nc, a->mp, impulse);
-	_aligned_free (impulse);
+	a->deg = 0;
+	InitializeCriticalSection (&a->csEQ);
+	a->peqimp = create_eqimp(a->nfreqs, a->nc, a->wintype, a->max_freqs);
+	a->impulse = (double*) malloc0 (a->nc * sizeof (complex));
+	eq_impulse (a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+		1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg,
+		a->impulse);
+	a->p = create_fircore (a->size, a->in, a->out, a->nc, a->mp, 4, a->impulse);
 	return a;
 }
 
 void destroy_eqp (EQP a)
 {
 	destroy_fircore (a->p);
+	_aligned_free (a->impulse);
+	destroy_eqimp(a->peqimp);
+	DeleteCriticalSection (&a->csEQ);
+	if (a->G) _aligned_free (a->G);
+	if (a->F) _aligned_free (a->F);
 	_aligned_free (a);
 }
 
@@ -245,33 +309,39 @@ void xeqp (EQP a)
 
 void setBuffers_eqp (EQP a, double* in, double* out)
 {
+	EnterCriticalSection (&a->csEQ);
 	a->in = in;
 	a->out = out;
 	setBuffers_fircore (a->p, a->in, a->out);
+	LeaveCriticalSection (&a->csEQ);
 }
 
 void setSamplerate_eqp (EQP a, int rate)
 {
-	double* impulse;
+	EnterCriticalSection (&a->csEQ);
 	a->samplerate = rate;
-	impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G, a->samplerate, 1.0 / (2.0 * a->size), a->ctfmode, a->wintype);
-	setImpulse_fircore (a->p, impulse, 1);
-	_aligned_free (impulse);
+	eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+		1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg,
+		a->impulse);
+	setImpulse_fircore (a->p, a->impulse, 1);
+	LeaveCriticalSection (&a->csEQ);
 }
 
 void setSize_eqp (EQP a, int size)
 {
-	double* impulse;
+	EnterCriticalSection (&a->csEQ);
 	a->size = size;
 	setSize_fircore (a->p, a->size);
-	impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G, a->samplerate, 1.0 / (2.0 * a->size), a->ctfmode, a->wintype);
-	setImpulse_fircore (a->p, impulse, 1);
-	_aligned_free (impulse);
+	eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+		1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg,
+		a->impulse);
+	setImpulse_fircore (a->p, a->impulse, 1);
+	LeaveCriticalSection (&a->csEQ);
 }
 
 /********************************************************************************************************
 *																										*
-*							Partitioned Overlap-Save Equalizer:	 RXA Properties							*
+*							Partitioned Overlap-Save Equalizer:  RXA Properties							*
 *																										*
 ********************************************************************************************************/
 
@@ -286,86 +356,105 @@ void SetRXAEQRun (int channel, int run)
 PORT
 void SetRXAEQNC (int channel, int nc)
 {
-	EQP a;
-	double* impulse;
-	EnterCriticalSection (&ch[channel].csDSP);
-	a = rxa[channel].eqp.p;
-	if (a->nc != nc)
-	{
-		a->nc = nc;
-		impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G, a->samplerate, 1.0 / (2.0 * a->size), a->ctfmode, a->wintype);
-		setNc_fircore (a->p, a->nc, impulse);
-		_aligned_free (impulse);
-	}
-	LeaveCriticalSection (&ch[channel].csDSP);
+// ****** NOW AUTOMATICALLY SET TO REQUIRED VALUE - DEPRECATED ******
+// 	   (Defined for optimum performance.  Not an operator choice.)
+	//EQP a = rxa[channel].eqp.p;
+	//NURBS b = a->pn;
+	//EnterCriticalSection (&ch[channel].csDSP);
+	//if (a->nc != nc)
+	//{
+	//	//a->nc = nc;
+	//	a->nc = EQ_MAXIMUM_COEFS;
+	//	if (!checkSplineInputs (a->nfreqs, b->p, b->r, b->umethod, b->W))
+	//	{
+	//		destroy_fsamp (a->pfsamp);
+	//		a->pfsamp = create_fsamp(a->nc, a->wintype);
+	//		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+	//			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg,
+	//			a->pn, a->pfsamp, a->impulse);
+	//		setNc_fircore (a->p, a->nc, a->impulse);
+	//	}
+	//}
+	//LeaveCriticalSection (&ch[channel].csDSP);
+	return;
 }
 
 PORT
 void SetRXAEQMP (int channel, int mp)
 {
-	EQP a;
-	a = rxa[channel].eqp.p;
-	if (a->mp != mp)
-	{
-		a->mp = mp;
-		setMp_fircore (a->p, a->mp);
-	}
+// ****** NOW AUTOMATICALLY SET TO REQUIRED VALUE - DEPRECATED ******
+// 	   (Defined for optimum performance.  Not an operator choice.)
+	//EQP a = rxa[channel].eqp.p;
+	//EnterCriticalSection (&ch[channel].csDSP);
+	//if (a->mp != mp)
+	//{
+	//	a->mp = mp;
+	//	setMp_fircore (a->p, a->mp);
+	//}
+	//LeaveCriticalSection (&ch[channel].csDSP);
+	return;
 }
 
 PORT
 void SetRXAEQProfile (int channel, int nfreqs, double* F, double* G)
 {
-	EQP a;
-	double* impulse;
-	a = rxa[channel].eqp.p;
-	_aligned_free (a->G);
-	_aligned_free (a->F);
+	EQP a = rxa[channel].eqp.p;
+	NURBS b = a->peqimp->pnurbs;
+	EnterCriticalSection (&a->csEQ);
 	a->nfreqs = nfreqs;
-	a->F = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
-	a->G = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
 	memcpy (a->F, F, (nfreqs + 1) * sizeof (double));
 	memcpy (a->G, G, (nfreqs + 1) * sizeof (double));
-	impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G,
-		a->samplerate, 1.0 / (2.0 * a->size), a->ctfmode, a->wintype);
-	setImpulse_fircore (a->p, impulse, 1);
-	_aligned_free (impulse);
+	if (!checkSplineInputs (a->nfreqs, b->p, b->r, b->umethod, b->W))
+	{
+		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, a->impulse);
+		setImpulse_fircore (a->p, a->impulse, 1);
+	}
+	LeaveCriticalSection (&a->csEQ);
 }
 
 PORT
 void SetRXAEQCtfmode (int channel, int mode)
 {
-	EQP a;
-	double* impulse;
-	a = rxa[channel].eqp.p;
+	EQP a = rxa[channel].eqp.p;
+	NURBS b = a->peqimp->pnurbs;
+	EnterCriticalSection (&a->csEQ);
 	a->ctfmode = mode;
-	impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G, a->samplerate, 1.0 / (2.0 * a->size), a->ctfmode, a->wintype);
-	setImpulse_fircore (a->p, impulse, 1);
-	_aligned_free (impulse);
+	if (!checkSplineInputs (a->nfreqs, b->p, b->r, b->umethod, b->W))
+	{
+		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, a->impulse);
+		setImpulse_fircore (a->p, a->impulse, 1);
+	}
+	LeaveCriticalSection (&a->csEQ);
 }
 
 PORT
 void SetRXAEQWintype (int channel, int wintype)
 {
-	EQP a;
-	double* impulse;
-	a = rxa[channel].eqp.p;
+	EQP a = rxa[channel].eqp.p;
+	NURBS b = a->peqimp->pnurbs;
+	EnterCriticalSection (&ch[channel].csDSP);
+	EnterCriticalSection (&a->csEQ);
 	a->wintype = wintype;
-	impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G, a->samplerate, 1.0 / (2.0 * a->size), a->ctfmode, a->wintype);
-	setImpulse_fircore (a->p, impulse, 1);
-	_aligned_free (impulse);
+	if (!checkSplineInputs (a->nfreqs, b->p, b->r, b->umethod, b->W))
+	{
+		setWintype_eqimp (a->peqimp, wintype);
+		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, a->impulse);
+		setImpulse_fircore (a->p, a->impulse, 1);
+	}
+	LeaveCriticalSection (&a->csEQ);
+	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
 PORT
 void SetRXAGrphEQ (int channel, int *rxeq)
 {	// three band equalizer (legacy compatibility)
-	EQP a;
-	double* impulse;
-	a = rxa[channel].eqp.p;
-	_aligned_free (a->G);
-	_aligned_free (a->F);
+	EQP a = rxa[channel].eqp.p;
+	NURBS b = a->peqimp->pnurbs;
+	EnterCriticalSection (&a->csEQ);
 	a->nfreqs = 4;
-	a->F = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
-	a->G = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
 	a->F[1] =  150.0;
 	a->F[2] =  400.0;
 	a->F[3] = 1500.0;
@@ -376,45 +465,99 @@ void SetRXAGrphEQ (int channel, int *rxeq)
 	a->G[3] = (double)rxeq[2];
 	a->G[4] = (double)rxeq[3];
 	a->ctfmode = 0;
-	impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G, a->samplerate, 1.0 / (2.0 * a->size), a->ctfmode, a->wintype);
-	setImpulse_fircore (a->p, impulse, 1);
-	_aligned_free (impulse);
+	if (!checkSplineInputs (a->nfreqs, b->p, b->r, b->umethod, b->W))
+	{
+		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, a->impulse);
+		setImpulse_fircore (a->p, a->impulse, 1);
+	}
+	LeaveCriticalSection (&a->csEQ);
 }
 
 PORT
 void SetRXAGrphEQ10 (int channel, int *rxeq)
 {	// ten band equalizer (legacy compatibility)
-	EQP a;
-	double* impulse;
 	int i;
-	a = rxa[channel].eqp.p;
-	_aligned_free (a->G);
-	_aligned_free (a->F);
+	EQP a = rxa[channel].eqp.p;
+	NURBS b = a->peqimp->pnurbs;
+	EnterCriticalSection (&a->csEQ);
 	a->nfreqs = 10;
-	a->F = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
-	a->G = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
-	a->F[1]	 =	  32.0;
-	a->F[2]	 =	  63.0;
-	a->F[3]	 =	 125.0;
-	a->F[4]	 =	 250.0;
-	a->F[5]	 =	 500.0;
-	a->F[6]	 =	1000.0;
-	a->F[7]	 =	2000.0;
-	a->F[8]	 =	4000.0;
-	a->F[9]	 =	8000.0;
+	a->F[1]  =    32.0;
+	a->F[2]  =    63.0;
+	a->F[3]  =   125.0;
+	a->F[4]  =   250.0;
+	a->F[5]  =   500.0;
+	a->F[6]  =  1000.0;
+	a->F[7]  =  2000.0;
+	a->F[8]  =  4000.0;
+	a->F[9]  =  8000.0;
 	a->F[10] = 16000.0;
 	for (i = 0; i <= a->nfreqs; i++)
 		a->G[i] = (double)rxeq[i];
 	a->ctfmode = 0;
-	impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G, a->samplerate, 1.0 / (2.0 * a->size), a->ctfmode, a->wintype);
-	// print_impulse ("rxeq.txt", a->nc, impulse, 1, 0);
-	setImpulse_fircore (a->p, impulse, 1);
-	_aligned_free (impulse);
+	if (!checkSplineInputs (a->nfreqs, b->p, b->r, b->umethod, b->W))
+	{
+		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, a->impulse);
+		// if(channel == 0) print_impulse ("rxeq.txt", a->nc, impulse, 1, 0);
+		setImpulse_fircore (a->p, a->impulse, 1);
+	}
+	LeaveCriticalSection (&a->csEQ);
+}
+
+PORT
+void SetRXAEQCurve (int channel, int deg, int r, int umethod)
+{
+	EQP a = rxa[channel].eqp.p;
+	NURBS b = a->peqimp->pnurbs;
+	EnterCriticalSection (&a->csEQ);
+	a->deg = deg;
+	b->p = deg;
+	b->r = r;
+	if (umethod == 0 || umethod == 1) b->umethod = umethod;
+	else b->umethod = 0;
+	if (!checkSplineInputs (a->nfreqs, b->p, b->r, b->umethod, b->W))
+	{
+		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, a->impulse);
+		// if(channel == 0) print_impulse ("rxeq.txt", a->nc, impulse, 1, 0);
+		setImpulse_fircore (a->p, a->impulse, 1);
+	}
+	LeaveCriticalSection (&a->csEQ);
+}
+
+PORT
+void SetRXAEQWeights (int channel, int nfreq, double* weights)
+{
+	EQP a = rxa[channel].eqp.p;
+	NURBS b = a->peqimp->pnurbs;
+	EnterCriticalSection (&a->csEQ);
+	for (int i = 0; i < nfreq; i++)
+		b->W[i] = weights[i];
+	if (!checkSplineInputs (a->nfreqs, b->p, b->r, b->umethod, b->W))
+	{
+		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, a->impulse);
+		// if (channel == 0) print_impulse ("rxeq.txt", a->nc, impulse, 1, 0);
+		setImpulse_fircore (a->p, a->impulse, 1);
+	}
+	LeaveCriticalSection (&a->csEQ);
+}
+
+PORT
+void GetRXAEQDraw (int channel, double* X, double* Y)
+{
+	EQP a = rxa[channel].eqp.p;
+	NURBS b = a->peqimp->pnurbs;
+	EnterCriticalSection (&a->csEQ);
+	memcpy (X, b->Xs, b->upts * sizeof(double));
+	memcpy (Y, b->Ys, b->upts * sizeof(double));
+	LeaveCriticalSection (&a->csEQ);
 }
 
 /********************************************************************************************************
 *																										*
-*							Partitioned Overlap-Save Equalizer:	 TXA Properties							*
+*							Partitioned Overlap-Save Equalizer:  TXA Properties							*
 *																										*
 ********************************************************************************************************/
 
@@ -429,85 +572,103 @@ void SetTXAEQRun (int channel, int run)
 PORT
 void SetTXAEQNC (int channel, int nc)
 {
-	EQP a;
-	double* impulse;
-	EnterCriticalSection (&ch[channel].csDSP);
-	a = txa[channel].eqp.p;
-	if (a->nc != nc)
-	{
-		a->nc = nc;
-		impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G, a->samplerate, 1.0 / (2.0 * a->size), a->ctfmode, a->wintype);
-		setNc_fircore (a->p, a->nc, impulse);
-		_aligned_free (impulse);
-	}
-	LeaveCriticalSection (&ch[channel].csDSP);
+// ****** NOW AUTOMATICALLY SET TO REQUIRED VALUE - DEPRECATED ******
+// 	   (Defined for optimum performance.  Not an operator choice.)
+	//EQP a = txa[channel].eqp.p;
+	//NURBS b = a->pn;
+	//EnterCriticalSection (&ch[channel].csDSP);
+	//if (a->nc != nc)
+	//{
+	//	a->nc = nc;
+	//	if (!checkSplineInputs (a->nfreqs, b->p, b->r, b->umethod, b->W))
+	//	{
+	//		destroy_fsamp(a->pfsamp);
+	//		a->pfsamp = create_fsamp(a->nc, a->wintype);
+	//		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+	//			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, a->pn, a->pfsamp, a->impulse);
+	//		setNc_fircore (a->p, a->nc, a->impulse);
+	//	}
+	//}
+	//LeaveCriticalSection (&ch[channel].csDSP);
+	return;
 }
 
 PORT
 void SetTXAEQMP (int channel, int mp)
 {
-	EQP a;
-	a = txa[channel].eqp.p;
-	if (a->mp != mp)
-	{
-		a->mp = mp;
-		setMp_fircore (a->p, a->mp);
-	}
+// ****** NOW AUTOMATICALLY SET TO REQUIRED VALUE - DEPRECATED ******
+// 	   (Defined for optimum performance.  Not an operator choice.)
+	//EQP a = txa[channel].eqp.p;
+	//EnterCriticalSection (&ch[channel].csDSP);
+	//if (a->mp != mp)
+	//{
+	//	a->mp = mp;
+	//	setMp_fircore (a->p, a->mp);
+	//}
+	//LeaveCriticalSection (&ch[channel].csDSP);
+	return;
 }
 
 PORT
 void SetTXAEQProfile (int channel, int nfreqs, double* F, double* G)
 {
-	EQP a;
-	double* impulse;
-	a = txa[channel].eqp.p;
-	_aligned_free (a->G);
-	_aligned_free (a->F);
+	EQP a = txa[channel].eqp.p;
+	NURBS b = a->peqimp->pnurbs;
+	EnterCriticalSection (&a->csEQ);
 	a->nfreqs = nfreqs;
-	a->F = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
-	a->G = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
 	memcpy (a->F, F, (nfreqs + 1) * sizeof (double));
 	memcpy (a->G, G, (nfreqs + 1) * sizeof (double));
-	impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G, a->samplerate, 1.0 / (2.0 * a->size), a->ctfmode, a->wintype);
-	setImpulse_fircore (a->p, impulse, 1);
-	_aligned_free (impulse);
+	if (!checkSplineInputs (a->nfreqs, b->p, b->r, b->umethod, b->W))
+	{
+		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, a->impulse);
+		setImpulse_fircore (a->p, a->impulse, 1);
+	}
+	LeaveCriticalSection (&a->csEQ);
 }
 
 PORT
 void SetTXAEQCtfmode (int channel, int mode)
 {
-	EQP a;
-	double* impulse;
-	a = txa[channel].eqp.p;
+	EQP a = txa[channel].eqp.p;
+	NURBS b = a->peqimp->pnurbs;
+	EnterCriticalSection (&a->csEQ);
 	a->ctfmode = mode;
-	impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G, a->samplerate, 1.0 / (2.0 * a->size), a->ctfmode, a->wintype);
-	setImpulse_fircore (a->p, impulse, 1);
-	_aligned_free (impulse);
+	if (!checkSplineInputs (a->nfreqs, b->p, b->r, b->umethod, b->W))
+	{
+		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, a->impulse);
+		setImpulse_fircore (a->p, a->impulse, 1);
+	}
+	LeaveCriticalSection (&a->csEQ);
 }
 
 PORT
 void SetTXAEQWintype (int channel, int wintype)
 {
-	EQP a;
-	double* impulse;
-	a = txa[channel].eqp.p;
+	EQP a = txa[channel].eqp.p;
+	NURBS b = a->peqimp->pnurbs;
+	EnterCriticalSection (&ch[channel].csDSP);
+	EnterCriticalSection (&a->csEQ);
 	a->wintype = wintype;
-	impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G, a->samplerate, 1.0 / (2.0 * a->size), a->ctfmode, a->wintype);
-	setImpulse_fircore (a->p, impulse, 1);
-	_aligned_free (impulse);
+	if (!checkSplineInputs (a->nfreqs, b->p, b->r, b->umethod, b->W))
+	{
+		setWintype_eqimp (a->peqimp, wintype);
+		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, a->impulse);
+		setImpulse_fircore (a->p, a->impulse, 1);
+	}
+	LeaveCriticalSection (&a->csEQ);
+	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
 PORT
 void SetTXAGrphEQ (int channel, int *txeq)
 {	// three band equalizer (legacy compatibility)
-	EQP a;
-	double* impulse;
-	a = txa[channel].eqp.p;
-	_aligned_free (a->G);
-	_aligned_free (a->F);
+	EQP a = txa[channel].eqp.p;
+	NURBS b = a->peqimp->pnurbs;
+	EnterCriticalSection (&a->csEQ);
 	a->nfreqs = 4;
-	a->F = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
-	a->G = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
 	a->F[1] =  150.0;
 	a->F[2] =  400.0;
 	a->F[3] = 1500.0;
@@ -518,39 +679,94 @@ void SetTXAGrphEQ (int channel, int *txeq)
 	a->G[3] = (double)txeq[2];
 	a->G[4] = (double)txeq[3];
 	a->ctfmode = 0;
-	impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G, a->samplerate, 1.0 / (2.0 * a->size), a->ctfmode, a->wintype);
-	setImpulse_fircore (a->p, impulse, 1);
-	_aligned_free (impulse);
+	if (!checkSplineInputs (a->nfreqs, b->p, b->r, b->umethod, b->W))
+	{
+		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, a->impulse);
+		setImpulse_fircore (a->p, a->impulse, 1);
+	}
+	LeaveCriticalSection (&a->csEQ);
 }
 
 PORT
 void SetTXAGrphEQ10 (int channel, int *txeq)
 {	// ten band equalizer (legacy compatibility)
-	EQP a;
-	double* impulse;
 	int i;
-	a = txa[channel].eqp.p;
-	_aligned_free (a->G);
-	_aligned_free (a->F);
+	EQP a = txa[channel].eqp.p;
+	NURBS b = a->peqimp->pnurbs;
+	EnterCriticalSection (&a->csEQ);
 	a->nfreqs = 10;
-	a->F = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
-	a->G = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
-	a->F[1]	 =	  32.0;
-	a->F[2]	 =	  63.0;
-	a->F[3]	 =	 125.0;
-	a->F[4]	 =	 250.0;
-	a->F[5]	 =	 500.0;
-	a->F[6]	 =	1000.0;
-	a->F[7]	 =	2000.0;
-	a->F[8]	 =	4000.0;
-	a->F[9]	 =	8000.0;
+	a->F[1]  =    32.0;
+	a->F[2]  =    63.0;
+	a->F[3]  =   125.0;
+	a->F[4]  =   250.0;
+	a->F[5]  =   500.0;
+	a->F[6]  =  1000.0;
+	a->F[7]  =  2000.0;
+	a->F[8]  =  4000.0;
+	a->F[9]  =  8000.0;
 	a->F[10] = 16000.0;
 	for (i = 0; i <= a->nfreqs; i++)
 		a->G[i] = (double)txeq[i];
 	a->ctfmode = 0;
-	impulse = eq_impulse (a->nc, a->nfreqs, a->F, a->G, a->samplerate, 1.0 / (2.0 * a->size), a->ctfmode, a->wintype);
-	setImpulse_fircore (a->p, impulse, 1);
-	_aligned_free (impulse);
+	if (!checkSplineInputs (a->nfreqs, b->p, b->r, b->umethod, b->W))
+	{
+		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, a->impulse);
+		// print_impulse ("txeq.txt", a->nc, impulse, 1, 0);
+		setImpulse_fircore (a->p, a->impulse, 1);
+	}
+	LeaveCriticalSection (&a->csEQ);
+}
+
+PORT
+void SetTXAEQCurve (int channel, int deg, int r, int umethod)
+{
+	EQP a = txa[channel].eqp.p;
+	NURBS b = a->peqimp->pnurbs;
+	EnterCriticalSection (&a->csEQ);
+	a->deg = deg;
+	b->p = deg;
+	b->r = r;
+	if (umethod == 0 || umethod == 1) b->umethod = umethod;
+	else b->umethod = 0;
+	if (!checkSplineInputs (a->nfreqs, b->p, b->r, b->umethod, b->W))
+	{
+		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, a->impulse);
+		// print_impulse ("txeq.txt", a->nc, impulse, 1, 0);
+		setImpulse_fircore (a->p, a->impulse, 1);
+	}
+	LeaveCriticalSection (&a->csEQ);
+}
+
+PORT
+void SetTXAEQWeights (int channel, int nfreq, double* weights)
+{
+	EQP a = txa[channel].eqp.p;
+	NURBS b = a->peqimp->pnurbs;
+	EnterCriticalSection (&a->csEQ);
+	for (int i = 0; i < nfreq; i++)
+		b->W[i] = weights[i];
+	if (!checkSplineInputs (a->nfreqs, b->p, b->r, b->umethod, b->W))
+	{
+		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
+			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, a->impulse);
+		//print_impulse ("txeq.txt", a->nc, impulse, 1, 0);
+		setImpulse_fircore (a->p, a->impulse, 1);
+	}
+	LeaveCriticalSection (&a->csEQ);
+}
+
+PORT
+void GetTXAEQDraw (int channel, double* X, double* Y)
+{
+	EQP a = txa[channel].eqp.p;
+	NURBS b = a->peqimp->pnurbs;
+	EnterCriticalSection (&a->csEQ);
+	memcpy(X, b->Xs, b->upts * sizeof(double));
+	memcpy(Y, b->Ys, b->upts * sizeof(double));
+	LeaveCriticalSection (&a->csEQ);
 }
 
 /********************************************************************************************************
@@ -560,34 +776,36 @@ void SetTXAGrphEQ10 (int channel, int *txeq)
 ********************************************************************************************************/
 
 
-double* eq_mults (int size, int nfreqs, double* F, double* G, double samplerate, double scale, int ctfmode, int wintype)
+double* eq_mults (EQIMP peqimp, int size, int nfreqs, double* F, double* G, double samplerate,
+	double scale, int ctfmode, int wintype, int deg, double* impulse)
 {
-	double* impulse = eq_impulse (size + 1, nfreqs, F, G, samplerate, scale, ctfmode, wintype);
-	double* mults = fftcv_mults(2 * size, impulse);
-	_aligned_free (impulse);
+	eq_impulse (peqimp, size, nfreqs, F, G, samplerate, scale, ctfmode, wintype, deg, impulse);
+	double* mults = fftcv_mults (2 * size, impulse);
 	return mults;
 }
 
 void calc_eq (EQ a)
 {
 	a->scale = 1.0 / (double)(2 * a->size);
-	a->infilt = (double *)malloc0(2 * a->size * sizeof(complex));
-	a->product = (double *)malloc0(2 * a->size * sizeof(complex));
-	a->CFor = fftw_plan_dft_1d(2 * a->size, (fftw_complex *)a->infilt, (fftw_complex *)a->product, FFTW_FORWARD, FFTW_PATIENT);
-	a->CRev = fftw_plan_dft_1d(2 * a->size, (fftw_complex *)a->product, (fftw_complex *)a->out, FFTW_BACKWARD, FFTW_PATIENT);
-	a->mults = eq_mults(a->size, a->nfreqs, a->F, a->G, a->samplerate, a->scale, a->ctfmode, a->wintype);
+	a->infilt = (double *)malloc0 (2 * a->size * sizeof(complex));
+	a->product = (double *)malloc0 (2 * a->size * sizeof(complex));
+	a->CFor = fftw_plan_dft_1d (2 * a->size, (fftw_complex *)a->infilt, (fftw_complex *)a->product, FFTW_FORWARD, FFTW_PATIENT);
+	a->CRev = fftw_plan_dft_1d (2 * a->size, (fftw_complex *)a->product, (fftw_complex *)a->out, FFTW_BACKWARD, FFTW_PATIENT);
+	a->mults = eq_mults (a->peqimp, a->size, a->nfreqs, a->F, a->G, a->samplerate, a->scale, a->ctfmode, a->wintype, a->deg,
+		a->impulse);
 }
 
 void decalc_eq (EQ a)
 {
-	fftw_destroy_plan(a->CRev);
-	fftw_destroy_plan(a->CFor);
-	_aligned_free(a->mults);
-	_aligned_free(a->product);
-	_aligned_free(a->infilt);
+	fftw_destroy_plan (a->CRev);
+	fftw_destroy_plan (a->CFor);
+	_aligned_free (a->mults);
+	_aligned_free (a->product);
+	_aligned_free (a->infilt);
 }
 
-EQ create_eq (int run, int size, double *in, double *out, int nfreqs, double* F, double* G, int ctfmode, int wintype, int samplerate)
+EQ create_eq (int run, int size, double *in, double *out, int nfreqs,
+	double* F, double* G, int ctfmode, int wintype, int samplerate)
 {
 	EQ a = (EQ) malloc0 (sizeof (eq));
 	a->run = run;
@@ -602,6 +820,9 @@ EQ create_eq (int run, int size, double *in, double *out, int nfreqs, double* F,
 	a->ctfmode = ctfmode;
 	a->wintype = wintype;
 	a->samplerate = (double)samplerate;
+	a->deg = 0;
+	a->peqimp = create_eqimp(a->nfreqs, a->size, a->wintype, EQ_MAXIMUM_CONTROL_POINTS);
+	a->impulse = (double*)malloc0((a->size + 1) * sizeof(complex));
 	calc_eq (a);
 	return a;
 }
@@ -609,6 +830,8 @@ EQ create_eq (int run, int size, double *in, double *out, int nfreqs, double* F,
 void destroy_eq (EQ a)
 {
 	decalc_eq (a);
+	_aligned_free(a->impulse);
+	destroy_eqimp(a->peqimp);
 	_aligned_free (a->G);
 	_aligned_free (a->F);
 	_aligned_free (a);
@@ -665,10 +888,10 @@ void setSize_eq (EQ a, int size)
 
 /********************************************************************************************************
 *																										*
-*								Overlap-Save Equalizer:	 RXA Properties									*
+*								Overlap-Save Equalizer:  RXA Properties									*
 *																										*
 ********************************************************************************************************/
-/*	// UNCOMMENT properties when a pointer is in place in rxa[channel]
+/*  // UNCOMMENT properties when a pointer is in place in rxa[channel]
 PORT
 void SetRXAEQRun (int channel, int run)
 {
@@ -757,15 +980,15 @@ void SetRXAGrphEQ10 (int channel, int *rxeq)
 	a->nfreqs = 10;
 	a->F = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
 	a->G = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
-	a->F[1]	 =	  32.0;
-	a->F[2]	 =	  63.0;
-	a->F[3]	 =	 125.0;
-	a->F[4]	 =	 250.0;
-	a->F[5]	 =	 500.0;
-	a->F[6]	 =	1000.0;
-	a->F[7]	 =	2000.0;
-	a->F[8]	 =	4000.0;
-	a->F[9]	 =	8000.0;
+	a->F[1]  =    32.0;
+	a->F[2]  =    63.0;
+	a->F[3]  =   125.0;
+	a->F[4]  =   250.0;
+	a->F[5]  =   500.0;
+	a->F[6]  =  1000.0;
+	a->F[7]  =  2000.0;
+	a->F[8]  =  4000.0;
+	a->F[9]  =  8000.0;
 	a->F[10] = 16000.0;
 	for (i = 0; i <= a->nfreqs; i++)
 		a->G[i] = (double)rxeq[i];
@@ -777,10 +1000,10 @@ void SetRXAGrphEQ10 (int channel, int *rxeq)
 */
 /********************************************************************************************************
 *																										*
-*								Overlap-Save Equalizer:	 TXA Properties									*
+*								Overlap-Save Equalizer:  TXA Properties									*
 *																										*
 ********************************************************************************************************/
-/*	// UNCOMMENT properties when a pointer is in place in rxa[channel]
+/*  // UNCOMMENT properties when a pointer is in place in rxa[channel]
 PORT
 void SetTXAEQRun (int channel, int run)
 {
@@ -869,15 +1092,15 @@ void SetTXAGrphEQ10 (int channel, int *txeq)
 	a->nfreqs = 10;
 	a->F = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
 	a->G = (double *) malloc0 ((a->nfreqs + 1) * sizeof (double));
-	a->F[1]	 =	  32.0;
-	a->F[2]	 =	  63.0;
-	a->F[3]	 =	 125.0;
-	a->F[4]	 =	 250.0;
-	a->F[5]	 =	 500.0;
-	a->F[6]	 =	1000.0;
-	a->F[7]	 =	2000.0;
-	a->F[8]	 =	4000.0;
-	a->F[9]	 =	8000.0;
+	a->F[1]  =    32.0;
+	a->F[2]  =    63.0;
+	a->F[3]  =   125.0;
+	a->F[4]  =   250.0;
+	a->F[5]  =   500.0;
+	a->F[6]  =  1000.0;
+	a->F[7]  =  2000.0;
+	a->F[8]  =  4000.0;
+	a->F[9]  =  8000.0;
 	a->F[10] = 16000.0;
 	for (i = 0; i <= a->nfreqs; i++)
 		a->G[i] = (double)txeq[i];

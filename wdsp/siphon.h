@@ -1,4 +1,4 @@
-/*	siphon.h
+/*  siphon.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -73,13 +73,13 @@ extern __declspec (dllexport) void TXASetSipAllocDisps (int channel, int n_alloc
 
 // RXA Properties
 
-extern __declspec (dllexport) void RXAGetaSipF	(int channel, float* out, int size);
+extern __declspec (dllexport) void RXAGetaSipF  (int channel, float* out, int size);
 
 extern __declspec (dllexport) void RXAGetaSipF1 (int channel, float* out, int size);
 
 // TXA Properties
 
-extern __declspec (dllexport) void TXAGetaSipF	(int channel, float* out, int size);
+extern __declspec (dllexport) void TXAGetaSipF  (int channel, float* out, int size);
 
 extern __declspec (dllexport) void TXAGetaSipF1 (int channel, float* out, int size);
 

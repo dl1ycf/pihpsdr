@@ -1,8 +1,8 @@
-/*	emph.c
+/*  emph.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2014, 2016, 2023 Warren Pratt, NR0V
+Copyright (C) 2014, 2016, 2023, 2026 Warren Pratt, NR0V
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 The author can be reached by email at
 
-warren@wpratt.com
+warren@pratt.one
 
 */
 
@@ -48,7 +48,7 @@ EMPHP create_emphp (int run, int position, int size, int nc, int mp, double* in,
 	a->f_low = f_low;
 	a->f_high = f_high;
 	impulse = fc_impulse (a->nc, a->f_low, a->f_high, -20.0 * log10(a->f_high / a->f_low), 0.0, a->ctype, a->rate, 1.0 / (2.0 * a->size), 0, 0);
-	a->p = create_fircore (a->size, a->in, a->out, a->nc, a->mp, impulse);
+	a->p = create_fircore (a->size, a->in, a->out, a->nc, a->mp, 4, impulse);
 	_aligned_free (impulse);
 	return a;
 }

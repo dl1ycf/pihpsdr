@@ -1,4 +1,4 @@
-/*	utilities.c
+/*  utilities.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -61,6 +61,7 @@ DestroyCriticalSection (LPCRITICAL_SECTION cs_ptr)
 
 #endif
 
+
 /********************************************************************************************************
 *																										*
 *										Test & Debug Utilities											*
@@ -87,19 +88,6 @@ void print_impulse (const char* filename, int N, double* impulse, int rtype, int
 		fflush(file);
 		fclose(file);
 	}
-}
-
-PORT
-void analyze_bandpass_filter (int N, double f_low, double f_high, double samplerate, int wintype, int rtype, double scale)
-{
-	double* linphase_imp;
-	double* minphase_imp = (double *) malloc0 (N * sizeof (complex));
-	linphase_imp = fir_bandpass (N, f_low, f_high, samplerate, wintype, rtype, scale);
-	mp_imp (N, linphase_imp, minphase_imp, 16, 0);
-	print_impulse ("linear_phase_impulse.txt",	N, linphase_imp, 1, 0);
-	print_impulse ("minimum_phase_impulse.txt", N, minphase_imp, 1, 0);
-	_aligned_free (minphase_imp);
-	_aligned_free (linphase_imp);
 }
 
 void print_peak_val (const char* filename, int N, double* buff, double thresh)
@@ -192,24 +180,24 @@ void print_buffer_parameters (const char* filename, int channel)
 	FILE* file;
 	if (file = fopen(filename, "a"))
 	{
-		fprintf(file, "channel			  = %d\n", channel);
-		fprintf(file, "in_size			  = %d\n", a->in_size);
-		fprintf(file, "r1_outsize		  = %d\n", a->r1_outsize);
-		fprintf(file, "r1_size			  = %d\n", a->r1_size);
-		fprintf(file, "r2_size			  = %d\n", a->r2_size);
-		fprintf(file, "out_size			  = %d\n", a->out_size);
-		fprintf(file, "r2_insize		  = %d\n", a->r2_insize);
+		fprintf(file, "channel            = %d\n", channel);
+		fprintf(file, "in_size            = %d\n", a->in_size);
+		fprintf(file, "r1_outsize         = %d\n", a->r1_outsize);
+		fprintf(file, "r1_size            = %d\n", a->r1_size);
+		fprintf(file, "r2_size            = %d\n", a->r2_size);
+		fprintf(file, "out_size           = %d\n", a->out_size);
+		fprintf(file, "r2_insize          = %d\n", a->r2_insize);
 		fprintf(file, "r1_active_buffsize = %d\n", a->r1_active_buffsize);
 		fprintf(file, "f2_active_buffsize = %d\n", a->r2_active_buffsize);
-		fprintf(file, "r1_inidx			  = %d\n", a->r1_inidx);
-		fprintf(file, "r1_outidx		  = %d\n", a->r1_outidx);
-		fprintf(file, "r1_unqueuedsamps	  = %d\n", a->r1_unqueuedsamps);
-		fprintf(file, "r2_inidx			  = %d\n", a->r2_inidx);
-		fprintf(file, "r2_outidx		  = %d\n", a->r2_outidx);
-		fprintf(file, "r2_havesamps		  = %d\n", a->r2_havesamps);
-		fprintf(file, "in_rate			  = %d\n", ch[channel].in_rate);
-		fprintf(file, "dsp_rate			  = %d\n", ch[channel].dsp_rate);
-		fprintf(file, "out_rate			  = %d\n", ch[channel].out_rate);
+		fprintf(file, "r1_inidx           = %d\n", a->r1_inidx);
+		fprintf(file, "r1_outidx          = %d\n", a->r1_outidx);
+		fprintf(file, "r1_unqueuedsamps   = %d\n", a->r1_unqueuedsamps);
+		fprintf(file, "r2_inidx           = %d\n", a->r2_inidx);
+		fprintf(file, "r2_outidx          = %d\n", a->r2_outidx);
+		fprintf(file, "r2_havesamps       = %d\n", a->r2_havesamps);
+		fprintf(file, "in_rate            = %d\n", ch[channel].in_rate);
+		fprintf(file, "dsp_rate           = %d\n", ch[channel].dsp_rate);
+		fprintf(file, "out_rate           = %d\n", ch[channel].out_rate);
 		fprintf(file, "\n");
 		fflush(file);
 		fclose(file);
@@ -236,7 +224,7 @@ void print_message (const char* filename, const char* message, int p0, int p1, i
 	if (file = fopen(filename, "a"))
 	{
 		const char* msg = message;
-		fprintf(file, "%s	  %d	 %d		%d\n", msg, p0, p1, p2);
+		fprintf(file, "%s     %d     %d     %d\n", msg, p0, p1, p2);
 		fflush(file);
 		fclose(file);
 	}
@@ -251,22 +239,22 @@ void print_window_gain (const char* filename, int wintype, double inv_coherent_g
 		switch (wintype)
 		{
 		case 0:
-			fprintf(file, "Rectangular			   %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
+			fprintf(file, "Rectangular             %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
 			break;
 		case 1:
 			fprintf(file, "Blackman-Harris 4-term  %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
 			break;
 		case 2:
-			fprintf(file, "Hann					   %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
+			fprintf(file, "Hann                    %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
 			break;
 		case 3:
-			fprintf(file, "Flat Top				   %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
+			fprintf(file, "Flat Top                %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
 			break;
 		case 4:
-			fprintf(file, "Hamming				   %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
+			fprintf(file, "Hamming                 %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
 			break;
 		case 5:
-			fprintf(file, "Kaiser				   %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
+			fprintf(file, "Kaiser                  %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
 			break;
 		case 6:
 			fprintf(file, "Blackman-Harris 7-term  %.4f\t%.4f\t%.4f\n", inv_coherent_gain, inherent_power_gain, enb);
@@ -292,52 +280,6 @@ void print_deviation (const char* filename, double dpmax, double rate)
 	}
 }
 
-void __cdecl CalccPrintSamples (void *pargs)
-{
-	int i;
-	double env_tx, env_rx;
-	int channel = (int)(uintptr_t)pargs;
-	CALCC a = txa[channel].calcc.p;
-	FILE* file;
-	if (file = fopen("samples.txt", "w"))
-	{
-		fprintf(file, "\n");
-		for (i = 0; i < a->nsamps; i++)
-		{
-			env_tx = sqrt(a->txs[2 * i + 0] * a->txs[2 * i + 0] + a->txs[2 * i + 1] * a->txs[2 * i + 1]);
-			env_rx = sqrt(a->rxs[2 * i + 0] * a->rxs[2 * i + 0] + a->rxs[2 * i + 1] * a->rxs[2 * i + 1]);
-			fprintf(file, "%.12f  %.12f	 %.12f		%.12f  %.12f  %.12f\n",
-				a->txs[2 * i + 0], a->txs[2 * i + 1], env_tx,
-				a->rxs[2 * i + 0], a->rxs[2 * i + 1], env_rx);
-		}
-		fflush(file);
-		fclose(file);
-	}
-	_endthread();
-}
-
-void doCalccPrintSamples(int channel)
-{	// no sample buffering - use in single cal mode
-	_beginthread(CalccPrintSamples, 0, (void *)(uintptr_t)channel);
-}
-
-void print_anb_parms (const char* filename, ANB a)
-{
-	FILE* file;
-	if (file = fopen(filename, "a"))
-	{
-		fprintf(file, "Run		   = %d\n", a->run);
-		fprintf(file, "Buffer Size = %d\n", a->buffsize);
-		fprintf(file, "Sample Rate = %d\n", (int)a->samplerate);
-		fprintf(file, "Threshold   = %.6f\n", a->threshold);
-		fprintf(file, "BackTau	   = %.6f\n", a->backtau);
-		fprintf(file, "BackMult	   = %.6f\n", a->backmult);
-		fprintf(file, "Tau		   = %.6f\n", a->tau);
-		fflush(file);
-		fclose(file);
-	}
-}
-
 #if !defined(linux) && !defined(__APPLE__)
 // Audacity:  Import Raw Data, Signed 32-bit PCM, Little-endian, Mono/Stereo per mode selection, 48K rate
 
@@ -356,10 +298,10 @@ void WriteAudioFile(void* arg)
 	// for (i = 0; i < 4 * audiocount; i++)
 	// {
 	//	b = dat[i];
-	//	b = ((b >> 1) & 0x55) | ((b << 1) & 0xaa);
-	//	b = ((b >> 2) & 0x33) | ((b << 2) & 0xcc);
-	//	b = ((b >> 4) & 0x0f) | ((b << 4) & 0xf0);
-	//	dat[i] = b;
+	// 	b = ((b >> 1) & 0x55) | ((b << 1) & 0xaa);
+	// 	b = ((b >> 2) & 0x33) | ((b << 2) & 0xcc);
+	// 	b = ((b >> 4) & 0x0f) | ((b << 4) & 0xf0);
+	// 	dat[i] = b;
 	// }
 	if (file = fopen("AudioFile", "wb"))
 	{
@@ -396,7 +338,7 @@ void WriteAudioWDSP (double seconds, int rate, int size, double* indata, int mod
 		{
 			switch (mode)
 			{
-			case 0: // I only (mono)
+			case 0:	// I only (mono)
 				data[audiocount++] = (int)(conv * indata[2 * i + 0]);
 				break;
 			case 1: // Q only (mono)
@@ -405,7 +347,7 @@ void WriteAudioWDSP (double seconds, int rate, int size, double* indata, int mod
 			case 2: // envelope (mono)
 				data[audiocount++] = (int)(conv * sqrt(indata[2 * i + 0] * indata[2 * i + 0] + indata[2 * i + 1] * indata[2 * i + 1]));
 				break;
-			case 3: // complex samples (stereo)
+			case 3:	// complex samples (stereo)
 				data[audiocount++] = (int)(conv * indata[2 * i + 0]);
 				data[audiocount++] = (int)(conv * indata[2 * i + 1]);
 				break;
@@ -477,7 +419,7 @@ void WriteScaledAudio (
 
 	static int count, complete;
 	int i;
-	
+
 	if (!ready)
 	{
 		dstruct = (DSTR) malloc0 (sizeof (dstr));
@@ -560,7 +502,7 @@ int create_bfcu(int id, int min_size, int max_size, double rate, double corner, 
 	// max_size = maximum impulse response size for filters (power of two)
 	// rate = sample-rate at which filters run
 	// corner = -6dB corner frequency; bandpass filter is symmetrical about zero
-	//	  two corners, one at +corner and the other at -corner
+	//    two corners, one at +corner and the other at -corner
 	// points = number of points to generate for each filter response (power of two; >= max_size)
 	if (max_size > points) return -1;
 	BFCU a = (BFCU)malloc0(sizeof(bfcu));
@@ -636,4 +578,55 @@ void test_bfcu()
 	print_bandpass_response("response", 1025, segment);
 	_aligned_free(segment);
 	destroy_bfcu(0);
+}
+
+
+/********************************************************************************************************
+*																										*
+*								           General Debug Utilities								        *
+*																										*
+********************************************************************************************************/
+
+#if !defined(linux) && !defined(__APPLE__)
+
+// Prints to the Visual Studio Debug Window; works like printf(...)
+#include <stdarg.h>
+void dprintf(const char* format, ...)
+{
+	char buffer[512];
+	va_list args;
+	va_start(args, format);
+	// Safely format the string
+	vsnprintf(buffer, sizeof(buffer), format, args);
+	va_end(args);
+	// Send to Visual Studio Output window
+	OutputDebugStringA(buffer);
+}
+#endif
+// Usage example:
+// dprintf("Error Code: %d at %s\n", 404, "main.cpp");
+
+// Converts a uint32_t to a binary string representation; buf must have space for
+// at least 43 characters (3 for "0b ", 32 for bits, and 1 for null terminator, 7 for
+// spaces between groups of 4 bits).
+// The string can then be printed to the Visual Studio Debug Window using dprintf, e.g.:
+char* uint32_to_bitstr(uint32_t n, char* buf)
+{
+	int char_idx = 0;
+	buf[char_idx++] = '0';
+	buf[char_idx++] = 'b';
+	buf[char_idx++] = ' ';
+
+	for (int i = 31; i >= 0; i--)
+	{
+		buf[char_idx++] = ((n >> i) & 1) ? '1' : '0';
+
+		// Optional: Add spaces every 4 bits for readability
+		if (i > 0 && i % 4 == 0)
+		{
+			buf[char_idx++] = ' ';
+		}
+	}
+	buf[char_idx] = '\0';
+	return buf;
 }

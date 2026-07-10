@@ -1,4 +1,4 @@
-/*	slew.c
+/*  slew.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -175,7 +175,7 @@ void setSize_uslew (USLEW a, int size)
 
 /********************************************************************************************************
 *																										*
-*											 TXA Properties												*
+*								             TXA Properties												*
 *																										*
 ********************************************************************************************************/
 

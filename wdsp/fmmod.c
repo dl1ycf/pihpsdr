@@ -1,4 +1,4 @@
-/*	fmmod.c
+/*  fmmod.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -60,7 +60,7 @@ FMMOD create_fmmod (int run, int size, double* in, double* out, int rate, double
 	a->mp = mp;
 	calc_fmmod (a);
 	impulse = fir_bandpass(a->nc, -a->bp_fc, +a->bp_fc, a->samplerate, 0, 1, 1.0 / (2 * a->size));
-	a->p = create_fircore (a->size, a->out, a->out, a->nc, a->mp, impulse);
+	a->p = create_fircore (a->size, a->out, a->out, a->nc, a->mp, 8, impulse);
 	_aligned_free (impulse);
 	return a;
 }
@@ -95,7 +95,7 @@ void xfmmod (FMMOD a)
 			dp = a->out[2 * i + 0] * a->sdelta;
 			a->sphase += dp;
 			if (a->sphase >= TWOPI) a->sphase -= TWOPI;
-			if (a->sphase <	  0.0 ) a->sphase += TWOPI;
+			if (a->sphase <   0.0 ) a->sphase += TWOPI;
 			a->out[2 * i + 0] = 0.7071 * cos (a->sphase);
 			a->out[2 * i + 1] = 0.7071 * sin (a->sphase);
 			if ((magdp = dp) < 0.0) magdp = - magdp;

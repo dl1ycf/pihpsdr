@@ -1,8 +1,8 @@
-/*	fmsq.h
+/*  fmsq.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2013, 2016 Warren Pratt, NR0V
+Copyright (C) 2013, 2016, 2026 Warren Pratt, NR0V
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -20,12 +20,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 The author can be reached by email at
 
-warren@wpratt.com
+warren@pratt.one
 
 */
 
 #ifndef _fmsq_h
 #define _fmsq_h
+#include "eq.h"
+#include "fir.h"
 #include "firmin.h"
 typedef struct _fmsq
 {
@@ -41,7 +43,7 @@ typedef struct _fmsq
 	double F[4];
 	double G[4];
 	double avtau;						// time constant for averaging noise
-	double avm;						
+	double avm;
 	double onem_avm;
 	double avnoise;
 	double longtau;						// time constant for long averaging
@@ -67,6 +69,8 @@ typedef struct _fmsq
 	int nc;
 	int mp;
 	FIRCORE p;
+	EQIMP peqimp;
+	double* impulse;
 } fmsq, *FMSQ;
 
 extern FMSQ create_fmsq (int run, int size, double* insig, double* outsig, double* trigger, int rate, double fc,
