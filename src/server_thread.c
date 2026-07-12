@@ -2226,6 +2226,7 @@ static int server_command(gpointer data) {
       transmitter->feedback = header->b2;
       transmitter->attenuation = from_16(header->s1);
       adc[2].antenna = from_16(header->s2);
+      schedule_transmit_specific();
       schedule_high_priority();
     }
     break;

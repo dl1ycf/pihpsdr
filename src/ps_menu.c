@@ -91,12 +91,18 @@ static void ps_off_on(void) {
 
 static void att_spin_cb(GtkWidget *widget, gpointer data) {
   if (transmitter->auto_on) {
+    //
+    // We come here if the calibration loop adjusts the attenuation and
+    // updates the spin button to reflect the new value. Here we supress
+    // another send_psatt/schedule_hp in this case
+    //
     return;
   }
   transmitter->attenuation = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
   if (radio_is_remote) {
     send_psatt(cl_sock_tcp); // this sends auto, attenuation, feedback, and ps antenna
   } else {
+    schedule_transmit_specific();
     schedule_high_priority();
   }
 }
@@ -232,6 +238,7 @@ int ps_calibration_timer(gpointer arg) {
           if (transmitter->attenuation != new_att) {
             tx_ps_reset(transmitter);
             transmitter->attenuation = new_att;
+            schedule_high_priority();
             schedule_transmit_specific();
             state = 1;
           }
@@ -420,6 +427,9 @@ static gboolean resume_cb(GtkWidget *widget, GdkEventButton *event, gpointer dat
       gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_att_spin), (double) transmitter->attenuation);
       if (radio_is_remote) {
         send_psatt(cl_sock_tcp);
+      } else {
+        schedule_high_priority();
+        schedule_transmit_specific();
       }
     }
     tx_ps_resume(transmitter);
