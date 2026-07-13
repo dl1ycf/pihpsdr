@@ -77,7 +77,8 @@ void DeleteCriticalSection(pthread_mutex_t *mutex) {
 	pthread_mutex_destroy(mutex);
 }
 
-int LinuxWaitForMultipleObjects(int num, sem_t **sem, int waitall, int ms) {
+int LinuxWaitForMultipleObjects(int num, HANDLE *handles, int waitall, int ms) {
+  sem_t **sems = (sem_t **) handles;
   if (!waitall && ms == INFINITE) {
     //
     // As far as I can see, this is the only case we need in WDSP
@@ -85,7 +86,7 @@ int LinuxWaitForMultipleObjects(int num, sem_t **sem, int waitall, int ms) {
     //
     for (;;) {
       for (int i = 0; i < num; i++) {
-        if (sem_trywait(sem[i]) == 0) { return i; }
+        if (sem_trywait(sems[i]) == 0) { return i; }
       }
       // If none of the semaphores is ready, sleep 1 ms and continue
       Sleep(1);
@@ -97,7 +98,8 @@ int LinuxWaitForMultipleObjects(int num, sem_t **sem, int waitall, int ms) {
   }
 }
 
-int LinuxWaitForSingleObject(sem_t *sem,int ms) {
+int LinuxWaitForSingleObject(HANDLE handle, int ms) {
+    sem_t *sem = (sem_t *) handle;
 	int result=0;
 	if(ms==INFINITE) {
 		// wait for the lock
@@ -118,7 +120,7 @@ int LinuxWaitForSingleObject(sem_t *sem,int ms) {
 	return result;
 }
 
-sem_t *LinuxCreateSemaphore(int attributes,int initial_count,int maximum_count,char *name) {
+HANDLE LinuxCreateSemaphore(int attributes,int initial_count,int maximum_count,char *name) {
 		sem_t *sem;
 #ifdef __APPLE__
 	//
@@ -155,10 +157,11 @@ sem_t *LinuxCreateSemaphore(int attributes,int initial_count,int maximum_count,c
 	  perror("WDSP:CreateSemaphore");
 	}
 #endif
-	return sem;
+	return (HANDLE) sem;
 }
 
-void LinuxReleaseSemaphore(sem_t* sem,int release_count, int* previous_count) {
+void LinuxReleaseSemaphore(HANDLE handle, int release_count, int* previous_count) {
+    sem_t *sem = (sem_t *) handle;
 	//
 	// Note WDSP always calls this with previous_count==NULL
 	// so we do not bother about obtaining the previous value and
@@ -170,16 +173,17 @@ void LinuxReleaseSemaphore(sem_t* sem,int release_count, int* previous_count) {
 	}
 }
 
-sem_t *CreateEvent(void* security_attributes,int bManualReset,int bInitialState,char* name) {
+HANDLE CreateEvent(void* security_attributes,int bManualReset,int bInitialState,char* name) {
 	//
 	// This is always called with bManualReset = bInitialState = FALSE
 	//
 	sem_t *sem;
 	sem=LinuxCreateSemaphore(0,0,0,0);
-	return sem;
+	return (HANDLE) sem;
 }
 
-void LinuxSetEvent(sem_t* sem) {
+void LinuxSetEvent(HANDLE handle) {
+    sem_t *sem = (sem_t *) handle;
 	//
 	// WDSP uses this to set the semaphore (event) to
 	// a "releasing" state.
@@ -187,7 +191,8 @@ void LinuxSetEvent(sem_t* sem) {
 	sem_post(sem);
 }
 
-void LinuxResetEvent(sem_t* sem) {
+void LinuxResetEvent(HANDLE handle) {
+    sem_t *sem = (sem_t *) handle;
 	//
 	// WDSP uses this to set the semaphore (event) to
 	// a blocking state.
@@ -238,11 +243,8 @@ HANDLE _beginthread( void( __cdecl *start_address )( void * ), unsigned stack_si
 	  snprintf(tname, sizeof(tname), "Wflush%d", (int)(uintptr_t)arglist);
 	} else if (start_address == &syncb_main) {
 	  snprintf(tname, sizeof(tname), "WSync");
-	} else	if (start_address == &doPSCalcCorrection
-			 || start_address == &doPSTurnoff
-		 || start_address == &PSSaveCorrection
-		 || start_address == &PSRestoreCorrection) {
-	  snprintf(tname, sizeof(tname), "PURESIGNAL");
+	} else	if (start_address == &doPSCorrChange) {
+	  snprintf(tname, sizeof(tname), "PS");
 	} else {
 	  // in case there are more worker types
 	  snprintf(tname, sizeof(tname), "WDSP");
@@ -277,30 +279,31 @@ void SetThreadPriority(HANDLE thread, int priority)	 {
 */
 }
 
-void CloseHandle(HANDLE hObject) {
-//
-// This routine is *ONLY* called to release semaphores
-// The WDSP transmitter thread terminates upon each TX/RX
-// transition, where it closes and re-opens a semaphore
-// in flush_buffs() in iobuffs.c. Therefore, we have to
-// release any resource associated with this semaphore, which
-// may be a small memory patch (LINUX) or a file descriptor
-// (MacOS).
-//
+void CloseHandle(HANDLE handle) {
+  sem_t *sem = (sem_t *) handle;
+  //
+  // This routine is *ONLY* called to release semaphores
+  // The WDSP transmitter thread terminates upon each TX/RX
+  // transition, where it closes and re-opens a semaphore
+  // in flush_buffs() in iobuffs.c. Therefore, we have to
+  // release any resource associated with this semaphore, which
+  // may be a small memory patch (LINUX) or a file descriptor
+  // (MacOS).
+  //
 #ifdef __APPLE__
-if (sem_close((sem_t *)hObject) < 0) {
-  perror("WDSP:CloseHandle:SemCLose");
-}
+  if (sem_close(sem) < 0) {
+    perror("WDSP:CloseHandle:SemCLose");
+  }
 #else
-if (sem_destroy((sem_t *)hObject) < 0) {
-  perror("WDSP:CloseHandle:SemDestroy");
-} else {
-  // if sem_destroy failed, do not release storage
-  _aligned_free(hObject);
-}
+  if (sem_destroy(sem) < 0) {
+    perror("WDSP:CloseHandle:SemDestroy");
+  } else {
+    // if sem_destroy failed, do not release storage
+    _aligned_free(sem);
+  }
 #endif
 
-return;
+  return;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
