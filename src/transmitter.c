@@ -2615,20 +2615,14 @@ void tx_set_singletone(const TRANSMITTER *tx, int state, double freq) {
     SetTXAPostGenMode(tx->id, 0);
     SetTXAPostGenRun(tx->id, 1);
   } else {
+    SetTXAPostGenRun(tx->id, 0);
     //
-    // These radios show "tails" of the TX signal after a TX/RX transition,
+    // Most radios show "tails" of the TX signal after a TX/RX transition,
     // so wait after the SingleTone signal has been removed, before
     // removing MOX.
-    // The wait time required is rather long, since we must fill the TX IQ
-    // FIFO completely with zeroes. 100 msec was measured on a HermesLite-2
-    // to be OK.
     //
     //
-    SetTXAPostGenRun(tx->id, 0);
-    if (device == DEVICE_HERMES_LITE2 || device == DEVICE_HERMES_LITE ||
-        device == DEVICE_HERMES || device == DEVICE_STEMLAB || device == DEVICE_STEMLAB_Z20) {
-      usleep(100000);
-    }
+    usleep(100000);
   }
 }
 
@@ -2664,18 +2658,11 @@ void tx_set_twotone(TRANSMITTER *tx, int state) {
   } else {
     SetTXAPostGenRun(tx->id, 0);
     //
-    // These radios show "tails" of the TX signal after a TX/RX transition,
+    // Most radios show "tails" of the TX signal after a TX/RX transition,
     // so wait after the TwoTone signal has been removed, before
     // removing MOX.
-    // The wait time required is rather long, since we must fill the TX IQ
-    // FIFO completely with zeroes. 100 msec was measured on a HermesLite-2
-    // to be OK.
     //
-    //
-    if (device == DEVICE_HERMES_LITE2 || device == DEVICE_HERMES_LITE ||
-        device == DEVICE_HERMES || device == DEVICE_STEMLAB || device == DEVICE_STEMLAB_Z20) {
-      usleep(100000);
-    }
+    usleep(100000);
   }
   g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(state));
 }

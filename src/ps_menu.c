@@ -270,6 +270,8 @@ static int info_thread(gpointer arg) {
     return G_SOURCE_REMOVE;
   }
   if (transmitter->puresignal) {
+    static gchar chklbl[20];
+    static int  chkcnt = 0;
     gchar label[20];
     static int old5 = 0;  // used to detect an increase of the calibration count
     static int old14 = 0; // used to detect change of "Correcting" status
@@ -318,6 +320,28 @@ static int info_thread(gpointer arg) {
       //
       // Translate PS state variable into human-readable string
       //
+      if (i == 6) {
+        switch (transmitter->psinfo[6]) {
+        case 0:
+          if (chkcnt > 0) {
+            chkcnt--;
+          } else {
+            snprintf(chklbl, sizeof(label), "");
+          }
+          break;
+        case 1:
+          if (chkcnt == 0) {
+            snprintf(chklbl, sizeof(label), "Fail");
+            chkcnt = 10;
+          }
+          break;
+        default:
+          snprintf(chklbl, sizeof(label), "DRIVE");
+          chkcnt = 10;
+          break;
+        }
+        snprintf(label, sizeof(label), "%s", chklbl);
+      }
       if (i == 15) {
         switch (transmitter->psinfo[15]) {
         case 0:
