@@ -85,9 +85,11 @@ void my_free(void *p);
 #define SetEvent(x) LinuxSetEvent(x)
 #define ResetEvent(x) LinuxResetEvent(x)
 
-#define INFINITE -1
-#define WAIT_OBJECT_0 0
-#define INT_MAX 2147483647
+#define INFINITE               -1
+#define WAIT_OBJECT_0   0x0000000
+#define WAIT_TIMEOUT    0x0009999
+#define WAIT_FAILED            -1
+#define INT_MAX        2147483647
 
 void QueueUserWorkItem(void *function,void *context,int flags);
 
