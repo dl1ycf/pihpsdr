@@ -1116,6 +1116,20 @@ static void rx_process_buffer(RECEIVER *rx) {
   double unscale = 1.0 / scale;
   // Without DUPLEX; xmit will always be false.
   int xmit = radio_is_transmitting();
+#if 0
+  //
+  // print the "punch" of the RX audio. This is experimental code
+  // for "measuring" CW audio peak filters
+  //
+  static double lvl = 0.0;
+  double sum = 0.0;
+  for (int i = 0; i < rx->output_samples; i++) {
+    sum += rx->audio_output_buffer[i * 2]*rx->audio_output_buffer[i * 2];
+    sum += rx->audio_output_buffer[(i * 2) + 1] * rx->audio_output_buffer[(i * 2) + 1];
+  }
+  lvl = 0.9 * lvl + (0.1 * sum) / rx->output_samples;
+  t_print("RX lvl: %5.1f\n", 10.0 * log10(lvl));
+#endif
   for (int i = 0; i < rx->output_samples; i++) {
     double left_sample = rx->audio_output_buffer[i * 2];
     double right_sample = rx->audio_output_buffer[(i * 2) + 1];
@@ -1821,21 +1835,46 @@ void rx_set_cw_peak(const RECEIVER *rx, int apf, double freq) {
   //    3     | Matched     (FIR)
   //    4     | BiQuad      (IIR)
   //
-  // We use one fourth of the width of the main IF filter, but limit this
+  // We only use a fraction of the width of the main IF filter, but limit this
   // from below to 25 Hz for the IIR and to 15 Hz for the FIR filters.
   //
   if (apf > 0) {
-    double w = 0.25 * (rx->filter_high - rx->filter_low);
-    if (w < 0.0) { w = -w; }      // This happens with CWL
-    if (apf == 1 || apf == 4) {
-      if (w < 25.0) { w = 25.0; }   // Do not go below 25 Hz to avoid ringing
-    } else {
-      if (w < 15.0) { w = 15.0; }
+    double width, gain;
+    //
+    // Adjust zero-offset gain to +3 dB, and make
+    // the width of the APF "fit" to the width of
+    // the main filter.
+    //
+    switch (apf) {
+    case 1:
+      // Double pole
+      width = 0.19 * (rx->filter_high - rx->filter_low);
+      if (width < 25.0) { width = 25.0; }   // Do not go below 25 Hz to avoid ringing
+      gain = 2.00;
+      break;
+    case 2:
+      // Gaussian
+      width = 0.27 * (rx->filter_high - rx->filter_low);
+      if (width < 15.0) { width = 15.0; }   // Do not go below 15 Hz
+      gain = 1.41;
+      break;
+    case 3:
+      // Matched
+      width = 0.26 * (rx->filter_high - rx->filter_low);
+      if (width < 15.0) { width = 15.0; }   // Do not go below 15 Hz
+      gain = 1.41;
+      break;
+    case 4:
+      // BiQuad
+      width = 0.175 * (rx->filter_high - rx->filter_low);
+      if (width < 25.0) { width = 25.0; }   // Do not go below 25 Hz to avoid ringing
+      gain = 1.41;
+      break;
     }
     SetRXASPCWSelection(rx->id, apf - 1);
     SetRXASPCWFreq(rx->id, freq);
-    SetRXASPCWBandwidth(rx->id, w);
-    SetRXASPCWGain(rx->id, 1.5);
+    SetRXASPCWBandwidth(rx->id, width);
+    SetRXASPCWGain(rx->id, gain);
     SetRXASPCWRun(rx->id, 1);
   } else {
     SetRXASPCWRun(rx->id, 0);
