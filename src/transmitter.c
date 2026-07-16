@@ -986,7 +986,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->ps_moxdelay = 0.2;      // "MOX Wait" 0.2 sec
   tx->ps_loopdelay = 0.0;     // "CAL Wait" 0.0 sec
   tx->feedback = 0;
-  tx->auto_on = 0;
+  tx->auto_on = 1;
   tx->attenuation = 0;
   tx->ctcss = 11;
   tx->ctcss_enabled = FALSE;
