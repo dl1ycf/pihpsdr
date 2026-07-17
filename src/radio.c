@@ -2984,7 +2984,7 @@ void radio_apply_band_settings(int flag, int id) {
 void radio_tx_vfo_changed(void) {
   //
   // When changing the active receiver or changing the split status,
-  // the VFO that controls the transmitter my flip between VFOA/VFOB.
+  // the VFO that controls the transmitter may flip between VFOA/VFOB.
   // In these cases, we have to update the TX mode,
   // and re-calculate the drive level from the band-specific PA calibration
   // values. For SOAPY, the only thing to do is the update the TX mode.
