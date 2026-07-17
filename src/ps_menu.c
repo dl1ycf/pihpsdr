@@ -136,6 +136,7 @@ int ps_calibration_timer(gpointer arg) {
   guint *timer = (guint *)arg;
   static int state = -1;
   static int old5  = -1;
+  static int old4  = -1;
   if (!transmitter->twotone) {
     state = -1;
     *timer = 0;
@@ -152,7 +153,9 @@ int ps_calibration_timer(gpointer arg) {
     int tx_att_min;
     int tx_att_max;
     if (device == DEVICE_HERMES_LITE2 || device == NEW_DEVICE_HERMES_LITE2) {
-      tx_att_min = -29;
+      //
+      // This range corresponds to +32 ... -12 on the RF slider
+      tx_att_min = -13;
       tx_att_max = 31;
     } else {
       tx_att_min = 0;
@@ -160,14 +163,17 @@ int ps_calibration_timer(gpointer arg) {
     }
     tx_ps_getinfo(transmitter);
     //
-    // newcal is set to 1 if we have a new calibration value
-    // (info[5] is the calibration counter).
-    // It is always set if this is the first time a arrive here when
-    // doing a two-tone experiment.
+    // newcal is set to 1 if we have a new calibration or a new feedback value
+    // TODO: consider setting newcal to 1 when it was zero upon the last 10
+    //       entries into this loop.
     //
     int newcal = 0;
     if (transmitter->psinfo[5] !=  old5) {
       old5 = transmitter->psinfo[5];
+      newcal = 1;
+    }
+    if (transmitter->psinfo[4] > 0 && transmitter->psinfo[4] != old4) {
+      old4 = transmitter->psinfo[4];
       newcal = 1;
     }
     if (transmitter->auto_on) {
@@ -183,14 +189,21 @@ int ps_calibration_timer(gpointer arg) {
           int delta_att;
           int new_att;
           if (transmitter->psinfo[4] > 275) {
-            // If signal is very strong, increase attenuation by 15 dB
+            //
+            // If signal is very strong, increase attenuation by 10 dB
             // Note the value is limited to about 300-350 due to ADC clipping/IQ overflow,
-            // so the feedback level might be much stronger than indicated here
-            delta_att = 15;
-            if (transmitter->attenuation < -15) { delta_att += 15; }
+            // so the feedback level might be much stronger than indicated here, so advancing
+            // the attenuation by 10 also might be needed to protect the RF front-end.
+            //
+            delta_att = 10;
+            //
+            // HL2: transmitter "attenuation" can be negative, a value of zero corresponds
+            //      to a RF gain of about 19. If we are far in the negative, make a 15dB jump
+            //
+            if (transmitter->attenuation < -5) { delta_att += 15; }
           } else if (transmitter->psinfo[4] < 25) {
-            // If signal is very weak, decrease attenuation by 15 dB
-            delta_att = -15;
+            // If signal is very weak, decrease attenuation by 10 dB
+            delta_att = -10;
           } else {
             // calculate new delta, this mostly succeeds in one step
             delta_att = (int) lround(20.0 * log10((double)transmitter->psinfo[4] / 152.293));
