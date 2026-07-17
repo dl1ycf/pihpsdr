@@ -613,7 +613,7 @@ void ps_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), lbl, col, row, 1, 1);
   col++;
   if (device == DEVICE_HERMES_LITE2 || device == NEW_DEVICE_HERMES_LITE2) {
-    tx_att_spin = gtk_spin_button_new_with_range(-29.0, 31.0, 1.0);
+    tx_att_spin = gtk_spin_button_new_with_range(-13.0, 31.0, 1.0);
   } else {
     tx_att_spin = gtk_spin_button_new_with_range(  0.0, 31.0, 1.0);
   }
