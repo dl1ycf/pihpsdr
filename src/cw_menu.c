@@ -201,7 +201,7 @@ void cw_menu(GtkWidget *parent) {
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), (double)cw_keyer_speed);
   gtk_grid_attach(GTK_GRID(op_grid), btn, 1, row, 1, 1);
   g_signal_connect(btn, "value_changed", G_CALLBACK(cw_keyer_speed_value_changed_cb), NULL);
-  if (!radio_is_remote) {
+  if (!radio_is_remote && protocol != SOAPYSDR_PROTOCOL) {
     btn = gtk_check_button_new_with_label("CW handled in Radio");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), cw_keyer_internal);
     gtk_grid_attach(GTK_GRID(op_grid), btn, 2, row, 1, 1);

@@ -3258,6 +3258,12 @@ static void radio_restore_state(void) {
   if (filter_board == N2ADR && !radio_is_remote) {
     radio_n2adr_oc_settings(); // Apply default OC settings for N2ADR board
   }
+  //
+  // If radio is not HPSDR, CW cannot be handled in radio
+  //
+  if (protocol == SOAPYSDR_PROTOCOL || radio_is_remote) {
+    cw_keyer_internal = 0;
+  }
   // Activate font/theme
   theme_set();
   load_font(which_css_font);
