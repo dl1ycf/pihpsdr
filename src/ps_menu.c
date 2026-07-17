@@ -121,31 +121,6 @@ static void setpk_cb(GtkWidget *widget, gpointer data) {
   }
 }
 
-static void clear_fields(void) {
-  //
-  // This clears most of the text fields and puts
-  // the "Feedback" and "Correcting" string in black colour.
-  // This will not be re-coloured until a new valid calibration
-  // has taken place.
-  // This is called when disabling PS, but also when starting a two-tone experiment.
-  // In the latter case, the fields stay cleared until the first successful "new"
-  // calibration result is obtained.
-  //
-  if (dialog == NULL) {
-    // e.g. doing a two-tone experiment and PS menu is not open
-    return;
-  }
-  gtk_widget_set_name(corr_info_b, "boldlabel");
-  gtk_widget_set_name(chk_info_b, "boldlabel");
-  gtk_widget_set_name(feedbk_info_b, "boldlabel");
-  gtk_button_set_label(GTK_BUTTON(status_info_b), "");
-  gtk_button_set_label(GTK_BUTTON(chk_info_b), "");
-  gtk_button_set_label(GTK_BUTTON(cnt_info_b), "");
-  gtk_button_set_label(GTK_BUTTON(feedbk_info_b), "");
-  gtk_button_set_label(GTK_BUTTON(corr_info_b), "");
-  gtk_button_set_label(GTK_BUTTON(get_pk_b), "");
-}
-
 //
 // This is periodically when starting  a
 // two-tone experiment. If running PURESIGNAL
@@ -167,10 +142,9 @@ int ps_calibration_timer(gpointer arg) {
   }
   if (state < 0) {
     //
-    // Initialised two-tone experiment
+    // Start two-tone experiment
     //
     state = 1;          // start with PS reset
-    clear_fields();     // clear all data until the next calibration has been done
   }
   if (transmitter->puresignal) {
     int tx_att_min;
@@ -261,10 +235,19 @@ static int info_thread(gpointer arg) {
   if (!running) {
     return G_SOURCE_REMOVE;
   }
+
+
   if (transmitter->puresignal) {
+    //
+    // Put Info/Colour on the buttons
+    //
     static int  chkcnt = 0;
     gchar label[20];
 
+    //
+    // Get PS info. If the radio is remote, this is transmitted
+    // periodically and the data is set be the client thread.
+    //
     if (!radio_is_remote) {
       tx_ps_getinfo(transmitter);
       tx_ps_getmx(transmitter);
@@ -352,6 +335,20 @@ static int info_thread(gpointer arg) {
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_att_spin), (double) transmitter->attenuation);
     snprintf(label, sizeof(label), "%6.3f", transmitter->ps_getmx);
     gtk_button_set_label(GTK_BUTTON(get_pk_b), label);
+  } else {
+    //
+    // Clear all fields/buttons. They will be re-populated
+    // if PS is running
+    //
+    gtk_widget_set_name(corr_info_b, "boldlabel");
+    gtk_button_set_label(GTK_BUTTON(corr_info_b), "");
+    gtk_widget_set_name(feedbk_info_b, "boldlabel");
+    gtk_button_set_label(GTK_BUTTON(feedbk_info_b), "");
+    gtk_button_set_label(GTK_BUTTON(cnt_info_b), "");
+    gtk_widget_set_name(chk_info_b, "boldlabel");
+    gtk_button_set_label(GTK_BUTTON(chk_info_b), "");
+    gtk_button_set_label(GTK_BUTTON(status_info_b), "");
+    gtk_button_set_label(GTK_BUTTON(get_pk_b), "");
   }
   return G_SOURCE_CONTINUE;
 }
@@ -382,7 +379,6 @@ static void ps_ant_cb(GtkWidget *widget, gpointer data) {
 static void enable_cb(GtkWidget *widget, gpointer data) {
   if (can_transmit) {
     int val = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
-    clear_fields();
     tx_ps_onoff(transmitter, val);
   }
 }
@@ -472,7 +468,6 @@ void ps_menu(GtkWidget *parent) {
   gtk_widget_set_name(btn, "close_button");
   g_signal_connect (btn, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), btn, 0, 0, 1, 1);
-  gtk_widget_set_name(btn, "close_button");
   btn = gtk_toggle_button_new_with_label("MON");
   gtk_widget_set_name(btn, "small_toggle_button");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), transmitter->feedback);
