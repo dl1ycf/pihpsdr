@@ -135,6 +135,7 @@ static void setpk_cb(GtkWidget *widget, gpointer data) {
 int ps_calibration_timer(gpointer arg) {
   guint *timer = (guint *)arg;
   static int state = -1;
+  static int old5  = -1;
   if (!transmitter->twotone) {
     state = -1;
     *timer = 0;
@@ -145,11 +146,11 @@ int ps_calibration_timer(gpointer arg) {
     // Start two-tone experiment
     //
     state = 1;          // start with PS reset
+    old5 = -1;
   }
   if (transmitter->puresignal) {
     int tx_att_min;
     int tx_att_max;
-    static int old5 = 0;
     if (device == DEVICE_HERMES_LITE2 || device == NEW_DEVICE_HERMES_LITE2) {
       tx_att_min = -29;
       tx_att_max = 31;
@@ -160,7 +161,9 @@ int ps_calibration_timer(gpointer arg) {
     tx_ps_getinfo(transmitter);
     //
     // newcal is set to 1 if we have a new calibration value
-    // (info[5] is the calibration counter)
+    // (info[5] is the calibration counter).
+    // It is always set if this is the first time a arrive here when
+    // doing a two-tone experiment.
     //
     int newcal = 0;
     if (transmitter->psinfo[5] !=  old5) {
