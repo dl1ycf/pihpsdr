@@ -1870,6 +1870,12 @@ void rx_set_cw_peak(const RECEIVER *rx, int apf, double freq) {
       if (width < 25.0) { width = 25.0; }   // Do not go below 25 Hz to avoid ringing
       gain = 1.41;
       break;
+    default:
+      // Unknown APF
+      width = 0.25 * (rx->filter_high - rx->filter_low);
+      if (width < 25.0) { width = 25.0; }
+      gain = 1.41;
+      break;
     }
     SetRXASPCWSelection(rx->id, apf - 1);
     SetRXASPCWFreq(rx->id, freq);

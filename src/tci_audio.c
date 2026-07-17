@@ -1,5 +1,6 @@
 /* Copyright (C)
 * 2024,2025, 2026 - Heiko Amft, DL1BZ (from project deskHPSDR)
+* 2026            - C. van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by

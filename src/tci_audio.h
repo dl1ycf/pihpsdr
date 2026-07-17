@@ -1,5 +1,6 @@
 /* Copyright (C)
 * 2024,2025, 2026 - Heiko Amft, DL1BZ (from project deskHPSDR)
+* 2026            - C. van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -50,7 +51,7 @@ double tci_get_next_mic_sample();
 // CPUs where a big-to-little endian conversion is required
 //
 //
-typedef struct __attribute__((__packed__)) _tci_stream_header {
+typedef struct _tci_stream_header {
   uint32_t receiver;
   uint32_t sample_rate;
   uint32_t format;
@@ -62,7 +63,7 @@ typedef struct __attribute__((__packed__)) _tci_stream_header {
   uint32_t reserv[8];
 } TCI_STREAM_HEADER;
 
-typedef struct __attribute__((__packed__)) _tci_stream {
+typedef struct _tci_stream {
   TCI_STREAM_HEADER header;
   float    audio[8192];        // given here as float not uint8_t
 } TCI_STREAM;

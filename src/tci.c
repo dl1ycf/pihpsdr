@@ -1,8 +1,6 @@
 /* Copyright (C)
 * 2024 - Christoph van Wüllen, DL1YCF
-* 2024,2025, 2026 - Heiko Amft, DL1BZ (heavily extended for project deskHPSDR)
-*
-*   This source code has been forked and was adapted from piHPSDR by DL1YCF to deskHPSDR in October 2024
+* 2024,2025, 2026 - Heiko Amft, DL1BZ (from project deskHPSDR)
 *
 *   This program is free software: you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -200,6 +198,18 @@ static double tci_clamp_double(double value, double min, double max) {
 //
 void launch_tci (void) {
   t_print ("---- LAUNCHING TCI LWS SERVER ----\n");
+  //
+  // Verify that a TCI audio stream header has exactly 64 bytes,
+  // and that a TCI audio stream struct has 8256 bytes.
+  //
+  if (sizeof(TCI_STREAM_HEADER) != 64) {
+    t_print ("TCI cannot start, audio stream header is not 64 bytes long\n");
+    return;
+  }
+  if (sizeof(TCI_STREAM) != 8256) {
+    t_print("TCI cannot start, audio stream is not 8256 bytes long\n");
+    return;
+  }
   memset(tciclient, 0, sizeof(tciclient));
   tci_audio_set_wakeup_callback (tci_audio_wakeup);
   tci_running = 1;
@@ -510,9 +520,10 @@ static void tci_handle_binary_lws (CLIENT *client, const unsigned char* data, si
     return;
   }
   //
-  // Now the whole frame is assembled, so we can process it
+  // Now the whole frame is assembled, so we can process it. Since client->binary_rx_buf
+  // is a pointer obtained from a malloc(), it is suitably aligned for all data types.
   //
-  tci_handle_binary (client, (TCI_STREAM *)client->binary_rx_buf, client->binary_rx_len);
+  tci_handle_binary (client, (TCI_STREAM *)client->binary_rx_buf, client->binary_rx_len);  // CAST OK
   client->binary_rx_len = 0;
 }
 
