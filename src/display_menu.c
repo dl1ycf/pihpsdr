@@ -390,7 +390,7 @@ void display_menu(GtkWidget *parent) {
     gtk_widget_set_name (label, "boldlabel");
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(mygrid), label, col, row, 1, 1);
-    btn = gtk_spin_button_new_with_range(-220.0, 100.0, 1.0);
+    btn = gtk_spin_button_new_with_range(-220.0, 100.0, 5.0);
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), (double)myrx->panadapter_high);
     gtk_grid_attach(GTK_GRID(mygrid), btn, col + 1, row, 1, 1);
     g_signal_connect(btn, "value_changed", G_CALLBACK(panadapter_high_value_changed_cb), myrx);
@@ -399,7 +399,7 @@ void display_menu(GtkWidget *parent) {
     gtk_widget_set_name (label, "boldlabel");
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(mygrid), label, col, row, 1, 1);
-    btn = gtk_spin_button_new_with_range(-220.0, 100.0, 1.0);
+    btn = gtk_spin_button_new_with_range(-220.0, 100.0, 5.0);
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), (double)myrx->panadapter_low);
     gtk_grid_attach(GTK_GRID(mygrid), btn, col + 1, row, 1, 1);
     g_signal_connect(btn, "value_changed", G_CALLBACK(panadapter_low_value_changed_cb), myrx);
@@ -408,7 +408,7 @@ void display_menu(GtkWidget *parent) {
     gtk_widget_set_name (label, "boldlabel");
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(mygrid), label, col, row, 1, 1);
-    btn = gtk_spin_button_new_with_range(1.0, 20.0, 1.0);
+    btn = gtk_spin_button_new_with_range(5.0, 20.0, 5.0);
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), (double)myrx->panadapter_step);
     gtk_grid_attach(GTK_GRID(mygrid), btn, col + 1, row, 1, 1);
     g_signal_connect(btn, "value_changed", G_CALLBACK(panadapter_step_value_changed_cb), myrx);
@@ -426,7 +426,7 @@ void display_menu(GtkWidget *parent) {
     gtk_widget_set_name (label, "boldlabel");
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(mygrid), label, col, row, 1, 1);
-    btn = gtk_spin_button_new_with_range(-220.0, 100.0, 1.0);
+    btn = gtk_spin_button_new_with_range(-220.0, 100.0, 5.0);
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), (double)myrx->waterfall_high);
     gtk_grid_attach(GTK_GRID(mygrid), btn, col + 1, row, 1, 1);
     g_signal_connect(btn, "value_changed", G_CALLBACK(waterfall_high_value_changed_cb), myrx);
@@ -435,7 +435,7 @@ void display_menu(GtkWidget *parent) {
     gtk_widget_set_name (label, "boldlabel");
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(mygrid), label, col, row, 1, 1);
-    btn = gtk_spin_button_new_with_range(-220.0, 100.0, 1.0);
+    btn = gtk_spin_button_new_with_range(-220.0, 100.0, 5.0);
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), (double)myrx->waterfall_low);
     gtk_grid_attach(GTK_GRID(mygrid), btn, col + 1, row, 1, 1);
     g_signal_connect(btn, "value_changed", G_CALLBACK(waterfall_low_value_changed_cb), myrx);
@@ -522,7 +522,7 @@ void display_menu(GtkWidget *parent) {
     gtk_widget_set_name (label, "boldlabel");
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(mygrid), label, col, row, 1, 1);
-    GtkWidget *time_r = gtk_spin_button_new_with_range(1.0, 9999.0, 1.0);
+    GtkWidget *time_r = gtk_spin_button_new_with_range(5.0, 1000.0, 5.0);
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(time_r), (double)myrx->display_average_time);
     gtk_grid_attach(GTK_GRID(mygrid), time_r, col + 1, row, 1, 1);
     g_signal_connect(time_r, "value_changed", G_CALLBACK(time_value_changed_cb), myrx);

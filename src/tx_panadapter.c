@@ -104,13 +104,14 @@ static gboolean tx_panadapter_button_release_event_cb (GtkWidget *widget, GdkEve
     int d = (y - last_y) / 5;
     if (d) {
       tx->panadapter_low += d;
-      //
-      // Keep value within reasonable bounds
-      //
-      if (tx->panadapter_low < -100) { tx->panadapter_low = -100; }
-      if (tx->panadapter_low > tx->panadapter_high - 60) { tx->panadapter_low = tx->panadapter_high - 60; }
       last_y = y;
     }
+    //
+    // Keep value within reasonable bounds
+    //
+    tx->panadapter_low = 5 * (tx->panadapter_low / 5);
+    if (tx->panadapter_low < -100) { tx->panadapter_low = -100; }
+    if (tx->panadapter_low > tx->panadapter_high - 60) { tx->panadapter_low = tx->panadapter_high - 60; }
     pressed = 0;
   }
   return TRUE;

@@ -160,11 +160,12 @@ gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpoin
           f += vfo[id0].frequency;
           vfo_id_move_to(id0, f, vfo_snap);
         }
-        if (has_movedy && from == 0 && dy) {
+        if (has_movedy && from == 0) {
           rx->panadapter_low += dy;
           //
           // Keep value within reasonable bounds
           //
+          rx->panadapter_low = 5 * (rx->panadapter_low / 5);
           if (rx->panadapter_low < -160) { rx->panadapter_low = -160; }
           if (rx->panadapter_low > rx->panadapter_high - 50) { rx->panadapter_low = rx->panadapter_high - 50; }
           last_y = y;
