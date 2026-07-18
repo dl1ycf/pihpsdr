@@ -1,4 +1,4 @@
-/*	shift.c
+/*  shift.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -77,7 +77,7 @@ void xshift (SHIFT a)
 			sin_phase = t1 * a->sin_delta + t2 * a->cos_delta;
 			a->phase += a->delta;
 			if (a->phase >= TWOPI) a->phase -= TWOPI;
-			if (a->phase <	 0.0 ) a->phase += TWOPI;
+			if (a->phase <   0.0 ) a->phase += TWOPI;
 		}
 	}
 	else if (a->in != a->out)

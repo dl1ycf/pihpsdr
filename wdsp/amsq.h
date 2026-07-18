@@ -1,4 +1,4 @@
-/*	amsq.h
+/*  amsq.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -36,7 +36,7 @@ typedef struct _amsq
 	double* trigsig;					// buffer containing trigger signal
 	double rate;						// sample rate
 	double avtau;						// time constant for averaging noise
-	double avm;						
+	double avm;
 	double onem_avm;
 	double avsig;
 	int state;							// state machine control

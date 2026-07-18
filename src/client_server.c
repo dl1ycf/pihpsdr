@@ -82,21 +82,17 @@ int audio_compression = 0;
 //
 void generate_pwd_hash(unsigned char *s, unsigned char *hash, const char *pwd) {
   int pwdlen = strlen(pwd);
-
   if (pwdlen > SHA512_DIGEST_LENGTH) { pwdlen = SHA512_DIGEST_LENGTH; }
-
   //
   // Add password to the challenge
   //
   for  (int i = 0; i < pwdlen; i++) {
     s[SHA512_DIGEST_LENGTH + i] = pwd[i];
   }
-
   //
   // Initial hash
   //
   SHA512(s, SHA512_DIGEST_LENGTH + pwdlen, hash);
-
   //
   // Looping: repeatedly, generate a new string of the form
   // hash + pwd and re-calculate the hash
@@ -105,11 +101,9 @@ void generate_pwd_hash(unsigned char *s, unsigned char *hash, const char *pwd) {
     for (int j = 0; j < SHA512_DIGEST_LENGTH; j++) {
       s[j] = hash[j];
     }
-
     for  (int j = 0; j < pwdlen; j++) {
       s[SHA512_DIGEST_LENGTH + j] = pwd[j];
     }
-
     //
     // New hash
     //
@@ -120,10 +114,8 @@ void generate_pwd_hash(unsigned char *s, unsigned char *hash, const char *pwd) {
 int recv_tcp(int s, char *buffer, int bytes) {
   int bytes_read = 0;
   int count = 0;
-
   while (bytes_read != bytes) {
     int rc = recv(s, &buffer[bytes_read], bytes - bytes_read, 0);
-
     //
     //  On LINUX (not MacOS), if the client suffered sudden death, the recv()
     //  will endlessly return with zero. So make sure that after 10 bunches
@@ -135,20 +127,17 @@ int recv_tcp(int s, char *buffer, int bytes) {
       t_print("%s: read %d bytes, but expected %d.\n", __func__, bytes_read, bytes);
       bytes_read = -1;
       t_perror("recv_tcp");
-
       if (!radio_is_remote) {
         //
         // This is the server. Note client's death.
         //
         remoteclient.running = FALSE;
       }
-
       break;
     } else {
       bytes_read += rc;
     }
   }
-
   return bytes_read;
 }
 
@@ -161,34 +150,27 @@ int recv_tcp(int s, char *buffer, int bytes) {
 int send_tcp(int s, char *buffer, int bytes) {
   static GMutex send_mutex;  // static so correctly initialised
   int bytes_sent = 0;
-
   if (s < 0) { return -1; }
-
   g_mutex_lock(&send_mutex);
-
   while (bytes_sent != bytes) {
     int rc = send(s, &buffer[bytes_sent], bytes - bytes_sent, 0);
-
     if (rc < 0) {
       // return -1, so we need not check downstream
       // on incomplete messages sent
       t_print("%s: sent %d bytes, but tried %d.\n", __func__, bytes_sent, bytes);
       bytes_sent = -1;
       t_perror("send_tcp");
-
       if (!radio_is_remote) {
         //
         // This is the server. Note client's death.
         //
         remoteclient.running = FALSE;
       }
-
       break;
     } else {
       bytes_sent += rc;
     }
   }
-
   g_mutex_unlock(&send_mutex);
   return bytes_sent;
 }
@@ -366,31 +348,24 @@ void send_radio_data(int sock) {
   //
   memcpy(data.soapy_hardware_key, radio->soapy.hardware_key, 64);
   memcpy(data.soapy_driver_key, radio->soapy.driver_key, 64);
-
   for (int i = 0; i < radio->soapy.rx[0].antennas; i++) {
     memcpy(data.soapy_rx1_antenna[i], radio->soapy.rx[0].antenna[i], 64);
   }
-
   for (int i = 0; i < radio->soapy.rx[1].antennas; i++) {
     memcpy(data.soapy_rx2_antenna[i], radio->soapy.rx[1].antenna[i], 64);
   }
-
   for (int i = 0; i < radio->soapy.tx.antennas; i++) {
     memcpy(data.soapy_tx_antenna[i], radio->soapy.tx.antenna[i], 64);
   }
-
   for (int i = 0; i < radio->soapy.rx[0].gains; i++) {
     memcpy(data.soapy_rx1_gain_elem_name[i], radio->soapy.rx[0].gain_elem_name[i], 64);
   }
-
   for (int i = 0; i < radio->soapy.rx[1].gains; i++) {
     memcpy(data.soapy_rx2_gain_elem_name[i], radio->soapy.rx[1].gain_elem_name[i], 64);
   }
-
   for (int i = 0; i < radio->soapy.tx.gains; i++) {
     memcpy(data.soapy_tx_gain_elem_name[i], radio->soapy.tx.gain_elem_name[i], 64);
   }
-
   //
   data.pa_power = to_16(pa_power);
   data.ptt_delay = to_16(ptt_delay);
@@ -405,11 +380,9 @@ void send_radio_data(int sock) {
   data.drive_digi_max = to_double(drive_digi_max);
   data.div_gain = to_double(div_gain);
   data.div_phase = to_double(div_phase);
-
   for (int i = 0; i < 11; i++) {
     data.pa_trim[i] = to_double(pa_trim[i]);
   }
-
   data.soapy_rx1_gain_step = to_double(radio->soapy.rx[0].gain_step);
   data.soapy_rx1_gain_min  = to_double(radio->soapy.rx[0].gain_min );
   data.soapy_rx1_gain_max  = to_double(radio->soapy.rx[0].gain_max );
@@ -419,25 +392,21 @@ void send_radio_data(int sock) {
   data.soapy_tx_gain_step = to_double(radio->soapy.tx.gain_step);
   data.soapy_tx_gain_min  = to_double(radio->soapy.tx.gain_min );
   data.soapy_tx_gain_max  = to_double(radio->soapy.tx.gain_max );
-
   for (int i = 0; i < radio->soapy.rx[0].gains; i++) {
     data.soapy_rx1_gain_elem_step[i] = to_double(radio->soapy.rx[0].gain_elem_step[i]);
     data.soapy_rx1_gain_elem_min[i] = to_double(radio->soapy.rx[0].gain_elem_min[i]);
     data.soapy_rx1_gain_elem_max[i] = to_double(radio->soapy.rx[0].gain_elem_max[i]);
   }
-
   for (int i = 0; i < radio->soapy.rx[1].gains; i++) {
     data.soapy_rx2_gain_elem_step[i] = to_double(radio->soapy.rx[1].gain_elem_step[i]);
     data.soapy_rx2_gain_elem_min[i] = to_double(radio->soapy.rx[1].gain_elem_min[i]);
     data.soapy_rx2_gain_elem_max[i] = to_double(radio->soapy.rx[1].gain_elem_max[i]);
   }
-
   for (int i = 0; i < radio->soapy.tx.gains; i++) {
     data.soapy_tx_gain_elem_step[i] = to_double(radio->soapy.tx.gain_elem_step[i]);
     data.soapy_tx_gain_elem_min[i] = to_double(radio->soapy.tx.gain_elem_min[i]);
     data.soapy_tx_gain_elem_max[i] = to_double(radio->soapy.tx.gain_elem_max[i]);
   }
-
   //
   data.frequency_calibration = to_16(frequency_calibration);
   data.soapy_radio_sample_rate = to_32(soapy_radio_sample_rate);
@@ -515,7 +484,6 @@ void send_tx_data(int sock) {
     data.tx_default_filter_high = to_16(tx->default_filter_high);
     //
     data.fft_size = to_32(tx->fft_size);
-
     //
     for (int i = 0; i < 11; i++) {
       data.eq_freq[i] =  to_double(tx->eq_freq[i]);
@@ -524,7 +492,6 @@ void send_tx_data(int sock) {
       data.cfc_lvl[i] =  to_double(tx->cfc_lvl[i]);
       data.cfc_post[i] =  to_double(tx->cfc_post[i]);
     }
-
     data.phrot_corner = to_double(tx->phrot_corner);
     data.swr_alarm = to_double(tx->swr_alarm);
     data.dexp_tau =  to_double(tx->dexp_tau);
@@ -615,18 +582,15 @@ void send_rx_data(int sock, int id) {
   data.nr4_noise_rescale       = to_double(rx->nr4_noise_rescale);
   data.nr4_post_threshold      = to_double(rx->nr4_post_threshold);
   data.notch_min_width         = to_double(rx->notch_min_width);
-
   for (int i = 0; i < 3; i++) {
     data.multi_notch_enable[i] = rx->multi_notch_enable[i];
     data.multi_notch_center[i] = to_double(rx->multi_notch_center[i]);
     data.multi_notch_width[i]  = to_double(rx->multi_notch_width[i]);
   }
-
   for (int i = 0; i < 11; i++) {
     data.eq_freq[i]            = to_double(rx->eq_freq[i]);
     data.eq_gain[i]            = to_double(rx->eq_gain[i]);
   }
-
   data.fft_size                = to_32(rx->fft_size);
   data.sample_rate             = to_32(rx->sample_rate);
   send_tcp(sock, (char *)&data, sizeof(RECEIVER_DATA));
@@ -908,29 +872,24 @@ void send_eq(int s, int id) {
   EQUALIZER_COMMAND command;
   SYNC(command.header.sync);
   command.id     = id;
-
   if (id < RECEIVERS) {
     const RECEIVER *rx = receiver[id];
     command.header.data_type = to_16(CMD_RX_EQ);
     command.enable = rx->eq_enable;
-
     for (int i = 0; i < 11; i++) {
       command.freq[i] = to_double(rx->eq_freq[i]);
       command.gain[i] = to_double(rx->eq_gain[i]);
     }
   } else if (id == 8) {
     command.header.data_type = to_16(CMD_TX_EQ);
-
     if (can_transmit) {
       command.enable = transmitter->eq_enable;
-
       for (int i = 0; i < 11; i++) {
         command.freq[i] = to_double(transmitter->eq_freq[i]);
         command.gain[i] = to_double(transmitter->eq_gain[i]);
       }
     }
   }
-
   send_tcp(s, (char *)&command, sizeof(command));
 }
 
@@ -943,13 +902,11 @@ void send_notch(int s, const RECEIVER *rx) {
   SYNC(command.header.sync);
   command.header.data_type = to_16(CMD_NOTCH);
   command.id                        = rx->id;
-
   for (int i = 0; i < 3; i++) {
     command.enable[i] = rx->multi_notch_enable[i];
     command.center[i] = to_double(rx->multi_notch_center[i]);
     command.width[i] = to_double(rx->multi_notch_width[i]);
   }
-
   send_tcp(s, (char *)&command, sizeof(command));
 }
 
@@ -1111,12 +1068,10 @@ void send_rx_filter_cut(int s, int id) {
   SYNC(header.sync);
   header.data_type = to_16(CMD_RX_FILTER_CUT);
   header.b1 = id;
-
   if (id < receivers) {
     header.s1  =  to_16(receiver[id]->filter_low);
     header.s2  =  to_16(receiver[id]->filter_high);
   }
-
   send_tcp(s, (char *)&header, sizeof(HEADER));
 }
 
@@ -1127,12 +1082,10 @@ void send_tx_filter_cut(int s) {
   HEADER header;
   SYNC(header.sync);
   header.data_type = to_16(CMD_TX_FILTER_CUT);
-
   if (can_transmit) {
     header.s1  =  to_16(transmitter->filter_low);
     header.s2  =  to_16(transmitter->filter_high);
   }
-
   send_tcp(s, (char *)&header, sizeof(HEADER));
 }
 
@@ -1212,13 +1165,11 @@ void send_tx_compressor(int s) {
     command.cfc = transmitter->cfc;
     command.cfc_eq = transmitter->cfc_eq;
     command.compressor_level = to_double(transmitter->compressor_level);
-
     for (int i = 0; i < 11; i++) {
       command.cfc_freq[i] = to_double(transmitter->cfc_freq[i]);
       command.cfc_lvl [i] = to_double(transmitter->cfc_lvl [i]);
       command.cfc_post[i] = to_double(transmitter->cfc_post[i]);
     }
-
     send_tcp(s, (char *)&command, sizeof(COMPRESSOR_DATA));
   }
 }
@@ -1274,9 +1225,7 @@ void send_psparams(int s, const TRANSMITTER *tx) {
   PS_PARAMS params;
   SYNC(params.header.sync);
   params.header.data_type = to_16(CMD_PSPARAMS);
-  params.ps_ptol = tx->ps_ptol;
   params.ps_oneshot = tx->ps_oneshot;
-  params.ps_map = tx->ps_map;
   params.ps_setpk = to_double(tx->ps_setpk);
   send_tcp(s, (char *)&params, sizeof(PS_PARAMS));
 }
@@ -1352,11 +1301,9 @@ void send_patrim(int s) {
   SYNC(command.header.sync);
   command.header.data_type = to_16(CMD_PATRIM);
   command.pa_power = to_16(pa_power);
-
   for (int i = 0; i < 11; i++) {
     command.pa_trim[i] = to_double(pa_trim[i]);
   }
-
   send_tcp(s, (char *)&command, sizeof(PATRIM_DATA));
 }
 
@@ -1478,14 +1425,12 @@ void send_cw(int s, int state, int wait) {
   now = ts.tv_sec + 1.0E-9 * ts.tv_nsec;
   elapsed = now - last;
   last = now;
-
   if (state && elapsed > 0.5) {
     header.b1 = 0;
     header.s1 = to_16(1);     // 4800 * 4096 + 704
     header.s2 = to_16(704);
     send_tcp(s, (char *)&header, sizeof(HEADER));
   }
-
   header.b1  = state;
   header.s1 = to_16(wait >> 12);
   header.s2 = to_16(wait & 0xFFF);
@@ -1512,7 +1457,6 @@ void send_display(int s, int id) {
   DOUBLE_COMMAND command;
   SYNC(command.header.sync);
   command.header.b1 = id;
-
   if (id < RECEIVERS) {
     command.header.data_type = to_16(CMD_RX_DISPLAY);
     command.header.b2 = receiver[id]->display_detector_mode;
@@ -1524,7 +1468,6 @@ void send_display(int s, int id) {
     command.header.s1 = to_16(transmitter->display_average_mode);
     command.dbl = to_double(transmitter->display_average_time);
   }
-
   send_tcp(s, (char *)&command, sizeof(DOUBLE_COMMAND));
 }
 

@@ -83,7 +83,6 @@ int menu_active_receiver_changed(gpointer data) {
     gtk_widget_destroy(sub_menu);
     sub_menu = NULL;
   }
-
   return FALSE;
 }
 
@@ -92,12 +91,10 @@ static void cleanup(void) {
     gtk_widget_destroy(main_menu);
     main_menu = NULL;
   }
-
   if (sub_menu != NULL) {
     gtk_widget_destroy(sub_menu);
     sub_menu = NULL;
   }
-
   active_menu = NO_MENU;
 }
 
@@ -114,13 +111,11 @@ static gboolean close_cb(void) {
 // cppcheck-suppress constParameterCallback
 static gboolean restart_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
-
   if (radio_is_remote) {
     send_restart(cl_sock_tcp);
   } else {
     radio_protocol_restart();
   }
-
   return TRUE;
 }
 
@@ -293,7 +288,6 @@ static gboolean meter_cb (GtkWidget *widget, GdkEventButton *event, gpointer dat
 void start_band_menu(int vfo) {
   int old_menu = active_menu;
   cleanup();
-
   if (old_menu != BAND_MENU) {
     band_menu(top_window, vfo);
     active_menu = BAND_MENU;
@@ -303,7 +297,6 @@ void start_band_menu(int vfo) {
 void start_bandstack_menu(void) {
   int old_menu = active_menu;
   cleanup();
-
   if (old_menu != BANDSTACK_MENU) {
     bandstack_menu(top_window);
     active_menu = BANDSTACK_MENU;
@@ -313,7 +306,6 @@ void start_bandstack_menu(void) {
 void start_mode_menu(int vfo) {
   int old_menu = active_menu;
   cleanup();
-
   if (old_menu != MODE_MENU) {
     mode_menu(top_window, vfo);
     active_menu = MODE_MENU;
@@ -323,7 +315,6 @@ void start_mode_menu(int vfo) {
 void start_filter_menu(int vfo) {
   int old_menu = active_menu;
   cleanup();
-
   if (old_menu != FILTER_MENU) {
     filter_menu(top_window, vfo);
     active_menu = FILTER_MENU;
@@ -375,7 +366,6 @@ static gboolean store_cb (GtkWidget *widget, GdkEventButton *event, gpointer dat
 void start_noise_menu(void) {
   int old_menu = active_menu;
   cleanup();
-
   if (old_menu != NOISE_MENU) {
     noise_menu(top_window);
     active_menu = NOISE_MENU;
@@ -391,7 +381,6 @@ static gboolean agc_cb (GtkWidget *widget, GdkEventButton *event, gpointer data)
 void start_agc_menu(void) {
   int old_menu = active_menu;
   cleanup();
-
   if (old_menu != AGC_MENU) {
     agc_menu(top_window);
     active_menu = AGC_MENU;
@@ -441,7 +430,6 @@ static gboolean diversity_cb (GtkWidget *widget, GdkEventButton *event, gpointer
 void start_vfo_menu(int vfo) {
   int old_menu = active_menu;
   cleanup();
-
   if (old_menu != VFO_MENU) {
     vfo_menu(top_window, vfo);
     active_menu = VFO_MENU;
@@ -451,7 +439,6 @@ void start_vfo_menu(int vfo) {
 void start_store_menu(void) {
   int old_menu = active_menu;
   cleanup();
-
   if (old_menu != STORE_MENU) {
     store_menu(top_window);
     active_menu = STORE_MENU;
@@ -460,7 +447,6 @@ void start_store_menu(void) {
 
 void start_tx_menu(void) {
   cleanup();
-
   if (can_transmit) {
     tx_menu(top_window);
   }
@@ -474,7 +460,6 @@ static gboolean tx_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) 
 
 void start_ps_menu(void) {
   cleanup();
-
   if (can_transmit) {
     ps_menu(top_window);
   }
@@ -536,12 +521,10 @@ static gboolean midi_cb (GtkWidget *widget, GdkEventButton *event, gpointer data
 void new_menu(void) {
   GtkWidget *btn, *w;
   int col, row;
-
   if (sub_menu != NULL) {
     gtk_widget_destroy(sub_menu);
     sub_menu = NULL;
   }
-
   if (main_menu == NULL) {
     main_menu = gtk_dialog_new();
     gtk_window_set_transient_for(GTK_WINDOW(main_menu), GTK_WINDOW(top_window));
@@ -602,14 +585,12 @@ void new_menu(void) {
     g_signal_connect (btn, "button-press-event", G_CALLBACK(rigctl_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
-
     if (!radio_is_remote) {
       btn = gtk_button_new_with_label("Server");
       g_signal_connect (btn, "button-press-event", G_CALLBACK(server_cb), NULL);
       gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
       row++;
     }
-
     btn = gtk_button_new_with_label("DX");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(dxcluster_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
@@ -700,16 +681,13 @@ void new_menu(void) {
     g_signal_connect (btn, "button-press-event", G_CALLBACK(agc_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
-
     if (RECEIVERS == 2 && n_adc > 1) {
       btn = gtk_button_new_with_label("DIV");
       g_signal_connect (btn, "button-press-event", G_CALLBACK(diversity_cb), NULL);
       gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     }
-
     row = 2;
     col++;
-
     //
     // TX-related menus
     // TX, PA, VOX, PS, CW
@@ -731,7 +709,6 @@ void new_menu(void) {
       g_signal_connect (btn, "button-press-event", G_CALLBACK(vox_cb), NULL);
       gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
       row++;
-
       if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
         btn = gtk_button_new_with_label("PS");
         g_signal_connect (btn, "button-press-event", G_CALLBACK(ps_cb), NULL);
@@ -739,7 +716,6 @@ void new_menu(void) {
         row++;
       }
     }
-
     btn = gtk_button_new_with_label("CW");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(cw_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
@@ -768,13 +744,11 @@ void new_menu(void) {
     g_signal_connect (btn, "button-press-event", G_CALLBACK(ant_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
-
     if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
       btn = gtk_button_new_with_label("OC");
       g_signal_connect (btn, "button-press-event", G_CALLBACK(oc_cb), NULL);
       gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     }
-
     row = 2;
     col++;
     //
@@ -798,14 +772,12 @@ void new_menu(void) {
     row++;
 #endif
 #ifdef GPIO
-
     if (controller != NO_CONTROLLER) {
       btn = gtk_button_new_with_label("Encoders");
       g_signal_connect (btn, "button-press-event", G_CALLBACK(encoder_cb), NULL);
       gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
       row++;
     }
-
     //
     // Note the switches of CONTROLLER1 are assigned via the Toolbar menu
     //
@@ -815,15 +787,12 @@ void new_menu(void) {
       gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
       row++;
     }
-
 #endif
-
     if (have_g2v2) {
       btn = gtk_button_new_with_label("G2 Panel");
       g_signal_connect (btn, "button-press-event", G_CALLBACK(g2panel_cb), NULL);
       gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     }
-
     gtk_container_add(GTK_CONTAINER(content), grid);
     gtk_widget_show_all(main_menu);
   } else {

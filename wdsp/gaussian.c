@@ -121,7 +121,7 @@ GAUSSIAN create_gaussian (int run, int position, int size, int nc, double* in, d
 	if (a->nc == 0) a->nc = calc_nc (a->bandwidth, a->nsigma, a->samplerate);
 	if (a->size > a->nc) a->nc = a->size;
 	impulse = build_gaussian (a->nc, (double)a->samplerate, a->f_center, a->bandwidth, a->scale, a->nsigma);
-	a->p = create_fircore (a->size, a->in, a->out, a->nc, 0, impulse);
+	a->p = create_fircore (a->size, a->in, a->out, a->nc, 0, 4, impulse);
 	_aligned_free (impulse);
 	return a;
 }

@@ -41,11 +41,9 @@ static int colorHighB = 0;
 static gboolean
 waterfall_configure_event_cb (GtkWidget *widget, GdkEventConfigure *event, gpointer data) {
   RECEIVER *rx = (RECEIVER *)data;
-
   if (rx->pixbuf) {
     g_object_unref(rx->pixbuf);
   }
-
   int width = gtk_widget_get_allocated_width (widget);
   int heigt = gtk_widget_get_allocated_height (widget);
   rx->pixbuf = gdk_pixbuf_new(GDK_COLORSPACE_RGB, FALSE, 8, width, heigt);
@@ -63,12 +61,10 @@ waterfall_draw_cb (GtkWidget *widget,
                    cairo_t   *cr,
                    gpointer   data) {
   const RECEIVER *rx = (RECEIVER *)data;
-
   if (rx->pixbuf) {
     gdk_cairo_set_source_pixbuf (cr, rx->pixbuf, 0, 0);
     cairo_paint (cr);
   }
-
   return FALSE;
 }
 
@@ -98,7 +94,6 @@ void waterfall_update(RECEIVER *rx) {
     int width = gdk_pixbuf_get_width(rx->pixbuf);
     int height = gdk_pixbuf_get_height(rx->pixbuf);
     int rowstride = gdk_pixbuf_get_rowstride(rx->pixbuf);
-
     //
     // The existing waterfall corresponds to a center frequency rx->waterfall_frequency, a zoom value rx->waterfall_zoom and
     // a pan value rx->waterfall_pan. If the zoom value changes, or if the waterfill needs horizontal shifting larger
@@ -117,7 +112,6 @@ void waterfall_update(RECEIVER *rx) {
         int rotfreq = (int)((double)(rx->waterfall_frequency - frequency) * rx->cAp); // shift due to freq. change
         int rotpan  = (int)(rx->cBp - rx->waterfall_cBp);                           // shift due to pan   change
         int rotate_pixels = rotfreq + rotpan;
-
         if (rotate_pixels >= width || rotate_pixels <= -width) {
           //
           // If horizontal shift is too large, re-init waterfall
@@ -134,24 +128,20 @@ void waterfall_update(RECEIVER *rx) {
           if (rotate_pixels < 0) {
             // shift left, and clear the right-most part
             memmove(pixels, &pixels[-rotate_pixels * 3], ((width * height) + rotate_pixels) * 3);
-
             for (int i = 0; i < height; i++) {
               memset(&pixels[((i * width) + (width + rotate_pixels)) * 3], 0, -rotate_pixels * 3);
             }
           } else if (rotate_pixels > 0) {
             // shift right, and clear left-most part
             memmove(&pixels[rotate_pixels * 3], pixels, ((width * height) - rotate_pixels) * 3);
-
             for (int i = 0; i < height; i++) {
               memset(&pixels[(i * width) * 3], 0, rotate_pixels * 3);
             }
           }
-
           if (rotfreq != 0) {
             freq_changed = 1;
             rx->waterfall_frequency -= lround(rotfreq * rx->cB); // this is not necessarily frequency!
           }
-
           rx->waterfall_cBp = rx->cBp;
         }
       }
@@ -165,7 +155,6 @@ void waterfall_update(RECEIVER *rx) {
       rx->waterfall_cBp = rx->cBp;
       rx->waterfall_cB = rx->cB;
     }
-
     //
     // If we have just shifted the waterfall befause the VFO frequency has changed,
     // there are  still IQ samples in the input queue corresponding to the "old"
@@ -191,38 +180,29 @@ void waterfall_update(RECEIVER *rx) {
       // soffset contains all corrections due to attenuation, preamps, etc.
       //
       soffset = (float)(calib + adc[rx->adc].attenuation - adc[rx->adc].gain);
-
       if (filter_board == ALEX && rx->adc == 0) {
         soffset += (float)(10 * adc[0].alex_attenuation);
       }
-
       if (filter_board == CHARLY25 && rx->adc == 0) {
         soffset += (float)(12 * adc[0].alex_attenuation - 18 * (adc[0].preamp + adc[0].dither));
       }
-
       if (have_preamp && filter_board != CHARLY25) {
         soffset -= (float)(20 * adc[rx->adc].preamp);
       }
-
       if (rx->waterfall_automatic) {
         float average = 0.0F;
-
         for (int i = 0; i < width; i++) {
           average += samples[i];
         }
-
         wf_low = (average / (float)width) + soffset - 5.0F;
         wf_high = wf_low + 55.0F;
       } else {
         wf_low  = (float) rx->waterfall_low;
         wf_high = (float) rx->waterfall_high;
       }
-
       rangei = 1.0F / (wf_high - wf_low);
-
       for (int i = 0; i < width; i++) {
         float sample = samples[i] + soffset;
-
         if (sample < wf_low) {
           *p++ = colorLowR;
           *p++ = colorLowG;
@@ -233,7 +213,6 @@ void waterfall_update(RECEIVER *rx) {
           *p++ = colorHighB;
         } else {
           float percent = (sample - wf_low) * rangei;
-
           if (percent < 0.222222f) {
             float local_percent = percent * 4.5f;
             *p++ = (int)((1.0f - local_percent) * colorLowR);
@@ -273,7 +252,6 @@ void waterfall_update(RECEIVER *rx) {
         }
       }
     }
-
     gtk_widget_queue_draw (rx->waterfall);
   }
 }

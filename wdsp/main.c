@@ -1,4 +1,4 @@
-/*	main.c
+/*  main.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -75,7 +75,7 @@ void create_main (int channel)
 		create_txa (channel);
 		break;
 	case 31:  //
-		
+
 		break;
 	}
 }
@@ -91,7 +91,7 @@ void destroy_main (int channel)
 		destroy_txa (channel);
 		break;
 	case 31:  //
-		
+
 		break;
 	}
 }
@@ -107,7 +107,7 @@ void flush_main (int channel)
 		flush_txa (channel);
 		break;
 	case 31:
-		
+
 		break;
 	}
 }

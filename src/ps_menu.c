@@ -33,12 +33,12 @@
 #include "vfo.h"
 
 static GtkWidget *dialog = NULL;
-static GtkWidget *feedback_l;
-static GtkWidget *correcting_l;
-static GtkWidget *get_pk;
-static GtkWidget *set_pk;
-static GtkWidget *tx_att_lbl;
-static GtkWidget *tx_att;
+static GtkWidget *corr_info_b;
+static GtkWidget *status_info_b;
+static GtkWidget *feedbk_info_b;
+static GtkWidget *chk_info_b;
+static GtkWidget *cnt_info_b;
+static GtkWidget *get_pk_b;
 static GtkWidget *tx_att_spin;
 
 //
@@ -50,7 +50,7 @@ static guint info_timer = 0;
 
 #define INFO_SIZE 16
 
-static GtkWidget *entry[INFO_SIZE];
+//static GtkWidget *entry[INFO_SIZE];
 
 static void cleanup(void) {
   if (dialog != NULL) {
@@ -60,18 +60,14 @@ static void cleanup(void) {
     // Let PS thread terminate before destroying dialog
     //
     running = 0;
-
     if (info_timer > 0) {
       g_source_remove(info_timer);
       info_timer = 0;
     }
-
     usleep(200000);
-
     if (transmitter->twotone) {
       radio_set_twotone(transmitter, 0);
     }
-
     gtk_widget_destroy(tmp);
     sub_menu = NULL;
     active_menu  = NO_MENU;
@@ -97,65 +93,32 @@ static void ps_off_on(void) {
 }
 
 static void att_spin_cb(GtkWidget *widget, gpointer data) {
+  if (transmitter->auto_on) {
+    //
+    // We come here if the calibration loop adjusts the attenuation and
+    // updates the spin button to reflect the new value. Here we supress
+    // another send_psatt/schedule_hp in this case
+    //
+    return;
+  }
   transmitter->attenuation = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
-
   if (radio_is_remote) {
     send_psatt(cl_sock_tcp); // this sends auto, attenuation, feedback, and ps antenna
   } else {
+    schedule_transmit_specific();
     schedule_high_priority();
   }
 }
 
 static void setpk_cb(GtkWidget *widget, gpointer data) {
-  double newpk = -1.0;
-  char text[16];
-  sscanf(gtk_entry_get_text(GTK_ENTRY(widget)), "%lf", &newpk);
+  transmitter->ps_setpk = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
 
-  if (newpk > 0.01 && newpk < 1.01 && fabs(newpk - transmitter->ps_setpk) > 0.001) {
-    transmitter->ps_setpk = newpk;
-
-    if (radio_is_remote) {
-      send_psparams(cl_sock_tcp, transmitter);
-    } else {
-      tx_ps_setparams(transmitter);
-      ps_off_on();
-    }
+  if (radio_is_remote) {
+    send_psparams(cl_sock_tcp, transmitter);
+  } else {
+    tx_ps_setparams(transmitter);
+    ps_off_on();
   }
-
-  //
-  // If an illegal value has been typed in, ps_setpk remains unchanged
-  // so we have to update the value in the text field of the entry
-  //
-  snprintf(text, sizeof(text), "%6.3f", transmitter->ps_setpk);
-  gtk_entry_set_text(GTK_ENTRY(set_pk), text);
-}
-
-static void clear_fields(void) {
-  //
-  // This clears most of the text fields and puts
-  // the "Feedback" and "Correcting" string in black colour.
-  // This will not be re-coloured until a new valid calibration
-  // has taken place.
-  // This is called when disabling PS, but also when starting a two-tone experiment.
-  // In the latter case, the fields stay cleared until the first successful "new"
-  // calibration result is obtained.
-  //
-  if (dialog == NULL) {
-    // e.g. doing a two-tone experiment and PS menu is not open
-    return;
-  }
-
-  gtk_label_set_markup(GTK_LABEL(feedback_l), "<span color='black'>Feedback Lvl</span>");
-  gtk_label_set_markup(GTK_LABEL(correcting_l), "<span color='black'>Correcting</span>");
-
-  for (int i = 0; i < INFO_SIZE; i++) {
-    if (entry[i] != NULL) {
-      gtk_label_set_text(GTK_LABEL(entry[i]), "");
-    }
-  }
-
-  gtk_label_set_text(GTK_LABEL(get_pk), "");
-  gtk_label_set_text(GTK_LABEL(tx_att), "");
 }
 
 //
@@ -166,53 +129,56 @@ static void clear_fields(void) {
 // updates the PS status. If PS is not enabled,
 // this is essentially a no-op.
 //
+// ATTN: This can be called if the menu is not open
+//       so we must not access any GUI elements
+//
 int ps_calibration_timer(gpointer arg) {
   guint *timer = (guint *)arg;
   static int state = -1;
-
+  static int old5  = -1;
+  static int old4  = -1;
   if (!transmitter->twotone) {
     state = -1;
     *timer = 0;
     return G_SOURCE_REMOVE;
   }
-
   if (state < 0) {
     //
-    // Initialised two-tone experiment
+    // Start two-tone experiment
     //
     state = 1;          // start with PS reset
-    clear_fields();     // clear all data until the next calibration has been done
+    old5 = -1;
   }
-
   if (transmitter->puresignal) {
     int tx_att_min;
     int tx_att_max;
-    static int old5 = 0;
-
     if (device == DEVICE_HERMES_LITE2 || device == NEW_DEVICE_HERMES_LITE2) {
-      tx_att_min = -29;
+      //
+      // This range corresponds to +32 ... -12 on the RF slider
+      tx_att_min = -13;
       tx_att_max = 31;
     } else {
       tx_att_min = 0;
       tx_att_max = 31;
     }
-
     tx_ps_getinfo(transmitter);
     //
-    // newcal is set to 1 if we have a new calibration value
-    // (info[5] is the calibration counter)
+    // newcal is set to 1 if we have a new calibration or a new feedback value
+    // TODO: consider setting newcal to 1 when it was zero upon the last 10
+    //       entries into this loop.
     //
     int newcal = 0;
-
     if (transmitter->psinfo[5] !=  old5) {
       old5 = transmitter->psinfo[5];
       newcal = 1;
     }
-
+    if (transmitter->psinfo[4] > 0 && transmitter->psinfo[4] != old4) {
+      old4 = transmitter->psinfo[4];
+      newcal = 1;
+    }
     if (transmitter->auto_on) {
       switch (state) {
       case 0:
-
         //
         // A value of 165 means 0.7 dB too strong
         // A value of 140 means 0.7 dB too weak
@@ -222,29 +188,30 @@ int ps_calibration_timer(gpointer arg) {
                        && transmitter->attenuation > tx_att_min))) {
           int delta_att;
           int new_att;
-
           if (transmitter->psinfo[4] > 275) {
-            // If signal is very strong, increase attenuation by 15 dB
+            //
+            // If signal is very strong, increase attenuation by 10 dB
             // Note the value is limited to about 300-350 due to ADC clipping/IQ overflow,
-            // so the feedback level might be much stronger than indicated here
-            delta_att = 15;
-
-            if (transmitter->attenuation < -15) { delta_att += 15; }
+            // so the feedback level might be much stronger than indicated here, so advancing
+            // the attenuation by 10 also might be needed to protect the RF front-end.
+            //
+            delta_att = 10;
+            //
+            // HL2: transmitter "attenuation" can be negative, a value of zero corresponds
+            //      to a RF gain of about 19. If we are far in the negative, make a 15dB jump
+            //
+            if (transmitter->attenuation < -5) { delta_att += 15; }
           } else if (transmitter->psinfo[4] < 25) {
-            // If signal is very weak, decrease attenuation by 15 dB
-            delta_att = -15;
+            // If signal is very weak, decrease attenuation by 10 dB
+            delta_att = -10;
           } else {
             // calculate new delta, this mostly succeeds in one step
             delta_att = (int) lround(20.0 * log10((double)transmitter->psinfo[4] / 152.293));
           }
-
           new_att = transmitter->attenuation + delta_att;
-
           // keep new value of attenuation in allowed range
           if (new_att < tx_att_min) { new_att = tx_att_min; }
-
           if (new_att > tx_att_max) { new_att = tx_att_max; }
-
           // A "PS reset" is only necessary if the attenuation
           // has actually changed. This prevents firing "reset"
           // constantly if the SDR board does not have a TX attenuator
@@ -255,19 +222,17 @@ int ps_calibration_timer(gpointer arg) {
           if (transmitter->attenuation != new_att) {
             tx_ps_reset(transmitter);
             transmitter->attenuation = new_att;
+            schedule_high_priority();
             schedule_transmit_specific();
             state = 1;
           }
         }
-
         break;
-
       case 1:
         // Perform a PS reset and proceed to a PS restart
         state = 2;
         tx_ps_reset(transmitter);
         break;
-
       case 2:
         // Perform a PS restart and proceed to the calibration loop
         state = 0;
@@ -276,132 +241,131 @@ int ps_calibration_timer(gpointer arg) {
       }
     }
   }
-
   return G_SOURCE_CONTINUE;
 }
 
 //
 // This is called periodically so it must be a state machine.
-// If this thread is activated without the PS menu being
-// active, then no menu elements are accessed.
 //
 static int info_thread(gpointer arg) {
   if (!running) {
     return G_SOURCE_REMOVE;
   }
 
-  if (transmitter->puresignal) {
-    gchar label[20];
-    static int old5 = 0;  // used to detect an increase of the calibration count
-    static int old14 = 0; // used to detect change of "Correcting" status
 
+  if (transmitter->puresignal) {
+    //
+    // Put Info/Colour on the buttons
+    //
+    static int  chkcnt = 0;
+    gchar label[20];
+
+    //
+    // Get PS info. If the radio is remote, this is transmitted
+    // periodically and the data is set be the client thread.
+    //
     if (!radio_is_remote) {
       tx_ps_getinfo(transmitter);
       tx_ps_getmx(transmitter);
     }
 
-    //
-    // Set newcal if there is a new calibration
-    // Set newcorr if "Correcting" status changed
-    //
-    int newcal = 0;
-    int newcorr = 0;
-
-    if (transmitter->psinfo[5] !=  old5) {
-      old5 = transmitter->psinfo[5];
-      newcal = 1;
+    if (transmitter->psinfo[14] == 0) {
+      gtk_button_set_label(GTK_BUTTON(corr_info_b), "No Corr");
+      gtk_widget_set_name(corr_info_b, "redbutton");
+    } else {
+      gtk_button_set_label(GTK_BUTTON(corr_info_b), "Correcting");
+      gtk_widget_set_name(corr_info_b, "greenbutton");
     }
 
-    if (transmitter->psinfo[14] != old14) {
-      old14 = transmitter->psinfo[14];
-      newcorr = 1;
+    int fbk = transmitter->psinfo[4];
+    snprintf(label, sizeof(label), "%d", fbk);
+    gtk_button_set_label(GTK_BUTTON(feedbk_info_b), label);
+    if (fbk > 181)  {
+      gtk_widget_set_name(feedbk_info_b, "bluebutton");
+    } else if (fbk > 128)  {
+      gtk_widget_set_name(feedbk_info_b, "greenbutton");
+    } else if (fbk > 90)  {
+      gtk_widget_set_name(feedbk_info_b, "yellowbutton");
+    } else {
+      gtk_widget_set_name(feedbk_info_b, "redbutton");
     }
 
-    if (newcal) {
-      if (transmitter->psinfo[4] > 181)  {
-        gtk_label_set_markup(GTK_LABEL(feedback_l), "<span color='blue'>Feedback Lvl</span>");
-      } else if (transmitter->psinfo[4] > 128)  {
-        gtk_label_set_markup(GTK_LABEL(feedback_l), "<span color='green'>Feedback Lvl</span>");
-      } else if (transmitter->psinfo[4] > 90)  {
-        gtk_label_set_markup(GTK_LABEL(feedback_l), "<span color='yellow'>Feedback Lvl</span>");
+    snprintf(label, sizeof(label), "%d", transmitter->psinfo[5]);
+    gtk_button_set_label(GTK_BUTTON(cnt_info_b), label);
+
+    switch (transmitter->psinfo[6]) {
+    case 0:
+      if (chkcnt > 0) {
+        chkcnt--;
       } else {
-        gtk_label_set_markup(GTK_LABEL(feedback_l), "<span color='red'>Feedback Lvl</span>");
+        gtk_button_set_label(GTK_BUTTON(chk_info_b), "");
+        gtk_widget_set_name(chk_info_b, "boldlabel");
       }
+      break;
+    case 1:
+      if (chkcnt == 0) {
+        gtk_button_set_label(GTK_BUTTON(chk_info_b), "Fail");
+        gtk_widget_set_name(chk_info_b, "orangebutton");
+        chkcnt = 10;
+      }
+      break;
+    default:
+      gtk_button_set_label(GTK_BUTTON(chk_info_b), "Drive");
+      gtk_widget_set_name(chk_info_b, "redbutton");
+      chkcnt = 10;
+      break;
+    }
+    switch (transmitter->psinfo[15]) {
+    case 0:
+      gtk_button_set_label(GTK_BUTTON(status_info_b), "Reset");
+      break;
+    case 1:
+      gtk_button_set_label(GTK_BUTTON(status_info_b), "Wait");
+      break;
+    case 2:
+      gtk_button_set_label(GTK_BUTTON(status_info_b), "MoxDelay");
+      break;
+    case 3:
+      gtk_button_set_label(GTK_BUTTON(status_info_b), "Setup");
+      break;
+    case 4:
+      gtk_button_set_label(GTK_BUTTON(status_info_b), "Collect");
+      break;
+    case 5:
+      gtk_button_set_label(GTK_BUTTON(status_info_b), "MoxCheck");
+      break;
+    case 6:
+      gtk_button_set_label(GTK_BUTTON(status_info_b), "Calculate");
+      break;
+    case 7:
+      gtk_button_set_label(GTK_BUTTON(status_info_b), "Delay");
+      break;
+    case 8:
+      gtk_button_set_label(GTK_BUTTON(status_info_b), "StayOn");
+      break;
+    case 9:
+      gtk_button_set_label(GTK_BUTTON(status_info_b), "TurnOn");
+      break;
     }
 
-    if (newcorr) {
-      if (transmitter->psinfo[14] == 0) {
-        gtk_label_set_markup(GTK_LABEL(correcting_l), "<span color='red'>Correcting</span>");
-      } else {
-        gtk_label_set_markup(GTK_LABEL(correcting_l), "<span color='green'>Correcting</span>");
-      }
-    }
-
-    //
-    // Print PS status into the text boxes (if they exist)
-    //
-    for (int i = 0; i < INFO_SIZE; i++) {
-      if (entry[i] == NULL) { continue; }
-
-      snprintf(label, sizeof(label), "%d", transmitter->psinfo[i]);
-
-      //
-      // Translate PS state variable into human-readable string
-      //
-      if (i == 15) {
-        switch (transmitter->psinfo[15]) {
-        case 0:
-          snprintf(label, sizeof(label), "Reset");
-          break;
-
-        case 1:
-          snprintf(label, sizeof(label), "Wait");
-          break;
-
-        case 2:
-          snprintf(label, sizeof(label), "MoxDelay");
-          break;
-
-        case 3:
-          snprintf(label, sizeof(label), "Setup");
-          break;
-
-        case 4:
-          snprintf(label, sizeof(label), "Collect");
-          break;
-
-        case 5:
-          snprintf(label, sizeof(label), "MoxCheck");
-          break;
-
-        case 6:
-          snprintf(label, sizeof(label), "Calculate");
-          break;
-
-        case 7:
-          snprintf(label, sizeof(label), "Delay");
-          break;
-
-        case 8:
-          snprintf(label, sizeof(label), "StayOn");
-          break;
-
-        case 9:
-          snprintf(label, sizeof(label), "TurnOn");
-          break;
-        }
-      }
-
-      gtk_label_set_text(GTK_LABEL(entry[i]), label);
-    }
-
-    snprintf(label, sizeof(label), "%d", transmitter->attenuation);
-    gtk_label_set_text(GTK_LABEL(tx_att), label);
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_att_spin), (double) transmitter->attenuation);
     snprintf(label, sizeof(label), "%6.3f", transmitter->ps_getmx);
-    gtk_label_set_text(GTK_LABEL(get_pk), label);
+    gtk_button_set_label(GTK_BUTTON(get_pk_b), label);
+  } else {
+    //
+    // Clear all fields/buttons. They will be re-populated
+    // if PS is running
+    //
+    gtk_widget_set_name(corr_info_b, "boldlabel");
+    gtk_button_set_label(GTK_BUTTON(corr_info_b), "");
+    gtk_widget_set_name(feedbk_info_b, "boldlabel");
+    gtk_button_set_label(GTK_BUTTON(feedbk_info_b), "");
+    gtk_button_set_label(GTK_BUTTON(cnt_info_b), "");
+    gtk_widget_set_name(chk_info_b, "boldlabel");
+    gtk_button_set_label(GTK_BUTTON(chk_info_b), "");
+    gtk_button_set_label(GTK_BUTTON(status_info_b), "");
+    gtk_button_set_label(GTK_BUTTON(get_pk_b), "");
   }
-
   return G_SOURCE_CONTINUE;
 }
 
@@ -410,21 +374,17 @@ static int info_thread(gpointer arg) {
 //
 static void ps_ant_cb(GtkWidget *widget, gpointer data) {
   int val = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
-
   switch (val) {
   case 0:
     adc[2].antenna = 0;
     break;
-
   case 1:
     adc[2].antenna = 6;
     break;
-
   case 2:
     adc[2].antenna = 7;
     break;
   }
-
   if (radio_is_remote) {
     send_psatt(cl_sock_tcp);
   } else {
@@ -435,56 +395,12 @@ static void ps_ant_cb(GtkWidget *widget, gpointer data) {
 static void enable_cb(GtkWidget *widget, gpointer data) {
   if (can_transmit) {
     int val = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
-    clear_fields();
     tx_ps_onoff(transmitter, val);
-
-    if (val) {
-      if ( transmitter->auto_on) {
-        char label[16];
-        snprintf(label, sizeof(label), "%d", transmitter->attenuation);
-        gtk_label_set_text(GTK_LABEL(tx_att), label);
-        gtk_widget_show(tx_att);
-        gtk_widget_show(tx_att_lbl);
-        gtk_widget_hide(tx_att_spin);
-      } else {
-        gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_att_spin), (double) transmitter->attenuation);
-        gtk_widget_show(tx_att_spin);
-        gtk_widget_hide(tx_att);
-        gtk_widget_show(tx_att_lbl);
-      }
-    } else {
-      gtk_widget_hide(tx_att_spin);
-      gtk_widget_hide(tx_att);
-      gtk_widget_hide(tx_att_lbl);
-    }
-  }
-}
-
-static void tol_cb(GtkWidget *widget, gpointer data) {
-  transmitter->ps_ptol = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
-
-  if (radio_is_remote) {
-    send_psparams(cl_sock_tcp, transmitter);
-  } else {
-    tx_ps_setparams(transmitter);
-    ps_off_on();
   }
 }
 
 static void oneshot_cb(GtkWidget *widget, gpointer data) {
   transmitter->ps_oneshot = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
-
-  if (radio_is_remote) {
-    send_psparams(cl_sock_tcp, transmitter);
-  } else {
-    tx_ps_setparams(transmitter);
-    ps_off_on();
-  }
-}
-
-static void map_cb(GtkWidget *widget, gpointer data) {
-  transmitter->ps_map = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
-
   if (radio_is_remote) {
     send_psparams(cl_sock_tcp, transmitter);
   } else {
@@ -495,41 +411,13 @@ static void map_cb(GtkWidget *widget, gpointer data) {
 
 static void auto_cb(GtkWidget *widget, gpointer data) {
   transmitter->auto_on = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
-
   if (radio_is_remote) {
     send_psatt(cl_sock_tcp);
   }
-
-  if (transmitter->puresignal) {
-    if (transmitter->auto_on) {
-      //
-      // automatic attenuation switched on:
-      // hide spin-box for manual attenuation
-      // show text field for automatic attenuation
-      //
-      char label[16];
-      snprintf(label, sizeof(label), "%d", transmitter->attenuation);
-      gtk_label_set_text(GTK_LABEL(tx_att), label);
-      gtk_widget_show(tx_att_lbl);
-      gtk_widget_show(tx_att);
-      gtk_widget_hide(tx_att_spin);
-    } else {
-      //
-      // automatic attenuation switched off:
-      // show spin-box for manual attenuation
-      // hide text field for automatic attenuation
-      // set attenuation to value stored in spin button
-      //
-      gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_att_spin), (double) transmitter->attenuation);
-      gtk_widget_show(tx_att_lbl);
-      gtk_widget_show(tx_att_spin);
-      gtk_widget_hide(tx_att);
-    }
+  if (transmitter->auto_on) {
+    gtk_widget_set_sensitive(tx_att_spin, FALSE);
   } else {
-    // PS not enabled: maximum TX ATT is enforced
-    gtk_widget_hide(tx_att);
-    gtk_widget_hide(tx_att_lbl);
-    gtk_widget_hide(tx_att_spin);
+    gtk_widget_set_sensitive(tx_att_spin, TRUE);
   }
 }
 
@@ -543,21 +431,21 @@ static gboolean resume_cb(GtkWidget *widget, GdkEventButton *event, gpointer dat
   if (transmitter->puresignal) {
     if (transmitter->twotone && transmitter->auto_on) {
       transmitter->attenuation = 0;
-
+      gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_att_spin), (double) transmitter->attenuation);
       if (radio_is_remote) {
         send_psatt(cl_sock_tcp);
+      } else {
+        schedule_high_priority();
+        schedule_transmit_specific();
       }
     }
-
     tx_ps_resume(transmitter);
   }
-
   return FALSE;
 }
 
-static void feedback_cb(GtkWidget *widget, gpointer data) {
+static void mon_cb(GtkWidget *widget, gpointer data) {
   transmitter->feedback = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-
   if (radio_is_remote) {
     send_psatt(cl_sock_tcp);
   }
@@ -568,7 +456,6 @@ static gboolean reset_cb(GtkWidget *widget, GdkEventButton *event, gpointer data
   if (transmitter->puresignal) {
     tx_ps_reset(transmitter);
   }
-
   return FALSE;
 }
 
@@ -578,8 +465,7 @@ static void twotone_cb(GtkWidget *widget, gpointer data) {
 }
 
 void ps_menu(GtkWidget *parent) {
-  int i;
-  char text[16];
+  GtkWidget *btn, *lbl;
   dialog = gtk_dialog_new();
   g_signal_connect (dialog, "destroy", G_CALLBACK(close_cb), NULL);
   gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
@@ -593,47 +479,37 @@ void ps_menu(GtkWidget *parent) {
   GtkWidget *grid = gtk_grid_new();
   gtk_grid_set_column_spacing (GTK_GRID(grid), 5);
   gtk_grid_set_row_spacing (GTK_GRID(grid), 5);
-  int row = 0;
+  gtk_grid_set_column_homogeneous (GTK_GRID(grid), TRUE);
+  btn = gtk_button_new_with_label("Close");
+  gtk_widget_set_name(btn, "close_button");
+  g_signal_connect (btn, "button-press-event", G_CALLBACK(close_cb), NULL);
+  gtk_grid_attach(GTK_GRID(grid), btn, 0, 0, 1, 1);
+  btn = gtk_toggle_button_new_with_label("MON");
+  gtk_widget_set_name(btn, "small_toggle_button");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), transmitter->feedback);
+  gtk_grid_attach(GTK_GRID(grid), btn, 3, 0, 1, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(mon_cb), NULL);
+  int row = 1;
   int col = 0;
-  GtkWidget *close_b = gtk_button_new_with_label("Close");
-  gtk_widget_set_name(close_b, "close_button");
-  g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
-  gtk_grid_attach(GTK_GRID(grid), close_b, col, row, 1, 1);
-  gtk_widget_set_name(close_b, "close_button");
-  row++;
-  col = 0;
-  GtkWidget *enable_b = gtk_check_button_new_with_label("Enable PS");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (enable_b), transmitter->puresignal);
-  gtk_grid_attach(GTK_GRID(grid), enable_b, col, row, 1, 1);
-  g_signal_connect(enable_b, "toggled", G_CALLBACK(enable_cb), NULL);
+  btn = gtk_check_button_new_with_label("Enable PS");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), transmitter->puresignal);
+  gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(enable_cb), NULL);
   col++;
-  GtkWidget *twotone_b = gtk_toggle_button_new_with_label("Two Tone");
-  gtk_widget_set_name(twotone_b, "small_toggle_button");
-  gtk_widget_show(twotone_b);
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(twotone_b), transmitter->twotone);
-  gtk_grid_attach(GTK_GRID(grid), twotone_b, col, row, 1, 1);
-  g_signal_connect(twotone_b, "toggled", G_CALLBACK(twotone_cb), NULL);
+  btn = gtk_toggle_button_new_with_label("Two Tone");
+  gtk_widget_set_name(btn, "small_toggle_button");
+  gtk_widget_show(btn);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), transmitter->twotone);
+  gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(twotone_cb), NULL);
   col++;
-  GtkWidget *auto_b = gtk_check_button_new_with_label("Auto Attenuate");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (auto_b), transmitter->auto_on);
-  gtk_grid_attach(GTK_GRID(grid), auto_b, col, row, 1, 1);
-  g_signal_connect(auto_b, "toggled", G_CALLBACK(auto_cb), NULL);
+  btn = gtk_button_new_with_label("Restart");
+  gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
+  g_signal_connect(btn, "button-press-event", G_CALLBACK(resume_cb), NULL);
   col++;
-  GtkWidget *reset_b = gtk_button_new_with_label("OFF");
-  gtk_widget_show(reset_b);
-  gtk_grid_attach(GTK_GRID(grid), reset_b, col, row, 1, 1);
-  g_signal_connect(reset_b, "button-press-event", G_CALLBACK(reset_cb), NULL);
-  col++;
-  GtkWidget *resume_b = gtk_button_new_with_label("Restart");
-  gtk_grid_attach(GTK_GRID(grid), resume_b, col, row, 1, 1);
-  g_signal_connect(resume_b, "button-press-event", G_CALLBACK(resume_cb), NULL);
-  col++;
-  GtkWidget *feedback_b = gtk_toggle_button_new_with_label("MON");
-  gtk_widget_set_name(feedback_b, "small_toggle_button");
-  gtk_widget_show(feedback_b);
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(feedback_b), transmitter->feedback);
-  gtk_grid_attach(GTK_GRID(grid), feedback_b, col, row, 1, 1);
-  g_signal_connect(feedback_b, "toggled", G_CALLBACK(feedback_cb), NULL);
+  btn = gtk_button_new_with_label("Off");
+  gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
+  g_signal_connect(btn, "button-press-event", G_CALLBACK(reset_cb), NULL);
   row++;
   col = 0;
   //
@@ -646,174 +522,126 @@ void ps_menu(GtkWidget *parent) {
   // In fact, we provide the possibility of using EXT1 only to support these older
   // (before February, 2015) ANAN-100/200 devices.
   //
-  GtkWidget *ps_ant_label = gtk_label_new("PS FeedBk ANT");
-  gtk_widget_set_name(ps_ant_label, "boldlabel");
-  gtk_widget_show(ps_ant_label);
-  gtk_grid_attach(GTK_GRID(grid), ps_ant_label, col, row, 1, 1);
+  lbl = gtk_label_new("FeedBk Ant");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), lbl, col, row, 1, 1);
   col++;
-  GtkWidget *ps_ant_combo = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(ps_ant_combo), NULL, "Internal");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(ps_ant_combo), NULL, "Ext1");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(ps_ant_combo), NULL, "ByPass");
-
+  btn = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Internal");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Ext1");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "ByPass");
   switch (adc[2].antenna) {
   case 0:
-    gtk_combo_box_set_active(GTK_COMBO_BOX(ps_ant_combo), 0);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 0);
     break;
-
   case 6:
-    gtk_combo_box_set_active(GTK_COMBO_BOX(ps_ant_combo), 1);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 1);
     break;
-
   case 7:
-    gtk_combo_box_set_active(GTK_COMBO_BOX(ps_ant_combo), 2);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 2);
     break;
   }
-
-  my_combo_attach(GTK_GRID(grid), ps_ant_combo, col, row, 1, 1);
-  g_signal_connect(ps_ant_combo, "changed", G_CALLBACK(ps_ant_cb), NULL);
-  col++;
-  GtkWidget *map_b = gtk_check_button_new_with_label("PS MAP");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (map_b), transmitter->ps_map);
-  gtk_grid_attach(GTK_GRID(grid), map_b, col, row, 1, 1);
-  g_signal_connect(map_b, "toggled", G_CALLBACK(map_cb), NULL);
-  col++;
-  GtkWidget *tol_b = gtk_check_button_new_with_label("PS Relax Tolerance");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (tol_b), transmitter->ps_ptol);
-  gtk_grid_attach(GTK_GRID(grid), tol_b, col, row, 2, 1);
-  g_signal_connect(tol_b, "toggled", G_CALLBACK(tol_cb), NULL);
-  col++;
+  my_combo_attach(GTK_GRID(grid), btn, col, row, 1, 1);
+  g_signal_connect(btn, "changed", G_CALLBACK(ps_ant_cb), NULL);
   col++;
   GtkWidget *oneshot_b = gtk_check_button_new_with_label("OneShot");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (oneshot_b), transmitter->ps_oneshot);
   gtk_grid_attach(GTK_GRID(grid), oneshot_b, col, row, 1, 1);
   g_signal_connect(oneshot_b, "toggled", G_CALLBACK(oneshot_cb), NULL);
-  row++;
-  col = 0;
-  feedback_l = gtk_label_new("Feedback Lvl");
-  gtk_widget_set_name(feedback_l, "boldlabel");
-  gtk_widget_show(feedback_l);
-  gtk_grid_attach(GTK_GRID(grid), feedback_l, col, row, 1, 1);
   col++;
-  correcting_l = gtk_label_new("Correcting");
-  gtk_widget_set_name(correcting_l, "boldlabel");
-  gtk_widget_show(correcting_l);
-  gtk_grid_attach(GTK_GRID(grid), correcting_l, col, row, 1, 1);
-  row++;
-  col = 0;
-
-  for (i = 0; i < INFO_SIZE; i++) {
-    int display = 1;
-
-    switch (i) {
-    case 4:
-      snprintf(text, sizeof(text), "feedbk");
-      break;
-
-    case 5:
-      snprintf(text, sizeof(text), "corr.cnt");
-      break;
-
-    case 6:
-      snprintf(text, sizeof(text), "sln.chk");
-      break;
-
-    case 13:
-      snprintf(text, sizeof(text), "db.cnt");
-      break;
-
-    case 15:
-      snprintf(text, sizeof(text), "status");
-      break;
-
-    default:
-      display = 0;
-      break;
-    }
-
-    if (display) {
-      GtkWidget *lbl = gtk_label_new(text);
-      gtk_widget_set_name(lbl, "boldlabel");
-      gtk_grid_attach(GTK_GRID(grid), lbl, col, row, 1, 1);
-      col++;
-      entry[i] = gtk_label_new("");
-      gtk_widget_set_name(entry[i], "small_button_with_border");
-      gtk_grid_attach(GTK_GRID(grid), entry[i], col, row, 1, 1);
-      col++;
-
-      if (col >= 6) {
-        row++;
-        col = 0;
-      }
-    } else {
-      entry[i] = NULL;
-    }
-  }
+  btn = gtk_check_button_new_with_label("Auto Att.");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), transmitter->auto_on);
+  gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(auto_cb), NULL);
 
   row++;
   col = 0;
-  GtkWidget *lbl = gtk_label_new("GetPk");
+
+  lbl = gtk_label_new("FeedBack");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_grid_attach(GTK_GRID(grid), lbl, col, row, 1, 1);
   col++;
-  get_pk = gtk_label_new("");
-  gtk_grid_attach(GTK_GRID(grid), get_pk, col, row, 1, 1);
-  gtk_widget_set_name(get_pk, "small_button_with_border");
+  feedbk_info_b = gtk_button_new();
+  gtk_widget_set_name(feedbk_info_b, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), feedbk_info_b, col, row, 1, 1);
+  col++;
+  lbl = gtk_label_new("Status");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), lbl, col, row, 1, 1);
+  col++;
+  corr_info_b = gtk_button_new();
+  gtk_widget_set_name(corr_info_b, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), corr_info_b, col, row, 1, 1);
+  row++;
+  col = 0;
+  lbl = gtk_label_new("Count");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), lbl, col, row, 1, 1);
+  col++;
+  cnt_info_b = gtk_button_new();
+  gtk_widget_set_name(cnt_info_b, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), cnt_info_b, col, row, 1, 1);
+  col ++;
+  lbl = gtk_label_new("Check");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), lbl, col, row, 1, 1);
+  col++;
+  chk_info_b = gtk_button_new();
+  gtk_widget_set_name(chk_info_b, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), chk_info_b, col, row, 1, 1);
+  row++;
+  col = 0;
+  lbl = gtk_label_new("State");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), lbl, col, row, 1, 1);
+  col++;
+  status_info_b = gtk_button_new();
+  gtk_widget_set_name(status_info_b, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), status_info_b, col, row, 1, 1);
+  col++;
+  lbl = gtk_label_new("GetPk");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), lbl, col, row, 1, 1);
+  col++;
+  get_pk_b = gtk_button_new();
+  gtk_grid_attach(GTK_GRID(grid), get_pk_b, col, row, 1, 1);
+  gtk_widget_set_name(get_pk_b, "boldlabel");
+  row++;
+  col = 0;
+  lbl = gtk_label_new("Tx Att");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), lbl, col, row, 1, 1);
+  col++;
+  if (device == DEVICE_HERMES_LITE2 || device == NEW_DEVICE_HERMES_LITE2) {
+    tx_att_spin = gtk_spin_button_new_with_range(-13.0, 31.0, 1.0);
+  } else {
+    tx_att_spin = gtk_spin_button_new_with_range(  0.0, 31.0, 1.0);
+  }
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_att_spin), (double) transmitter->attenuation);
+  g_signal_connect(tx_att_spin, "value-changed", G_CALLBACK(att_spin_cb), NULL);
+  gtk_grid_attach(GTK_GRID(grid), tx_att_spin, col, row, 1, 1);
   col++;
   lbl = gtk_label_new("SetPk");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_grid_attach(GTK_GRID(grid), lbl, col, row, 1, 1);
   col++;
-  set_pk = gtk_entry_new();
-  snprintf(text, sizeof(text), "%6.3f", transmitter->ps_setpk);
-  gtk_entry_set_text(GTK_ENTRY(set_pk), text);
-  gtk_grid_attach(GTK_GRID(grid), set_pk, col, row, 1, 1);
-  gtk_entry_set_width_chars(GTK_ENTRY(set_pk), 10);
-  g_signal_connect(set_pk, "activate", G_CALLBACK(setpk_cb), NULL);
-  col++;
-  tx_att_lbl = gtk_label_new("TX ATT");
-  gtk_widget_set_name(tx_att_lbl, "boldlabel");
-  gtk_grid_attach(GTK_GRID(grid), tx_att_lbl, col, row, 1, 1);
-  col++;
-  tx_att = gtk_label_new("");
-  gtk_widget_set_name(tx_att, "small_button_with_border");
-  gtk_grid_attach(GTK_GRID(grid), tx_att, col, row, 1, 1);
-  snprintf(text, sizeof(text), "%d", transmitter->attenuation);
-  gtk_label_set_text(GTK_LABEL(tx_att), text);
-
-  if (device == DEVICE_HERMES_LITE2 || device == NEW_DEVICE_HERMES_LITE2) {
-    tx_att_spin = gtk_spin_button_new_with_range(-29.0, 31.0, 1.0);
-  } else {
-    tx_att_spin = gtk_spin_button_new_with_range(  0.0, 31.0, 1.0);
-  }
-
-  gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_att_spin), (double) transmitter->attenuation);
-  gtk_grid_attach(GTK_GRID(grid), tx_att_spin, col, row, 1, 1);
-  g_signal_connect(tx_att_spin, "value-changed", G_CALLBACK(att_spin_cb), NULL);
+  btn = gtk_spin_button_new_with_range(0.001, 0.999, 0.001);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), (double) transmitter->ps_setpk);
+  gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
+  g_signal_connect(btn, "activate", G_CALLBACK(setpk_cb), NULL);
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   running = 1;
   info_timer = g_timeout_add((guint) 250, info_thread, NULL);
   gtk_widget_show_all(dialog);
-
   //
   // If using auto-attenuattion, hide the
   // "manual attenuation" label and spin button
   //
-  if (transmitter->puresignal) {
-    if (transmitter->auto_on) {
-      gtk_widget_hide(tx_att_spin);
-      gtk_widget_show(tx_att);
-      gtk_widget_show(tx_att_lbl);
-    } else {
-      gtk_widget_hide(tx_att);
-      gtk_widget_show(tx_att_lbl);
-      gtk_widget_show(tx_att_spin);
-    }
+  if (transmitter->auto_on) {
+    gtk_widget_set_sensitive(tx_att_spin, FALSE);
   } else {
-    gtk_widget_hide(tx_att_spin);
-    gtk_widget_hide(tx_att);
-    gtk_widget_hide(tx_att_lbl);
+    gtk_widget_set_sensitive(tx_att_spin, TRUE);
   }
 }
 

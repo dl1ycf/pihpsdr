@@ -83,63 +83,49 @@ static void build_query(DXC_DB_QUERY *q, char *mode_buf, int mode_buf_len) {
   /* Date range */
   time_t now = time(NULL);
   int date_choice = gtk_combo_box_get_active(GTK_COMBO_BOX(date_combo));
-
   switch (date_choice) {
   case 0:
     q->since = now - 86400;
     break;     /* today/last 24h */
-
   case 1:
     q->since = now - 7  * 86400;
     break;     /* last 7 days    */
-
   case 2:
     q->since = now - 30 * 86400;
     break;     /* last 30 days   */
-
   default:
     q->since = 0;
     break;
   }
-
   /* Mode */
   int mode_choice = gtk_combo_box_get_active(GTK_COMBO_BOX(mode_combo));
   mode_buf[0] = '\0';
-
   switch (mode_choice) {
   case 1:
     snprintf(mode_buf, mode_buf_len, "FT8");
     break;
-
   case 2:
     snprintf(mode_buf, mode_buf_len, "FT4");
     break;
-
   case 3:
     snprintf(mode_buf, mode_buf_len, "CW");
     break;
-
   case 4:
     snprintf(mode_buf, mode_buf_len, "SSB");
     break;
-
   case 5:
     snprintf(mode_buf, mode_buf_len, "RTTY");
     break;
-
   default:
     break;
   }
-
   q->mode = mode_buf[0] ? mode_buf : NULL;
   /* Band */
   int band_choice = gtk_combo_box_get_active(GTK_COMBO_BOX(band_combo));
-
   if (band_choice == 1 && active_receiver) {
     /* current band */
     int b = get_band_from_frequency(vfo[active_receiver->id].frequency);
     const BAND *band = band_get_band(b);
-
     if (band) {
       q->band_lo_hz = band->frequencyMin;
       q->band_hi_hz = band->frequencyMax;
@@ -149,14 +135,12 @@ static void build_query(DXC_DB_QUERY *q, char *mode_buf, int mode_buf_len) {
 
 static void refresh_list(void) {
   if (!store) { return; }
-
   gtk_list_store_clear(store);
   char mode_buf[16];
   DXC_DB_QUERY q;
   build_query(&q, mode_buf, sizeof(mode_buf));
   DX_SPOT *rows = g_malloc(sizeof(DX_SPOT) * MAX_RESULTS);
   int n = dxcluster_db_query(&q, rows, MAX_RESULTS);
-
   for (int i = 0; i < n; i++) {
     struct tm tm_utc;
     gmtime_r(&rows[i].when, &tm_utc);
@@ -176,7 +160,6 @@ static void refresh_list(void) {
                        COL_FREQ_HZ, (gint64)rows[i].freq_hz,
                        -1);
   }
-
   g_free(rows);
   int total = dxcluster_db_count_total();
   int matching = dxcluster_db_count_matching(&q);
@@ -198,7 +181,6 @@ static void on_clear_clicked(GtkButton *btn, gpointer data) {
                      "This cannot be undone.");
   int resp = gtk_dialog_run(GTK_DIALOG(dlg));
   gtk_widget_destroy(dlg);
-
   if (resp == GTK_RESPONSE_YES) {
     dxcluster_db_clear_all();
     refresh_list();
@@ -213,36 +195,28 @@ static void on_export_clicked(GtkButton *btn, gpointer data) {
                     "_Save",   GTK_RESPONSE_ACCEPT, NULL);
   gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(fc), TRUE);
   gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(fc), "dxspots.csv");
-
   if (gtk_dialog_run(GTK_DIALOG(fc)) == GTK_RESPONSE_ACCEPT) {
     char *path = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(fc));
     char mode_buf[16];
     DXC_DB_QUERY q;
     build_query(&q, mode_buf, sizeof(mode_buf));
     q.max_results = 1000000;   /* effectively unlimited for export */
-
     if (dxcluster_db_export_csv(&q, path) == 0) {
       t_print("dxcluster: exported to %s\n", path);
     }
-
     g_free(path);
   }
-
   gtk_widget_destroy(fc);
 }
 
 static void on_tune_clicked(GtkButton *btn, gpointer data) {
   if (!active_receiver) { return; }
-
   GtkTreeSelection *sel = gtk_tree_view_get_selection(tree_view);
   GtkTreeIter it;
   GtkTreeModel *mod = NULL;
-
   if (!gtk_tree_selection_get_selected(sel, &mod, &it)) { return; }
-
   gint64 freq_hz = 0;
   gtk_tree_model_get(mod, &it, COL_FREQ_HZ, &freq_hz, -1);
-
   if (freq_hz > 0) {
     vfo_id_set_frequency(active_receiver->id, (long long)freq_hz);
   }
@@ -251,15 +225,11 @@ static void on_tune_clicked(GtkButton *btn, gpointer data) {
 static void on_row_activated(GtkTreeView *tv, GtkTreePath *path,
                              GtkTreeViewColumn *col, gpointer data) {
   if (!active_receiver) { return; }
-
   GtkTreeIter it;
   GtkTreeModel *mod = gtk_tree_view_get_model(tv);
-
   if (!gtk_tree_model_get_iter(mod, &it, path)) { return; }
-
   gint64 freq_hz = 0;
   gtk_tree_model_get(mod, &it, COL_FREQ_HZ, &freq_hz, -1);
-
   if (freq_hz > 0) {
     vfo_id_set_frequency(active_receiver->id, (long long)freq_hz);
   }
@@ -267,7 +237,6 @@ static void on_row_activated(GtkTreeView *tv, GtkTreePath *path,
 
 void dxcluster_history_menu(GtkWidget *parent) {
   if (dialog) { cleanup(); }
-
   dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
   GtkWidget *hb = gtk_header_bar_new();
@@ -358,7 +327,6 @@ void dxcluster_history_menu(GtkWidget *parent) {
     { "Comment",    COL_COMMENT, 300 },
     { NULL, 0, 0 }
   };
-
   for (int i = 0; cols[i].title; i++) {
     GtkCellRenderer *r = gtk_cell_renderer_text_new();
     GtkTreeViewColumn *c = gtk_tree_view_column_new_with_attributes(
@@ -367,7 +335,6 @@ void dxcluster_history_menu(GtkWidget *parent) {
     gtk_tree_view_column_set_resizable(c, TRUE);
     gtk_tree_view_append_column(tree_view, c);
   }
-
   GtkWidget *scroll = gtk_scrolled_window_new(NULL, NULL);
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
                                  GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);

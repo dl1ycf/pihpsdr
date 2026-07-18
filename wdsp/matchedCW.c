@@ -139,7 +139,7 @@ MATCHED create_matched (int run, int position, int size, double* in, double* out
 	a->nc = calc_size (a->samplerate, a->bandwidth);
 	if (a->size > a->nc) a->nc = a->size;
 	impulse = build_matched (a->nc, a->samplerate, a->f_center, a->bandwidth, a->scale, 0);
-	a->p = create_fircore (a->size, a->in, a->out, a->nc, 0, impulse);
+	a->p = create_fircore (a->size, a->in, a->out, a->nc, 0, 4, impulse);
 	_aligned_free (impulse);
 	return a;
 }

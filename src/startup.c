@@ -87,24 +87,18 @@ void startup(const char *path) {
   //
   snprintf(filename, sizeof(filename), "piHPSDR.myFile.%ld", (long) getpid());
   rc = open(filename, O_CREAT | O_WRONLY | O_TRUNC, 0700);
-
   if (rc >= 0) {
     writeable = 1;
     close (rc);
     unlink(filename);
   }
-
   //
   // Look whether file pihpsdr.sh or directory release/pihpsdr exists
   //
   rc = stat("pihpsdr.sh", &statbuf);
-
   if (rc == 0 && (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))) { found = 1;}
-
   rc = stat("release/pihpsdr", &statbuf);
-
   if (rc == 0 && S_ISDIR(statbuf.st_mode)) { found = 1;}
-
   //
   // Most likely, piHPDSR is expected to run in the current working directory
   //
@@ -112,7 +106,6 @@ void startup(const char *path) {
     t_print("%s: working directory not changed.\n", __func__);
     return;
   }
-
   //
   // Try to locate
   // - on LINUX: $HOME/.config/pihpsdr
@@ -120,57 +113,43 @@ void startup(const char *path) {
   // and if this exists, chdir to that directory.
   //
   homedir = getenv("HOME");
-
   if (homedir == NULL) {
     pwd = getpwuid(getuid());
-
     if (pwd != NULL) {
       homedir = pwd->pw_dir;
     }
   }
-
   if (homedir == NULL) {
     // non-recoverable error
     t_print("%s: home dir not found, working directory not changed.\n", __func__);
     return;
   }
-
 #ifdef __APPLE__
   snprintf(workdir, sizeof(workdir), "%s/Library/Application Support/piHPSDR", homedir);
-
   if (stat(workdir, &statbuf) < 0) {
     mkdir (workdir, 0700);
   }
-
   rc = stat(workdir, &statbuf);
-
   if (rc < 0 || !S_ISDIR(statbuf.st_mode)) {
     snprintf(workdir, sizeof(workdir), "%s", homedir);
   }
-
 #else
   snprintf(workdir, sizeof(workdir), "%s/.config", homedir);
-
   if (stat(workdir, &statbuf) < 0) {
     mkdir (workdir, 0700);
   }
-
   snprintf(workdir, sizeof(workdir), "%s/.config/pihpsdr", homedir);
-
   if (stat(workdir, &statbuf) < 0) {
     mkdir (workdir, 0700);
   }
-
 #endif
   //
   // Check if workdir exists and is a directory, if not, take home dir
   //
   rc = stat(workdir, &statbuf);
-
   if (rc < 0 || !S_ISDIR(statbuf.st_mode)) {
     snprintf(workdir, sizeof(workdir), "%s", homedir);
   }
-
   //
   // At this point, the new working directory exists and the name
   // is in filename.
@@ -180,7 +159,6 @@ void startup(const char *path) {
     t_print("%s: Could not chdir to working dir %s\n", __func__, workdir);
     return;
   }
-
   //
   //  Make two local files for stdout and stderr, to allow
   //  post-mortem debugging

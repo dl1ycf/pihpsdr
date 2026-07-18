@@ -1,4 +1,4 @@
-/*	lmath.h
+/*  lmath.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -27,13 +27,13 @@ warren@wpratt.com
 extern void dR (int n, double* r, double* y, double* z);
 
 extern void trI (
-	int n,
-	double* r,
-	double* B,
+    int n,
+    double* r,
+    double* B,
 	double* y,
 	double* v,
 	double* dR_z
-	);
+    );
 
 extern void asolve(int xsize, int asize, double* x, double* a, double* r, double* z);
 

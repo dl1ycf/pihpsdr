@@ -61,7 +61,6 @@ int ext_vfo_update(gpointer data) {
   if (vfo_timeout == 0) {
     vfo_timeout = g_timeout_add(100, vfo_timeout_cb, NULL);
   }
-
   return G_SOURCE_REMOVE;
 }
 
@@ -77,7 +76,6 @@ int ext_radio_toggle_mox(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
-// cppcheck-suppress constParameterPointer
 int ext_radio_set_mox(gpointer data) {
   radio_set_mox(GPOINTER_TO_INT(data));
   return G_SOURCE_REMOVE;

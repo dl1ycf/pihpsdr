@@ -137,33 +137,26 @@ static void sel_cb(GtkWidget *widget, gpointer data) {
   //
   int c = GPOINTER_TO_INT(data);
   GtkWidget *my_container;
-
   switch (c) {
   case TX_CONTAINER:
     my_container = tx_container;
     break;
-
   case CFC_CONTAINER:
     my_container = cfc_container;
     break;
-
   case DEXP_CONTAINER:
     my_container = dexp_container;
     break;
-
   case PHROT_CONTAINER:
     my_container = phrot_container;
     break;
-
   case TUNE_CONTAINER:
     my_container = tune_container;
     break;
-
   default:
     // We should never come here
     return;
   }
-
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
     gtk_widget_show(my_container);
     gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
@@ -183,90 +176,68 @@ static void spinbtn_cb(GtkWidget *widget, gpointer data) {
   int    vi = (v >= 0.0) ? (int) (v + 0.5) : (int) (v - 0.5);
   int d = c & 0xFF00;   // The command class, TX/CFCFREQ/CFCLVL/CFCPOST/DEXP
   int e = c & 0x00FF;   // channel No. for CRCFREQ/CFCLVL/CFCPOST
-
   if (d == TX) {
     switch (c) {
     case TX_PHROT_STAGES:
       transmitter->phrot_stages = vi;
       tx_set_phrot(transmitter);
       break;
-
     case TX_PHROT_CORNER:
       transmitter->phrot_corner = v;
       tx_set_phrot(transmitter);
       break;
-
     case TX_LINEIN:
       linein_gain = v;
-
       if (!radio_is_remote) {
         schedule_transmit_specific();
       }
-
       break;
-
     case TX_SWRTUNE_VOLUME:
       transmitter->swrtune_volume = v;
       break;
-
     case TX_COMP:
       transmitter->compressor_level = vi;
       tx_set_compressor(transmitter);
       g_idle_add(ext_vfo_update, NULL);
       break;
-
     case TX_FILTER_LOW:
       transmitter->default_filter_low = vi;
       tx_set_filter(transmitter);
       break;
-
     case TX_FILTER_HIGH:
       transmitter->default_filter_high = vi;
       tx_set_filter(transmitter);
       break;
-
     case TX_AM_CARRIER:
       transmitter->am_carrier_level = v;
-
       if (radio_is_remote) {
         send_am_carrier(cl_sock_tcp);
       } else {
         tx_set_am_carrier_level(transmitter);
       }
-
       break;
-
     case TX_TUNE_DRIVE:
       transmitter->tune_drive = vi;
-
       if (radio_is_remote) {
         send_txmenu(cl_sock_tcp);
       }
-
       break;
-
     case TX_PTT_DELAY:
       radio_set_ptt_delay(vi);
       break;
-
     case TX_DIGI_DRIVE:
       drive_digi_max = v;
-
       if (radio_is_remote) {
         send_digidrivemax(cl_sock_tcp);
       } else if ((mode == modeDIGL || mode == modeDIGU) && transmitter->drive > v + 0.5) {
         radio_set_drive(v);
       }
-
       break;
-
     case TX_SWR_ALARM:
       transmitter->swr_alarm = v;
-
       if (radio_is_remote) {
         send_txmenu(cl_sock_tcp);
       }
-
       break;
     }
   } else if (d == CFCFREQ) {
@@ -288,41 +259,32 @@ static void spinbtn_cb(GtkWidget *widget, gpointer data) {
     case DEXP_TAU:
       transmitter->dexp_tau = 0.001 * v;
       break;
-
     case DEXP_ATTACK:
       transmitter->dexp_attack = 0.001 * v;
       break;
-
     case DEXP_RELEASE:
       transmitter->dexp_release = 0.001 * v;
       break;
-
     case DEXP_HOLD:
       transmitter->dexp_hold = 0.001 * v;
       break;
-
     case DEXP_HYST:
       transmitter->dexp_hyst = v;
       break;
-
     case DEXP_TRIGGER:
       transmitter->dexp_trigger = vi;
       break;
-
     case DEXP_FILTER_LOW:
       transmitter->dexp_filter_low = vi;
       break;
-
     case DEXP_FILTER_HIGH:
       transmitter->dexp_filter_high = vi;
       break;
-
     case DEXP_EXP:
       // Note this is in dB
       transmitter->dexp_exp = vi;
       break;
     }
-
     tx_set_dexp(transmitter);
   }
 }
@@ -334,7 +296,6 @@ static void chkbtn_cb(GtkWidget *widget, gpointer data) {
   int c = GPOINTER_TO_INT(data);
   int v = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   int d = c & 0xFF00;
-
   if (d == TX) {
     // TX menu check buttons
     switch (c) {
@@ -342,87 +303,66 @@ static void chkbtn_cb(GtkWidget *widget, gpointer data) {
       transmitter->phrot_enable = v;
       tx_set_phrot(transmitter);
       break;
-
     case TX_PHROT_REVERSE:
       transmitter->phrot_reverse = v;
       tx_set_phrot(transmitter);
       break;
-
     case TX_COMP_ENABLE:
       transmitter->compressor = v;
       tx_set_compressor(transmitter);
       g_idle_add(ext_vfo_update, NULL);
       break;
-
     case TX_CTCSS_ENABLE:
       transmitter->ctcss_enabled = v;
-
       if (radio_is_remote) {
         send_ctcss(cl_sock_tcp);
       } else {
         tx_set_ctcss(transmitter);
       }
-
       g_idle_add(ext_vfo_update, NULL);
       break;
-
     case TX_TUNE_USE_DRIVE:
       transmitter->tune_use_drive = v;
       gtk_widget_set_sensitive (tunedrive_spin, NOT(v));
-
       if (radio_is_remote) {
         send_txmenu(cl_sock_tcp);
       }
-
       break;
-
     case TX_SWRTUNE:
       transmitter->swrtune = v;
       gtk_widget_set_sensitive (swrtune_volume_spin, SET(v));
       break;
-
     case TX_SWR_PROTECTION:
       transmitter->swr_protection = v;
-
       if (radio_is_remote) {
         send_txmenu(cl_sock_tcp);
       }
-
       break;
-
     case TX_USE_RX_FILTER:
       transmitter->use_rx_filter = v;
       tx_set_filter(transmitter);
       gtk_widget_set_sensitive (tx_spin_low, NOT(v));
       gtk_widget_set_sensitive (tx_spin_high, NOT(v));
       break;
-
     case TX_ADD_HPSDR_MIC_SAMPLES:
       transmitter->add_hpsdr_mic_samples = v;
       break;
-
     case TX_AUDIO_MON:
       transmitter->audiomonitor = v;
       break;
-
     case TX_OOB_ALLOWED:
       tx_out_of_band_allowed = v;
-
       if (radio_is_remote) {
         send_radiomenu(cl_sock_tcp);
       }
-
       break;
-
     case TX_FM_EMP:
       transmitter->pre_emphasize = !v;
-
       if (radio_is_remote) {
         send_preemp(cl_sock_tcp);
       } else {
         tx_set_pre_emphasize(transmitter);
       }
-
       break;
     }
   } else if (d == CFC) {
@@ -431,12 +371,10 @@ static void chkbtn_cb(GtkWidget *widget, gpointer data) {
     case CFC_ONOFF:
       transmitter->cfc = v;
       break;
-
     case CFC_EQ:
       transmitter->cfc_eq = v;
       break;
     }
-
     tx_set_compressor(transmitter);
     g_idle_add(ext_vfo_update, NULL);
   } else if (d == DEXP) {
@@ -445,12 +383,10 @@ static void chkbtn_cb(GtkWidget *widget, gpointer data) {
     case DEXP_ONOFF:
       transmitter->dexp = v;
       break;
-
     case DEXP_FILTER:
       transmitter->dexp_filter = v;
       break;
     }
-
     tx_set_dexp(transmitter);
     g_idle_add(ext_vfo_update, NULL);
   }
@@ -461,28 +397,23 @@ static void chkbtn_cb(GtkWidget *widget, gpointer data) {
 //
 static void mic_in_cb(GtkWidget *widget, gpointer data) {
   int i = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-
   switch (i) {
   case 0: // Mic In, but no boost
     mic_boost = 0;
     mic_linein = 0;
     break;
-
   case 1: // Mic In with boost
     mic_boost = 1;
     mic_linein = 0;
     break;
-
   case 2: // Line in
     mic_boost = 0;
     mic_linein = 1;
     break;
   }
-
   if (!radio_is_remote) {
     schedule_transmit_specific();
   }
-
 #ifdef GPIO
   gpio_set_orion_options();
 #endif
@@ -490,48 +421,39 @@ static void mic_in_cb(GtkWidget *widget, gpointer data) {
 
 static void ctcss_frequency_cb(GtkWidget *widget, gpointer data) {
   transmitter->ctcss = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-
   if (radio_is_remote) {
     send_ctcss(cl_sock_tcp);
   } else {
     tx_set_ctcss(transmitter);
   }
-
   g_idle_add(ext_vfo_update, NULL);
 }
 
 
 static void local_input_changed_cb(GtkWidget *widget, gpointer data) {
   int i = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-
   if (i < 0) {
     gtk_combo_box_set_active(GTK_COMBO_BOX(widget), 0);
     i = 0;
   }
-
   if (transmitter->local_audio) {
     transmitter->local_audio = 0;
     audio_close_input(transmitter);
   }
-
   if (i > 0) {
     transmitter->local_audio = 1;
     snprintf(transmitter->audio_name, sizeof(transmitter->audio_name), "%s", input_devices[i - 1].name);
-
     if (audio_open_input(transmitter) < 0) {
       gtk_combo_box_set_active(GTK_COMBO_BOX(widget), 0);
       transmitter->local_audio = 0;
     }
   }
-
   int txmode = vfo_get_tx_mode();
   RXTXprofile[txmode].tx.local_audio = transmitter->local_audio;
-
   if (transmitter->local_audio) {
     snprintf(RXTXprofile[txmode].tx.audio_name, sizeof(RXTXprofile[txmode].tx.audio_name), "%s",
              transmitter->audio_name);
   }
-
   profiles_copy_rxtxprofile(txmode);
 }
 
@@ -557,12 +479,10 @@ void tx_menu(GtkWidget *parent) {
   int col = 0;
   int have_swr = 0;
   int have_mic = 0;
-
   if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
     have_swr = 1;
     have_mic = 1;
   }
-
   btn = gtk_button_new_with_label("Close");
   gtk_widget_set_name(btn, "close_button");
   g_signal_connect (btn, "button-press-event", G_CALLBACK(close_cb), NULL);
@@ -622,22 +542,17 @@ void tx_menu(GtkWidget *parent) {
   input = gtk_combo_box_text_new();
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(input), NULL, "From Radio");
   gtk_combo_box_set_active(GTK_COMBO_BOX(input), 0);
-
   for (int i = 0; i < n_input_devices; i++) {
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(input), NULL, input_devices[i].description);
-
     if (transmitter->local_audio && strcmp(transmitter->audio_name, input_devices[i].name) == 0) {
       gtk_combo_box_set_active(GTK_COMBO_BOX(input), i + 1);
     }
   }
-
   if (!transmitter->local_audio) {
     gtk_combo_box_set_active(GTK_COMBO_BOX(input), 0);
   }
-
   my_combo_attach(GTK_GRID(tx_grid), input, col, row, 4, 1);
   g_signal_connect(input, "changed", G_CALLBACK(local_input_changed_cb), NULL);
-
   if (have_mic || controller == CONTROLLER3) {
     row++;
     col = 0;
@@ -651,24 +566,19 @@ void tx_menu(GtkWidget *parent) {
     btn = gtk_combo_box_text_new();
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Mic In");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Mic Boost");
-
     if (have_mic) {
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Line In");
     }
-
     int pos = 0;
-
     if (mic_linein && have_mic) {
       pos = 2;
     } else if (mic_boost) {
       pos = 1;
     }
-
     gtk_combo_box_set_active(GTK_COMBO_BOX(btn), pos);
     my_combo_attach(GTK_GRID(tx_grid), btn, col++, row, 1, 1);
     g_signal_connect(btn, "changed", G_CALLBACK(mic_in_cb), NULL);
   }
-
   if (have_mic && !radio_is_remote) {
     btn = gtk_check_button_new_with_label("Add Mic Samples");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), transmitter->add_hpsdr_mic_samples);
@@ -686,7 +596,6 @@ void tx_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(tx_grid), btn, col, row, 1, 1);
     g_signal_connect(G_OBJECT(btn), "value_changed", G_CALLBACK(spinbtn_cb), GINT_TO_POINTER(TX_LINEIN));
   }
-
   row++;
   col = 0;
   label = gtk_label_new("TX Filter Low");
@@ -739,13 +648,11 @@ void tx_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(tx_grid), label, col, row, 1, 1);
   col++;
   btn = gtk_combo_box_text_new();
-
   for (int i = 0; i < CTCSS_FREQUENCIES; i++) {
     char temp[32];
     snprintf(temp, sizeof(temp), "%0.1f", ctcss_frequencies[i]);
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, temp);
   }
-
   gtk_combo_box_set_active(GTK_COMBO_BOX(btn), transmitter->ctcss);
   my_combo_attach(GTK_GRID(tx_grid), btn, col, row, 1, 1);
   g_signal_connect(btn, "changed", G_CALLBACK(ctcss_frequency_cb), NULL);
@@ -854,7 +761,6 @@ void tx_menu(GtkWidget *parent) {
   label = gtk_label_new("PostGain");
   gtk_widget_set_name(label, "boldlabel");
   gtk_grid_attach(GTK_GRID(cfc_grid), label, 5, row, 1, 1);
-
   for (int i = 1; i < 6; i++) {
     row++;
     btn = gtk_spin_button_new_with_range(10.0, 9990.0, 10.0);
@@ -882,7 +788,6 @@ void tx_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(cfc_grid), btn, 5, row, 1, 1);
     g_signal_connect(btn, "value-changed", G_CALLBACK(spinbtn_cb), GINT_TO_POINTER(CFCPOST + i + 5));
   }
-
   //
   // DEXP container and controls therein
   //
@@ -1041,7 +946,6 @@ void tx_menu(GtkWidget *parent) {
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), transmitter->tune_use_drive);
   gtk_grid_attach(GTK_GRID(swr_grid), btn, col, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(chkbtn_cb), GINT_TO_POINTER(TX_TUNE_USE_DRIVE));
-
   if (have_swr) {
     row++;
     col = 0;
@@ -1077,10 +981,8 @@ void tx_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(swr_grid), btn, col, row, 3, 1);
     g_signal_connect(btn, "toggled", G_CALLBACK(chkbtn_cb), GINT_TO_POINTER(TX_SWRTUNE));
   }
-
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
-
   //
   // Only show one of the TX, CFC, DEXP containers
   // This is the TX container upon first invocation of the TX menu,
@@ -1094,28 +996,24 @@ void tx_menu(GtkWidget *parent) {
     gtk_widget_hide(phrot_container);
     gtk_widget_hide(tune_container);
     break;
-
   case CFC_CONTAINER:
     gtk_widget_hide(tx_container);
     gtk_widget_hide(dexp_container);
     gtk_widget_hide(phrot_container);
     gtk_widget_hide(tune_container);
     break;
-
   case PHROT_CONTAINER:
     gtk_widget_hide(tx_container);
     gtk_widget_hide(cfc_container);
     gtk_widget_hide(dexp_container);
     gtk_widget_hide(tune_container);
     break;
-
   case DEXP_CONTAINER:
     gtk_widget_hide(tx_container);
     gtk_widget_hide(cfc_container);
     gtk_widget_hide(phrot_container);
     gtk_widget_hide(tune_container);
     break;
-
   case TUNE_CONTAINER:
     gtk_widget_hide(tx_container);
     gtk_widget_hide(cfc_container);
@@ -1123,6 +1021,5 @@ void tx_menu(GtkWidget *parent) {
     gtk_widget_hide(phrot_container);
     break;
   }
-
   gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
 }

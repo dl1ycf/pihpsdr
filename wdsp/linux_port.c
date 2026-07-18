@@ -77,23 +77,88 @@ void DeleteCriticalSection(pthread_mutex_t *mutex) {
 	pthread_mutex_destroy(mutex);
 }
 
-int LinuxWaitForSingleObject(sem_t *sem,int ms) {
-	int result=0;
-	if(ms==INFINITE) {
-		// wait for the lock
-		result=sem_wait(sem);
-	} else {
-		for (int i = 0; i < ms; i++) {
-		  result=sem_trywait(sem);
-		  if (result == 0) break;
-		  Sleep(1);
-		}
-	}
-
-	return result;
+int LinuxWaitForMultipleObjects(int num, HANDLE *handles, int waitall, int ms) {
+  sem_t **sems = (sem_t **) handles;
+  if (!waitall) {
+    //
+    // Check on whether at least one of the semaphores is ready
+    // If ms is INFINITE, wait forever
+    // If ms is zero, do not wait at all
+    //
+    int count = 0;
+    for (;;) {
+      for (int i = 0; i < num; i++) {
+        if (sem_trywait(sems[i]) == 0) { return i; }
+      }
+      if (ms != INFINITE && count >= ms) {
+        return WAIT_TIMEOUT;
+      }
+      //
+      // Wait 1 ms and try again
+      //
+      count++;
+      Sleep(1);
+    }
+  } else {
+    //
+    // Check on whether all semaphores are ready
+    // If ms is INFINITE, wait forever
+    // If ms is zero, do not wait at all
+    //
+    int count = 0;
+    for (;;) {
+      int ready = 1;
+      for (int i = 0; i < num; i++) {
+        if (sem_trywait(sems[i]) != 0) { ready = 0; }
+      }
+      if (ready) {
+        return WAIT_OBJECT_0;
+      }
+      if (ms != INFINITE && count > ms) {
+        return WAIT_TIMEOUT;
+      }
+      //
+      // Wait 1 ms and try again
+      //
+      count++;
+      Sleep(1);
+    }
+  }
 }
 
-sem_t *LinuxCreateSemaphore(int attributes,int initial_count,int maximum_count,char *name) {
+int LinuxWaitForSingleObject(HANDLE handle, int ms) {
+  sem_t *sem = (sem_t *) handle;
+  if(ms==INFINITE) {
+    //
+    // wait for the lock and do no busy spinning
+    //
+    if (sem_wait(sem) == 0) {
+      return WAIT_OBJECT_0;
+    } else {
+      return WAIT_FAILED;
+    }
+  } else {
+    //
+    // "busy spinning", but if ms is zero immediate return
+    //
+    int count = 0;
+    for (;;) {
+      if (sem_trywait(sem) == 0) {
+        return WAIT_OBJECT_0;
+      }
+      if (count >= ms) {
+        return WAIT_TIMEOUT;
+      }
+      //
+      // Wait 1 ms and try again
+      //
+      count++;
+      Sleep(1);
+    }
+  }
+}
+
+HANDLE LinuxCreateSemaphore(int attributes,int initial_count,int maximum_count,char *name) {
 		sem_t *sem;
 #ifdef __APPLE__
 	//
@@ -106,12 +171,12 @@ sem_t *LinuxCreateSemaphore(int attributes,int initial_count,int maximum_count,c
 	//
 	static long semcount=0;
 	char sname[20];
-		for (;;) {
-		  sprintf(sname,"WDSP%08ld",semcount++);
-		  sem=sem_open(sname, O_CREAT | O_EXCL, 0700, initial_count);
-		  if (sem == SEM_FAILED && errno == EEXIST) continue;
-		  break;
-		}
+	for (;;) {
+	  sprintf(sname,"WDSP%08ld",semcount++);
+	  sem=sem_open(sname, O_CREAT | O_EXCL, 0700, initial_count);
+	  if (sem == SEM_FAILED && errno == EEXIST) continue;
+	  break;
+	}
 	if (sem == SEM_FAILED) {
 	  perror("WDSP:CreateSemaphore");
 	}
@@ -130,105 +195,105 @@ sem_t *LinuxCreateSemaphore(int attributes,int initial_count,int maximum_count,c
 	  perror("WDSP:CreateSemaphore");
 	}
 #endif
-	return sem;
+	return (HANDLE) sem;
 }
 
-void LinuxReleaseSemaphore(sem_t* sem,int release_count, int* previous_count) {
-	//
-	// Note WDSP always calls this with previous_count==NULL
-	// so we do not bother about obtaining the previous value and
-	// storing it in *previous_count.
-	//
-	while(release_count>0) {
-		sem_post(sem);
-		release_count--;
-	}
-}
-
-sem_t *CreateEvent(void* security_attributes,int bManualReset,int bInitialState,char* name) {
-	//
-	// This is always called with bManualReset = bInitialState = FALSE
-	//
-	sem_t *sem;
-	sem=LinuxCreateSemaphore(0,0,0,0);
-	return sem;
-}
-
-void LinuxSetEvent(sem_t* sem) {
-	//
-	// WDSP uses this to set the semaphore (event) to
-	// a "releasing" state.
-	// we simulate this by posting
+void LinuxReleaseSemaphore(HANDLE handle, int release_count, int* previous_count) {
+  sem_t *sem = (sem_t *) handle;
+  //
+  // Note WDSP always calls this with previous_count==NULL
+  // so we do not bother about obtaining the previous value and
+  // storing it in *previous_count.
+  //
+  while(release_count>0) {
 	sem_post(sem);
+	release_count--;
+  }
 }
 
-void LinuxResetEvent(sem_t* sem) {
-	//
-	// WDSP uses this to set the semaphore (event) to
-	// a blocking state.
-	// We mimic this by calling sem_trywait as long as it succeeds
-	//
-	while (sem_trywait(sem) == 0) ;
+HANDLE CreateEvent(void* security_attributes,int bManualReset,int bInitialState,char* name) {
+  //
+  // This is always called with bManualReset = bInitialState = FALSE
+  //
+  sem_t *sem;
+  sem=LinuxCreateSemaphore(0,0,0,0);
+  return (HANDLE) sem;
+}
+
+void LinuxSetEvent(HANDLE handle) {
+  sem_t *sem = (sem_t *) handle;
+  //
+  // WDSP uses this to set the semaphore (event) to
+  // a "releasing" state.
+  // we simulate this by posting
+  sem_post(sem);
+}
+
+void LinuxResetEvent(HANDLE handle) {
+  sem_t *sem = (sem_t *) handle;
+  //
+  // WDSP uses this to set the semaphore (event) to
+  // a blocking state.
+  // We mimic this by calling sem_trywait as long as it succeeds
+  //
+  while (sem_trywait(sem) == 0) ;
 }
 
 HANDLE _beginthread( void( __cdecl *start_address )( void * ), unsigned stack_size, void *arglist) {
-	pthread_t threadid;
-	pthread_attr_t	attr;
+  pthread_t threadid;
+  pthread_attr_t	attr;
 
-	if (pthread_attr_init(&attr)) {
-		return (HANDLE)-1;
+  if (pthread_attr_init(&attr)) {
+   	return (HANDLE)-1;
+  }
+
+  if (stack_size != 0) {
+    if (pthread_attr_setstacksize(&attr, stack_size)) {
+      return (HANDLE)-1;
 	}
+  }
 
-	if(stack_size!=0) {
-		if (pthread_attr_setstacksize(&attr, stack_size)) {
-			return (HANDLE)-1;
-		}
-	}
+  if(pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED)) {
+	return (HANDLE)-1;
+  }
 
-	if(pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED)) {
-		return (HANDLE)-1;
-	}
+  if (pthread_create(&threadid, &attr, (void*(*)(void*))start_address, arglist)) {
+     return (HANDLE)-1;
+  }
 
-	if (pthread_create(&threadid, &attr, (void*(*)(void*))start_address, arglist)) {
-		 return (HANDLE)-1;
-	}
-
-	//pthread_attr_destroy(&attr);
+  //pthread_attr_destroy(&attr);
 #if !defined(__APPLE__) && !defined(NO_PTHREAD_SETNAME_NP)
-	//
-	// pthread_setname_np does not exist (or exists with
-	// different semantics) on MacOS and on certain
-    // lightweight LINUX variants such as "DietPi".
-    // Using pthread_setname_np() serves no function except that
-	// one sees what the individual threads are doing when
-	// watching the system via "top -h"
-	//
-	void sendbuf(void *arg); // declared in analyzer.c but not in header file
-	char tname[64];
-	if (start_address == &wdspmain) {
-	  snprintf(tname, sizeof(tname), "Wchan%d", (int)(uintptr_t)arglist);
-	} else if (start_address == &sendbuf) {
-	  snprintf(tname, sizeof(tname), "Wdisp%d", (int)(uintptr_t)arglist);
-	} else if (start_address == &flushChannel) {
-	  snprintf(tname, sizeof(tname), "Wflush%d", (int)(uintptr_t)arglist);
-	} else if (start_address == &syncb_main) {
-	  snprintf(tname, sizeof(tname), "WSync");
-	} else	if (start_address == &doPSCalcCorrection
-			 || start_address == &doPSTurnoff
-		 || start_address == &PSSaveCorrection
-		 || start_address == &PSRestoreCorrection) {
-	  snprintf(tname, sizeof(tname), "PURESIGNAL");
-	} else {
-	  // in case there are more worker types
-	  snprintf(tname, sizeof(tname), "WDSP");
-	}
-	//
-	// Ignore return value since we continue anyway.
-	//
-	(void) pthread_setname_np(threadid, tname);
+  //
+  // pthread_setname_np does not exist (or exists with
+  // different semantics) on MacOS and on certain
+  // lightweight LINUX variants such as "DietPi".
+  // Using pthread_setname_np() serves no function except that
+  // one sees what the individual threads are doing when
+  // watching the system via "top -h"
+  //
+  void sendbuf(void *arg); // declared in analyzer.c but not in header file
+  char tname[64];
+  if (start_address == &wdspmain) {
+    snprintf(tname, sizeof(tname), "Wchan%d", (int)(uintptr_t)arglist);
+  } else if (start_address == &sendbuf) {
+    snprintf(tname, sizeof(tname), "Wdisp%d", (int)(uintptr_t)arglist);
+  } else if (start_address == &flushChannel) {
+    snprintf(tname, sizeof(tname), "Wflush%d", (int)(uintptr_t)arglist);
+  } else if (start_address == &syncb_main) {
+    snprintf(tname, sizeof(tname), "WSync");
+  } else	if (start_address == &doPSCorrChange) {
+    snprintf(tname, sizeof(tname), "PS");
+  } else {
+    // unknown worker type
+    snprintf(tname, sizeof(tname), "WDSP");
+  }
+  //
+  // Ignore return value since we continue anyway.
+  //
+  (void) pthread_setname_np(threadid, tname);
 #endif
 
-	return (HANDLE)threadid;
+  return (HANDLE) threadid;
 
 }
 
@@ -252,30 +317,30 @@ void SetThreadPriority(HANDLE thread, int priority)	 {
 */
 }
 
-void CloseHandle(HANDLE hObject) {
-//
-// This routine is *ONLY* called to release semaphores
-// The WDSP transmitter thread terminates upon each TX/RX
-// transition, where it closes and re-opens a semaphore
-// in flush_buffs() in iobuffs.c. Therefore, we have to
-// release any resource associated with this semaphore, which
-// may be a small memory patch (LINUX) or a file descriptor
-// (MacOS).
-//
+void CloseHandle(HANDLE handle) {
+  sem_t *sem = (sem_t *) handle;
+  //
+  // This routine is *ONLY* called to release semaphores.
+  // The WDSP transmitter thread terminates upon each TX/RX
+  // transition, where it closes and re-opens a semaphore
+  // in flush_buffs() in iobuffs.c. Therefore, we have to
+  // release any resource associated with this semaphore, which
+  // may be a small memory patch (LINUX) or a file descriptor
+  // (MacOS).
+  //
 #ifdef __APPLE__
-if (sem_close((sem_t *)hObject) < 0) {
-  perror("WDSP:CloseHandle:SemCLose");
-}
+  if (sem_close(sem) < 0) {
+    perror("WDSP:CloseHandle:SemCLose");
+  }
 #else
-if (sem_destroy((sem_t *)hObject) < 0) {
-  perror("WDSP:CloseHandle:SemDestroy");
-} else {
-  // if sem_destroy failed, do not release storage
-  _aligned_free(hObject);
-}
+  if (sem_destroy(sem) < 0) {
+    perror("WDSP:CloseHandle:SemDestroy");
+  } else {
+    // if sem_destroy failed, do not release storage
+    _aligned_free(sem);
+  }
 #endif
-
-return;
+  return;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////

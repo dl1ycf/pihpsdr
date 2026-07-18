@@ -1,4 +1,4 @@
-/*	resample.c
+/*  resample.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -87,7 +87,7 @@ PORT
 RESAMPLE create_resample ( int run, int size, double* in, double* out, int in_rate, int out_rate, double fc, int ncoef, double gain)
 {
 	RESAMPLE a = (RESAMPLE) malloc0 (sizeof (resample));
-	
+
 	a->run = run;
 	a->size = size;
 	a->in = in;
@@ -261,7 +261,7 @@ RESAMPLEF create_resampleF ( int run, int size, float* in, float* out, int in_ra
 		z = y;
 		y = x % y;
 		x = z;
-	}
+    }
 	a->L = out_rate / x;
 	a->M = in_rate / x;
 	if (in_rate < out_rate) min_rate = in_rate;

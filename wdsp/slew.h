@@ -1,4 +1,4 @@
-/*	slew.h
+/*  slew.h
 
 This file is part of a program that implements a Software-Defined Radio.
 

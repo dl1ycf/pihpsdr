@@ -44,7 +44,6 @@ void profiles_save_state(void) {
     SetPropS1("modeset.%d.rx_audio_name", i,          RXTXprofile[i].rx.audio_name);
     SetPropI1("modeset.%d.tx_local_audio", i,         RXTXprofile[i].tx.local_audio);
     SetPropS1("modeset.%d.tx_audio_name", i,          RXTXprofile[i].tx.audio_name);
-
     if (!radio_is_remote) {
       SetPropI1("modeset.%d.filter", i,                 RXTXprofile[i].rx.filter);
       SetPropI1("modeset.%d.cwPeak", i,                 RXTXprofile[i].rx.cwPeak);
@@ -91,12 +90,10 @@ void profiles_save_state(void) {
       SetPropI1("modeset.%d.fm_limiter", i,             RXTXprofile[i].rx.fm_limiter);
       SetPropF1("modeset.%d.fm_limiter_gain", i,        RXTXprofile[i].rx.fm_limiter_gain);
       SetPropI1("modeset.%d.en_rxeq", i,                RXTXprofile[i].rx.en_eq);
-
       for (int j = 0; j < 11; j++) {
         SetPropF2("modeset.%d.rxeq.%d", i, j,           RXTXprofile[i].rx.eq_gain[j]);
         SetPropF2("modeset.%d.rxeqfrq.%d", i, j,        RXTXprofile[i].rx.eq_freq[j]);
       }
-
       //
       // TX profile
       //
@@ -125,7 +122,6 @@ void profiles_save_state(void) {
       SetPropI1("modeset.%d.tx_phrot_stages", i,        RXTXprofile[i].tx.phrot_stages);
       SetPropF1("modeset.%d.tx_phrot_corner", i,        RXTXprofile[i].tx.phrot_corner);
       SetPropI1("modeset.%d.tx_phrot_reverse", i,       RXTXprofile[i].tx.phrot_reverse);
-
       for (int j = 0; j < 11; j++) {
         SetPropF2("modeset.%d.txeq.%d", i, j,           RXTXprofile[i].tx.eq_gain[j]);
         SetPropF2("modeset.%d.txeqfrq.%d", i, j,        RXTXprofile[i].tx.eq_freq[j]);
@@ -152,7 +148,6 @@ void profiles_restore_state(void) {
     GetPropI1("modeset.%d.tx_local_audio", i,         RXTXprofile[i].tx.local_audio);
     GetPropS1("modeset.%d.rx_audio_name", i,          RXTXprofile[i].rx.audio_name);
     GetPropS1("modeset.%d.tx_audio_name", i,          RXTXprofile[i].tx.audio_name);
-
     if (!radio_is_remote) {
       //
       // set defaults that are the same  for all modes
@@ -212,11 +207,9 @@ void profiles_restore_state(void) {
       RXTXprofile[i].rx.eq_freq[8]  =  2500.0;
       RXTXprofile[i].rx.eq_freq[9]  =  3000.0;
       RXTXprofile[i].rx.eq_freq[10] =  5000.0;
-
       for (int j = 0; j < 11; j++) {
         RXTXprofile[i].rx.eq_gain[j] = 0;
       }
-
       //
       // TX defaults
       //
@@ -265,13 +258,11 @@ void profiles_restore_state(void) {
       RXTXprofile[i].tx.cfc_freq[8] =  2500.0;
       RXTXprofile[i].tx.cfc_freq[9] =  3000.0;
       RXTXprofile[i].tx.cfc_freq[10] =  5000.0;
-
       for (int j = 0; j < 11; j++) {
         RXTXprofile[i].tx.eq_gain[j] = 0;
         RXTXprofile[i].tx.cfc_lvl   [j] = 0;
         RXTXprofile[i].tx.cfc_post  [j] = 0;
       }
-
       //
       // Mode- or Profile-specific dfaults
       //
@@ -286,7 +277,6 @@ void profiles_restore_state(void) {
         RXTXprofile[i].rx.rit_step = 100;
         RXTXprofile[i].tx.ptt_delay = 250;
         break;
-
       case modeDIGL:
       case modeDIGU:
         RXTXprofile[i].rx.agc      = AGC_FAST;
@@ -295,7 +285,6 @@ void profiles_restore_state(void) {
         RXTXprofile[i].rx.rit_step = 100;
         RXTXprofile[i].tx.ptt_delay = 50;
         break;
-
       case modeCWL:
       case modeCWU:
         RXTXprofile[i].rx.agc      = AGC_FAST;
@@ -304,7 +293,6 @@ void profiles_restore_state(void) {
         RXTXprofile[i].rx.rit_step = 10;
         RXTXprofile[i].tx.ptt_delay  = 0;
         break;
-
       case modeAM:
       case modeSAM:
       case modeSPEC:
@@ -316,7 +304,6 @@ void profiles_restore_state(void) {
         RXTXprofile[i].rx.rit_step = 100;
         RXTXprofile[i].tx.ptt_delay   = 250;
         break;
-
       case PROF_AUDIO:
         RXTXprofile[i].rx.agc      = AGC_MEDIUM;
         RXTXprofile[i].rx.filter   = filterF0; //  The widest one
@@ -324,7 +311,6 @@ void profiles_restore_state(void) {
         RXTXprofile[i].rx.rit_step = 100;
         RXTXprofile[i].tx.ptt_delay = 50;
         break;
-
       case PROF_CONTEST:
       case PROF_DX:
         //
@@ -350,7 +336,6 @@ void profiles_restore_state(void) {
         RXTXprofile[i].tx.ptt_delay = 0;
         break;
       }
-
       //
       // Overwrite with data from props file
       //
@@ -423,7 +408,6 @@ void profiles_restore_state(void) {
       GetPropI1("modeset.%d.tx_phrot_stages", i,        RXTXprofile[i].tx.phrot_stages);
       GetPropF1("modeset.%d.tx_phrot_corner", i,        RXTXprofile[i].tx.phrot_corner);
       GetPropI1("modeset.%d.tx_phrot_reverse", i,       RXTXprofile[i].tx.phrot_reverse);
-
       for (int j = 0; j < 11; j++) {
         GetPropF2("modeset.%d.txeq.%d", i, j,           RXTXprofile[i].tx.eq_gain[j]);
         GetPropF2("modeset.%d.txeqfrq.%d", i, j,        RXTXprofile[i].tx.eq_freq[j]);
@@ -433,7 +417,6 @@ void profiles_restore_state(void) {
         GetPropF2("modeset.%d.cfc_lvl.%d", i, j,        RXTXprofile[i].tx.cfc_lvl[j]);
         GetPropF2("modeset.%d.cfc_post.%d", i, j,       RXTXprofile[i].tx.cfc_post[j]);
       }
-
       GetPropI1("modeset.%d.rx_audio_channel", i,       RXTXprofile[i].rx.audio_channel);
       GetPropI1("modeset.%d.rx_local_audio", i,         RXTXprofile[i].rx.local_audio);
       GetPropI1("modeset.%d.tx_local_audio", i,         RXTXprofile[i].tx.local_audio);
@@ -447,7 +430,6 @@ void profiles_copy_rxtxprofile(int mode) {
   //
   // The client may call this, if local audio settings have been changed
   //
-
   //
   // If mode is USB or LSB or DSB, copy settings of that mode to USB and LSB and DSB
   // If mode is CWU or CWL       , copy settings of that mode to CWL and CWU
@@ -459,13 +441,11 @@ void profiles_copy_rxtxprofile(int mode) {
     RXTXprofile[modeCWU] = RXTXprofile[mode];
     RXTXprofile[modeCWL] = RXTXprofile[mode];
     break;
-
   case modeDIGU:
   case modeDIGL:
     RXTXprofile[modeDIGU] = RXTXprofile[mode];
     RXTXprofile[modeDIGL] = RXTXprofile[mode];
     break;
-
   case modeLSB:
   case modeUSB:
   case modeDSB:
@@ -478,7 +458,6 @@ void profiles_copy_rxtxprofile(int mode) {
 
 void profiles_load_rx_profile(RECEIVER *rx, int m) {
   int id = rx->id;
-
   if (radio_is_remote) {
     send_rxprofile(cl_sock_tcp, rx->id, 0, m);
   } else {
@@ -534,12 +513,10 @@ void profiles_load_rx_profile(RECEIVER *rx, int m) {
     rx->fm_limiter                = RXTXprofile[m].rx.fm_limiter;
     rx->fm_limiter_gain           = RXTXprofile[m].rx.fm_limiter_gain;
     rx->eq_enable                 = RXTXprofile[m].rx.en_eq;
-
     for (int i = 0; i < 11; i++) {
       rx->eq_gain[i] = RXTXprofile[m].rx.eq_gain[i];
       rx->eq_freq[i] = RXTXprofile[m].rx.eq_freq[i];
     }
-
     rx_set_agc(rx);
     rx_set_equalizer(rx);
     rx_set_noise(rx);
@@ -547,13 +524,11 @@ void profiles_load_rx_profile(RECEIVER *rx, int m) {
     suppress_popup_sliders++;
     g_idle_add(ext_vfo_update, NULL);
   }
-
   //
   // Local audio stuff is done on both sides
   //
   if (id == 0) {
     rx->audio_channel = RXTXprofile[m].rx.audio_channel;
-
     if (rx->local_audio != RXTXprofile[m].rx.local_audio
         || strncmp(rx->audio_name, RXTXprofile[m].rx.audio_name, sizeof(rx->audio_name))) {
       //
@@ -563,10 +538,8 @@ void profiles_load_rx_profile(RECEIVER *rx, int m) {
         rx->local_audio = 0;
         audio_close_output(rx);
       }
-
       if (RXTXprofile[m].rx.local_audio) {
         snprintf(rx->audio_name, sizeof(rx->audio_name), "%s", RXTXprofile[m].rx.audio_name);
-
         if (audio_open_output(rx) < 0) {
           rx->local_audio = 0;
           t_print("%s: Open audio output failed\n", __func__);
@@ -580,7 +553,6 @@ void profiles_load_rx_profile(RECEIVER *rx, int m) {
 
 void profiles_load_tx_profile(TRANSMITTER *tx, int m) {
   if (!can_transmit) { return; }
-
   if (radio_is_remote) {
     send_txprofile(cl_sock_tcp, 0, m);
   } else {
@@ -610,7 +582,6 @@ void profiles_load_tx_profile(TRANSMITTER *tx, int m) {
     tx->phrot_reverse       = RXTXprofile[m].tx.phrot_reverse;
     tx->phrot_stages        = RXTXprofile[m].tx.phrot_stages;
     tx->phrot_corner        = RXTXprofile[m].tx.phrot_corner;
-
     for (int i = 0; i < 11; i++) {
       tx->eq_gain[i]  = RXTXprofile[m].tx.eq_gain[i];
       tx->eq_freq[i]  = RXTXprofile[m].tx.eq_freq[i];
@@ -618,14 +589,12 @@ void profiles_load_tx_profile(TRANSMITTER *tx, int m) {
       tx->cfc_lvl[i]  = RXTXprofile[m].tx.cfc_lvl[i];
       tx->cfc_post[i] = RXTXprofile[m].tx.cfc_post[i];
     }
-
     tx_set_filter(tx);
     tx_set_compressor(tx);
     tx_set_dexp(tx);
     tx_set_equalizer(tx);
     tx_set_phrot(tx);
   }
-
   //
   // local audio is done on both sides
   //
@@ -638,10 +607,8 @@ void profiles_load_tx_profile(TRANSMITTER *tx, int m) {
       tx->local_audio = 0;
       audio_close_input(tx);
     }
-
     if (RXTXprofile[m].tx.local_audio) {
       snprintf(tx->audio_name, sizeof(tx->audio_name), "%s", RXTXprofile[m].tx.audio_name);
-
       if (audio_open_input(tx) < 0) {
         tx->local_audio = 0;
         t_print("%s: Open audio input failed\n", __func__);
@@ -650,7 +617,6 @@ void profiles_load_tx_profile(TRANSMITTER *tx, int m) {
       }
     }
   }
-
   g_idle_add(ext_vfo_update, NULL);
   suppress_popup_sliders--;
 }
@@ -661,7 +627,6 @@ void profiles_load_rxtx_profile(RECEIVER *rx) {
   id = rx->id;
   m = vfo[id].mode;
   profiles_load_rx_profile(rx, m);
-
   if (can_transmit && id == vfo_get_tx_vfo()) {
     profiles_load_tx_profile(transmitter, m);
   }
@@ -672,7 +637,6 @@ void profiles_save_rx_profile(RECEIVER *rx, int m) {
   // Save actual settings of the receiver into slot
   //
   int id = rx->id;
-
   if (radio_is_remote) {
     send_rxprofile(cl_sock_tcp, id, 1, m);
   } else {
@@ -722,13 +686,11 @@ void profiles_save_rx_profile(RECEIVER *rx, int m) {
     RXTXprofile[m].rx.fm_limiter             = rx->fm_limiter;
     RXTXprofile[m].rx.fm_limiter_gain        = rx->fm_limiter_gain;
     RXTXprofile[m].rx.en_eq                  = rx->eq_enable;
-
     for (int i = 0; i < 11; i++) {
       RXTXprofile[m].rx.eq_gain[i]           = rx->eq_gain[i];
       RXTXprofile[m].rx.eq_freq[i]           = rx->eq_freq[i];
     }
   }
-
   //
   // local audio stuff is stored on both sides
   //
@@ -742,7 +704,6 @@ void profiles_save_tx_profile(TRANSMITTER *tx, int m) {
   // Save actual settings of the transmitter into slot
   //
   if (!can_transmit) { return; }
-
   if (radio_is_remote) {
     send_txprofile(cl_sock_tcp, 1, m);
   } else {
@@ -771,7 +732,6 @@ void profiles_save_tx_profile(TRANSMITTER *tx, int m) {
     RXTXprofile[m].tx.phrot_reverse       = tx->phrot_reverse;
     RXTXprofile[m].tx.phrot_stages        = tx->phrot_stages;
     RXTXprofile[m].tx.phrot_corner        = tx->phrot_corner;
-
     for (int i = 0; i < 11; i++) {
       RXTXprofile[m].tx.eq_gain[i]        = tx->eq_gain[i];
       RXTXprofile[m].tx.eq_freq[i]        = tx->eq_freq[i];
@@ -780,7 +740,6 @@ void profiles_save_tx_profile(TRANSMITTER *tx, int m) {
       RXTXprofile[m].tx.cfc_post[i]       = tx->cfc_post[i];
     }
   }
-
   //
   // Local audio is stored on both sides
   //

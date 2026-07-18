@@ -1,8 +1,8 @@
-/*	RXA.h
+/*  RXA.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2013, 2014, 2015, 2016, 2025 Warren Pratt, NR0V
+Copyright (C) 2013, 2014, 2015, 2016, 2025, 2026 Warren Pratt, NR0V
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -41,7 +41,8 @@ enum rxaMode
 	RXA_SPEC,
 	RXA_DIGL,
 	RXA_SAM,
-	RXA_DRM
+	RXA_DRM,
+	RXA_WBFM = 12
 };
 
 enum rxaMeterType
@@ -74,8 +75,12 @@ struct _rxa
 	} shift;
 	struct
 	{
+		HBResampler p;
+	} rsmpin;
+	struct
+	{
 		RESAMPLE p;
-	} rsmpin, rsmpout;
+	} rsmpout;
 	struct
 	{
 		GEN p;
@@ -112,6 +117,10 @@ struct _rxa
 	{
 		AMD p;
 	} amd;
+	struct
+	{
+		WBFM p;
+	} wbfm;
 	struct
 	{
 		FMD p;
@@ -156,15 +165,14 @@ struct _rxa
 	{
 		GAUSSIAN p;
 	} gaussian;
-	struct
-	{
-		RNNR p; // NR3 + NR4 support (nr3)
-	} rnnr;
-	struct
-	{
-		SBNR p; // NR3 + NR4 support (nr4)
-	} sbnr;
-
+    struct
+    {
+        RNNR p; // NR3 + NR4 support (nr3)
+    } rnnr;
+    struct
+    {
+        SBNR p; // NR3 + NR4 support (nr4)
+    } sbnr;
 	struct
 	{
 		SPEAK p;
@@ -215,7 +223,8 @@ extern __declspec (dllexport) void SetRXAMode (int channel, int mode);
 
 extern void RXAResCheck (int channel);
 
-extern void RXAbp1Check (int channel, int amd_run, int snba_run, int emnr_run, int anf_run, int anr_run, int rnnr_run, int sbnr_run);  // NR3 + NR4 support
+extern void RXAbp1Check (int channel, int amd_run, int snba_run, int emnr_run, int anf_run, int anr_run,
+                         int rnnr_run, int sbnr_run);  // NR3 + NR4 support
 
 extern void RXAbp1Set (int channel);
 

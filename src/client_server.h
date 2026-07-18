@@ -750,9 +750,7 @@ typedef struct __attribute__((__packed__)) _ps_params {
   //
   mydouble ps_setpk;
   //
-  uint8_t  ps_ptol;
   uint8_t  ps_oneshot;
-  uint8_t  ps_map;
 } PS_PARAMS;
 
 //

@@ -147,17 +147,14 @@ static mybuffer *get_my_buffer(int numlist) {
   int i, j, first;
   const char *desc;
   mybuffer *bp = buflist[numlist];
-
   while (bp) {
     if (bp->free) {
       // found free buffer. Mark as used and return that one.
       bp->free = 0;
       return bp;
     }
-
     bp = bp->next;
   }
-
   //
   // No buffer free, or the first time we request a buffer:
   // allocate (a) new one(s). Note we need very few
@@ -165,33 +162,27 @@ static mybuffer *get_my_buffer(int numlist) {
   // and a possibly large amount of DDC IQ buffers.
   //
   first = (bp == NULL);
-
   switch (numlist) {
   case HPMYBUF:
     j = 4;
     desc = "HP";
     break;
-
   case MICMYBUF:
     j = 16;
     desc = "MIC";
     break;
-
   case DDCMYBUF:
     j = 64;
     desc = "DDC";
     break;
-
   default:
     // NOTREACHED
     j = 5;
     desc = "UNKNOWN";
     break;
   }
-
   for (i = 0; i < j; i++) {
     bp = g_new(mybuffer, 1);  // never released
-
     if (bp) {
       bp->free = 1;
       bp->next = buflist[numlist];
@@ -199,7 +190,6 @@ static mybuffer *get_my_buffer(int numlist) {
       num_buf[numlist]++;
     }
   }
-
   t_print("%s: number of buffer[%s] %s to %d\n", __func__, desc,
           first ? "set" : "increased", num_buf[numlist]);
   // Mark the first buffer in list as used and return that one.
@@ -216,11 +206,9 @@ void saturn_free_buffers() {
   // on first start.
   //
   mybuffer *mybuf;
-
   for (int i = 0; i < MAXMYBUF; i++) {
     (void) get_my_buffer(i);  // this will pre-allocate
     mybuf = buflist[i];
-
     while (mybuf) {
       mybuf->free = 1;
       mybuf = mybuf->next;
@@ -237,34 +225,28 @@ static bool CreateDynamicMemory(void) {                     // return true if er
   // first create the buffer for DMA, and initialise its pointers
   //
   posix_memalign((void**)&DMAReadBuffer, VALIGNMENT, DMABufferSize);
-
   if (!DMAReadBuffer) {
     t_print("DMA read buffer allocation failed\n");
     return true;
   }
-
   memset(DMAReadBuffer, 0, DMABufferSize);
   DMAReadPtr = DMAReadBuffer + VBASE;  // at offset "VBASE" in the buffer
   DMAHeadPtr = DMAReadBuffer + VBASE;
   DMABasePtr = DMAReadBuffer + VBASE;
-
   //
   // set up per-DDC data structures
   //
   for (int DDC = 0; DDC < VNUMDDC; DDC++) {
     // cannot use g_new here, we need the "fundamentally aligned" feature of malloc()
     DDCSampleBuffer[DDC] = malloc(DMABufferSize);  // never released
-
     if (!DDCSampleBuffer[DDC]) {
       t_print("DDC%d buffer allocation failed\n", DDC);
       return true;
     }
-
     IQReadPtr[DDC] = DDCSampleBuffer[DDC] + VBASE; // at offset "VBASE" in the buffer
     IQHeadPtr[DDC] = DDCSampleBuffer[DDC] + VBASE;
     IQBasePtr[DDC] = DDCSampleBuffer[DDC] + VBASE;
   }
-
   return false;
 }
 
@@ -291,7 +273,6 @@ static void saturn_register_init() {
   EnableCW(false, false);
   SetByteSwapping(true);                                            // h/w to generate NOT network byte order
   SetSpkrMute(false);
-
   if (Saturn_PCB_Version <= 2) {
     if (FPGA_MinorVersion < 13) {
       SetTXAmplitudeScaling(VCONSTTXAMPLSCALEFACTOR);               // for firmware version up to 1.2 (old PCB)
@@ -301,7 +282,6 @@ static void saturn_register_init() {
   } else {
     SetTXAmplitudeScaling(VCONSTTXAMPLSCALEFACTOR_PCBV3);           // for new V3 boards
   }
-
   SetBalancedMicInput(false);
 }
 
@@ -316,14 +296,11 @@ static bool is_already_running() {
   FILE *fp;
   char path[1035];
   fp = popen("lsof /dev/xdma0_user | grep pihpsdr", "r");
-
   if (fp == NULL) {
     t_print("Failed to run command in %s\n", __func__ );
     exit(1);
   }
-
   while (fgets(path, sizeof(path), fp) != NULL) {}
-
   pclose(fp);
   return (strstr(path, "pihpsdr") == NULL) ? false : true;
 }
@@ -337,18 +314,15 @@ static bool is_already_running() {
 
 void saturn_discovery() {
   struct stat sb;
-
   if (devices < MAX_DEVICES && stat("/dev/xdma0_user", &sb) == 0 && S_ISCHR(sb.st_mode)) {
     uint8_t *mac = discovered[devices].network.mac_address;
     bool goodConfig = true;
     bool incompatible = true;
     char buf[256];
     bool running = is_already_running();
-
     if (OpenXDMADriver() == 0) {
       return;
     }
-
     //
     // Check version numbers etc. If they do not match,
     // Be aware that the XDMA may not be connected to a known Saturn board,
@@ -379,29 +353,24 @@ void saturn_discovery() {
     //
     FPGA_MinorVersion   = (SoftwareInformation >>  4) & 0xFFFF;            // 16 bit minor sw version
     Saturn_PCB_Version  = (ProductInformation & 0xFFFF);                   // 16 bit board ID
-
     //
     // Initially, MajorVersions did not exist
     //
     if (FPGA_MinorVersion < 18) {
       FPGA_MajorVersion = 0;
     }
-
     if (FPGA_ProdID != SATURNPRODUCTID) {
       t_print("SATURN ProdID does not match\n");
       goodConfig = false;
     }
-
     if (FPGA_SWID != SATURNGOLDENCONFIGID && FPGA_SWID != SATURNPRIMARYCONFIGID) {
       t_print("SATURN SWID does not match\n");
       goodConfig = false;
     }
-
     if (FPGA_ClockInfo != 0xF) {
       t_print("SATURN clocks missing\n");
       goodConfig = false;  // not all clocks are present
     }
-
     if (!goodConfig) {
       //
       // This may indicate that the XDMA driver is not connected to a known Saturn board
@@ -409,7 +378,6 @@ void saturn_discovery() {
       CloseXDMADriver();
       return;
     }
-
     //
     // Now we know we have a Saturn board, so we can init it, and shall report back
     // a discovery result, which contains one of
@@ -420,15 +388,12 @@ void saturn_discovery() {
     //
     saturn_register_init();
     discovered[devices].status = (running) ? STATE_SENDING : STATE_AVAILABLE;
-
     if (FPGA_MajorVersion == 0 && FPGA_MinorVersion >= FIRMWARE_MIN_MINOR && FPGA_MinorVersion <= FIRMWARE_MAX_MINOR) {
       incompatible = false;
     }
-
     if (FPGA_MajorVersion >= FIRMWARE_MIN_MAJOR && FPGA_MajorVersion <=  FIRMWARE_MAX_MAJOR) {
       incompatible = false;
     }
-
     if (incompatible) {
       t_print("Incompatible Saturn FPGA firmware version (%ud,%ud), need (%d...%d, %d...%d) \n",
               FPGA_MajorVersion,
@@ -440,7 +405,6 @@ void saturn_discovery() {
              );
       discovered[devices].status = STATE_INCOMPATIBLE;
     }
-
     discovered[devices].protocol = NEW_PROTOCOL;
     discovered[devices].device = NEW_DEVICE_SATURN;
     discovered[devices].software_version = FPGA_MinorVersion;
@@ -459,20 +423,17 @@ void saturn_discovery() {
     //
     memset(buf, 0, 256);
     FILE *fp = fopen("/sys/class/net/eth0/address", "rt");
-
     if (fp) {
       if (fgets(buf, sizeof buf, fp) != NULL) {
         sscanf(buf, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0],
                &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
       }
-
       fclose(fp);
     } else {
       for (int i = 0; i < 6; i++) {
         discovered[devices].network.mac_address[i] = 0;
       }
     }
-
     discovered[devices].network.address_length = 0;
     discovered[devices].network.interface_length = 0;
     snprintf(discovered[devices].network.interface_name, sizeof(discovered[devices].network.interface_name),
@@ -515,12 +476,10 @@ static void saturn_init_duc_iq() {
   // setup DMA buffer
   //
   posix_memalign((void**)&IQWriteBuffer, VALIGNMENT, IQBufferSize);
-
   if (!IQWriteBuffer) {
     t_print("%s: I/Q TX write buffer allocation failed\n", __func__);
     exit(-1);
   }
-
   DUCIQBasePtr = IQWriteBuffer + VBASE;
   memset(IQWriteBuffer, 0, IQBufferSize);
   //
@@ -528,12 +487,10 @@ static void saturn_init_duc_iq() {
   // there is at least one XDMA device driver around which *needs* write-only here
   //
   DMADUCWritefile_fd = open(VDUCDMADEVICE, O_WRONLY);
-
   if (DMADUCWritefile_fd < 0) {
     t_print("%s: XDMA write device open failed for TX I/Q data\n", __func__);
     exit(-1);
   }
-
   //
   // setup hardware
   //
@@ -557,17 +514,13 @@ void saturn_handle_duc_iq(const unsigned char *UDPInBuffer) {
   DepthDUC = ReadFIFOMonitorChannel(eTXDUCDMA, &FIFODUCOverflow, &FIFODUCOverThreshold, &FIFODUCUnderflow,
                                     &Current);  // read the FIFO free locations
 #ifdef DISPLAY_OVER_UNDER_FLOWS
-
   if (FIFODUCOverThreshold) {
     t_print("TX DUC FIFO Overthreshold, depth now = %d\n", Current);
   }
-
   if (FIFODUCUnderflow) {
     t_print("TX DUC FIFO Underflowed, depth now = %d\n", Current);
   }
-
 #endif
-
   //
   // Do 'busy waiting' until there is space in the FIFO
   //
@@ -576,24 +529,19 @@ void saturn_handle_duc_iq(const unsigned char *UDPInBuffer) {
     DepthDUC = ReadFIFOMonitorChannel(eTXDUCDMA, &FIFODUCOverflow, &FIFODUCOverThreshold, &FIFODUCUnderflow,
                                       &Current); // read the FIFO free locations
 #ifdef DISPLAY_OVER_UNDER_FLOWS
-
     if (FIFODUCOverThreshold) {
       t_print("TX DUC FIFO Overthreshold, depth now = %d\n", Current);
     }
-
     if (FIFODUCUnderflow) {
       t_print("TX DUC FIFO Underflowed, depth now = %d\n", Current);
     }
-
 #endif
   }
-
   //
   // Now copy DUC IQ data to DMA.
   //
   SrcPtr = (UDPInBuffer + 4);
   DestPtr = DUCIQBasePtr;
-
   //
   // We must swap I/Q, so for all 6-byte IQ samples
   // copy byte 3,4,5,0,1,2 in that order
@@ -607,7 +555,6 @@ void saturn_handle_duc_iq(const unsigned char *UDPInBuffer) {
     *DestPtr++ = *(SrcPtr + 2);
     SrcPtr += 6;
   }
-
   //
   // Write IQ data to DMA
   //
@@ -632,12 +579,10 @@ static void saturn_init_speaker_audio() {
   // setup DMA buffer
   //
   posix_memalign((void**)&SpkWriteBuffer, VALIGNMENT, SpkBufferSize);
-
   if (!SpkWriteBuffer) {
     t_print("%s: spkr write buffer allocation failed\n", __func__);
     exit(-1);
   }
-
   SpkBasePtr = SpkWriteBuffer + VBASE;
   memset(SpkWriteBuffer, 0, SpkBufferSize);
   //
@@ -645,12 +590,10 @@ static void saturn_init_speaker_audio() {
   // there is at least one XDMA device driver around which *needs* write-only here
   //
   DMASpkWritefile_fd = open(VSPKDMADEVICE, O_WRONLY);
-
   if (DMASpkWritefile_fd < 0) {
     t_print("%s: XDMA write device open failed for spk data\n", __func__);
     exit(-1);
   }
-
   ResetDMAStreamFIFO(eSpkCodecDMA);
   SetupFIFOMonitorChannel(eSpkCodecDMA, false);
   return;
@@ -666,17 +609,13 @@ void saturn_handle_speaker_audio(const unsigned char *UDPInBuffer) {
   DepthSpk = ReadFIFOMonitorChannel(eSpkCodecDMA, &FIFOSpkOverflow, &FIFOSpkOverThreshold, &FIFOSpkUnderflow,
                                     &Current);  // read the FIFO free locations
 #ifdef DISPLAY_OVER_UNDER_FLOWS
-
   if (FIFOSpkOverThreshold) {
     t_print("Codec speaker FIFO Overthreshold, depth now = %d\n", Current);
   }
-
   if (FIFOSpkUnderflow) {
     t_print("Codec Speaker FIFO Underflowed, depth now = %d\n", Current);
   }
-
 #endif
-
   //
   // do 'busy wait' until there is enough space available
   //
@@ -685,18 +624,14 @@ void saturn_handle_speaker_audio(const unsigned char *UDPInBuffer) {
     DepthSpk = ReadFIFOMonitorChannel(eSpkCodecDMA, &FIFOSpkOverflow, &FIFOSpkOverThreshold, &FIFOSpkUnderflow,
                                       &Current); // read the FIFO free locations
 #ifdef DISPLAY_OVER_UNDER_FLOWS
-
     if (FIFOSpkOverThreshold) {
       t_print("Codec speaker FIFO Overthreshold, depth now = %d\n", Current);
     }
-
     if (FIFOSpkUnderflow) {
       t_print("Codec Speaker FIFO Underflowed, depth now = %d\n", Current);
     }
-
 #endif
   }
-
   //
   // Copy data to DMA transfer buffer and write to FPGA
   //
@@ -728,14 +663,11 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
   uint16_t ADC2MaxAmpl;                           // max ADC amplitude in period where overflows clecked
   uint16_t PeakADC1MaxAmpl = 0;                   // max hold ADC amplitude in period of message
   uint16_t PeakADC2MaxAmpl = 0;                   // max hold ADC amplitude in period of message
-
   while (!Exiting) {
     uint32_t SequenceCounter = 0;                       // sequence count for pihpsdr
-
     while (!SDRActive) {
       usleep(10000);
     }
-
     //
     // this is the main loop. SDR is running. transfer data;
     // also check for changes to DDC enabled, and DDC interleaved
@@ -758,11 +690,8 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
       // currently not used by piHPSDR
       //
       ADCOverflows |= (GetADCOverflow(&ADC1MaxAmpl, &ADC2MaxAmpl) & 0xFF);            // add in any new overflows
-
       if (ADC1MaxAmpl > PeakADC1MaxAmpl) { PeakADC1MaxAmpl = ADC1MaxAmpl; }           // get peak hold
-
       if (ADC2MaxAmpl > PeakADC2MaxAmpl) { PeakADC2MaxAmpl = ADC2MaxAmpl; }           // get peak hold
-
       mybuf->buffer[39] = (PeakADC1MaxAmpl >> 8) & 0xFF;                              // ADC1 peak hold
       mybuf->buffer[40] = (PeakADC1MaxAmpl     ) & 0xFF;
       mybuf->buffer[41] = (PeakADC2MaxAmpl >> 8) & 0xFF;                              // ADC2 peak hold
@@ -803,14 +732,11 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
       // - if a new ADC overload is detected, send after 50 ms at the latest
       //
       SleepCount = HaveMOX ? 2 : 400;
-
       while (SleepCount-- > 0) {
         ReadStatusRegister();
-
         if ((GetP2PTTKeyInputs() & 0xFF) != PTTBits) {
           break;
         }
-
         //
         // Note GetADCOverflow() *clears* the ADC overflow latch
         // in the FPGA. During TX, just report ADC status every
@@ -819,26 +745,20 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
         // a new ADC overflow has been detected.
         //
         ADCOverflows |= (GetADCOverflow(&ADC1MaxAmpl, &ADC2MaxAmpl) & 0xFF);
-
         if (ADC1MaxAmpl > PeakADC1MaxAmpl) { PeakADC1MaxAmpl = ADC1MaxAmpl; }
-
         if (ADC2MaxAmpl > PeakADC2MaxAmpl) { PeakADC2MaxAmpl = ADC2MaxAmpl; }
-
         if (ADCOverflows != 0 && SleepCount > 100)  {
           // We come here during RX only
           SleepCount = 100;
         }
-
         if (HaveMOX && SleepCount > 1) {
           // RXTX transition while "sleeping"
           SleepCount = 1;
         }
-
         usleep(500);
       }
     }
   }
-
   t_print("ending: %s\n", __func__);
   return NULL;
 }
@@ -868,12 +788,10 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
   // setup DMA buffer
   //
   posix_memalign((void**)&MicReadBuffer, VALIGNMENT, MicBufferSize);
-
   if (!MicReadBuffer) {
     t_print("%s: mic read buffer allocation failed\n", __func__);
     exit(-1);
   }
-
   MicBasePtr = MicReadBuffer + VBASE;
   memset(MicReadBuffer, 0, MicBufferSize);
   //
@@ -881,12 +799,10 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
   // there is at least one XDMA device driver around which *needs* read-only here
   //
   DMAReadfile_fd = open(VMICDMADEVICE, O_RDONLY);
-
   if (DMAReadfile_fd < 0) {
     t_print("%s: XDMA read device open failed for mic data\n", __func__);
     exit(-1);
   }
-
   //
   // now initialise Saturn hardware.
   // clear FIFO
@@ -897,7 +813,6 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
   RegisterValue = ReadFIFOMonitorChannel(eMicCodecDMA, &FIFOOverflow, &FIFOOverThreshold, &FIFOUnderflow,
                                          &Current);  // read the FIFO Depth register
   t_print("%s: mic FIFO Depth register = %08x (should be ~0)\n", __func__, RegisterValue);
-
   //
   // planned strategy: just DMA mic data when available; don't copy and DMA a larger amount.
   // if sufficient FIFO data available: DMA that data and transfer it out.
@@ -905,13 +820,10 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
   //
   while (!Exiting) {
     uint32_t SequenceCounter = 0;
-
     while (!SDRActive) {
       usleep(10000);
     }
-
     t_print("starting %s\n", __func__);
-
     while (SDRActive) {
       //
       // now wait until there is data, then DMA it
@@ -919,34 +831,28 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
       Depth = ReadFIFOMonitorChannel(eMicCodecDMA, &FIFOOverflow, &FIFOOverThreshold, &FIFOUnderflow,
                                      &Current);  // read the FIFO Depth register. 4 mic words per 64 bit word.
 #ifdef DISPLAY_OVER_UNDER_FLOWS
-
       if (FIFOOverThreshold) {
         t_print("Codec Mic FIFO Overthreshold, depth now = %d\n", Current);
       }
-
       // note this would often generate a message because we deliberately read it down to zero.
       // this isn't a problem as we can send the data on without the code becoming blocked.
       //if(FIFOUnderflow)
       //  t_print("Codec Mic FIFO Underflowed, depth now = %d\n", Depth);
 #endif
-
       while (Depth < (VMICSAMPLESPERFRAME / 4)) {         // 16 locations = 64 samples
         usleep(1000);                       // 1ms wait
         Depth = ReadFIFOMonitorChannel(eMicCodecDMA, &FIFOOverflow, &FIFOOverThreshold, &FIFOUnderflow,
                                        &Current);  // read the FIFO Depth register
 #ifdef DISPLAY_OVER_UNDER_FLOWS
-
         if (FIFOOverThreshold) {
           t_print("Codec Mic FIFO Overthreshold, depth now = %d\n", Current);
         }
-
         // note this would often generate a message because we deliberately read it down to zero.
         // this isn't a problem as we can send the data on without the code becoming blocked.
         //if(FIFOUnderflow)
         //  t_print("Codec Mic FIFO Underflowed, depth now = %d\n", Depth);
 #endif
       }
-
       DMAReadFromFPGA(DMAReadfile_fd, MicBasePtr, VDMAMICTRANSFERSIZE, VADDRMICSTREAMREAD);
       // create the packet
       mybuffer *mybuf = get_my_buffer(MICMYBUF);
@@ -959,7 +865,6 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
       saturn_post_micaudio(VMICPACKETSIZE, mybuf);
     }
   }
-
   t_print("ending: %s\n", __func__);
   return NULL;
 }
@@ -994,23 +899,19 @@ static gpointer saturn_rx_thread(gpointer arg) {
   //
   PrevRateWord = 0xFFFFFFFF;                                  // illegal value to forc re-calculation of rates
   DMATransferSize = VDMATRANSFERSIZE;                         // initial size, but can be changed
-
   if (CreateDynamicMemory()) {
     t_print("%s: CreateDynamicMemory Failed\n", __func__);
     exit(-1);
   }
-
   //
   // open DMA device driver
   // there is at least one XDMA device driver around which *needs* read-only here
   //
   IQReadfile_fd = open(VDDCDMADEVICE, O_RDONLY);
-
   if (IQReadfile_fd < 0) {
     t_print("%s: XDMA read device open failed for DDC data\n", __func__);
     exit(-1);
   }
-
   //
   // now initialise Saturn hardware.
   //
@@ -1034,18 +935,14 @@ static gpointer saturn_rx_thread(gpointer arg) {
   t_print("%s: enable data transfer\n", __func__);
   SetRXDDCEnabled(true);
   HeaderFound = false;
-
   while (!Exiting) {
     while (!SDRActive) {
       usleep(10000);
     }
-
     for (int DDC = 0; DDC < VNUMDDC; DDC++) {
       SequenceCounter[DDC] = 0;
     }
-
     t_print("starting %s\n", __func__);
-
     while (SDRActive) {
       //
       // loop through all DDC I/Q buffers.
@@ -1073,7 +970,6 @@ static gpointer saturn_rx_thread(gpointer arg) {
           //
           memcpy(mybuf->buffer + 16, IQReadPtr[DDC], VIQBYTESPERFRAME);
           IQReadPtr[DDC] += VIQBYTESPERFRAME;
-
           if (DDC < 6) {
             SequenceCounter[DDC] = 0;
             mybuf->free = 1;
@@ -1081,14 +977,12 @@ static gpointer saturn_rx_thread(gpointer arg) {
             saturn_post_iq_data(DDC - 6, mybuf);
           }
         }
-
         //
         // now copy any residue to the start of the buffer (before the data copy in point)
         // unless the buffer already starts at or below the base
         // if we do a copy, the 1st free location is always base addr
         //
         ResidueBytes = IQHeadPtr[DDC] - IQReadPtr[DDC];
-
         //    t_print("Residue = %d bytes\n",ResidueBytes);
         if (IQReadPtr[DDC] > IQBasePtr[DDC]) {                              // move data down
           if (ResidueBytes != 0) {  // if there is residue to move
@@ -1097,11 +991,9 @@ static gpointer saturn_rx_thread(gpointer arg) {
           } else {
             IQReadPtr[DDC] = IQBasePtr[DDC];
           }
-
           IQHeadPtr[DDC] = IQBasePtr[DDC];                            // ready for new data at base
         }
       }
-
       //
       // Packet sending complete for all DDCs: there are no DDC buffers with enough data to send out.
       // bring in more data by DMA if there is some, else sleep for a while and try again
@@ -1114,29 +1006,24 @@ static gpointer saturn_rx_thread(gpointer arg) {
       Depth = ReadFIFOMonitorChannel(eRXDDCDMA, &FIFOOverflow, &FIFOOverThreshold, &FIFOUnderflow,
                                      &Current);  // read the FIFO Depth register
 #ifdef DISPLAY_OVER_UNDER_FLOWS
-
       if (FIFOOverThreshold) {
         t_print("RX DDC FIFO Overthreshold, depth now = %d\n", Current);
       }
-
       // note this could often generate a message at low sample rate because we deliberately read it down to zero.
       // this isn't a problem as we can send the data on without the code becoming blocked. so not a useful trap.
       //if(FIFOUnderflow)
       //  t_print("RX DDC FIFO Underflowed, depth now = %d\n", Current);
       //  t_print("read: depth = %d\n", Depth);
 #endif
-
       //    t_print("read: depth = %d\n", Depth);
       while (Depth < (DMATransferSize / 8U)) { // 8 bytes per location
         usleep(500);               // 1ms wait
         Depth = ReadFIFOMonitorChannel(eRXDDCDMA, &FIFOOverflow, &FIFOOverThreshold, &FIFOUnderflow,
                                        &Current);  // read the FIFO Depth register
 #ifdef DISPLAY_OVER_UNDER_FLOWS
-
         if (FIFOOverThreshold) {
           t_print("RX DDC FIFO Overthreshold, depth now = %d\n", Current);
         }
-
         // note this could often generate a message at low sample rate because we deliberately read it down to zero.
         // this isn't a problem as we can send the data on without the code becoming blocked. so not a useful trap.
         //if(FIFOUnderflow)
@@ -1144,7 +1031,6 @@ static gpointer saturn_rx_thread(gpointer arg) {
         //  t_print("read: depth = %d\n", Depth);
 #endif
       }
-
       if (Depth > 4096) {
         DMATransferSize = 32768;
       } else if (Depth > 2048) {
@@ -1154,10 +1040,8 @@ static gpointer saturn_rx_thread(gpointer arg) {
       } else {
         DMATransferSize = 4096;
       }
-
       DMAReadFromFPGA(IQReadfile_fd, DMAHeadPtr, DMATransferSize, VADDRDDCSTREAMREAD);
       DMAHeadPtr += DMATransferSize;
-
       //
       // find header: may not be the 1st word
       //
@@ -1170,12 +1054,10 @@ static gpointer saturn_rx_thread(gpointer arg) {
             break;
           }
         }
-
       if (HeaderFound == false) {                                      // if rate flag not set
         t_print("%s: Rate word not found when expected. rate= %08x\n", __func__, RateWord);
         exit(1);
       }
-
       //
       // finally copy data to DMA buffers according to the embedded DDC rate words
       // the 1st word is pointed by DMAReadPtr and it should point to a DDC rate word
@@ -1186,7 +1068,6 @@ static gpointer saturn_rx_thread(gpointer arg) {
       // assume that DMA is > 1 frame.
       //            t_print("headptr = %x readptr = %x\n", DMAHeadPtr, DMAReadPtr);
       DecodeByteCount = DMAHeadPtr - DMAReadPtr;
-
       //
       // Note CAST-ALIGN:
       // - DMAReadPtr is initialised on a 4092-byte boundary and then moves in multiples of 8 bytes,
@@ -1207,37 +1088,29 @@ static gpointer saturn_rx_thread(gpointer arg) {
           // cppcheck-suppress constVariablePointer
           uint32_t *LongWordPtr = (uint32_t*)DMAReadPtr;  // CAST OK
           RateWord = *LongWordPtr;                                                        // read rate word
-
           if (RateWord != PrevRateWord) {
             FrameLength = AnalyseDDCHeader(RateWord, &DDCCounts[0]);                      // read new settings
             //                        t_print("new framelength = %d\n", FrameLength);
             PrevRateWord = RateWord;                                                      // so so we know its analysed
           }
-
           if (DecodeByteCount >= ((FrameLength + 1) * 8)) {                               // if bytes for header & frame
             //THEN COPY DMA DATA TO I / Q BUFFERS
             DMAReadPtr += 8;                                                              // point to 1st location past rate word
             SrcWordPtr = (uint16_t*)DMAReadPtr; // CAST OK
-
             for (int DDC = 0; DDC < VNUMDDC; DDC++) {
               HdrWord = DDCCounts[DDC];                                                   // number of words for this DDC. reuse variable
-
               if (HdrWord != 0) {
                 DestWordPtr = (uint16_t *)IQHeadPtr[DDC]; // CAST OK
-
                 for (unsigned int Cntr = 0; Cntr < HdrWord; Cntr++) {                     // count 64 bit words
                   *DestWordPtr++ = *SrcWordPtr++;                                         // move 48 bits of sample data
                   *DestWordPtr++ = *SrcWordPtr++;
                   *DestWordPtr++ = *SrcWordPtr++;
                   SrcWordPtr++;                                                           // and skip 16 bits where theres no data
                 }
-
                 IQHeadPtr[DDC] += 6 * HdrWord;                                            // 6 bytes per sample
               }
-
               // read N samples; write at head ptr
             }
-
             DMAReadPtr += FrameLength * 8;                                                // that's how many bytes we read out
             DecodeByteCount -= (FrameLength + 1) * 8;
           } else {
@@ -1245,14 +1118,12 @@ static gpointer saturn_rx_thread(gpointer arg) {
           }
         }
       }
-
       //
       // now copy any residue to the start of the buffer (before the data copy in point)
       // unless the buffer already starts at or below the base
       // if we do a copy, the 1st free location is always base addr
       //
       ResidueBytes = DMAHeadPtr - DMAReadPtr;
-
       //    t_print("Residue = %d bytes\n",ResidueBytes);
       if (DMAReadPtr > DMABasePtr) {                              // move data down
         if (ResidueBytes != 0) {  // if there is residue to move
@@ -1261,12 +1132,10 @@ static gpointer saturn_rx_thread(gpointer arg) {
         } else {
           DMAReadPtr = DMABasePtr;
         }
-
         DMAHeadPtr = DMABasePtr;                            // ready for new data at base
       }
     }
   }
-
   t_print("ending: %s\n", __func__);
   return NULL;
 }
@@ -1291,7 +1160,6 @@ void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
   uint8_t Byte, Byte2;                                  // received dat being decoded
   uint32_t LongWord;
   uint16_t Word;
-
   //
   // map DDC0:3 in packet to DDC6:9
   //
@@ -1302,11 +1170,9 @@ void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
                ((UDPInBuffer[4 * i + 12] & 0xFF)      );
     SetDDCFrequency(i + 6, LongWord, true);
   }
-
   Byte = UDPInBuffer[4] & 0xFF;
   RunBit  = (bool)(Byte & 0x01);
   HaveMOX = (bool)(Byte & 0x02);
-
   if (RunBit) {
     SDRActive = true;
     SetTXEnable(true);
@@ -1317,7 +1183,6 @@ void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
     SetMOX(false);
     EnableCW(false, false);
   }
-
   SetMOX(HaveMOX);
   //
   // DUC frequency & drive level
@@ -1355,7 +1220,6 @@ void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
   //
   Byte =  UDPInBuffer[1428] & 0x07;                      // Alex0[26:24] TX data: ANT1/2/3 (if zero: old host program)
   bool PAEnable;
-
   if ((FPGA_MinorVersion >= 12) && (Byte != 0)) {             // if new firmware && client app supports it
     //t_print("new FPGA code, new client data\n");
     Word = ((UDPInBuffer[1428] & 0xFF) << 8 ) | (UDPInBuffer[1429] & 0xFF);  // "Backup" Alex0 TX settings
@@ -1378,7 +1242,6 @@ void saturn_handle_high_priority(const unsigned char *UDPInBuffer) {
     //t_print("new FPGA code, legacy client data, PA enable = %d\n", (int)PAEnable);
     AlexManualTXFilters(Word, false);
   }
-
   SetPAEnabled(PAEnable); // activate PA if client app wants it
   //
   // RX filters
@@ -1419,14 +1282,12 @@ void saturn_handle_ddc_specific_server(const unsigned char *UDPInBuffer) {
   // be aware an interleaved "odd" DDC will usually be set to disabled, and we need to revert this!
   //
   uint16_t Word = ((UDPInBuffer[8] & 0xFF) << 8) | (UDPInBuffer[7] & 0xFF); // DDC enabled[15:0] (low byte first!)
-
   for (int i = 0; i < 6; i++) {
     bool Enabled, Interleaved;                        // DDC settings
     Enabled = (bool)(Word & 1);                       // get enable state
     uint8_t Byte1 = UDPInBuffer[6 * i + 17] & 0xFF;           // ADC for this DDC
     uint16_t Word2 = ((UDPInBuffer[6 * i + 18] & 0xFF) << 8) | (UDPInBuffer[6 * i + 19] & 0xFF); // sample rate
     EADCSelect ADC = eADC1;                               // ADC to use for a DDC
-
     if (Byte1 == 0) {
       ADC = eADC1;
     } else if (Byte1 == 1) {
@@ -1434,77 +1295,55 @@ void saturn_handle_ddc_specific_server(const unsigned char *UDPInBuffer) {
     } else if (Byte1 == 2) {
       ADC = eTXSamples;
     }
-
     SetDDCADC(i, ADC);
     Interleaved = false;                                 // assume no synch
-
     //
     // Synchronised DDC pairs:
     // If DDC0/1 are synchronized, set "Interleaved" for DDC0 and "Enabled" for DDC1
     // If DDC2/3 are synchronized, set "Interleaved" for DDC2 and "Enabled" for DDC3
     // If DDC4/5 are synchronized, set "Interleaved" for DDC4 and "Enabled" for DDC5
     //
-
     switch (i) {
     case 0:
       Byte1 = UDPInBuffer[1363] & 0xFF;  // DDC0 synch
-
       if (Byte1 == 0b00000010) {
         Interleaved = true;  // set interleave
       }
-
       break;
-
     case 1:
       Byte1 = UDPInBuffer[1363] & 0xFF; // DDC0 synch
-
       if (Byte1 == 0b00000010) {                        // if synch to DDC1
         Enabled = true;  // enable DDC1
       }
-
       break;
-
     case 2:
       Byte1 = UDPInBuffer[1365] & 0xFF; // DDC2 synch
-
       if (Byte1 == 0b00001000) {
         Interleaved = true;  // set interleave
       }
-
       break;
-
     case 3:
       Byte1 = UDPInBuffer[1365] & 0xFF; // DDC2 synch
-
       if (Byte1 == 0b00001000) {                        // if synch to DDC3
         Enabled = true;  // enable DDC3
       }
-
       break;
-
     case 4:
       Byte1 = UDPInBuffer[1367] & 0xFF; // DDC4 synch
-
       if (Byte1 == 0b00100000) {
         Interleaved = true;  // set interleave
       }
-
       break;
-
     case 5:
       Byte1 = UDPInBuffer[1367] & 0xFF; // DDC4 synch
-
       if (Byte1 == 0b00100000) {                        // if synch to DDC5
         Enabled = true;  // enable DDC5
       }
-
       break;
     }
-
     SetP2SampleRate(i, Enabled, Word2, Interleaved);
     Word = Word >> 1;                                 // move onto next DDC enabled bit
   }
-
   WriteP2DDCRateRegister();
   return;
 }
@@ -1530,7 +1369,6 @@ void saturn_handle_ddc_specific(const unsigned char *UDPInBuffer) {
   // be aware an interleaved "odd" DDC will usually be set to disabled, and we need to revert this!
   //
   uint16_t Word = ((UDPInBuffer[8] & 0xFF) << 8) | (UDPInBuffer[7] & 0xFF); // DDC enabled[15:0] (low byte first!)
-
   for (int i = 0; i < 4; i++) {
     //
     // ATTENTION: DDC0:3 from packet is mapped to DDC6:9 for XDMA
@@ -1541,7 +1379,6 @@ void saturn_handle_ddc_specific(const unsigned char *UDPInBuffer) {
     Enabled = (bool)(Word & 1);                       // get enable state
     Byte1 = UDPInBuffer[6 * i + 17] & 0xFF;           // ADC for this DDC
     Word2 = ((UDPInBuffer[6 * i + 18] & 0xFF) << 8) | (UDPInBuffer[6 * i + 19] & 0xFF); // sample rate
-
     if (Byte1 == 0) {
       ADC = eADC1;
     } else if (Byte1 == 1) {
@@ -1549,10 +1386,8 @@ void saturn_handle_ddc_specific(const unsigned char *UDPInBuffer) {
     } else if (Byte1 == 2) {
       ADC = eTXSamples;
     }
-
     SetDDCADC(i + 6, ADC);
     Interleaved = false;                                 // assume no synch
-
     //
     // Synchronised DDC pairs:
     // If DDC0/1 are synchronized, set "Interleaved" for DDC0 and "Enabled" for DDC1
@@ -1561,45 +1396,32 @@ void saturn_handle_ddc_specific(const unsigned char *UDPInBuffer) {
     switch (i) {
     case 0:
       Byte1 = UDPInBuffer[1363] & 0xFF;  // DDC0 synch
-
       if (Byte1 == 0b00000010) {
         Interleaved = true;  // set interleave
       }
-
       break;
-
     case 1:
       Byte1 = UDPInBuffer[1363] & 0xFF; // DDC0 synch
-
       if (Byte1 == 0b00000010) {                        // if synch to DDC1
         Enabled = true;  // enable DDC1
       }
-
       break;
-
     case 2:
       Byte1 = UDPInBuffer[1365] & 0xFF; // DDC2 synch
-
       if (Byte1 == 0b00001000) {
         Interleaved = true;  // set interleave
       }
-
       break;
-
     case 3:
       Byte1 = UDPInBuffer[1365] & 0xFF; // DDC2 synch
-
       if (Byte1 == 0b00001000) {                        // if synch to DDC3
         Enabled = true;  // enable DDC3
       }
-
       break;
     }
-
     SetP2SampleRate(i + 6, Enabled, Word2, Interleaved);
     Word = Word >> 1;
   }
-
   WriteP2DDCRateRegister();
   return;
 }

@@ -23,23 +23,23 @@
 // Atomic updates. Memory barrier only used if atomic updates are not available
 //
 #if __STDC_VERSION__ < 201112L || __STDC_NO_ATOMICS__ == 1
-//
-// Macro for a memory barrier, preventing changing the execution order
-// or memory accesses. The MEMORY_BARRIER
-// pseudo-statements tells the compiler not to re-order memory
-// accesses across this point. This is used in ring buffer updates
-// if there are no atomic operations.A producer must place a MEMORY_BARRIER
-// after the buffer update and before the write pointer update, and
-// a consumer must place it after it has retrieved data from the buffer
-// and before it updates the read pointer.
-// This is not necessary if we use atomic updates since an atomic updates
-// has an implicit memory barrier.
-//
-#define MEMORY_BARRIER asm volatile ("" ::: "memory")
-#define atomic_int int
+  //
+  // Macro for a memory barrier, preventing changing the execution order
+  // or memory accesses. The MEMORY_BARRIER
+  // pseudo-statements tells the compiler not to re-order memory
+  // accesses across this point. This is used in ring buffer updates
+  // if there are no atomic operations.A producer must place a MEMORY_BARRIER
+  // after the buffer update and before the write pointer update, and
+  // a consumer must place it after it has retrieved data from the buffer
+  // and before it updates the read pointer.
+  // This is not necessary if we use atomic updates since an atomic updates
+  // has an implicit memory barrier.
+  //
+  #define MEMORY_BARRIER asm volatile ("" ::: "memory")
+  #define atomic_int int
 #else
-#define MEMORY_BARRIER
-#include <stdatomic.h>
+  #define MEMORY_BARRIER
+  #include <stdatomic.h>
 #endif
 
 #endif

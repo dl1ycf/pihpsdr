@@ -94,18 +94,15 @@ void switch_menu(GtkWidget *parent) {
   GtkWidget *default_b = gtk_button_new_with_label("Defaults");
   gtk_widget_set_name(default_b, "close_button"); // same looks as Close button
   g_signal_connect (default_b, "button-press-event", G_CALLBACK(default_cb), NULL);
-
   switch (controller) {
   case CONTROLLER2_V1:
   case CONTROLLER2_V2:
     gtk_grid_attach(GTK_GRID(grid), default_b, 7, 0, 2, 1);
     break;
-
   case G2V1_PANEL:
     gtk_grid_attach(GTK_GRID(grid), default_b, 6, 0, 3, 1);
     break;
   }
-
   if (controller == CONTROLLER2_V1 || controller == CONTROLLER2_V2) {
     // 7 horizontal switches in row 8
     for (int i = 0; i < 7; i++ ) {
@@ -114,7 +111,6 @@ void switch_menu(GtkWidget *parent) {
       g_signal_connect(widget, "button-press-event", G_CALLBACK(switch_cb), GINT_TO_POINTER(i));
       gtk_grid_attach(GTK_GRID(grid), widget, i, 8, 1, 1);
     }
-
     // vertical padding in row 1 and 7
     widget = gtk_label_new("  ");
     gtk_widget_set_size_request(widget, 0, 10);
@@ -166,7 +162,6 @@ void switch_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(grid), widget, 8, row, 1, 1);
     gtk_container_add(GTK_CONTAINER(content), grid);
   }
-
   if (controller == G2V1_PANEL) {
     // vertical padding in row 1 and 6
     widget = gtk_label_new("  ");
@@ -175,13 +170,11 @@ void switch_menu(GtkWidget *parent) {
     widget = gtk_label_new("  ");
     gtk_widget_set_size_request(widget, 0, 20);
     gtk_grid_attach(GTK_GRID(grid), widget, 8, 6, 1, 1);
-
     // horizontal padding in columns 1-5
     for (int i = 1; i < 6; i++) {
       widget = gtk_label_new("  ");
       gtk_grid_attach(GTK_GRID(grid), widget, i, 1, 1, 1);
     }
-
     widget = gtk_button_new_with_label(ActionTable[switches[11].function].str);
     gtk_widget_set_name(widget, "small_button_with_border");
     g_signal_connect(widget, "button-press-event", G_CALLBACK(switch_cb), GINT_TO_POINTER(11));
@@ -191,7 +184,6 @@ void switch_menu(GtkWidget *parent) {
     g_signal_connect(widget, "button-press-event", G_CALLBACK(switch_cb), GINT_TO_POINTER(13));
     gtk_grid_attach(GTK_GRID(grid), widget, 0, 5, 1, 1);
     int col = 6;
-
     for (int i = 10; i > 7; i--) {
       widget = gtk_button_new_with_label(ActionTable[switches[i].function].str);
       gtk_widget_set_name(widget, "small_button_with_border");
@@ -199,10 +191,8 @@ void switch_menu(GtkWidget *parent) {
       gtk_grid_attach(GTK_GRID(grid), widget, col, 2, 1, 1);
       col++;
     }
-
     col = 6;
     int a[3] = {7, 15, 14};
-
     for (int i = 0; i < 3; i++) {
       widget = gtk_button_new_with_label(ActionTable[switches[a[i]].function].str);
       gtk_widget_set_name(widget, "small_button_with_border");
@@ -210,10 +200,8 @@ void switch_menu(GtkWidget *parent) {
       gtk_grid_attach(GTK_GRID(grid), widget, col, 3, 1, 1);
       col++;
     }
-
     col = 6;
     int b[3] = {6, 5, 3};
-
     for (int i = 0; i < 3; i++) {
       widget = gtk_button_new_with_label(ActionTable[switches[b[i]].function].str);
       gtk_widget_set_name(widget, "small_button_with_border");
@@ -221,9 +209,7 @@ void switch_menu(GtkWidget *parent) {
       gtk_grid_attach(GTK_GRID(grid), widget, col, 4, 1, 1);
       col++;
     }
-
     col = 6;
-
     for (int i = 2; i > -1; i--) {
       widget = gtk_button_new_with_label(ActionTable[switches[i].function].str);
       gtk_widget_set_name(widget, "small_button_with_border");
@@ -231,7 +217,6 @@ void switch_menu(GtkWidget *parent) {
       gtk_grid_attach(GTK_GRID(grid), widget, col, 5, 1, 1);
       col++;
     }
-
     widget = gtk_button_new_with_label(ActionTable[switches[12].function].str);
     gtk_widget_set_name(widget, "small_button_with_border");
     g_signal_connect(widget, "button-press-event", G_CALLBACK(switch_cb), GINT_TO_POINTER(12));
@@ -242,7 +227,6 @@ void switch_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(grid), widget, 8, 7, 1, 1);
     gtk_container_add(GTK_CONTAINER(content), grid);
   }
-
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
 }

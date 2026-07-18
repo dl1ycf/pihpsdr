@@ -259,7 +259,6 @@ extern void SetTXABandpassMP (int channel, int mp);
 //
 
 extern void pscc (int channel, int size, double* tx, double* rx);
-extern void psccF (int channel, int size, float *Itxbuff, float *Qtxbuff, float *Irxbuff, float *Qrxbuff, int mox, int solidmox);
 extern void PSSaveCorr (int channel, char* filename);
 extern void PSRestoreCorr (int channel, char* filename);
 extern void SetPSRunCal (int channel, int run);
@@ -276,13 +275,10 @@ extern double SetPSTXDelay (int channel, double delay);
 extern void SetPSHWPeak (int channel, double peak);
 extern void GetPSHWPeak (int channel, double* peak);
 extern void GetPSMaxTX (int channel, double* maxtx);
-extern void SetPSPtol (int channel, double ptol);
-extern void GetPSDisp (int channel, double* x, double* ym, double* yc, double* ys, double* cm, double* cc, double* cs);
+extern void GetPSDisp (int channel, double* x, double* ym, double* yc, double* ys,
+		double* xm_cor, double* ym_cor, double* xa_cor, double* ya_cor,
+		int* nsamps_out, int* cpts_out, double* phs_ref_deg_out);
 extern void SetPSFeedbackRate (int channel, int rate);
-extern void SetPSPinMode (int channel, int pin);
-extern void SetPSMapMode (int channel, int map);
-extern void SetPSStabilize (int channel, int stbl);
-extern void SetPSIntsAndSpi (int channel, int ints, int spi);
 
 //
 // Interfaces from cblock.c
@@ -297,10 +293,18 @@ extern void SetRXACBLRun(int channel, int setit);
 extern void SetTXACFCOMPRun (int channel, int run);
 extern void SetTXACFCOMPPosition (int channel, int pos);
 extern void SetTXACFCOMPprofile (int channel, int nfreqs, double* F, double* G, double *E);
+extern void SetTXACFCOMPGprofile(int channel, int nfreqs, double* F, double* G);
+extern void SetTXACFCOMPEprofile(int channel, int nfreqs, double* F, double* E);
 extern void SetTXACFCOMPPrecomp (int channel, double precomp);
 extern void SetTXACFCOMPPeqRun (int channel, int run);
 extern void SetTXACFCOMPPrePeq (int channel, double prepeq);
-extern void GetTXACFCOMPDisplayCompression (int channel, double* comp_values, int* ready);
+extern void GetTXACFCOMPDisplayCompression(int channel, double* comp_values, int* ready);
+extern void SetTXACFCOMPCompCurve (int channel, int deg, int r, int umethod);
+extern void SetTXACFCOMPCompWeights (int channel, int nfreq, double* weights);
+extern void GetTXACFCOMPCompDraw (int channel, double* X, double* Y);
+extern void SetTXACFCOMPPeqCurve (int channel, int deg, int r, int umethod);
+extern void SetTXACFCOMPPeqWeights (int channel, int nfreq, double* weights);
+extern void GetTXACFCOMPPeqDraw (int channel, double* X, double* Y);
 
 //
 // Interfaces from cfir.c
@@ -470,6 +474,9 @@ extern void SetRXAEQCtfmode (int channel, int mode);
 extern void SetRXAEQWintype (int channel, int wintype);
 extern void SetRXAGrphEQ (int channel, int *rxeq);
 extern void SetRXAGrphEQ10 (int channel, int *rxeq);
+extern void SetRXAEQCurve (int channel, int deg, int r, int umethod);
+extern void SetRXAEQWeights (int channel, int nfreq, double* weights);
+extern void GetRXAEQDraw (int channel, double* X, double* Y);
 extern void SetTXAEQRun (int channel, int run);
 extern void SetTXAEQNC (int channel, int nc);
 extern void SetTXAEQMP (int channel, int mp);
@@ -478,6 +485,9 @@ extern void SetTXAEQCtfmode (int channel, int mode);
 extern void SetTXAEQWintype (int channel, int wintype);
 extern void SetTXAGrphEQ (int channel, int *txeq);
 extern void SetTXAGrphEQ10 (int channel, int *txeq);
+extern void SetTXAEQCurve (int channel, int deg, int r, int umethod);
+extern void SetTXAEQWeights (int channel, int nfreq, double* weights);
+extern void GetTXAEQDraw (int channel, double* X, double* Y);
 extern void SetRXAEQRun (int channel, int run);
 extern void SetRXAEQProfile (int channel, int nfreqs, double* F, double* G);
 extern void SetRXAEQCtfmode (int channel, int mode);
@@ -612,10 +622,6 @@ extern void SetRXAmpeakFilEnable (int channel, int fil, int enable);
 extern void SetRXAmpeakFilFreq (int channel, int fil, double freq);
 extern void SetRXAmpeakFilBw (int channel, int fil, double bw);
 extern void SetRXAmpeakFilGain (int channel, int fil, double gain);
-extern void SetTXAPHROTRun (int channel, int run);
-extern void SetTXAPHROTCorner (int channel, double corner);
-extern void SetTXAPHROTNstages (int channel, int nstages);
-extern void SetTXAPHROTReverse (int channel, int reverse);
 
 //
 // Interfaces from impulse_cache.c
@@ -633,16 +639,6 @@ extern void destroy_impulse_cache(void);
 
 extern void fexchange0 (int channel, double* in, double* out, int* error);
 extern void fexchange2 (int channel, INREAL *Iin, INREAL *Qin, OUTREAL *Iout, OUTREAL *Qout, int* error);
-
-//
-// Interfaces from iqc.c
-//
-
-extern void GetTXAiqcValues (int channel, double* cm, double* cc, double* cs);
-extern void SetTXAiqcValues (int channel, double* cm, double* cc, double* cs);
-extern void SetTXAiqcSwap (int channel, double* cm, double* cc, double* cs);
-extern void SetTXAiqcStart (int channel, double* cm, double* cc, double* cs);
-extern void SetTXAiqcEnd (int channel);
 
 //
 // Interfaces from matchedCW.c
@@ -809,6 +805,26 @@ extern void SetTXAPanelGain1 (int channel, double gain);
 extern void SetTXAPanelSelect (int channel, int select);
 
 //
+// Interfaces from phrot.c
+//
+
+extern void SetTXAPHROTRun(int channel, int run);
+extern void SetTXAPHROTCorner(int channel, double frequency);
+extern void SetTXAPHROTNstages(int channel, int nstages);
+extern void SetTXAPHROTReverse(int channel, int reverse);
+extern void SetTXAPHROTAutoMode(int channel, int autoMode);
+extern void SetTXAPHROTAutoReset(int channel);
+extern void GetTXAPHROTAsymmetry(int channel,
+                           double* in_pos,
+                           double* in_neg,
+                           double* in_ratio,
+                           double* out_pos,
+                           double* out_neg,
+                           double* out_ratio,
+                           double* current_fc,
+                           double* auto_step);
+
+//
 // Interfaces from resample.c
 //
 
@@ -945,7 +961,6 @@ extern void SetRXASSQLTauUnMute (int channel, double tau_unmute);
 extern void *malloc0 (int size);
 extern void *NewCriticalSection(void);
 extern void DestroyCriticalSection (LPCRITICAL_SECTION cs_ptr);
-extern void analyze_bandpass_filter (int N, double f_low, double f_high, double samplerate, int wintype, int rtype, double scale);
 extern void print_buffer_parameters (const char* filename, int channel);
 extern int create_bfcu(int id, int min_size, int max_size, double rate, double corner, int points);
 extern void destroy_bfcu(int id);
@@ -965,6 +980,13 @@ extern void destroy_varsampV (void* ptr);
 //
 
 extern int GetWDSPVersion(void);
+
+//
+// Interfaces from wbfm.c
+//
+
+extern void SetRXAWBFMdmph(int channel, int dmph_run, int dmph_continent);
+extern int GetRXAWBFMStereoIndicator(int channel);
 
 //
 // Interfaces from wcpAGC.c

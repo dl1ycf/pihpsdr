@@ -41,7 +41,6 @@ static GtkWidget *restore = NULL;
 
 static void cleanup(void) {
   g2panel_menu_is_open = 0;
-
   if (dialog != NULL) {
     GtkWidget *tmp = dialog;
     dialog = NULL;
@@ -50,7 +49,6 @@ static void cleanup(void) {
     active_menu  = NO_MENU;
     radio_save_state();
   }
-
   last_label = NULL;
 }
 
@@ -65,13 +63,11 @@ static gboolean action_cb(GtkWidget *widget, gpointer data) {
     action_chosen = action_dialog(dialog, AT_BTN, last_buttonvec[last_pos]);
     last_buttonvec[last_pos] = action_chosen;
     break;
-
   case AT_ENC:
     action_chosen = action_dialog(dialog, AT_ENC, last_encodervec[last_pos]);
     last_encodervec[last_pos] = action_chosen;
     break;
   }
-
   gtk_button_set_label(GTK_BUTTON(newAction), ActionTable[action_chosen].str);
   return TRUE;
 }
@@ -79,21 +75,15 @@ static gboolean action_cb(GtkWidget *widget, gpointer data) {
 static gboolean restore_cb(GtkWidget *widget, gpointer data) {
   int *vec;
   vec = g2panel_default_buttons(last_andromeda_type);
-
   if (vec != NULL) {
     for (int i = 0; i <= 99; i++) { last_buttonvec[i] = vec[i]; }
-
     g_free(vec);
   }
-
   vec = g2panel_default_encoders(last_andromeda_type);
-
   if (vec != NULL) {
     for (int i = 0; i <= 49; i++) { last_encodervec[i] = vec[i]; }
-
     g_free(vec);
   }
-
   //
   // Update command button to reflect the new setting
   //
@@ -102,7 +92,6 @@ static gboolean restore_cb(GtkWidget *widget, gpointer data) {
   } else {
     gtk_button_set_label(GTK_BUTTON(newAction), ActionTable[last_encodervec[last_pos]].str);
   }
-
   return TRUE;
 }
 
@@ -168,31 +157,22 @@ void g2panel_change_command(int andromeda_type, int type, int *buttonvec, int *e
   last_andromeda_type = andromeda_type;
   last_pos = pos;
   last_type = type; // AT_BTN or AT_ENC
-
   if (last_pos < 0) { last_pos = 0; }
-
   switch (type) {
   case AT_BTN:
     snprintf(str, sizeof(str), "Button #%d", last_pos);
-
     if (last_pos > 99) { last_pos = 0; }
-
     gtk_button_set_label(GTK_BUTTON(newAction), ActionTable[buttonvec[last_pos]].str);
     break;
-
   case AT_ENC:
     snprintf(str, sizeof(str), "Encoder #%d", last_pos);
-
     if (last_pos > 49) { last_pos = 0; }
-
     gtk_button_set_label(GTK_BUTTON(newAction), ActionTable[encodervec[last_pos]].str);
     break;
-
   default:
     snprintf(str, sizeof(str), "UNKNOWN #%d", last_pos);
     break;
   }
-
   gtk_label_set_text(GTK_LABEL(last_label), str);
   gtk_widget_show(newAction);
   gtk_widget_show(restore);

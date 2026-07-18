@@ -658,12 +658,10 @@ GtkWidget *piHPSDR_logo(void) {
   mem_stream = g_memory_input_stream_new_from_data(piHPSDR_logo_png, piHPSDR_logo_png_len, NULL);
   pixbuf = gdk_pixbuf_new_from_stream(mem_stream, NULL, &error);
   g_object_unref(mem_stream);
-
   if (!pixbuf) {
     t_print("%s: Could not load piHPSDR logo.\n", __func__);
     g_error_free(error);
     return NULL;
   }
-
   return gtk_image_new_from_pixbuf(pixbuf);
 }

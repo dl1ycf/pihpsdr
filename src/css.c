@@ -100,6 +100,7 @@ char *css =
   "  #orangebutton   { background-image: none; background-color: rgb(100%, 50%, 20%); color: rgb(0%,0%,0%);}\n"
   "  #yellowbutton   { background-image: none; background-color: rgb(100%, 100%, 20%); color: rgb(0%,0%,0%);}\n"
   "  #greenbutton { background-image: none; background-color: rgb(20%, 100%, 20%); color: rgb(0%,0%,0%);}\n"
+  "  #bluebutton { background-image: none; background-color: rgb(20%, 20%, 100%); color: rgb(100%,100%,100%);}\n"
   "  checkbutton label { font-size: 15px; }\n"
   "  spinbutton { font-size: 15px; }\n"
   "  radiobutton label  { font-size: 15px; }\n"
@@ -224,11 +225,8 @@ void load_font(int font) {
   GdkScreen *screen;
   GError *error;
   char str[256];
-
   if (font < 0) { font = 0; }
-
   if (font >= num_css_fonts) { font = num_css_fonts - 1; }
-
   //
   // Typeset the sample string "CWU 500P 16 wpm 800 Hz" with 13.0 point font size,
   // and look whether it fits within 180.0 pixels (this is already generous).
@@ -249,9 +247,7 @@ void load_font(int font) {
   cairo_set_font_size(cr, 13.0);
   cairo_text_extents(cr, "CWU 500P 16 wpm 800 Hz", &extents);
   t_print("%s: %s: Width=%5.1f Height=%5.1f\n", __func__, cssfont[font], extents.width, extents.height);
-
   if (extents.width >= 180.0) { font = 0; }
-
   cairo_destroy(cr);
   cairo_surface_destroy(surface);
   which_css_font = font;
@@ -264,12 +260,10 @@ void load_font(int font) {
   error = NULL;
   snprintf(str, sizeof(str), "  * { font-family: %s; }\n", cssfont[which_css_font]);
   (void) gtk_css_provider_load_from_data(provider, str, -1, &error);
-
   if (error != NULL) {
     t_print("%s: %s\n", __func__, error->message);
     g_clear_error(&error);
   }
-
   g_object_unref (provider);
 }
 
@@ -292,7 +286,6 @@ void load_css(void) {
       GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   error = NULL;
   (void) gtk_css_provider_load_from_path (provider, "default.css", &error);
-
   if (error != NULL) {
     //
     // The average user does not provide a default.css file, here
@@ -302,7 +295,6 @@ void load_css(void) {
     t_print("%s: No default.css file\n", __func__);
     g_clear_error(&error);
     (void) gtk_css_provider_load_from_data(provider, css, -1, &error);
-
     if (error != NULL) {
       //
       // If this error message appears, this usually flags an error
@@ -312,6 +304,5 @@ void load_css(void) {
       g_clear_error(&error);
     }
   }
-
   g_object_unref (provider);
 }

@@ -78,12 +78,18 @@ void my_free(void *p);
 #define Sleep(ms) usleep((ms)*1000)
 
 #define CreateSemaphore(a,b,c,d) LinuxCreateSemaphore(a,b,c,d)
+#define CreateSemaphoreW(a,b,c,d) LinuxCreateSemaphore(a,b,c,d)
 #define WaitForSingleObject(x, y) LinuxWaitForSingleObject(x, y)
+#define WaitForMultipleObjects(a, b, c, d) LinuxWaitForMultipleObjects(a, b, c, d)
 #define ReleaseSemaphore(x,y,z) LinuxReleaseSemaphore(x,y,z)
 #define SetEvent(x) LinuxSetEvent(x)
 #define ResetEvent(x) LinuxResetEvent(x)
 
-#define INFINITE -1
+#define INFINITE               -1
+#define WAIT_OBJECT_0   0x0000000
+#define WAIT_TIMEOUT    0x0009999
+#define WAIT_FAILED            -1
+#define INT_MAX        2147483647
 
 void QueueUserWorkItem(void *function,void *context,int flags);
 
@@ -98,16 +104,17 @@ void LeaveCriticalSection(pthread_mutex_t *mutex);
 void DeleteCriticalSection(pthread_mutex_t *mutex);
 
 
-sem_t *LinuxCreateSemaphore(int attributes,int initial_count,int maximum_count,char *name);
+HANDLE LinuxCreateSemaphore(int attributes,int initial_count,int maximum_count,char *name);
 
-int LinuxWaitForSingleObject(sem_t *sem,int x);
+int LinuxWaitForSingleObject(HANDLE handle, int ms);
+int LinuxWaitForMultipleObjects(int num, HANDLE *handles, int waitall, int ms);
 
-void LinuxReleaseSemaphore(sem_t *sem,int release_count, int* previous_count);
+void LinuxReleaseSemaphore(HANDLE handle, int release_count, int* previous_count);
 
-sem_t *CreateEvent(void* security_attributes,int bManualReset,int bInitialState,char* name);
+HANDLE CreateEvent(void* security_attributes,int bManualReset,int bInitialState,char* name);
 
-void LinuxSetEvent(sem_t* sem);
-void LinuxResetEvent(sem_t* sem);
+void LinuxSetEvent(HANDLE sem);
+void LinuxResetEvent(HANDLE sem);
 
 HANDLE _beginthread( void( __cdecl *start_address )( void * ), unsigned stack_size, void *arglist);
 

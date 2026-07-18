@@ -45,7 +45,6 @@ static void save_xvtr (void) {
     BANDSTACK *bandstack = xvtr->bandstack;
     txt = gtk_entry_get_text(GTK_ENTRY(title[i]));
     snprintf(xvtr->title, sizeof(xvtr->title), "%s", txt);
-
     if (strlen(txt) != 0) {
       txt = gtk_entry_get_text(GTK_ENTRY(min_frequency[i]));
       xvtr->frequencyMin = (long long)(atof(txt) * 1000000.0);
@@ -57,11 +56,9 @@ static void save_xvtr (void) {
       xvtr->errorLO = atoll(txt);
       txt = gtk_entry_get_text(GTK_ENTRY(gain[i]));
       xvtr->gaincalib = atoi(txt);
-
       if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
         xvtr->disablePA = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(disable_pa[i]));
       }
-
       //
       // Patch up the frequencies:
       // frequencyMax must be at most frequencyLO + max radio frequency
@@ -71,22 +68,18 @@ static void save_xvtr (void) {
           (xvtr->frequencyMin > xvtr->frequencyLO + radio->frequency_max)) {
         xvtr->frequencyMin = xvtr->frequencyLO + radio->frequency_min;
       }
-
       if (xvtr->frequencyMax < xvtr->frequencyMin) {
         xvtr->frequencyMax = xvtr->frequencyMin + 1000000LL;
       }
-
       if (xvtr->frequencyMax > xvtr->frequencyLO + radio->frequency_max) {
         xvtr->frequencyMax = xvtr->frequencyLO + radio->frequency_max;
       }
-
       //
       // Initialise all bandstack entries where the frequency is not inside the
       // transverter band
       //
       for (int b = 0; b < bandstack->entries; b++) {
         BANDSTACK_ENTRY *entry = &bandstack->entry[b];
-
         if (entry->frequency < xvtr->frequencyMin || entry->frequency > xvtr->frequencyMax) {
           entry->frequency = xvtr->frequencyMin + ((xvtr->frequencyMax - xvtr->frequencyMin) / 2);
           entry->mode = modeUSB;
@@ -100,7 +93,6 @@ static void save_xvtr (void) {
       xvtr->errorLO = 0;
       xvtr->disablePA = 1;
     }
-
     //
     // Update all the text fields
     //
@@ -115,22 +107,18 @@ static void save_xvtr (void) {
     gtk_entry_set_text(GTK_ENTRY(lo_error[i]), f);
     snprintf(f, sizeof(f), "%d", xvtr->gaincalib);
     gtk_entry_set_text(GTK_ENTRY(gain[i]), f);
-
     if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_pa[i]), xvtr->disablePA);
     }
   }
-
   if (radio_is_remote) {
     for (int b = BANDS; b < BANDS + XVTRS; b++) {
       send_band_data(cl_sock_tcp, b);
       const BAND *band = band_get_band(b);
-
       for (int s = 0; s < band->bandstack->entries; s++) {
         send_bandstack_data(cl_sock_tcp, b, s);
       }
     }
-
     send_xvtr_changed(cl_sock_tcp);
   } else {
     vfo_xvtr_changed();
@@ -206,13 +194,11 @@ void xvtr_menu(GtkWidget *parent) {
   label = gtk_label_new("Gain (dB)");
   gtk_widget_set_name(label, "boldlabel");
   gtk_grid_attach(GTK_GRID(grid), label, 5, 1, 1, 1);
-
   if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
     label = gtk_label_new("Disable PA");
     gtk_widget_set_name(label, "boldlabel");
     gtk_grid_attach(GTK_GRID(grid), label, 6, 1, 1, 1);
   }
-
   //
   // Note  no signal connect for the text fields:
   // this will lead to intermediate frequency values that are unreasonable.
@@ -250,7 +236,6 @@ void xvtr_menu(GtkWidget *parent) {
     snprintf(f, sizeof(f), "%d", xvtr->gaincalib);
     gtk_entry_set_text(GTK_ENTRY(gain[i]), f);
     gtk_grid_attach(GTK_GRID(grid), gain[i], 5, i + 2, 1, 1);
-
     if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
       disable_pa[i] = gtk_check_button_new();
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_pa[i]), xvtr->disablePA);
@@ -259,7 +244,6 @@ void xvtr_menu(GtkWidget *parent) {
       g_signal_connect(disable_pa[i], "toggled", G_CALLBACK(pa_disable_cb), GINT_TO_POINTER(i));
     }
   }
-
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);

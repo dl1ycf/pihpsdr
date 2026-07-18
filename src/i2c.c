@@ -83,11 +83,9 @@ unsigned int i2c_sw[16] = {
 
 static int write_byte_data(unsigned char reg, unsigned char data) {
   int rc;
-
   if ((rc = i2c_smbus_write_byte_data(i2cfd, reg, data & 0xFF)) < 0) {
     t_print("%s: write REG_GCONF config failed: addr=%02X %s\n", __func__, i2c_address, g_strerror(errno));
   }
-
   return rc;
 }
 
@@ -99,7 +97,6 @@ int i2c_check_presence() {
   // before the GPIO lines are set up (thus no mutex here).
   //
   int fd = open(i2c_device, O_RDWR);
-
   if (fd < 0 ) {
     //
     // No I2C device found
@@ -107,7 +104,6 @@ int i2c_check_presence() {
     t_print("%s: could not open %s\n", __func__, i2c_device);
     return 0;
   }
-
   if (ioctl(fd, I2C_SLAVE, i2c_address) < 0) {
     //
     // No device with correct address found
@@ -116,13 +112,11 @@ int i2c_check_presence() {
     close(fd);
     return 0;
   }
-
   //
   // Try a read from address 0, if it succeeds, we have a G2V1
   //
   __s32 data = i2c_smbus_read_byte_data(fd, 0);
   close(fd);
-
   if (data < 0) {
     t_print("%s: i2c read failed.\n", __func__);
     return 0;
@@ -152,10 +146,8 @@ void i2c_interrupt() {
   unsigned int flags;
   int i;
   g_mutex_lock(&i2c_mutex);
-
   for (;;) {
     flags = read_word_data(0x0E);
-
     //
     // bits in "flags" indicate which input lines triggered an interrupt
     // Two interrupts occuring at about the same time can lead to multiple bits
@@ -166,16 +158,12 @@ void i2c_interrupt() {
     // no interrupt -- in this case we quickly return.
     //
     if (flags == 0) { break; }
-
     unsigned int ints = read_word_data(0x10);
-
     // only those bits in "ints" matter where the corresponding position
     // in "flags" is set. We have a PRESSED or RELEASED event depending on
     // whether the bit in "ints" is set or clear.
-
     for (i = 0; i < 16; i++) {
       if (flags == 0) { break; }  // leave loop if no bits left in "flags"
-
       if (i2c_sw[i] & flags) {
         //t_print("%s: switches=%p sw=%d action=%d\n",__func__,switches,i,switches[i].switch_function);
         // The input line associated with switch #i has triggered an interrupt
@@ -185,90 +173,62 @@ void i2c_interrupt() {
       }
     }
   }
-
   g_mutex_unlock(&i2c_mutex);
 }
 
 void i2c_init() {
   int flags;
   i2cfd = open(i2c_device, O_RDWR);
-
   if (i2cfd < 0) {
     t_print("%s: open i2c device %s failed: %s\n", __func__, i2c_device, g_strerror(errno));
     return;
   }
-
   t_print("%s: i2c device %s fd=%d\n", __func__, i2c_device, i2cfd);
-
   if (ioctl(i2cfd, I2C_SLAVE, i2c_address) < 0) {
     t_print("%s: ioctl i2c slave %ud failed: %s\n", __func__, i2c_address, g_strerror(errno));
     return;
   }
-
   g_mutex_init(&i2c_mutex);
-
   // setup i2c
   if (write_byte_data(0x0A, 0x44) < 0) { return; }
-
   if (write_byte_data(0x0B, 0x44) < 0) { return; }
-
   // disable interrupt
   if (write_byte_data(0x04, 0x00) < 0) { return; }
-
   if (write_byte_data(0x05, 0x00) < 0) { return; }
-
   // clear defaults
   if (write_byte_data(0x06, 0x00) < 0) { return; }
-
   if (write_byte_data(0x07, 0x00) < 0) { return; }
-
   // OLAT
   if (write_byte_data(0x14, 0x00) < 0) { return; }
-
   if (write_byte_data(0x15, 0x00) < 0) { return; }
-
   // set GPIOA for pullups
   if (write_byte_data(0x0C, 0xFF) < 0) { return; }
-
   if (write_byte_data(0x0D, 0xFF) < 0) { return; }
-
   // reverse polarity
   if (write_byte_data(0x02, 0xFF) < 0) { return; }
-
   if (write_byte_data(0x03, 0xFF) < 0) { return; }
-
   // set GPIOA/B for input
   if (write_byte_data(0x00, 0xFF) < 0) { return; }
-
   if (write_byte_data(0x01, 0xFF) < 0) { return; }
-
   // INTCON
   if (write_byte_data(0x08, 0x00) < 0) { return; }
-
   if (write_byte_data(0x09, 0x00) < 0) { return; }
-
   // setup for an MCP23017 interrupt
   if (write_byte_data(0x04, 0xFF) < 0) { return; }
-
   if (write_byte_data(0x05, 0xFF) < 0) { return; }
-
   // flush any interrupts
   g_mutex_lock(&i2c_mutex);
   int count = 0;
-
   do {
     flags = read_word_data(0x0E);
-
     if (flags) {
       (void) read_word_data(0x10);
       count++;
-
       if (count == 10) {
         return;
       }
     }
   } while (flags != 0);
-
   g_mutex_unlock(&i2c_mutex);
 }
 

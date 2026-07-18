@@ -110,16 +110,13 @@ void stemlab_discovery(void) {
   struct sockaddr_in ip_address;
   struct sockaddr_in netmask;
   ip_address.sin_family = AF_INET;
-
   if (strlen(ipaddr_radio) < 3) {
     return;
   }
-
   if (inet_aton(ipaddr_radio, &ip_address.sin_addr) == 0) {
     t_print("%s: TCP %s is invalid!\n", __func__, ipaddr_radio);
     return;
   }
-
   t_print("%s: using inet addr %s\n", __func__, ipaddr_radio);
   netmask.sin_family = AF_INET;
   inet_aton("0.0.0.0", &netmask.sin_addr);
@@ -129,46 +126,36 @@ void stemlab_discovery(void) {
   //
   app_list = 0;
   snprintf(txt, sizeof(txt), "http://%s", ipaddr_radio);
-
   if (run_curl(txt, result, sizeof(result), 5) != 0) { return; }
-
   if (g_strstr_len(result, sizeof(result), "\"sdr_receiver_hpsdr\"") != NULL) {
     app_list |= STEMLAB_PAVEL_RX | BARE_REDPITAYA;
   }
-
   if (g_strstr_len(result, sizeof(result), "\"sdr_transceiver_hpsdr\"") != NULL) {
     app_list |= STEMLAB_PAVEL_TRX | BARE_REDPITAYA;
   }
-
   //
   // Determine which SDR apps are present on the RedPitaya. The list may be empty.
   //
   if (app_list == 0) {
     snprintf(txt, sizeof(txt), "http://%s/bazaar?apps=", ipaddr_radio);
     run_curl(txt, result, sizeof(result), 20);
-
     if (g_strstr_len(result, sizeof(result), "\"sdr_receiver_hpsdr\":") != NULL) {
       app_list |= STEMLAB_PAVEL_RX;
     }
-
     if (g_strstr_len(result, sizeof(result), "\"sdr_transceiver_hpsdr\":") != NULL) {
       app_list |= STEMLAB_PAVEL_TRX;
     }
-
     if (g_strstr_len(result, sizeof(result), "\"stemlab_sdr_transceiver_hpsdr\":") != NULL) {
       app_list |= STEMLAB_RP_TRX;
     }
-
     if (g_strstr_len(result, sizeof(result), "\"hamlab_sdr_transceiver_hpsdr\":") != NULL) {
       app_list |= HAMLAB_RP_TRX;
     }
   }
-
   if (app_list == 0) {
     t_print( "%s: Could contact web server but no SDR apps found.\n", __func__);
     return;
   }
-
   //
   // Constructe "device" descripter. Hi-Jack the software version field to
   // encode which RedPitaya apps are present.

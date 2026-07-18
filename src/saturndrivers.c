@@ -71,13 +71,11 @@ static int register_fd = -1;                     // device identifier, -1 means 
 
 int OpenXDMADriver(void) {
   int Result = 0;
-
   //
   // If hitting "discover" several times on the startup screen,
   // XDMA is opened repeatedly, so close it first
   //
   if (register_fd >= 0) { close(register_fd); }
-
   //
   // Note this fd is used for both pread() and pwrite() so use read-write mode
   //
@@ -87,7 +85,6 @@ int OpenXDMADriver(void) {
     t_print("register access connected to /dev/xdma0_user\n");
     Result = 1;
   }
-
   return Result;
 }
 
@@ -113,13 +110,11 @@ int DMAWriteToFPGA(int fd, unsigned char*SrcData, uint32_t Length, uint32_t AXIA
   ssize_t rc;                 // response code
   // write data to FPGA from memory buffer
   rc = pwrite(fd, SrcData, Length, (off_t) AXIAddr);
-
   if (rc < 0) {
     t_print("write 0x%x @ 0x%lx failed %ld.\n", (int)Length, (long)AXIAddr, (long)rc);
     t_perror("DMA write");
     return -EIO;
   }
-
   return 0;
 }
 
@@ -135,13 +130,11 @@ int DMAReadFromFPGA(int fd, unsigned char*DestData, uint32_t Length, uint32_t AX
   ssize_t rc;                 // response code
   // read data from FPGA to memory buffer
   rc = pread(fd, DestData, Length, (off_t) AXIAddr);
-
   if (rc < 0) {
     t_print("read 0x%x @ 0x%lX failed %ld.\n", (int)Length, (long)AXIAddr, (long)rc);
     t_perror("DMA read");
     return -EIO;
   }
-
   return 0;
 }
 
@@ -150,15 +143,12 @@ int DMAReadFromFPGA(int fd, unsigned char*DestData, uint32_t Length, uint32_t AX
 //
 uint32_t RegisterRead(uint32_t Address) {
   uint32_t result = 0;
-
   if (register_fd < 0) {
     return result;
   }
-
   if (pread(register_fd, &result, sizeof(result), (off_t) Address) != sizeof(result)) {
     t_print("ERROR: register read: addr=0x%lX   error=%s\n", (long)Address, strerror(errno));
   }
-
   return result;
 }
 
@@ -169,7 +159,6 @@ void RegisterWrite(uint32_t Address, uint32_t Data) {
   if (register_fd < 0) {
     return;
   }
-
   if (pwrite(register_fd, &Data, sizeof(Data), (off_t) Address) != sizeof(Data)) {
     t_print("ERROR: Write: addr=0x%lX   error=%s\n", (long)Address, strerror(errno));
   }
@@ -211,7 +200,6 @@ void SetupFIFOMonitorChannel(EDMAStreamSelect Channel, bool EnableInterrupt) {
   uint32_t Address;             // register address
   uint32_t Data;                // register content
   static bool GFIFOSizesInitialised = false;
-
   if (!GFIFOSizesInitialised) {
     if (FPGA_MinorVersion < 10) {
       t_print("loading new FIFO sizes for 0.x firmware\n");
@@ -232,17 +220,13 @@ void SetupFIFOMonitorChannel(EDMAStreamSelect Channel, bool EnableInterrupt) {
       DMAFIFODepths[2] = 256;         //  eMicCodecDMA (Mic)
       DMAFIFODepths[3] = 1024;        //  eSpkCodecDMA (Headphone)
     }
-
     GFIFOSizesInitialised = true;
   }
-
   Address = VADDRFIFOMONBASE + 4 * Channel + 0x10;      // config register address
   Data = DMAFIFODepths[(int)Channel];                   // memory depth
-
   if (EnableInterrupt) {
     Data += 0x80000000;  // bit 31
   }
-
   RegisterWrite(Address, Data);
 }
 
@@ -267,25 +251,20 @@ uint32_t ReadFIFOMonitorChannel(EDMAStreamSelect Channel, bool* Overflowed, bool
   bool Underflow = false;
   Address = VADDRFIFOMONBASE + 4 * (uint32_t)Channel;     // status register address
   Data = RegisterRead(Address);
-
   if (Data & 0x80000000) {                  // if top bit set, declare overflow
     Overflow = true;
   }
-
   if (Data & 0x40000000) {                  // if bit 30 set, declare over threshold
     OverThresh = true;
   }
-
   if (Data & 0x20000000) {                  // if bit 29 set, declare underflow
     Underflow = true;
   }
-
   Data = Data & 0xFFFF;                   // strip to 16 bits
   *Current = Data;
   *Overflowed = Overflow;                 // send out overflow result
   *OverThreshold = OverThresh;            // send out over threshold result
   *Underflowed = Underflow;               // send out underflow result
-
   //
   // If it is a "write" channel, return number of free locations instead
   // of the currentfilling
@@ -293,7 +272,6 @@ uint32_t ReadFIFOMonitorChannel(EDMAStreamSelect Channel, bool* Overflowed, bool
   if ((Channel == eTXDUCDMA) || (Channel == eSpkCodecDMA)) {
     Data = DMAFIFODepths[Channel] - Data;
   }
-
   return Data;                        // return 16 bit FIFO count
 }
 
@@ -304,25 +282,20 @@ void ResetDMAStreamFIFO(EDMAStreamSelect DDCNum) {
   uint32_t Data;                    // DDC register content
   uint32_t DataBit = 0;
   static pthread_mutex_t ResetMutex = PTHREAD_MUTEX_INITIALIZER;
-
   switch (DDCNum) {
   case eRXDDCDMA:             // selects RX
     DataBit = (1 << VBITDDCFIFORESET);
     break;
-
   case eTXDUCDMA:             // selects TX
     DataBit = (1 << VBITDUCFIFORESET);
     break;
-
   case eMicCodecDMA:            // selects mic samples
     DataBit = (1 << VBITCODECMICFIFORESET);
     break;
-
   case eSpkCodecDMA:            // selects speaker samples
     DataBit = (1 << VBITCODECSPKFIFORESET);
     break;
   }
-
   // The Mutex takes care we get a clean "data pulse"
   pthread_mutex_lock(&ResetMutex);
   Data = RegisterRead(VADDRFIFORESET);        // read current content
@@ -363,11 +336,9 @@ uint32_t AnalyseDDCHeader(uint32_t Header, uint32_t* DDCCounts) {
   uint32_t DDC;               // DDC counter
   uint32_t Count;
   uint32_t Total = 0;
-
   for (DDC = 0; DDC < VNUMDDC; DDC++) {
     // 3 bit value for this DDC
     uint32_t Rate = Header & 7;
-
     if (Rate != 7) {
       Count = DDCSampleCounts[Rate];
       DDCCounts[DDC] = Count;
@@ -385,9 +356,7 @@ uint32_t AnalyseDDCHeader(uint32_t Header, uint32_t* DDCCounts) {
       DDCCounts[DDC + 1] = 0;   // This one gets no samples
       DDC += 1;
     }
-
     Header = Header >> 3;         // ready for next DDC rate
   }
-
   return Total;
 }

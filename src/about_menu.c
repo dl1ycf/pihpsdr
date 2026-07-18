@@ -96,7 +96,6 @@ void about_menu(GtkWidget *parent) {
   gtk_widget_set_name(label, "boldlabel");
   gtk_grid_attach(GTK_GRID(grid), label, 1, row, 19, 1);
   row++;
-
   if (radio_is_remote) {
     snprintf(text, sizeof(text), "Device: %s, Protocol %s, running remote at %s\n",
              radio->name, radio->protocol == ORIGINAL_PROTOCOL ? "1" : "2",
@@ -114,9 +113,7 @@ void about_menu(GtkWidget *parent) {
         char addr[128];
         snprintf(addr, sizeof(addr), "%s", inet_ntoa(radio->network.address.sin_addr));
         snprintf(interface_addr, sizeof(interface_addr), " (%s)", inet_ntoa(radio->network.interface_address.sin_addr));
-
         if (!strcmp(interface_addr, " (0.0.0.0)")) { *interface_addr = 0; }
-
         if (have_saturn_xdma) {
           snprintf(text, sizeof(text), "Device: Saturn (via XDMA), Protocol %s, v%d.%d\n",
                    radio->protocol == ORIGINAL_PROTOCOL ? "1" : "2",
@@ -138,10 +135,8 @@ void about_menu(GtkWidget *parent) {
                    interface_addr);
         }
       }
-
       break;
 #ifdef SOAPYSDR
-
     case SOAPYSDR_PROTOCOL:
       snprintf(text, sizeof(text), "Device: %s (via SoapySDR)\n"
                                    "  %s (%s)",
@@ -150,7 +145,6 @@ void about_menu(GtkWidget *parent) {
 #endif
     }
   }
-
   label = gtk_label_new(text);
   gtk_widget_set_name(label, "boldlabel");
   gtk_widget_set_halign(label, GTK_ALIGN_START);

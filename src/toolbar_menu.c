@@ -75,7 +75,6 @@ void toolbar_menu(GtkWidget *parent) {
   gtk_widget_set_name(close_b, "close_button");
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 3, 1);
-
   for (int tbfunc = 0; tbfunc < MAX_TB_FUNCTIONS; tbfunc++) {
     for (int i = 0; i < MAX_TB_BUTTONS; i++) {
       if (i == MAX_TB_BUTTONS - 1) {
@@ -91,7 +90,6 @@ void toolbar_menu(GtkWidget *parent) {
       }
     }
   }
-
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);

@@ -1,4 +1,4 @@
-/*	firmin.c
+/*  firmin.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -289,20 +289,20 @@ void setFreqs_firopt (FIROPT a, double f_low, double f_high)
 
 void plan_fircore (FIRCORE a)
 {
-	// must call for change in 'nc', 'size', 'out'
+	// must call for change in 'nc', 'size', 'out', 'pfactor'
 	int i;
 	a->nfor = a->nc / a->size;
 	a->cset = 0;
 	a->buffidx = 0;
 	a->idxmask = a->nfor - 1;
 	a->fftin = (double *) malloc0 (2 * a->size * sizeof (complex));
-	a->fftout	= (double **) malloc0 (a->nfor * sizeof (double *));
-	a->fmask	= (double ***) malloc0 (2 * sizeof (double **));
+	a->fftout   = (double **) malloc0 (a->nfor * sizeof (double *));
+	a->fmask    = (double ***) malloc0 (2 * sizeof (double **));
 	a->fmask[0] = (double **) malloc0 (a->nfor * sizeof (double *));
 	a->fmask[1] = (double **) malloc0 (a->nfor * sizeof (double *));
 	a->maskgen = (double *) malloc0 (2 * a->size * sizeof (complex));
 	a->pcfor = (fftw_plan *) malloc0 (a->nfor * sizeof (fftw_plan));
-	a->maskplan	   = (fftw_plan **) malloc0 (2 * sizeof (fftw_plan *));
+	a->maskplan    = (fftw_plan **) malloc0 (2 * sizeof (fftw_plan *));
 	a->maskplan[0] = (fftw_plan *) malloc0 (a->nfor * sizeof (fftw_plan));
 	a->maskplan[1] = (fftw_plan *) malloc0 (a->nfor * sizeof (fftw_plan));
 	for (i = 0; i < a->nfor; i++)
@@ -317,6 +317,7 @@ void plan_fircore (FIRCORE a)
 	a->accum = (double *) malloc0 (2 * a->size * sizeof (complex));
 	a->crev = fftw_plan_dft_1d(2 * a->size, (fftw_complex *)a->accum, (fftw_complex *)a->out, FFTW_BACKWARD, FFTW_PATIENT);
 	a->masks_ready = 0;
+	a->pminphase = create_minphase (a->nc, a->pfactor);
 }
 
 void calc_fircore (FIRCORE a, int flip)
@@ -325,7 +326,7 @@ void calc_fircore (FIRCORE a, int flip)
 	// must also call after a call to plan_firopt()
 	int i;
 	if (a->mp)
-		mp_imp (a->nc, a->impulse, a->imp, 16, 0);
+		mp_imp_exec (a->pminphase, a->impulse, a->imp);
 	else
 		memcpy (a->imp, a->impulse, a->nc * sizeof (complex));
 	for (i = 0; i < a->nfor; i++)
@@ -345,7 +346,8 @@ void calc_fircore (FIRCORE a, int flip)
 	}
 }
 
-FIRCORE create_fircore (int size, double* in, double* out, int nc, int mp, double* impulse)
+FIRCORE create_fircore (int size, double* in, double* out, int nc,
+	int mp, int pfactor, double* impulse)
 {
 	FIRCORE a = (FIRCORE) malloc0 (sizeof (fircore));
 	a->size = size;
@@ -353,10 +355,11 @@ FIRCORE create_fircore (int size, double* in, double* out, int nc, int mp, doubl
 	a->out = out;
 	a->nc = nc;
 	a->mp = mp;
+	a->pfactor = pfactor;
 	InitializeCriticalSectionAndSpinCount (&a->update, 2500);
 	plan_fircore (a);
 	a->impulse = (double *) malloc0 (a->nc * sizeof (complex));
-	a->imp	   = (double *) malloc0 (a->nc * sizeof (complex));
+	a->imp     = (double *) malloc0 (a->nc * sizeof (complex));
 	memcpy (a->impulse, impulse, a->nc * sizeof (complex));
 	calc_fircore (a, 1);
 	return a;
@@ -364,10 +367,10 @@ FIRCORE create_fircore (int size, double* in, double* out, int nc, int mp, doubl
 
 void deplan_fircore (FIRCORE a)
 {
-	int i;
+	destroy_minphase(a->pminphase);
 	fftw_destroy_plan (a->crev);
 	_aligned_free (a->accum);
-	for (i = 0; i < a->nfor; i++)
+	for (int i = 0; i < a->nfor; i++)
 	{
 		_aligned_free (a->fftout[i]);
 		_aligned_free (a->fmask[0][i]);
@@ -467,7 +470,7 @@ void setNc_fircore (FIRCORE a, int nc, double* impulse)
 	_aligned_free (a->imp);
 	a->nc = nc;
 	plan_fircore (a);
-	a->imp	   = (double *) malloc0 (a->nc * sizeof (complex));
+	a->imp     = (double *) malloc0 (a->nc * sizeof (complex));
 	a->impulse = (double *) malloc0 (a->nc * sizeof (complex));
 	memcpy (a->impulse, impulse, a->nc * sizeof (complex));
 	calc_fircore (a, 1);

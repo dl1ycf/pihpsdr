@@ -50,7 +50,6 @@ void tts_send(char *msg) {
 int main() {
   int turn = 0;
   char msg[64];
-
   for (;;) {
     snprintf(msg, sizeof(msg), "This is Test No. %d", ++turn);
     tts_send(msg);

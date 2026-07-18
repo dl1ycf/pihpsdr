@@ -1,4 +1,4 @@
-/*	send.h
+/*  send.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -25,8 +25,8 @@ warren@wpratt.com
 */
 
 // 'send' copies samples from the sample stream and proactively pushes those samples to external
-//	functions by calling them.	As such, the call and parameters are somewhat specific to the
-//	need for the data.	Nevertheless, this code is written in somewhat of a generic form to
+//	functions by calling them.  As such, the call and parameters are somewhat specific to the
+//	need for the data.  Nevertheless, this code is written in somewhat of a generic form to
 //	facilitate adding additional functions in the future.
 
 #ifndef _sender_h

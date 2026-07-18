@@ -136,11 +136,6 @@ typedef struct _transmitter {
   // PS 2.0 parameters
   double ps_ampdelay;
   int    ps_ints;
-  int    ps_spi;
-  int    ps_stbl;
-  int    ps_map;
-  int    ps_pin;
-  int    ps_ptol;
   double ps_moxdelay;
   double ps_loopdelay;
   int    ps_oneshot;

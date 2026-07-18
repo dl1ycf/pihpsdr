@@ -33,12 +33,10 @@
  * a different band, ask first. */
 static void tune_to_spot(const DX_SPOT *spot) {
   if (!spot || !active_receiver) { return; }
-
   long long target = spot->freq_hz;
   int target_band = get_band_from_frequency(target);
   int active_id = active_receiver->id;
   int current_band = get_band_from_frequency(vfo[active_id].frequency);
-
   if (target_band != current_band) {
     GtkWidget *dlg = gtk_message_dialog_new(
                        GTK_WINDOW(top_window), GTK_DIALOG_MODAL,
@@ -48,12 +46,9 @@ static void tune_to_spot(const DX_SPOT *spot) {
     gtk_window_set_title(GTK_WINDOW(dlg), "Switch band?");
     int resp = gtk_dialog_run(GTK_DIALOG(dlg));
     gtk_widget_destroy(dlg);
-
     if (resp != GTK_RESPONSE_YES) { return; }
-
     vfo_id_band_changed(active_id, target_band);
   }
-
   vfo_id_set_frequency(active_id, target);
   t_print("dxcluster: tuned to %s on %lld Hz\n", spot->dx_call, target);
 }
@@ -82,18 +77,15 @@ static void on_popup_destroy(GtkWidget *w, gpointer data) {
 
 static const char *age_string(time_t when, char *buf, int len) {
   long age = time(NULL) - when;
-
   if (age < 0 || age > 100000000L) { *buf = 0; }
   else if (age < 60) { snprintf(buf, len, "%ld sec",  age); }
   else if (age < 3600) { snprintf(buf, len, "%ld min",  age / 60); }
   else { snprintf(buf, len, "%ld hr",   age / 3600); }
-
   return buf;
 }
 
 void dxcluster_popup_show_single(const DX_SPOT *spot, int parent_x, int parent_y) {
   if (!spot) { return; }
-
   POPUP_CTX *ctx = g_new0(POPUP_CTX, 1);
   ctx->spot = *spot;
   GtkWidget *dlg = gtk_dialog_new();
@@ -102,11 +94,9 @@ void dxcluster_popup_show_single(const DX_SPOT *spot, int parent_x, int parent_y
   gtk_window_set_transient_for(GTK_WINDOW(dlg), GTK_WINDOW(top_window));
   gtk_window_set_position(GTK_WINDOW(dlg), GTK_WIN_POS_MOUSE);
   gtk_window_set_resizable(GTK_WINDOW(dlg), FALSE);
-
   if (parent_x > 0 && parent_y > 0) {
     gtk_window_move(GTK_WINDOW(dlg), parent_x, parent_y);
   }
-
   GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dlg));
   GtkWidget *grid = gtk_grid_new();
   gtk_grid_set_row_spacing(GTK_GRID(grid), 4);
@@ -143,7 +133,6 @@ void dxcluster_popup_show_single(const DX_SPOT *spot, int parent_x, int parent_y
     { "Comment",       spot->comment[0] ? spot->comment : "—" },
     { NULL, NULL }
   };
-
   for (int i = 0; rows[i].label; i++) {
     GtkWidget *l = gtk_label_new(rows[i].label);
     gtk_widget_set_halign(l, GTK_ALIGN_START);
@@ -154,7 +143,6 @@ void dxcluster_popup_show_single(const DX_SPOT *spot, int parent_x, int parent_y
     gtk_grid_attach(GTK_GRID(grid), v, 1, row, 1, 1);
     row++;
   }
-
   gtk_container_add(GTK_CONTAINER(content), grid);
   /* Action buttons */
   GtkWidget *tune_btn  = gtk_button_new_with_label("Tune to spot");
@@ -187,12 +175,10 @@ static void on_group_row_destroy(GtkWidget *w, gpointer data) {
 void dxcluster_popup_show_group(const DX_SPOT *spots, int n_spots,
                                 int parent_x, int parent_y) {
   if (!spots || n_spots <= 0) { return; }
-
   if (n_spots == 1) {
     dxcluster_popup_show_single(&spots[0], parent_x, parent_y);
     return;
   }
-
   GtkWidget *dlg = gtk_dialog_new();
   char title_buf[64];
   snprintf(title_buf, sizeof(title_buf), "%d spots", n_spots);
@@ -200,17 +186,14 @@ void dxcluster_popup_show_group(const DX_SPOT *spots, int n_spots,
   gtk_window_set_transient_for(GTK_WINDOW(dlg), GTK_WINDOW(top_window));
   gtk_window_set_position(GTK_WINDOW(dlg), GTK_WIN_POS_MOUSE);
   gtk_window_set_resizable(GTK_WINDOW(dlg), FALSE);
-
   if (parent_x > 0 && parent_y > 0) {
     gtk_window_move(GTK_WINDOW(dlg), parent_x, parent_y);
   }
-
   GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dlg));
   GtkWidget *grid = gtk_grid_new();
   gtk_grid_set_row_spacing(GTK_GRID(grid), 6);
   gtk_grid_set_column_spacing(GTK_GRID(grid), 10);
   gtk_container_set_border_width(GTK_CONTAINER(grid), 14);
-
   for (int i = 0; i < n_spots; i++) {
     const DX_SPOT *sp = &spots[i];
     char freq_buf[24], info_buf[64];
@@ -240,7 +223,6 @@ void dxcluster_popup_show_group(const DX_SPOT *spots, int n_spots,
     gtk_grid_attach(GTK_GRID(grid), info_l,   2, i, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), tune_btn, 3, i, 1, 1);
   }
-
   gtk_container_add(GTK_CONTAINER(content), grid);
   GtkWidget *close_btn = gtk_button_new_with_label("Close");
   gtk_dialog_add_action_widget(GTK_DIALOG(dlg), close_btn, GTK_RESPONSE_CLOSE);

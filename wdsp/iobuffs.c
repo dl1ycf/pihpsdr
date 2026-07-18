@@ -1,4 +1,4 @@
-/*	iobuffs.c
+/*  iobuffs.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -28,7 +28,7 @@ warren@wpratt.com
 
 /********************************************************************************************************
 *																										*
-*											Begin Slew Code												*
+*										    Begin Slew Code												*
 *																										*
 ********************************************************************************************************/
 
@@ -56,7 +56,7 @@ void create_slews (IOB a)
 	a->slew.ndeldown = (int)(ch[a->channel].tdelaydown * ch[a->channel].out_rate);
 	a->slew.ntup = (int)(ch[a->channel].tslewup * ch[a->channel].in_rate);
 	a->slew.ntdown = (int)(ch[a->channel].tslewdown * ch[a->channel].out_rate);
-	a->slew.cup	  = (double *) malloc0 ((a->slew.ntup + 1) * sizeof (double));
+	a->slew.cup   = (double *) malloc0 ((a->slew.ntup + 1) * sizeof (double));
 	a->slew.cdown = (double *) malloc0 ((a->slew.ntdown + 1) * sizeof (double));
 
 	delta = PI / (double)a->slew.ntup;
@@ -413,7 +413,7 @@ void create_iobuffs (int channel)
 	a->r2_unqueuedsamps = a->r2_havesamps - n * a->out_size;
 	InitializeCriticalSectionAndSpinCount(&a->r2_ControlSection, 2500);
 	a->Sem_BuffReady = CreateSemaphore(0, 0, 1000, 0);
-	a->Sem_OutReady	 = CreateSemaphore(0, n, 1000, 0);
+	a->Sem_OutReady  = CreateSemaphore(0, n, 1000, 0);
 	a->bfo = ch[channel].bfo;
 	create_slews (a);
 
@@ -456,7 +456,7 @@ void flush_iobuffs (int channel)
 	n = a->r2_havesamps / a->out_size;
 	a->r2_unqueuedsamps = a->r2_havesamps - n * a->out_size;
 	CloseHandle (a->Sem_OutReady);
-	a->Sem_OutReady	 = CreateSemaphore(0, n, 1000, 0);
+	a->Sem_OutReady  = CreateSemaphore(0, n, 1000, 0);
 	flush_slews (a);
 }
 
@@ -534,11 +534,11 @@ void fexchange2 (int channel, INREAL *Iin, INREAL *Qin, OUTREAL *Iout, OUTREAL *
 				(a->r1_baseptr + 2 * a->r1_inidx)[2 * i + 0] = (double)(Iin[i]);
 				(a->r1_baseptr + 2 * a->r1_inidx)[2 * i + 1] = (double)(Qin[i]);
 			}
-																										// add check with *error += -1; for case when r1 is full and an overwrite occurs
+			// add check with *error += -1; for case when r1 is full and an overwrite occurs
 		if ((a->r1_unqueuedsamps += a->in_size) >= a->r1_outsize)
 		{
 			n = a->r1_unqueuedsamps / a->r1_outsize;
-			ReleaseSemaphore(a->Sem_BuffReady, n, 0);	
+			ReleaseSemaphore(a->Sem_BuffReady, n, 0);
 			a->r1_unqueuedsamps -= n * a->r1_outsize;
 		}
 		if ((a->r1_inidx += a->in_size) == a->r1_active_buffsize)
@@ -595,7 +595,7 @@ void dexchange (int channel, double* in, double* out)
 	if (a->bfo && (a->r2_unqueuedsamps += a->r2_insize) >= a->out_size)
 	{
 		n = a->r2_unqueuedsamps / a->out_size;
-		ReleaseSemaphore(a->Sem_OutReady, n, 0);	
+		ReleaseSemaphore(a->Sem_OutReady, n, 0);
 		a->r2_unqueuedsamps -= n * a->out_size;
 	}
 	memcpy (out, a->r1_baseptr + 2 * a->r1_outidx, a->r1_outsize * sizeof (complex));

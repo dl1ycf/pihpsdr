@@ -319,18 +319,13 @@ void filter_save_state(void) {
   //
   for (int m = 0; m < MODES; m++) {
     const FILTER *filter = filters[m];
-
     for (int i = 0; i < FILTERS; i++) {
       char txt[128];
       snprintf(txt, sizeof(txt), "filter.%s.%s.low", mode_string[m], filter[i].title);
-
       for (char *cp = txt; *cp != 0; cp++) { *cp = tolower(*cp); }
-
       SetPropI0(txt, filter[i].low);
       snprintf(txt, sizeof(txt), "filter.%s.%s.high", mode_string[m], filter[i].title);
-
       for (char *cp = txt; *cp != 0; cp++) { *cp = tolower(*cp); }
-
       SetPropI0(txt, filter[i].high);
     }
   }
@@ -343,18 +338,13 @@ void filter_restore_state(void) {
   //
   for (int m = 0; m < MODES; m++) {
     FILTER *filter = filters[m];
-
     for (int i = 0; i < FILTERS; i++) {
       char txt[128];
       snprintf(txt, sizeof(txt), "filter.%s.%s.low", mode_string[m], filter[i].title);
-
       for (char *cp = txt; *cp != 0; cp++) { *cp = tolower(*cp); }
-
       GetPropI0(txt, filter[i].low);
       snprintf(txt, sizeof(txt), "filter.%s.%s.high", mode_string[m], filter[i].title);
-
       for (char *cp = txt; *cp != 0; cp++) { *cp = tolower(*cp); }
-
       GetPropI0(txt, filter[i].high);
     }
   }
@@ -375,12 +365,9 @@ void filter_restore_state(void) {
 
 void filter_edges_changed(int id, int low, int high) {
   int mode = vfo[id].mode;
-
   // Assertions
   if (id >= receivers || mode == modeFMN) { return; }
-
   RECEIVER *rx = receiver[id];
-
   //
   // Apply changed filter settings to the running rx
   //
@@ -394,19 +381,16 @@ void filter_edges_changed(int id, int low, int high) {
     rx->filter_low = low;
     rx->filter_high = high;
   }
-
   if (radio_is_remote) {
     send_rx_filter_cut(cl_sock_tcp, rx->id);
   } else {
     rx_set_bandpass(rx);
     rx_set_agc(rx);
-
     if (mode == modeCWL || mode == modeCWU) {
       int have_peak = vfo[id].cwAudioPeakFilter;
       rx_set_cw_peak(rx, have_peak, (double) cw_keyer_sidetone_frequency);
     }
   }
-
   g_idle_add(ext_vfo_update, NULL);
 }
 
@@ -415,10 +399,8 @@ void filter_cut_default(int id) {
   // This will restore the nominal filter edges of the filter being used
   //
   int mode = vfo[id].mode;
-
   // Assertions
   if (id >= receivers || mode == modeFMN) { return; }
-
   const RECEIVER *rx = receiver[id];
   int f = vfo[id].filter;
   const FILTER *filter = &(filters[mode][f]);
@@ -435,145 +417,96 @@ void filter_cut_default(int id) {
 //
 void filter_high_changed(int id, int increment) {
   int mode = vfo[id].mode;
-
   // Assertions
   if (id >= receivers || mode == modeFMN) { return; }
-
   const RECEIVER *rx = receiver[id];
   int low = rx->filter_low;
   int high = rx->filter_high;
   int new;
-
   switch (mode) {
   case modeLSB:
   case modeDIGL:
     low -= increment * 25;
-
     if (low > 0) { low = 0; }
-
     if (low > high) { low = high; }
-
     new = -low;
     break;
-
   case modeCWL:
     low -= increment * 5;
-
     if (low > -cw_keyer_sidetone_frequency) { low = -cw_keyer_sidetone_frequency; }
-
     if (low > high) { low = high; }
-
     new = -low + cw_keyer_sidetone_frequency;
     break;
-
   case  modeCWU:
     high += increment * 5;
-
     if (high < cw_keyer_sidetone_frequency) { high = cw_keyer_sidetone_frequency; }
-
     if (high < low) { high = low; }
-
     new = high - cw_keyer_sidetone_frequency;
     break;
-
   case modeUSB:
   case modeDIGU:
     high += increment * 25;
-
     if (high < 0) { high = 0; }
-
     if (high < low) { high = low; }
-
     new = high;
     break;
-
   default:
     high += increment * 50;
-
     if (high < 0) { high = 0; }
-
     if (high < low) { high = low; }
-
     new = high;
     break;
   }
-
   filter_edges_changed(rx->id, low, high);
-
   if (!suppress_popup_sliders) {
     g_idle_add(sliders_filter_high, GINT_TO_POINTER(100000 * id + 50000 + new));
   }
-
   g_idle_add(ext_vfo_update, NULL);
 }
 
 void filter_low_changed(int id, int increment) {
   int mode = vfo[id].mode;
-
   // Assertions
   if (id >= receivers || mode == modeFMN) { return; }
-
   const RECEIVER *rx = receiver[id];
   int low = rx->filter_low;
   int high = rx->filter_high;
   int new;
-
   switch (mode) {
   case modeLSB:
   case modeDIGL:
     high -= increment * 25;
-
     if (high > 0) { high = 0; }
-
     if (high < low) { high = low; }
-
     new = -high;
     break;
-
   case modeCWL:
     high -= increment * 5;
-
     if (high < -cw_keyer_sidetone_frequency) { high = -cw_keyer_sidetone_frequency; }
-
     if (high < low) { high = low; }
-
     new = -high + cw_keyer_sidetone_frequency;
     break;
-
   case modeCWU:
     low += increment * 5;
-
     if (low > cw_keyer_sidetone_frequency) { low = cw_keyer_sidetone_frequency; }
-
     if (low > high) { low = high; }
-
     new = low - cw_keyer_sidetone_frequency;
     break;
-
   case modeUSB:
   case modeDIGU:
     low += increment * 25;
-
     if (low < 0) { low = 0; }
-
     if (low > high) { low = high; }
-
     new = low;
     break;
-
   default:
     low += increment * 50;
-
     if (low > 0) { low = 0; }
-
     if (low > high) { low = high; }
-
     new = low;
     break;
   }
-
   filter_edges_changed(rx->id, low, high);
-
   if (!suppress_popup_sliders) {
     g_idle_add(sliders_filter_low, GINT_TO_POINTER(100000 * id + 50000 + new));
   }
@@ -584,85 +517,61 @@ void filter_low_changed(int id, int increment) {
 //
 void filter_width_changed(int id, int increment) {
   int mode = vfo[id].mode;
-
   // Assertions
   if (id >= receivers || mode == modeFMN) { return; }
-
   const RECEIVER *rx = receiver[id];
   int low = rx->filter_low;
   int high = rx->filter_high;
-
   switch (mode) {
   case modeDIGL:
     if (high < -500) {
       // change both high and low
       low -= increment * 13;
       high += increment * 12;
-
       if (low > high) { low = high; }
-
       break;
     }
-
     __attribute__((fallthrough));
-
   case modeLSB:
     // only change high-audio-cut
     low -= increment * 25;
-
     if (low > high) { low = high; }
-
     break;
-
   case modeDIGU:
     if (low > 500) {
       // change both high and low
       low -= increment * 12;
       high += increment * 13;
-
       if (high < low) { high = low; }
-
       break;
     }
-
     __attribute__((fallthrough));
-
   case modeUSB:
     // only change high-audio-cut
     high += increment * 25;
-
     if (high < low) { high = low; }
-
     break;
-
   case modeCWL:
   case modeCWU:
     low  -= increment * 5;
     high += increment * 5;
-
     if (low > high) {
       int mid = (low + high) / 2;
       low = mid;
       high = mid;
     }
-
     break;
-
   default:
     low  -= increment * 50;
     high += increment * 50;
-
     if (low > high) {
       int mid = (low + high) / 2;
       low = mid;
       high = mid;
     }
-
     break;
   }
-
   filter_edges_changed(rx->id, low, high);
-
   if (!suppress_popup_sliders) {
     g_idle_add(sliders_filter_width, GINT_TO_POINTER(100000 * id + 50000 + high - low));
   }
@@ -673,10 +582,8 @@ void filter_width_changed(int id, int increment) {
 //
 void filter_shift_changed(int id, int increment) {
   int mode = vfo[id].mode;
-
   // Assertions
   if (id >= receivers || mode == modeFMN) { return; }
-
   const RECEIVER *rx = receiver[id];
   int low = rx->filter_low;
   int high = rx->filter_high;
@@ -686,7 +593,6 @@ void filter_shift_changed(int id, int increment) {
   int wid = (high - low);
   int shft;
   int sgn = 1;
-
   switch (mode) {
   case modeLSB:
   case modeDIGL:
@@ -694,30 +600,25 @@ void filter_shift_changed(int id, int increment) {
     ref  = -1500;
     sgn  = -1;
     break;
-
   case modeUSB:
   case modeDIGU:
     fac  = 25;
     ref  = 1500;
     break;
-
   case modeCWL:
     fac  = 5;
     ref  = 0;
     sgn  = -1;
     break;
-
   case modeCWU:
     fac  = 5;
     ref = 0;
     break;
-
   default:
     fac  = 50;
     ref = 0;
     break;
   }
-
   shft = mid - ref;
   shft += increment * fac * sgn;
   low =  ref + shft - wid / 2;
@@ -727,11 +628,9 @@ void filter_shift_changed(int id, int increment) {
   //
   filter_edges_changed(rx->id, low, high);
   shft = sgn * shft;
-
   if (mode == modeCWU ||  mode == modeCWL) {
     shft -= cw_keyer_sidetone_frequency;
   }
-
   if (!suppress_popup_sliders) {
     g_idle_add(sliders_filter_shift, GINT_TO_POINTER(100000 * id + 50000 + shft));
   }
@@ -750,11 +649,9 @@ void notch_width_changed(int id, int pos, int val) {
     RECEIVER *rx = receiver[id];
     double w = rx->multi_notch_width[pos] + (double) val;
     w = 25.0 * (w * 0.04);
-
     if (w < rx->notch_min_width) {
       w = rx->notch_min_width;
     }
-
     rx->multi_notch_width[pos] = w;
     rx_set_notch(rx);
   }

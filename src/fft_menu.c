@@ -57,14 +57,12 @@ static void binaural_cb(GtkWidget *widget, gpointer data) {
 static void filter_type_cb(GtkToggleButton *widget, gpointer data) {
   int type = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
   int channel  = GPOINTER_TO_INT(data);
-
   switch (channel) {
   case 0:
   case 1:
     receiver[channel]->low_latency = type;
     rx_set_fft_params(receiver[channel]);
     break;
-
   case 8:
     // NOTREACHED
     break;
@@ -74,14 +72,12 @@ static void filter_type_cb(GtkToggleButton *widget, gpointer data) {
 static void window_type_cb(GtkToggleButton *widget, gpointer data) {
   int type = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
   int channel  = GPOINTER_TO_INT(data);
-
   switch (channel) {
   case 0:
   case 1:
     receiver[channel]->nbp_window = type;
     rx_set_fft_params(receiver[channel]);
     break;
-
   case 8:
     // NOTREACHED
     break;
@@ -92,23 +88,19 @@ static void filter_size_cb(GtkWidget *widget, gpointer data) {
   int channel = GPOINTER_TO_INT(data);
   const char *p = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget));
   int size;
-
   // Get size from string in the combobox
   if (sscanf(p, "%d", &size) != 1) { return; }
-
   switch (channel) {
   case 0:
   case 1:
     receiver[channel]->fft_size = size;
     rx_set_fft_params(receiver[channel]);
     break;
-
   case 8:
     if (can_transmit) {
       transmitter->fft_size = size;
       tx_set_fft_params(transmitter);
     }
-
     break;
   }
 }
@@ -147,14 +139,11 @@ void fft_menu(GtkWidget *parent) {
   gtk_widget_set_halign(w, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), w, 0, 5, 1, 1);
   int col = 1;
-
   for (int i = 0; i <= receivers; i++) {
     // i == receivers means "TX"
     int chan;
     int j, s, dsize, fsize, ftype, wtype;
-
     if ((i == receivers) && !can_transmit) { break; }
-
     if (i == 0) {
       w = gtk_label_new("RX1");
       gtk_widget_set_name(w, "boldlabel");
@@ -180,9 +169,7 @@ void fft_menu(GtkWidget *parent) {
       ftype = 0;
       wtype = 0;
     }
-
     gtk_grid_attach(GTK_GRID(grid), w, col, 1, 1, 1);
-
     if (chan == 8) {
       //
       // To enable CESSB overshoot correction with TX compression, we cannot
@@ -205,7 +192,6 @@ void fft_menu(GtkWidget *parent) {
       my_combo_attach(GTK_GRID(grid), w, col, 4, 1, 1);
       g_signal_connect(w, "changed", G_CALLBACK(window_type_cb), GINT_TO_POINTER(chan));
     }
-
     //
     // The filter size must be a power of two and at least equal to the dsp size
     // Apart from that, we allow values from 1k ... 32k.
@@ -213,36 +199,27 @@ void fft_menu(GtkWidget *parent) {
     w = gtk_combo_box_text_new();
     s = 512;
     j = 0;
-
     for (;;) {
       s = 2 * s;
-
       if (s >= dsize) {
         char text[32];
         snprintf(text, sizeof(text), "%d", s);
         gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(w), NULL, text);
-
         if (s == fsize) { gtk_combo_box_set_active(GTK_COMBO_BOX(w), j); }
-
         j++;
       }
-
       if (s >= 32768) { break; }
     }
-
     my_combo_attach(GTK_GRID(grid), w, col, 3, 1, 1);
     g_signal_connect(w, "changed", G_CALLBACK(filter_size_cb), GINT_TO_POINTER(chan));
-
     if (i < receivers) {
       w = gtk_check_button_new();
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w), receiver[i]->binaural);
       gtk_grid_attach(GTK_GRID(grid), w, col, 5, 1, 1);
       g_signal_connect(w, "toggled", G_CALLBACK(binaural_cb), GINT_TO_POINTER(chan));
     }
-
     col++;
   }
-
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);

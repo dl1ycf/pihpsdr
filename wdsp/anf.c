@@ -1,4 +1,4 @@
-/*	anf.c
+/*  anf.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -67,10 +67,10 @@ ANF create_anf	(
 	a->den_mult = den_mult;
 	a->lincr = lincr;
 	a->ldecr = ldecr;
-	
+
 	memset (a->d, 0, sizeof(double) * ANF_DLINE_SIZE);
 	memset (a->w, 0, sizeof(double) * ANF_DLINE_SIZE);
-	
+
 	return a;
 }
 
@@ -81,11 +81,11 @@ void destroy_anf (ANF a)
 
 void xanf(ANF a, int position)
 {
-	int i, j, idx;
-	double c0, c1;
-	double y, error, sigma, inv_sigp;
+    int i, j, idx;
+    double c0, c1;
+    double y, error, sigma, inv_sigp;
 	double nel, nev;
-	if (a->run && (a->position == position))
+    if (a->run && (a->position == position))
 	{
 		for (i = 0; i < a->buff_size; i++)
 		{
@@ -171,7 +171,7 @@ SetRXAANFRun (int channel, int run)
 	{
 		RXAbp1Check (channel, rxa[channel].amd.p->run, rxa[channel].snba.p->run,
 			rxa[channel].emnr.p->run, run, rxa[channel].anr.p->run,
-			rxa[channel].rnnr.p->run, rxa[channel].sbnr.p->run);  // NR3 + NR4 support
+            rxa[channel].rnnr.p->run, rxa[channel].sbnr.p->run); // NR3 + NR4 support
 		EnterCriticalSection (&ch[channel].csDSP);
 		a->run = run;
 		RXAbp1Set (channel);

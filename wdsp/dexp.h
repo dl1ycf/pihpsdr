@@ -1,4 +1,4 @@
-/*	dexp.h
+/*  dexp.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -64,7 +64,7 @@ typedef struct _dexp
 	double thold;						// hold time
 	int nhold;							// hold count
 	double exp_ratio;					// expander ratio (high-gain to low-gain)
-	double hysteresis_ratio;			// ratio hold_thresh/attack_thresh.	 0.0 < ratio < 1.0
+	double hysteresis_ratio;			// ratio hold_thresh/attack_thresh.  0.0 < ratio < 1.0
 	double low_gain;					// gain when gate is closed
 	double* trigsig;					// buffer for trigger signal (signal after side-channel filter)
 	double* delsig;						// buffer for signal delayed to match trigger signal

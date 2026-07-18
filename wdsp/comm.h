@@ -1,8 +1,8 @@
-/*	comm.h
+/*  comm.h
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2013, 2024, 2025 Warren Pratt, NR0V
+Copyright (C) 2013, 2024, 2025, 2026 Warren Pratt, NR0V
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -43,6 +43,7 @@ warren@wpratt.com
 #ifdef _WIN32
 #include <avrt.h>
 #endif
+#include <assert.h>
 #include "fftw3.h"
 
 #include "amd.h"
@@ -92,9 +93,12 @@ warren@wpratt.com
 #include "nbp.h"
 #include "nob.h"
 #include "nobII.h"
+#include "nurbs.h"
 #include "osctrl.h"
 #include "patchpanel.h"
+#include "phrot.h"
 #include "resample.h"
+#include "reshb.h"
 #include "rmatch.h"
 #include "RXA.h"
 #include "sender.h"
@@ -107,6 +111,7 @@ warren@wpratt.com
 #include "TXA.h"
 #include "utilities.h"
 #include "varsamp.h"
+#include "wbfm.h"
 #include "wcpAGC.h"
 
 // manage differences among consoles
@@ -138,8 +143,7 @@ warren@wpratt.com
 #define dMAX_PIXOUTS					4					// maximum number of det/avg/outputs per display instance
 
 // wisdom definitions
-#define MAX_WISDOM_SIZE_DISPLAY			262144
-#define MAX_WISDOM_SIZE_FILTER			262144				// was 32769
+#define MAX_WISDOM_SIZE                 262144
 
 // math definitions
 #define PI								3.1415926535897932
@@ -148,3 +152,7 @@ warren@wpratt.com
 // miscellaneous
 typedef double complex[2];
 #define PORT							__declspec( dllexport )
+#ifndef M_PI
+#  define M_PI 3.14159265358979323846
+#endif
+

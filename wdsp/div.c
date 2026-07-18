@@ -1,4 +1,4 @@
-/*	div.c
+/*  div.c
 
 This file is part of a program that implements a Software-Defined Radio.
 
@@ -97,7 +97,7 @@ void xdiv (MDIV a)
 
 /********************************************************************************************************
 *																										*
-*										CALLS FOR EXTERNAL USE											*
+*									    CALLS FOR EXTERNAL USE											*
 *																										*
 ********************************************************************************************************/
 

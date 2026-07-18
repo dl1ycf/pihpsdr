@@ -48,13 +48,11 @@ static void cleanup(void) {
   if (dialog != NULL) {
     GtkWidget *tmp = dialog;
     dialog = NULL;
-
     while (first != NULL) {
       CHOICE *choice = first;
       first = first->next;
       g_free(choice);
     }
-
     current = NULL;
     gtk_widget_destroy(tmp);
     sub_menu = NULL;
@@ -71,7 +69,6 @@ static gboolean close_cb(void) {
 static gboolean band_select_cb (GtkWidget *widget, gpointer data) {
   CHOICE *choice = (CHOICE *) data;
   int newband;
-
   //
   // If the current band has been clicked, this will cycle through the
   // band stack
@@ -84,7 +81,6 @@ static gboolean band_select_cb (GtkWidget *widget, gpointer data) {
     vfo_id_band_changed(myvfo, choice->info);
     newband = vfo[myvfo].band;
   }
-
   if (newband != choice->info) {
     //
     // Note that a band change may fail. This can happen if the local oscillator
@@ -96,30 +92,24 @@ static gboolean band_select_cb (GtkWidget *widget, gpointer data) {
     //
     choice = first;
     current = NULL;
-
     while (choice) {
       g_signal_handler_block(G_OBJECT(choice->button), choice->signal);
-
       if (choice->info == newband) {
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(choice->button), TRUE);
         current = choice;
       } else {
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(choice->button), FALSE);
       }
-
       g_signal_handler_unblock(G_OBJECT(choice->button), choice->signal);
       choice = choice->next;
     }
-
     return FALSE;
   }
-
   if (current) {
     g_signal_handler_block(G_OBJECT(current->button), current->signal);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(current->button), current == choice);
     g_signal_handler_unblock(G_OBJECT(current->button), current->signal);
   }
-
   current = choice;
   return FALSE;
 }
@@ -151,11 +141,9 @@ void band_menu(GtkWidget *parent, int id) {
   long long frequency_min = radio->frequency_min;
   long long frequency_max = radio->frequency_max;
   j = 0;
-
   for (i = 0; i < BANDS + XVTRS; i++) {
     const BAND *band;
     band = (BAND*)band_get_band(i);
-
     if (strlen(band->title) > 0) {
       if (i < BANDS) {
         if (!(band->frequencyMin == 0.0 && band->frequencyMax == 0.0)) {
@@ -164,7 +152,6 @@ void band_menu(GtkWidget *parent, int id) {
           }
         }
       }
-
       GtkWidget *w = gtk_toggle_button_new_with_label(band->title);
       gtk_widget_set_name(w, "small_toggle_button");
       gtk_widget_show(w);
@@ -174,17 +161,14 @@ void band_menu(GtkWidget *parent, int id) {
       first = choice;
       choice->info = i;
       choice->button = w;
-
       if (i == vfo[myvfo].band) {
         current = choice;
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w), TRUE);
       }
-
       choice->signal = g_signal_connect(w, "toggled", G_CALLBACK(band_select_cb), choice);
       j++;
     }
   }
-
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);

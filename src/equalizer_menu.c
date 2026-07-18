@@ -54,7 +54,6 @@ static gboolean close_cb(void) {
 
 static void enable_cb (GtkWidget *widget, gpointer data) {
   int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-
   switch (eqid) {
   case 0:
   case 1:
@@ -62,15 +61,12 @@ static void enable_cb (GtkWidget *widget, gpointer data) {
       receiver[eqid]->eq_enable = val;
       rx_set_equalizer(receiver[eqid]);
     }
-
     break;
-
   case 2:
     if (can_transmit) {
       transmitter->eq_enable = val;
       tx_set_equalizer(transmitter);
     }
-
     break;
   }
 }
@@ -78,7 +74,6 @@ static void enable_cb (GtkWidget *widget, gpointer data) {
 static void freq_changed_cb (GtkWidget *widget, gpointer data) {
   int i = GPOINTER_TO_INT(data);
   double val = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-
   switch (eqid) {
   case 0:
   case 1:
@@ -86,15 +81,12 @@ static void freq_changed_cb (GtkWidget *widget, gpointer data) {
       receiver[eqid]->eq_freq[i] = val;
       rx_set_equalizer(receiver[eqid]);
     }
-
     break;
-
   case 2:
     if (can_transmit) {
       transmitter->eq_freq[i] = val;
       tx_set_equalizer(transmitter);
     }
-
     break;
   }
 }
@@ -103,7 +95,6 @@ static void freq_changed_cb (GtkWidget *widget, gpointer data) {
 static void gain_changed_cb (GtkWidget *widget, gpointer data) {
   int i = GPOINTER_TO_INT(data);
   double val = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-
   switch (eqid) {
   case 0:
   case 1:
@@ -111,15 +102,12 @@ static void gain_changed_cb (GtkWidget *widget, gpointer data) {
       receiver[eqid]->eq_gain[i] = val;
       rx_set_equalizer(receiver[eqid]);
     }
-
     break;
-
   case 2:
     if (can_transmit) {
       transmitter->eq_gain[i] = val;
       tx_set_equalizer(transmitter);
     }
-
     break;
   }
 }
@@ -130,18 +118,15 @@ static void eqid_changed_cb(GtkWidget *widget, gpointer data) {
     gtk_widget_hide(rx1_container);
     gtk_widget_hide(rx2_container);
     gtk_widget_hide(tx_container);
-
     switch (eqid) {
     case 0:
       gtk_widget_show(rx1_container);
       gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
       break;
-
     case 1:
       gtk_widget_show(rx2_container);
       gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
       break;
-
     case 2:
       gtk_widget_show(tx_container);
       gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
@@ -155,7 +140,6 @@ void equalizer_menu(GtkWidget *parent) {
   GtkWidget *label;
   int row = 0;
   int col = 0;
-
   //
   // Start the menu with the "old" eqid, but if it refers to RX2 and
   // this one is no longer running, set it to RX1
@@ -163,7 +147,6 @@ void equalizer_menu(GtkWidget *parent) {
   if ((eqid == 1 && receivers == 1) || (eqid == 2 && !can_transmit)) {
     eqid = 0;
   }
-
   dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
   GtkWidget *headerbar = gtk_header_bar_new();
@@ -186,7 +169,6 @@ void equalizer_menu(GtkWidget *parent) {
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(rx1_sel), (eqid == 0));
   gtk_grid_attach(GTK_GRID(grid), rx1_sel, col, row, 1, 1);
   g_signal_connect(rx1_sel, "toggled", G_CALLBACK(eqid_changed_cb), GINT_TO_POINTER(0));
-
   if (receivers > 1) {
     col++;
     mbtn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(rx1_sel), "RX2 Settings");
@@ -194,7 +176,6 @@ void equalizer_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(grid), mbtn, col, row, 1, 1);
     g_signal_connect(mbtn, "toggled", G_CALLBACK(eqid_changed_cb), GINT_TO_POINTER(1));
   }
-
   if (can_transmit) {
     col++;
     mbtn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(rx1_sel), "TX Settings");
@@ -202,13 +183,11 @@ void equalizer_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(grid), mbtn, col, row, 1, 1);
     g_signal_connect(mbtn, "toggled", G_CALLBACK(eqid_changed_cb), GINT_TO_POINTER(2));
   }
-
   row++;
   col = 0;
   rx1_container = gtk_fixed_new();
   rx2_container = gtk_fixed_new();
   tx_container = gtk_fixed_new();
-
   for (int myeq = 0; myeq < 3; myeq++) {
     //
     // Depending on the value of eqid, set spinbuttons, scales, etc.
@@ -219,11 +198,8 @@ void equalizer_menu(GtkWidget *parent) {
     const double *gains;
     int     en;
     int     myrow, mycol;
-
     if (myeq == 1 && receivers < 2)  { continue; }
-
     if (myeq == 2 && !can_transmit)  { continue; }
-
     switch (myeq) {
     case 0:
       freqs = receiver[0]->eq_freq;
@@ -231,21 +207,18 @@ void equalizer_menu(GtkWidget *parent) {
       en = receiver[0]->eq_enable;
       mycontainer = rx1_container;
       break;
-
     case 1:
       freqs = receiver[myeq]->eq_freq;
       gains = receiver[myeq]->eq_gain;
       en = receiver[myeq]->eq_enable;
       mycontainer = rx2_container;
       break;
-
     case 2:
       freqs = transmitter->eq_freq;
       gains = transmitter->eq_gain;
       en = transmitter->eq_enable;
       mycontainer = tx_container;
     }
-
     gtk_grid_attach(GTK_GRID(grid), mycontainer, col, row, 4, 1);
     myrow = 0;
     mycol = 0;
@@ -283,7 +256,6 @@ void equalizer_menu(GtkWidget *parent) {
     label = gtk_label_new("Gain");
     gtk_widget_set_name(label, "boldlabel");
     gtk_grid_attach(GTK_GRID(mygrid), label, 3, myrow, 1, 1);
-
     for (int i = 1; i < 6; i++) {
       myrow++;
       mbtn = gtk_spin_button_new_with_range(10.0, 16000.0, 10.0);
@@ -304,11 +276,9 @@ void equalizer_menu(GtkWidget *parent) {
       g_signal_connect(mbtn, "value-changed", G_CALLBACK(gain_changed_cb), GINT_TO_POINTER(i + 5));
     }
   }
-
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
-
   //
   // Only show one of the three containers
   // This is the TX container upon first invocation of the TX menu,
@@ -320,17 +290,14 @@ void equalizer_menu(GtkWidget *parent) {
     gtk_widget_hide(rx2_container);
     gtk_widget_hide(tx_container);
     break;
-
   case 1:
     gtk_widget_hide(rx1_container);
     gtk_widget_hide(tx_container);
     break;
-
   case 2:
     gtk_widget_hide(rx1_container);
     gtk_widget_hide(rx2_container);
     break;
   }
-
   gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
 }

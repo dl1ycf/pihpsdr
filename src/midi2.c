@@ -53,7 +53,6 @@ static void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
 #ifdef MIDIDEBUG
   t_print("%s:EVENT=%d CHAN=%d NOTE=%d VAL=%d\n", __func__, event, channel, note, val);
 #endif
-
   //
   // Sometimes a "heart beat" from a device might be useful. Therefore, we resert
   // channel=16 note=0 for this purpose and filter this out here
@@ -61,7 +60,6 @@ static void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
   if (event == MIDI_NOTE && channel == 15 && note == 0) {
     return;
   }
-
   if (event == MIDI_PITCH) {
     desc = MidiCommandsTable[128];
   } else {
@@ -71,7 +69,6 @@ static void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
     }
     desc = MidiCommandsTable[note];
   }
-
   //t_print("%s: init DESC=%p\n",__func__,desc);
   while (desc) {
     //t_print("%s: DESC=%p next=%p CHAN=%d EVENT=%d\n",__func__,desc,desc->next,desc->channel,desc->event);
@@ -82,11 +79,9 @@ static void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
         // this cannot happen
         t_print("%s: Unknown Event\n", __func__);
         break;
-
       case MIDI_NOTE:
         DoTheMidi(desc->action, desc->type, val);
         break;
-
       case MIDI_CTRL:
         if (desc->type == AT_KNB) {
           // CHANGED Jan 2024: report the "raw" value (0-127) upstream
@@ -94,49 +89,35 @@ static void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
         } else if (desc->type == AT_ENC) {
           // translate value to direction/speed
           new = 0;
-
           if ((val >= desc->vfl1) && (val <= desc->vfl2)) { new = -16; }
-
           if ((val >= desc-> fl1) && (val <= desc-> fl2)) { new = -4; }
-
           if ((val >= desc->lft1) && (val <= desc->lft2)) { new = -1; }
-
           if ((val >= desc->rgt1) && (val <= desc->rgt2)) { new = 1; }
-
           if ((val >= desc-> fr1) && (val <= desc-> fr2)) { new = 4; }
-
           if ((val >= desc->vfr1) && (val <= desc->vfr2)) { new = 16; }
-
           //                      t_print("%s: ENCODER PARAMS: val=%d new=%d thrs=%d/%d, %d/%d, %d/%d, %d/%d, %d/%d, %d/%d\n",
           //                               __func__,
           //                               val, new, desc->vfl1, desc->vfl2, desc->fl1, desc->fl2, desc->lft1, desc->lft2,
           //                               desc->rgt1, desc->rgt2, desc->fr1, desc->fr2, desc->vfr1, desc->vfr2);
           if (new != 0) { DoTheMidi(desc->action, desc->type, new); }
         }
-
         break;
-
       case MIDI_PITCH:
         if (desc->type == AT_KNB) {
           // use upper 7  bits
           DoTheMidi(desc->action, desc->type, val);
         }
-
         break;
       }
-
       break;
     } else {
       desc = desc->next;
     }
   }
-
   if (!desc) {
     // Nothing found. This is nothing to worry about, but log the key to stderr
     if (event == MIDI_PITCH) { t_print("%s: Unassigned PitchBend Value=%d\n", __func__, val); }
-
     if (event == MIDI_NOTE ) { t_print("%s: Unassigned Key Note=%d Val=%d\n", __func__, note, val); }
-
     if (event == MIDI_CTRL ) { t_print("%s: Unassigned Controller Ctl=%d Val=%d\n", __func__, note, val); }
   }
 }
@@ -150,28 +131,23 @@ void parse_midi_byte(int byte, MIDI_PARSER *parser) {
   switch (parser->state) {
   case STATE_SKIP:
     parser->chan = byte & 0x0F;
-
     switch (byte & 0xF0) {
     case 0x80:      // Note-OFF command
       parser->command = CMD_NOTEOFF;
       parser->state = STATE_ARG2;
       break;
-
     case 0x90:      // Note-ON command
       parser->command = CMD_NOTEON;
       parser->state = STATE_ARG2;
       break;
-
     case 0xB0:      // Controller Change
       parser->command = CMD_CTRL;
       parser->state = STATE_ARG2;
       break;
-
     case 0xE0:      // Pitch Bend
       parser->command = CMD_PITCH;
       parser->state = STATE_ARG2;
       break;
-
     case 0xA0:      // Polyphonic Pressure: skip args
     case 0xC0:      // Program change: skip args
     case 0xD0:      // Channel pressure: skip args
@@ -179,21 +155,16 @@ void parse_midi_byte(int byte, MIDI_PARSER *parser) {
     default:        // Remain in STATE_SKIP until "interesting" command seen
       break;
     }
-
     break;
-
   case STATE_ARG2:        // store byte as first argument
     parser->arg1 = byte & 0x7F;
     parser->state = STATE_ARG1;
     break;
-
   case STATE_ARG1:        // store byte as second argument, process command
     parser->arg2 = byte & 0x7F;
-
     // We have a command!
     switch (parser->command) {
     case CMD_NOTEON:
-
       // Some controllers generate NoteOn
       // messages with velocity == 0 when releasing
       // a push-button. This must be interpreted as
@@ -211,20 +182,15 @@ void parse_midi_byte(int byte, MIDI_PARSER *parser) {
           NewMidiEvent(MIDI_NOTE, parser->chan, parser->arg1, 1);
         }
       }
-
       break;
-
     case CMD_NOTEOFF:
       if (configure) {
         NewMidiConfigureEvent(MIDI_NOTE, parser->chan, parser->arg1, 0);
       } else {
         NewMidiEvent(MIDI_NOTE, parser->chan, parser->arg1, 0);
       }
-
       break;
-
     case CMD_CTRL:
-
       //
       // When ignoring "controller pairs", all ControllerChange events
       // for controllers 32...63 are ignored, since they provide
@@ -238,21 +204,16 @@ void parse_midi_byte(int byte, MIDI_PARSER *parser) {
           NewMidiEvent(MIDI_CTRL, parser->chan, parser->arg1, parser->arg2);
         }
       }
-
       break;
-
     case CMD_PITCH:
-
       // PitchBend event. Use only the most significant 7 bits
       if (configure) {
         NewMidiConfigureEvent(MIDI_PITCH, parser->chan, 0, parser->arg2);
       } else {
         NewMidiEvent(MIDI_PITCH, parser->chan, 0, parser->arg2);
       }
-
       break;
     }
-
     parser->state = STATE_SKIP;
     break;
   }
@@ -264,16 +225,13 @@ void parse_midi_byte(int byte, MIDI_PARSER *parser) {
 void MidiReleaseCommands(void) {
   int i;
   struct desc *loop, *new;
-
   for (i = 0; i < 129; i++) {
     loop = MidiCommandsTable[i];
-
     while (loop != NULL) {
       new = loop->next;
       g_free(loop);
       loop = new;
     }
-
     MidiCommandsTable[i] = NULL;
   }
 }
@@ -284,11 +242,8 @@ void MidiReleaseCommands(void) {
 
 void MidiAddCommand(int note, struct desc *desc) {
   struct desc *loop;
-
   if (note < 0 || note > 128 || desc == NULL) { return; }
   desc->next = NULL;
-
-
   //
   // Actions with channel == -1 (ANY) must go to the end of the list
   //
@@ -302,11 +257,9 @@ void MidiAddCommand(int note, struct desc *desc) {
   } else {
     // add to tail of the list
     loop = MidiCommandsTable[note];
-
     while (loop->next != NULL) {
       loop = loop->next;
     }
-
     loop->next = desc;
   }
 }
@@ -320,15 +273,12 @@ char *MidiEvent2String(enum MIDIevent event) {
   default:
     return "NONE";
     break;
-
   case MIDI_NOTE:
     return "NOTE";
     break;
-
   case MIDI_CTRL:
     return "CTRL";
     break;
-
   case MIDI_PITCH:
     return "PITCH";
     break;
@@ -337,11 +287,8 @@ char *MidiEvent2String(enum MIDIevent event) {
 
 enum MIDIevent String2MidiEvent(const char *str) {
   if (!strcmp(str, "NOTE"))  { return MIDI_NOTE;  }
-
   if (!strcmp(str, "CTRL"))  { return MIDI_CTRL;  }
-
   if (!strcmp(str, "PITCH")) { return MIDI_PITCH; }
-
   return EVENT_NONE;
 }
 
@@ -360,12 +307,10 @@ void midi_save_state(void) {
       entry++;
     }
   }
-
   // the value i=128 is for the PitchBend
   for (i = 0; i < 129; i++) {
     cmd = MidiCommandsTable[i];
     entry = -1;
-
     while (cmd != NULL) {
       entry++;
       int channel = cmd->channel;
@@ -373,7 +318,6 @@ void midi_save_state(void) {
       SetPropS3("midi[%d].entry[%d].channel[%d].event", i, entry, channel,   MidiEvent2String(cmd->event));
       SetPropS3("midi[%d].entry[%d].channel[%d].type", i, entry, channel,    ActionType2String(cmd->type));
       SetPropA3("midi[%d].entry[%d].channel[%d].action", i, entry, channel,  cmd->action);
-
       //
       // For encoders, also store the additional parameters,
       //
@@ -391,10 +335,8 @@ void midi_save_state(void) {
         SetPropI3("midi[%d].entry[%d].channel[%d].vfr1", i, entry, channel,       cmd->vfr1);
         SetPropI3("midi[%d].entry[%d].channel[%d].vfr2", i, entry, channel,       cmd->vfr2);
       }
-
       cmd = cmd->next;
     }
-
     SetPropI1("midi[%d].entries", i, entry + 1);
   }
 }
@@ -415,7 +357,6 @@ void midi_restore_state(void) {
   MidiReleaseCommands();
   //t_print("%s\n",__func__);
   GetPropI0("midiIgnoreCtrlPairs", midiIgnoreCtrlPairs);
-
   //
   // Note this is too early to open the MIDI devices, since the
   // radio has not yet fully been configured. Therefore, only
@@ -425,7 +366,6 @@ void midi_restore_state(void) {
   for (i = 0; i < MAX_MIDI_DEVICES; i++) {
     snprintf(str, sizeof(str), "NO_MIDI_DEVICE_FOUND");
     GetPropS1("mididevice[%d].name", i,  str);
-
     for (j = 0; j < n_midi_devices; j++) {
       if (strcmp(midi_devices[j].name, str) == 0) {
         midi_devices[j].active = 1;
@@ -433,18 +373,14 @@ void midi_restore_state(void) {
       }
     }
   }
-
   // the value i=128 is for the PitchBend
   for (i = 0; i < 129; i++) {
     int entries = -1;
     GetPropI1("midi[%d].entries", i, entries);
-
     for (int entry = 0; entry < entries; entry++) {
       int channel = -1;
       GetPropI2("midi[%d].entry[%d].channel", i, entry,      channel);
-
       if (channel < 0) { continue; }
-
       snprintf(str, sizeof(str), "None");
       GetPropS3("midi[%d].entry[%d].channel[%d].event", i, entry, channel, str);
       event = String2MidiEvent(str);
@@ -454,7 +390,6 @@ void midi_restore_state(void) {
       if (event == EVENT_NONE || action < 0 || action >= ACTIONS) {
         continue;
       }
-
       //
       // execute fixed mapping MIDI_KEY-->AT_BTN and MIDI_PITCH-->AT_KNB
       //
@@ -463,33 +398,24 @@ void midi_restore_state(void) {
       default:
         type = AT_NONE;
         break;
-
       case MIDI_NOTE:
         type = AT_BTN;
         break;
-
       case MIDI_PITCH:
         type = AT_KNB;
         break;
-
       case MIDI_CTRL:
         type = AT_ENC;
-
         //
         // If the stored action cannot be mapped to an encoder, choose AT_KNB
         //
         if ((ActionTable[action].type & AT_ENC) == 0) { type = AT_KNB; }
-
         snprintf(str, sizeof(str), "None");
         GetPropS3("midi[%d].entry[%d].channel[%d].type", i, entry, channel, str);
-
         // this will become a "Slider" only when specifically told so
-
         if (String2ActionType(str) == AT_KNB) { type = AT_KNB; }
-
         break;
       }
-
       //
       // Look for encoder parameters. For those not found,
       // use default values
@@ -506,7 +432,6 @@ void midi_restore_state(void) {
       fr2 = -1;
       vfr1 = -1;
       vfr2 = -1;
-
       if (type == AT_ENC) {
         GetPropI3("midi[%d].entry[%d].channel[%d].vfl1", i, entry, channel,  vfl1);
         GetPropI3("midi[%d].entry[%d].channel[%d].vfl2", i, entry, channel,  vfl2);
@@ -521,7 +446,6 @@ void midi_restore_state(void) {
         GetPropI3("midi[%d].entry[%d].channel[%d].vfr1", i, entry, channel,  vfr1);
         GetPropI3("midi[%d].entry[%d].channel[%d].vfr2", i, entry, channel,  vfr2);
       }
-
       //
       // Construct descriptor and add to the list of MIDI commands
       //
@@ -530,7 +454,6 @@ void midi_restore_state(void) {
         t_print ("%s: failed to allocate MIDI command descriptor\n", __func__);
         return;
       }
-
       desc->next     = NULL;
       desc->action   = action; // MIDIaction
       desc->type     = type;   // MIDItype

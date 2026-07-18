@@ -45,7 +45,6 @@ static gulong button_timer_id = 0;
 
 static void cleanup(void) {
   g_source_remove(button_timer_id);
-
   if (dialog) {
     GtkWidget *tmp = dialog;
     dialog = NULL;
@@ -81,13 +80,11 @@ static void read_settings(DXC_SETTINGS *s) {
   s->port = (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(w_port));
   snprintf(s->callsign, sizeof(s->callsign), "%s",
            gtk_entry_get_text(GTK_ENTRY(w_call)));
-
   /* Age */
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w_age_5))) { s->age_limit_sec = 300; }
   else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w_age_10))) { s->age_limit_sec = 600; }
   else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w_age_30))) { s->age_limit_sec = 1800; }
   else { s->age_limit_sec = 3600; }
-
   /* Modes */
   s->mode_ft8   = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w_m_ft8));
   s->mode_ft4   = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w_m_ft4));
@@ -120,29 +117,23 @@ static void on_save_clicked(GtkButton *btn, gpointer data) {
 
 static int button_colour_timer(gpointer arg) {
   DXC_STATE s = dxcluster_get_state();
-
   switch (s) {
   case DXC_DISABLED:
     gtk_widget_set_name(apply_btn, "button");
     break;
-
   case DXC_CONNECTING:
     gtk_widget_set_name(apply_btn, "yellowbutton");
     break;
-
   case DXC_CONNECTED:
     gtk_widget_set_name(apply_btn, "greenbutton");
     break;
-
   case DXC_ERROR:
     gtk_widget_set_name(apply_btn, "redbutton");
     break;
-
   case DXC_DISCONNECTED:
     gtk_widget_set_name(apply_btn, "orangebutton");
     break;
   }
-
   return G_SOURCE_CONTINUE;
 }
 
@@ -209,25 +200,20 @@ void dxcluster_menu(GtkWidget *parent) {
   w_age_10 = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(w_age_5),  "10 min");
   w_age_30 = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(w_age_5),  "30 min");
   w_age_60 = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(w_age_5),  "1 hour");
-
   switch (cur.age_limit_sec) {
   case 300:
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w_age_5), TRUE);
     break;
-
   case 1800:
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w_age_30), TRUE);
     break;
-
   case 3600:
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w_age_60), TRUE);
     break;
-
   default:
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w_age_10), TRUE);
     break;
   }
-
   gtk_grid_attach(GTK_GRID(grid), w_age_5,  1, row, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), w_age_10, 2, row, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), w_age_30, 3, row, 1, 1);
