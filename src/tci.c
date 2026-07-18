@@ -3091,9 +3091,7 @@ static int tci_lws_write_queued (CLIENT *client) {
   } else {
     memcpy (&buf[LWS_PRE], resp->msg, len);
   }
-  t_print("VVVV\n");
   rc = lws_write (wsi, &buf[LWS_PRE], len, protocol);
-  t_print("WWWW\n");
   g_free (buf);
   g_free (resp->bin);
   g_free (resp);
