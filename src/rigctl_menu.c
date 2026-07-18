@@ -73,7 +73,10 @@ static void rigctl_debug_cb(GtkWidget *widget, gpointer data) {
 static void tci_enable_cb(GtkWidget *widget, gpointer data) {
   tci_enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   if (tci_enable) {
-    launch_tci();
+    if (launch_tci() != 0) {
+      tci_enable = 0;
+      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), FALSE);
+    }
   } else {
     shutdown_tci();
   }
@@ -82,7 +85,11 @@ static void tci_enable_cb(GtkWidget *widget, gpointer data) {
 static void tci_port_changed_cb(GtkWidget *widget, gpointer data) {
   if (tci_enable) { shutdown_tci(); }
   tci_port = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  if (tci_enable) { launch_tci(); }
+  if (tci_enable) {
+    if (launch_tci() != 0) {
+      tci_enable = 0;
+    }
+  }
 }
 
 #endif

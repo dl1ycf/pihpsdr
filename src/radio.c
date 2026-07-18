@@ -61,7 +61,9 @@
 #include "rx_panadapter.h"
 #include "server_menu.h"
 #include "sliders.h"
-#include "tci.h"
+#ifdef TCI
+  #include "tci.h"
+#endif
 #include "test_menu.h"
 #include "theme.h"
 #include "toolbar.h"
@@ -1530,7 +1532,9 @@ void radio_start_radio(void) {
 #endif
 #ifdef TCI
   if (tci_enable) {
-    launch_tci();
+    if (launch_tci() != 0) {
+      tci_enable = 0;
+    }
   }
 #endif
   if (rigctl_tcp_enable) {
@@ -3456,7 +3460,9 @@ int radio_client_start(gpointer data) {
 #endif
 #ifdef TCI
   if (tci_enable) {
-    launch_tci();
+    if (launch_tci() != 0) {
+      tci_enable = 0;
+    }
   }
 #endif
   if (rigctl_tcp_enable) {

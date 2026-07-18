@@ -24,25 +24,6 @@ extern int tci_port;   // usually 40001
 extern int tci_audio_rx_active;
 extern int tci_audio_tx_active;
 
-void launch_tci(void);
-void shutdown_tci(void);
-void tci_mox_changed(int state);
-void tci_vfo_changed(int id);
-void tci_vfos_changed(void);
-void tci_mode_changed(int id);
-void tci_tx_frequency_changed(void);
-void tci_drive_changed(void);
-void tci_volume_changed(int receiver_id);
-void tci_agc_gain_changed(int receiver_id);
-void tci_agc_mode_changed(int receiver_id);
-void tci_mute_changed(int receiver_id);
-void tci_rx_mute_changed(int receiver_id);
-int tci_is_applying(void);
-void tci_tune_changed(int state);
-void tci_split_changed(void);
-void tci_begin_tune_transition(void);
-void tci_end_tune_transition(void);
-int tci_is_tune_transition(void);
-void tci_rx_audio_sample(RECEIVER *rx, float left, float right);
-void tci_rx_filter_band_changed(int receiver_id);
-void tci_tx_chrono_loop(void);
+extern int launch_tci(void);
+extern void shutdown_tci(void);
+extern void tci_tx_chrono_loop(void);

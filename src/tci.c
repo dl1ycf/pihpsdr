@@ -196,24 +196,27 @@ static double tci_clamp_double(double value, double min, double max) {
 // enabled in the props file, and from the CAT/TCI menu
 // if TCI is enabled there.
 //
-void launch_tci (void) {
+int launch_tci (void) {
   t_print ("---- LAUNCHING TCI LWS SERVER ----\n");
   //
   // Verify that a TCI audio stream header has exactly 64 bytes,
-  // and that a TCI audio stream struct has 8256 bytes.
+  // and that a TCI audio stream struct has 32832 bytes (if filled completely).
+  // This should ensure that the audio stream data begins exactly 64 bytes
+  // after the header and is thus properly aligned for "float" access.
   //
   if (sizeof(TCI_STREAM_HEADER) != 64) {
     t_print ("TCI cannot start, audio stream header is not 64 bytes long\n");
-    return;
+    return -1;
   }
-  if (sizeof(TCI_STREAM) != 8256) {
-    t_print("TCI cannot start, audio stream is not 8256 bytes long\n");
-    return;
+  if (sizeof(TCI_STREAM) != 32832) {
+    t_print("TCI cannot start, audio stream is not 32832 bytes long\n");
+    return -1;
   }
   memset(tciclient, 0, sizeof(tciclient));
   tci_audio_set_wakeup_callback (tci_audio_wakeup);
   tci_running = 1;
   tci_server_thread_id = g_thread_new ("tci lws server", tci_lws_server, GINT_TO_POINTER (tci_port));
+  return 0;
 }
 
 static int tci_has_clients(void) {
@@ -245,13 +248,10 @@ void shutdown_tci (void) {
     lws_cancel_service (tci_lws_context);
     for (int i = 0; i < 50 && tci_has_clients(); i++) {
       lws_cancel_service (tci_lws_context);
-      g_usleep(10000);
+      usleep(10000);
     }
   }
   tci_running = 0;
-  if (tci_lws_context != NULL) {
-    lws_cancel_service (tci_lws_context);
-  }
   if (tci_server_thread_id != NULL) {
     if (g_thread_self() != tci_server_thread_id) {
       g_thread_join (tci_server_thread_id);
@@ -3091,7 +3091,9 @@ static int tci_lws_write_queued (CLIENT *client) {
   } else {
     memcpy (&buf[LWS_PRE], resp->msg, len);
   }
+  t_print("VVVV\n");
   rc = lws_write (wsi, &buf[LWS_PRE], len, protocol);
+  t_print("WWWW\n");
   g_free (buf);
   g_free (resp->bin);
   g_free (resp);
@@ -3321,7 +3323,7 @@ static gpointer tci_lws_server (gpointer data) {
       }
     }
     lws_service (tci_lws_context, 0);
-    g_usleep (1000);
+    usleep (1000);
   }
   lws_context_destroy (tci_lws_context);
   tci_lws_context = NULL;
