@@ -971,9 +971,30 @@ static void radio_create_visual(void) {
 }
 
 void radio_stop_program(void) {
+  t_print("%s: Start shutdown sequence\n", __func__);
 #ifdef GPIO
   gpio_close();
   t_print("%s: GPIO closed\n", __func__);
+#endif
+  if (rigctl_tcp_enable) {
+    shutdown_tcp_rigctl();
+    t_print("%s: TCP CAT closed\n", __func__);
+  }
+  for (int id = 0; id < MAX_SERIAL; id++) {
+    if (SerialPorts[id].enable) {
+      disable_serial_rigctl(id);
+      t_print("%s: Serial CAT(%d) closed\n", __func__, id);
+     }
+  }
+  if (SerialPorts[MAX_SERIAL].enable) {
+    disable_serial_ptt(MAX_SERIAL);
+    t_print("%s: Serial PTT closed\n", __func__);
+  }
+#ifdef TCI
+    if (tci_enable) {
+      shutdown_tci();
+      t_print("%s: TCI closed\n", __func__);
+    }
 #endif
   dxcluster_shutdown(); // save spots, close sqLITE
   t_print("%s: DX Cluster closed\n", __func__);
@@ -984,10 +1005,8 @@ void radio_stop_program(void) {
     t_print("%s: radio stopped\n", __func__);
     if (have_saturn_xdma) {
       saturn_exit();
+      t_print("%s: SATURN code stopped\n", __func__);
     }
-#ifdef TCI
-    shutdown_tci();
-#endif
   }
   radio_save_state();
   t_print("%s: radio state saved\n", __func__);
