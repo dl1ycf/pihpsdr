@@ -1038,10 +1038,12 @@ int process_action(gpointer data) {
     break;
   case MOX:
     if (a->mode == PRESSED) {
+      // TODO: this involves a race condition if another "toggle mox" command
+      //       arrives while the ptt_delay is waiting
       if (mox) {
-        g_timeout_add(ptt_delay, ext_radio_toggle_mox, NULL);
+        g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
       } else {
-        radio_toggle_mox();
+        radio_set_mox(1);
       }
     }
     break;

@@ -1455,8 +1455,7 @@ static void tx_full_buffer(TRANSMITTER *tx) {
   if (cwmode) {
     //
     // clear VOX peak level in case is it non-zero.
-    // This prevents the "mic lvl" indicator in the VFO bar
-    // from freezing.
+    // This prevents the "mic lvl" meter from freezing.
     //
     vox_clear();
     //

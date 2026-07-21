@@ -179,6 +179,7 @@ void recall_memory_slot(int index) {
     // When recalling a SAT/RSAT memory slot, also apply the split and duplex setting
     radio_set_split(mem[index].split);
     if (!radio_is_transmitting()) {
+      // Do this as a separate GTK task
       g_idle_add(ext_radio_set_duplex, GINT_TO_POINTER(mem[index].duplex));
     }
   }

@@ -56,7 +56,7 @@ typedef struct _tci_tx_audio_ring {
   float samples[TCI_TX_AUDIO_RING_FRAMES];
   int inpt;
   int outpt;
-  float cache[128];
+  float cache[TCI_TX_AUDIO_FRAME_FRAMES];
   atomic_int cache_len;
   int cache_pos;
 } TCI_TX_AUDIO_RING;
@@ -118,7 +118,7 @@ unsigned int tci_audio_get_frame (int receiver_id, TCI_STREAM *stream, size_t fr
   // Retrieve up to TCI_RX_AUDIO_FRAME_FRAMES from RX ring buffer and put into <out>
   //
   TCI_RX_AUDIO_RING *ring = &tci_rx_audio_ring[receiver_id];
-  g_mutex_lock(&ring->mutex);
+  g_mutex_lock(&ring->mutex);  // locks every 11 ms
   int frames = (ring->inpt - ring->outpt) & TCI_RX_AUDIO_RING_MASK;
   if (frames > TCI_RX_AUDIO_FRAME_FRAMES) {
     frames = TCI_RX_AUDIO_FRAME_FRAMES;
@@ -162,7 +162,7 @@ void tci_audio_handle_tx_frame (const TCI_STREAM *stream, size_t len) {
   const float *fps = stream->audio;
   int frames = sample_count / 2;  // number of MONO samples to copy
   TCI_TX_AUDIO_RING *ring = &tci_tx_audio_ring;
-  g_mutex_lock (&ring->mutex);
+  g_mutex_lock (&ring->mutex); // locks every 11 ms
 
   for (int i = 0; i < frames; i++) {
     int newpt = (ring->inpt + 1) & TCI_TX_AUDIO_RING_MASK;
@@ -196,7 +196,7 @@ double tci_get_next_mic_sample() {
   if (ring->cache_pos < ring->cache_len) {
     return (double) ring->cache[ring->cache_pos++];
   }
-  g_mutex_lock(&ring->mutex);
+  g_mutex_lock(&ring->mutex); // locks every 11 ms
   //
   // If we arrive here, the cache is empty
   //
@@ -210,14 +210,15 @@ double tci_get_next_mic_sample() {
   } 
   if (!tci_tx_prebuffering) {
     //
-    // Copy up to 128 samples from ring buffer to cache
-    // and return first sample from cache
+    // Copy up to TCI_TX_AUDIO_FRAME_FRAMES samples from ring buffer to cache
+    // and return first sample from cache.
     //
     int newpt = ring->outpt;
-    while (ring->cache_len < 128 && newpt != ring->inpt) {
+    while (ring->cache_len < TCI_TX_AUDIO_FRAME_FRAMES && newpt != ring->inpt) {
       ring->cache[ring->cache_len++] = ring->samples[newpt];
       newpt = (newpt + 1) & TCI_TX_AUDIO_RING_MASK;
     }
+    ring->outpt = newpt;
     if (ring->cache_pos < ring->cache_len) {
       sample = ring->cache[ring->cache_pos++];
     } else {

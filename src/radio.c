@@ -396,9 +396,9 @@ gboolean radio_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
     break;
   case GDK_KEY_space:
     if (mox) {
-      radio_toggle_mox();
+      g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
     } else {
-      g_timeout_add(ptt_delay, ext_radio_toggle_mox, NULL);
+      radio_set_mox(1);
     }
     break;
   case  GDK_KEY_d:
@@ -2003,14 +2003,6 @@ void radio_set_ptt_delay(int delay) {
   profiles_copy_rxtxprofile(txmode);
 }
 
-void radio_toggle_mox(void) {
-  if (radio_is_remote) {
-    send_toggle_mox(cl_sock_tcp);
-    return;
-  }
-  radio_set_mox(!mox);
-}
-
 int radio_client_set_vox(gpointer data) {
   int state = GPOINTER_TO_INT(data);
   if (can_transmit) {
@@ -2144,10 +2136,6 @@ void radio_set_mox(int state) {
   schedule_high_priority();
   schedule_receive_specific();
   g_idle_add(ext_vfo_update, NULL);
-}
-
-int radio_get_mox(void) {
-  return mox;
 }
 
 void radio_set_duplex(int state) {

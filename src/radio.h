@@ -328,7 +328,6 @@ extern void   radio_split_toggle(void);
 extern void   radio_set_split(int v);
 extern void   radio_set_mox(int state);
 extern void   radio_set_twotone(TRANSMITTER *tx, int state);
-extern int    radio_get_mox(void);
 extern void   radio_set_tune(int state);
 extern void   radio_set_duplex(int state);
 extern void   radio_set_cw_speed(int s);

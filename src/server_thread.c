@@ -1442,9 +1442,9 @@ static int server_command(gpointer data) {
     break;
   case CMD_TOGGLE_MOX:
     if (mox) {
-      radio_toggle_mox();
+      g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
     } else {
-      g_timeout_add(ptt_delay, ext_radio_toggle_mox, NULL);
+      radio_set_mox(1);
     }
     g_idle_add(ext_vfo_update, NULL);
     send_mox(remoteclient.sock_tcp, mox);
