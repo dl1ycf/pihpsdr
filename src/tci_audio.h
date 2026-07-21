@@ -24,26 +24,15 @@
 #include <stdint.h>
 #include <stddef.h>
 
-typedef struct _receiver RECEIVER;
-
-typedef void (*TCI_AUDIO_WAKEUP_CALLBACK) (void);
-
 #define TCI_RX_AUDIO_MAX_RECEIVERS 2
-#define TCI_RX_AUDIO_RING_FRAMES 48000
-#define TCI_RX_AUDIO_FRAME_FRAMES 512
 #define TCI_AUDIO_SAMPLE_RATE 48000
-#define TCI_AUDIO_CHANNELS 2
 #define TCI_AUDIO_FORMAT_FLOAT32 3
 #define TCI_STREAM_RX_AUDIO 1
 #define TCI_STREAM_TX_AUDIO 2
 #define TCI_STREAM_TX_CHRONO 3
+#define TCI_RX_AUDIO_FRAME_FRAMES 512
 #define TCI_TX_AUDIO_FRAME_FRAMES 512
 #define TCI_TX_AUDIO_CHRONO_LENGTH (TCI_TX_AUDIO_FRAME_FRAMES * 2)
-#define TCI_AUDIO_MONITOR_RING_FRAMES (48000 * 4)
-#define TCI_TX_AUDIO_RING_FRAMES (48000 * 4)
-
-void tci_audio_set_wakeup_callback (TCI_AUDIO_WAKEUP_CALLBACK callback);
-double tci_get_next_mic_sample();
 
 //
 // BigEndian NOTE: TCI has all binary data in little-endian,
@@ -68,12 +57,11 @@ typedef struct _tci_stream {
   float    audio[8192];        // given here as float not uint8_t
 } TCI_STREAM;
 
-void tci_audio_rx_sample (int id, double left, double right);
-unsigned int tci_audio_get_write_count (int receiver_id);
-unsigned int tci_audio_get_frame (int receiver_id, unsigned int *read_count, TCI_STREAM *stream, size_t frame_size,
-                                  size_t *frame_len);
-void tci_audio_handle_tx_frame (const TCI_STREAM *stream, size_t len);
-
-void tci_audio_tx_reset (void);
+extern double tci_get_next_mic_sample();
+extern void tci_audio_rx_sample (int id, double left, double right);
+extern unsigned int tci_audio_get_write_count (int receiver_id);
+extern unsigned int tci_audio_get_frame (int receiver_id, TCI_STREAM *stream, size_t frame_size, size_t *frame_len);
+extern void tci_audio_handle_tx_frame (const TCI_STREAM *stream, size_t len);
+extern void tci_audio_tx_reset (void);
 
 #endif

@@ -26,4 +26,5 @@ extern int tci_audio_tx_active;
 
 extern int launch_tci(void);
 extern void shutdown_tci(void);
-extern void tci_tx_chrono_loop(void);
+extern void tci_send_chrono_frame(void);
+extern void tci_audio_wakeup(void);

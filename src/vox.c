@@ -36,8 +36,7 @@ static int vox_timeout_cb(gpointer data) {
   // then, remove VOX and update display
   //
   vox_cancel();
-  g_idle_add(ext_radio_set_vox, GINT_TO_POINTER(0));
-  g_idle_add(ext_vfo_update, NULL);
+  g_timeout_add(ptt_delay, ext_radio_set_vox, GINT_TO_POINTER(0));
   return FALSE;
 }
 
