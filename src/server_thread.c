@@ -769,7 +769,6 @@ static void server_loop(void) {
     case CMD_SPLIT:
     case CMD_STEP:
     case CMD_STORE:
-    case CMD_TOGGLE_MOX:
     case CMD_TOGGLE_TUNE:
     case CMD_TUNE:
     case CMD_TWOTONE:
@@ -1439,15 +1438,6 @@ static int server_command(gpointer data) {
       g_idle_add(ext_vfo_update, NULL);
       send_tune(remoteclient.sock_tcp, transmitter->tune);
     }
-    break;
-  case CMD_TOGGLE_MOX:
-    if (mox) {
-      g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
-    } else {
-      radio_set_mox(1);
-    }
-    g_idle_add(ext_vfo_update, NULL);
-    send_mox(remoteclient.sock_tcp, mox);
     break;
   case CMD_MOX:
     if (header->b1) {

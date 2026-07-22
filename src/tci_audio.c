@@ -37,7 +37,7 @@
 // tci_audio_handle_tx_frame   put next bunch of TX audio samples from the client
 //                             into the ring buffer
 // tci_get_next_mic_sample     obtain next TX audio sample from the ring buffer
-// 
+//
 #define TCI_RX_AUDIO_RING_FRAMES 32768
 #define TCI_RX_AUDIO_RING_MASK   32767
 #define TCI_TX_AUDIO_RING_FRAMES 65536
@@ -207,7 +207,7 @@ double tci_get_next_mic_sample() {
     tci_tx_prebuffering = 1;
   } else if (available >= tci_tx_prebuffer_frames) {
     tci_tx_prebuffering = 0;
-  } 
+  }
   if (!tci_tx_prebuffering) {
     //
     // Copy up to TCI_TX_AUDIO_FRAME_FRAMES samples from ring buffer to cache

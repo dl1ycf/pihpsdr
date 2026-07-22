@@ -35,7 +35,6 @@ extern int ext_start_rx_menu(gpointer data);
 extern int ext_start_mode_menu(gpointer data);
 extern int ext_start_filter_menu(gpointer data);
 extern int ext_start_band_menu(gpointer data);
-extern int ext_radio_clear_vox(gpointer data);
 extern int ext_radio_set_vox(gpointer data);
 extern int ext_radio_set_duplex(gpointer data);
 extern int ext_radio_reconfigure_screen(gpointer data);

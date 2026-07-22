@@ -1009,13 +1009,6 @@ void send_vox(int s, int state) {
   send_tcp(s, (char *)&header, sizeof(header));
 }
 
-void send_toggle_mox(int s) {
-  HEADER header;
-  SYNC(header.sync);
-  header.data_type = to_16(CMD_TOGGLE_MOX);
-  send_tcp(s, (char *)&header, sizeof(header));
-}
-
 void send_toggle_tune(int s) {
   HEADER header;
   SYNC(header.sync);

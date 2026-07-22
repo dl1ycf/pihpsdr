@@ -24,20 +24,21 @@
 #include "vox.h"
 #include "vfo.h"
 #include "ext.h"
+#include "message.h"
 
 static guint vox_timeout = 0;
-static guint txrx_timeout = 0;
 
 static double peak = 0.0;
 
 static int vox_timeout_cb(gpointer data) {
   //
-  // Remove pending time-outs (vox_cancel)
-  // Then, schedule "clear vox" with delay
+  // First set vox_timeout to zero (via vox_cancel())
+  // indicating no "hanging" timeout
+  // then, remove VOX and update display
   //
   vox_cancel();
-  // ext_radio_clear_vox() sets txrx_timeout to zero
-  txrx_timeout = g_timeout_add(ptt_delay, ext_radio_clear_vox, &txrx_timeout);
+  g_idle_add(ext_radio_set_vox, GINT_TO_POINTER(0));
+  g_idle_add(ext_vfo_update, NULL);
   return FALSE;
 }
 
@@ -59,15 +60,6 @@ void vox_update(double lvl) {
   if (!can_transmit) { return; }
   if (vox_enabled && !mox && !transmitter->tune && !TxInhibit) {
     if (peak > vox_threshold) {
-      int have_vox = 0;
-      //
-      // Cancel a RX/TX transition that has been scheduled by vox_timeout_cb
-      // but not yet been processed
-      if (txrx_timeout != 0) {
-        g_source_remove(txrx_timeout);
-        txrx_timeout = 0;
-        have_vox = 1;
-      }
       // we use the value of vox_timeout to determine whether
       // the time-out is "hanging". We cannot use the value of vox
       // since this may be set with a delay, and we MUST NOT miss
@@ -76,14 +68,12 @@ void vox_update(double lvl) {
       if (vox_timeout > 0) {
         g_source_remove(vox_timeout);
         vox_timeout = 0;
-        have_vox = 1;
-      }
-      if (!have_vox) {
+      } else {
         //
-        // No pending txrx_timeout, and no pending vox_timeout:
-        // We need to activate vox
+        // no hanging time-out, assume that we just fired VOX
         //
         g_idle_add(ext_radio_set_vox, GINT_TO_POINTER(1));
+        g_idle_add(ext_vfo_update, NULL);
       }
       // re-init "vox hang" time
       vox_timeout = g_timeout_add((int)vox_hang, vox_timeout_cb, NULL);
@@ -99,9 +89,5 @@ void vox_cancel(void) {
   if (vox_timeout) {
     g_source_remove(vox_timeout);
     vox_timeout = 0;
-  }
-  if (txrx_timeout) {
-    g_source_remove(txrx_timeout);
-    txrx_timeout = 0;
   }
 }

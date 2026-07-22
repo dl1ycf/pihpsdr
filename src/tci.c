@@ -548,7 +548,7 @@ void tci_broadcast_txfreq (void) {
       tci_send_txfreq (tciclient + c);
     }
   }
-} 
+}
 
 void tci_agc_mode_changed(int receiver_id) {
   if (!tci_running) { return; }
@@ -721,19 +721,19 @@ void tci_mute_changed (int receiver_id) {
   }
   if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
   tci_broadcast_rx_mute_state(receiver_id, receiver[receiver_id]->mute_radio ? 1 : 0);
-} 
-  
+}
+
 void tci_rx_mute_changed (int receiver_id) {
   if (!tci_running) { return; }
   if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
   tci_broadcast_rx_mute_state(receiver_id, receiver[receiver_id]->mute_radio ? 1 : 0);
-} 
+}
 
 void tci_broadcast_xit_offset (void) {
   for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
     if (tciclient[c].running) {
       tci_send_xit_offset (tciclient + c);
-    }    
+    }
   }
 }
 
@@ -744,9 +744,9 @@ void tci_xit_enable_changed (void) {
   if (txvfo < VFO_A || txvfo > VFO_B) { return; }
   tci_broadcast_xit_enable();
   if (vfo[txvfo].xit_enabled) {
-    if (vfo[txvfo].xit != 0) { 
+    if (vfo[txvfo].xit != 0) {
       tci_broadcast_xit_offset();
-    }    
+    }
   } else {
     tci_broadcast_xit_offset();
   }
@@ -3253,7 +3253,7 @@ static const struct lws_protocols tci_lws_protocols[] = {
   { "superchat",  tci_lws_callback, sizeof (int), 8192, 0, NULL, 0 },
   { "tci",        tci_lws_callback, sizeof (int), 8192, 0, NULL, 0 },
   LWS_PROTOCOL_LIST_TERM
-};  
+};
 
 //
 // Launch TCI system. Called upon program start if TCI is

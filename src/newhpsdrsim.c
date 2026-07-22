@@ -20,7 +20,7 @@
 // Some compile time options to be defined:
 //
 // TXIQ_FIFO:   monitors the TX FIFO filling
-// LOGFIRST:    dumps the TX IQ and audio samples to a file,
+// LOGFIRST:    dumps the TX IQ samples to a file,
 // .............for the first three seconds after the first
 // .............RX/TX transition
 //
@@ -47,12 +47,9 @@
 #include "hpsdrsim.h"
 
 #ifdef LOGFIRST
-  static int first_tx_i[576000];
-  static int first_tx_q[576000];
-  static int first_audio_l[144000];
-  static int first_audio_r[144000];
-  static int first_tx_count = -1;
-  static int first_audio_count = -1;
+  static double first_tx_i[576000];
+  static double first_tx_q[576000];
+  static int first_tx_count = 0;
 #endif
 
 #define NUMRECEIVERS 4
@@ -720,16 +717,6 @@ void *highprio_thread(void *data) {
         memset(isample, 0, sizeof(double)*NEWRTXLEN);
         memset(qsample, 0, sizeof(double)*NEWRTXLEN);
       }
-#ifdef LOGFIRST
-      if (ptt && first_tx_count < 0) {
-        first_tx_count = 0;
-        first_audio_count = 0;
-        memset(first_tx_i, 0, sizeof(int) * 576000);
-        memset(first_tx_q, 0, sizeof(int) * 576000);
-        memset(first_audio_l, 0, sizeof(int) * 144000);
-        memset(first_audio_r, 0, sizeof(int) * 144000);
-      }
-#endif
     }
     rc = (buffer[5] >> 0) & 0x01;
     if (rc != cwx) {
@@ -1259,14 +1246,14 @@ void *tx_thread(void * data) {
       di = (double) samp1 / 8388608.0;
       dq = (double) samp2 / 8388608.0;
 #ifdef LOGFIRST
-      if (first_tx_count >= 0 && first_tx_count < 576000) {
-        first_tx_i[first_tx_count  ] = samp1;
-        first_tx_q[first_tx_count++] = samp2;
+      if (first_tx_count < 576000) {
+        first_tx_i[first_tx_count  ] = di;
+        first_tx_q[first_tx_count++] = dq;
         if (first_tx_count >= 576000 || !ptt) {
           FILE *fp = fopen("FIRST.TX.IQ", "w");
           if (fp) {
-            for (int j = 0; j < 576000; j++) {
-              fprintf(fp, "%d  %d\n", first_tx_i[j], first_tx_q[j]);
+            for (int j = 0; j < first_tx_count; j++) {
+              fprintf(fp, "%f  %f\n", first_tx_i[j], first_tx_q[j]);
             }
             fclose(fp);
           }
@@ -1455,10 +1442,6 @@ void *audio_thread(void *data) {
   socklen_t lenaddr = sizeof(addr);
   unsigned long seqnum, seqold;
   unsigned char buffer[260];
-#ifdef LOGFIRST
-  unsigned char *p;
-  int lsample, rsample;
-#endif
   int yes = 1;
   int rc;
   struct timeval tv;
@@ -1500,29 +1483,6 @@ void *audio_thread(void *data) {
     if (seqnum != 0 && seqnum != seqold + 1 ) {
       t_print("Audio thread: SEQ ERROR, old=%lu new=%lu\n", seqold, seqnum);
     }
-#ifdef LOGFIRST
-    p = buffer + 4;
-    for (int i = 0; i < 64; i++) {
-      lsample  = (int)((signed char) (*p++)) << 8;
-      lsample |= (int)(((unsigned char)(*p++)) & 0xFF);
-      rsample  = (int)((signed char) (*p++)) << 8;
-      rsample |= (int)(((unsigned char)(*p++)) & 0xFF);
-      if (first_audio_count >= 0 && first_audio_count < 144000) {
-        first_audio_l[first_audio_count] = lsample;
-        first_audio_r[first_audio_count++] = rsample;
-        if (first_audio_count >= 144000 || !ptt) {
-          FILE *fp = fopen("FIRST.AUDIO", "w");
-          if (fp) {
-            for (int j = 0; j < 144000; j++) {
-              fprintf(fp, "%d  %d\n", first_audio_l[j], first_audio_r[j]);
-            }
-            fclose(fp);
-          }
-          first_audio_count = 144000;
-        }
-      }
-    }
-#endif
     // just skip the audio samples
   }
   close (sock);
