@@ -116,6 +116,9 @@ typedef struct _transmitter {
 #if !defined(PORTAUDIO) && defined(PULSEAUDIO) && !defined(ALSA)
   pa_simple *audio_handle;
 #endif
+#if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA) && defined(PIPEWIRE)
+  void *audio_handle;
+#endif
 
   int out_of_band;
   guint out_of_band_timer_id;

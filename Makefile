@@ -281,6 +281,22 @@ AUDIO_OBJS=src/portaudio.o
 endif
 CPP_DEFINES += -DPORTAUDIO
 CPP_SOURCES += src/portaudio.c
+
+##############################################################################
+#
+# Add libraries for using PipeWire [optional]
+# NOTE: exactly one of the audio modules must be selected
+#
+##############################################################################
+
+ifeq ($(AUDIO), PIPEWIRE)
+AUDIO_OPTIONS=-DPIPEWIRE
+AUDIO_INCLUDE=`$(PKG_CONFIG) --cflags libpipewire-0.3`
+AUDIO_LIBS=`$(PKG_CONFIG) --libs libpipewire-0.3`
+AUDIO_OBJS=src/pipewire.o
+endif
+CPP_DEFINES += -DPIPEWIRE
+CPP_SOURCES += src/pipewire.c
 ifeq ($(MACOS), YES)
 # PortAudio on Linux does not have/need pkg-config.
 CPP_INCLUDE += `$(PKG_CONFIG) --cflags portaudio-2.0`

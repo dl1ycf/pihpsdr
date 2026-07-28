@@ -1403,7 +1403,8 @@ gpointer client_sidetone_thread(gpointer arg) {
   clock_gettime(CLOCK_MONOTONIC, &ts);
   for (;;) {
     int txmode = vfo_get_tx_mode();
-    if (radio_is_transmitting() && (txmode == modeCWL || txmode == modeCWU)) {
+
+    if ((radio_is_transmitting() || (!cw_breakin && (keydown || cw_ring_inpt != cw_ring_outpt))) && (txmode == modeCWL || txmode == modeCWU)) {
       // ship out 96 audio samples, possibly with side tone
       for (int i = 0; i < 96; i++) {
         double sample;
@@ -1411,7 +1412,8 @@ gpointer client_sidetone_thread(gpointer arg) {
           cw_delay_time++;
         }
         sample = next_cw_sidetone_sample(tx, 0);
-        if (active_receiver->local_audio && !duplex) {
+
+        if (active_receiver->local_audio) {
           tx_audio_write(active_receiver, sample);
         }
       }
@@ -1831,13 +1833,14 @@ void tx_add_mic_sample(TRANSMITTER *tx, double mic_sample) {
     tx_audio_sample *= val;
     g_mutex_unlock(&tx->cw_ramp_mutex);
     did_tx_audio = 1;
-  } else if (xmit && (txmode == modeCWL || txmode == modeCWU)) {
+  } else if ((xmit || (!cw_breakin && (keydown || cw_ring_inpt != cw_ring_outpt))) && (txmode == modeCWL || txmode == modeCWU)) {
     //
     // despite its name, next_cw_sidetone_sample() also places the
     // RF pulse shape into tx->cw_sig_rf[].
     //
     tx_audio_sample = next_cw_sidetone_sample(tx, rfpos);
-    if (!duplex) { did_tx_audio = 1; }
+
+    did_tx_audio = 1;
   } else {
     //
     //  If no longer tuning or transmitting in CW: reset pulse shaper

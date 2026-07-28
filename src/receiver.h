@@ -240,6 +240,10 @@ typedef struct _receiver {
   pa_simple *audio_handle;
   pa_usec_t latency;
 #endif
+#if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA) && defined(PIPEWIRE)
+  void *audio_handle;
+  int latency;
+#endif
 
   int cwaudio;   // detect RX/TX transitions in CW
   int cwcount;   // for sample insertion and deletion
