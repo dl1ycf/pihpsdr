@@ -295,82 +295,100 @@ static int tcp_connect(const char *host, int port,
     }
     return -1;
   }
-  int fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-  if (fd < 0) {
-    if (err_buf) { snprintf(err_buf, err_buf_len, "socket(): %s", strerror(errno)); }
-    freeaddrinfo(res);
-    return -1;
-  }
-  /* Non-blocking connect with a select() timeout.
-   * Don't use SO_SNDTIMEO/SO_RCVTIMEO before connect — Linux's implementation
-   * makes the connect non-blocking and returns EINPROGRESS, which is hard
-   * to distinguish from a real error. Use proper non-blocking + select. */
-  int flags = fcntl(fd, F_GETFL, 0);
-  fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-  int crc = connect(fd, res->ai_addr, res->ai_addrlen);
-  if (crc < 0 && errno != EINPROGRESS) {
-    if (err_buf) { snprintf(err_buf, err_buf_len, "connect(): %s", strerror(errno)); }
-    close(fd);
-    freeaddrinfo(res);
-    return -1;
-  }
-  if (crc < 0) {
-    /* Wait for connect to finish — re-poll if needed since some kernels
-     * wake select() before connect completes, returning EINPROGRESS from
-     * SO_ERROR. Total max wait ~15s. */
-    int max_polls = 15;
-    int connected = 0;
-    while (max_polls-- > 0 && !connected) {
-      fd_set wfds, efds;
-      FD_ZERO(&wfds);
-      FD_SET(fd, &wfds);
-      FD_ZERO(&efds);
-      FD_SET(fd, &efds);
-      struct timeval tv = { .tv_sec = 1, .tv_usec = 0 };
-      int sr = select(fd + 1, NULL, &wfds, &efds, &tv);
-      if (sr < 0) {
-        if (err_buf) { snprintf(err_buf, err_buf_len, "select(): %s", strerror(errno)); }
-        close(fd);
-        freeaddrinfo(res);
-        return -1;
+  int fd = -1;
+  int flags = 0;
+
+  /* Loop through all resolved addresses (IPv6 first, then IPv4) until one succeeds */
+  for (struct addrinfo *rp = res; rp != NULL; rp = rp->ai_next) {
+    fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+    if (fd < 0) {
+      if (err_buf && rp->ai_next == NULL && err_buf[0] == '\0') {
+        snprintf(err_buf, err_buf_len, "socket(): %s", strerror(errno));
       }
-      if (sr == 0) { continue; }   /* 1s tick, keep polling */
-      /* Socket woke — check actual status */
-      int soerr = 0;
-      socklen_t soerr_len = sizeof(soerr);
-      if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &soerr, &soerr_len) < 0) {
-        if (err_buf) { snprintf(err_buf, err_buf_len, "getsockopt(): %s", strerror(errno)); }
-        close(fd);
-        freeaddrinfo(res);
-        return -1;
+      continue;
+    }
+
+    /* Non-blocking connect with a select() timeout. */
+    flags = fcntl(fd, F_GETFL, 0);
+    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    int crc = connect(fd, rp->ai_addr, rp->ai_addrlen);
+
+    if (crc < 0 && errno != EINPROGRESS) {
+      if (err_buf && rp->ai_next == NULL && err_buf[0] == '\0') {
+        snprintf(err_buf, err_buf_len, "connect(): %s", strerror(errno));
       }
-      if (soerr == 0) {
-        connected = 1;
+      close(fd);
+      fd = -1;
+      continue;
+    }
+
+    if (crc < 0) {
+      /* Wait up to 5s per candidate address for connect to complete */
+      int max_polls = 5;
+      int connected = 0;
+      while (max_polls-- > 0 && !connected) {
+        fd_set wfds, efds;
+        FD_ZERO(&wfds);
+        FD_SET(fd, &wfds);
+        FD_ZERO(&efds);
+        FD_SET(fd, &efds);
+        struct timeval tv = { .tv_sec = 1, .tv_usec = 0 };
+        int sr = select(fd + 1, NULL, &wfds, &efds, &tv);
+        if (sr < 0) {
+          if (err_buf && rp->ai_next == NULL && err_buf[0] == '\0') {
+            snprintf(err_buf, err_buf_len, "select(): %s", strerror(errno));
+          }
+          break;
+        }
+        if (sr == 0) { continue; }   /* 1s tick, keep polling */
+
+        /* Socket woke — check actual status */
+        int soerr = 0;
+        socklen_t soerr_len = sizeof(soerr);
+        if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &soerr, &soerr_len) < 0) {
+          if (err_buf && rp->ai_next == NULL && err_buf[0] == '\0') {
+            snprintf(err_buf, err_buf_len, "getsockopt(): %s", strerror(errno));
+          }
+          break;
+        }
+        if (soerr == 0) {
+          connected = 1;
+          break;
+        }
+        if (soerr == EINPROGRESS || soerr == EALREADY) {
+          /* Kernel says still working — wait another tick */
+          continue;
+        }
+        /* Real failure on this candidate */
+        if (err_buf && rp->ai_next == NULL && err_buf[0] == '\0') {
+          snprintf(err_buf, err_buf_len, "connect(): %s", strerror(soerr));
+        }
         break;
       }
-      if (soerr == EINPROGRESS || soerr == EALREADY) {
-        /* Kernel says still working — wait another tick */
+
+      if (!connected) {
+        if (err_buf && rp->ai_next == NULL && err_buf[0] == '\0') {
+          snprintf(err_buf, err_buf_len,
+                   "Connection timed out (no response from %s:%d after 5s per candidate).\n"
+                   "Check the hostname/port and firewall settings.", host, port);
+        }
+        close(fd);
+        fd = -1;
         continue;
       }
-      /* Real failure */
-      if (err_buf) { snprintf(err_buf, err_buf_len, "connect(): %s", strerror(soerr)); }
-      close(fd);
-      freeaddrinfo(res);
-      return -1;
     }
-    if (!connected) {
-      if (err_buf) snprintf(err_buf, err_buf_len,
-                              "Connection timed out (no response from %s:%d after 15s).\n"
-                              "Check the hostname/port and that your firewall allows "
-                              "outbound TCP to that address.", host, port);
-      close(fd);
-      freeaddrinfo(res);
-      return -1;
-    }
+
+    /* Connection succeeded */
+    fcntl(fd, F_SETFL, flags);
+    break;
   }
-  /* Restore blocking mode and freeaddrinfo */
-  fcntl(fd, F_SETFL, flags);
+
   freeaddrinfo(res);
+
+  if (fd < 0) {
+    return -1;
+  }
+
   /* Set a 60s recv timeout for the steady-state read loop so the worker
    * thread can occasionally check worker_stop even when the cluster is quiet. */
   struct timeval tv = { .tv_sec = 60, .tv_usec = 0 };
