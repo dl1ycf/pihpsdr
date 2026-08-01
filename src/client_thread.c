@@ -1341,6 +1341,7 @@ static gpointer client_tcp_thread(gpointer arg) {
         transmitter->cfc_lvl[i]                = from_double(data.cfc_lvl[i]);
         transmitter->cfc_post[i]               = from_double(data.cfc_post[i]);
       }
+      vox_min_hang = transmitter->cfc ? 0.370 : 0.230;
       g_thread_new("remote_txaudio", remote_txaudio_thread, transmitter);
       g_idle_add(sliders_drive, GINT_TO_POINTER(100));
       g_idle_add(sliders_mic_gain, GINT_TO_POINTER(100));
