@@ -57,7 +57,7 @@ void vox_update(double lvl) {
   // As long as a client controls us, VOX is done there
   //
   if (remoteclient.running) { return; }
-  if (!can_transmit) { return; }
+  if (transmitter == NULL) { return; }
   if (vox_enabled && !mox && !transmitter->tune && !TxInhibit) {
     if (peak > vox_threshold) {
       // we use the value of vox_timeout to determine whether

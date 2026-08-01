@@ -244,7 +244,7 @@ int andromeda_execute_button(int v, int p) {
         if (longpress) {
           longpress = 0;
         } else {
-          if (can_transmit) {
+          if (transmitter != NULL) {
             tx_ps_onoff(transmitter, NOT(transmitter->puresignal));
           }
         }

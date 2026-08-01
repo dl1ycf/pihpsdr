@@ -299,7 +299,6 @@ int capture_record_pointer;
 int capture_replay_pointer;
 double *capture_data = NULL;
 
-int can_transmit = 0;  // This indicates whether "transmitter" exists
 int optimize_for_touchscreen = 0;
 int smeter3dB = 0;  // if set, S meter steps are 3dB instead of 6 dB
 
@@ -504,7 +503,7 @@ gboolean radio_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
 
 void radio_stop_radio(void) {
   ASSERT_SERVER();
-  if (can_transmit) {
+  if (transmitter != NULL) {
     t_print("%s: TX: stop display update\n", __func__);
     transmitter->displaying = 0;
     tx_set_displaying(transmitter);
@@ -651,7 +650,7 @@ void radio_reconfigure_screen(void) {
   // This must even be done in duplex mode, if we switch back
   // to non-duplex in the future.
   //
-  if (can_transmit) {
+  if (transmitter != NULL) {
     transmitter->x = 0;
     transmitter->y = VFO_HEIGHT;
   }
@@ -745,7 +744,7 @@ void radio_reconfigure(void) {
   } else {
     toolbar_destroy();
   }
-  if (can_transmit && !duplex) {
+  if (transmitter != NULL && !duplex) {
     tx_reconfigure(transmitter, my_width, my_width, rx_height);
     if (radio_is_transmitting()) {
       gtk_fixed_move(GTK_FIXED(fixed), transmitter->panel, 0, VFO_HEIGHT);
@@ -869,11 +868,6 @@ static void radio_create_visual(void) {
     receiver[PS_RX_FEEDBACK] = NULL;
     receiver[PS_TX_FEEDBACK] = NULL;
     transmitter = NULL;
-    can_transmit = 0;
-    //
-    //  do not set can_transmit before transmitter exists, because we assume
-    //  if (can_transmit) is equivalent to if (transmitter)
-    //
     int radio_has_transmitter = 0;
     switch (protocol) {
     case ORIGINAL_PROTOCOL:
@@ -890,7 +884,6 @@ static void radio_create_visual(void) {
       } else {
         transmitter = tx_create_transmitter(CHANNEL_TX, my_width, my_width, rx_height);
       }
-      can_transmit = 1;
       radio_calc_drive_level();
       if (protocol == NEW_PROTOCOL || protocol == ORIGINAL_PROTOCOL) {
         tx_ps_set_sample_rate(transmitter, protocol == NEW_PROTOCOL ? 192000 : active_receiver->sample_rate);
@@ -917,7 +910,7 @@ static void radio_create_visual(void) {
   //
   // Transmitter initialization if radio is remote
   //
-  if (can_transmit) {
+  if (transmitter != NULL) {
     transmitter->x = 0;
     transmitter->y = VFO_HEIGHT;
   }
@@ -1591,7 +1584,7 @@ void radio_start_radio(void) {
         break;
       }
     }
-    if (can_transmit) {
+    if (transmitter != NULL) {
       t_print("%s: create SOAPY transmitter\n", __func__);
       soapy_protocol_create_transmitter(transmitter);
       soapy_protocol_set_tx_antenna(transmitter->antenna);
@@ -1664,7 +1657,7 @@ void radio_start_radio(void) {
   if (open_test_menu) {
     test_menu(top_window);
   }
-  if (can_transmit && (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL)) {
+  if (transmitter != NULL && (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL)) {
     radio_calc_drive_level();
     //
     // Switching PureSignal on/off with P2 stops/restarts
@@ -1785,7 +1778,7 @@ void radio_change_sample_rate(int rate) {
       rx_change_sample_rate(receiver[PS_RX_FEEDBACK], rate);
       old_protocol_set_mic_sample_rate(rate);
       radio_protocol_run();
-      if (can_transmit) {
+      if (transmitter != NULL) {
         tx_ps_set_sample_rate(transmitter, rate);
       }
     }
@@ -1821,7 +1814,7 @@ static void rxtx(int state) {
   // If running duplex, RXTX is faster since there is not
   // receiver slew-down.
   //
-  if (!can_transmit) {
+  if (transmitter == NULL) {
     t_print("%s: WARNING: rxtx called but no transmitter!", __func__);
     return;
   }
@@ -2005,7 +1998,7 @@ void radio_set_ptt_delay(int delay) {
 
 int radio_client_set_vox(gpointer data) {
   int state = GPOINTER_TO_INT(data);
-  if (can_transmit) {
+  if (transmitter != NULL) {
     if (state != radio_is_transmitting()) {
       rxtx(state);
     }
@@ -2019,7 +2012,7 @@ int radio_client_set_vox(gpointer data) {
 
 int radio_client_set_mox(gpointer data) {
   int state = GPOINTER_TO_INT(data);
-  if (can_transmit) {
+  if (transmitter != NULL) {
     if (state != radio_is_transmitting()) {
       rxtx(state);
     }
@@ -2033,7 +2026,7 @@ int radio_client_set_mox(gpointer data) {
 }
 
 int radio_client_set_twotone(gpointer data) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     transmitter->twotone = GPOINTER_TO_INT(data);
   }
   g_idle_add(ext_vfo_update, NULL);
@@ -2042,7 +2035,7 @@ int radio_client_set_twotone(gpointer data) {
 
 int radio_client_set_tune(gpointer data) {
   int state = GPOINTER_TO_INT(data);
-  if (can_transmit) {
+  if (transmitter != NULL) {
     if (state != transmitter->tune) {
       vox_cancel();
       if (vox || mox) {
@@ -2106,7 +2099,7 @@ void radio_set_mox(int state) {
   if (remoteclient.running) {
     send_mox(remoteclient.sock_tcp, state);
   }
-  if (!can_transmit) { return; }
+  if (transmitter == NULL) { return; }
   if (state && !TransmitAllowed()) {
     state = 0;
     tx_set_out_of_band(transmitter);
@@ -2142,7 +2135,7 @@ void radio_set_duplex(int state) {
   //
   // This can only be called from the GTK main thread.
   //
-  if (!can_transmit || (state == duplex)) { return; }
+  if (transmitter == NULL || (state == duplex)) { return; }
   if (radio_is_remote) {
     send_duplex(cl_sock_tcp, state);
   }
@@ -2333,7 +2326,7 @@ void radio_set_vox(int state) {
     send_vox(cl_sock_tcp, state);
     return;
   }
-  if (!can_transmit) { return; }
+  if (transmitter == NULL) { return; }
   if (mox || transmitter->tune) { return; }
   if (state && TxInhibit) { return; }
   if (vox != state) {
@@ -2359,7 +2352,7 @@ void radio_toggle_tune(void) {
     send_toggle_tune(cl_sock_tcp);
     return;
   }
-  if (can_transmit) {
+  if (transmitter != NULL) {
     radio_set_tune(!transmitter->tune);
     g_idle_add(ext_vfo_update, NULL);
   }
@@ -2370,7 +2363,7 @@ void radio_set_tune(int state) {
     send_tune(cl_sock_tcp, state);
     return;
   }
-  if (!can_transmit) { return; }
+  if (transmitter == NULL) { return; }
   if (state && TxInhibit) { return; }
   if (state && !TransmitAllowed()) {
     state = 0;
@@ -2529,12 +2522,12 @@ void radio_set_tune(int state) {
 
 int radio_is_transmitting(void) {
   int ret = 0;
-  if (can_transmit) { ret = mox | vox | transmitter->tune; }
+  if (transmitter != NULL) { ret = mox | vox | transmitter->tune; }
   return ret;
 }
 
 double radio_get_drive(void) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     return transmitter->drive;
   } else {
     return 0.0;
@@ -2562,7 +2555,7 @@ static int calcLevel(double d) {
 
 void radio_calc_drive_level(void) {
   int level;
-  if (!can_transmit) { return; }
+  if (transmitter == NULL) { return; }
   if (transmitter->tune && !transmitter->tune_use_drive) {
     level = calcLevel(transmitter->tune_drive);
   } else {
@@ -2709,7 +2702,7 @@ void radio_set_linein_gain(double value) {
 }
 
 void radio_set_mic_gain(double value) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     transmitter->mic_gain = value;
     tx_set_mic_gain(transmitter);
   }
@@ -2782,7 +2775,7 @@ void radio_set_c25_att(int id, int val) {
 }
 
 void radio_set_voxenable(int state) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     vox_enabled = state;
     g_idle_add(sliders_vox, NULL);
     g_idle_add(ext_vfo_update, NULL);
@@ -2790,7 +2783,7 @@ void radio_set_voxenable(int state) {
 }
 
 void radio_set_voxlevel(double level) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     vox_threshold = level;
     g_idle_add(sliders_vox, NULL);
   }
@@ -2903,7 +2896,7 @@ void radio_set_attenuation(int id, int value) {
 }
 
 void radio_set_drive(double value) {
-  if (!can_transmit) { return; }
+  if (transmitter == NULL) { return; }
   int txmode = vfo_get_tx_mode();
   if (txmode == modeDIGU || txmode == modeDIGL) {
     if (value > drive_digi_max) { value = drive_digi_max; }
@@ -2962,7 +2955,7 @@ void radio_apply_band_settings(int flag, int id) {
   const BAND *rxband = band_get_band(vfo[id].band);
   if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
     adc[rxadc].antenna = rxband->RxAntenna;
-    if (can_transmit) {
+    if (transmitter != NULL) {
       const BAND *txband = band_get_band(vfo[vfo_get_tx_vfo()].band);
       transmitter->antenna = txband->TxAntenna;
       radio_calc_drive_level();
@@ -3003,7 +2996,7 @@ void radio_tx_vfo_changed(void) {
   // Note each time radio_tx_vfo_changed() is called, band settings must
   // be applied as well.
   //
-  if (can_transmit) {
+  if (transmitter != NULL) {
     tx_set_mode(transmitter, vfo_get_tx_mode());
     radio_calc_drive_level();
   }
@@ -3052,7 +3045,7 @@ void radio_set_split(int val) {
   // since it may change the TX band and thus requires
   // radio_tx_vfo_changed() and apply band settings.
   //
-  if (can_transmit) {
+  if (transmitter != NULL) {
     split = val;
     if (radio_is_remote) {
       send_split(cl_sock_tcp, val);
@@ -3296,7 +3289,7 @@ void radio_save_state(void) {
     // the antenna an the adc
     rx_save_state(receiver[PS_RX_FEEDBACK]);
   }
-  if (can_transmit) {
+  if (transmitter != NULL) {
     tx_save_state(transmitter);
   }
   //
@@ -3493,7 +3486,7 @@ int radio_client_start(gpointer data) {
   if (SerialPorts[MAX_SERIAL].enable) {
     SerialPorts[MAX_SERIAL].enable = launch_serial_ptt(MAX_SERIAL);
   }
-  if (can_transmit) {
+  if (transmitter != NULL) {
     tx_restore_state(transmitter);
     if (transmitter->local_audio) {
       if (audio_open_input(transmitter) != 0) {
@@ -3794,13 +3787,13 @@ void radio_end_capture(void) {
 }
 
 void radio_start_xmit_captured_data(void) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     tx_xmit_captured_data_start(transmitter);
   }
 }
 
 void radio_end_xmit_captured_data(void) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     tx_xmit_captured_data_end(transmitter);
   }
 }

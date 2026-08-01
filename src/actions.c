@@ -743,14 +743,14 @@ int process_action(gpointer data) {
     }
     break;
   case COMP_ENABLE:
-    if (can_transmit && a->mode == PRESSED) {
+    if (transmitter != NULL && a->mode == PRESSED) {
       TOGGLE(transmitter->compressor);
       tx_set_compressor(transmitter);
       g_idle_add(ext_vfo_update, NULL);
     }
     break;
   case COMPRESSION:
-    if (can_transmit && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
+    if (transmitter != NULL && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       value = KnobOrWheel(a, transmitter->compressor_level, 0.0, 20.0, 1.0);
       transmitter->compressor = SET(value > 0.5);
       transmitter->compressor_level = value;
@@ -833,7 +833,7 @@ int process_action(gpointer data) {
     }
     break;
   case DUPLEX:
-    if (can_transmit && !radio_is_transmitting() && a->mode == PRESSED) {
+    if (transmitter != NULL && !radio_is_transmitting() && a->mode == PRESSED) {
       radio_set_duplex(NOT(duplex));
     }
     break;
@@ -1015,7 +1015,7 @@ int process_action(gpointer data) {
     }
     break;
   case MIC_GAIN:
-    if (can_transmit && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
+    if (transmitter != NULL && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       value = KnobOrWheel(a, transmitter->mic_gain, -12.0, 50.0, 1.0);
       radio_set_mic_gain(value);
     }
@@ -1250,7 +1250,7 @@ int process_action(gpointer data) {
     break;
   case PS:
     if (a->mode == PRESSED) {
-      if (can_transmit) {
+      if (transmitter != NULL) {
         if (transmitter->puresignal == 0) {
           tx_ps_onoff(transmitter, 1);
         } else {
@@ -1490,7 +1490,7 @@ int process_action(gpointer data) {
     }
     break;
   case TUNE_DRIVE:
-    if (can_transmit && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
+    if (transmitter != NULL && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       value = KnobOrWheel(a, (double) transmitter->tune_drive, 0.0, 100.0, 1.0);
       transmitter->tune_drive = (int) value;
       transmitter->tune_use_drive = 0;
@@ -1516,7 +1516,7 @@ int process_action(gpointer data) {
     break;
   case TWO_TONE:
     if (a->mode == PRESSED) {
-      if (can_transmit) {
+      if (transmitter != NULL) {
         radio_set_twotone(transmitter, NOT(transmitter->twotone));
       }
     }
@@ -1604,7 +1604,7 @@ int process_action(gpointer data) {
     }
     break;
   case XIT_ENABLE:
-    if (a->mode == PRESSED && can_transmit) {
+    if (a->mode == PRESSED && transmitter != NULL) {
       vfo_xit_toggle();
     }
     break;

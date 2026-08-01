@@ -184,7 +184,7 @@ static void vox_value_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void cmpr_value_changed_cb(GtkWidget *widget, gpointer data) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     transmitter->compressor_level = gtk_range_get_value(GTK_RANGE(widget));
     tx_set_compressor(transmitter);
   }
@@ -197,14 +197,14 @@ static void squelch_enable_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void vox_enable_cb(GtkWidget *widget, gpointer data) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     vox_enabled = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
   }
   g_idle_add(ext_vfo_update, NULL);
 }
 
 static void cmpr_enable_cb(GtkWidget *widget, gpointer data) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     transmitter->compressor = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
     tx_set_compressor(transmitter);
   }
@@ -582,7 +582,7 @@ int sliders_mic_gain(gpointer data) {
   //
   // This ONLY moves the slider
   //
-  if (can_transmit) {
+  if (transmitter != NULL) {
     if (mic_gain_scale) {
       g_signal_handler_block(G_OBJECT(mic_gain_scale), mic_signal_id);
       gtk_range_set_value (GTK_RANGE(mic_gain_scale), transmitter->mic_gain);
@@ -599,7 +599,7 @@ int sliders_drive(gpointer data) {
   //
   // This ONLY moves the slider
   //
-  if (can_transmit) {
+  if (transmitter != NULL) {
     if (drive_scale) {
       g_signal_handler_block(G_OBJECT(drive_scale), drive_signal_id);
       gtk_range_set_value (GTK_RANGE(drive_scale), (double) transmitter->drive);
@@ -720,7 +720,7 @@ int sliders_vox(gpointer data) {
   // This ONLY moves the slider and updates the checkbutton
   // No popup-slider since settings are displayed in VFO bar,
   //
-  if (can_transmit && vox_scale) {
+  if (transmitter != NULL && vox_scale) {
     g_signal_handler_block(G_OBJECT(vox_scale), vox_signal_id);
     gtk_range_set_value (GTK_RANGE(vox_scale), vox_threshold);
     g_signal_handler_unblock(G_OBJECT(vox_scale), vox_signal_id);
@@ -737,7 +737,7 @@ int sliders_cmpr(gpointer data) {
   // This ONLY moves the slider and updates the checkbutton
   // No popup-slider since settings are displayed in VFO bar,
   //
-  if (can_transmit && cmpr_scale) {
+  if (transmitter != NULL && cmpr_scale) {
     g_signal_handler_block(G_OBJECT(cmpr_scale), cmpr_signal_id);
     gtk_range_set_value (GTK_RANGE(cmpr_scale), transmitter->compressor_level);
     g_signal_handler_unblock(G_OBJECT(cmpr_scale), cmpr_signal_id);
@@ -1024,7 +1024,7 @@ void sliders_create(int width, int height, int rows) {
         }
         break;
       case MIC_GAIN:
-        if (can_transmit && mic_gain_scale == NULL) {
+        if (transmitter != NULL && mic_gain_scale == NULL) {
           label = gtk_label_new("Mic");
           gtk_widget_set_name(label, csslabel);
           gtk_widget_set_halign(label, GTK_ALIGN_END);
@@ -1040,7 +1040,7 @@ void sliders_create(int width, int height, int rows) {
         }
         break;
       case DRIVE:
-        if (can_transmit && drive_scale == NULL) {
+        if (transmitter != NULL && drive_scale == NULL) {
           label = gtk_label_new("TX Drv");
           gtk_widget_set_name(label, csslabel);
           gtk_widget_set_halign(label, GTK_ALIGN_END);
@@ -1057,7 +1057,7 @@ void sliders_create(int width, int height, int rows) {
         }
         break;
       case VOXLEVEL:
-        if (can_transmit && vox_scale == NULL) {
+        if (transmitter != NULL && vox_scale == NULL) {
           label = gtk_label_new("VOX");
           gtk_widget_set_name(label, csslabel);
           gtk_widget_set_halign(label, GTK_ALIGN_END);
@@ -1079,7 +1079,7 @@ void sliders_create(int width, int height, int rows) {
         }
         break;
       case COMPRESSION:
-        if (can_transmit && cmpr_scale == NULL) {
+        if (transmitter != NULL && cmpr_scale == NULL) {
           label = gtk_label_new("Cmpr");
           gtk_widget_set_name(label, csslabel);
           gtk_widget_set_halign(label, GTK_ALIGN_END);

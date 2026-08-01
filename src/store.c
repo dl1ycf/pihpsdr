@@ -183,7 +183,7 @@ void recall_memory_slot(int index) {
       g_idle_add(ext_radio_set_duplex, GINT_TO_POINTER(mem[index].duplex));
     }
   }
-  if (can_transmit) {
+  if (transmitter != NULL) {
     transmitter->ctcss_enabled = mem[index].ctcss_enabled;
     transmitter->ctcss         = mem[index].ctcss;
     tx_set_ctcss(transmitter);
@@ -223,7 +223,7 @@ void store_memory_slot(int index) {
     mem[index].alt_deviation      = vfo[VFO_B].deviation;
     mem[index].alt_bd             = vfo[VFO_B].band;
   }
-  if (can_transmit) {
+  if (transmitter != NULL) {
     mem[index].ctcss_enabled = transmitter->ctcss_enabled;
     mem[index].ctcss = transmitter->ctcss;
   }

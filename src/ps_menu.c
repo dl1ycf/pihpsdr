@@ -393,7 +393,7 @@ static void ps_ant_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void enable_cb(GtkWidget *widget, gpointer data) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     int val = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
     tx_ps_onoff(transmitter, val);
   }

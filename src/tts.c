@@ -194,7 +194,7 @@ void tts_smeter(void) {
 // tts_txdrive: report value of TX drive slider
 //
 void tts_txdrive(void) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     char msg[128];
     snprintf(msg, sizeof(msg), "T X drive %d", transmitter->drive);
     tts_send(msg);

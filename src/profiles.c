@@ -552,7 +552,7 @@ void profiles_load_rx_profile(RECEIVER *rx, int m) {
 }
 
 void profiles_load_tx_profile(TRANSMITTER *tx, int m) {
-  if (!can_transmit) { return; }
+  if (transmitter == NULL) { return; }
   if (radio_is_remote) {
     send_txprofile(cl_sock_tcp, 0, m);
   } else {
@@ -627,7 +627,7 @@ void profiles_load_rxtx_profile(RECEIVER *rx) {
   id = rx->id;
   m = vfo[id].mode;
   profiles_load_rx_profile(rx, m);
-  if (can_transmit && id == vfo_get_tx_vfo()) {
+  if (transmitter != NULL && id == vfo_get_tx_vfo()) {
     profiles_load_tx_profile(transmitter, m);
   }
 }
@@ -703,7 +703,7 @@ void profiles_save_tx_profile(TRANSMITTER *tx, int m) {
   //
   // Save actual settings of the transmitter into slot
   //
-  if (!can_transmit) { return; }
+  if (transmitter == NULL) { return; }
   if (radio_is_remote) {
     send_txprofile(cl_sock_tcp, 1, m);
   } else {

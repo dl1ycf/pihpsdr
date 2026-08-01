@@ -1058,7 +1058,7 @@ void rx_set_sam_mode(const RECEIVER *rx) {
 void rx_filter_changed(RECEIVER *rx) {
   ASSERT_SERVER();
   rx_set_filter(rx);
-  if (can_transmit) {
+  if (transmitter != NULL) {
     if ((transmitter->use_rx_filter && rx == active_receiver) || vfo_get_tx_mode() == modeFMN) {
       tx_set_filter(transmitter);
     }

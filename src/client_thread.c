@@ -365,7 +365,7 @@ static gpointer remote_txaudio_thread(gpointer data) {
   int        tx_pcm_idx = 0;
   int txaudio_buffer_index = 0;
   TXAUDIO_DATA txaudio_data;
-  if (!can_transmit || cl_sock_udp < 0 ) { return NULL; } // PARANOIA
+  if (transmitter == NULL || cl_sock_udp < 0 ) { return NULL; } // PARANOIA
   clock_gettime(CLOCK_MONOTONIC, &ts);
   for (;;) {
     double peak = 0.0;
@@ -550,7 +550,7 @@ static int client_info_display(gpointer ptr) {
   sequence_errors = from_16(data->sequence_errors);
   capture_record_pointer = from_32(data->capture_record_pointer);
   capture_replay_pointer = from_32(data->capture_replay_pointer);
-  if (can_transmit) {
+  if (transmitter != NULL) {
     int old = transmitter->out_of_band;
     transmitter->out_of_band = data->tx_oob;
     if (old != transmitter->out_of_band) {
@@ -641,7 +641,7 @@ static int client_spectrum(gpointer ptr) {
       rxmeter_update(rx->fps, rx->rxlvl, vox_get_peak(), rx->curragc, rx->currout);
     }
   }
-  if (type == INFO_TX_SPECTRUM && can_transmit) {
+  if (type == INFO_TX_SPECTRUM && transmitter != NULL) {
     TRANSMITTER *tx = transmitter;
     tx->alc = from_double(data->alc);
     tx->micpeak = from_double(data->micpeak);
@@ -717,7 +717,7 @@ gpointer client_udp_thread(gpointer arg) {
       buffer = g_new(char, 4096);
       break;
     case INFO_PS:
-      if (can_transmit) {
+      if (transmitter != NULL) {
         const PS_DATA *psdata = (PS_DATA *)buffer;
         for (int i = 0; i < 16; i++) {
           transmitter->psinfo[i] = from_16(psdata->psinfo[i]);
@@ -814,7 +814,6 @@ static gpointer client_tcp_thread(gpointer arg) {
   RECEIVERS = 2;
   PS_TX_FEEDBACK = 2;
   PS_RX_FEEDBACK = 3;
-  can_transmit = 0;  // will be set when receiving an INFO_TRANSMITTER
   radio->network.address = server_address;
   for (int i = 0; i < 2; i++) {
     RECEIVER *rx = receiver[i] = g_new(RECEIVER, 1);
@@ -1238,10 +1237,6 @@ static gpointer client_tcp_thread(gpointer arg) {
       // CMD_VFO_B_TO_A, CMD_VFO_SWAP, CMD_CTCSS, CMD_AMCARRIER, CMD_TXMENU)
       TRANSMITTER_DATA data;
       if (recv_tcp(cl_sock_tcp, (char *)&data + sizeof(HEADER), sizeof(TRANSMITTER_DATA) - sizeof(HEADER)) < 0) { goto ReadErr; }
-      //
-      // When transmitter data is fully received, we can set can_transmit
-      // and start the TX audio thread
-      //
       transmitter->id                        = data.id;
       transmitter->dac                       = data.dac;
       transmitter->display_detector_mode     = data.display_detector_mode;
@@ -1309,7 +1304,6 @@ static gpointer client_tcp_thread(gpointer arg) {
         transmitter->cfc_lvl[i]                = from_double(data.cfc_lvl[i]);
         transmitter->cfc_post[i]               = from_double(data.cfc_post[i]);
       }
-      can_transmit = 1;
       g_thread_new("remote_txaudio", remote_txaudio_thread, transmitter);
       g_idle_add(sliders_drive, GINT_TO_POINTER(100));
       g_idle_add(sliders_mic_gain, GINT_TO_POINTER(100));
@@ -1459,7 +1453,7 @@ static gpointer client_tcp_thread(gpointer arg) {
       // Sent by the server as a response to CMD_FILTER_VAR, CMD_FILTER_SEL, CMD_DEVIATION
       // On the client side, only used to set the TX filter edges
       //
-      if (can_transmit) {
+      if (transmitter != NULL) {
         transmitter->filter_low = from_16(header.s1);
         transmitter->filter_high = from_16(header.s2);
       }

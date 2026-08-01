@@ -94,7 +94,7 @@ static void adc_antenna_cb(GtkComboBox *widget, gpointer data) {
 }
 
 static void dac_antenna_cb(GtkComboBox *widget, gpointer data) {
-  if (!can_transmit) { return; }
+  if (transmitter == NULL) { return; }
   if (radio_is_transmitting()) {
     //
     // Suppress TX antenna changes while transmitting
@@ -326,7 +326,7 @@ void ant_menu(GtkWidget *parent) {
         row++;
       }
     }
-    if (can_transmit && radio->soapy.tx.antennas > 0) {
+    if (transmitter != NULL && radio->soapy.tx.antennas > 0) {
       GtkWidget *label = gtk_label_new("TX Antenna");
       gtk_widget_set_name(label, "boldlabel");
       gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);

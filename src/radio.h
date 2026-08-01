@@ -253,8 +253,6 @@ extern int capture_record_pointer;
 extern int capture_replay_pointer;
 extern double *capture_data;
 
-extern int can_transmit;
-
 extern int have_rx_gain;               // programmable RX gain available
 extern int have_rx_att;                // step attenuator available -31 ... 0 dB
 extern int have_preamp;                // switchable preamp

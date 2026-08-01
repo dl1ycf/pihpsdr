@@ -97,7 +97,7 @@ static void filter_size_cb(GtkWidget *widget, gpointer data) {
     rx_set_fft_params(receiver[channel]);
     break;
   case 8:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       transmitter->fft_size = size;
       tx_set_fft_params(transmitter);
     }
@@ -143,7 +143,7 @@ void fft_menu(GtkWidget *parent) {
     // i == receivers means "TX"
     int chan;
     int j, s, dsize, fsize, ftype, wtype;
-    if ((i == receivers) && !can_transmit) { break; }
+    if ((i == receivers) && transmitter == NULL) { break; }
     if (i == 0) {
       w = gtk_label_new("RX1");
       gtk_widget_set_name(w, "boldlabel");

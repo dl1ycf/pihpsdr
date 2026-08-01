@@ -978,7 +978,7 @@ static void tci_send_tx_sensors (CLIENT *client) {
   double rms;
   double peak;
   double swr;
-  if (client == NULL || transmitter == NULL || !can_transmit) {
+  if (client == NULL || transmitter == NULL) {
     return;
   }
   if (!radio_is_transmitting() || transmitter->fwd <= 0.01) {
@@ -1123,12 +1123,12 @@ static void tci_send_split (CLIENT *client) {
 static void tci_send_tx_enable (CLIENT *client) {
   char msg[MAXMSGSIZE];
   snprintf (msg, MAXMSGSIZE, "tx_enable:0,%s;",
-            can_transmit ? "true" : "false");
+            transmitter != NULL ? "true" : "false");
   tci_send_text (client, msg);
 }
 
 static void tci_send_tune (CLIENT *client) {
-  if (can_transmit && transmitter->tune) {
+  if (transmitter != NULL && transmitter->tune) {
     tci_send_text (client, "tune:0,true;");
   } else {
     tci_send_text (client, "tune:0,false;");
@@ -2276,7 +2276,7 @@ static void tci_cmd_tune_drive (CLIENT *client, const TCI_CMD *cmd) {
       }
       if (transmitter != NULL) {
         transmitter->tune_drive = value;
-        if (can_transmit && transmitter->tune_use_drive) {
+        if (transmitter != NULL && transmitter->tune_use_drive) {
           transmitter->tune_use_drive = 0;
         }
         changed = 1;
@@ -2884,7 +2884,7 @@ static void tci_send_initial_state (CLIENT *client) {
   // tci_send_text(client, "device:SunSDR2PRO;");
   tci_send_text (client, "protocol:ExpertSDR3,2.0;");
   tci_send_text (client, "device:SunSDR2QRP;");
-  tci_send_text (client, can_transmit ? "receive_only:false;" : "receive_only:true;");
+  tci_send_text (client, transmitter != NULL ? "receive_only:false;" : "receive_only:true;");
   tci_send_trx_count (client);
   tci_send_text (client, "channels_count:2;");
   //
