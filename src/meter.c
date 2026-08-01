@@ -32,7 +32,6 @@
 #include "theme.h"
 #include "version.h"
 #include "vfo.h"
-#include "vox.h"
 
 static GtkWidget *meter;
 static cairo_surface_t *meter_surface = NULL;

@@ -233,9 +233,6 @@ extern long long tune_timeout;
 extern int meter_type;
 extern int extended_meter;
 
-extern int vox_enabled;
-extern double vox_threshold;
-extern double vox_hang;
 extern int vox;
 extern int CAT_cw_is_active;
 extern int MIDI_cw_is_active;

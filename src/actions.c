@@ -1569,14 +1569,15 @@ int process_action(gpointer data) {
     }
     break;
   case VOX:
-    if (a->mode == PRESSED) {
-      radio_set_voxenable(!vox_enabled);
+    if (a->mode == PRESSED && transmitter != NULL) {
+      vox_enabled = NOT(vox_enabled);
+      tx_set_vox(transmitter);
     }
     break;
   case VOXLEVEL:
-    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
-      value = KnobOrWheel(a, vox_threshold, 0.0, 1.0, 0.01);
-      radio_set_voxlevel(value);
+    if (transmitter != NULL && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
+      vox_threshold = (int) KnobOrWheel(a, vox_threshold, 0.0, 1.0, 0.01);
+      tx_set_vox(transmitter);
     }
     break;
   case WATERFALL_HIGH:

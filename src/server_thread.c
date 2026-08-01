@@ -1450,16 +1450,11 @@ static int server_command(gpointer data) {
     break;
   case CMD_VOX:
     //
-    // Vox is handled in the client, so do a  mox update
-    // but report back properly
+    // The client sends this if it fires VOX.
     //
-    if (header->b1) {
-      radio_set_mox(1);
-    } else {
-      g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
-    }
+    t_print("CMD VOX=%d\n", header->b1);
+    radio_set_vox(header->b1);
     g_idle_add(ext_vfo_update, NULL);
-    send_vox(remoteclient.sock_tcp, mox);
     break;
   case CMD_TUNE:
     if (transmitter != NULL) {

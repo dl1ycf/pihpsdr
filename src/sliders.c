@@ -179,8 +179,10 @@ static void squelch_value_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void vox_value_changed_cb(GtkWidget *widget, gpointer data) {
-  double value = gtk_range_get_value(GTK_RANGE(widget));
-  radio_set_voxlevel(value);
+  if (transmitter != NULL) {
+    vox_threshold = gtk_range_get_value(GTK_RANGE(widget));
+    tx_set_vox(transmitter);
+  }
 }
 
 static void cmpr_value_changed_cb(GtkWidget *widget, gpointer data) {

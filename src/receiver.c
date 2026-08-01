@@ -53,7 +53,6 @@
 #endif
 #include "transmitter.h"
 #include "vfo.h"
-#include "vox.h"
 #include "waterfall.h"
 
 #define min(x,y) (x<y?x:y)
@@ -566,7 +565,11 @@ static int rx_update_display(gpointer data) {
         level -= (double)(20 * adc[rx->adc].preamp);
       }
       rx->rxlvl = level;
-      rxmeter_update(rx->fps, rx->rxlvl, vox_get_peak(), rx->curragc, rx->currout);
+      if (transmitter != NULL) {
+        rxmeter_update(rx->fps, rx->rxlvl, vox_get_peak(), rx->curragc, rx->currout);
+      } else {
+        rxmeter_update(rx->fps, rx->rxlvl, 0.0, rx->curragc, rx->currout);
+      }
     }
     g_mutex_lock(&rx->display_mutex);
     rx_get_pixels(rx);
@@ -808,7 +811,7 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->nr2_trained_threshold = -0.5; // Threshold if gain method is "Trained"
   rx->nr2_trained_t2 = 0.2;         // t2 value for trained threshold
   // New feature defaults
-  rx->nbp_window        = 1;      // 7-term BH window
+  rx->nbp_window        = 0;      // 4-term BH window
   rx->agc_custom_attack = 1;
   rx->agc_custom_decay  = 250;
   rx->agc_custom_hang   = 250;
@@ -929,7 +932,7 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
               48000,                      // output_samplerate
               0,                          // type (0=receive)
               1,                          // state (run)
-              0.010, 0.025, 0.0, 0.010,   // DelayUp, SlewUp, DelayDown, SlewDown
+              0.000, 0.025, 0.0, 0.010,   // DelayUp, SlewUp, DelayDown, SlewDown
               1);                         // Wait for data in fexchange0
   //
   // noise blankers

@@ -173,11 +173,15 @@ void fft_menu(GtkWidget *parent) {
     if (chan == 8) {
       //
       // To enable CESSB overshoot correction with TX compression, we cannot
-      // allow low latency filters for TX
+      // allow low latency filters for TX. Likewise, we force to use the BH7
+      // Window for the TX.
       //
       w = gtk_label_new("Linear Phase");
       gtk_widget_set_name(w, "boldlabel");
       gtk_grid_attach(GTK_GRID(grid), w, col, 2, 1, 1);
+      w = gtk_label_new("7-Term BH");
+      gtk_widget_set_name(w, "boldlabel");
+      gtk_grid_attach(GTK_GRID(grid), w, col, 4, 1, 1);
     } else {
       w = gtk_combo_box_text_new();
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(w), NULL, "Linear Phase");
@@ -212,6 +216,9 @@ void fft_menu(GtkWidget *parent) {
     }
     my_combo_attach(GTK_GRID(grid), w, col, 3, 1, 1);
     g_signal_connect(w, "changed", G_CALLBACK(filter_size_cb), GINT_TO_POINTER(chan));
+    //
+    // RX only: binaural
+    //
     if (i < receivers) {
       w = gtk_check_button_new();
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w), receiver[i]->binaural);

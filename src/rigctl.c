@@ -3844,7 +3844,7 @@ static int parse_cmd(gpointer data) {
       //CONT      threshold 0.0-1.0
       //ENDDEF
       if (command[2] == ';') {
-        snprintf(reply,  sizeof(reply), "VG%03d;", (int)((vox_threshold * 100.0) * 0.9));
+        snprintf(reply,  sizeof(reply), "VG%03d;", (int)(9.0 * vox_threshold + 0.5));
         send_resp(client->fd, reply);
       } else if (command[5] == ';') {
         vox_threshold = atof(&command[2]) / 9.0;

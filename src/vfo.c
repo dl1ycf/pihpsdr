@@ -1017,7 +1017,7 @@ void vfo_update(void) {
   if (vfl->mode_x != 0) {
     switch (vfo[id].mode) {
     case modeFMN: {
-      if (transmitter != NULL ? transmitter->ctcss_enabled : 0) {
+      if ((transmitter != NULL) ? transmitter->ctcss_enabled : 0) {
         snprintf(temp_text, sizeof(temp_text), "%s %s C=%0.1f", mode_string[vfo[id].mode], wid,
                  ctcss_frequencies[transmitter->ctcss]);
       } else {

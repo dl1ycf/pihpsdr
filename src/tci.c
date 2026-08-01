@@ -449,9 +449,10 @@ static void tci_handle_binary_lws (CLIENT *client, const unsigned char* data, si
   }
   //
   // Now the whole frame is assembled, so we can process it. Since client->binary_rx_buf
-  // is a pointer obtained from a malloc(), it is suitably aligned for all data types.
+  // is a pointer obtained from a malloc(), it is suitably aligned for all data types,
+  // and we use the intermediate cast to void* to tell the compiler about this.
   //
-  tci_handle_binary (client, (TCI_STREAM *)client->binary_rx_buf, client->binary_rx_len);  // CAST OK
+  tci_handle_binary (client, (TCI_STREAM *)(void *)client->binary_rx_buf, client->binary_rx_len);
   client->binary_rx_len = 0;
 }
 
@@ -2884,7 +2885,7 @@ static void tci_send_initial_state (CLIENT *client) {
   // tci_send_text(client, "device:SunSDR2PRO;");
   tci_send_text (client, "protocol:ExpertSDR3,2.0;");
   tci_send_text (client, "device:SunSDR2QRP;");
-  tci_send_text (client, transmitter != NULL ? "receive_only:false;" : "receive_only:true;");
+  tci_send_text (client, transmitter == NULL ? "receive_only:true;" : "receive_only:false;");
   tci_send_trx_count (client);
   tci_send_text (client, "channels_count:2;");
   //

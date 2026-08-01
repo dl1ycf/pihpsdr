@@ -76,7 +76,6 @@
 #endif
 #include "store.h"
 #include "vfo.h"
-#include "vox.h"
 #include "waterfall.h"
 
 #define min(x,y) (x<y?x:y)
@@ -120,7 +119,7 @@ static GMutex property_mutex;
 
 RECEIVER *receiver[8];
 RECEIVER *active_receiver;
-TRANSMITTER *transmitter;
+TRANSMITTER *transmitter = NULL;
 
 int RECEIVERS;
 int PS_TX_FEEDBACK;
@@ -273,9 +272,6 @@ int extended_meter = 1;
 static int pre_tune_mode;
 static int pre_tune_cw_internal;
 
-int vox_enabled = 0;
-double vox_threshold = 0.001;
-double vox_hang = 250.0;
 int vox = 0;
 int CAT_cw_is_active = 0;
 int MIDI_cw_is_active = 0;
@@ -868,6 +864,7 @@ static void radio_create_visual(void) {
     receiver[PS_RX_FEEDBACK] = NULL;
     receiver[PS_TX_FEEDBACK] = NULL;
     transmitter = NULL;
+    //
     int radio_has_transmitter = 0;
     switch (protocol) {
     case ORIGINAL_PROTOCOL:
@@ -2089,12 +2086,7 @@ void radio_set_mox(int state) {
     return;
   }
   //
-  // This is an exception of the general rule:
-  // if MOX state changes, the server reports this to the client.
-  // Reason: MOX state changes may be caused by TxInhibit events, PTT buttons,
-  // etc. For example (Thans GJ for pointing this out) an auto-tuner may
-  // signal end-of-tune by activating TxInhibit, and then the client should be
-  // informed.
+  // MOX change can be unsolicited.
   //
   if (remoteclient.running) {
     send_mox(remoteclient.sock_tcp, state);
@@ -2114,7 +2106,7 @@ void radio_set_mox(int state) {
   if (transmitter->tune) {
     radio_set_tune(0);
   }
-  vox_cancel();  // remove time-out
+  vox_cancel();
   //
   // If MOX is activated while VOX is already pending,
   // then switch from VOX to MOX mode but no RX/TX
@@ -2330,6 +2322,14 @@ void radio_set_vox(int state) {
   if (mox || transmitter->tune) { return; }
   if (state && TxInhibit) { return; }
   if (vox != state) {
+    //
+    // VOX change can be unsolicited.
+    // However, this should not happen, since VOX
+    // is fired on the client's side.
+    //
+    if (remoteclient.running) {
+      send_mox(remoteclient.sock_tcp, state);
+    }
     rxtx(state);
     vox = state;
     schedule_high_priority();
@@ -2772,21 +2772,6 @@ void radio_set_c25_att(int id, int val) {
     }
   }
   g_idle_add(sliders_c25_att, GINT_TO_POINTER(100 + id));
-}
-
-void radio_set_voxenable(int state) {
-  if (transmitter != NULL) {
-    vox_enabled = state;
-    g_idle_add(sliders_vox, NULL);
-    g_idle_add(ext_vfo_update, NULL);
-  }
-}
-
-void radio_set_voxlevel(double level) {
-  if (transmitter != NULL) {
-    vox_threshold = level;
-    g_idle_add(sliders_vox, NULL);
-  }
 }
 
 void radio_set_dither(int id, int value) {

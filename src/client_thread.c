@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <netinet/in.h>
 #include <fcntl.h>
+#include <math.h>
 #include <netdb.h>
 #include <openssl/sha.h>
 #include <opus/opus.h>
@@ -62,7 +63,6 @@ extern int clock_nanosleep(clockid_t __clock_id, int __flags,
 #include "transmitter.h"
 #include "tx_panadapter.h"
 #include "vfo.h"
-#include "vox.h"
 #include "waterfall.h"
 
 int cl_sock_tcp = -1;
@@ -368,9 +368,12 @@ static gpointer remote_txaudio_thread(gpointer data) {
   if (transmitter == NULL || cl_sock_udp < 0 ) { return NULL; } // PARANOIA
   clock_gettime(CLOCK_MONOTONIC, &ts);
   for (;;) {
-    double peak = 0.0;
+    vox_max2 = vox_max1;
+    vox_max1 = 0.0;
     for (int i = 0; i < 96; i++) {
       double sample = 0.0;
+      int txmode = vfo_get_tx_mode();
+      int no_audio = (txmode == modeCWL || txmode == modeCWU || tx->tune || tx->twotone);
       if (tx->local_audio) {
         sample = audio_get_next_mic_sample(tx);
       }
@@ -382,8 +385,39 @@ static gpointer remote_txaudio_thread(gpointer data) {
         sample = tci_get_next_mic_sample();
       }
 #endif
-      if (sample > peak) { peak = sample; }
-      if (-sample > peak) { peak = -sample; }
+      //
+      // VOX START
+      //
+      if (no_audio) {
+        vox_triggered = 0;
+        vox_count = 0;
+        sample = 0.0;
+      } else if (vox_enabled) {
+        double amplitude = fabs(sample);
+        if (amplitude > vox_max1) {
+          vox_max1 = amplitude;
+        }
+        if (amplitude > vox_threshold) {
+          if (!vox_triggered) {
+             g_idle_add(ext_radio_set_vox,GINT_TO_POINTER(1));
+             vox_triggered = 1;
+          }
+          if (vox_hang > vox_min_hang) {
+            vox_count = (int)(vox_hang * 48);
+          } else {
+            vox_count = (int)(vox_min_hang * 48);
+          }
+        } else if (vox_count > 0) {
+          vox_count--;
+          if (vox_count == 0) {
+            g_idle_add(ext_radio_set_vox, GINT_TO_POINTER(0));
+            vox_triggered = 0;
+          }
+        }
+      }
+      //
+      // VOX END
+      //
       if (tx_opus_enc) {
         //
         // Put sample into OPUS buffer.
@@ -391,8 +425,7 @@ static gpointer remote_txaudio_thread(gpointer data) {
         //
         tx_pcm_buf[tx_pcm_idx++] = (opus_int16)(sample * 32767.0);
         if (tx_pcm_idx >= OPUS_FRAME_SIZE) {
-          int txmode = vfo_get_tx_mode();
-          if (radio_is_transmitting() && txmode != modeCWU && txmode != modeCWL && !transmitter->tune && !transmitter->twotone) {
+          if ((radio_is_transmitting() || vox_triggered) && !no_audio) {
             //
             // The actual transmission of the mic audio samples only takes  place
             // if we *need* them (note VOX is handled locally)
@@ -426,8 +459,7 @@ static gpointer remote_txaudio_thread(gpointer data) {
         int32_t s = (int32_t)(sample  * 32766.672 + 32767.5) - 32767;
         txaudio_data.samples[txaudio_buffer_index++] = to_16(s);
         if (txaudio_buffer_index >= AUDIO_DATA_SIZE) {
-          int txmode = vfo_get_tx_mode();
-          if (radio_is_transmitting() && txmode != modeCWU && txmode != modeCWL && !transmitter->tune && !transmitter->twotone) {
+          if ((radio_is_transmitting() || vox_triggered) && !no_audio) {
             //
             // The actual transmission of the mic audio samples only takes  place
             // if we *need* them (note VOX is handled locally)
@@ -450,7 +482,6 @@ static gpointer remote_txaudio_thread(gpointer data) {
         }
       }
     }
-    vox_update(peak);
     //
     // Advance time by 2 msec and wait until this is over
     //
@@ -638,7 +669,11 @@ static int client_spectrum(gpointer ptr) {
     }
     g_mutex_unlock(&rx->display_mutex);
     if (rx == active_receiver) {
-      rxmeter_update(rx->fps, rx->rxlvl, vox_get_peak(), rx->curragc, rx->currout);
+      if (transmitter != NULL) {
+        rxmeter_update(rx->fps, rx->rxlvl, vox_get_peak(), rx->curragc, rx->currout);
+      } else {
+        rxmeter_update(rx->fps, rx->rxlvl, 0.0, rx->curragc, rx->currout);
+      }
     }
   }
   if (type == INFO_TX_SPECTRUM && transmitter != NULL) {
@@ -817,7 +852,6 @@ static gpointer client_tcp_thread(gpointer arg) {
   radio->network.address = server_address;
   for (int i = 0; i < 2; i++) {
     RECEIVER *rx = receiver[i] = g_new(RECEIVER, 1);
-    memset(rx, 0, sizeof(RECEIVER));
     memset(rx, 0, sizeof(RECEIVER));
     g_mutex_init(&rx->display_mutex);
     g_mutex_init(&rx->mutex);
@@ -1237,6 +1271,9 @@ static gpointer client_tcp_thread(gpointer arg) {
       // CMD_VFO_B_TO_A, CMD_VFO_SWAP, CMD_CTCSS, CMD_AMCARRIER, CMD_TXMENU)
       TRANSMITTER_DATA data;
       if (recv_tcp(cl_sock_tcp, (char *)&data + sizeof(HEADER), sizeof(TRANSMITTER_DATA) - sizeof(HEADER)) < 0) { goto ReadErr; }
+      //
+      // When transmitter data is fully received, we can start the TX audio thread
+      //
       transmitter->id                        = data.id;
       transmitter->dac                       = data.dac;
       transmitter->display_detector_mode     = data.display_detector_mode;
