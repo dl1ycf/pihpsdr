@@ -26,7 +26,7 @@
 //
 
 //#define TXIQ_FIFO
-#define LOGFIRST
+//#define LOGFIRST
 
 #include <stdlib.h>
 #include <stdio.h>

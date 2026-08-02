@@ -565,11 +565,7 @@ static int rx_update_display(gpointer data) {
         level -= (double)(20 * adc[rx->adc].preamp);
       }
       rx->rxlvl = level;
-      if (transmitter != NULL) {
-        rxmeter_update(rx->fps, rx->rxlvl, vox_get_peak(), rx->curragc, rx->currout);
-      } else {
-        rxmeter_update(rx->fps, rx->rxlvl, 0.0, rx->curragc, rx->currout);
-      }
+      rxmeter_update(rx->fps, rx->rxlvl, vox_get_peak(), rx->curragc, rx->currout);
     }
     g_mutex_lock(&rx->display_mutex);
     rx_get_pixels(rx);

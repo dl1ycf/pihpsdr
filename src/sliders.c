@@ -358,15 +358,15 @@ int sliders_att_type_changed(gpointer data) {
     adc[1].gain = 0.0;       // NOT USED in C25
     adc[0].attenuation = 0;  // NOT USED in C25
     adc[1].attenuation = 0;  // NOT USED in C25
-    if (attenuation_scale) {
+    if (attenuation_scale != NULL) {
       gtk_widget_hide(attenuation_label);
       gtk_widget_hide(attenuation_scale);
     }
-    if (rf_gain_scale) {
+    if (rf_gain_scale != NULL) {
       gtk_widget_hide(rf_gain_label);
       gtk_widget_hide(rf_gain_scale);
     }
-    if (c25_container) {
+    if (c25_container != NULL) {
       gtk_widget_show(c25_label);
       gtk_widget_show(c25_container);
     }
@@ -382,11 +382,11 @@ int sliders_att_type_changed(gpointer data) {
     if (!have_preamp) { adc[0].preamp = 0; }
     if (!have_dither) { adc[0].dither = 0; }
     if (!have_alex_att || filter_board != ALEX) { adc[0].alex_attenuation = 0; }
-    if (attenuation_scale) {
+    if (attenuation_scale != NULL) {
       gtk_widget_show(attenuation_label);
       gtk_widget_show(attenuation_scale);
     }
-    if (rf_gain_scale) {
+    if (rf_gain_scale != NULL) {
       gtk_widget_show(rf_gain_label);
       gtk_widget_show(rf_gain_scale);
     }
@@ -458,7 +458,7 @@ int sliders_attenuation(gpointer data) {
   // This ONLY moves the slider
   //
   int rxadc = receiver[id]->adc;
-  if (active_receiver->adc == rxadc && attenuation_scale) {
+  if (active_receiver->adc == rxadc && attenuation_scale != NULL) {
     g_signal_handler_block(G_OBJECT(attenuation_scale), att_signal_id);
     gtk_range_set_value (GTK_RANGE(attenuation_scale), (double)adc[rxadc].attenuation);
     g_signal_handler_unblock(G_OBJECT(attenuation_scale), att_signal_id);
@@ -476,7 +476,7 @@ int sliders_agc_gain(gpointer data) {
   //
   // This ONLY moves the slider
   //
-  if (active_receiver->id == id && agc_scale) {
+  if (active_receiver->id == id && agc_scale != NULL) {
     g_signal_handler_block(G_OBJECT(agc_scale), agc_signal_id);
     gtk_range_set_value (GTK_RANGE(agc_scale), receiver[id]->agc_gain);
     g_signal_handler_unblock(G_OBJECT(agc_scale), agc_signal_id);
@@ -494,7 +494,7 @@ int sliders_af_gain(gpointer data) {
   // This ONLY moves the slider
   //
   const RECEIVER *rx = receiver[id];
-  if (id == active_receiver->id && af_gain_scale) {
+  if (id == active_receiver->id && af_gain_scale != NULL) {
     g_signal_handler_block(G_OBJECT(af_gain_scale), af_signal_id);
     gtk_range_set_value (GTK_RANGE(af_gain_scale), rx->volume);
     g_signal_handler_unblock(G_OBJECT(af_gain_scale), af_signal_id);
@@ -512,7 +512,7 @@ int sliders_rf_gain(gpointer data) {
   // This ONLY moves the slider
   //
   int rxadc = receiver[id]->adc;
-  if (rf_gain_scale && active_receiver->adc == rxadc) {
+  if (rf_gain_scale!= NULL && active_receiver->adc == rxadc) {
     g_signal_handler_block(G_OBJECT(rf_gain_scale), rf_signal_id);
     gtk_range_set_value (GTK_RANGE(rf_gain_scale), adc[rxadc].gain);
     g_signal_handler_unblock(G_OBJECT(rf_gain_scale), rf_signal_id);
@@ -569,7 +569,7 @@ int sliders_linein_gain(gpointer data) {
   //
   // This ONLY moves the slider
   //
-  if (linein_scale) {
+  if (linein_scale != NULL) {
     g_signal_handler_block(G_OBJECT(linein_scale), linein_signal_id);
     gtk_range_set_value (GTK_RANGE(linein_scale), linein_gain);
     g_signal_handler_unblock(G_OBJECT(linein_scale), linein_signal_id);
@@ -585,7 +585,7 @@ int sliders_mic_gain(gpointer data) {
   // This ONLY moves the slider
   //
   if (transmitter != NULL) {
-    if (mic_gain_scale) {
+    if (mic_gain_scale != NULL) {
       g_signal_handler_block(G_OBJECT(mic_gain_scale), mic_signal_id);
       gtk_range_set_value (GTK_RANGE(mic_gain_scale), transmitter->mic_gain);
       g_signal_handler_unblock(G_OBJECT(mic_gain_scale), mic_signal_id);
@@ -602,7 +602,7 @@ int sliders_drive(gpointer data) {
   // This ONLY moves the slider
   //
   if (transmitter != NULL) {
-    if (drive_scale) {
+    if (drive_scale != NULL) {
       g_signal_handler_block(G_OBJECT(drive_scale), drive_signal_id);
       gtk_range_set_value (GTK_RANGE(drive_scale), (double) transmitter->drive);
       g_signal_handler_unblock(G_OBJECT(drive_scale), drive_signal_id);
@@ -677,7 +677,7 @@ int sliders_squelch(gpointer data) {
   if (id > receivers) { return G_SOURCE_REMOVE; }
   //
   const RECEIVER *rx = receiver[id];
-  if (squelch_scale && id == active_receiver->id) {
+  if (squelch_scale != NULL && id == active_receiver->id) {
     g_signal_handler_block(G_OBJECT(squelch_scale), squelch_signal_id);
     gtk_range_set_value (GTK_RANGE(squelch_scale), rx->squelch);
     g_signal_handler_unblock(G_OBJECT(squelch_scale), squelch_signal_id);
@@ -695,7 +695,7 @@ int sliders_panlow(gpointer data) {
   // This ONLY moves the slider
   // No popup-slider since settings are displayed in VFO bar,
   //
-  if (panlow_scale) {
+  if (panlow_scale != NULL) {
     g_signal_handler_block(G_OBJECT(panlow_scale), panlow_signal_id);
     gtk_range_set_value (GTK_RANGE(panlow_scale), active_receiver->panadapter_low);
     g_signal_handler_unblock(G_OBJECT(panlow_scale), panlow_signal_id);
@@ -708,7 +708,7 @@ int sliders_wpm(gpointer data) {
   // This ONLY moves the slider
   // No popup-slider since settings are displayed in VFO bar,
   //
-  if (speed_scale) {
+  if (speed_scale != NULL) {
     g_signal_handler_block(G_OBJECT(speed_scale), speed_signal_id);
     gtk_range_set_value (GTK_RANGE(speed_scale), cw_keyer_speed);
     g_signal_handler_unblock(G_OBJECT(speed_scale), speed_signal_id);
@@ -722,7 +722,7 @@ int sliders_vox(gpointer data) {
   // This ONLY moves the slider and updates the checkbutton
   // No popup-slider since settings are displayed in VFO bar,
   //
-  if (transmitter != NULL && vox_scale) {
+  if (transmitter != NULL && vox_scale != NULL) {
     g_signal_handler_block(G_OBJECT(vox_scale), vox_signal_id);
     gtk_range_set_value (GTK_RANGE(vox_scale), vox_threshold);
     g_signal_handler_unblock(G_OBJECT(vox_scale), vox_signal_id);
@@ -739,7 +739,7 @@ int sliders_cmpr(gpointer data) {
   // This ONLY moves the slider and updates the checkbutton
   // No popup-slider since settings are displayed in VFO bar,
   //
-  if (transmitter != NULL && cmpr_scale) {
+  if (transmitter != NULL && cmpr_scale != NULL) {
     g_signal_handler_block(G_OBJECT(cmpr_scale), cmpr_signal_id);
     gtk_range_set_value (GTK_RANGE(cmpr_scale), transmitter->compressor_level);
     g_signal_handler_unblock(G_OBJECT(cmpr_scale), cmpr_signal_id);
@@ -771,7 +771,7 @@ int sliders_zoom(gpointer data) {
   int val = GPOINTER_TO_INT(data);
   int id = val % 100;
   // This ONLY moves the zoom slider
-  if (id == active_receiver->id && zoom_scale) {
+  if (id == active_receiver->id && zoom_scale != NULL) {
     g_signal_handler_block(G_OBJECT(zoom_scale), zoom_signal_id);
     gtk_range_set_value(GTK_RANGE(zoom_scale), active_receiver->zoom);
     g_signal_handler_unblock(G_OBJECT(zoom_scale), zoom_signal_id);
@@ -783,7 +783,7 @@ int sliders_pan(gpointer data) {
   int val = GPOINTER_TO_INT(data);
   int id = val % 100;
   // This ONLY moves the pan sliders
-  if (id == active_receiver->id && pan_scale) {
+  if (id == active_receiver->id && pan_scale != NULL) {
     g_signal_handler_block(G_OBJECT(pan_scale), pan_signal_id);
     gtk_range_set_value (GTK_RANGE(pan_scale), (double) active_receiver->pan);
     g_signal_handler_unblock(G_OBJECT(pan_scale), pan_signal_id);

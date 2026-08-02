@@ -460,7 +460,6 @@ src/g2panel_menu.c \
 src/gpio.c \
 src/i2c.c \
 src/iambic.c \
-src/led.c \
 src/main.c \
 src/message.c \
 src/meter.c \
@@ -561,7 +560,6 @@ src/g2panel_menu.o \
 src/gpio.o \
 src/iambic.o \
 src/i2c.o \
-src/led.o \
 src/main.o \
 src/message.o \
 src/meter.o \
@@ -921,7 +919,6 @@ src/iambic.o: src/ext.h src/client_server.h src/mode.h src/receiver.h
 src/iambic.o: src/atomic.h src/transmitter.h src/gpio.h src/iambic.h
 src/iambic.o: src/main.h src/message.h src/new_protocol.h src/MacOS.h
 src/iambic.o: src/radio.h src/adc.h src/discovered.h src/vfo.h
-src/led.o: src/message.h
 src/mac_midi.o: src/message.h src/midi.h src/actions.h src/midi_menu.h
 src/main.o: src/actions.h src/appearance.h src/css.h src/audio.h
 src/main.o: src/receiver.h src/atomic.h src/transmitter.h src/band.h
@@ -1149,7 +1146,7 @@ src/transmitter.o: src/old_protocol.h src/ozyio.h src/profiles.h
 src/transmitter.o: src/property.h src/ps_menu.h src/radio.h src/adc.h
 src/transmitter.o: src/discovered.h src/sintab.h src/sliders.h src/actions.h
 src/transmitter.o: src/soapy_protocol.h src/tci.h src/tci_audio.h
-src/transmitter.o: src/toolbar.h src/tx_panadapter.h src/vfo.h src/vox_menu.h
+src/transmitter.o: src/toolbar.h src/tx_panadapter.h src/vfo.h
 src/transmitter.o: src/waterfall.h
 src/tts.o: src/message.h src/radio.h src/adc.h src/discovered.h
 src/tts.o: src/receiver.h src/atomic.h src/transmitter.h src/vfo.h src/mode.h
@@ -1177,9 +1174,9 @@ src/vfo_menu.o: src/mode.h src/receiver.h src/atomic.h src/transmitter.h
 src/vfo_menu.o: src/filter.h src/new_menu.h src/radio.h src/adc.h
 src/vfo_menu.o: src/discovered.h src/radio_menu.h src/vfo.h
 src/vox_menu.o: src/ext.h src/client_server.h src/mode.h src/receiver.h
-src/vox_menu.o: src/atomic.h src/transmitter.h src/led.h src/message.h
-src/vox_menu.o: src/new_menu.h src/radio.h src/adc.h src/discovered.h
-src/vox_menu.o: src/sliders.h src/actions.h src/vfo.h
+src/vox_menu.o: src/atomic.h src/transmitter.h src/message.h src/new_menu.h
+src/vox_menu.o: src/radio.h src/adc.h src/discovered.h src/sliders.h
+src/vox_menu.o: src/actions.h src/vfo.h
 src/waterfall.o: src/radio.h src/adc.h src/discovered.h src/receiver.h
 src/waterfall.o: src/atomic.h src/transmitter.h src/vfo.h src/mode.h
 src/waterfall.o: src/band.h src/bandstack.h src/message.h src/waterfall.h

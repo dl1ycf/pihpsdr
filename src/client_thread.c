@@ -669,11 +669,7 @@ static int client_spectrum(gpointer ptr) {
     }
     g_mutex_unlock(&rx->display_mutex);
     if (rx == active_receiver) {
-      if (transmitter != NULL) {
-        rxmeter_update(rx->fps, rx->rxlvl, vox_get_peak(), rx->curragc, rx->currout);
-      } else {
-        rxmeter_update(rx->fps, rx->rxlvl, 0.0, rx->curragc, rx->currout);
-      }
+      rxmeter_update(rx->fps, rx->rxlvl, vox_get_peak(), rx->curragc, rx->currout);
     }
   }
   if (type == INFO_TX_SPECTRUM && transmitter != NULL) {

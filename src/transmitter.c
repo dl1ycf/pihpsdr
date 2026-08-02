@@ -56,7 +56,6 @@
 #include "transmitter.h"
 #include "tx_panadapter.h"
 #include "vfo.h"
-#include "vox_menu.h"
 #include "waterfall.h"
 
 #define min(x,y) (x<y?x:y)
@@ -1254,12 +1253,13 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
               tx->iq_output_rate,        // output_samplerate
               1,                         // type (1=transmit)
               0,                         // state (do not run yet)
-              0.0, 0.025, 0.0, 0.010,    // DelayUp, SlewUp, DelayDown, SlewDown
+              0.000, 0.025, 0.0, 0.010,  // DelayUp, SlewUp, DelayDown, SlewDown
               1);                        // Wait for data in fexchange0
   //
   // Some WDSP settings that are never changed.
   // Most of these are the default anyway.
   //
+  TXASetMP(tx->id, 1);                                  // Always linear phase
   SetTXABandpassWindow(tx->id, 1);                      // Always 7-term BH
   SetTXABandpassRun(tx->id, 1);                         // enable TX bandpass
   SetTXACFIRRun(tx->id, SET(protocol == NEW_PROTOCOL)); // P2 firmware requires this
@@ -1274,7 +1274,6 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   SetTXAPanelRun(tx->id, 1);                            // activate TX patch panel
   SetTXAPanelSelect(tx->id, 2);                         // use Mic I sample
   SetTXAPostGenRun(tx->id, 0);                          // Switch off "post" generator
-  
   //
   // Now we have set up the transmitter, apply the
   // parameters stored in tx
@@ -1571,9 +1570,9 @@ static void tx_full_buffer(TRANSMITTER *tx) {
     //
     // Note that the DownwardExpander is used *outside* of WDSP
     // channels. We use a single DEXP and give it the id=0.
-    // For triggering VOX, we still use the old code (although
-    // the downward expander also offers VOX capabilities),
-    // and combine it with the AudioDelay feature of DEXP.
+    // The VOX "delay line" of DEXP is used twogether with our
+    // own VOX-triggering code (see explanation at the beginning of
+    // the tx_add_mic_sample function).
     //
     xdexp(0);
     fexchange0(tx->id, tx->mic_input_buffer, tx->iq_output_buffer, &error);
@@ -1595,9 +1594,12 @@ static void tx_full_buffer(TRANSMITTER *tx) {
     if (txflag == 0 && protocol == NEW_PROTOCOL) {
       //
       // this is the first time (after a pause) that we send TX samples
-      // so send some (5 milli-seconds) "silence" to pre-fill the TX IQ
-      // FIFO in the FPGA. This is done to suppress underflows if one
+      // so send some "silence" to pre-fill the TX IQ FIFO in the FPGA.
+      // This is done to suppress underflows if one
       // of the following buckets ships a little late.
+      // We send 960 samples = 4 HPSDR packets (about 5 msec), together
+      // with the first buffer (2048 samples in P2) this means about
+      // 3000 samples are sent in rapid succession after a RX/TX transition.
       //
       for (j = 0; j < 960; j++) {
         new_protocol_iq_samples(0.0, 0.0);
@@ -2669,9 +2671,12 @@ void tx_set_fft_params(const TRANSMITTER *tx) {
     send_tx_fft(cl_sock_tcp, tx);
     return;
   }
+  //
+  // We *always* use linear phase filters and a 7-term BH window,
+  // this is set at program start and never changed. So the only
+  // parameter left is the main TX filter tap length.
+  //
   TXASetNC(tx->id, tx->fft_size);
-  TXASetMP(tx->id, 1);              // Always linear phase
-  SetTXABandpassWindow(tx->id, 1);  // Always 7-term BH
 }
 
 void tx_set_mic_gain(const TRANSMITTER *tx) {

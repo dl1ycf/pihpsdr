@@ -20,7 +20,6 @@
 #include <gtk/gtk.h>
 
 #include "ext.h"
-#include "led.h"
 #include "message.h"
 #include "new_menu.h"
 #include "radio.h"
@@ -28,23 +27,17 @@
 #include "transmitter.h"
 #include "vfo.h"
 
-static GtkWidget *led = NULL;
+static GtkWidget *ledbtn = NULL;
 static GtkWidget *dialog = NULL;
 static GtkWidget *mic_level_bar;
 static guint level_timer_id = 0;
 
-static int voxmenu = 0;
-
-int vox_menu_is_open() {
-  return voxmenu;
-}
-
 int vox_menu_trigger(gpointer data) {
   int state = GPOINTER_TO_INT(data);
   if (state) {
-    gtk_widget_set_name(led, "redbutton");
+    gtk_widget_set_name(ledbtn, "redbutton");
   } else {
-    gtk_widget_set_name(led, "greenbutton");
+    gtk_widget_set_name(ledbtn, "greenbutton");
   }
   return G_SOURCE_REMOVE;
 }
@@ -55,7 +48,6 @@ static int level_update(gpointer arg) {
 }
 
 static void cleanup(void) {
-  voxmenu = FALSE;
   if (level_timer_id != 0) {
     g_source_remove(level_timer_id);
     level_timer_id = 0;
@@ -110,9 +102,9 @@ void vox_menu(GtkWidget *parent) {
   gtk_widget_set_name(close_b, "close_button");
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 1, 1);
-  led = gtk_button_new();
-  gtk_widget_set_name(led, "greenbutton");
-  gtk_grid_attach(GTK_GRID(grid), led, 2, 0, 1, 1);
+  ledbtn = gtk_button_new();
+  gtk_widget_set_name(ledbtn, "greenbutton");
+  gtk_grid_attach(GTK_GRID(grid), ledbtn, 2, 0, 1, 1);
   GtkWidget *enable_b = gtk_check_button_new_with_label("VOX Enable");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(enable_b), vox_enabled);
   g_signal_connect (enable_b, "toggled", G_CALLBACK(enable_cb), NULL);
@@ -148,5 +140,4 @@ void vox_menu(GtkWidget *parent) {
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
   level_timer_id = g_timeout_add(100, level_update, NULL);
-  voxmenu = TRUE;
 }
