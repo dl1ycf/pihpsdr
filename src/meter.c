@@ -32,7 +32,6 @@
 #include "theme.h"
 #include "version.h"
 #include "vfo.h"
-#include "vox.h"
 
 static GtkWidget *meter;
 static cairo_surface_t *meter_surface = NULL;
@@ -1016,7 +1015,7 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
 }
 
 void txmeter_update(int fps, double pwr, double alc, double swr, double mic, double out) {
-  if (!meter_surface || !can_transmit) { return; }
+  if (!meter_surface || transmitter == NULL) { return; }
   const double min_alc    = -99.0;
   const double min_pwr    =   0.0;
   const double min_mic    = -99.0;

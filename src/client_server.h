@@ -109,7 +109,6 @@ enum _header_type_enum {
   CMD_START_RADIO,
   CMD_STEP,
   CMD_STORE,
-  CMD_TOGGLE_MOX,
   CMD_TOGGLE_TUNE,
   CMD_TUNE,
   CMD_TWOTONE,
@@ -150,7 +149,7 @@ enum _header_type_enum {
   CLIENT_SERVER_COMMANDS,
 };
 
-#define CLIENT_SERVER_VERSION 0x01300005 // 32-bit version number
+#define CLIENT_SERVER_VERSION 0x01300006 // 32-bit version number
 #define SPECTRUM_DATA_SIZE 4096          // Maximum width of a panadapter
 #define AUDIO_DATA_SIZE 512              // 512 (mono) samples
 
@@ -1049,7 +1048,6 @@ extern void send_startstop_rxspectrum(int s, int id, int state);
 extern void send_startstop_txspectrum(int s, int state);
 extern void send_store(int s, int index);
 extern void send_swap_iq(int s, int swap_iq);
-extern void send_toggle_mox(int s);
 extern void send_toggle_tune(int s);
 extern void send_tune(int s, int state);
 extern void send_twotone(int s, int state);

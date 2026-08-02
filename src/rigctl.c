@@ -816,11 +816,11 @@ static gboolean andromeda_handler(gpointer data) {
         // ATU has TUNE solution
         break;
       case 3:
-        new = can_transmit ? transmitter->tune : 0;
+        new = transmitter != NULL ? transmitter->tune : 0;
         break;
       case 4:
         // According to the ANAN document this is LED #5
-        if (can_transmit) {
+        if (transmitter != NULL) {
           new = transmitter->puresignal;
         } else {
           new = 0;
@@ -859,10 +859,10 @@ static gboolean andromeda_handler(gpointer data) {
         new = mox;
         break;
       case 2:
-        new = can_transmit ? transmitter->tune : 0;
+        new = transmitter != NULL ? transmitter->tune : 0;
         break;
       case 3:
-        if (can_transmit) {
+        if (transmitter != NULL) {
           new = transmitter->puresignal;
         } else {
           new = 0;
@@ -1804,7 +1804,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //RESP      ZZLIx;
       //NOTE      x=0: PURESIGNAL disabled, x=1: enabled.
       //ENDDEF
-      if (can_transmit) {
+      if (transmitter != NULL) {
         if (command[4] == ';') {
           // send reply back
           snprintf(reply,  sizeof(reply), "ZZLI%d;", transmitter->puresignal);
@@ -1897,7 +1897,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //RESP      ZZMGxxx;
       //NOTE      x 0-70 mapped to -12 ... +50 dB
       //ENDDEF
-      if (can_transmit) {
+      if (transmitter != NULL) {
         if (command[4] == ';') {
           snprintf(reply,  sizeof(reply), "ZZMG%03d;", (int)((transmitter->mic_gain + 12.0) * 1.129));
           send_resp(client->fd, reply);
@@ -2000,7 +2000,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
       //RESP      ZZTXx;
       //NOTE      x=1: TwoTone on, x=0: TwoTone off.
       //ENDDEF
-      if (can_transmit) {
+      if (transmitter != NULL) {
         if (command[4] == ';') {
           snprintf(reply,  sizeof(reply), "ZZUT%d;", transmitter->twotone);
           send_resp(client->fd, reply) ;
@@ -2071,7 +2071,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         if (mox) {
           status = status | 0x40;
         }
-        if (can_transmit && transmitter->tune) {
+        if (transmitter != NULL && transmitter->tune) {
           status = status | 0x80;
         }
         if (vfo[vfo_get_tx_vfo()].xit_enabled) {
@@ -2516,7 +2516,7 @@ static int parse_cmd(gpointer data) {
       //CONT      241.8 (x=37), 250.3 (x=38).
       //ENDDEF
       // sets/reads CTCSS function (frequency)
-      if (can_transmit) {
+      if (transmitter != NULL) {
         if (command[2] == ';') {
           snprintf(reply,  sizeof(reply), "CN%02d;", transmitter->ctcss + 1);
           send_resp(client->fd, reply) ;
@@ -2535,7 +2535,7 @@ static int parse_cmd(gpointer data) {
       //RESP      CTx;
       //NOTE      x = 0: CTCSS off, x=1: on
       //ENDDEF
-      if (can_transmit) {
+      if (transmitter != NULL) {
         if (command[2] == ';') {
           snprintf(reply,  sizeof(reply), "CT%d;", transmitter->ctcss_enabled);
           send_resp(client->fd, reply) ;
@@ -2737,7 +2737,7 @@ static int parse_cmd(gpointer data) {
             vfo[VFO_A].deviation = 5000;
           }
           rx_set_filter(receiver[0]);
-          if (can_transmit) {
+          if (transmitter != NULL) {
             tx_set_filter(transmitter);
           }
           g_idle_add(ext_vfo_update, NULL);
@@ -2836,7 +2836,7 @@ static int parse_cmd(gpointer data) {
       int tx_xit_en = 0;
       int tx_ctcss_en = 0;
       int tx_ctcss = 0;
-      if (can_transmit) {
+      if (transmitter != NULL) {
         tx_xit_en   = vfo[vfo_get_tx_vfo()].xit_enabled;
         tx_ctcss    = transmitter->ctcss + 1;
         tx_ctcss_en = transmitter->ctcss_enabled;
@@ -2997,7 +2997,7 @@ static int parse_cmd(gpointer data) {
       //RESP      MGxxx;
       //NOTE      x 0-100 mapped to -12 ... +50 dB
       //ENDDEF
-      if (can_transmit) {
+      if (transmitter != NULL) {
         if (command[2] == ';') {
           snprintf(reply,  sizeof(reply), "MG%03d;", (int)(((transmitter->mic_gain + 12.0) / 62.0) * 100.0));
           send_resp(client->fd, reply);
@@ -3148,7 +3148,7 @@ static int parse_cmd(gpointer data) {
       //RESP      PCxxx;
       //NOTE      x = 0...100
       //ENDDEF
-      if (can_transmit) {
+      if (transmitter != NULL) {
         if (command[2] == ';') {
           snprintf(reply,  sizeof(reply), "PC%03d;", (int)transmitter->drive);
           send_resp(client->fd, reply);
@@ -3176,7 +3176,7 @@ static int parse_cmd(gpointer data) {
       //NOTE      x = 0...100, maps to compression 0...20 dB.
       //NOTE      y ignored when setting, y=0 when reading
       //ENDDEF
-      if (can_transmit) {
+      if (transmitter != NULL) {
         if (command[2] == ';') {
           snprintf(reply,  sizeof(reply), "PL%03d000;", (int)(5.0 * transmitter->compressor_level));
           send_resp(client->fd, reply);
@@ -3844,7 +3844,7 @@ static int parse_cmd(gpointer data) {
       //CONT      threshold 0.0-1.0
       //ENDDEF
       if (command[2] == ';') {
-        snprintf(reply,  sizeof(reply), "VG%03d;", (int)((vox_threshold * 100.0) * 0.9));
+        snprintf(reply,  sizeof(reply), "VG%03d;", (int)(9.0 * vox_threshold + 0.5));
         send_resp(client->fd, reply);
       } else if (command[5] == ';') {
         vox_threshold = atof(&command[2]) / 9.0;
@@ -3893,7 +3893,7 @@ static int parse_cmd(gpointer data) {
       //RESP      XTx;
       //NOTE      x=0: XIT disabled, x=1: enabled
       //ENDDEF
-      if (can_transmit) {
+      if (transmitter != NULL) {
         if (command[2] == ';') {
           snprintf(reply,  sizeof(reply), "XT%d;", vfo[vfo_get_tx_vfo()].xit_enabled);
           send_resp(client->fd, reply);

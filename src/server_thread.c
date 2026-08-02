@@ -121,7 +121,7 @@ static int send_periodic_data(gpointer arg) {
   if (!remoteclient.running) {
     return TRUE;
   }
-  if (can_transmit) {
+  if (transmitter != NULL) {
     if (transmitter->puresignal) {
       PS_DATA ps_data;
       SYNC(ps_data.header.sync);
@@ -154,7 +154,7 @@ static int send_periodic_data(gpointer arg) {
   disp_data.tx_fifo_overrun = tx_fifo_overrun;
   disp_data.tx_fifo_underrun = tx_fifo_underrun;
   disp_data.TxInhibit = TxInhibit;
-  disp_data.txzero = can_transmit ? (transmitter->drive < 0.5) : 0;
+  disp_data.txzero = transmitter != NULL ? (transmitter->drive < 0.5) : 0;
   disp_data.capture_state = capture_state;
   disp_data.exciter_power = to_16(exciter_power);
   disp_data.ADC0 = to_16(ADC0);
@@ -162,7 +162,7 @@ static int send_periodic_data(gpointer arg) {
   disp_data.sequence_errors = to_16(sequence_errors);
   disp_data.capture_record_pointer = to_32(capture_record_pointer);
   disp_data.capture_replay_pointer = to_32(capture_replay_pointer);
-  disp_data.tx_oob = can_transmit ? transmitter->out_of_band : 0;
+  disp_data.tx_oob = transmitter != NULL ? transmitter->out_of_band : 0;
   if (sendto(remoteclient.sock_udp, &disp_data, sizeof(DISPLAY_DATA), 0,
              (struct sockaddr *)&remoteclient.address, sizeof(remoteclient.address))  < 0) {
     perror("DISPDAT:UDP:SEND");
@@ -266,7 +266,7 @@ void send_txspectrum(void) {
   int numsamples = 0;
   int numout, rc;
   uint8_t specbuf[SPECTRUM_DATA_SIZE];
-  if (!remoteclient.send_tx_spectrum || !can_transmit || !remoteclient.running) {
+  if (!remoteclient.send_tx_spectrum || transmitter == NULL || !remoteclient.running) {
     return;
   }
   SYNC(spectrum_data.header.sync);
@@ -769,7 +769,6 @@ static void server_loop(void) {
     case CMD_SPLIT:
     case CMD_STEP:
     case CMD_STORE:
-    case CMD_TOGGLE_MOX:
     case CMD_TOGGLE_TUNE:
     case CMD_TUNE:
     case CMD_TWOTONE:
@@ -1363,7 +1362,7 @@ static int server_command(gpointer data) {
   break;
   case CMD_METER:
     active_receiver->smetermode = header->b1;
-    if (can_transmit) {
+    if (transmitter != NULL) {
       transmitter->alcmode = header->b2;
       transmitter->metermode = from_16(header->s1);
     }
@@ -1432,7 +1431,7 @@ static int server_command(gpointer data) {
   }
   break;
   case CMD_TOGGLE_TUNE:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       full_tune = from_16(header->s1);
       memory_tune = from_16(header->s2);
       radio_toggle_tune();
@@ -1440,39 +1439,23 @@ static int server_command(gpointer data) {
       send_tune(remoteclient.sock_tcp, transmitter->tune);
     }
     break;
-  case CMD_TOGGLE_MOX:
-    if (mox) {
-      radio_toggle_mox();
-    } else {
-      g_timeout_add(ptt_delay, ext_radio_toggle_mox, NULL);
-    }
-    g_idle_add(ext_vfo_update, NULL);
-    send_mox(remoteclient.sock_tcp, mox);
-    break;
   case CMD_MOX:
-    if (header->b1) {
-      radio_set_mox(1);
-    } else {
-      g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
-    }
+    //
+    // The client sends this to fire/remove MOX.
+    // PTT delays have been taken care of at the client side.
+    //
+    radio_set_mox(header->b1);
     g_idle_add(ext_vfo_update, NULL);
-    send_mox(remoteclient.sock_tcp, mox);
     break;
   case CMD_VOX:
     //
-    // Vox is handled in the client, so do a  mox update
-    // but report back properly
+    // The client sends this to fire/remove VOX.
     //
-    if (header->b1) {
-      radio_set_mox(1);
-    } else {
-      g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
-    }
+    radio_set_vox(header->b1);
     g_idle_add(ext_vfo_update, NULL);
-    send_vox(remoteclient.sock_tcp, mox);
     break;
   case CMD_TUNE:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       full_tune = from_16(header->s1);
       memory_tune = from_16(header->s2);
       radio_set_tune(header->b1);
@@ -1483,7 +1466,7 @@ static int server_command(gpointer data) {
     }
     break;
   case CMD_TWOTONE:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       radio_set_twotone(transmitter, header->b1);
       g_idle_add(ext_vfo_update, NULL);
       send_twotone(remoteclient.sock_tcp, transmitter->twotone);
@@ -1665,7 +1648,7 @@ static int server_command(gpointer data) {
   }
   break;
   case CMD_TXPROFILE: {
-    if (can_transmit) {
+    if (transmitter != NULL) {
       int num = from_16(header->s1);
       int what = header->b2;
       switch (what) {
@@ -1690,7 +1673,7 @@ static int server_command(gpointer data) {
   }
   break;
   case CMD_PHROT: {
-    if (can_transmit) {
+    if (transmitter != NULL) {
       DOUBLE_COMMAND *command = (DOUBLE_COMMAND *)header;
       transmitter->phrot_enable = command->header.b1;
       transmitter->phrot_reverse = command->header.b2;
@@ -1734,7 +1717,7 @@ static int server_command(gpointer data) {
         send_rx_filter_cut(remoteclient.sock_tcp, v);
       }
     }
-    if (can_transmit) {
+    if (transmitter != NULL) {
       send_tx_filter_cut(remoteclient.sock_tcp);
     }
   }
@@ -1754,7 +1737,7 @@ static int server_command(gpointer data) {
       send_rx_filter_cut(remoteclient.sock_tcp, id);
       send_agc(remoteclient.sock_tcp, receiver[id]);
     }
-    if (can_transmit) {
+    if (transmitter != NULL) {
       send_tx_filter_cut(remoteclient.sock_tcp);
     }
     g_idle_add(ext_vfo_update, NULL);
@@ -1767,7 +1750,7 @@ static int server_command(gpointer data) {
       rx_set_filter(receiver[id]);
       send_rx_filter_cut(remoteclient.sock_tcp, id);
     }
-    if (can_transmit) {
+    if (transmitter != NULL) {
       tx_set_filter(transmitter);
       send_tx_filter_cut(remoteclient.sock_tcp);
     }
@@ -1805,7 +1788,7 @@ static int server_command(gpointer data) {
     }
     break;
   case CMD_SOAPY_TXANT:
-    if (device == SOAPYSDR_USB_DEVICE && can_transmit) {
+    if (device == SOAPYSDR_USB_DEVICE && transmitter != NULL) {
       transmitter->antenna = header->b1;
 #ifdef SOAPYSDR
       soapy_protocol_set_tx_antenna(transmitter->antenna);
@@ -1824,7 +1807,7 @@ static int server_command(gpointer data) {
     }
     break;
   case CMD_SPLIT:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       split = header->b1;
       tx_set_mode(transmitter, vfo_get_tx_mode());
       g_idle_add(ext_vfo_update, NULL);
@@ -1868,7 +1851,7 @@ static int server_command(gpointer data) {
   }
   break;
   case CMD_TX_FPS:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       transmitter->fps = header->b2;
       tx_set_framerate(transmitter);
     }
@@ -1895,7 +1878,7 @@ static int server_command(gpointer data) {
       send_rx_data(remoteclient.sock_tcp, 1);
       send_adc_data(remoteclient.sock_tcp, receiver[1]->adc);
     }
-    if (can_transmit) {
+    if (transmitter != NULL) {
       send_tx_data(remoteclient.sock_tcp);
     }
     break;
@@ -1904,7 +1887,7 @@ static int server_command(gpointer data) {
     send_vfo_data(remoteclient.sock_tcp, VFO_A);
     send_adc_data(remoteclient.sock_tcp, receiver[0]->adc);
     send_rx_data(remoteclient.sock_tcp, 0);
-    if (can_transmit) {
+    if (transmitter != NULL) {
       send_tx_data(remoteclient.sock_tcp);
     }
     break;
@@ -1918,7 +1901,7 @@ static int server_command(gpointer data) {
     if (receivers > 1) {
       send_rx_data(remoteclient.sock_tcp, 1);
     }
-    if (can_transmit) {
+    if (transmitter != NULL) {
       send_tx_data(remoteclient.sock_tcp);
     }
     break;
@@ -2008,7 +1991,7 @@ static int server_command(gpointer data) {
   }
   break;
   case CMD_TX_EQ:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       const EQUALIZER_COMMAND *command = (EQUALIZER_COMMAND *)data;
       transmitter->eq_enable = command->enable;
       for (int i = 0; i < 11; i++) {
@@ -2032,7 +2015,7 @@ static int server_command(gpointer data) {
   }
   break;
   case CMD_TX_DISPLAY:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       const DOUBLE_COMMAND *command = (DOUBLE_COMMAND *)data;
       transmitter->display_detector_mode = command->header.b2;
       transmitter->display_average_mode = from_16(command->header.s1);
@@ -2112,7 +2095,7 @@ static int server_command(gpointer data) {
   }
   break;
   case CMD_TXFILTER:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       transmitter->use_rx_filter = header->b1;
       transmitter->default_filter_low = from_16(header->s1);
       transmitter->default_filter_high = from_16(header->s2);
@@ -2120,13 +2103,13 @@ static int server_command(gpointer data) {
     }
     break;
   case CMD_PREEMP:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       transmitter->pre_emphasize = header->b1;
       tx_set_pre_emphasize(transmitter);
     }
     break;
   case CMD_CTCSS:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       transmitter->ctcss_enabled = header->b1;
       transmitter->ctcss = header->b2;
       tx_set_ctcss(transmitter);
@@ -2135,7 +2118,7 @@ static int server_command(gpointer data) {
     }
     break;
   case CMD_AMCARRIER:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       const DOUBLE_COMMAND *command = (DOUBLE_COMMAND *)data;
       transmitter->am_carrier_level = from_double(command->dbl);
       tx_set_am_carrier_level(transmitter);
@@ -2154,7 +2137,7 @@ static int server_command(gpointer data) {
   }
   break;
   case CMD_TXMENU:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       const TXMENU_DATA *command = (TXMENU_DATA *)data;
       transmitter->tune_drive = command->tune_drive;
       transmitter->tune_use_drive = command->tune_use_drive;
@@ -2166,7 +2149,7 @@ static int server_command(gpointer data) {
     }
     break;
   case CMD_COMPRESSOR:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       const COMPRESSOR_DATA *command = (COMPRESSOR_DATA *)data;
       transmitter->compressor = command->compressor;
       transmitter->cfc = command->cfc;
@@ -2182,7 +2165,7 @@ static int server_command(gpointer data) {
     }
     break;
   case CMD_DEXP:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       const DEXP_DATA  *command = (DEXP_DATA *)data;
       transmitter->dexp = command->dexp;
       transmitter->dexp_filter = command->dexp_filter;
@@ -2206,22 +2189,22 @@ static int server_command(gpointer data) {
     schedule_action(CAPTURE, PRESSED, 0);
     break;
   case CMD_PSONOFF:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       tx_ps_onoff(transmitter, header->b1);
     }
     break;
   case CMD_PSRESET:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       tx_ps_reset(transmitter);
     }
     break;
   case CMD_PSRESUME:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       tx_ps_resume(transmitter);
     }
     break;
   case CMD_PSATT:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       transmitter->auto_on = header->b1;
       transmitter->feedback = header->b2;
       transmitter->attenuation = from_16(header->s1);
@@ -2231,7 +2214,7 @@ static int server_command(gpointer data) {
     }
     break;
   case CMD_PSPARAMS:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       const PS_PARAMS  *command = (PS_PARAMS *)data;
       transmitter->ps_oneshot = command->ps_oneshot;
       transmitter->ps_setpk = from_double(command->ps_setpk);
@@ -2260,7 +2243,7 @@ static int server_command(gpointer data) {
   }
   break;
   case CMD_TXFFT:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       const U32_COMMAND *command = (U32_COMMAND *)data;
       transmitter->fft_size = from_32(command->u32);
       tx_set_fft_params(transmitter);
@@ -2291,7 +2274,7 @@ static int server_command(gpointer data) {
   // This command never goes from the client to the server
   //
   case CMD_TX_FILTER_CUT:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       TRANSMITTER *tx = transmitter;
       tx->filter_low = from_16(header->s1);
       tx->filter_high = from_16(header->s2);

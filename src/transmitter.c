@@ -56,7 +56,6 @@
 #include "transmitter.h"
 #include "tx_panadapter.h"
 #include "vfo.h"
-#include "vox.h"
 #include "waterfall.h"
 
 #define min(x,y) (x<y?x:y)
@@ -90,6 +89,20 @@ double ctcss_frequencies[CTCSS_FREQUENCIES] = {
 // static variables for the sine tone generators
 //
 static int p1local = 0, p2local = 0; // sine tone generator
+
+//
+// VOX data. everything is global since a sibling of the "VOX machine"
+// is implemented in the client code if the radio is remote.
+//
+int vox_enabled = 0;          // Use VOX (yes/no)
+int vox_triggered = 0;        // This indicates VOX has been triggered
+int vox_count = 0;            // This counts down during VOX hang
+double vox_threshold = 0.010; // Threshold in Mic amplitude for firing VOX
+double vox_min_hang = 150.0;  // Minimal VOX hang time (in msec)
+double vox_hang = 250.0;      // Hang time (in msec)
+double vox_max1 = 0;          // Max amplitude in current bucket
+double vox_max2 = 0;          // Max amplidude in previous bucket
+double vox_delay = 0.075;     // Length of VOX delay (seconds)
 
 static gboolean close_cb(void) {
   // there is nothing to clean up
@@ -805,6 +818,36 @@ static gboolean tx_update_display(gpointer data) {
   return FALSE; // no more timer events
 }
 
+void tx_set_vox(TRANSMITTER *tx) {
+  //
+  // If VOX is enabled, enable the look-ahead buffer
+  // of DEXP.
+  // The length of the VOX audio delay line and the minimum hang
+  // time is based upon experimentation with P2 and a TX filter
+  // tap size of 2048. Longer filters require larger hang times,
+  // this can be set by the user in the VOX menu.
+  //
+  if (radio_is_remote) {
+    if (tx->cfc) {
+      vox_min_hang = 370.0;
+    } else {
+      vox_min_hang = 230.0;
+    }
+  } else {
+    if (tx->cfc) {
+      vox_delay = 0.125;
+      vox_min_hang = 350.0;
+    } else {
+      vox_delay = 0.075;
+      vox_min_hang = 150.0;
+    }
+    SetDEXPRunAudioDelay(0, vox_enabled);
+    SetDEXPAudioDelay (0, vox_delay);
+  }
+  g_idle_add(sliders_vox, NULL);
+  g_idle_add(ext_vfo_update, NULL);
+}
+
 void tx_create_dialog(TRANSMITTER *tx) {
   //
   // This creates a small separate window to hold a "small"
@@ -1173,7 +1216,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
               tx->mic_input_buffer,  // input buffer for DEXP
               tx->mic_input_buffer,  // output buffer for DEXP
               48000,                 // mic sample rate
-              0.01,                  // tau
+              0.010,                 // tau
               0.025,                 // attack
               0.100,                 // release
               0.800,                 // hold
@@ -1185,11 +1228,11 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
               1000.0,                // low-cut of side filter
               2000.0,                // high-cut of side filter
               0,                     // side filter run flag (to be switched on later)
-              0,                     // vox OFF (not yet implemented)
-              0,                     // delay OFF
-              0.050,                 // 50 msec delay (if used)
+              0,                     // vox On/Off (always Off in piHPSDR)
+              vox_enabled,           // vox delay on/off follows vox on/off
+              vox_delay,             // delay 75 msec (if vox delay is used)
               NULL,                  // function to call upon VOX status change
-              0,                     // anti-vox OFF (not yet implemented)
+              0,                     // anti-vox OFF (piHPSDR does not use antivox)
               1,                     // chunk size of antivox data
               1,                     // sample rate of antivox data
               1.0,                   // antivox gain
@@ -1210,18 +1253,17 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
               tx->iq_output_rate,        // output_samplerate
               1,                         // type (1=transmit)
               0,                         // state (do not run yet)
-              0.010, 0.025, 0.0, 0.010,  // DelayUp, SlewUp, DelayDown, SlewDown
+              0.000, 0.025, 0.0, 0.010,  // DelayUp, SlewUp, DelayDown, SlewDown
               1);                        // Wait for data in fexchange0
   //
   // Some WDSP settings that are never changed.
   // Most of these are the default anyway.
-  // The "pre" generator is not used in this program anyway
-  // ... and switch off "post" generator (this should not be necessary)
   //
-  SetTXABandpassWindow(tx->id, 1);                      // 7-term Blackman-Harris
+  TXASetMP(tx->id, 1);                                  // Always linear phase
+  SetTXABandpassWindow(tx->id, 1);                      // Always 7-term BH
   SetTXABandpassRun(tx->id, 1);                         // enable TX bandpass
   SetTXACFIRRun(tx->id, SET(protocol == NEW_PROTOCOL)); // P2 firmware requires this
-  SetTXAAMSQRun(tx->id, 0);                             // disable microphone noise gate
+  SetTXAAMSQRun(tx->id, 0);                             // disable "old" noise gate
   SetTXAALCAttack(tx->id, 1);                           // ALC attac time-constant 1 msec
   SetTXAALCDecay(tx->id, 10);                           // ALC decay time-constant 10 msec
   SetTXAALCSt(tx->id, 1);                               // TX ALC on (never switch it off!)
@@ -1236,6 +1278,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   // Now we have set up the transmitter, apply the
   // parameters stored in tx
   //
+  tx_set_vox(tx);
   tx_set_bandpass(tx);
   tx_set_deviation(tx);
   tx_set_equalizer(tx);
@@ -1263,6 +1306,21 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
     }
   }
   return tx;
+}
+
+void vox_cancel() {
+  //
+  // Cancel any hanging timeout
+  //
+  vox_count = 0;
+  vox_triggered = 0;
+}
+
+double vox_get_peak(void) {
+  //
+  // Return max amplitude of last complete buffer
+  //
+  return vox_max2;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1447,19 +1505,19 @@ static void tx_full_buffer(TRANSMITTER *tx) {
   int error;
   int cwmode;
   static int txflag = 0;
+  //
   // It is important to query the TX mode and tune only *once* within this function, to assure that
   // the two "if (cwmode)" clauses give the same result.
   // cwmode only valid in the old protocol, in the new protocol we use a different mechanism
+  //
   int txmode = vfo_get_tx_mode();
   cwmode = (txmode == modeCWL || txmode == modeCWU) && !tx->tune && !tx->twotone;
   if (cwmode) {
     //
     // clear VOX peak level in case is it non-zero.
-    // This prevents the "mic lvl" indicator in the VFO bar
-    // from freezing.
+    // This prevents the "mic lvl" meter from freezing.
     //
-    vox_clear();
-    //
+    vox_max2 = 0.0;
     // Note that WDSP is not needed, but we still call it (and discard the
     // results) since this  may help in correct slew-up and slew-down
     // of the TX engine. The mic input buffer is zeroed out in CW mode.
@@ -1481,17 +1539,8 @@ static void tx_full_buffer(TRANSMITTER *tx) {
       *dp++ = tx->cw_sig_rf[j];
     }
   } else {
-    //
-    // Old VOX code, to be applied BEFORE FM preemphasis
-    // and the downward expander
-    //
-    double mypeak = 0.0;
-    for (int i = 0; i < tx->buffer_size; i++) {
-      double sample = tx->mic_input_buffer[2 * i];
-      if (sample > mypeak) { mypeak = sample; }
-      if (-sample > mypeak) { mypeak = -sample; }
-    }
-    vox_update(mypeak);
+    vox_max2 = vox_max1;
+    vox_max1 = 0.0;
     //
     // DL1YCF:
     // The FM pre-emphasis filter in WDSP has maximum unit
@@ -1511,7 +1560,7 @@ static void tx_full_buffer(TRANSMITTER *tx) {
     // compensated by ALC, so it is important to have FM pre-emphasis
     // before ALC (checkbox in tx_menu checked, that is, pre_emphasis==0).
     //
-    // Note that mic sample amplification has to be done after vox_update()
+    // Note that mic sample amplification has to be done after VOX.
     //
     if (txmode == modeFMN && !tx->tune) {
       for (int i = 0; i < 2 * tx->samples; i += 2) {
@@ -1521,8 +1570,9 @@ static void tx_full_buffer(TRANSMITTER *tx) {
     //
     // Note that the DownwardExpander is used *outside* of WDSP
     // channels. We use a single DEXP and give it the id=0.
-    // For triggering VOX, we still use the old code, although
-    // the downward expander also offers VOX capabilities.
+    // The VOX "delay line" of DEXP is used twogether with our
+    // own VOX-triggering code (see explanation at the beginning of
+    // the tx_add_mic_sample function).
     //
     xdexp(0);
     fexchange0(tx->id, tx->mic_input_buffer, tx->iq_output_buffer, &error);
@@ -1544,11 +1594,14 @@ static void tx_full_buffer(TRANSMITTER *tx) {
     if (txflag == 0 && protocol == NEW_PROTOCOL) {
       //
       // this is the first time (after a pause) that we send TX samples
-      // so send some "silence" to pre-fill the sample buffer to
-      // suppress underflows if one of the following buckets comes
-      // a little late.
+      // so send some "silence" to pre-fill the TX IQ FIFO in the FPGA.
+      // This is done to suppress underflows if one
+      // of the following buckets ships a little late.
+      // We send 960 samples = 4 HPSDR packets (about 5 msec), together
+      // with the first buffer (2048 samples in P2) this means about
+      // 3000 samples are sent in rapid succession after a RX/TX transition.
       //
-      for (j = 0; j < 1024; j++) {
+      for (j = 0; j < 960; j++) {
         new_protocol_iq_samples(0.0, 0.0);
       }
     }
@@ -1693,6 +1746,17 @@ void tx_queue_cw_event(int down, int wait) {
 
 void tx_add_mic_sample(TRANSMITTER *tx, double mic_sample) {
   ASSERT_SERVER();
+  //
+  // VOX. While DEXP (through xdexp()) contains a "VOX engine", we are using our own for the
+  // following reasons:
+  // - we want to "fire" VOX as early as possible (dexp() is involved when the TX input buffer is full)
+  // - we want to allow different thresholds for the DEXP noise gate and VOX
+  // - we want to allow different hang times for the DEXP noise gate and VOX
+  //
+  // We *are* using, however, the "look-ahead" ring buffer implemented in DEXP.
+  // The only thing we really loose is the side channel filter (that is, a filter for the trigger signal),
+  // but this also causes some delay.
+  //
   int txmode = vfo_get_tx_mode();
   //
   // There are several (possible) sources of TX audio, so we have to prioritise them
@@ -1751,6 +1815,36 @@ void tx_add_mic_sample(TRANSMITTER *tx, double mic_sample) {
   //
   if (tx->tune || txmode == modeCWL || txmode == modeCWU) {
     mic_sample = 0.0;
+    vox_triggered = 0;
+    vox_count = 0;
+  } else if (vox_enabled) {
+    double amplitude = fabs(mic_sample);
+    if (amplitude >= vox_max1) {
+      vox_max1 = amplitude;
+    }
+    if (amplitude >= vox_threshold) {
+      if (!vox_triggered) {
+        g_idle_add(ext_radio_set_vox,GINT_TO_POINTER(1));
+        vox_triggered = 1;
+      }
+      //
+      // Re-trigger VOX.
+      // Use minimum hang times, 150 msec without, and 350 msec with CFC
+      // This is necessary to avoid chopping off the last word, so moving
+      // the "VOX hang" slider below these values has no effect.
+      //
+      if (vox_hang > vox_min_hang) {
+        vox_count = (int)(vox_hang * 48);
+      } else {
+        vox_count = (int)(vox_min_hang * 48);
+      }
+    } else if (vox_count > 0) {
+      vox_count--;
+      if (vox_count == 0) {
+        g_idle_add(ext_radio_set_vox, GINT_TO_POINTER(0));
+        vox_triggered = 0;
+      }
+    }
   }
   tx->mic_input_buffer[tx->samples * 2] = mic_sample;
   tx->mic_input_buffer[(tx->samples * 2) + 1] = 0.0;
@@ -2386,6 +2480,11 @@ void tx_set_bandpass(const TRANSMITTER *tx) {
 
 void tx_set_compressor(TRANSMITTER *tx) {
   g_idle_add(sliders_cmpr, GINT_TO_POINTER(100 * suppress_popup_sliders));
+  //
+  // The Vox delay has to be increased when CFC is switched on, therefore
+  // we must call tx_set_vox() HERE (before returning because we are a client)
+  //
+  tx_set_vox(tx);
   if (radio_is_remote) {
     send_tx_compressor(cl_sock_tcp);
     return;
@@ -2572,6 +2671,11 @@ void tx_set_fft_params(const TRANSMITTER *tx) {
     send_tx_fft(cl_sock_tcp, tx);
     return;
   }
+  //
+  // We *always* use linear phase filters and a 7-term BH window,
+  // this is set at program start and never changed. So the only
+  // parameter left is the main TX filter tap length.
+  //
   TXASetNC(tx->id, tx->fft_size);
 }
 

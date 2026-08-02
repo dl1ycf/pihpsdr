@@ -190,7 +190,7 @@ static gboolean deviation_select_cb (GtkWidget *widget, gpointer data) {
     } else {
       vfo[id].deviation = choice->info;
       rx_set_filter(myrx);
-      if (can_transmit) {
+      if (transmitter != NULL) {
         tx_set_filter(transmitter);
       }
       g_idle_add(ext_vfo_update, NULL);

@@ -743,14 +743,14 @@ int process_action(gpointer data) {
     }
     break;
   case COMP_ENABLE:
-    if (can_transmit && a->mode == PRESSED) {
+    if (transmitter != NULL && a->mode == PRESSED) {
       TOGGLE(transmitter->compressor);
       tx_set_compressor(transmitter);
       g_idle_add(ext_vfo_update, NULL);
     }
     break;
   case COMPRESSION:
-    if (can_transmit && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
+    if (transmitter != NULL && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       value = KnobOrWheel(a, transmitter->compressor_level, 0.0, 20.0, 1.0);
       transmitter->compressor = SET(value > 0.5);
       transmitter->compressor_level = value;
@@ -833,7 +833,7 @@ int process_action(gpointer data) {
     }
     break;
   case DUPLEX:
-    if (can_transmit && !radio_is_transmitting() && a->mode == PRESSED) {
+    if (transmitter != NULL && !radio_is_transmitting() && a->mode == PRESSED) {
       radio_set_duplex(NOT(duplex));
     }
     break;
@@ -1015,7 +1015,7 @@ int process_action(gpointer data) {
     }
     break;
   case MIC_GAIN:
-    if (can_transmit && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
+    if (transmitter != NULL && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       value = KnobOrWheel(a, transmitter->mic_gain, -12.0, 50.0, 1.0);
       radio_set_mic_gain(value);
     }
@@ -1038,10 +1038,12 @@ int process_action(gpointer data) {
     break;
   case MOX:
     if (a->mode == PRESSED) {
+      // TODO: this involves a race condition if another "toggle mox" command
+      //       arrives while the ptt_delay is waiting
       if (mox) {
-        g_timeout_add(ptt_delay, ext_radio_toggle_mox, NULL);
+        g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
       } else {
-        radio_toggle_mox();
+        radio_set_mox(1);
       }
     }
     break;
@@ -1248,7 +1250,7 @@ int process_action(gpointer data) {
     break;
   case PS:
     if (a->mode == PRESSED) {
-      if (can_transmit) {
+      if (transmitter != NULL) {
         if (transmitter->puresignal == 0) {
           tx_ps_onoff(transmitter, 1);
         } else {
@@ -1488,7 +1490,7 @@ int process_action(gpointer data) {
     }
     break;
   case TUNE_DRIVE:
-    if (can_transmit && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
+    if (transmitter != NULL && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
       value = KnobOrWheel(a, (double) transmitter->tune_drive, 0.0, 100.0, 1.0);
       transmitter->tune_drive = (int) value;
       transmitter->tune_use_drive = 0;
@@ -1514,7 +1516,7 @@ int process_action(gpointer data) {
     break;
   case TWO_TONE:
     if (a->mode == PRESSED) {
-      if (can_transmit) {
+      if (transmitter != NULL) {
         radio_set_twotone(transmitter, NOT(transmitter->twotone));
       }
     }
@@ -1567,14 +1569,15 @@ int process_action(gpointer data) {
     }
     break;
   case VOX:
-    if (a->mode == PRESSED) {
-      radio_set_voxenable(!vox_enabled);
+    if (a->mode == PRESSED && transmitter != NULL) {
+      vox_enabled = NOT(vox_enabled);
+      tx_set_vox(transmitter);
     }
     break;
   case VOXLEVEL:
-    if (a->mode == ABSOLUTE || a->mode == RELATIVE) {
-      value = KnobOrWheel(a, vox_threshold, 0.0, 1.0, 0.01);
-      radio_set_voxlevel(value);
+    if (transmitter != NULL && (a->mode == ABSOLUTE || a->mode == RELATIVE)) {
+      vox_threshold = (int) KnobOrWheel(a, vox_threshold, 0.0, 1.0, 0.01);
+      tx_set_vox(transmitter);
     }
     break;
   case WATERFALL_HIGH:
@@ -1602,7 +1605,7 @@ int process_action(gpointer data) {
     }
     break;
   case XIT_ENABLE:
-    if (a->mode == PRESSED && can_transmit) {
+    if (a->mode == PRESSED && transmitter != NULL) {
       vfo_xit_toggle();
     }
     break;

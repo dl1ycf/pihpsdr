@@ -59,7 +59,6 @@
 #include "toolbar.h"
 #include "transmitter.h"
 #include "vfo.h"
-#include "vox.h"
 
 #ifdef DUMP_TX_DATA
   double dumpiqi[1000000];
