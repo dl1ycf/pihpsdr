@@ -1440,19 +1440,17 @@ static int server_command(gpointer data) {
     }
     break;
   case CMD_MOX:
-    if (header->b1) {
-      radio_set_mox(1);
-    } else {
-      g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
-    }
+    //
+    // The client sends this to fire/remove MOX.
+    // PTT delays have been taken care of at the client side.
+    //
+    radio_set_mox(header->b1);
     g_idle_add(ext_vfo_update, NULL);
-    send_mox(remoteclient.sock_tcp, mox);
     break;
   case CMD_VOX:
     //
-    // The client sends this if it fires VOX.
+    // The client sends this to fire/remove VOX.
     //
-    t_print("CMD VOX=%d\n", header->b1);
     radio_set_vox(header->b1);
     g_idle_add(ext_vfo_update, NULL);
     break;

@@ -822,22 +822,25 @@ static gboolean tx_update_display(gpointer data) {
 void tx_set_vox(TRANSMITTER *tx) {
   //
   // If VOX is enabled, enable the look-ahead buffer
-  // of DEXP. The length of this buffer (auto-delay)
-  // is chosen by piHPSDR (125 msec if using CFC, 75 msec if not)
+  // of DEXP.
+  // The length of the VOX audio delay line and the minimum hang
+  // time is based upon experimentation with P2 and a TX filter
+  // tap size of 2048. Longer filters require larger hang times,
+  // this can be set by the user in the VOX menu.
   //
   if (radio_is_remote) {
     if (tx->cfc) {
-      vox_min_hang = 0.370;
+      vox_min_hang = 370.0;
     } else {
-      vox_min_hang = 0.230;
+      vox_min_hang = 230.0;
     }
   } else {
     if (tx->cfc) {
       vox_delay = 0.125;
-      vox_min_hang = 0.350;
+      vox_min_hang = 350.0;
     } else {
       vox_delay = 0.075;
-      vox_min_hang = 0.150;
+      vox_min_hang = 150.0;
     }
     SetDEXPRunAudioDelay(0, vox_enabled);
     SetDEXPAudioDelay (0, vox_delay);
@@ -2475,6 +2478,11 @@ void tx_set_bandpass(const TRANSMITTER *tx) {
 
 void tx_set_compressor(TRANSMITTER *tx) {
   g_idle_add(sliders_cmpr, GINT_TO_POINTER(100 * suppress_popup_sliders));
+  //
+  // The Vox delay has to be increased when CFC is switched on, therefore
+  // we must call tx_set_vox() HERE (before returning because we are a client)
+  //
+  tx_set_vox(tx);
   if (radio_is_remote) {
     send_tx_compressor(cl_sock_tcp);
     return;
@@ -2514,11 +2522,6 @@ void tx_set_compressor(TRANSMITTER *tx) {
   SetTXAosctrlRun(tx->id, tx->compressor && (tx->compressor_level > 5.5));
   SetTXACompressorGain(tx->id, tx->compressor_level);
   SetTXACompressorRun(tx->id, tx->compressor);
-  //
-  // The Vox delay has to be increased when CFC is switched on, therefore
-  // we must call tx_set_vox() here
-  //
-  tx_set_vox(tx);
 }
 
 void tx_set_ctcss(const TRANSMITTER *tx) {

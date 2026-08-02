@@ -2328,7 +2328,7 @@ void radio_set_vox(int state) {
     // is fired on the client's side.
     //
     if (remoteclient.running) {
-      send_mox(remoteclient.sock_tcp, state);
+      send_vox(remoteclient.sock_tcp, state);
     }
     rxtx(state);
     vox = state;
