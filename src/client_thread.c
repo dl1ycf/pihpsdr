@@ -373,7 +373,7 @@ static gpointer remote_txaudio_thread(gpointer data) {
     for (int i = 0; i < 96; i++) {
       double sample = 0.0;
       int txmode = vfo_get_tx_mode();
-      int no_audio = (txmode == modeCWL || txmode == modeCWU || tx->tune || tx->twotone);
+      int cwmode = (txmode == modeCWL || txmode == modeCWU || tx->tune || tx->twotone);
       if (tx->local_audio) {
         sample = audio_get_next_mic_sample(tx);
       }
@@ -388,7 +388,7 @@ static gpointer remote_txaudio_thread(gpointer data) {
       //
       // VOX START
       //
-      if (no_audio) {
+      if (cwmode) {
         vox_triggered = 0;
         vox_count = 0;
         sample = 0.0;
@@ -425,7 +425,7 @@ static gpointer remote_txaudio_thread(gpointer data) {
         //
         tx_pcm_buf[tx_pcm_idx++] = (opus_int16)(sample * 32767.0);
         if (tx_pcm_idx >= OPUS_FRAME_SIZE) {
-          if ((radio_is_transmitting() || vox_triggered) && !no_audio) {
+          if ((radio_is_transmitting() || vox_triggered) && !cwmode) {
             //
             // The actual transmission of the mic audio samples only takes  place
             // if we *need* them (note VOX is handled locally)
@@ -459,7 +459,7 @@ static gpointer remote_txaudio_thread(gpointer data) {
         int32_t s = (int32_t)(sample  * 32766.672 + 32767.5) - 32767;
         txaudio_data.samples[txaudio_buffer_index++] = to_16(s);
         if (txaudio_buffer_index >= AUDIO_DATA_SIZE) {
-          if ((radio_is_transmitting() || vox_triggered) && !no_audio) {
+          if ((radio_is_transmitting() || vox_triggered) && !cwmode) {
             //
             // The actual transmission of the mic audio samples only takes  place
             // if we *need* them (note VOX is handled locally)
