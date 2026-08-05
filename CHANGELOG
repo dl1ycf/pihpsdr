@@ -1,5 +1,22 @@
 LIST OF RECENT PIHPSDR CHANGES
 ==============================
+July 2026:
+----------
+
+- VOX code rewritten
+
+- MacOS libinstall now compiles SOAPY stuff from the sources
+
+- TCI code stream-lined
+
+- upgrade to WDSP 2.00
+
+- updated all ring buffer code
+
+- SOAPY: reduce TX drive to zero while RXing
+
+- added "PTT Delay"
+
 June 2026:
 ----------
 
