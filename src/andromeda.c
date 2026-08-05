@@ -223,7 +223,11 @@ int andromeda_execute_button(int v, int p) {
     case 47: // MOX
       if (v == 0) {
       } else {
-        radio_toggle_mox();
+        if (mox) {
+          g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
+        } else {
+          radio_set_mox(1);
+        }
       }
       break;
     case 48: // TUNE
@@ -240,7 +244,7 @@ int andromeda_execute_button(int v, int p) {
         if (longpress) {
           longpress = 0;
         } else {
-          if (can_transmit) {
+          if (transmitter != NULL) {
             tx_ps_onoff(transmitter, NOT(transmitter->puresignal));
           }
         }

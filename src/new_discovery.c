@@ -309,9 +309,9 @@ static gpointer p2_discover_receive_thread(gpointer data) {
               frequency_min = 0.0;
               frequency_max = 61440000.0;
               break;
-            case NEW_DEVICE_G1:
-              discovered[devices].device = NEW_DEVICE_G1;
-              snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Anan G1");
+            case NEW_DEVICE_G2E:
+              discovered[devices].device = NEW_DEVICE_G2E;
+              snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Anan G2E");
               frequency_min = 0.0;
               frequency_max = 61440000.0;
               break;

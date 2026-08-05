@@ -222,7 +222,6 @@ static void audio_channel_cb(GtkWidget *widget, gpointer data) {
 }
 
 void rx_menu(GtkWidget *parent) {
-  int i;
   GtkWidget *btn;
   GtkWidget *lbl;
   dialog = gtk_dialog_new();
@@ -311,7 +310,7 @@ void rx_menu(GtkWidget *parent) {
       gtk_widget_set_halign(lbl, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(grid), lbl, 0, row, 1, 1);
       btn = gtk_combo_box_text_new();
-      for (i = 0; i < n_adc; i++) {
+      for (int i = 0; i < n_adc; i++) {
         char label[32];
         snprintf(label, sizeof(label), "ADC-%d", i + 1);
         gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, label);
@@ -407,7 +406,7 @@ void rx_menu(GtkWidget *parent) {
   output = gtk_combo_box_text_new();
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(output), NULL, "Only Audio to Radio");
   gtk_combo_box_set_active(GTK_COMBO_BOX(output), 0);
-  for (i = 0; i < n_output_devices; i++) {
+  for (int i = 0; i < n_output_devices; i++) {
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(output), NULL, output_devices[i].description);
     if (myrx->local_audio && strcmp(myrx->audio_name, output_devices[i].name) == 0) {
       gtk_combo_box_set_active(GTK_COMBO_BOX(output), i + 1);

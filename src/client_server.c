@@ -434,7 +434,7 @@ void send_adc_data(int sock, int i) {
 }
 
 void send_tx_data(int sock) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     TRANSMITTER_DATA data;
     const TRANSMITTER *tx = transmitter;
     SYNC(data.header.sync);
@@ -752,7 +752,7 @@ void send_pan(int s, const RECEIVER *rx) {
 }
 
 void send_phrot(int s) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     DOUBLE_COMMAND command;
     SYNC(command.header.sync);
     command.header.data_type = to_16(CMD_PHROT);
@@ -882,7 +882,7 @@ void send_eq(int s, int id) {
     }
   } else if (id == 8) {
     command.header.data_type = to_16(CMD_TX_EQ);
-    if (can_transmit) {
+    if (transmitter != NULL) {
       command.enable = transmitter->eq_enable;
       for (int i = 0; i < 11; i++) {
         command.freq[i] = to_double(transmitter->eq_freq[i]);
@@ -1009,13 +1009,6 @@ void send_vox(int s, int state) {
   send_tcp(s, (char *)&header, sizeof(header));
 }
 
-void send_toggle_mox(int s) {
-  HEADER header;
-  SYNC(header.sync);
-  header.data_type = to_16(CMD_TOGGLE_MOX);
-  send_tcp(s, (char *)&header, sizeof(header));
-}
-
 void send_toggle_tune(int s) {
   HEADER header;
   SYNC(header.sync);
@@ -1082,7 +1075,7 @@ void send_tx_filter_cut(int s) {
   HEADER header;
   SYNC(header.sync);
   header.data_type = to_16(CMD_TX_FILTER_CUT);
-  if (can_transmit) {
+  if (transmitter != NULL) {
     header.s1  =  to_16(transmitter->filter_low);
     header.s2  =  to_16(transmitter->filter_high);
   }
@@ -1127,7 +1120,7 @@ void send_digidrivemax(int s) {
 }
 
 void send_am_carrier(int s) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     DOUBLE_COMMAND command;
     SYNC(command.header.sync);
     command.header.data_type = to_16(CMD_AMCARRIER);
@@ -1137,7 +1130,7 @@ void send_am_carrier(int s) {
 }
 
 void send_dexp(int s) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     DEXP_DATA command;
     SYNC(command.header.sync);
     command.header.data_type = to_16(CMD_DEXP);
@@ -1157,7 +1150,7 @@ void send_dexp(int s) {
 }
 
 void send_tx_compressor(int s) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     COMPRESSOR_DATA command;
     SYNC(command.header.sync);
     command.header.data_type = to_16(CMD_COMPRESSOR);
@@ -1175,7 +1168,7 @@ void send_tx_compressor(int s) {
 }
 
 void send_txmenu(int s) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     TXMENU_DATA command;
     SYNC(command.header.sync);
     command.header.data_type = to_16(CMD_TXMENU);
@@ -1189,7 +1182,7 @@ void send_txmenu(int s) {
 }
 
 void send_ctcss(int s) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     HEADER header;
     SYNC(header.sync);
     header.data_type = to_16(CMD_CTCSS);
@@ -1200,7 +1193,7 @@ void send_ctcss(int s) {
 }
 
 void send_txfilter(int s) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     HEADER header;
     SYNC(header.sync);
     header.data_type = to_16(CMD_TXFILTER);
@@ -1212,7 +1205,7 @@ void send_txfilter(int s) {
 }
 
 void send_preemp(int s) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     HEADER header;
     SYNC(header.sync);
     header.data_type = to_16(CMD_PREEMP);
@@ -1255,7 +1248,7 @@ void send_psonoff(int s, int state) {
 void send_psatt(int s) {
   //
   // This sends TX attenuation, PS auto-att, feedback, and PS ant
-  if (can_transmit) {
+  if (transmitter != NULL) {
     HEADER header;
     SYNC(header.sync);
     header.data_type = to_16(CMD_PSATT);
@@ -1377,7 +1370,7 @@ void send_soapy_rxant(int s, int id) {
 }
 
 void send_soapy_txant(int s) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     HEADER header;
     SYNC(header.sync);
     header.data_type = to_16(CMD_SOAPY_TXANT);
@@ -1462,7 +1455,7 @@ void send_display(int s, int id) {
     command.header.b2 = receiver[id]->display_detector_mode;
     command.header.s1 = to_16(receiver[id]->display_average_mode);
     command.dbl = to_double(receiver[id]->display_average_time);
-  } else if (can_transmit) {
+  } else if (transmitter != NULL) {
     command.header.data_type = to_16(CMD_TX_DISPLAY);
     command.header.b2 = transmitter->display_detector_mode;
     command.header.s1 = to_16(transmitter->display_average_mode);

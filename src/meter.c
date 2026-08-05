@@ -32,7 +32,6 @@
 #include "theme.h"
 #include "version.h"
 #include "vfo.h"
-#include "vox.h"
 
 static GtkWidget *meter;
 static cairo_surface_t *meter_surface = NULL;
@@ -89,7 +88,7 @@ GtkWidget* meter_init(int width, int height) {
 //
 // ----------------------------------------------------------------------------
 // Additional RX meter styles: edgewise moving-coil and dual-scale bar.
-// Selected through analog_meter (0=digital, 1=analog arc, 2=edgewise, 3=dual).
+// Selected through meter_type
 // ----------------------------------------------------------------------------
 //
 static void meter_zone_rgb(double f, double *r, double *g, double *b) {
@@ -968,12 +967,17 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
       cairo_fill(cr);
       cairo_pattern_destroy(pivot);
     }
-    // ── Text: dBm (Option 3 placement) ─────────────────────────────────────
+    //
+    // dBm value as text. First, center the text "-999 dBm" and
+    // then print the actual value right-aligned to the right
+    // edge
     cairo_set_source_rgba(cr, COLOUR_METER);
+    cairo_set_font_size(cr, 16.0 * scalfac);
+    cairo_text_extents(cr, "-999 dBm", &extents);
+    double right_edge = cx + 0.5 * extents.width;
     snprintf(sf, sizeof(sf), "%d dBm", (int)(max_rxlvl - 0.5));
     cairo_text_extents(cr, sf, &extents);
-    cairo_set_font_size(cr, 16.0 * scalfac);
-    cairo_move_to(cr, cx - 0.5 * extents.width, cy - radius + 30.0 * scalfac);
+    cairo_move_to(cr, right_edge - extents.width, cy - radius + 30.0 * scalfac);
     cairo_show_text(cr, sf);
   }
   break;
@@ -1016,7 +1020,7 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
 }
 
 void txmeter_update(int fps, double pwr, double alc, double swr, double mic, double out) {
-  if (!meter_surface || !can_transmit) { return; }
+  if (!meter_surface || transmitter == NULL) { return; }
   const double min_alc    = -99.0;
   const double min_pwr    =   0.0;
   const double min_mic    = -99.0;
@@ -1315,32 +1319,40 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
         cairo_fill(cr);
         cairo_pattern_destroy(pivot);
       }
-      // ── Text: power value (Option 3 placement) ────────────────────────────
+      //
+      // Power value. Center the string "999W" first, then
+      // right-align the actual value to the right margin thereof
       cairo_set_source_rgba(cr, COLOUR_METER);
       cairo_set_font_size(cr, 12.0 * scalfac);
       switch (pa_power) {
       case PA_1W:
+        cairo_text_extents(cr, "9999mW", &extents);
         snprintf(sf, sizeof(sf), "%dmW",   (int)(1000.0 * max_pwr + 0.5));
         break;
       case PA_5W:
       case PA_10W:
+        cairo_text_extents(cr, "99.9W", &extents);
         snprintf(sf, sizeof(sf), "%0.1fW", max_pwr);
         break;
       default:
+        cairo_text_extents(cr, "999W", &extents);
         snprintf(sf, sizeof(sf), "%dW",    (int)(max_pwr + 0.5));
         break;
       }
+      double right_edge = cx + 0.5 * extents.width;
       cairo_text_extents(cr, sf, &extents);
-      cairo_move_to(cr, cx - 0.5 * extents.width, VFO_HEIGHT - 32 * scalfac);
+      cairo_move_to(cr, right_edge - extents.width, VFO_HEIGHT - 32 * scalfac);
       cairo_show_text(cr, sf);
       if (swr > transmitter->swr_alarm) {
         cairo_set_source_rgba(cr, COLOUR_ALARM);
       } else {
         cairo_set_source_rgba(cr, COLOUR_METER);
       }
+      cairo_text_extents(cr, "SWR 9.9:1", &extents);
+      double left_edge = cx - 0.5 * extents.width;
       snprintf(sf, sizeof(sf), "SWR %1.1f:1", swr);
       cairo_text_extents(cr, sf, &extents);
-      cairo_move_to(cr, cx - 0.5 * extents.width, VFO_HEIGHT - 17 * scalfac);
+      cairo_move_to(cr, left_edge, VFO_HEIGHT - 17 * scalfac);
       cairo_show_text(cr, sf);
     }
     if (!cwmode && ADD_METER_WIDTH == 0) {

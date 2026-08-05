@@ -59,7 +59,6 @@
 #include "toolbar.h"
 #include "transmitter.h"
 #include "vfo.h"
-#include "vox.h"
 
 #ifdef DUMP_TX_DATA
   double dumpiqi[1000000];
@@ -948,7 +947,7 @@ static void new_protocol_high_priority(void) {
   // Set RX filters
   //
   switch (device) {
-  case NEW_DEVICE_G1:
+  case NEW_DEVICE_G2E:
     //
     // We only have a single ADC, so this is the simplified
     // variant of the Saturn/Orion2 case
@@ -1103,7 +1102,7 @@ static void new_protocol_high_priority(void) {
   //
   LPFfreq = DUCfrequency;
   if (!xmit
-      && (device != NEW_DEVICE_ORION2 && device != NEW_DEVICE_SATURN && device != NEW_DEVICE_G1)
+      && (device != NEW_DEVICE_ORION2 && device != NEW_DEVICE_SATURN && device != NEW_DEVICE_G2E)
       && adc[0].antenna < 3) {
     LPFfreq = 40000000LL;  // disable the LPF
     if (receiver[0]->adc == 0) {
@@ -1164,7 +1163,7 @@ static void new_protocol_high_priority(void) {
   if (xmit && transmitter->puresignal) {
     rxant = adc[2].antenna;     // 0, 6, or 7
   }
-  if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN || device == NEW_DEVICE_G1) {
+  if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN || device == NEW_DEVICE_G2E) {
     rxant += 100;
   } else if (new_pa_board) {
     // New-PA setting invalid on ANAN-7000,8000

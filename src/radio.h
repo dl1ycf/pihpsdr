@@ -233,9 +233,6 @@ extern long long tune_timeout;
 extern int meter_type;
 extern int extended_meter;
 
-extern int vox_enabled;
-extern double vox_threshold;
-extern double vox_hang;
 extern int vox;
 extern int CAT_cw_is_active;
 extern int MIDI_cw_is_active;
@@ -252,8 +249,6 @@ extern const int capture_max;
 extern int capture_record_pointer;
 extern int capture_replay_pointer;
 extern double *capture_data;
-
-extern int can_transmit;
 
 extern int have_rx_gain;               // programmable RX gain available
 extern int have_rx_att;                // step attenuator available -31 ... 0 dB
@@ -328,7 +323,6 @@ extern void   radio_split_toggle(void);
 extern void   radio_set_split(int v);
 extern void   radio_set_mox(int state);
 extern void   radio_set_twotone(TRANSMITTER *tx, int state);
-extern int    radio_get_mox(void);
 extern void   radio_set_tune(int state);
 extern void   radio_set_duplex(int state);
 extern void   radio_set_cw_speed(int s);

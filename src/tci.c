@@ -116,7 +116,6 @@ typedef struct _client {
   GQueue *lws_tx_queue;         // queued PAYLOAD objects for LWS writable callback
   int initial_sent;             // initial state already sent via LWS
   int rx_audio_enabled[TCI_RX_AUDIO_MAX_RECEIVERS];
-  unsigned int rx_audio_read_count[TCI_RX_AUDIO_MAX_RECEIVERS];
   int tx_audio_enabled;
   unsigned int tx_audio_rx_count;
   unsigned char *binary_rx_buf;
@@ -137,7 +136,6 @@ typedef struct _payload {
 static gpointer tci_lws_server (gpointer data);
 static void tci_lws_free_queue (CLIENT *client);
 static void tci_update_audio_global (void);
-static void tci_audio_wakeup (void);
 static void tci_handle_binary_lws (CLIENT *client, const unsigned char* data, size_t len, struct lws *wsi);
 static void tci_handle_binary (CLIENT *client, const TCI_STREAM *stream, size_t len);
 
@@ -189,75 +187,6 @@ static double tci_clamp_double(double value, double min, double max) {
   if (value < min) { return min; }
   if (value > max) { return max; }
   return value;
-}
-
-//
-// Launch TCI system. Called upon program start if TCI is
-// enabled in the props file, and from the CAT/TCI menu
-// if TCI is enabled there.
-//
-int launch_tci (void) {
-  t_print ("---- LAUNCHING TCI LWS SERVER ----\n");
-  //
-  // Verify that a TCI audio stream header has exactly 64 bytes,
-  // and that a TCI audio stream struct has 32832 bytes (if filled completely).
-  // This should ensure that the audio stream data begins exactly 64 bytes
-  // after the header and is thus properly aligned for "float" access.
-  //
-  if (sizeof(TCI_STREAM_HEADER) != 64) {
-    t_print ("TCI cannot start, audio stream header is not 64 bytes long\n");
-    return -1;
-  }
-  if (sizeof(TCI_STREAM) != 32832) {
-    t_print("TCI cannot start, audio stream is not 32832 bytes long\n");
-    return -1;
-  }
-  memset(tciclient, 0, sizeof(tciclient));
-  tci_audio_set_wakeup_callback (tci_audio_wakeup);
-  tci_running = 1;
-  tci_server_thread_id = g_thread_new ("tci lws server", tci_lws_server, GINT_TO_POINTER (tci_port));
-  return 0;
-}
-
-static int tci_has_clients(void) {
-  int ret = 0;
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) { ret = 1; }
-  }
-  return ret;
-}
-
-//
-// Shut down TCI system. Called from CAT/TCI menu
-// if TCI is disabled there.
-//
-void shutdown_tci (void) {
-  t_print ("%s\n", __func__);
-  if (tci_tx_chrono_timer_id != 0) {
-    g_source_remove (tci_tx_chrono_timer_id);
-    tci_tx_chrono_timer_id = 0;
-  }
-  tci_audio_set_wakeup_callback (NULL);
-  if (tci_lws_context != NULL) {
-    for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-      if (tciclient[c].wsi != NULL) {
-        (void) tci_queue_frame(tciclient + c, opTEXT, "stop;", 0);
-        lws_set_timeout(tciclient[c].wsi, PENDING_TIMEOUT_CLOSE_SEND, LWS_TO_KILL_ASYNC);
-      }
-    }
-    lws_cancel_service (tci_lws_context);
-    for (int i = 0; i < 50 && tci_has_clients(); i++) {
-      lws_cancel_service (tci_lws_context);
-      usleep(10000);
-    }
-  }
-  tci_running = 0;
-  if (tci_server_thread_id != NULL) {
-    if (g_thread_self() != tci_server_thread_id) {
-      g_thread_join (tci_server_thread_id);
-    }
-    tci_server_thread_id = NULL;
-  }
 }
 
 static int tci_queue_frame (CLIENT *client, int type, const char* msg, int check_running) {
@@ -400,7 +329,7 @@ static void tci_update_audio_global (void) {
   tci_audio_tx_active = entx;
 }
 
-static void tci_audio_wakeup (void) {
+void tci_audio_wakeup (void) {
   tci_lws_pending_writable = 1;
   if (tci_lws_context != NULL) {
     lws_cancel_service (tci_lws_context);
@@ -411,8 +340,7 @@ static void tci_queue_rx_audio_frame (CLIENT *client, int receiver_id) {
   TCI_STREAM stream;
   size_t frame_len;
   if (client == NULL || !client->running || !client->rx_audio_enabled[receiver_id]) { return; }
-  if (tci_audio_get_frame (receiver_id, &client->rx_audio_read_count[receiver_id], &stream, sizeof (stream),
-                           &frame_len) == 0) {
+  if (tci_audio_get_frame (receiver_id, &stream, sizeof (stream), &frame_len) == 0) {
     return;
   }
   (void) tci_queue_binary_frame (client, (const unsigned char *)&stream, frame_len);
@@ -429,7 +357,7 @@ static int tci_queue_tx_chrono_frame (CLIENT *client) {
   header.format = TCI_AUDIO_FORMAT_FLOAT32;
   header.length = TCI_TX_AUDIO_CHRONO_LENGTH;
   header.type = TCI_STREAM_TX_CHRONO;
-  header.channels = TCI_AUDIO_CHANNELS;
+  header.channels = 2;
   queued = tci_queue_binary_frame (client, (const unsigned char*) &header, sizeof(TCI_STREAM_HEADER));
   if (queued) {
   } else if (rigctl_debug) {
@@ -521,9 +449,10 @@ static void tci_handle_binary_lws (CLIENT *client, const unsigned char* data, si
   }
   //
   // Now the whole frame is assembled, so we can process it. Since client->binary_rx_buf
-  // is a pointer obtained from a malloc(), it is suitably aligned for all data types.
+  // is a pointer obtained from a malloc(), it is suitably aligned for all data types,
+  // and we use the intermediate cast to void* to tell the compiler about this.
   //
-  tci_handle_binary (client, (TCI_STREAM *)client->binary_rx_buf, client->binary_rx_len);  // CAST OK
+  tci_handle_binary (client, (TCI_STREAM *)(void *)client->binary_rx_buf, client->binary_rx_len);
   client->binary_rx_len = 0;
 }
 
@@ -562,48 +491,6 @@ static void tci_send_mox (CLIENT *client) {
   }
 }
 
-static void tci_send_mox_state (CLIENT *client, int state) {
-  if (client == NULL) { return; }
-  if (client->last_mox == state) { return; }
-  if (state) {
-    tci_send_text (client, "trx:0,true;");
-    client->last_mox = 1;
-  } else {
-    tci_send_text (client, "trx:0,false;");
-    client->last_mox = 0;
-  }
-}
-
-static void tci_broadcast_mox_state (int state) {
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_mox_state (tciclient + c, state);
-    }
-  }
-}
-
-void tci_mox_changed (int state) {
-  if (!tci_running) { return; }
-  tci_broadcast_mox_state (state);
-}
-
-static void tci_broadcast_tune_state (int state) {
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      if (state) {
-        tci_send_text (tciclient + c, "tune:0,true;");
-      } else {
-        tci_send_text (tciclient + c, "tune:0,false;");
-      }
-    }
-  }
-}
-
-void tci_tune_changed (int state) {
-  if (!tci_running) { return; }
-  tci_broadcast_tune_state (state);
-}
-
 static void tci_send_lock (CLIENT *client, int receiver_id) {
   char msg[MAXMSGSIZE];
   if (client == NULL) { return; }
@@ -631,11 +518,6 @@ static void tci_broadcast_lock (void) {
       tci_send_vfo_locks (tciclient + c, VFO_A);
     }
   }
-}
-
-void tci_lock_changed (void) {
-  if (!tci_running) { return; }
-  tci_broadcast_lock();
 }
 
 //
@@ -731,7 +613,7 @@ static void tci_send_tx_sensors (CLIENT *client) {
   double rms;
   double peak;
   double swr;
-  if (client == NULL || transmitter == NULL || !can_transmit) {
+  if (client == NULL || transmitter == NULL) {
     return;
   }
   if (!radio_is_transmitting() || transmitter->fwd <= 0.01) {
@@ -776,15 +658,6 @@ static void tci_send_rit_enable (CLIENT *client, int receiver_id) {
   tci_send_text (client, msg);
 }
 
-static void tci_broadcast_rit_enable (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rit_enable (tciclient + c, receiver_id);
-    }
-  }
-}
-
 static void tci_send_rit_offset_value (CLIENT *client, int receiver_id, long long value) {
   char msg[MAXMSGSIZE];
   if (client == NULL) { return; }
@@ -800,28 +673,6 @@ static void tci_send_rit_offset (CLIENT *client, int receiver_id) {
   tci_send_rit_offset_value (client, receiver_id, value);
 }
 
-static void tci_broadcast_rit_offset (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rit_offset (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_rit_enable_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
-  tci_broadcast_rit_enable (receiver_id);
-  if (vfo[receiver_id].rit_enabled) {
-    if (vfo[receiver_id].rit != 0) {
-      tci_broadcast_rit_offset (receiver_id);
-    }
-  } else {
-    tci_broadcast_rit_offset (receiver_id);
-  }
-}
-
 static void tci_send_xit_enable (CLIENT *client) {
   char msg[MAXMSGSIZE];
   int txvfo;
@@ -831,14 +682,6 @@ static void tci_send_xit_enable (CLIENT *client) {
   snprintf (msg, MAXMSGSIZE, "xit_enable:0,%s;",
             vfo[txvfo].xit_enabled ? "true" : "false");
   tci_send_text (client, msg);
-}
-
-static void tci_broadcast_xit_enable (void) {
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_xit_enable (tciclient + c);
-    }
-  }
 }
 
 static void tci_send_xit_offset_value (CLIENT *client, long long value) {
@@ -856,45 +699,6 @@ static void tci_send_xit_offset (CLIENT *client) {
   if (txvfo < VFO_A || txvfo > VFO_B) { return; }
   value = vfo[txvfo].xit_enabled ? vfo[txvfo].xit : 0;
   tci_send_xit_offset_value (client, value);
-}
-
-static void tci_broadcast_xit_offset (void) {
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_xit_offset (tciclient + c);
-    }
-  }
-}
-
-void tci_xit_enable_changed (void) {
-  int txvfo;
-  if (!tci_running) { return; }
-  txvfo = vfo_get_tx_vfo();
-  if (txvfo < VFO_A || txvfo > VFO_B) { return; }
-  tci_broadcast_xit_enable();
-  if (vfo[txvfo].xit_enabled) {
-    if (vfo[txvfo].xit != 0) {
-      tci_broadcast_xit_offset();
-    }
-  } else {
-    tci_broadcast_xit_offset();
-  }
-}
-
-void tci_rit_offset_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
-  if (!vfo[receiver_id].rit_enabled) { return; }
-  tci_broadcast_rit_offset (receiver_id);
-}
-
-void tci_xit_offset_changed (void) {
-  int txvfo;
-  if (!tci_running) { return; }
-  txvfo = vfo_get_tx_vfo();
-  if (txvfo < VFO_A || txvfo > VFO_B) { return; }
-  if (!vfo[txvfo].xit_enabled) { return; }
-  tci_broadcast_xit_offset();
 }
 
 static void tci_send_tune_drive (CLIENT *client) {
@@ -954,12 +758,12 @@ static void tci_send_split (CLIENT *client) {
 static void tci_send_tx_enable (CLIENT *client) {
   char msg[MAXMSGSIZE];
   snprintf (msg, MAXMSGSIZE, "tx_enable:0,%s;",
-            can_transmit ? "true" : "false");
+            transmitter != NULL ? "true" : "false");
   tci_send_text (client, msg);
 }
 
 static void tci_send_tune (CLIENT *client) {
-  if (can_transmit && transmitter->tune) {
+  if (transmitter != NULL && transmitter->tune) {
     tci_send_text (client, "tune:0,true;");
   } else {
     tci_send_text (client, "tune:0,false;");
@@ -1013,22 +817,6 @@ static void tci_broadcast_rx_mute_state (int receiver_id, int state) {
   }
 }
 
-
-void tci_mute_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  if (active_receiver != NULL) {
-    tci_broadcast_mute_state(active_receiver->mute_radio ? 1 : 0);
-  }
-  if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
-  tci_broadcast_rx_mute_state(receiver_id, receiver[receiver_id]->mute_radio ? 1 : 0);
-}
-
-void tci_rx_mute_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
-  tci_broadcast_rx_mute_state(receiver_id, receiver[receiver_id]->mute_radio ? 1 : 0);
-}
-
 static double tci_sql_db_from_slider(double value) {
   if (value < 0.0) { value = 0.0; }
   if (value > 100.0) { value = 100.0; }
@@ -1067,34 +855,6 @@ static void tci_send_sql_level_value (CLIENT *client, int receiver_id, double va
   tci_send_text (client, msg);
 }
 
-static void tci_broadcast_sql_enable (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_sql_enable (tciclient + c, receiver_id);
-    }
-  }
-}
-
-static void tci_broadcast_sql_level (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_sql_level (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_sql_enable_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_sql_enable(receiver_id);
-}
-
-void tci_sql_level_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_sql_level(receiver_id);
-}
-
 static void tci_send_rx_anf_enable (CLIENT *client, int receiver_id) {
   char msg[MAXMSGSIZE];
   int state;
@@ -1102,20 +862,6 @@ static void tci_send_rx_anf_enable (CLIENT *client, int receiver_id) {
   state = receiver[receiver_id]->anf;
   snprintf (msg, MAXMSGSIZE, "rx_anf_enable:%d,%s;", receiver_id, state ? "true" : "false");
   tci_send_text (client, msg);
-}
-
-static void tci_broadcast_rx_anf_enable (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rx_anf_enable (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_rx_anf_enable_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_rx_anf_enable(receiver_id);
 }
 
 static void tci_send_rx_nf_enable (CLIENT *client, int receiver_id) {
@@ -1130,20 +876,6 @@ static void tci_send_rx_nf_enable_value (CLIENT *client, int receiver_id, int st
   if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
   snprintf (msg, MAXMSGSIZE, "rx_nf_enable:%d,%s;", receiver_id, state ? "true" : "false");
   tci_send_text (client, msg);
-}
-
-static void tci_broadcast_rx_nf_enable (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rx_nf_enable (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_rx_nf_enable_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_rx_nf_enable(receiver_id);
 }
 
 static int tci_rx_nb_allowed (int receiver_id) {
@@ -1170,20 +902,6 @@ static void tci_send_rx_nb_enable (CLIENT *client, int receiver_id) {
   tci_send_text (client, msg);
 }
 
-static void tci_broadcast_rx_nb_enable (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rx_nb_enable (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_rx_nb_enable_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_rx_nb_enable(receiver_id);
-}
-
 static void tci_send_rx_bin_enable (CLIENT *client, int receiver_id) {
   char msg[MAXMSGSIZE];
   int state;
@@ -1199,20 +917,6 @@ static void tci_send_rx_bin_enable_value (CLIENT *client, int receiver_id, int s
   if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
   snprintf (msg, MAXMSGSIZE, "rx_bin_enable:%d,%s;", receiver_id, state ? "true" : "false");
   tci_send_text (client, msg);
-}
-
-static void tci_broadcast_rx_bin_enable (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rx_bin_enable (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_rx_bin_enable_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_rx_bin_enable(receiver_id);
 }
 
 static int tci_rx_apf_allowed (int receiver_id) {
@@ -1237,20 +941,6 @@ static void tci_send_rx_apf_enable (CLIENT *client, int receiver_id) {
   snprintf (msg, MAXMSGSIZE, "rx_apf_enable:%d,%s;", receiver_id,
             tci_rx_apf_effective_state(receiver_id) ? "true" : "false");
   tci_send_text (client, msg);
-}
-
-static void tci_broadcast_rx_apf_enable (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rx_apf_enable (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_rx_apf_enable_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_rx_apf_enable(receiver_id);
 }
 
 static int tci_rx_nr_default_for_mode (int mode) {
@@ -1290,20 +980,6 @@ static void tci_send_rx_nr_enable (CLIENT *client, int receiver_id) {
   tci_send_text (client, msg);
 }
 
-static void tci_broadcast_rx_nr_enable (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rx_nr_enable (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_rx_nr_enable_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_rx_nr_enable(receiver_id);
-}
-
 static void tci_send_volume (CLIENT *client) {
   char msg[MAXMSGSIZE];
   double value = 0.0;
@@ -1340,31 +1016,6 @@ static void tci_send_rx_volume_value (CLIENT *client, int receiver_id, int chann
   tci_send_text (client, msg);
 }
 
-static void tci_broadcast_volume (void) {
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_volume (tciclient + c);
-    }
-  }
-}
-
-static void tci_broadcast_rx_volume (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rx_volume (tciclient + c, receiver_id, 0);
-      tci_send_rx_volume (tciclient + c, receiver_id, 1);
-    }
-  }
-}
-
-void tci_volume_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_volume();
-  tci_broadcast_rx_volume(receiver_id);
-}
-
-
 static void tci_send_agc_gain (CLIENT *client, int receiver_id) {
   char msg[MAXMSGSIZE];
   double value;
@@ -1382,15 +1033,6 @@ static void tci_send_agc_gain_value (CLIENT *client, int receiver_id, double val
   tci_send_text (client, msg);
 }
 
-static void tci_broadcast_agc_gain (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_agc_gain (tciclient + c, receiver_id);
-    }
-  }
-}
-
 static void tci_broadcast_agc_gain_value (int receiver_id, double value) {
   if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
   value = tci_clamp_double(value, -20.0, 120.0);
@@ -1399,11 +1041,6 @@ static void tci_broadcast_agc_gain_value (int receiver_id, double value) {
       tci_send_agc_gain_value(tciclient + c, receiver_id, value);
     }
   }
-}
-
-void tci_agc_gain_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_agc_gain(receiver_id);
 }
 
 static const char *tci_agc_mode_name(int agc) {
@@ -1447,15 +1084,6 @@ static void tci_send_agc_mode_value(CLIENT *client, int receiver_id, int agc) {
   tci_send_text(client, msg);
 }
 
-static void tci_broadcast_agc_mode(int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_agc_mode(tciclient + c, receiver_id);
-    }
-  }
-}
-
 static void tci_broadcast_agc_mode_value(int receiver_id, int agc) {
   if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
   for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
@@ -1465,25 +1093,12 @@ static void tci_broadcast_agc_mode_value(int receiver_id, int agc) {
   }
 }
 
-void tci_agc_mode_changed(int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_agc_mode(receiver_id);
-}
-
 static void tci_send_txfreq (CLIENT *client) {
   char msg[MAXMSGSIZE];
   long long f = vfo_get_tx_freq();
   snprintf (msg, MAXMSGSIZE, "tx_frequency:%lld;", f);
   tci_send_text (client, msg);
   client->last_fx = f;
-}
-
-static void tci_broadcast_txfreq (void) {
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_txfreq (tciclient + c);
-    }
-  }
 }
 
 static void tci_broadcast_drive (void) {
@@ -1500,19 +1115,6 @@ static void tci_broadcast_tune_drive (void) {
       tci_send_tune_drive (tciclient + c);
     }
   }
-}
-
-static void tci_broadcast_split (void) {
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_split (tciclient + c);
-    }
-  }
-}
-
-void tci_split_changed (void) {
-  if (!tci_running) { return; }
-  tci_broadcast_split();
 }
 
 static const char *tci_mode_name (int m) {
@@ -1571,50 +1173,6 @@ static void tci_broadcast_mode_value (int v, int m) {
       tci_send_rx_filter_band (tciclient + c, v);
     }
   }
-}
-
-void tci_vfo_changed (int id) {
-  if (!tci_running) { return; }
-  if (id == VFO_A) {
-    tci_broadcast_vfo (VFO_A, 0);
-  } else if (id == VFO_B) {
-    tci_broadcast_vfo (VFO_A, 1);
-    if (receivers > 1) {
-      tci_broadcast_vfo (VFO_B, 0);
-      tci_broadcast_vfo (VFO_B, 1);
-    }
-  }
-}
-
-void tci_vfos_changed (void) {
-  if (!tci_running) { return; }
-  tci_broadcast_vfo (VFO_A, 0);
-  tci_broadcast_vfo (VFO_A, 1);
-  tci_broadcast_mode_value (VFO_A, vfo[VFO_A].mode);
-  if (receivers > 1) {
-    tci_broadcast_vfo (VFO_B, 0);
-    tci_broadcast_vfo (VFO_B, 1);
-    tci_broadcast_mode_value (VFO_B, vfo[VFO_B].mode);
-  }
-  tci_broadcast_txfreq();
-  tci_broadcast_drive();
-  tci_broadcast_split();
-}
-
-void tci_mode_changed (int id) {
-  if (!tci_running) { return; }
-  if (id < VFO_A || id > VFO_B) { return; }
-  tci_broadcast_mode_value (id, vfo[id].mode);
-}
-
-void tci_tx_frequency_changed (void) {
-  if (!tci_running) { return; }
-  tci_broadcast_txfreq();
-}
-
-void tci_drive_changed (void) {
-  if (!tci_running) { return; }
-  tci_broadcast_drive();
 }
 
 static int tci_parse_mode (const char* mode_str) {
@@ -2205,7 +1763,6 @@ static void tci_cmd_audio_start (CLIENT *client, const TCI_CMD *cmd) {
   char msg[MAXMSGSIZE];
   if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
   client->rx_audio_enabled[receiver_id] = 1;
-  client->rx_audio_read_count[receiver_id] = tci_audio_get_write_count (receiver_id);
   tci_update_audio_global();
   snprintf (msg, MAXMSGSIZE, "audio_start:%d;", receiver_id);
   tci_send_text (client, msg);
@@ -2354,7 +1911,7 @@ static void tci_cmd_tune_drive (CLIENT *client, const TCI_CMD *cmd) {
       }
       if (transmitter != NULL) {
         transmitter->tune_drive = value;
-        if (can_transmit && transmitter->tune_use_drive) {
+        if (transmitter != NULL && transmitter->tune_use_drive) {
           transmitter->tune_use_drive = 0;
         }
         changed = 1;
@@ -2915,7 +2472,6 @@ static int tci_init_client (int fd) {
       client->binary_rx_size    = 0;
       for (int i = 0; i < TCI_RX_AUDIO_MAX_RECEIVERS; i++) {
         client->rx_audio_enabled[i] = 0;
-        client->rx_audio_read_count[i] = 0;
       }
       return c;
     }
@@ -2963,7 +2519,7 @@ static void tci_send_initial_state (CLIENT *client) {
   // tci_send_text(client, "device:SunSDR2PRO;");
   tci_send_text (client, "protocol:ExpertSDR3,2.0;");
   tci_send_text (client, "device:SunSDR2QRP;");
-  tci_send_text (client, can_transmit ? "receive_only:false;" : "receive_only:true;");
+  tci_send_text (client, transmitter == NULL ? "receive_only:true;" : "receive_only:false;");
   tci_send_trx_count (client);
   tci_send_text (client, "channels_count:2;");
   //
@@ -3257,7 +2813,7 @@ static int tci_lws_callback (struct lws *wsi, enum lws_callback_reasons reason,
     client->binary_rx_buf = NULL;
     client->binary_rx_len = 0;
     client->binary_rx_size = 0;
-    t_print ("%s: leaving client\n", __func__);
+    t_print ("%s: leaving client %d\n", __func__, client->seq);
     if (cat_control > 0) {
       cat_control--;
     }
@@ -3269,37 +2825,8 @@ static int tci_lws_callback (struct lws *wsi, enum lws_callback_reasons reason,
   return 0;
 }
 
-static const struct lws_protocols tci_lws_protocols[] = {
-  { "chat",       tci_lws_callback, sizeof (int), 8192, 0, NULL, 0 },
-  { "superchat",  tci_lws_callback, sizeof (int), 8192, 0, NULL, 0 },
-  { "tci",        tci_lws_callback, sizeof (int), 8192, 0, NULL, 0 },
-  LWS_PROTOCOL_LIST_TERM
-};
-
 static gpointer tci_lws_server (gpointer data) {
-  static int first = 1;
-  struct lws_context_creation_info info;
-  int port = GPOINTER_TO_INT (data);
-  lws_set_log_level(LLL_ERR, NULL);
-  memset (&info, 0, sizeof (info));
   signal (SIGPIPE, SIG_IGN);
-  info.port = port;
-  info.protocols = tci_lws_protocols;
-  info.gid = -1;
-  info.uid = -1;
-  if (first) {
-    info.options |= LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
-    first = 0;
-  }
-  t_print ("%s: starting TCI LWS server on port %d\n", __func__, port);
-  tci_lws_context = lws_create_context (&info);
-  if (tci_lws_context == NULL) {
-    t_print ("%s: lws_create_context failed\n", __func__);
-    return NULL;
-  }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    tciclient[c].running = 0;
-  }
   while (tci_running) {
     int do_writable = 0;
     tci_service_rx_audio();
@@ -3321,33 +2848,142 @@ static gpointer tci_lws_server (gpointer data) {
       }
     }
     lws_service (tci_lws_context, 0);
-    usleep (1000);
   }
-  lws_context_destroy (tci_lws_context);
-  tci_lws_context = NULL;
   return NULL;
 }
 
+static int tci_has_clients(void) {
+  int ret = 0;
+  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
+    if (tciclient[c].running) { ret = 1; }
+  }
+  return ret;
+}
+
+//////////////////////////////////////////////////////////////////////////////////
 //
-// This is called for each TX mic sample, and fires a TCI chrono frame
-// to all tx audio clients once per audio frame (this is the clock for
-// the client sending audio data)
+// functions to be called from outside:
 //
-// Note there can be at most one TX audio client active at any time,
-// therefore send the chrono frame only to the first client that wishes
-// to do tx audio.
+// tx_send_chrono_frame()
+// launch_tci()
+// shutdown_tci()
 //
-void tci_tx_chrono_loop() {
-  static int counter = 1;
-  if (--counter <= 0) {
-    for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-      if (tciclient[c].running && tciclient[c].tx_audio_enabled) {
-        tci_queue_tx_chrono_frame(tciclient + c);
-        // Send TX CHRONO frames only to one client!
-        break;
-      }
+//////////////////////////////////////////////////////////////////////////////////
+//
+// Send a TCI chrono frame to a valid client
+// Valid means, the client is running, owns the TX and has TCI audio enabled
+//
+void tci_send_chrono_frame() {
+  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
+    if (tciclient[c].running && tciclient[c].tx_audio_enabled && tciclient[c].tx_owner) {
+      tci_queue_tx_chrono_frame(tciclient + c);
+      // Send TX CHRONO frames only to one client!
+      break;
     }
-    counter = TCI_TX_AUDIO_FRAME_FRAMES;
   }
 }
 
+static const struct lws_protocols tci_lws_protocols[] = {
+  { "chat",       tci_lws_callback, sizeof (int), 8192, 0, NULL, 0 },
+  { "superchat",  tci_lws_callback, sizeof (int), 8192, 0, NULL, 0 },
+  { "tci",        tci_lws_callback, sizeof (int), 8192, 0, NULL, 0 },
+  LWS_PROTOCOL_LIST_TERM
+};
+
+//
+// Launch TCI system. Called upon program start if TCI is
+// enabled in the props file, and from the CAT/TCI menu
+// if TCI is enabled there.
+//
+int launch_tci (void) {
+  t_print ("---- LAUNCHING TCI LWS SERVER ----\n");
+  //
+  // Verify that a TCI audio stream header has exactly 64 bytes,
+  // and that a TCI audio stream struct has 32832 bytes (if filled completely).
+  // This should ensure that the audio stream data begins exactly 64 bytes
+  // after the header and is thus properly aligned for "float" access.
+  //
+  if (sizeof(TCI_STREAM_HEADER) != 64) {
+    t_print ("TCI cannot start, audio stream header is not 64 bytes long\n");
+    return -1;
+  }
+  if (sizeof(TCI_STREAM) != 32832) {
+    t_print("TCI cannot start, audio stream is not 32832 bytes long\n");
+    return -1;
+  }
+  memset(tciclient, 0, sizeof(tciclient));
+  tci_running = 1;
+  static int first = 1;
+  struct lws_context_creation_info info = { 0 };
+  info.port = tci_port;
+  info.protocols = tci_lws_protocols;
+  info.gid = -1;
+  info.uid = -1;
+  if (first) {
+    info.options |= LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+    first = 0;
+  }
+  lws_set_log_level(LLL_ERR, NULL);
+  t_print ("%s: starting TCI LWS server on port %d\n", __func__, tci_port);
+  tci_lws_context = lws_create_context (&info);
+  if (tci_lws_context == NULL) {
+    t_print ("%s: lws_create_context failed\n", __func__);
+    return -1;
+  }
+  //
+  // Now we have a valid lws context. Spawn off lws thread.
+  //
+  tci_server_thread_id = g_thread_new ("tci lws server", tci_lws_server, NULL);
+  return 0;
+}
+//
+// Shut down TCI system. Called from CAT/TCI menu and from
+// radio_stop_program().
+//
+void shutdown_tci (void) {
+  t_print ("%s\n", __func__);
+  if (tci_tx_chrono_timer_id != 0) {
+    g_source_remove (tci_tx_chrono_timer_id);
+    tci_tx_chrono_timer_id = 0;
+  }
+  if (tci_running == 0 || tci_lws_context == NULL) {
+    //
+    // This means TCI is already shut down
+    //
+    return;
+  }
+  //
+  // The lws thread terminates if tci_running is set to zero,
+  // but it may "hang" in lws_service, so issue a lot of
+  // lws_cancel_service() here
+  //
+  tci_running = 0;
+  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
+    if (tciclient[c].wsi != NULL) {
+      (void) tci_queue_frame(tciclient + c, opTEXT, "stop;", 0);
+      lws_set_timeout(tciclient[c].wsi, PENDING_TIMEOUT_CLOSE_SEND, LWS_TO_KILL_ASYNC);
+    }
+  }
+  for (int i = 0; i < 50; i++) {
+    lws_cancel_service (tci_lws_context);
+    if (!tci_has_clients() && i > 10) {
+      break;
+    }
+    usleep(10000);
+  }
+  //
+  // Now the lws thread should already be terminated
+  //
+  if (tci_server_thread_id != NULL) {
+    if (g_thread_self() != tci_server_thread_id) {
+      g_thread_join (tci_server_thread_id);
+    }
+    tci_server_thread_id = NULL;
+  }
+  //
+  // Now we are sure the lws thread is terminated, and
+  // we can destroy the lws context
+  //
+  lws_context_destroy(tci_lws_context);
+  tci_lws_context = NULL;
+}

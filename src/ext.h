@@ -29,15 +29,14 @@ extern int ext_set_title(gpointer data);
 extern int ext_start_radio(gpointer data);
 extern int ext_vfo_update(gpointer data);
 extern int ext_radio_set_tune(gpointer data);
-extern int ext_radio_toggle_mox(gpointer data);
 extern int ext_radio_set_mox(gpointer data);
-extern int ext_start_tx_menu(gpointer data);        // is this necessary?
+extern int ext_start_tx_menu(gpointer data);
 extern int ext_start_rx_menu(gpointer data);
 extern int ext_start_mode_menu(gpointer data);
 extern int ext_start_filter_menu(gpointer data);
 extern int ext_start_band_menu(gpointer data);
 extern int ext_radio_set_vox(gpointer data);
-extern int ext_radio_set_duplex(gpointer data);      // is this necessary?
+extern int ext_radio_set_duplex(gpointer data);
 extern int ext_radio_reconfigure_screen(gpointer data);
 
 ///////////////////////////////////////////////////////////

@@ -63,7 +63,7 @@ static void enable_cb (GtkWidget *widget, gpointer data) {
     }
     break;
   case 2:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       transmitter->eq_enable = val;
       tx_set_equalizer(transmitter);
     }
@@ -83,7 +83,7 @@ static void freq_changed_cb (GtkWidget *widget, gpointer data) {
     }
     break;
   case 2:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       transmitter->eq_freq[i] = val;
       tx_set_equalizer(transmitter);
     }
@@ -104,7 +104,7 @@ static void gain_changed_cb (GtkWidget *widget, gpointer data) {
     }
     break;
   case 2:
-    if (can_transmit) {
+    if (transmitter != NULL) {
       transmitter->eq_gain[i] = val;
       tx_set_equalizer(transmitter);
     }
@@ -144,7 +144,7 @@ void equalizer_menu(GtkWidget *parent) {
   // Start the menu with the "old" eqid, but if it refers to RX2 and
   // this one is no longer running, set it to RX1
   //
-  if ((eqid == 1 && receivers == 1) || (eqid == 2 && !can_transmit)) {
+  if ((eqid == 1 && receivers == 1) || (eqid == 2 && transmitter == NULL)) {
     eqid = 0;
   }
   dialog = gtk_dialog_new();
@@ -176,7 +176,7 @@ void equalizer_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(grid), mbtn, col, row, 1, 1);
     g_signal_connect(mbtn, "toggled", G_CALLBACK(eqid_changed_cb), GINT_TO_POINTER(1));
   }
-  if (can_transmit) {
+  if (transmitter != NULL) {
     col++;
     mbtn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(rx1_sel), "TX Settings");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(mbtn), (eqid == 2));
@@ -199,7 +199,7 @@ void equalizer_menu(GtkWidget *parent) {
     int     en;
     int     myrow, mycol;
     if (myeq == 1 && receivers < 2)  { continue; }
-    if (myeq == 2 && !can_transmit)  { continue; }
+    if (myeq == 2 && transmitter == NULL)  { continue; }
     switch (myeq) {
     case 0:
       freqs = receiver[0]->eq_freq;

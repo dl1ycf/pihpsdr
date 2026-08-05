@@ -343,7 +343,7 @@ void display_menu(GtkWidget *parent) {
   GtkWidget *tx_grid = gtk_grid_new();
   mbtn = gtk_radio_button_new_with_label_from_widget(NULL, "RX1 Settings");
   col = 3;
-  if (can_transmit) {
+  if (transmitter != NULL) {
     btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(mbtn), "TX settings");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), 0);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
@@ -574,7 +574,7 @@ void display_menu(GtkWidget *parent) {
   // Since the RECEIVER and TRANSMITTER data structures are different, we have to repeat code
   // since the presets and callbacks are different
   //
-  if (can_transmit) {
+  if (transmitter != NULL) {
     row = 0;
     col = 0;
     label = gtk_label_new("Frames/sec");

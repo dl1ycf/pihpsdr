@@ -331,7 +331,7 @@ int main(int argc, char *argv[]) {
     if (!strncmp(argv[i], "-angelia",      8))  {ODEVICE = ODEV_ANGELIA;     NDEVICE = NDEV_ANGELIA; MAC5 = 0x17; continue;}
     if (!strncmp(argv[i], "-orion2",       7))  {ODEVICE = ODEV_ORION2;      NDEVICE = NDEV_ORION2;  MAC5 = 0x18; continue;}
     if (!strncmp(argv[i], "-g2",           3))  {ODEVICE = DEV_NONE;         NDEVICE = DEV_SATURN;   MAC5 = 0x19; continue;}
-    if (!strncmp(argv[i], "-g1",           3))  {ODEVICE = DEV_G1;           NDEVICE = DEV_G1;       MAC5 = 0x19; continue;}
+    if (!strncmp(argv[i], "-g2e",          3))  {ODEVICE = DEV_G2E;          NDEVICE = DEV_G2E;      MAC5 = 0x19; continue;}
     if (!strncmp(argv[i], "-orion",        6))  {ODEVICE = ODEV_ORION;       NDEVICE = NDEV_ORION;   MAC5 = 0x1A; continue;}
     if (!strncmp(argv[i], "-c25",          4))  {ODEVICE = DEV_C25;          NDEVICE = DEV_NONE;     MAC5 = 0x1B; continue;}
     if (!strncmp(argv[i], "-diversity",   10))  {diversity = 1; continue;}
@@ -378,8 +378,8 @@ int main(int argc, char *argv[]) {
     TXDAC = 1;
     maxpwr = 20.0;
   }
-  if (ODEVICE ==  DEV_G1) {
-    t_print("DEVICE is Anan-G1\n");
+  if (ODEVICE ==  DEV_G2E) {
+    t_print("DEVICE is Anan-G2E\n");
     c1 = 3.3;
     c2 = 0.12;
     TXDAC = 1;
