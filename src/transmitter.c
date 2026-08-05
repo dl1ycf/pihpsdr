@@ -616,19 +616,14 @@ static gboolean tx_update_display(gpointer data) {
       rev_cal_offset = 2;
       fwd_cal_offset = 4;
       break;
-    case DEVICE_G1:
-    case NEW_DEVICE_G1:
+    case DEVICE_G2E:
+    case NEW_DEVICE_G2E:
       //
-      // The G1 uses the Anan7000 PA board but
-      // has a Hermes-type FPGA board where the
-      // slow ADCs have VADC=3.3V, so all ADC
-      // readings (in the range 0-4095) are scaled
-      // up by 5.0/3.3.
-      // Therefore we use the Anan7000 constants,
-      // but with constant1=3.3 instead of 5.0,
-      // and the calibration offsets scaled up.
+      // Mesurements made by Larry P. with his G2E
+      // showed that 5.0 is the right value for
+      // "constant1" for the G2E
       //
-      constant1 = 3.3;
+      constant1 = 5.0;
       constant2 = 0.12;
       rconstant2 = is6m ? 0.7 : 0.15;
       rev_cal_offset = 42;

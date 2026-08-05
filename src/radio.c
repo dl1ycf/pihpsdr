@@ -1193,12 +1193,12 @@ void radio_start_radio(void) {
   case DEVICE_ANGELIA:
   case DEVICE_ORION:
   case DEVICE_STEMLAB_Z20:
-  case DEVICE_G1:
+  case DEVICE_G2E:
   case NEW_DEVICE_HERMES:
   case NEW_DEVICE_ANGELIA:
   case NEW_DEVICE_ORION:
   case NEW_DEVICE_SATURN:  // make 100W the default for G2
-  case NEW_DEVICE_G1:
+  case NEW_DEVICE_G2E:
     pa_power = PA_100W;
     break;
   case DEVICE_ORION2:
@@ -1244,10 +1244,10 @@ void radio_start_radio(void) {
     have_alex_att = 1;
     break;
   case DEVICE_ORION2:
-  case DEVICE_G1:
+  case DEVICE_G2E:
   case NEW_DEVICE_ORION2:
   case NEW_DEVICE_SATURN:
-  case NEW_DEVICE_G1:
+  case NEW_DEVICE_G2E:
     // no ALEX att
     have_dither = 1;
     have_rx_att = 1;
@@ -1418,13 +1418,13 @@ void radio_start_radio(void) {
   case DEVICE_HERMES2:
   case DEVICE_HERMES_LITE:
   case DEVICE_HERMES_LITE2:
-  case DEVICE_G1:
+  case DEVICE_G2E:
   case NEW_DEVICE_ATLAS:
   case NEW_DEVICE_HERMES:
   case NEW_DEVICE_HERMES2:
   case NEW_DEVICE_HERMES_LITE:
   case NEW_DEVICE_HERMES_LITE2:
-  case NEW_DEVICE_G1:
+  case NEW_DEVICE_G2E:
     //
     // METIS/OZY: if two mercury cards are detected in old_protocol.c,
     // then RX1 and RX2 are hard-wired to ADC1 and ADC2. We keep

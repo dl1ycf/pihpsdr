@@ -718,7 +718,7 @@ void radio_menu(GtkWidget *parent) {
     row++;
   }
   if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN
-      || device == NEW_DEVICE_G1 || controller == CONTROLLER3) {
+      || device == NEW_DEVICE_G2E || controller == CONTROLLER3) {
     //
     // Anan-7000 (only running P2) and G2 boards have a switchable
     // speaker amp.
