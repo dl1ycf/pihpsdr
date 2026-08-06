@@ -1812,11 +1812,15 @@ void tx_add_mic_sample(TRANSMITTER *tx, double mic_sample) {
     mic_sample = 0.0;
     vox_triggered = 0;
     vox_count = 0;
-  } else if (vox_enabled) {
-    double amplitude = fabs(mic_sample);
-    if (amplitude >= vox_max1) {
-      vox_max1 = amplitude;
-    }
+  }
+  //
+  // Record max amplitude independent of VOX enable
+  //
+  double amplitude = fabs(mic_sample);
+  if (amplitude >= vox_max1) {
+    vox_max1 = amplitude;
+  }
+  if (vox_enabled) {
     if (amplitude >= vox_threshold) {
       if (!vox_triggered) {
         g_idle_add(ext_radio_set_vox,GINT_TO_POINTER(1));
