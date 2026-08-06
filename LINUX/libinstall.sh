@@ -232,6 +232,9 @@ make
 sudo make install
 sudo ldconfig
 
+cd $THISDIR
+yes | rm -rf SoapyPlutoSDR
+
 ################################################################
 #
 # d) create desktop icons, start scripts, etc.  for pihpsdr
