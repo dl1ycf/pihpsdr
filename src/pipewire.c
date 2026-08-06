@@ -325,9 +325,6 @@ int audio_open_output(RECEIVER *rx) {
     return -1;
   }
 
-  char latency_str[32];
-  snprintf(latency_str, sizeof(latency_str), "%d/48000", rx->pw_latency);
-
   // Playback Stream properties
   struct pw_properties *props = pw_properties_new(
       PW_KEY_MEDIA_TYPE, "Audio",
@@ -336,7 +333,7 @@ int audio_open_output(RECEIVER *rx) {
       PW_KEY_NODE_NAME, "pihpsdr-rx",
       PW_KEY_NODE_DESCRIPTION, "piHPSDR Playback",
       PW_KEY_TARGET_OBJECT, rx->audio_name,
-      PW_KEY_NODE_LATENCY, latency_str,
+      PW_KEY_NODE_LATENCY, "128/48000",
       NULL
   );
 

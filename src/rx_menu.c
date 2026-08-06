@@ -221,29 +221,6 @@ static void audio_channel_cb(GtkWidget *widget, gpointer data) {
   }
 }
 
-#ifdef PIPEWIRE
-static void pipewire_quantum_cb(GtkWidget *widget, gpointer data) {
-  int active = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-  const int quantums[] = {16, 32, 64, 128, 256, 512, 1024, 2048};
-  int q = quantums[active];
-
-  if (myrx->pw_latency != q) {
-    myrx->pw_latency = q;
-
-    // If audio is running, restart it to apply the new quantum immediately
-    if (myrx->local_audio) {
-      myrx->local_audio = 0;
-      audio_close_output(myrx);
-      if (audio_open_output(myrx) < 0) {
-        myrx->local_audio = 0;
-      } else {
-        myrx->local_audio = 1;
-      }
-    }
-  }
-}
-#endif
-
 void rx_menu(GtkWidget *parent) {
   GtkWidget *btn;
   GtkWidget *lbl;
@@ -458,40 +435,6 @@ void rx_menu(GtkWidget *parent) {
   }
   my_combo_attach(GTK_GRID(grid), btn, 2, 3, 1, 1);
   g_signal_connect(btn, "changed", G_CALLBACK(audio_channel_cb), NULL);
-
-
-#ifdef PIPEWIRE
-  lbl = gtk_label_new("PipeWire Quantum:");
-  gtk_widget_set_name(lbl, "boldlabel");
-  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), lbl, 1, row, 1, 1);
-
-  btn = gtk_combo_box_text_new();
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "16 (0.3ms)");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "32 (0.7ms)");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "64 (1.3ms)");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "128 (2.7ms)");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "256 (5.3ms)");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "512 (10.7ms)");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "1024 (21.3ms)");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "2048 (42.7ms)");
-
-  int active_idx = 2; // Default 64
-  switch (myrx->pw_latency) {
-    case 16: active_idx = 0; break;
-    case 32: active_idx = 1; break;
-    case 64: active_idx = 2; break;
-    case 128: active_idx = 3; break;
-    case 256: active_idx = 4; break;
-    case 512: active_idx = 5; break;
-    case 1024: active_idx = 6; break;
-    case 2048: active_idx = 7; break;
-  }
-  gtk_combo_box_set_active(GTK_COMBO_BOX(btn), active_idx);
-  my_combo_attach(GTK_GRID(grid), btn, 2, row, 1, 1);
-  g_signal_connect(btn, "changed", G_CALLBACK(pipewire_quantum_cb), NULL);
-#endif
-
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);

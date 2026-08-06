@@ -281,7 +281,6 @@ void rx_save_state(const RECEIVER *rx) {
   SetPropI1("receiver.%d.audio_channel", rx->id,                rx->audio_channel);
   SetPropI1("receiver.%d.local_audio", rx->id,                  rx->local_audio);
   SetPropS1("receiver.%d.audio_name", rx->id,                   rx->audio_name);
-  SetPropI1("receiver.%d.pw_latency", rx->id,                   rx->pw_latency);
   SetPropI1("receiver.%d.mute_when_not_active", rx->id,         rx->mute_when_not_active);
   SetPropI1("receiver.%d.mute_radio", rx->id,                   rx->mute_radio);
   SetPropI1("receiver.%d.panadapter_low", rx->id,               rx->panadapter_low);
@@ -385,7 +384,6 @@ void rx_restore_state(RECEIVER *rx) {
   GetPropI1("receiver.%d.audio_channel", rx->id,                rx->audio_channel);
   GetPropI1("receiver.%d.local_audio", rx->id,                  rx->local_audio);
   GetPropS1("receiver.%d.audio_name", rx->id,                   rx->audio_name);
-  GetPropI1("receiver.%d.pw_latency", rx->id,                   rx->pw_latency);
   GetPropI1("receiver.%d.mute_when_not_active", rx->id,         rx->mute_when_not_active);
   GetPropI1("receiver.%d.mute_radio", rx->id,                   rx->mute_radio);
   GetPropI1("receiver.%d.panadapter_low", rx->id,               rx->panadapter_low);
@@ -844,7 +842,6 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->agc_gain = 80.0;
   rx->agc_hang_threshold = 0.0;
   rx->local_audio = 0;
-  rx->pw_latency = 64;
   g_mutex_init(&rx->audio_mutex);
   rx->audio_buffer = NULL;
   snprintf(rx->audio_name, sizeof(rx->audio_name), "NO AUDIO");
