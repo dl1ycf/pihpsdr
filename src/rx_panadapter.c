@@ -786,8 +786,8 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
     // VADC from 5 to 3.3 (the same applies to the current
     // reading below).
     //
-    case DEVICE_G1:
-    case NEW_DEVICE_G1:
+    case DEVICE_G2E:
+    case NEW_DEVICE_G2E:
       // 3.3 (ADC0_avg / 4095 )* VDiv, VDiv = (22.0 + 1.0) / 1.1
       v = 0.0168498 * ADC0;
       if (v < 0) { v = 0; }
@@ -825,8 +825,8 @@ void display_panadapter_messages(cairo_t *cr, int width, unsigned int fps) {
       snprintf(text, sizeof(text), "%0.0fmA", max2);
       flag = 1;
       break;
-    case DEVICE_G1:
-    case NEW_DEVICE_G1:
+    case DEVICE_G2E:
+    case NEW_DEVICE_G2E:
       // ((ADC1*3300)/4095 - Voff)/Sens, Voff = 360, Sens = 120
       v = 0.00671387 * ADC1 - 3.0;
       if (v < 0) { v = 0; }

@@ -532,7 +532,7 @@ static void process_rx_buffer(RECEIVER *rx, const float *rxbuff, const int eleme
           } else {
             rx_add_iq_samples(rx, isample, qsample);
           }
-          if (can_transmit && micflag) {
+          if (transmitter != NULL && micflag) {
             mic_samples++;
             if (mic_samples >= mic_sample_divisor) { // reduce to 48000
               //
@@ -561,7 +561,7 @@ static void process_rx_buffer(RECEIVER *rx, const float *rxbuff, const int eleme
       } else {
         rx_add_iq_samples(rx, isample, qsample);
       }
-      if (can_transmit && micflag) {
+      if (transmitter != NULL && micflag) {
         mic_samples++;
         if (mic_samples >= mic_sample_divisor) { // reduce to 48000
           tx_add_mic_sample(transmitter, 0.0);
@@ -785,7 +785,7 @@ void soapy_protocol_set_rx_frequency(const int id) {
 void soapy_protocol_set_tx_frequency(void) {
   ASSERT_SERVER();
   if (!soapy_device) { return; }
-  if (can_transmit) {
+  if (transmitter != NULL) {
     int rc;
     int v = vfo_get_tx_vfo();
     long long f;
@@ -925,7 +925,7 @@ void soapy_protocol_set_tx_gain_element(const char *name, const double gain) {
   //
   // The overall gain has now changed. So we need to query it and set the gain
   //
-  if (can_transmit) {
+  if (transmitter != NULL) {
     transmitter->drive = (int)  SoapySDRDevice_getGain(soapy_device, SOAPY_SDR_TX, 0);
   }
 }

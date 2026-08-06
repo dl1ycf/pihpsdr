@@ -40,62 +40,57 @@ THISDIR="$(cd "$(dirname "$0")" && pwd -P)"
 # This installes the core of the homebrew universe, if it is not already present
 #
 if [ -x /usr/local/bin/brew ] || [ -x /opt/homebrew/bin/brew ]; then
-  echo "==============================="
-  echo "=                             ="
-  echo "= HOMEBREW already installed! ="
-  echo "=                             ="
-  echo "==============================="
+  echo "=============================================================="
+  echo
+  echo "... HomeBrew core already installed"
+  echo
+  echo "=============================================================="
 else
+  echo "=============================================================="
+  echo
+  echo "... installing HomeBrew core"
+  echo
+  echo "=============================================================="
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
 fi
 
 #
 # At this point, there is a "brew" command either in /usr/local/bin (Intel Mac) or in
-# /opt/homebrew/bin (Silicon Mac). Look what applies, and set the variable OPTHOMEBREW to 1
-# if homebrew is installed in /opt/homebrew rather than in /usr/local.
-# Prepeare the environment variables CPATH and LIBRARY_PATH. These are usually not needed
-# for Intel Macs, but if "homebrew" is installed in /opt/homebrew, these guarantee
-# that include files are found by the preprocessor, and libraries are found by the linker.
+# /opt/homebrew/bin (Silicon Mac). Look what applies, and set the variable PREFIX
+# accordingly (either /opt/homebrew or /usr/local).
 #
 BREW=junk
-BREWDIR=junk
-OPTHOMEBREW=0
+PREFIX=junk
 
 if [ -x /usr/local/bin/brew ]; then
-  BREWDIR=/usr/local/homebrew
   BREW=/usr/local/bin/brew
-  BREW=/usr/local/bin/brew
-  if [ z$CPATH == z ]; then
-    export CPATH=/usr/local/include
-  else
-    export CPATH=$CPATH:/usr/local/include
-  fi
-  if [ z$LIBRARY_PATH == z ]; then
-    export LIBRARY_PATH=/usr/local/lib
-  else
-    export LIBRARY_PATH=$LIBRARY_PATH:/usr/local/lib
-  fi
+  PREFIX=/usr/local
 fi
 
 if [ -x /opt/homebrew/bin/brew ]; then
   BREW=/opt/homebrew/bin/brew
-  BREWDIR=/opt/homebrew
-  OPTHOMEBREW=1
-  if [ z$CPATH == z ]; then
-    export CPATH=/opt/homebrew/include
-  else
-    export CPATH=$CPATH:/opt/homebrew/include
-  fi
-  if [ z$LIBRARY_PATH == z ]; then
-    export LIBRARY_PATH=/opt/homebrew/lib
-  else
-    export LIBRARY_PATH=$LIBRARY_PATH:/opt/homebrew/lib
-  fi
+  PREFIX=/opt/homebrew
 fi
 
 if [ $BREW == "junk" ]; then
   echo HomeBrew installation obviously failed, exiting
   exit
+fi
+
+#
+# Prepeare the environment variables CPATH and LIBRARY_PATH. These are usually not needed
+# for Intel Macs, but if "homebrew" is installed in /opt/homebrew, these guarantee
+# that include files are found by the preprocessor, and libraries are found by the linker.
+#
+if [ z$CPATH == z ]; then
+  export CPATH=$PREFIX/include
+else
+  export CPATH=$CPATH:$PREFIX/include
+fi
+if [ z$LIBRARY_PATH == z ]; then
+  export LIBRARY_PATH=$PREFIX/lib
+else
+  export LIBRARY_PATH=$LIBRARY_PATH:$PREFIX/lib
 fi
 
 ################################################################
@@ -112,24 +107,32 @@ $BREW shellenv sh >> $HOME/.profile
 echo "export CPATH=$CPATH" >> $HOME/.profile
 echo "export LIBRARY_PATH=$LIBRARY_PATH" >> $HOME/.profile
 fi
+
 if [ $SHELL == "/bin/csh" ]; then
 $BREW shellenv csh >> $HOME/.cshrc
 echo "setenv CPATH $CPATH" >> $HOME/.cshrc
 echo "setenv LIBRARY_PATH $LIBRARY_PATH" >> $HOME/.cshrc
 fi
 if [ $SHELL == "/bin/zsh" ]; then
-$BREW shellenv zsh >> $HOME/.profile
+$BREW shellenv zsh >> $HOME/.zprofile
 echo "export CPATH=$CPATH" >> $HOME/.zprofile
-echo "export LIBRARY_PATH=$LIBRARY_PATH" >> $HOME/.profile
+echo "export LIBRARY_PATH=$LIBRARY_PATH" >> $HOME/.zprofile
 fi
 
+export HOMEBREW_NO_ASK=yes
 $BREW update
 ################################################################
 #
-# All homebrew packages needed for pihpsdr (makedepend and
-# cppcheck are useful for maintainers)
+# All homebrew packages needed for pihpsdr and for compilation
+# of the SoapySDR core. Some packages such as cppcheck and
+# makedepend are not required, but useful for maintainers.
 #
 ################################################################
+echo "=============================================================="
+echo
+echo "... installing needed HomeBrew packages"
+echo
+echo "=============================================================="
 $BREW install gtk+3
 $BREW install librsvg
 $BREW install pkg-config
@@ -144,78 +147,11 @@ $BREW install miniupnpc
 $BREW install libwebsockets
 $BREW install zlib
 $BREW install git-extras
-
-################################################################
-#
-# This is for the SoapySDR universe
-# If you do not plan to compile with SOAPYSDR, then any errors
-# which might occur here are of no concern to you
-#
-################################################################
-# There are even more radios supported for which you need
-# additional modules, for a list, goto the web page
-# https://formulae.brew.sh
-# and insert the search string "pothosware". In the long
-# list produced, search for the same string using the
-# "search" facility of your internet browser
-#
 $BREW install cmake
 $BREW install python-setuptools
-
-################################################################
-#
-# If an older version of SoapySDR exist, a forced
-# re-install may be necessary
-#
-################################################################
-$BREW install soapysdr
 $BREW install librtlsdr
 $BREW install hackrf
-
-################################################################
-# HOMEBREW/POTHOSWARE PROBLEM:
-#
-# Some SoapySDR modules cannot be compiled using the lastest
-# version (4) of CMAKE unless the option
-#
-# -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-#
-# is given during compilation.
-# To enable compilation of these modules, the file
-# (Homebrew)/Library/Homebrew/extend/os/mac/formula.rb needs
-# modification. Here, (Homebrew) is /usr/local/homebrew on
-# Intel Macs and /opt/homebrew on AppleSilicon Macs.
-#
-# Locate the following spot (the last line has been added):
-#
-#       # Ensure CMake is using the same SDK we are using.
-#       args << "-DCMAKE_OSX_SYSROOT=#{MacOS.sdk_for_formula(self).path}" if MacOS.sdk_root_needed?
-#       args << "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
-#
-# so the required option is added to the "standard cmake args"
-# Note this change is lost whenever you update/upgrade homebrew.
-#
-# After applying this fix, you must "lock" the file with "git lock",
-# available after installing the git-extras package. Then it will
-# not be updated when re-running this script which involves a
-# "brew update", but this file will then also not updated so
-# keep this in mind.
-#
-# pothosware is considered "untrusted" in lastest versions of
-# homebrew. So the following statements will fail unless
-# you "manually" declare you trust pothosware. This script
-# will *not* do this for you. If the commands below fail,
-# piHPSDR can still be built, but the SoapySDR modules
-# for the respective radios may be missing.
-################################################################
-
-$BREW tap pothosware/pothos
-$BREW reinstall pothosware/pothos/soapyplutosdr
-$BREW reinstall pothosware/pothos/limesuite
-$BREW reinstall pothosware/pothos/soapyrtlsdr
-$BREW reinstall pothosware/pothos/soapyhackrf
-$BREW reinstall pothosware/pothos/soapyredpitaya
-$BREW reinstall pothosware/pothos/soapyrtlsdr
+$BREW install libserialport
 
 ################################################################
 #
@@ -224,3 +160,157 @@ $BREW reinstall pothosware/pothos/soapyrtlsdr
 ################################################################
 $BREW analytics off
 
+
+################################################################
+#
+# Since "pothosware" is now untrusted, compile SOAPY stuff
+# from the sources.
+#
+################################################################
+
+echo "=============================================================="
+echo
+echo "... compiling and installing SoapySDR core"
+echo
+echo "=============================================================="
+
+cd $THISDIR
+yes | rm -r SoapySDR
+git clone https://github.com/pothosware/SoapySDR.git
+
+cd $THISDIR/SoapySDR
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=$PREFIX ..
+make
+make install
+
+cd $THISDIR
+yes | rm -r SoapySDR
+#
+# Replace @rpath entries by the real file names
+#
+for i in `find $PREFIX/lib -type f -depth 1 -name "libSoapySDR*" -print`; do
+install_name_tool -id $i $i
+done
+
+
+echo "=============================================================="
+echo
+echo "... compiling and installing SoapySDR RTL-stick libraries"
+echo
+echo "=============================================================="
+
+cd $THISDIR
+yes | rm -rf SoapyRTLSDR
+git clone https://github.com/pothosware/SoapyRTLSDR
+
+cd $THISDIR/SoapyRTLSDR
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=$PREFIX ..
+make
+make install
+
+cd $THISDIR
+yes | rm -rf SoapyRTLSDR
+
+echo "=============================================================="
+echo
+echo "... compiling and installing HackRF SoapySDR support"
+echo
+echo "=============================================================="
+
+cd $THISDIR
+yes | rm -rf SoapyHackRF
+git clone https://github.com/pothosware/SoapyHackRF.git
+
+cd $THISDIR/SoapyHackRF
+cd SoapyHackRF
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=$PREFIX ..
+make
+make install
+
+cd $THISDIR
+yes | rm -rf SoapyHackRF
+
+echo "=============================================================="
+echo
+echo "... compiling and installing SoapySDR AdalmPluto libraries"
+echo "    and prerequisites (libiio-v0, libad9361-ii0-v0)"
+echo
+echo "=============================================================="
+
+cd $THISDIR
+yes | rm -rf libiio
+git clone https://github.com/analogdevicesinc/libiio.git
+
+cd $THISDIR/libiio
+git checkout libiio-v0
+mkdir build
+cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$PREFIX \
+      -DOSX_FRAMEWORK=OFF -DOSX_PACKAGE=OFF -DWITH_DOC=OFF -DWITH_TESTS=OFF \
+      -DWITH_EXAMPLES=OFF -DPYTHON_BINDINGS=OFF -DWITH_NETWORK_BACKEND=ON -DWITH_USB_BACKEND=ON \
+      -DWITH_XML_BACKEND=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+cmake --build build
+cmake --install build
+
+cd $THISDIR
+yes | rm -rf libiio
+#
+# Replace @rpath entries by the real file names
+#
+for i in `find $PREFIX/lib -type f -depth 1 -name "libiio*" -print`; do
+install_name_tool -id $i $i
+done
+
+#
+# A mis-configuration within libad9361 wants to include <iio/iio.h> rather than <iio.h> if __APPLE__ is
+# defined. As a Q&D fix. create a symolic link in $PREFIX/include named iio that points to $PREFIX/include
+#
+rm -rf $PREFIX/include/iio
+ln -s $PREFIX/include $PREFIX/include/iio
+
+cd $THISDIR
+yes | rm -rf libad9361-iio
+git clone https://github.com/analogdevicesinc/libad9361-iio.git
+
+cd $THISDIR/libad9361-iio
+git checkout libad9361-iio-v0
+mkdir build
+cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$PREFIX \
+                    -DOSX_PACKAGE=OFF -DOSX_FRAMEWORK=OFF \
+                     -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+cmake --build build
+cmake --install build
+
+cd $THISDIR
+yes | rm -rf libad9361-iio
+#
+# Replace @rpath entries by the real file names
+#
+for i in `find $PREFIX/lib -type f -depth 1 -name "libad9361*" -print`; do
+install_name_tool -id $i $i
+done
+
+cd $THISDIR
+yes | rm -rf SoapyPlutoSDR
+git clone https://github.com/pothosware/SoapyPlutoSDR
+
+cd $THISDIR/SoapyPlutoSDR
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=$PREFIX ..
+make
+make install
+
+cd $THISDIR
+yes | rm -rf SoapyPlutoSDR
+
+echo "=============================================================="
+echo
+echo " MacOS libinstall done."
+echo
+echo "=============================================================="

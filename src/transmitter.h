@@ -27,6 +27,16 @@
 #define CTCSS_FREQUENCIES 38
 extern double ctcss_frequencies[CTCSS_FREQUENCIES];
 
+extern int vox_enabled;
+extern int vox_triggered;
+extern int vox_count;
+extern double vox_threshold;
+extern double vox_min_hang;
+extern double vox_hang;
+extern double vox_max1;
+extern double vox_max2;
+extern double vox_delay;
+
 typedef struct _transmitter {
   int id;
   int dac;
@@ -100,20 +110,20 @@ typedef struct _transmitter {
   volatile int audio_running;         // used in mic thread to see whether input is still running
   double *audio_buffer;               // audio buffer for sound card input
 
-#if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA)
+#if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA) && defined(PIPEWIRE)
   // this is only possible for "cppcheck" runs
   // declare all data without conflicts
   void *audio_handle;
   snd_pcm_format_t audio_format;
 #endif
-#if defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA)
+#if defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA) && !defined(PIPEWIRE)
   PaStream *audio_handle;
 #endif
-#if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && defined(ALSA)
+#if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && defined(ALSA) && !defined(PIPEWIRE)
   snd_pcm_t *audio_handle;
   snd_pcm_format_t audio_format;
 #endif
-#if !defined(PORTAUDIO) && defined(PULSEAUDIO) && !defined(ALSA)
+#if !defined(PORTAUDIO) && defined(PULSEAUDIO) && !defined(ALSA) && !defined(PIPEWIRE)
   pa_simple *audio_handle;
 #endif
 #if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA) && defined(PIPEWIRE)
@@ -188,6 +198,7 @@ typedef struct _transmitter {
   int    dexp_filter;       // Do side channel filtering
   int    dexp_filter_low;   // low-cut of side channel filter
   int    dexp_filter_high;  // high-cut of side channel filter
+  int    dexp_vox_delay;    // VOX delay in msec
 
   int phrot_enable;
   double phrot_corner;
@@ -288,7 +299,10 @@ extern void   tx_set_pre_emphasize(const TRANSMITTER *tx);
 extern void   tx_set_ramps(TRANSMITTER *tx);
 extern void   tx_set_singletone(const TRANSMITTER *tx, int state, double freq);
 extern void   tx_set_twotone(TRANSMITTER *tx, int state);
+extern void   tx_set_vox(TRANSMITTER *tx);
 extern void   tx_queue_cw_event(int state, int wait);
+extern double vox_get_peak(void);
+extern void   vox_cancel();
 
 extern void tx_create_remote(TRANSMITTER *tx);
 extern gpointer client_sidetone_thread(gpointer tx);

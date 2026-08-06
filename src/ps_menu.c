@@ -137,7 +137,7 @@ int ps_calibration_timer(gpointer arg) {
   static int state = -1;
   static int old5  = -1;
   static int old4  = -1;
-  if (!transmitter->twotone) {
+  if (!transmitter->twotone || !transmitter->puresignal) {
     state = -1;
     *timer = 0;
     return G_SOURCE_REMOVE;
@@ -149,96 +149,94 @@ int ps_calibration_timer(gpointer arg) {
     state = 1;          // start with PS reset
     old5 = -1;
   }
-  if (transmitter->puresignal) {
-    int tx_att_min;
-    int tx_att_max;
-    if (device == DEVICE_HERMES_LITE2 || device == NEW_DEVICE_HERMES_LITE2) {
+  int tx_att_min;
+  int tx_att_max;
+  if (device == DEVICE_HERMES_LITE2 || device == NEW_DEVICE_HERMES_LITE2) {
+    //
+    // This range corresponds to +32 ... -12 on the RF slider
+    tx_att_min = -13;
+    tx_att_max = 31;
+  } else {
+    tx_att_min = 0;
+    tx_att_max = 31;
+  }
+  tx_ps_getinfo(transmitter);
+  //
+  // newcal is set to 1 if we have a new calibration or a new feedback value
+  // TODO: consider setting newcal to 1 when it was zero upon the last 10
+  //       entries into this loop.
+  //
+  int newcal = 0;
+  if (transmitter->psinfo[5] !=  old5) {
+    old5 = transmitter->psinfo[5];
+    newcal = 1;
+  }
+  if (transmitter->psinfo[4] > 0 && transmitter->psinfo[4] != old4) {
+    old4 = transmitter->psinfo[4];
+    newcal = 1;
+  }
+  if (transmitter->auto_on) {
+    switch (state) {
+    case 0:
       //
-      // This range corresponds to +32 ... -12 on the RF slider
-      tx_att_min = -13;
-      tx_att_max = 31;
-    } else {
-      tx_att_min = 0;
-      tx_att_max = 31;
-    }
-    tx_ps_getinfo(transmitter);
-    //
-    // newcal is set to 1 if we have a new calibration or a new feedback value
-    // TODO: consider setting newcal to 1 when it was zero upon the last 10
-    //       entries into this loop.
-    //
-    int newcal = 0;
-    if (transmitter->psinfo[5] !=  old5) {
-      old5 = transmitter->psinfo[5];
-      newcal = 1;
-    }
-    if (transmitter->psinfo[4] > 0 && transmitter->psinfo[4] != old4) {
-      old4 = transmitter->psinfo[4];
-      newcal = 1;
-    }
-    if (transmitter->auto_on) {
-      switch (state) {
-      case 0:
-        //
-        // A value of 165 means 0.7 dB too strong
-        // A value of 140 means 0.7 dB too weak
-        // So everything between 140 and 165 is accepted without changing the attenuation
-        //
-        if (newcal && ((transmitter->psinfo[4] > 165 && transmitter->attenuation < tx_att_max) || (transmitter->psinfo[4] < 140
-                       && transmitter->attenuation > tx_att_min))) {
-          int delta_att;
-          int new_att;
-          if (transmitter->psinfo[4] > 275) {
-            //
-            // If signal is very strong, increase attenuation by 10 dB
-            // Note the value is limited to about 300-350 due to ADC clipping/IQ overflow,
-            // so the feedback level might be much stronger than indicated here, so advancing
-            // the attenuation by 10 also might be needed to protect the RF front-end.
-            //
-            delta_att = 10;
-            //
-            // HL2: transmitter "attenuation" can be negative, a value of zero corresponds
-            //      to a RF gain of about 19. If we are far in the negative, make a 15dB jump
-            //
-            if (transmitter->attenuation < -5) { delta_att += 15; }
-          } else if (transmitter->psinfo[4] < 25) {
-            // If signal is very weak, decrease attenuation by 10 dB
-            delta_att = -10;
-          } else {
-            // calculate new delta, this mostly succeeds in one step
-            delta_att = (int) lround(20.0 * log10((double)transmitter->psinfo[4] / 152.293));
-          }
-          new_att = transmitter->attenuation + delta_att;
-          // keep new value of attenuation in allowed range
-          if (new_att < tx_att_min) { new_att = tx_att_min; }
-          if (new_att > tx_att_max) { new_att = tx_att_max; }
-          // A "PS reset" is only necessary if the attenuation
-          // has actually changed. This prevents firing "reset"
-          // constantly if the SDR board does not have a TX attenuator
-          // (in this case, att will fast reach tx_att_max and stay there if the
-          // feedback level is too high).
-          // Actually, we first adjust the attenuation (state=0),
-          // then do a PS reset (state=1), and then restart PS (state=2).
-          if (transmitter->attenuation != new_att) {
-            tx_ps_reset(transmitter);
-            transmitter->attenuation = new_att;
-            schedule_high_priority();
-            schedule_transmit_specific();
-            state = 1;
-          }
+      // A value of 165 means 0.7 dB too strong
+      // A value of 140 means 0.7 dB too weak
+      // So everything between 140 and 165 is accepted without changing the attenuation
+      //
+      if (newcal && ((transmitter->psinfo[4] > 165 && transmitter->attenuation < tx_att_max) || (transmitter->psinfo[4] < 140
+                     && transmitter->attenuation > tx_att_min))) {
+        int delta_att;
+        int new_att;
+        if (transmitter->psinfo[4] > 275) {
+          //
+          // If signal is very strong, increase attenuation by 10 dB
+          // Note the value is limited to about 300-350 due to ADC clipping/IQ overflow,
+          // so the feedback level might be much stronger than indicated here, so advancing
+          // the attenuation by 10 also might be needed to protect the RF front-end.
+          //
+          delta_att = 10;
+          //
+          // HL2: transmitter "attenuation" can be negative, a value of zero corresponds
+          //      to a RF gain of about 19. If we are far in the negative, make a 15dB jump
+          //
+          if (transmitter->attenuation < -5) { delta_att += 15; }
+        } else if (transmitter->psinfo[4] < 25) {
+          // If signal is very weak, decrease attenuation by 10 dB
+          delta_att = -10;
+        } else {
+          // calculate new delta, this mostly succeeds in one step
+          delta_att = (int) lround(20.0 * log10((double)transmitter->psinfo[4] / 152.293));
         }
-        break;
-      case 1:
-        // Perform a PS reset and proceed to a PS restart
-        state = 2;
-        tx_ps_reset(transmitter);
-        break;
-      case 2:
-        // Perform a PS restart and proceed to the calibration loop
-        state = 0;
-        tx_ps_resume(transmitter);
-        break;
+        new_att = transmitter->attenuation + delta_att;
+        // keep new value of attenuation in allowed range
+        if (new_att < tx_att_min) { new_att = tx_att_min; }
+        if (new_att > tx_att_max) { new_att = tx_att_max; }
+        // A "PS reset" is only necessary if the attenuation
+        // has actually changed. This prevents firing "reset"
+        // constantly if the SDR board does not have a TX attenuator
+        // (in this case, att will fast reach tx_att_max and stay there if the
+        // feedback level is too high).
+        // Actually, we first adjust the attenuation (state=0),
+        // then do a PS reset (state=1), and then restart PS (state=2).
+        if (transmitter->attenuation != new_att) {
+          tx_ps_reset(transmitter);
+          transmitter->attenuation = new_att;
+          schedule_high_priority();
+          schedule_transmit_specific();
+          state = 1;
+        }
       }
+      break;
+    case 1:
+      // Perform a PS reset and proceed to a PS restart
+      state = 2;
+      tx_ps_reset(transmitter);
+      break;
+    case 2:
+      // Perform a PS restart and proceed to the calibration loop
+      state = 0;
+      tx_ps_resume(transmitter);
+      break;
     }
   }
   return G_SOURCE_CONTINUE;
@@ -393,7 +391,7 @@ static void ps_ant_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void enable_cb(GtkWidget *widget, gpointer data) {
-  if (can_transmit) {
+  if (transmitter != NULL) {
     int val = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
     tx_ps_onoff(transmitter, val);
   }

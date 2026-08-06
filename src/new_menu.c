@@ -447,7 +447,7 @@ void start_store_menu(void) {
 
 void start_tx_menu(void) {
   cleanup();
-  if (can_transmit) {
+  if (transmitter != NULL) {
     tx_menu(top_window);
   }
 }
@@ -460,7 +460,7 @@ static gboolean tx_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) 
 
 void start_ps_menu(void) {
   cleanup();
-  if (can_transmit) {
+  if (transmitter != NULL) {
     ps_menu(top_window);
   }
 }
@@ -692,7 +692,7 @@ void new_menu(void) {
     // TX-related menus
     // TX, PA, VOX, PS, CW
     //
-    if (can_transmit) {
+    if (transmitter != NULL) {
       btn = gtk_button_new_with_label("TX");
       g_signal_connect (btn, "button-press-event", G_CALLBACK(tx_cb), NULL);
       gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);

@@ -94,7 +94,7 @@ static void vfo_save_bandstack(void) {
   entry->ctun = vfo[0].ctun;
   entry->ctun_frequency = vfo[0].ctun_frequency;
   entry->deviation = vfo[0].deviation;
-  if (can_transmit) {
+  if (transmitter != NULL) {
     entry->ctcss_enabled = transmitter->ctcss_enabled;
     entry->ctcss = transmitter->ctcss;
   }
@@ -329,7 +329,7 @@ void vfo_id_band_changed(int id, int b) {
   } else {
     vfo_id_adjust_band(id, vfo[id].frequency);
   }
-  if (can_transmit) {
+  if (transmitter != NULL) {
     transmitter->ctcss_enabled = entry->ctcss_enabled;
     transmitter->ctcss         = entry->ctcss;
     tx_set_ctcss(transmitter);
@@ -379,7 +379,7 @@ void vfo_id_bandstack_changed(int id, int b) {
   } else {
     vfo_id_adjust_band(id, vfo[id].frequency);
   }
-  if (can_transmit) {
+  if (transmitter != NULL) {
     transmitter->ctcss_enabled = entry->ctcss_enabled;
     transmitter->ctcss         = entry->ctcss;
     tx_set_ctcss(transmitter);
@@ -406,7 +406,7 @@ void vfo_id_mode_changed(int id, int m) {
     rx_mode_changed(receiver[id]);
     rx_filter_changed(receiver[id]);
   }
-  if (can_transmit) {
+  if (transmitter != NULL) {
     tx_set_mode(transmitter, vfo_get_tx_mode());
   }
   //
@@ -1017,7 +1017,7 @@ void vfo_update(void) {
   if (vfl->mode_x != 0) {
     switch (vfo[id].mode) {
     case modeFMN: {
-      if (can_transmit ? transmitter->ctcss_enabled : 0) {
+      if ((transmitter != NULL) ? transmitter->ctcss_enabled : 0) {
         snprintf(temp_text, sizeof(temp_text), "%s %s C=%0.1f", mode_string[vfo[id].mode], wid,
                  ctcss_frequencies[transmitter->ctcss]);
       } else {
@@ -1088,7 +1088,7 @@ void vfo_update(void) {
   int f_m; // MHz part
   int f_k; // kHz part
   int f_h; // Hz  part
-  if (can_transmit) { oob = transmitter->out_of_band; }
+  if (transmitter != NULL) { oob = transmitter->out_of_band; }
   // -----------------------------------------------------------
   //
   // Draw VFO A Dial.
@@ -1211,7 +1211,7 @@ void vfo_update(void) {
   // Draw string indicating PS status
   //
   // -----------------------------------------------------------
-  if ((protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) && can_transmit && vfl->ps_x != 0) {
+  if ((protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) && transmitter != NULL && vfl->ps_x != 0) {
     cairo_move_to(cr, vfl->ps_x, vfl->ps_y);
     if (transmitter->puresignal) {
       cairo_set_source_rgba(cr, COLOUR_ATTN);
@@ -1245,7 +1245,7 @@ void vfo_update(void) {
   // Draw string indicating XIT offset
   //
   // -----------------------------------------------------------
-  if (can_transmit && vfl->xit_x != 0) {
+  if (transmitter != NULL && vfl->xit_x != 0) {
     if (vfo[txvfo].xit_enabled == 0) {
       cairo_set_source_rgba(cr, COLOUR_SHADE);
     } else {
@@ -1345,7 +1345,7 @@ void vfo_update(void) {
   // Draw string indicating DEXP status
   //
   // -----------------------------------------------------------
-  if (vfl->dexp_x != 0 && can_transmit) {
+  if (vfl->dexp_x != 0 && transmitter != NULL) {
     cairo_move_to(cr, vfl->dexp_x, vfl->dexp_y);
     if (transmitter->dexp) {
       cairo_set_source_rgba(cr, COLOUR_ATTN);
@@ -1397,7 +1397,7 @@ void vfo_update(void) {
   // Draw string indicating compressor status
   //
   // -----------------------------------------------------------
-  if (can_transmit && vfl->cmpr_x != 0) {
+  if (transmitter != NULL && vfl->cmpr_x != 0) {
     cairo_move_to(cr, vfl->cmpr_x, vfl->cmpr_y);
     if (transmitter->cfc && transmitter->compressor) {
       snprintf(temp_text, sizeof(temp_text), "CprCfc");
@@ -1498,7 +1498,7 @@ void vfo_update(void) {
   // Draw string indicating VOX status
   //
   // -----------------------------------------------------------
-  if (can_transmit && vfl->vox_x != 0) {
+  if (transmitter != NULL && vfl->vox_x != 0) {
     cairo_move_to(cr, vfl->vox_x, vfl->vox_y);
     if (vox_enabled) {
       cairo_set_source_rgba(cr, COLOUR_ALARM);
@@ -1558,7 +1558,7 @@ void vfo_update(void) {
   // Draw string indicating SAT status
   //
   // -----------------------------------------------------------
-  if (can_transmit && vfl->dup_x != 0) {
+  if (transmitter != NULL && vfl->dup_x != 0) {
     if (duplex) {
       cairo_set_source_rgba(cr, COLOUR_ALARM);
     } else {

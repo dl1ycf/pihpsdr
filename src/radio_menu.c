@@ -72,7 +72,7 @@ static void rx_gain_element_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void tx_gain_element_changed_cb(GtkWidget *widget, gpointer data) {
-  if (can_transmit && device == SOAPYSDR_USB_DEVICE) {
+  if (transmitter != NULL && device == SOAPYSDR_USB_DEVICE) {
 #ifdef SOAPYSDR
     double gain = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
     if (radio_is_remote) {
@@ -559,7 +559,7 @@ void radio_menu(GtkWidget *parent) {
     g_signal_connect(filter_combo, "changed", G_CALLBACK(filter_cb), NULL);
   }
   row ++;
-  if (can_transmit) {
+  if (transmitter != NULL) {
     Btn = gtk_check_button_new_with_label("Split");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (Btn), split);
     gtk_grid_attach(GTK_GRID(grid), Btn, 0, row, 1, 1);
@@ -718,7 +718,7 @@ void radio_menu(GtkWidget *parent) {
     row++;
   }
   if (device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN
-      || device == NEW_DEVICE_G1 || controller == CONTROLLER3) {
+      || device == NEW_DEVICE_G2E || controller == CONTROLLER3) {
     //
     // Anan-7000 (only running P2) and G2 boards have a switchable
     // speaker amp.
@@ -936,7 +936,7 @@ void radio_menu(GtkWidget *parent) {
         }
       }
     }
-    if (can_transmit && radio->soapy.tx.gains > 0) {
+    if (transmitter != NULL && radio->soapy.tx.gains > 0) {
       row = max_row + 1;
       if (receivers == 1) {
         col = 2;

@@ -48,7 +48,7 @@
 #define ODEV_ORION2        10
 #define DEV_SATURN         10
 #define DEV_SATURN2        11
-#define DEV_G1             20
+#define DEV_G2E            20
 #define DEV_C25           100
 
 EXTERN int ODEVICE;

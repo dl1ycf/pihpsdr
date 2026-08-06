@@ -47,9 +47,10 @@
 #include "hpsdrsim.h"
 
 #ifdef LOGFIRST
-  static double first_tx_i[576000];
-  static double first_tx_q[576000];
-  static int first_tx_count = 0;
+  static double logfirst_is[576000];
+  static double logfirst_qs[576000];
+  static int    logfirst_count = -1;
+  static int    logfirst_num = 1;
 #endif
 
 #define NUMRECEIVERS 4
@@ -716,6 +717,10 @@ void *highprio_thread(void *data) {
         txptr = -1;
         memset(isample, 0, sizeof(double)*NEWRTXLEN);
         memset(qsample, 0, sizeof(double)*NEWRTXLEN);
+      } else {
+#ifdef LOGFIRST
+        logfirst_count = 0;
+#endif
       }
     }
     rc = (buffer[5] >> 0) & 0x01;
@@ -1245,29 +1250,31 @@ void *tx_thread(void * data) {
       samp2 |= (int)((unsigned char)(*p++) & 0xFF);
       di = (double) samp1 / 8388608.0;
       dq = (double) samp2 / 8388608.0;
-#ifdef LOGFIRST
-      if (first_tx_count < 576000) {
-        first_tx_i[first_tx_count  ] = di;
-        first_tx_q[first_tx_count++] = dq;
-        if (first_tx_count >= 576000 || !ptt) {
-          FILE *fp = fopen("FIRST.TX.IQ", "w");
-          if (fp) {
-            for (int j = 0; j < first_tx_count; j++) {
-              fprintf(fp, "%f  %f\n", first_tx_i[j], first_tx_q[j]);
-            }
-            fclose(fp);
-          }
-          first_tx_count = 576000;
-        }
-      }
-#endif
       //
       //      In P2, the output signal goes through a compensating
-      //      FIR filter at the end, that reduces the amplitudef
+      //      FIR filter at the end, that reduces the amplitude
       //      strength
       //
       di *= 1.116;
       dq *= 1.116;
+#ifdef LOGFIRST
+      if (logfirst_count >= 0 && logfirst_count < 576000) {
+        logfirst_is[logfirst_count  ] = di;
+        logfirst_qs[logfirst_count++] = dq;
+        if (logfirst_count >= 576000 || !ptt) {
+          char fname[64];
+          snprintf(fname, sizeof(fname), "FIRST.TX.IQ.%d", logfirst_num++);
+          FILE *fp = fopen(fname, "w");
+          if (fp) {
+            for (int j = 0; j < logfirst_count; j++) {
+              fprintf(fp, "%f %f\n", logfirst_is[j], logfirst_qs[j]);
+            }
+            fclose(fp);
+          }
+          logfirst_count = -1;
+        }
+      }
+#endif
       //
       // TX power
       //

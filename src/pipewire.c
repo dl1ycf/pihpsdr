@@ -1,5 +1,6 @@
 /* Copyright (C)
  *  2026 - Brendan Minish & Antigravity AI Coding Assistant / Google DeepMind
+ *  2026 - Christoph van Wüllen, DL1YCF
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -46,20 +47,14 @@
 #define MICRINGLEN 8192
 #define MICRINGMASK 8191
 
-#define AUDIO_LAT_TARGET_MS 200
-static const int AUDIO_LAT_TARGET_FRAMES = 48 * AUDIO_LAT_TARGET_MS; // 9600
+static const int AUDIO_LAT_TARGET_FRAMES = 9600; // 200 msec
+static const int CW_LAT_TARGET_FRAMES = 240; // 5 msec
 
 int n_input_devices;
 int n_output_devices;
 
 AUDIO_DEVICE input_devices[MAX_AUDIO_DEVICES];
 AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
-
-struct audio_ring {
-  double buffer[RING_BUFFER_SIZE * 2];
-  volatile int inpt;
-  volatile int outpt;
-};
 
 struct pipewire_handle {
   struct pw_thread_loop *loop;
@@ -71,8 +66,9 @@ struct pipewire_handle {
   TRANSMITTER *tx;
   int channels;
   int is_output;
-
-  struct audio_ring sidetone_ring;
+  double st_buffer[RING_BUFFER_SIZE]; // only MONO
+  volatile int st_inpt;
+  volatile int st_outpt;
 };
 
 static void on_discovery_timeout(void *data, uint64_t expirations) {
@@ -181,58 +177,37 @@ static void on_playback_process(void *data) {
     n_frames = b->requested;
   }
 
-  // 1. Pull receiver audio
-  int rx_inpt = rx->audio_buffer_inpt;
-  int rx_outpt = rx->audio_buffer_outpt;
-  int rx_avail = (rx_inpt - rx_outpt) & RING_BUFFER_MASK;
-
-  // 2. Pull sidetone audio
-  int st_inpt = h->sidetone_ring.inpt;
-  int st_outpt = h->sidetone_ring.outpt;
-  int st_avail = (st_inpt - st_outpt) & RING_BUFFER_MASK;
-
-  // RX audio is muted if break-in is ON, duplex is OFF, and we are keying (state 3)
-  int mute_rx = (cw_breakin && !duplex && rx->cwaudio == 3);
-
   for (uint32_t i = 0; i < n_frames; i++) {
     double rx_left = 0.0;
     double rx_right = 0.0;
     double st_sample = 0.0;
+    int oldpt;
 
-    if (!mute_rx && i < (uint32_t)rx_avail) {
-      int idx = (rx_outpt + i) & RING_BUFFER_MASK;
+    oldpt = rx->audio_buffer_outpt;
+    if (oldpt != rx->audio_buffer_inpt) {
       if (h->channels == 1) {
-        rx_left = rx->audio_buffer[idx];
-        rx_right = rx_left;
+        rx_left = rx->audio_buffer[oldpt];
       } else {
-        rx_left = rx->audio_buffer[idx * 2];
-        rx_right = rx->audio_buffer[idx * 2 + 1];
+        rx_left = rx->audio_buffer[oldpt * 2];
+        rx_right = rx->audio_buffer[oldpt * 2 + 1];
       }
+      MEMORY_BARRIER;
+      rx->audio_buffer_outpt = (oldpt + 1) & RING_BUFFER_MASK;
     }
 
-    if (i < (uint32_t)st_avail) {
-      int idx = (st_outpt + i) & RING_BUFFER_MASK;
-      st_sample = h->sidetone_ring.buffer[idx * h->channels];
+    oldpt = h->st_outpt;
+    if (oldpt != h->st_inpt) {
+      st_sample = h->st_buffer[oldpt];
+      MEMORY_BARRIER;
+      h->st_outpt = (oldpt + 1) & RING_BUFFER_MASK;
     }
 
     if (h->channels == 1) {
-      samples[i] = (float)(0.5 * (rx_left + rx_right) + st_sample);
+      samples[i] = (float)(rx_left + st_sample);
     } else {
       samples[i * 2] = (float)(rx_left + st_sample);
       samples[i * 2 + 1] = (float)(rx_right + st_sample);
     }
-  }
-
-  if (n_frames < (uint32_t)rx_avail) {
-    rx->audio_buffer_outpt = (rx_outpt + n_frames) & RING_BUFFER_MASK;
-  } else {
-    rx->audio_buffer_outpt = rx_inpt;
-  }
-
-  if (n_frames < (uint32_t)st_avail) {
-    h->sidetone_ring.outpt = (st_outpt + n_frames) & RING_BUFFER_MASK;
-  } else {
-    h->sidetone_ring.outpt = st_inpt;
   }
 
   buf->datas[0].chunk->offset = 0;
@@ -311,8 +286,8 @@ int audio_open_output(RECEIVER *rx) {
   h->rx = rx;
   h->channels = rx->local_audio_channels;
   h->is_output = 1;
-  h->sidetone_ring.inpt = 0;
-  h->sidetone_ring.outpt = 0;
+  h->st_inpt = 0;
+  h->st_outpt = 0;
 
   h->loop = pw_thread_loop_new("pihpsdr-playback", NULL);
   if (!h->loop) {
@@ -350,9 +325,6 @@ int audio_open_output(RECEIVER *rx) {
     return -1;
   }
 
-  char latency_str[32];
-  snprintf(latency_str, sizeof(latency_str), "%d/48000", rx->latency);
-
   // Playback Stream properties
   struct pw_properties *props = pw_properties_new(
       PW_KEY_MEDIA_TYPE, "Audio",
@@ -361,7 +333,7 @@ int audio_open_output(RECEIVER *rx) {
       PW_KEY_NODE_NAME, "pihpsdr-rx",
       PW_KEY_NODE_DESCRIPTION, "piHPSDR Playback",
       PW_KEY_TARGET_OBJECT, rx->audio_name,
-      PW_KEY_NODE_LATENCY, latency_str,
+      PW_KEY_NODE_LATENCY, "128/48000",
       NULL
   );
 
@@ -644,44 +616,39 @@ void audio_write(RECEIVER *rx, double left, double right) {
     return;
   }
 
-  if (rx->cwaudio == 3) {
-    // Transition TX -> RX
-    if (cw_breakin && !duplex) {
-      h->sidetone_ring.inpt = 0;
-      h->sidetone_ring.outpt = 0;
-
-      rx->audio_buffer_outpt = rx->audio_buffer_inpt;
-
-      int inpt = rx->audio_buffer_inpt;
-      for (int i = 0; i < AUDIO_LAT_TARGET_FRAMES; i++) {
-        for (int c = 0; c < rx->local_audio_channels; c++) {
-          rx->audio_buffer[inpt * rx->local_audio_channels + c] = 0.0;
-        }
-        inpt = (inpt + 1) & RING_BUFFER_MASK;
-      }
-      rx->audio_buffer_inpt = inpt;
-    }
-
-    rx->cwaudio = 0;
-  }
-
-  if (rx->cwaudio == 5) {
-    int inpt = rx->audio_buffer_inpt;
-    for (int i = 0; i < AUDIO_LAT_TARGET_FRAMES; i++) {
-      for (int c = 0; c < rx->local_audio_channels; c++) {
-        rx->audio_buffer[inpt * rx->local_audio_channels + c] = 0.0;
-      }
-      inpt = (inpt + 1) & RING_BUFFER_MASK;
-    }
-    rx->audio_buffer_inpt = inpt;
-    rx->cwaudio = 0;
-  }
-
   int inpt = rx->audio_buffer_inpt;
   int outpt = rx->audio_buffer_outpt;
-  int next_inpt = (inpt + 1) & RING_BUFFER_MASK;
+  if (rx->cwaudio != 0) {
+    // Transition TX -> RX, or first time after audio_open
 
-  if (next_inpt != outpt) {
+    if (inpt == rx->audio_buffer_outpt) {
+      //
+      // Buffer empty. Assume we can put in all pre-filling samples
+      // without a buffer-full check
+      //
+      if ( rx->local_audio_channels == 1) {
+        // MONO
+        for (int i = 0; i < AUDIO_LAT_TARGET_FRAMES; i++) {
+          rx->audio_buffer[inpt] = 0.0;
+          inpt = (inpt + 1) & RING_BUFFER_MASK;
+        }
+      } else {
+        // STEREO
+        for (int i = 0; i < AUDIO_LAT_TARGET_FRAMES; i++) {
+          rx->audio_buffer[2 * inpt] = 0.0;
+          rx->audio_buffer[2 * inpt + 1] = 0.0;
+          inpt = (inpt + 1) & RING_BUFFER_MASK;
+        }
+      }
+      MEMORY_BARRIER;
+      rx->audio_buffer_inpt = inpt;
+    }
+    rx->cwaudio = 0;
+  }
+
+  int newpt = (inpt + 1) & RING_BUFFER_MASK;
+
+  if (newpt  != outpt) {
     if (rx->local_audio_channels == 1) {
       rx->audio_buffer[inpt] = 0.5 * (left + right);
     } else {
@@ -689,7 +656,7 @@ void audio_write(RECEIVER *rx, double left, double right) {
       rx->audio_buffer[inpt * 2 + 1] = right;
     }
     MEMORY_BARRIER;
-    rx->audio_buffer_inpt = next_inpt;
+    rx->audio_buffer_inpt = newpt;
   }
 
   g_mutex_unlock(&rx->audio_mutex);
@@ -703,27 +670,28 @@ void tx_audio_write(RECEIVER *rx, double sample) {
     return;
   }
 
-  if (rx->cwaudio == 0 || rx->cwaudio == 5) {
+  int inpt = h->st_inpt;
+  if (rx->cwaudio != 3) {
     // Transition RX -> TX
-    if (cw_breakin && !duplex) {
-      h->sidetone_ring.inpt = 0;
-      h->sidetone_ring.outpt = 0;
+    if (inpt == h->st_outpt) {
+      // side tone buffer empty
+      for (int i = 0; i < CW_LAT_TARGET_FRAMES; i++) {
+        rx->audio_buffer[inpt] = 0.0;
+        inpt = (inpt + 1) & RING_BUFFER_MASK;
+      }
+      MEMORY_BARRIER;
+      h->st_inpt = inpt;
     }
-
     rx->cwaudio = 3;
   }
 
-  // Write sample directly to sidetone_ring
-  int inpt = h->sidetone_ring.inpt;
-  int outpt = h->sidetone_ring.outpt;
-  int next_inpt = (inpt + 1) & RING_BUFFER_MASK;
+  // Write sample directly to sidetone buffer
+  int newpt = (inpt + 1) & RING_BUFFER_MASK;
 
-  if (next_inpt != outpt) {
-    for (int c = 0; c < h->channels; c++) {
-      h->sidetone_ring.buffer[inpt * h->channels + c] = sample;
-    }
+  if (newpt != h->st_outpt) {
+    h->st_buffer[inpt] = sample;
     MEMORY_BARRIER;
-    h->sidetone_ring.inpt = next_inpt;
+    h->st_inpt = newpt;
   }
 
   g_mutex_unlock(&rx->audio_mutex);

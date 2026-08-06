@@ -652,7 +652,7 @@ int TransmitAllowed(void) {
   //
   // If there is no transmitter, we cannot transmit
   //
-  if (!can_transmit) { return 0; }
+  if (transmitter == NULL) { return 0; }
   //
   // quick return if out-of-band TX is enabled
   //

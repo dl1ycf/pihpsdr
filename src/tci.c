@@ -449,9 +449,10 @@ static void tci_handle_binary_lws (CLIENT *client, const unsigned char* data, si
   }
   //
   // Now the whole frame is assembled, so we can process it. Since client->binary_rx_buf
-  // is a pointer obtained from a malloc(), it is suitably aligned for all data types.
+  // is a pointer obtained from a malloc(), it is suitably aligned for all data types,
+  // and we use the intermediate cast to void* to tell the compiler about this.
   //
-  tci_handle_binary (client, (TCI_STREAM *)client->binary_rx_buf, client->binary_rx_len);  // CAST OK
+  tci_handle_binary (client, (TCI_STREAM *)(void *)client->binary_rx_buf, client->binary_rx_len);
   client->binary_rx_len = 0;
 }
 
@@ -489,372 +490,6 @@ static void tci_send_mox (CLIENT *client) {
     client->last_mox = 0;
   }
 }
-
-#if 0
-/*
- * DL1YCF note: most of the "asynchronous reporters" have been
- * deactivated. Only the "reporter task" sends asynchronous
- * (non-solicited) messages
- */
-void tci_vfo_changed (int id) {
-  if (!tci_running) { return; }
-  if (id == VFO_A) {
-    tci_broadcast_vfo (VFO_A, 0);
-  } else if (id == VFO_B) {
-    tci_broadcast_vfo (VFO_A, 1);
-    if (receivers > 1) {
-      tci_broadcast_vfo (VFO_B, 0);
-      tci_broadcast_vfo (VFO_B, 1);
-    }
-  }
-}
-
-void tci_vfos_changed (void) {
-  if (!tci_running) { return; }
-  tci_broadcast_vfo (VFO_A, 0);
-  tci_broadcast_vfo (VFO_A, 1);
-  tci_broadcast_mode_value (VFO_A, vfo[VFO_A].mode);
-  if (receivers > 1) {
-    tci_broadcast_vfo (VFO_B, 0);
-    tci_broadcast_vfo (VFO_B, 1);
-    tci_broadcast_mode_value (VFO_B, vfo[VFO_B].mode);
-  }
-  tci_broadcast_txfreq();
-  tci_broadcast_drive();
-  tci_broadcast_split();
-}
-
-void tci_mode_changed (int id) {
-  if (!tci_running) { return; }
-  if (id < VFO_A || id > VFO_B) { return; }
-  tci_broadcast_mode_value (id, vfo[id].mode);
-}
-void tci_broadcast_split (void) {
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_split (tciclient + c);
-    }
-  }
-}
-
-void tci_split_changed (void) {
-  if (!tci_running) { return; }
-  tci_broadcast_split();
-}
-
-void tci_broadcast_txfreq (void) {
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_txfreq (tciclient + c);
-    }
-  }
-}
-
-void tci_agc_mode_changed(int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_agc_mode(receiver_id);
-}
-
-void tci_broadcast_agc_mode(int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_agc_mode(tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_agc_gain_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_agc_gain(receiver_id);
-}
-
-void tci_broadcast_agc_gain (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_agc_gain (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_broadcast_volume (void) {
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_volume (tciclient + c);
-    }
-  }
-}
-
-void tci_broadcast_rx_volume (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rx_volume (tciclient + c, receiver_id, 0);
-      tci_send_rx_volume (tciclient + c, receiver_id, 1);
-    }
-  }
-}
-
-void tci_volume_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_volume();
-  tci_broadcast_rx_volume(receiver_id);
-}
-
-void tci_broadcast_rx_nr_enable (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rx_nr_enable (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_rx_nr_enable_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_rx_nr_enable(receiver_id);
-}
-
-void tci_broadcast_rx_apf_enable (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rx_apf_enable (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_rx_apf_enable_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_rx_apf_enable(receiver_id);
-}
-
-void tci_broadcast_rx_bin_enable (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rx_bin_enable (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_rx_bin_enable_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_rx_bin_enable(receiver_id);
-}
-
-void tci_broadcast_rx_nb_enable (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rx_nb_enable (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_rx_nb_enable_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_rx_nb_enable(receiver_id);
-}
-
-void tci_broadcast_rx_nf_enable (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rx_nf_enable (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_rx_nf_enable_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_rx_nf_enable(receiver_id);
-}
-
-void tci_broadcast_rx_anf_enable (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rx_anf_enable (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_rx_anf_enable_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_rx_anf_enable(receiver_id);
-}
-
-void tci_broadcast_sql_enable (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_sql_enable (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_broadcast_sql_level (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_sql_level (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_sql_enable_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_sql_enable(receiver_id);
-}
-
-void tci_sql_level_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  tci_broadcast_sql_level(receiver_id);
-}
-
-void tci_mute_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  if (active_receiver != NULL) {
-    tci_broadcast_mute_state(active_receiver->mute_radio ? 1 : 0);
-  }
-  if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
-  tci_broadcast_rx_mute_state(receiver_id, receiver[receiver_id]->mute_radio ? 1 : 0);
-}
-
-void tci_rx_mute_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
-  tci_broadcast_rx_mute_state(receiver_id, receiver[receiver_id]->mute_radio ? 1 : 0);
-}
-
-void tci_broadcast_xit_offset (void) {
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_xit_offset (tciclient + c);
-    }
-  }
-}
-
-void tci_xit_enable_changed (void) {
-  int txvfo;
-  if (!tci_running) { return; }
-  txvfo = vfo_get_tx_vfo();
-  if (txvfo < VFO_A || txvfo > VFO_B) { return; }
-  tci_broadcast_xit_enable();
-  if (vfo[txvfo].xit_enabled) {
-    if (vfo[txvfo].xit != 0) {
-      tci_broadcast_xit_offset();
-    }
-  } else {
-    tci_broadcast_xit_offset();
-  }
-}
-
-
-void tci_rit_offset_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
-  if (!vfo[receiver_id].rit_enabled) { return; }
-  tci_broadcast_rit_offset (receiver_id);
-}
-
-void tci_xit_offset_changed (void) {
-  int txvfo;
-  if (!tci_running) { return; }
-  txvfo = vfo_get_tx_vfo();
-  if (txvfo < VFO_A || txvfo > VFO_B) { return; }
-  if (!vfo[txvfo].xit_enabled) { return; }
-  tci_broadcast_xit_offset();
-}
-
-void tci_broadcast_xit_enable (void) {
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_xit_enable (tciclient + c);
-    }
-  }
-}
-
-void tci_broadcast_rit_offset (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rit_offset (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_rit_enable_changed (int receiver_id) {
-  if (!tci_running) { return; }
-  if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
-  tci_broadcast_rit_enable (receiver_id);
-  if (vfo[receiver_id].rit_enabled) {
-    if (vfo[receiver_id].rit != 0) {
-      tci_broadcast_rit_offset (receiver_id);
-    }
-  } else {
-    tci_broadcast_rit_offset (receiver_id);
-  }
-}
-
-void tci_broadcast_rit_enable (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_rit_enable (tciclient + c, receiver_id);
-    }
-  }
-}
-
-void tci_send_mox_state (CLIENT *client, int state) {
-  if (client == NULL) { return; }
-  if (client->last_mox == state) { return; }
-  if (state) {
-    tci_send_text (client, "trx:0,true;");
-    client->last_mox = 1;
-  } else {
-    tci_send_text (client, "trx:0,false;");
-    client->last_mox = 0;
-  }
-}
-
-void tci_broadcast_mox_state (int state) {
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      tci_send_mox_state (tciclient + c, state);
-    }
-  }
-}
-
-void tci_mox_changed (int state) {
-  if (!tci_running) { return; }
-  tci_broadcast_mox_state (state);
-}
-
-void tci_broadcast_tune_state (int state) {
-  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
-    if (tciclient[c].running) {
-      if (state) {
-        tci_send_text (tciclient + c, "tune:0,true;");
-      } else {
-        tci_send_text (tciclient + c, "tune:0,false;");
-      }
-    }
-  }
-}
-
-void tci_tune_changed (int state) {
-  if (!tci_running) { return; }
-  tci_broadcast_tune_state (state);
-}
-
-static void tci_lock_changed (void) {
-  if (!tci_running) { return; }
-  tci_broadcast_lock();
-}
-#endif
 
 static void tci_send_lock (CLIENT *client, int receiver_id) {
   char msg[MAXMSGSIZE];
@@ -978,7 +613,7 @@ static void tci_send_tx_sensors (CLIENT *client) {
   double rms;
   double peak;
   double swr;
-  if (client == NULL || transmitter == NULL || !can_transmit) {
+  if (client == NULL || transmitter == NULL) {
     return;
   }
   if (!radio_is_transmitting() || transmitter->fwd <= 0.01) {
@@ -1123,12 +758,12 @@ static void tci_send_split (CLIENT *client) {
 static void tci_send_tx_enable (CLIENT *client) {
   char msg[MAXMSGSIZE];
   snprintf (msg, MAXMSGSIZE, "tx_enable:0,%s;",
-            can_transmit ? "true" : "false");
+            transmitter != NULL ? "true" : "false");
   tci_send_text (client, msg);
 }
 
 static void tci_send_tune (CLIENT *client) {
-  if (can_transmit && transmitter->tune) {
+  if (transmitter != NULL && transmitter->tune) {
     tci_send_text (client, "tune:0,true;");
   } else {
     tci_send_text (client, "tune:0,false;");
@@ -2276,7 +1911,7 @@ static void tci_cmd_tune_drive (CLIENT *client, const TCI_CMD *cmd) {
       }
       if (transmitter != NULL) {
         transmitter->tune_drive = value;
-        if (can_transmit && transmitter->tune_use_drive) {
+        if (transmitter != NULL && transmitter->tune_use_drive) {
           transmitter->tune_use_drive = 0;
         }
         changed = 1;
@@ -2884,7 +2519,7 @@ static void tci_send_initial_state (CLIENT *client) {
   // tci_send_text(client, "device:SunSDR2PRO;");
   tci_send_text (client, "protocol:ExpertSDR3,2.0;");
   tci_send_text (client, "device:SunSDR2QRP;");
-  tci_send_text (client, can_transmit ? "receive_only:false;" : "receive_only:true;");
+  tci_send_text (client, transmitter == NULL ? "receive_only:true;" : "receive_only:false;");
   tci_send_trx_count (client);
   tci_send_text (client, "channels_count:2;");
   //

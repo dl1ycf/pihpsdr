@@ -446,9 +446,9 @@ gboolean discovery_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer d
       case NEW_DEVICE_ORION2:
         r = "Orion 2";
         break;
-      case DEVICE_G1:
-      case NEW_DEVICE_G1:
-        r = "ANAN G1";
+      case DEVICE_G2E:
+      case NEW_DEVICE_G2E:
+        r = "ANAN G 2 E";
         break;
       case DEVICE_STEMLAB:
       case DEVICE_STEMLAB_Z20:

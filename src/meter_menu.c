@@ -63,7 +63,7 @@ static void smeter_cb (GtkToggleButton *widget, gpointer data) {
   if (radio_is_remote) {
     int alcmode = 0;
     int metermode = 0;
-    if (can_transmit) {
+    if (transmitter != NULL) {
       alcmode = transmitter->alcmode;
       metermode = transmitter->metermode;
     }
@@ -140,7 +140,7 @@ void meter_menu (GtkWidget *parent) {
   btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(mbtn), "Average");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), !(active_receiver->smetermode == SMETER_PEAK));
   gtk_grid_attach(GTK_GRID(grid), btn, 2, 3, 1, 1);
-  if (can_transmit) {
+  if (transmitter != NULL) {
     lbl = gtk_label_new("TX Pwr Reading");
     gtk_widget_set_name(lbl, "boldlabel");
     gtk_widget_set_halign(lbl, GTK_ALIGN_END);

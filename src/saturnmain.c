@@ -1074,6 +1074,7 @@ static gpointer saturn_rx_thread(gpointer arg) {
       //   therefore always 64-bit aligned
       // - IQHeadPtr is initialised with malloc() and thus aligned, and moves in multiples of 2 bytes,
       //   threfore always 16-bit aligned
+      // - An intermediate cast to (void *) is used to tell the compiler about this.
       //
       // Three lines in the following block will be flagged by the compiler with strict alignment
       // check (clang: -Wcast-align, gcc: -Wcast-align=strict) but these three warnings can be
@@ -1086,7 +1087,7 @@ static gpointer saturn_rx_thread(gpointer arg) {
           exit(1);
         } else {                                                                          // analyse word, then process
           // cppcheck-suppress constVariablePointer
-          uint32_t *LongWordPtr = (uint32_t*)DMAReadPtr;  // CAST OK
+          uint32_t *LongWordPtr = (uint32_t*)(void *)DMAReadPtr;                          // CAST OK
           RateWord = *LongWordPtr;                                                        // read rate word
           if (RateWord != PrevRateWord) {
             FrameLength = AnalyseDDCHeader(RateWord, &DDCCounts[0]);                      // read new settings
@@ -1096,11 +1097,11 @@ static gpointer saturn_rx_thread(gpointer arg) {
           if (DecodeByteCount >= ((FrameLength + 1) * 8)) {                               // if bytes for header & frame
             //THEN COPY DMA DATA TO I / Q BUFFERS
             DMAReadPtr += 8;                                                              // point to 1st location past rate word
-            SrcWordPtr = (uint16_t*)DMAReadPtr; // CAST OK
+            SrcWordPtr = (uint16_t*)(void *)DMAReadPtr;                                   // CAST OK
             for (int DDC = 0; DDC < VNUMDDC; DDC++) {
               HdrWord = DDCCounts[DDC];                                                   // number of words for this DDC. reuse variable
               if (HdrWord != 0) {
-                DestWordPtr = (uint16_t *)IQHeadPtr[DDC]; // CAST OK
+                DestWordPtr = (uint16_t *)(void *)IQHeadPtr[DDC];                         // CAST OK
                 for (unsigned int Cntr = 0; Cntr < HdrWord; Cntr++) {                     // count 64 bit words
                   *DestWordPtr++ = *SrcWordPtr++;                                         // move 48 bits of sample data
                   *DestWordPtr++ = *SrcWordPtr++;

@@ -183,7 +183,7 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
     //   immediately return with error EINPROGRESS.
     // - Then, one uses select() to look for *writeability* and check
     //   the socket error if everything went right. Since one calls select()
-    //   with a time-out, one either succeed within this time or gives up.
+    //   with a time-out, one either succeeds within this time or gives up.
     // - Do not forget to make the socket blocking again.
     //
     // Step 1. Make socket non-blocking and connect()
@@ -395,8 +395,8 @@ static gpointer p1_discover_receive_thread(gpointer data) {
             discovered[devices].frequency_min = 0.0;
             discovered[devices].frequency_max = 61440000.0;
             break;
-          case DEVICE_G1:
-            snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Anan G1");
+          case DEVICE_G2E:
+            snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Anan G2E");
             discovered[devices].frequency_min = 0.0;
             discovered[devices].frequency_max = 61440000.0;
             break;

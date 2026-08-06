@@ -822,9 +822,8 @@ void audio_get_cards() {
     snd_ctl_close(handle);
   }
   //
-  // look for dmix
   // We can get a very long list of names here, so only watch out
-  // for those starting with dmix:
+  // for those starting with dmix: and bluealsa
   // Furthermore, truncate the description at the first newline
   //
   void **hints, **n;
@@ -836,7 +835,19 @@ void audio_get_cards() {
     char *name = snd_device_name_get_hint(*n, "NAME");
     char *descr = snd_device_name_get_hint(*n, "DESC");
     if (name == NULL || descr == NULL) { continue; }
+    int dev_type = 0;
+    //
+    // There are *very* many virtual ALSA devices ("plugins") and we do not want
+    // them all in our device list. So we only select few of them, namely
+    // dmix and bluealsa devices
+    //
     if (strncmp("dmix:", name, 5) == 0) {
+      dev_type = 1;
+    }
+    if (strncmp("bluealsa", name, 8) == 0) {
+      dev_type = 2;
+    }
+    if (dev_type != 0) {
       //
       // Determine capabilities (resample off/on, stereo/mono, formats)
       // Note it seems that resampling never works for dmix devices,
@@ -860,8 +871,19 @@ void audio_get_cards() {
                   char device_desc[256];
                   char *cp;
                   audio_format = formats[f]; // lock slot
-                  snprintf(device_desc, sizeof(device_desc), "dmix:%s", descr);
-                  // truncate at newline
+                  switch(dev_type) {
+                  case 1:
+                     snprintf(device_desc, sizeof(device_desc), "DM:%s", descr);
+                    break;
+                  case 2:
+                     snprintf(device_desc, sizeof(device_desc), "BT:%s", descr);
+                    break;
+                  default:
+                     //NOTREACHED
+                     snprintf(device_desc, sizeof(device_desc), "UK:%s", descr);
+                    break;
+                  }
+                  // truncate description at newline
                   cp = strchr(device_desc, '\n');
                   if (cp) { *cp = '\0'; }
                   output_devices[n_output_devices].name = g_strdup(name);
