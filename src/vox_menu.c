@@ -31,19 +31,26 @@ static GtkWidget *ledbtn = NULL;
 static GtkWidget *dialog = NULL;
 static GtkWidget *mic_level_bar;
 static guint level_timer_id = 0;
+static int local_vox_state;
 
-int vox_menu_trigger(gpointer data) {
-  int state = GPOINTER_TO_INT(data);
-  if (state) {
-    gtk_widget_set_name(ledbtn, "redbutton");
-  } else {
-    gtk_widget_set_name(ledbtn, "greenbutton");
-  }
-  return G_SOURCE_REMOVE;
-}
-
+//
+// Update the microphone level bar.
+// If VOX threshold is met, make the status button red
+// If VOX threshold was not met for some time, make it green again
+//
 static int level_update(gpointer arg) {
-  gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(mic_level_bar), vox_get_peak());
+  static int count_red = 0;
+  double peak = vox_get_peak();
+  gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(mic_level_bar), peak);
+  if (peak >= vox_threshold) {
+    gtk_widget_set_name(ledbtn, "redbutton");
+    count_red = 6;
+  }
+  if (count_red > 0) {
+    if (--count_red == 0) {
+      gtk_widget_set_name(ledbtn, "greenbutton");
+    }
+  }
   return G_SOURCE_CONTINUE;
 }
 
@@ -59,6 +66,8 @@ static void cleanup(void) {
     sub_menu = NULL;
     active_menu  = NO_MENU;
   }
+  vox_enabled = local_vox_state;
+  tx_set_vox(transmitter);
   radio_save_state();
 }
 
@@ -68,8 +77,7 @@ static gboolean close_cb(void) {
 }
 
 static gboolean enable_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  vox_enabled = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-  tx_set_vox(transmitter);
+  local_vox_state = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   return TRUE;
 }
 
@@ -85,6 +93,12 @@ static void vox_hang_value_changed_cb(GtkWidget *widget, gpointer data) {
 
 void vox_menu(GtkWidget *parent) {
   if (transmitter == NULL) { return; }
+  //
+  // Temporarily disable VOX so we can make adjustments
+  // without going TX
+  //
+  local_vox_state = vox_enabled;
+  vox_enabled = 0;
   dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
   GtkWidget *headerbar = gtk_header_bar_new();
@@ -106,7 +120,7 @@ void vox_menu(GtkWidget *parent) {
   gtk_widget_set_name(ledbtn, "greenbutton");
   gtk_grid_attach(GTK_GRID(grid), ledbtn, 2, 0, 1, 1);
   GtkWidget *enable_b = gtk_check_button_new_with_label("VOX Enable");
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(enable_b), vox_enabled);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(enable_b), local_vox_state);
   g_signal_connect (enable_b, "toggled", G_CALLBACK(enable_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), enable_b, 3, 0, 1, 1);
   GtkWidget *level_label = gtk_label_new("Mic Level");

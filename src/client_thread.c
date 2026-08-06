@@ -392,11 +392,15 @@ static gpointer remote_txaudio_thread(gpointer data) {
         vox_triggered = 0;
         vox_count = 0;
         sample = 0.0;
-      } else if (vox_enabled) {
-        double amplitude = fabs(sample);
-        if (amplitude > vox_max1) {
-          vox_max1 = amplitude;
-        }
+      }
+      //
+      // Set vox_max1/2 even when VOX is not enabled
+      //
+      double amplitude = fabs(sample);
+      if (amplitude > vox_max1) {
+        vox_max1 = amplitude;
+      }
+      if (vox_enabled) {
         if (amplitude > vox_threshold) {
           if (!vox_triggered) {
              g_idle_add(ext_radio_set_vox,GINT_TO_POINTER(1));
