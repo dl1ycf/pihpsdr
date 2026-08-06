@@ -110,21 +110,24 @@ typedef struct _transmitter {
   volatile int audio_running;         // used in mic thread to see whether input is still running
   double *audio_buffer;               // audio buffer for sound card input
 
-#if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA)
+#if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA) && defined(PIPEWIRE)
   // this is only possible for "cppcheck" runs
   // declare all data without conflicts
   void *audio_handle;
   snd_pcm_format_t audio_format;
 #endif
-#if defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA)
+#if defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA) && !defined(PIPEWIRE)
   PaStream *audio_handle;
 #endif
-#if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && defined(ALSA)
+#if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && defined(ALSA) && !defined(PIPEWIRE)
   snd_pcm_t *audio_handle;
   snd_pcm_format_t audio_format;
 #endif
-#if !defined(PORTAUDIO) && defined(PULSEAUDIO) && !defined(ALSA)
+#if !defined(PORTAUDIO) && defined(PULSEAUDIO) && !defined(ALSA) && !defined(PIPEWIRE)
   pa_simple *audio_handle;
+#endif
+#if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA) && defined(PIPEWIRE)
+  void *audio_handle;
 #endif
 
   int out_of_band;

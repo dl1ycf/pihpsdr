@@ -214,6 +214,7 @@ typedef struct _receiver {
   //
   int audio_channel;                 // STEREO or LEFT or RIGHT
   int local_audio;                   // RX audio to sound card is active
+  int audio_latency;                 // Latency of local audio (only used for PIPEWIRE)
   int local_audio_channels;          // 1 or 2, indicates mono or stereo.
   char audio_name[128];              // name of currently used sound card
   GMutex audio_mutex;                // Mutex that can be used for soundcard output
@@ -222,23 +223,26 @@ typedef struct _receiver {
   volatile atomic_int audio_buffer_inpt;    // pointer for audio buffer
   volatile atomic_int audio_buffer_outpt;   // pointer for audio_buffer
 
-#if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA)
+#if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA) && defined(PIPEWIRE)
   // this is only possible for "cppcheck" runs
   // declare all data without conflicts
   void *audio_handle;
   snd_pcm_format_t audio_format;
   int latency;
 #endif
-#if defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA)
+#if defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA) && !defined(PIPEWIRE)
   PaStream *audio_handle;
 #endif
-#if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && defined(ALSA)
+#if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && defined(ALSA) && !defined(PIPEWIRE)
   snd_pcm_t *audio_handle;
   snd_pcm_format_t audio_format;
 #endif
-#if !defined(PORTAUDIO) && defined(PULSEAUDIO) && !defined(ALSA)
+#if !defined(PORTAUDIO) && defined(PULSEAUDIO) && !defined(ALSA) && !defined(PIPEWIRE)
   pa_simple *audio_handle;
   pa_usec_t latency;
+#endif
+#if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA) && defined(PIPEWIRE)
+  void * audio_handle;
 #endif
 
   int cwaudio;   // detect RX/TX transitions in CW
