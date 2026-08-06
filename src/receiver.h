@@ -214,7 +214,7 @@ typedef struct _receiver {
   //
   int audio_channel;                 // STEREO or LEFT or RIGHT
   int local_audio;                   // RX audio to sound card is active
-  int audio_latency;                 // Latency of local audio (only used for PIPEWIRE)
+  int pw_latency;                    // Latency of local audio (only used for PIPEWIRE)
   int local_audio_channels;          // 1 or 2, indicates mono or stereo.
   char audio_name[128];              // name of currently used sound card
   GMutex audio_mutex;                // Mutex that can be used for soundcard output
