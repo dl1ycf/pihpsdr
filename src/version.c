@@ -50,7 +50,7 @@ char build_audio[] =
   "PortAudio";
 #endif
 #ifdef PIPEWIRE
-  "PipeWire";
+  "PIPEWIRE";
 #endif
 #if !defined(ALSA) && !defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(PIPEWIRE)
   "(unkown)";
