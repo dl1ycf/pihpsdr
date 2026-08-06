@@ -44,10 +44,10 @@ char build_audio[] =
   "ALSA";
 #endif
 #ifdef PULSEAUDIO
-  "PulseAudio";
+  "PULSEAUDIO";
 #endif
 #ifdef PORTAUDIO
-  "PortAudio";
+  "PORTAUDIO";
 #endif
 #ifdef PIPEWIRE
   "PIPEWIRE";
