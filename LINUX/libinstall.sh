@@ -133,7 +133,8 @@ sudo apt-get install --yes librtlsdr-dev
 
 ################################################################
 #
-# c) download and install SoapySDR core
+# c) download and install SoapySDR core, and support for some
+#    radios
 #
 ################################################################
 
@@ -148,6 +149,93 @@ yes | rm -r SoapySDR
 git clone https://github.com/pothosware/SoapySDR.git
 
 cd $THISDIR/SoapySDR
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
+make
+sudo make install
+sudo ldconfig
+
+echo "=============================================================="
+echo
+echo "... installing HackRF SoapySDR support"
+echo
+echo "=============================================================="
+
+cd $THISDIR
+yes | sudo apt-get install libhackrf-dev
+yes | rm -rf SoapyHackRF
+git clone https://github.com/pothosware/SoapyHackRF.git
+cd SoapyHackRF
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+sudo ldconfig
+
+echo "=============================================================="
+echo
+echo "... installing SoapySDR RTL-stick libraries"
+echo
+echo "=============================================================="
+
+cd $THISDIR
+yes | rm -rf SoapyRTLSDR
+git clone https://github.com/pothosware/SoapyRTLSDR
+
+cd $THISDIR/SoapyRTLSDR
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
+make
+sudo make install
+sudo ldconfig
+
+echo "=============================================================="
+echo
+echo "... installing SoapySDR AdalmPluto libraries"
+echo
+echo "=============================================================="
+
+################################################################
+#
+# SOAPY: AdalmPluto support
+#
+# A) download and install libiio
+#    NOTE: libiio has just changed the API and SoapyPlutoSDR
+#          is not yet updated. So compile version 0.25, which
+#          is the last one with the old API
+#
+# CURRENTLY DISABLED: apt get libiio-dev also works (give v0.23)
+#
+################################################################
+#echo "... installing libiio with old API"
+#
+#cd $THISDIR
+#yes | rm -r libiio
+#git clone https://github.com/analogdevicesinc/libiio.git
+#git checkout v0.25
+#
+#cd $THISDIR
+#mkdir build
+#cd build
+#cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
+#make
+#sudo make install
+#sudo ldconfig
+
+echo "=============================================================="
+echo
+echo "... installing SoapySDR AdalmPluto libraries"
+echo
+echo "=============================================================="
+
+cd $THISDIR
+yes | rm -rf SoapyPlutoSDR
+git clone https://github.com/pothosware/SoapyPlutoSDR
+
+cd $THISDIR/SoapyPlutoSDR
 mkdir build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
