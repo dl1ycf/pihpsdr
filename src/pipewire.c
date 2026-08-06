@@ -69,6 +69,8 @@ struct pipewire_handle {
   double st_buffer[RING_BUFFER_SIZE]; // only MONO
   volatile int st_inpt;
   volatile int st_outpt;
+  int xfade_count;
+  int xfade_inpt;
 };
 
 static void on_discovery_timeout(void *data, uint64_t expirations) {
@@ -184,7 +186,7 @@ static void on_playback_process(void *data) {
     int oldpt;
 
     oldpt = rx->audio_buffer_outpt;
-    if (oldpt != rx->audio_buffer_inpt) {
+    if ((rx->cwaudio == 0 || duplex) && oldpt != rx->audio_buffer_inpt) {
       if (h->channels == 1) {
         rx_left = rx->audio_buffer[oldpt];
       } else {
@@ -618,37 +620,44 @@ void audio_write(RECEIVER *rx, double left, double right) {
 
   int inpt = rx->audio_buffer_inpt;
   int outpt = rx->audio_buffer_outpt;
-  if (rx->cwaudio != 0) {
-    // Transition TX -> RX, or first time after audio_open
 
-    if (inpt == rx->audio_buffer_outpt) {
-      //
-      // Buffer empty. Assume we can put in all pre-filling samples
-      // without a buffer-full check
-      //
-      if ( rx->local_audio_channels == 1) {
-        // MONO
-        for (int i = 0; i < AUDIO_LAT_TARGET_FRAMES; i++) {
-          rx->audio_buffer[inpt] = 0.0;
-          inpt = (inpt + 1) & RING_BUFFER_MASK;
-        }
+  if (rx->cwaudio != 0) {
+    // Transition TX -> RX: Cross-fade boundary between halted RX audio and new RX audio
+    const int XFADE_LEN = 128; // 128 samples (2.7 ms @ 48kHz) cross-fade
+    int depth = (h->xfade_inpt - outpt) & RING_BUFFER_MASK;
+
+    if (depth >= XFADE_LEN && h->xfade_count < XFADE_LEN) {
+      int pos = h->xfade_count;
+      double alpha = (double)pos / (double)XFADE_LEN;
+      int target = (h->xfade_inpt - XFADE_LEN + pos) & RING_BUFFER_MASK;
+
+      if (rx->local_audio_channels == 1) {
+        double old_val = rx->audio_buffer[target];
+        double new_val = 0.5 * (left + right);
+        rx->audio_buffer[target] = (1.0 - alpha) * old_val + alpha * new_val;
       } else {
-        // STEREO
-        for (int i = 0; i < AUDIO_LAT_TARGET_FRAMES; i++) {
-          rx->audio_buffer[2 * inpt] = 0.0;
-          rx->audio_buffer[2 * inpt + 1] = 0.0;
-          inpt = (inpt + 1) & RING_BUFFER_MASK;
-        }
+        double old_l = rx->audio_buffer[target * 2];
+        double old_r = rx->audio_buffer[target * 2 + 1];
+        rx->audio_buffer[target * 2] = (1.0 - alpha) * old_l + alpha * left;
+        rx->audio_buffer[target * 2 + 1] = (1.0 - alpha) * old_r + alpha * right;
       }
       MEMORY_BARRIER;
-      rx->audio_buffer_inpt = inpt;
+      h->xfade_count++;
+
+      if (h->xfade_count >= XFADE_LEN) {
+        rx->audio_buffer_inpt = h->xfade_inpt;
+        rx->cwaudio = 0; // Cross-fade finished, unpause playout!
+      }
+      g_mutex_unlock(&rx->audio_mutex);
+      return;
+    } else {
+      rx->cwaudio = 0;
     }
-    rx->cwaudio = 0;
   }
 
   int newpt = (inpt + 1) & RING_BUFFER_MASK;
 
-  if (newpt  != outpt) {
+  if (newpt != outpt) {
     if (rx->local_audio_channels == 1) {
       rx->audio_buffer[inpt] = 0.5 * (left + right);
     } else {
@@ -672,11 +681,14 @@ void tx_audio_write(RECEIVER *rx, double sample) {
 
   int inpt = h->st_inpt;
   if (rx->cwaudio != 3) {
-    // Transition RX -> TX
+    // Transition RX -> TX: Save end index of halted RX audio buffer & reset cross-fade counter
+    h->xfade_inpt = rx->audio_buffer_inpt;
+    h->xfade_count = 0;
+
     if (inpt == h->st_outpt) {
       // side tone buffer empty
       for (int i = 0; i < CW_LAT_TARGET_FRAMES; i++) {
-        rx->audio_buffer[inpt] = 0.0;
+        h->st_buffer[inpt] = 0.0;
         inpt = (inpt + 1) & RING_BUFFER_MASK;
       }
       MEMORY_BARRIER;
