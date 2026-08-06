@@ -227,9 +227,8 @@ static void pipewire_quantum_cb(GtkWidget *widget, gpointer data) {
   const int quantums[] = {16, 32, 64, 128, 256, 512, 1024, 2048};
   int q = quantums[active];
 
-  if (myrx->latency != q) {
-    myrx->latency = q;
-    rx_save_state(myrx);
+  if (myrx->pw_latency != q) {
+    myrx->pw_latency = q;
 
     // If audio is running, restart it to apply the new quantum immediately
     if (myrx->local_audio) {
@@ -478,7 +477,7 @@ void rx_menu(GtkWidget *parent) {
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "2048 (42.7ms)");
 
   int active_idx = 2; // Default 64
-  switch (myrx->latency) {
+  switch (myrx->pw_latency) {
     case 16: active_idx = 0; break;
     case 32: active_idx = 1; break;
     case 64: active_idx = 2; break;
