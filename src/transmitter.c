@@ -813,7 +813,7 @@ static gboolean tx_update_display(gpointer data) {
   return FALSE; // no more timer events
 }
 
-void tx_set_vox(TRANSMITTER *tx) {
+void tx_set_vox(const TRANSMITTER *tx) {
   //
   // If VOX is enabled, enable the look-ahead buffer
   // of DEXP.
