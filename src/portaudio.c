@@ -90,7 +90,7 @@ AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
   #define MY_RING_BUFFER_SIZE  8192  // 170 msec
   #define MY_RING_BUFFER_MASK  8191
   #define MY_RING_LOW_WATER     512
-  #define MY_RING_HIGH_WATER   9000
+  #define MY_RING_HIGH_WATER   7680
   #define CW_LAT_LOW            224
   #define CW_LAT_TARGET         256
   #define CW_LAT_HIGH           288
@@ -104,7 +104,7 @@ AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
   #define MY_RING_BUFFER_SIZE  8192
   #define MY_RING_BUFFER_MASK  8191
   #define MY_RING_LOW_WATER    2000
-  #define MY_RING_HIGH_WATER   9000
+  #define MY_RING_HIGH_WATER   7680
   #define CW_LAT_LOW            224
   #define CW_LAT_TARGET         256
   #define CW_LAT_HIGH           288

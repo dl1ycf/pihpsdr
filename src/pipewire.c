@@ -42,13 +42,19 @@
 #include "vfo.h"
 #include "atomic.h"
 
-#define RING_BUFFER_SIZE 65536
-#define RING_BUFFER_MASK 65535
-#define MICRINGLEN 8192
-#define MICRINGMASK 8191
+#define RING_BUFFER_SIZE 16384   // ring buffer for RX audio
+#define RING_BUFFER_MASK 16383
+#define ST_BUFFER_SIZE    4096   // ring buffer for side tone
+#define ST_BUFFER_MASK    4095
+#define MIC_BUFFER_SIZE   8192   // ring buffer for TX audio
+#define MIC_BUFFER_MASK   8191
 
-static const int AUDIO_LAT_TARGET_FRAMES = 9600; // 200 msec
-static const int CW_LAT_TARGET_FRAMES = 240; // 5 msec
+#define AUDIO_LAT_LOW      512   // RX audio low water mark
+#define AUDIO_LAT_TARGET  8192   // RX audio target latency
+#define AUDIO_LAT_HIGH   15872   // RX audio high water mark
+#define CW_LAT_LOW         224   // sidetone low water mark
+#define CW_LAT_TARGET      256   // sidetone target latency
+#define CW_LAT_HIGH        288   // sidetone high water mark
 
 int n_input_devices;
 int n_output_devices;
@@ -61,14 +67,11 @@ struct pipewire_handle {
   struct pw_context *context;
   struct pw_core *core;
   struct pw_stream *playback_stream;
-  struct pw_stream *stream; // for capture (mic)
+  struct pw_stream *mic_stream;
   RECEIVER *rx;
   TRANSMITTER *tx;
   int channels;
   int is_output;
-  double st_buffer[RING_BUFFER_SIZE]; // only MONO
-  volatile int st_inpt;
-  volatile int st_outpt;
 };
 
 static void on_discovery_timeout(void *data, uint64_t expirations) {
@@ -89,14 +92,14 @@ static void registry_event_global(void *data, uint32_t id, uint32_t permissions,
         if (n_output_devices < MAX_AUDIO_DEVICES) {
           output_devices[n_output_devices].name = g_strdup(name);
           output_devices[n_output_devices].description = g_strdup(desc);
-          output_devices[n_output_devices].channels = 2;
+          output_devices[n_output_devices].channels = 2;  // force STEREO
           n_output_devices++;
         }
       } else if (strcmp(media_class, "Audio/Source") == 0) {
         if (n_input_devices < MAX_AUDIO_DEVICES) {
           input_devices[n_input_devices].name = g_strdup(name);
           input_devices[n_input_devices].description = g_strdup(desc);
-          input_devices[n_input_devices].channels = 1;
+          input_devices[n_input_devices].channels = 1;  // force MONO
           n_input_devices++;
         }
       }
@@ -155,7 +158,7 @@ void audio_get_cards() {
   }
 }
 
-static void on_playback_process(void *data) {
+static void pw_out_cb(void *data) {
   struct pipewire_handle *h = data;
   RECEIVER *rx = h->rx;
   struct pw_buffer *b;
@@ -195,11 +198,11 @@ static void on_playback_process(void *data) {
       rx->audio_buffer_outpt = (oldpt + 1) & RING_BUFFER_MASK;
     }
 
-    oldpt = h->st_outpt;
-    if (oldpt != h->st_inpt) {
-      st_sample = h->st_buffer[oldpt];
+    oldpt = rx->st_buffer_outpt;
+    if (oldpt != rx->st_buffer_inpt) {
+      st_sample = rx->st_buffer[oldpt];
       MEMORY_BARRIER;
-      h->st_outpt = (oldpt + 1) & RING_BUFFER_MASK;
+      rx->st_buffer_outpt = (oldpt + 1) & ST_BUFFER_MASK;
     }
 
     if (h->channels == 1) {
@@ -217,7 +220,7 @@ static void on_playback_process(void *data) {
   pw_stream_queue_buffer(h->playback_stream, b);
 }
 
-static void on_capture_process(void *data) {
+static void pw_in_cb(void *data) {
   struct pipewire_handle *h = data;
   TRANSMITTER *tx = h->tx;
   struct pw_buffer *b;
@@ -225,14 +228,14 @@ static void on_capture_process(void *data) {
   const float *samples;
   uint32_t n_frames;
 
-  if ((b = pw_stream_dequeue_buffer(h->stream)) == NULL) {
+  if ((b = pw_stream_dequeue_buffer(h->mic_stream)) == NULL) {
     return;
   }
 
   buf = b->buffer;
   samples = buf->datas[0].data;
   if (!samples) {
-    pw_stream_queue_buffer(h->stream, b);
+    pw_stream_queue_buffer(h->mic_stream, b);
     return;
   }
 
@@ -249,7 +252,7 @@ static void on_capture_process(void *data) {
       }
       sample /= h->channels;
 
-      int newpt = (inpt + 1) & MICRINGMASK;
+      int newpt = (inpt + 1) & MIC_BUFFER_MASK;
       if (newpt != outpt) {
         tx->audio_buffer[inpt] = sample;
         MEMORY_BARRIER;
@@ -259,7 +262,7 @@ static void on_capture_process(void *data) {
     tx->audio_buffer_inpt = inpt;
   }
 
-  pw_stream_queue_buffer(h->stream, b);
+  pw_stream_queue_buffer(h->mic_stream, b);
 }
 
 int audio_open_output(RECEIVER *rx) {
@@ -286,8 +289,6 @@ int audio_open_output(RECEIVER *rx) {
   h->rx = rx;
   h->channels = rx->local_audio_channels;
   h->is_output = 1;
-  h->st_inpt = 0;
-  h->st_outpt = 0;
 
   h->loop = pw_thread_loop_new("pihpsdr-playback", NULL);
   if (!h->loop) {
@@ -339,7 +340,7 @@ int audio_open_output(RECEIVER *rx) {
 
   static const struct pw_stream_events stream_events = {
       PW_VERSION_STREAM_EVENTS,
-      .process = on_playback_process,
+      .process = pw_out_cb,
   };
 
   h->playback_stream = pw_stream_new_simple(pw_thread_loop_get_loop(h->loop),
@@ -397,7 +398,10 @@ int audio_open_output(RECEIVER *rx) {
   rx->audio_buffer_offset = 0;
   rx->audio_buffer_inpt = 0;
   rx->audio_buffer_outpt = 0;
+  rx->st_buffer_inpt = 0;
+  rx->st_buffer_outpt = 0;
   rx->audio_buffer = g_new0(double, rx->local_audio_channels * RING_BUFFER_SIZE);
+  rx->st_buffer = g_new0(double, ST_BUFFER_SIZE);
 
   rx->audio_handle = h;
   rx->cwaudio = 5;
@@ -498,21 +502,21 @@ int audio_open_input(TRANSMITTER *tx) {
       PW_KEY_MEDIA_ROLE, "DSP",
       PW_KEY_NODE_NAME, "piHPSDR capture",
       PW_KEY_TARGET_OBJECT, tx->audio_name,
-      PW_KEY_NODE_LATENCY, "512/48000",
+      PW_KEY_NODE_LATENCY, "256/48000",
       NULL
   );
 
   static const struct pw_stream_events stream_events = {
       PW_VERSION_STREAM_EVENTS,
-      .process = on_capture_process,
+      .process = pw_in_cb,
   };
 
-  h->stream = pw_stream_new_simple(pw_thread_loop_get_loop(h->loop),
+  h->mic_stream = pw_stream_new_simple(pw_thread_loop_get_loop(h->loop),
                                    "pihpsdr-capture-stream",
                                    props,
                                    &stream_events,
                                    h);
-  if (!h->stream) {
+  if (!h->mic_stream) {
     pw_core_disconnect(h->core);
     pw_thread_loop_unlock(h->loop);
     pw_thread_loop_stop(h->loop);
@@ -535,7 +539,7 @@ int audio_open_input(TRANSMITTER *tx) {
   const struct spa_pod *params[1];
   params[0] = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info);
 
-  int res = pw_stream_connect(h->stream,
+  int res = pw_stream_connect(h->mic_stream,
                               PW_DIRECTION_INPUT,
                               PW_ID_ANY,
                               PW_STREAM_FLAG_AUTOCONNECT |
@@ -543,7 +547,7 @@ int audio_open_input(TRANSMITTER *tx) {
                               PW_STREAM_FLAG_RT_PROCESS,
                               params, 1);
   if (res < 0) {
-    pw_stream_destroy(h->stream);
+    pw_stream_destroy(h->mic_stream);
     pw_core_disconnect(h->core);
     pw_thread_loop_unlock(h->loop);
     pw_thread_loop_stop(h->loop);
@@ -556,7 +560,7 @@ int audio_open_input(TRANSMITTER *tx) {
 
   pw_thread_loop_unlock(h->loop);
 
-  tx->audio_buffer = g_new0(double, MICRINGLEN);
+  tx->audio_buffer = g_new0(double, MIC_BUFFER_SIZE);
   tx->audio_buffer_inpt = 0;
   tx->audio_buffer_outpt = 0;
   tx->audio_handle = h;
@@ -574,7 +578,7 @@ void audio_close_input(TRANSMITTER *tx) {
   struct pipewire_handle *h = tx->audio_handle;
   if (h != NULL) {
     pw_thread_loop_stop(h->loop);
-    pw_stream_destroy(h->stream);
+    pw_stream_destroy(h->mic_stream);
     pw_core_disconnect(h->core);
     pw_context_destroy(h->context);
     pw_thread_loop_destroy(h->loop);
@@ -596,7 +600,7 @@ double audio_get_next_mic_sample(TRANSMITTER *tx) {
   if ((tx->audio_buffer == NULL) || (tx->audio_buffer_outpt == tx->audio_buffer_inpt)) {
     sample = 0.0;
   } else {
-    int newpt = (tx->audio_buffer_outpt + 1) & MICRINGMASK;
+    int newpt = (tx->audio_buffer_outpt + 1) & MIC_BUFFER_MASK;
     sample = tx->audio_buffer[tx->audio_buffer_outpt];
     MEMORY_BARRIER;
     tx->audio_buffer_outpt = newpt;
@@ -608,53 +612,52 @@ double audio_get_next_mic_sample(TRANSMITTER *tx) {
 
 void audio_write(RECEIVER *rx, double left, double right) {
   if (rx == active_receiver && radio_is_transmitting() && !duplex) { return; }
+  if (rx->audio_handle == NULL || rx->audio_buffer == NULL) { return; }
 
   g_mutex_lock(&rx->audio_mutex);
-  struct pipewire_handle *h = rx->audio_handle;
-  if (h == NULL || rx->audio_buffer == NULL) {
-    g_mutex_unlock(&rx->audio_mutex);
-    return;
+  double *buffer = rx->audio_buffer;
+  rx->cwaudio = 0;
+
+  int avail = (rx->audio_buffer_inpt - rx->audio_buffer_outpt) & RING_BUFFER_MASK;
+
+  if (avail < AUDIO_LAT_LOW) {
+    //
+    // Running the RX-audio for a very long time
+    // and with audio hardware whose "48000 Hz" are a little faster than the "48000 Hz" of
+    // the SDR will very slowly drain the buffer. We recover from this by brutally
+    // inserting half a buffer's length of silence.
+    //
+    // This is not always an "error" to be reported and necessarily happens in three cases:
+    //  a) we come here for the first time
+    //  b) we come from a TX/RX transition where the buffer ran empty during TX
+    //
+    int inpt = rx->audio_buffer_inpt;
+    for (int i = 0; i < AUDIO_LAT_TARGET - avail; i++) {
+      buffer[2 * inpt] = 0.0;
+      buffer[2 * inpt + 1] = 0.0;
+      inpt = (inpt + 1) & RING_BUFFER_MASK;
+    }
+    MEMORY_BARRIER;
+    rx->audio_buffer_inpt = inpt;
   }
 
-  int inpt = rx->audio_buffer_inpt;
-  int outpt = rx->audio_buffer_outpt;
-  if (rx->cwaudio != 0) {
-    // Transition TX -> RX, or first time after audio_open
-
-    if (inpt == rx->audio_buffer_outpt) {
-      //
-      // Buffer empty. Assume we can put in all pre-filling samples
-      // without a buffer-full check
-      //
-      if ( rx->local_audio_channels == 1) {
-        // MONO
-        for (int i = 0; i < AUDIO_LAT_TARGET_FRAMES; i++) {
-          rx->audio_buffer[inpt] = 0.0;
-          inpt = (inpt + 1) & RING_BUFFER_MASK;
-        }
-      } else {
-        // STEREO
-        for (int i = 0; i < AUDIO_LAT_TARGET_FRAMES; i++) {
-          rx->audio_buffer[2 * inpt] = 0.0;
-          rx->audio_buffer[2 * inpt + 1] = 0.0;
-          inpt = (inpt + 1) & RING_BUFFER_MASK;
-        }
-      }
-      MEMORY_BARRIER;
-      rx->audio_buffer_inpt = inpt;
-    }
-    rx->cwaudio = 0;
+  if (avail > AUDIO_LAT_HIGH) {
+    //
+    // Running the RX-audio for a very long time
+    // and with audio hardware whose "48000 Hz" are a little slower than the "48000 Hz" of
+    // the SDR will very slowly fill the buffer. This should be the only situation where
+    // this "buffer overrun" condition should occur. We recover from this by brutally
+    // deleting half a buffer size of audio, such that the next overrun is in the distant
+    // future.
+    //
+    rx->audio_buffer_inpt = (rx->audio_buffer_inpt - avail + AUDIO_LAT_TARGET) & RING_BUFFER_MASK;
   }
 
-  int newpt = (inpt + 1) & RING_BUFFER_MASK;
+  int newpt = (rx->audio_buffer_inpt + 1) & RING_BUFFER_MASK;
 
-  if (newpt  != outpt) {
-    if (rx->local_audio_channels == 1) {
-      rx->audio_buffer[inpt] = 0.5 * (left + right);
-    } else {
-      rx->audio_buffer[inpt * 2] = left;
-      rx->audio_buffer[inpt * 2 + 1] = right;
-    }
+  if (newpt  != rx->audio_buffer_outpt) {
+    rx->audio_buffer[rx->audio_buffer_inpt * 2] = left;
+    rx->audio_buffer[rx->audio_buffer_inpt * 2 + 1] = right;
     MEMORY_BARRIER;
     rx->audio_buffer_inpt = newpt;
   }
@@ -670,28 +673,62 @@ void tx_audio_write(RECEIVER *rx, double sample) {
     return;
   }
 
-  int inpt = h->st_inpt;
+  int inpt = rx->st_buffer_inpt;
+  int newpt;
+  int avail = (inpt - rx->st_buffer_outpt) & ST_BUFFER_MASK;
+  int adjust = 0;
+
   if (rx->cwaudio != 3) {
     // Transition RX -> TX
-    if (inpt == h->st_outpt) {
+    if (inpt == rx->st_buffer_outpt) {
       // side tone buffer empty
-      for (int i = 0; i < CW_LAT_TARGET_FRAMES; i++) {
-        rx->audio_buffer[inpt] = 0.0;
-        inpt = (inpt + 1) & RING_BUFFER_MASK;
+      for (int i = 0; i < CW_LAT_TARGET; i++) {
+        rx->st_buffer[inpt] = 0.0;
+        inpt = (inpt + 1) & ST_BUFFER_MASK;
       }
       MEMORY_BARRIER;
-      h->st_inpt = inpt;
+      rx->st_buffer_inpt = inpt;
     }
     rx->cwaudio = 3;
+    rx->cwcount = 0;
+    avail = CW_LAT_TARGET;
   }
 
-  // Write sample directly to sidetone buffer
-  int newpt = (inpt + 1) & RING_BUFFER_MASK;
-
-  if (newpt != h->st_outpt) {
-    h->st_buffer[inpt] = sample;
+  if (sample != 0.0) { rx->cwcount = 0; }
+  if (++rx->cwcount > 16) {
+    rx->cwcount = 0;
+    //
+    // We arrive here if we have seen 16 zero samples in a row.
+    //
+    if (avail > CW_LAT_HIGH) { adjust = 2; } // full: we are above high water mark
+    if (avail < CW_LAT_LOW)  { adjust = 1; } // low: we are below low water mark
+  }
+  switch(adjust) {
+  case 0:
+    // Write sample directly to sidetone buffer
+    // no need to check buffer overrun
+    newpt = (inpt + 1) & ST_BUFFER_MASK;
+    if (newpt != rx->st_buffer_outpt) {
+      // buffer space available
+      rx->st_buffer[inpt] = sample;
+      MEMORY_BARRIER;
+      rx->st_buffer_inpt = newpt;
+    }
+    break;
+  case 1:
+    // We just saw 16 silence samples and buffer filling is low:
+    // insert one extra
+    rx->st_buffer[inpt] = 0.0;;
+    inpt = (inpt + 1) & ST_BUFFER_MASK;
+    rx->st_buffer[inpt] = 0.0;;
+    inpt = (inpt + 1) & ST_BUFFER_MASK;
     MEMORY_BARRIER;
-    h->st_inpt = newpt;
+    rx->st_buffer_inpt = inpt;
+    break;
+  default:
+    // We just saw 16 silence samples and buffer filling is high:
+    // just skip current "silent" sample (do nothing)
+    break;
   }
 
   g_mutex_unlock(&rx->audio_mutex);

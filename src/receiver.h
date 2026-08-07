@@ -210,17 +210,25 @@ typedef struct _receiver {
   int mute_when_not_active;
 
   //
-  // Everything related to audio
+  // Everything related to audio. Not all of this data is used
+  // with all audio modules
   //
-  int audio_channel;                 // STEREO or LEFT or RIGHT
-  int local_audio;                   // RX audio to sound card is active
-  int local_audio_channels;          // 1 or 2, indicates mono or stereo.
-  char audio_name[128];              // name of currently used sound card
-  GMutex audio_mutex;                // Mutex that can be used for soundcard output
-  double *audio_buffer;              // Buffer that can be used for soundcard output
-  int audio_buffer_offset;           // pointer for audio buffer
-  volatile atomic_int audio_buffer_inpt;    // pointer for audio buffer
-  volatile atomic_int audio_buffer_outpt;   // pointer for audio_buffer
+  int audio_channel;                      // STEREO or LEFT or RIGHT
+  int local_audio;                        // RX audio to sound card is active
+  int local_audio_channels;               // 1 or 2, indicates mono or stereo.
+  char audio_name[128];                   // name of currently used audio output device
+  GMutex audio_mutex;                     // Mutex that can be used for buffer management
+  double *audio_buffer;                   // Buffer that can be used for Rx audio
+  double *st_buffer;                      // Buffer that can be used for side tone
+  int audio_buffer_offset;                // pointer for audio buffer
+  volatile atomic_int audio_buffer_inpt;  // pointer for audio buffer if used as ring buffer
+  volatile atomic_int audio_buffer_outpt; // pointer for audio_buffer if used as ring buffer
+  volatile atomic_int st_buffer_inpt;     // pointer for st_buffer if used as ring buffer
+  volatile atomic_int st_buffer_outpt;    // pointer for st_buffer if used as ring buffer
+  int cwaudio;                            // manage RX/TX transitions in CW
+  int cwcount;                            // for sample insertion and deletion
+  int skipcnt;                            // for latency management
+  int queued;                             // number of audio samples queued
 
 #if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA) && defined(PIPEWIRE)
   // this is only possible for "cppcheck" runs
@@ -241,33 +249,22 @@ typedef struct _receiver {
   pa_usec_t latency;
 #endif
 #if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA) && defined(PIPEWIRE)
-  void * audio_handle;
+  void *audio_handle;
 #endif
-
-  int cwaudio;   // detect RX/TX transitions in CW
-  int cwcount;   // for sample insertion and deletion
-  int skipcnt;   // for latency management
-  int queued;    // number of audio samples queued
 
   int squelch_enable;
   double squelch;
-
   int binaural;
-
   int deviation;
-
   long long waterfall_frequency;
   double waterfall_cBp;
   double waterfall_cB;
-
   int mute_radio;
-
   void *resampler;
   double *resample_input;
   double *resample_output;
   int resample_count;
   int resample_buffer_size;
-
   int zoom;
   int pan;  // 0 (max.left)  ... 100 (max.right)
   //
