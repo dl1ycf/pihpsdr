@@ -238,6 +238,33 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
   optval = 1;
   setsockopt(discovery_socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
   setsockopt(discovery_socket, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+
+  //
+  // A Protocol 1 radio can be left streaming if a previous client exits
+  // without sending the METIS STOP command (sudden shutdown etc). This 
+  // can cause discovery failure, as the discovery will then read the existing
+  // stream forever.
+  //
+  // So, send STOP before we start discovery. 
+  //
+  // METIS UDP start/stop packets are 64 bytes:
+  //   EF FE 04 00 ... = STOP
+  //
+  // We don't do this for TCP discovery - a METIS STOP sent over TCP causes the
+  // radio to close that TCP connection.
+  //
+  if (discflag == 1 || discflag == 2) {
+    memset(buffer, 0, 64);
+    buffer[0] = 0xEF;
+    buffer[1] = 0xFE;
+    buffer[2] = 0x04;
+    buffer[3] = 0x00;
+    t_print("%s: sending METIS STOP before P1 UDP discovery\n", __func__);
+    if (sendto(discovery_socket, buffer, 64, 0, (struct sockaddr *)&to_addr, sizeof(to_addr)) < 0) {
+      t_perror("sendto() failed for P1 pre-discovery STOP");
+    }
+    g_usleep(20000);
+  }
   rc = devices;
   // start a receive thread to collect discovery response packets
   discover_thread_id = g_thread_new( "old discover receive", p1_discover_receive_thread, GINT_TO_POINTER(discflag));
