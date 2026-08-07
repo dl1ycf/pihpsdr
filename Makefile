@@ -30,7 +30,7 @@ endif
 
 #######################################################################################
 #
-# Default Compile-time options. Default AUDIO on LINUX is PULSE, on MacOS PORTAUDIO.
+# Default Compile-time options. Default AUDIO on LINUX is PIPEWIRE, on MacOS PORTAUDIO.
 #
 #######################################################################################
 
@@ -44,7 +44,7 @@ ifeq ($(MACOS), YES)
 AUDIO=PORTAUDIO
 endif
 ifeq ($(LINUX), YES)
-AUDIO=PULSE
+AUDIO=PIPEWIRE
 endif
 
 #######################################################################################
@@ -56,7 +56,7 @@ endif
 # USBOZY       | If ON, piHPSDR can talk to legacy USB OZY radios (needs  libusb-1.0)
 # SOAPYSDR     | If ON, piHPSDR can talk to radios via SoapySDR library
 # TCI          | If ON, activate TCI server (needs libwebsockets)
-# AUDIO        | Select audio module (ALSA, PULSE, PORTAUDO)
+# AUDIO        | Select audio module (ALSA, PULSE, PORTAUDO, PIPEWIRE)
 #
 # If you want to use a non-default compile time option, write them
 # into a file "make.config.pihpsdr". So, for example, if you want to
@@ -117,20 +117,28 @@ WDSP_LIBS=wdsp/libwdsp.a rnnoise/librnnoise.a libspecbleach/libspecbleach.a \
 ##############################################################################
 #
 # Settings for optional features, to be requested by un-commenting lines above
+# Note we also accept PULSEAUDIO as AUDIO module keyword.
 #
 ##############################################################################
+
+ifeq ($(AUDIO), PULSEAUDIO)
+AUDIO=PULSE
+endif
 
 ##############################################################################
 #
 # MacOSX:
 # -disable GPIO, simply because it is not there
-# -if AUDIO is ALSA, switch to PORTAUDIO
+# -if AUDIO is ALSA or PIPEWIRE, switch to PORTAUDIO
 #
 ##############################################################################
 
 ifeq ($(MACOS), YES)
 GPIO=OFF
 ifeq ($(AUDIO), ALSA)
+AUDIO=PORTAUDIO
+endif
+ifeq ($(AUDIO), PIPEWIRE)
 AUDIO=PORTAUDIO
 endif
 endif
@@ -302,6 +310,10 @@ AUDIO_OBJS=src/pipewire.o
 endif
 CPP_DEFINES += -DPIPEWIRE
 CPP_SOURCES += src/pipewire.c
+ifeq ($(LINUX), YES)
+# There are no PipeWire headers on MacOS.
+CPP_INCLUDE += `$(PKG_CONFIG) --cflags libpipewire-0.3`
+endif
 
 ##############################################################################
 #
@@ -358,7 +370,6 @@ CPP_INCLUDE += $(DXCLUSTER_INCLUDE)
 CURL_INCLUDE=`$(PKG_CONFIG) --cflags libcurl`
 CURL_LIBS=`$(PKG_CONFIG) --libs libcurl`
 CPP_INCLUDE += $(CURL_INCLUDE)
-
 
 GTK_INCLUDE=`$(PKG_CONFIG) --cflags gtk+-3.0`
 GTK_LIBS=`$(PKG_CONFIG) --libs gtk+-3.0`
