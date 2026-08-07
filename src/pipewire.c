@@ -66,12 +66,9 @@ struct pipewire_handle {
   struct pw_thread_loop *loop;
   struct pw_context *context;
   struct pw_core *core;
-  struct pw_stream *playback_stream;
-  struct pw_stream *mic_stream;
-  RECEIVER *rx;
-  TRANSMITTER *tx;
-  int channels;
-  int is_output;
+  struct pw_stream *stream;  // can be input or output
+  RECEIVER *rx;              // only used for output streams
+  TRANSMITTER *tx;           // only used for input streams
 };
 
 static void on_discovery_timeout(void *data, uint64_t expirations) {
@@ -159,14 +156,14 @@ void audio_get_cards() {
 }
 
 static void pw_out_cb(void *data) {
-  struct pipewire_handle *h = data;
+  const struct pipewire_handle *h = data;
   RECEIVER *rx = h->rx;
   struct pw_buffer *b;
   struct spa_buffer *buf;
   float *samples;
   uint32_t n_frames;
 
-  if ((b = pw_stream_dequeue_buffer(h->playback_stream)) == NULL) {
+  if ((b = pw_stream_dequeue_buffer(h->stream)) == NULL) {
     return;
   }
 
@@ -175,7 +172,7 @@ static void pw_out_cb(void *data) {
   if (!samples) return;
 
   uint32_t max_size = buf->datas[0].maxsize;
-  n_frames = max_size / (sizeof(float) * h->channels);
+  n_frames = max_size / (2 * sizeof(float));
   if (b->requested && b->requested < n_frames) {
     n_frames = b->requested;
   }
@@ -188,12 +185,8 @@ static void pw_out_cb(void *data) {
 
     oldpt = rx->audio_buffer_outpt;
     if (oldpt != rx->audio_buffer_inpt) {
-      if (h->channels == 1) {
-        rx_left = rx->audio_buffer[oldpt];
-      } else {
-        rx_left = rx->audio_buffer[oldpt * 2];
-        rx_right = rx->audio_buffer[oldpt * 2 + 1];
-      }
+      rx_left = rx->audio_buffer[oldpt * 2];
+      rx_right = rx->audio_buffer[oldpt * 2 + 1];
       MEMORY_BARRIER;
       rx->audio_buffer_outpt = (oldpt + 1) & RING_BUFFER_MASK;
     }
@@ -205,64 +198,53 @@ static void pw_out_cb(void *data) {
       rx->st_buffer_outpt = (oldpt + 1) & ST_BUFFER_MASK;
     }
 
-    if (h->channels == 1) {
-      samples[i] = (float)(rx_left + st_sample);
-    } else {
-      samples[i * 2] = (float)(rx_left + st_sample);
-      samples[i * 2 + 1] = (float)(rx_right + st_sample);
-    }
+    samples[i * 2] = (float)(rx_left + st_sample);
+    samples[i * 2 + 1] = (float)(rx_right + st_sample);
   }
 
   buf->datas[0].chunk->offset = 0;
-  buf->datas[0].chunk->size = n_frames * sizeof(float) * h->channels;
-  buf->datas[0].chunk->stride = sizeof(float) * h->channels;
+  buf->datas[0].chunk->size = n_frames * 2 * sizeof(float);
+  buf->datas[0].chunk->stride = 2 * sizeof(float);
 
-  pw_stream_queue_buffer(h->playback_stream, b);
+  pw_stream_queue_buffer(h->stream, b);
 }
 
 static void pw_in_cb(void *data) {
-  struct pipewire_handle *h = data;
+  const struct pipewire_handle *h = data;
   TRANSMITTER *tx = h->tx;
   struct pw_buffer *b;
   struct spa_buffer *buf;
   const float *samples;
   uint32_t n_frames;
 
-  if ((b = pw_stream_dequeue_buffer(h->mic_stream)) == NULL) {
+  if ((b = pw_stream_dequeue_buffer(h->stream)) == NULL) {
     return;
   }
 
   buf = b->buffer;
   samples = buf->datas[0].data;
   if (!samples) {
-    pw_stream_queue_buffer(h->mic_stream, b);
+    pw_stream_queue_buffer(h->stream, b);
     return;
   }
 
-  n_frames = buf->datas[0].chunk->size / (sizeof(float) * h->channels);
+  n_frames = buf->datas[0].chunk->size / sizeof(float);
 
   if (tx->audio_buffer != NULL) {
     int inpt = tx->audio_buffer_inpt;
-    int outpt = tx->audio_buffer_outpt;
 
     for (uint32_t i = 0; i < n_frames; i++) {
-      double sample = 0.0;
-      for (int c = 0; c < h->channels; c++) {
-        sample += samples[i * h->channels + c];
-      }
-      sample /= h->channels;
-
       int newpt = (inpt + 1) & MIC_BUFFER_MASK;
-      if (newpt != outpt) {
-        tx->audio_buffer[inpt] = sample;
-        MEMORY_BARRIER;
+      if (newpt != tx->audio_buffer_outpt) {
+        tx->audio_buffer[inpt] = (double) samples[i];
         inpt = newpt;
       }
     }
+    MEMORY_BARRIER;
     tx->audio_buffer_inpt = inpt;
   }
 
-  pw_stream_queue_buffer(h->mic_stream, b);
+  pw_stream_queue_buffer(h->stream, b);
 }
 
 int audio_open_output(RECEIVER *rx) {
@@ -282,16 +264,28 @@ int audio_open_output(RECEIVER *rx) {
   }
 
   g_mutex_lock(&rx->audio_mutex);
-  rx->audio_handle = NULL;
+
   rx->audio_buffer = NULL;
+  rx->st_buffer = NULL;
+  rx->audio_handle = NULL;
 
+  double *aubuf = g_new(double, rx->local_audio_channels * RING_BUFFER_SIZE);
+  double *stbuf = g_new(double, ST_BUFFER_SIZE);
   struct pipewire_handle *h = g_new0(struct pipewire_handle, 1);
-  h->rx = rx;
-  h->channels = rx->local_audio_channels;
-  h->is_output = 1;
 
+  if (aubuf == NULL || stbuf == NULL || h == NULL) {
+    g_free(aubuf);
+    g_free(stbuf);
+    g_free(h);
+    g_mutex_unlock(&rx->audio_mutex);
+    return -1;
+  }
+
+  h->rx = rx;
   h->loop = pw_thread_loop_new("pihpsdr-playback", NULL);
   if (!h->loop) {
+    g_free(aubuf);
+    g_free(stbuf);
     g_free(h);
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
@@ -300,6 +294,8 @@ int audio_open_output(RECEIVER *rx) {
   h->context = pw_context_new(pw_thread_loop_get_loop(h->loop), NULL, 0);
   if (!h->context) {
     pw_thread_loop_destroy(h->loop);
+    g_free(aubuf);
+    g_free(stbuf);
     g_free(h);
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
@@ -308,6 +304,8 @@ int audio_open_output(RECEIVER *rx) {
   if (pw_thread_loop_start(h->loop) < 0) {
     pw_context_destroy(h->context);
     pw_thread_loop_destroy(h->loop);
+    g_free(aubuf);
+    g_free(stbuf);
     g_free(h);
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
@@ -321,6 +319,8 @@ int audio_open_output(RECEIVER *rx) {
     pw_thread_loop_stop(h->loop);
     pw_context_destroy(h->context);
     pw_thread_loop_destroy(h->loop);
+    g_free(aubuf);
+    g_free(stbuf);
     g_free(h);
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
@@ -343,19 +343,21 @@ int audio_open_output(RECEIVER *rx) {
       .process = pw_out_cb,
   };
 
-  h->playback_stream = pw_stream_new_simple(pw_thread_loop_get_loop(h->loop),
-                                            "pihpsdr-playback",
-                                            props,
-                                            &stream_events,
-                                            h);
+  h->stream = pw_stream_new_simple(pw_thread_loop_get_loop(h->loop),
+                                   "pihpsdr-playback",
+                                   props,
+                                   &stream_events,
+                                   h);
 
-  if (!h->playback_stream) {
+  if (!h->stream) {
     pw_core_disconnect(h->core);
     pw_thread_loop_unlock(h->loop);
     pw_thread_loop_stop(h->loop);
     pw_context_destroy(h->context);
     pw_thread_loop_destroy(h->loop);
     g_free(h);
+    g_free(aubuf);
+    g_free(stbuf);
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
   }
@@ -363,18 +365,17 @@ int audio_open_output(RECEIVER *rx) {
   struct spa_audio_info_raw info = {
       .format = SPA_AUDIO_FORMAT_F32,
       .rate = 48000,
-      .channels = h->channels,
+      .channels = 2,
   };
-  for (int i = 0; i < h->channels; i++) {
-    info.position[i] = SPA_AUDIO_CHANNEL_MONO + i;
-  }
+  info.position[0] = SPA_AUDIO_CHANNEL_MONO;
+  info.position[1] = SPA_AUDIO_CHANNEL_MONO + 1;
 
   uint8_t buffer[1024];
   struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
   const struct spa_pod *params[1];
   params[0] = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info);
 
-  int res = pw_stream_connect(h->playback_stream,
+  int res = pw_stream_connect(h->stream,
                               PW_DIRECTION_OUTPUT,
                               PW_ID_ANY,
                               PW_STREAM_FLAG_AUTOCONNECT |
@@ -382,12 +383,14 @@ int audio_open_output(RECEIVER *rx) {
                               PW_STREAM_FLAG_RT_PROCESS,
                               params, 1);
   if (res < 0) {
-    pw_stream_destroy(h->playback_stream);
+    pw_stream_destroy(h->stream);
     pw_core_disconnect(h->core);
     pw_thread_loop_unlock(h->loop);
     pw_thread_loop_stop(h->loop);
     pw_context_destroy(h->context);
     pw_thread_loop_destroy(h->loop);
+    g_free(aubuf);
+    g_free(stbuf);
     g_free(h);
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
@@ -400,9 +403,9 @@ int audio_open_output(RECEIVER *rx) {
   rx->audio_buffer_outpt = 0;
   rx->st_buffer_inpt = 0;
   rx->st_buffer_outpt = 0;
-  rx->audio_buffer = g_new0(double, rx->local_audio_channels * RING_BUFFER_SIZE);
-  rx->st_buffer = g_new0(double, ST_BUFFER_SIZE);
 
+  rx->audio_buffer = aubuf;
+  rx->st_buffer = stbuf;
   rx->audio_handle = h;
   rx->cwaudio = 5;
   rx->cwcount = 0;
@@ -420,19 +423,18 @@ void audio_close_output(RECEIVER *rx) {
   struct pipewire_handle *h = rx->audio_handle;
   if (h != NULL) {
     pw_thread_loop_stop(h->loop);
-    if (h->playback_stream) pw_stream_destroy(h->playback_stream);
+    if (h->stream) pw_stream_destroy(h->stream);
     pw_core_disconnect(h->core);
     pw_context_destroy(h->context);
     pw_thread_loop_destroy(h->loop);
-    g_free(h);
     rx->audio_handle = NULL;
   }
-
-  if (rx->audio_buffer != NULL) {
-    g_free(rx->audio_buffer);
-    rx->audio_buffer = NULL;
-  }
-
+  g_free(rx->audio_handle);
+  g_free(rx->audio_buffer);
+  g_free(rx->st_buffer);
+  rx->audio_handle = NULL;
+  rx->audio_buffer = NULL;
+  rx->st_buffer = NULL;
   g_mutex_unlock(&rx->audio_mutex);
 }
 
@@ -455,14 +457,19 @@ int audio_open_input(TRANSMITTER *tx) {
   tx->audio_handle = NULL;
   tx->audio_buffer = NULL;
 
+  double *aub = g_new(double, MIC_BUFFER_SIZE);
   struct pipewire_handle *h = g_new0(struct pipewire_handle, 1);
-  h->tx = tx;
-  h->channels = 1;
-  h->is_output = 0;
 
+  if (aub == NULL || h == NULL) {
+    g_mutex_unlock(&tx->audio_mutex);
+    return -1;
+  }
+
+  h->tx = tx;
   h->loop = pw_thread_loop_new("pihpsdr-capture", NULL);
   if (!h->loop) {
     g_free(h);
+    g_free(aub);
     g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
@@ -471,6 +478,7 @@ int audio_open_input(TRANSMITTER *tx) {
   if (!h->context) {
     pw_thread_loop_destroy(h->loop);
     g_free(h);
+    g_free(aub);
     g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
@@ -479,6 +487,7 @@ int audio_open_input(TRANSMITTER *tx) {
     pw_context_destroy(h->context);
     pw_thread_loop_destroy(h->loop);
     g_free(h);
+    g_free(aub);
     g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
@@ -492,6 +501,7 @@ int audio_open_input(TRANSMITTER *tx) {
     pw_context_destroy(h->context);
     pw_thread_loop_destroy(h->loop);
     g_free(h);
+    g_free(aub);
     g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
@@ -511,18 +521,19 @@ int audio_open_input(TRANSMITTER *tx) {
       .process = pw_in_cb,
   };
 
-  h->mic_stream = pw_stream_new_simple(pw_thread_loop_get_loop(h->loop),
+  h->stream = pw_stream_new_simple(pw_thread_loop_get_loop(h->loop),
                                    "pihpsdr-capture-stream",
                                    props,
                                    &stream_events,
                                    h);
-  if (!h->mic_stream) {
+  if (!h->stream) {
     pw_core_disconnect(h->core);
     pw_thread_loop_unlock(h->loop);
     pw_thread_loop_stop(h->loop);
     pw_context_destroy(h->context);
     pw_thread_loop_destroy(h->loop);
     g_free(h);
+    g_free(aub);
     g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
@@ -530,7 +541,7 @@ int audio_open_input(TRANSMITTER *tx) {
   struct spa_audio_info_raw info = {
       .format = SPA_AUDIO_FORMAT_F32,
       .rate = 48000,
-      .channels = h->channels,
+      .channels = 1,
   };
   info.position[0] = SPA_AUDIO_CHANNEL_MONO;
 
@@ -539,7 +550,7 @@ int audio_open_input(TRANSMITTER *tx) {
   const struct spa_pod *params[1];
   params[0] = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info);
 
-  int res = pw_stream_connect(h->mic_stream,
+  int res = pw_stream_connect(h->stream,
                               PW_DIRECTION_INPUT,
                               PW_ID_ANY,
                               PW_STREAM_FLAG_AUTOCONNECT |
@@ -547,38 +558,35 @@ int audio_open_input(TRANSMITTER *tx) {
                               PW_STREAM_FLAG_RT_PROCESS,
                               params, 1);
   if (res < 0) {
-    pw_stream_destroy(h->mic_stream);
+    pw_stream_destroy(h->stream);
     pw_core_disconnect(h->core);
     pw_thread_loop_unlock(h->loop);
     pw_thread_loop_stop(h->loop);
     pw_context_destroy(h->context);
     pw_thread_loop_destroy(h->loop);
     g_free(h);
+    g_free(aub);
     g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
 
   pw_thread_loop_unlock(h->loop);
 
-  tx->audio_buffer = g_new0(double, MIC_BUFFER_SIZE);
+  tx->audio_buffer = aub;
+  tx->audio_handle = h;
   tx->audio_buffer_inpt = 0;
   tx->audio_buffer_outpt = 0;
-  tx->audio_handle = h;
-  tx->audio_running = TRUE;
-
   g_mutex_unlock(&tx->audio_mutex);
   return 0;
 }
 
 void audio_close_input(TRANSMITTER *tx) {
   t_print("%s TX:%s\n", __func__, tx->audio_name);
-  tx->audio_running = FALSE;
-
   g_mutex_lock(&tx->audio_mutex);
   struct pipewire_handle *h = tx->audio_handle;
   if (h != NULL) {
     pw_thread_loop_stop(h->loop);
-    pw_stream_destroy(h->mic_stream);
+    pw_stream_destroy(h->stream);
     pw_core_disconnect(h->core);
     pw_context_destroy(h->context);
     pw_thread_loop_destroy(h->loop);
@@ -627,7 +635,7 @@ void audio_write(RECEIVER *rx, double left, double right) {
     // the SDR will very slowly drain the buffer. We recover from this by brutally
     // inserting half a buffer's length of silence.
     //
-    // This is not always an "error" to be reported and necessarily happens in three cases:
+    // This is not always an "error" to be reported and necessarily happens if ...
     //  a) we come here for the first time
     //  b) we come from a TX/RX transition where the buffer ran empty during TX
     //
@@ -639,6 +647,7 @@ void audio_write(RECEIVER *rx, double left, double right) {
     }
     MEMORY_BARRIER;
     rx->audio_buffer_inpt = inpt;
+    // Now buffer filling is exactly at AUDIO_LAT_TARGET
   }
 
   if (avail > AUDIO_LAT_HIGH) {
@@ -651,6 +660,7 @@ void audio_write(RECEIVER *rx, double left, double right) {
     // future.
     //
     rx->audio_buffer_inpt = (rx->audio_buffer_inpt - avail + AUDIO_LAT_TARGET) & RING_BUFFER_MASK;
+    // Now buffer filling ids exactly at AUDIO_LAT_TARGET
   }
 
   int newpt = (rx->audio_buffer_inpt + 1) & RING_BUFFER_MASK;
@@ -667,12 +677,10 @@ void audio_write(RECEIVER *rx, double left, double right) {
 
 void tx_audio_write(RECEIVER *rx, double sample) {
   g_mutex_lock(&rx->audio_mutex);
-  struct pipewire_handle *h = rx->audio_handle;
-  if (h == NULL || rx->audio_buffer == NULL) {
+  if (rx->st_buffer == NULL) {
     g_mutex_unlock(&rx->audio_mutex);
     return;
   }
-
   int inpt = rx->st_buffer_inpt;
   int newpt;
   int avail = (inpt - rx->st_buffer_outpt) & ST_BUFFER_MASK;
@@ -706,7 +714,6 @@ void tx_audio_write(RECEIVER *rx, double sample) {
   switch(adjust) {
   case 0:
     // Write sample directly to sidetone buffer
-    // no need to check buffer overrun
     newpt = (inpt + 1) & ST_BUFFER_MASK;
     if (newpt != rx->st_buffer_outpt) {
       // buffer space available
