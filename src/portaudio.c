@@ -267,6 +267,10 @@ static int pa_out_cb(const void *inputBuffer, void *outputBuffer, unsigned long 
         oldpt = rx->audio_buffer_outpt;
         if (oldpt != rx->audio_buffer_inpt) {
           rx_left = rx->audio_buffer[oldpt];
+          if (rx->cwaudio == 3) {
+            rx_left *= rx->audiodamp;
+            rx->audiodamp *= 0.999; 
+          }
           MEMORY_BARRIER;
           rx->audio_buffer_outpt = (oldpt + 1) & RING_BUFFER_MASK;
         }
@@ -292,6 +296,11 @@ static int pa_out_cb(const void *inputBuffer, void *outputBuffer, unsigned long 
         if (oldpt != rx->audio_buffer_inpt) {
           rx_left = rx->audio_buffer[2 * oldpt];
           rx_right = rx->audio_buffer[2 * oldpt + 1];
+          if (rx->cwaudio == 3) {
+            rx_left *= rx->audiodamp;
+            rx_right *= rx->audiodamp;
+            rx->audiodamp *= 0.999; 
+          }
           MEMORY_BARRIER;
           rx->audio_buffer_outpt = (oldpt + 1) & RING_BUFFER_MASK;
         }
@@ -662,6 +671,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
       MEMORY_BARRIER;
       rx->st_buffer_inpt = inpt;
     }
+    rx->audiodamp = 1.0;
     rx->cwaudio = 3;
     rx->cwcount = 0;
     avail = CW_LAT_TARGET;

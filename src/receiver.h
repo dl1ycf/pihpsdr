@@ -211,7 +211,8 @@ typedef struct _receiver {
 
   //
   // Everything related to audio. Not all of this data is used
-  // with all audio modules
+  // with all audio modules. This data will soon be moved to
+  // an opaque data structure referred to by audio_handle.
   //
   int audio_channel;                      // STEREO or LEFT or RIGHT
   int local_audio;                        // RX audio to sound card is active
@@ -225,6 +226,7 @@ typedef struct _receiver {
   volatile atomic_int audio_buffer_outpt; // pointer for audio_buffer if used as ring buffer
   volatile atomic_int st_buffer_inpt;     // pointer for st_buffer if used as ring buffer
   volatile atomic_int st_buffer_outpt;    // pointer for st_buffer if used as ring buffer
+  double audiodamp;                       // This can be used for fading out be the audio module
   int cwaudio;                            // manage RX/TX transitions in CW
   int cwcount;                            // for sample insertion and deletion
   int skipcnt;                            // for latency management
