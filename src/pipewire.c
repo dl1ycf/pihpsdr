@@ -188,8 +188,8 @@ static void pw_out_cb(void *data) {
       rx_left = rx->audio_buffer[oldpt * 2];
       rx_right = rx->audio_buffer[oldpt * 2 + 1];
       if (rx->cwaudio == 3) {
-        rx_left *= rx->audio_damp;
-        rx_right *= rx->audio_damp;
+        rx_left *= rx->audiodamp;
+        rx_right *= rx->audiodamp;
         rx->audiodamp *= 0.999;
       }
       MEMORY_BARRIER;
