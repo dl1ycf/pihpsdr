@@ -397,6 +397,7 @@ void rx_menu(GtkWidget *parent) {
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), myrx->fm_limiter_gain);
   gtk_grid_attach(GTK_GRID(grid), btn, 2, row, 1, 1);
   g_signal_connect(btn, "value-changed", G_CALLBACK(fm_lim_gain_cb), NULL);
+  row++;
   //
   // RX Audio options, hard-wired to rows 1-3 in columns
   lbl = gtk_label_new("RX Audio Out");

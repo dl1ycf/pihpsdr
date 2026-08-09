@@ -79,6 +79,7 @@ sudo apt-get --yes install libusb-1.0-0-dev
 sudo apt-get --yes install libi2c-dev
 sudo apt-get --yes install libgpiod-dev
 sudo apt-get --yes install libpulse-dev
+sudo apt-get --yes install libpipewire-0.3-dev
 sudo apt-get --yes install pulseaudio
 sudo apt-get --yes install pipewire-pulse
 sudo apt-get --yes install libpcap-dev
