@@ -44,8 +44,8 @@
 
 #define RING_BUFFER_SIZE 16384   // ring buffer for RX audio
 #define RING_BUFFER_MASK 16383
-#define ST_BUFFER_SIZE    4096   // ring buffer for side tone
-#define ST_BUFFER_MASK    4095
+#define ST_BUFFER_SIZE    2048   // ring buffer for side tone
+#define ST_BUFFER_MASK    2047
 #define MIC_BUFFER_SIZE   8192   // ring buffer for TX audio
 #define MIC_BUFFER_MASK   8191
 
@@ -693,9 +693,8 @@ void tx_audio_write(RECEIVER *rx, double sample) {
 
   if (rx->cwaudio != 3) {
     // Transition RX -> TX
-    if (inpt == rx->st_buffer_outpt) {
-      // side tone buffer empty
-      for (int i = 0; i < CW_LAT_TARGET; i++) {
+    if (avail < CW_LAT_ARGET) {
+      for (int i = 0; i < CW_LAT_TARGET - avail; i++) {
         rx->st_buffer[inpt] = 0.0;
         inpt = (inpt + 1) & ST_BUFFER_MASK;
       }

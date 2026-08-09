@@ -87,10 +87,10 @@ AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
 
 #define RING_BUFFER_SIZE      16384
 #define RING_BUFFER_MASK      16383
-#define ST_BUFFER_SIZE         4096
-#define ST_BUFFER_MASK         4095
+#define ST_BUFFER_SIZE         2048
+#define ST_BUFFER_MASK         2047
 #define MIC_BUFFER_SIZE        8192
-#define MIC_BUFFER_MAS         8191
+#define MIC_BUFFER_MASK        8191
 
 #define AUDIO_LAT_LOW           512
 #define AUDIO_LAT_TARGET       8192
@@ -374,7 +374,7 @@ static int pa_in_cb(const void *inputBuffer, void *outputBuffer, unsigned long f
       //
       // put sample into ring buffer
       //
-      int newpt = (tx->audio_buffer_inpt + 1) & RING_BUFFER_MASK;
+      int newpt = (tx->audio_buffer_inpt + 1) & MIC_BUFFER_MASK;
       if (newpt != tx->audio_buffer_outpt) {
         // buffer space available, do the write
         tx->audio_buffer[tx->audio_buffer_inpt] = in[i];
@@ -403,7 +403,7 @@ double audio_get_next_mic_sample(TRANSMITTER *tx) {
     // no buffer, or nothing in buffer: insert silence
     sample = 0.0;
   } else {
-    int newpt = (tx->audio_buffer_outpt + 1) & RING_BUFFER_MASK;
+    int newpt = (tx->audio_buffer_outpt + 1) & MIC_BUFFER_MASK;
     sample = tx->audio_buffer[tx->audio_buffer_outpt];
     MEMORY_BARRIER;
     tx->audio_buffer_outpt = newpt;
@@ -662,9 +662,8 @@ void tx_audio_write(RECEIVER *rx, double sample) {
 
   if (rx->cwaudio != 3) {
     // Transition RX -> TX
-    if (inpt == rx->st_buffer_outpt) {
-      // side tone buffer empty
-      for (int i = 0; i < CW_LAT_TARGET; i++) {
+    if (avail < CW_LAT_TARGET) {
+      for (int i = 0; i < CW_LAT_TARGET - avail; i++) {
         rx->st_buffer[inpt] = 0.0;
         inpt = (inpt + 1) & ST_BUFFER_MASK;
       }
@@ -705,9 +704,9 @@ void tx_audio_write(RECEIVER *rx, double sample) {
     // insert one extra mono sample
     //
     rx->st_buffer[inpt] = 0.0;
-    inpt = (inpt + 1) & RING_BUFFER_MASK;
+    inpt = (inpt + 1) & ST_BUFFER_MASK;
     rx->st_buffer[inpt] = 0.0;
-    inpt = (inpt + 1) & RING_BUFFER_MASK;
+    inpt = (inpt + 1) & ST_BUFFER_MASK;
     MEMORY_BARRIER;
     rx->st_buffer_inpt = inpt;
     break;
