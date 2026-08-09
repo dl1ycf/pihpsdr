@@ -1,5 +1,10 @@
 LIST OF RECENT PIHPSDR CHANGES
 ==============================
+August 2026:
+------------
+
+- new PipeWire audio module, now the default for LINUX
+
 July 2026:
 ----------
 
