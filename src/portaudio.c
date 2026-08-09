@@ -269,7 +269,7 @@ static int pa_out_cb(const void *inputBuffer, void *outputBuffer, unsigned long 
           rx_left = rx->audio_buffer[oldpt];
           if (rx->cwaudio == 3) {
             rx_left *= rx->audiodamp;
-            rx->audiodamp *= 0.999; 
+            rx->audiodamp *= 0.999;
           }
           MEMORY_BARRIER;
           rx->audio_buffer_outpt = (oldpt + 1) & RING_BUFFER_MASK;
@@ -299,7 +299,7 @@ static int pa_out_cb(const void *inputBuffer, void *outputBuffer, unsigned long 
           if (rx->cwaudio == 3) {
             rx_left *= rx->audiodamp;
             rx_right *= rx->audiodamp;
-            rx->audiodamp *= 0.999; 
+            rx->audiodamp *= 0.999;
           }
           MEMORY_BARRIER;
           rx->audio_buffer_outpt = (oldpt + 1) & RING_BUFFER_MASK;
