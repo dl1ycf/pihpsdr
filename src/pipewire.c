@@ -693,7 +693,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
 
   if (rx->cwaudio != 3) {
     // Transition RX -> TX
-    if (avail < CW_LAT_ARGET) {
+    if (avail < CW_LAT_TARGET) {
       for (int i = 0; i < CW_LAT_TARGET - avail; i++) {
         rx->st_buffer[inpt] = 0.0;
         inpt = (inpt + 1) & ST_BUFFER_MASK;
