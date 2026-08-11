@@ -2078,10 +2078,8 @@ void rx_set_noise(const RECEIVER *rx) {
   }
   g_idle_add(ext_vfo_update, NULL);
   //
-  // Set/Update all parameters stored  in rx
-  // that areassociated with the "QRM fighters"
-  //
-  // a) NB
+  // Note NB and NB2 are done "outside WDSP", that is
+  // before the IQ samples enter further processing
   //
   SetEXTANBTau(rx->id,                  rx->nb_tau);
   SetEXTANBHangtime(rx->id,             rx->nb_hang);
@@ -2089,7 +2087,7 @@ void rx_set_noise(const RECEIVER *rx) {
   SetEXTANBThreshold(rx->id,            rx->nb_thresh);
   SetEXTANBRun(rx->id,                  (rx->nb == 1));
   //
-  // b) NB2
+  // NB2
   //
   SetEXTNOBMode(rx->id,                 rx->nb2_mode);
   SetEXTNOBTau(rx->id,                  rx->nb_tau);
@@ -2098,13 +2096,21 @@ void rx_set_noise(const RECEIVER *rx) {
   SetEXTNOBThreshold(rx->id,            rx->nb_thresh);
   SetEXTNOBRun(rx->id,                  (rx->nb == 2));
   //
-  // c) NR
+  // Disable all noise-reduction engines (and SNB)
+  // before updating their parameters.
+  //
+  SetRXAANRRun(rx->id, 0);
+  SetRXAEMNRRun(rx->id, 0);
+  SetRXARNNRRun(rx->id, 0);
+  SetRXASBNRRun(rx->id, 0);
+  SetRXASNBARun(rx->id, 0);
+  //
+  // NR
   //
   SetRXAANRVals(rx->id,                 64, 16, 16e-4, 10e-7);
   SetRXAANRPosition(rx->id,             rx->nr_agc);
-  SetRXAANRRun(rx->id,                  (rx->nr == 1));
   //
-  // d) NR2
+  // NR2
   //
   SetRXAEMNRPosition(rx->id,            rx->nr_agc);
   SetRXAEMNRgainMethod(rx->id,          rx->nr2_gain_method);
@@ -2117,25 +2123,18 @@ void rx_set_noise(const RECEIVER *rx) {
   SetRXAEMNRpost2Rate(rx->id,           (double) rx->nr2_post_rate);
   SetRXAEMNRaeRun(rx->id,               1); // ArtifactElminiation *always* ON
   SetRXAEMNRpost2Run(rx->id,            rx->nr2_post);
-  SetRXAEMNRRun(rx->id,                 (rx->nr == 2));
   //
-  // e) ANF
+  // ANF
   //
   SetRXAANFTaps(rx->id,                 rx->anf_taps);
   SetRXAANFDelay(rx->id,                rx->anf_delay);
   SetRXAANFGain(rx->id,                 pow(10.0, 0.05 * rx->anf_gain));
   SetRXAANFLeakage(rx->id,              pow(10.0, 0.05 * rx->anf_leakage));
   SetRXAANFPosition(rx->id,             rx->nr_agc);
-  SetRXAANFRun(rx->id,                  rx->anf);
   //
-  // f) SNB
-  //
-  SetRXASNBARun(rx->id,                 rx->snb);
-  //
-  // g) NR3
+  // NR3
   //
   SetRXARNNRPosition(rx->id,            rx->nr_agc);
-  SetRXARNNRRun(rx->id,                 (rx->nr == 3));
   //
   // NR4
   //
@@ -2146,7 +2145,30 @@ void rx_set_noise(const RECEIVER *rx) {
   SetRXASBNRpostFilterThreshold(rx->id, rx->nr4_post_threshold);
   SetRXASBNRnoiseScalingType(rx->id,    rx->nr4_noise_scaling_type);
   SetRXASBNRPosition(rx->id,            rx->nr_agc);
-  SetRXASBNRRun(rx->id,                 (rx->nr == 4));
+  //
+  // Enable exactly the selected noise-reduction engine.
+  //
+  switch (rx->nr) {
+  case 1:
+    SetRXAANRRun(rx->id, 1);
+    break;
+  case 2:
+    SetRXAEMNRRun(rx->id, 1);
+    break;
+  case 3:
+    SetRXARNNRRun(rx->id, 1);
+    break;
+  case 4:
+    SetRXASBNRRun(rx->id, 1);
+    break;
+  default:
+    // no NR selected
+    break;
+  }
+  //
+  // Set SNB run state
+  //
+  SetRXASNBARun(rx->id,                 rx->snb);
 }
 
 void rx_set_offset(const RECEIVER *rx) {

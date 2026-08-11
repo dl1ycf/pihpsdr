@@ -79,6 +79,7 @@ sudo apt-get --yes install libusb-1.0-0-dev
 sudo apt-get --yes install libi2c-dev
 sudo apt-get --yes install libgpiod-dev
 sudo apt-get --yes install libpulse-dev
+sudo apt-get --yes install libpipewire-0.3-dev
 sudo apt-get --yes install pulseaudio
 sudo apt-get --yes install pipewire-pulse
 sudo apt-get --yes install libpcap-dev
@@ -120,6 +121,10 @@ sudo apt-get install --yes fonts-roboto
 
 # ----------------------------------------------
 # Install standard libraries necessary for SOAPY
+# NOTE: these library work for both V0.7 and V0.8
+# SoapySDR. If these are added to the list of
+# 'manually installed' Soapy software (see below)
+# then they have to be removed HERE.
 # ----------------------------------------------
 
 sudo apt-get install --yes libaio-dev
@@ -131,9 +136,9 @@ sudo apt-get install --yes flex
 sudo apt-get install --yes libxml2-dev
 sudo apt-get install --yes librtlsdr-dev
 
-################################################################
-#
-# c) download and install SoapySDR core
+################################################################ #
+# c) download and install SoapySDR core, and support for some
+#    radios
 #
 ################################################################
 
@@ -154,6 +159,82 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
 make
 sudo make install
 sudo ldconfig
+
+cd $THISDIR
+yes | rm -r SoapySDR
+
+echo "=============================================================="
+echo
+echo "... installing HackRF SoapySDR support"
+echo
+echo "=============================================================="
+
+cd $THISDIR
+yes | rm -rf SoapyHackRF
+yes | sudo apt-get install libhackrf-dev
+git clone https://github.com/pothosware/SoapyHackRF.git
+cd SoapyHackRF
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+sudo ldconfig
+
+cd $THISDIR
+yes | rm -rf SoapyHackRF
+
+echo "=============================================================="
+echo
+echo "... installing SoapySDR RTL-stick libraries"
+echo
+echo "=============================================================="
+
+cd $THISDIR
+yes | rm -rf SoapyRTLSDR
+git clone https://github.com/pothosware/SoapyRTLSDR
+
+cd $THISDIR/SoapyRTLSDR
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
+make
+sudo make install
+sudo ldconfig
+
+cd $THISDIR
+yes | rm -rf SoapyRTLSDR
+
+#
+# Normally we would compile and install libiio-v0 and libad9361-v0
+# manually from the sources here. But at this moment, the packages
+# from the distro seem to work, and libiio-dev and libad9361-dev
+# have been installed above. When switching to "manually installed"
+# please remove the two apt-install commands for libiia-dev and
+# libad9361-dev from the list at the top of this file.
+#
+
+echo "=============================================================="
+echo
+echo "... installing SoapySDR AdalmPluto libraries"
+echo "... using libiio and libad9361 from the distro"
+echo
+echo "=============================================================="
+
+cd $THISDIR
+yes | rm -rf SoapyPlutoSDR
+git clone https://github.com/pothosware/SoapyPlutoSDR
+
+cd $THISDIR/SoapyPlutoSDR
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
+make
+sudo make install
+sudo ldconfig
+
+cd $THISDIR
+yes | rm -rf SoapyPlutoSDR
 
 ################################################################
 #

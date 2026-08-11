@@ -183,7 +183,7 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
     //   immediately return with error EINPROGRESS.
     // - Then, one uses select() to look for *writeability* and check
     //   the socket error if everything went right. Since one calls select()
-    //   with a time-out, one either succeed within this time or gives up.
+    //   with a time-out, one either succeeds within this time or gives up.
     // - Do not forget to make the socket blocking again.
     //
     // Step 1. Make socket non-blocking and connect()
