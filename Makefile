@@ -1022,6 +1022,9 @@ src/pa_menu.o: src/receiver.h src/atomic.h src/transmitter.h src/message.h
 src/pa_menu.o: src/new_menu.h src/radio.h src/adc.h src/discovered.h
 src/pa_menu.o: src/vfo.h
 src/piHPSDR_logo.o: src/message.h
+src/pipewire.o: src/audio.h src/receiver.h src/atomic.h src/transmitter.h
+src/pipewire.o: src/client_server.h src/mode.h src/message.h src/radio.h
+src/pipewire.o: src/adc.h src/discovered.h src/vfo.h
 src/portaudio.o: src/audio.h src/receiver.h src/atomic.h src/transmitter.h
 src/portaudio.o: src/client_server.h src/mode.h src/message.h src/radio.h
 src/portaudio.o: src/adc.h src/discovered.h src/vfo.h
