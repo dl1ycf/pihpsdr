@@ -718,7 +718,7 @@ static void open_tcp_socket(void) {
 
 static int metis_read(unsigned char *buffer, int len) {
   //
-  // Read one packet. In the TCP case, read eactly len bytes.
+  // Read one packet. In the TCP case, read exactly len bytes.
   // In the UDP case, len is the dimension of the buffer
   // return number of bytes read
   //
@@ -1366,6 +1366,13 @@ static void queue_two_ozy_input_buffers(unsigned const char *buf1,
   // simply put into a large ring buffer. We queue two buffers
   // in one shot since this halves the number of semamphore operations
   // at no cost (buffer fly in in pairs anyway)
+  //
+  // If necessary, this could be further improved by just queueing
+  // complete buffers and avoiding the memcpy. Together with a buffer
+  // management (as in new_protocol.c) this could reduce overhead.
+  // The RXRINGBUF then only contains pointers.
+  // The obstacle here is that METIS reads 2 buffers at a time, and
+  // OZY even 4 buffers at a time.
   //
   if (rxring_count < 0) {
     rxring_count++;

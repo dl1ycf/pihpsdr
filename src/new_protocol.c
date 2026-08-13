@@ -1965,6 +1965,11 @@ static gpointer mic_line_thread(gpointer data) {
 //
 void saturn_post_high_priority(mybuffer *buffer) {
   ASSERT_SERVER();
+  //
+  // It is important to spent as little time as possible in this
+  // function such that we do the next "recvfrom()" as soon as
+  // possible. So but UDP packet in HighPrio ring buffer and that's it.
+  //
   int nptr;
   if (!P2running) {
     buffer->free = 1;
@@ -1982,6 +1987,11 @@ void saturn_post_high_priority(mybuffer *buffer) {
     sem_post(&high_priority_sem_buffer);
 #endif
   } else {
+    //
+    // This really should not happen for HighPrio packets.
+    // If so, increase HiPrio ring buffer size. Note we
+    // do not skip further packets in order to drain ring buffer.
+    //
     t_print("%s: ring buffer overflow.\n", __func__);
     buffer->free = 1;
   }
@@ -1989,10 +1999,20 @@ void saturn_post_high_priority(mybuffer *buffer) {
 
 void saturn_post_micaudio(int bytesread, mybuffer *mybuf) {
   ASSERT_SERVER();
+  //
+  // It is important to spent as little time as possible in this
+  // function such that we do the next "recvfrom()" as soon as
+  // possible. So but UDP packet in mic ring buffer and that's it.
+  //
   if (!P2running) {
     mybuf->free = 1;
     return;
   }
+  //
+  // Skip buffer if we have hit the "ring buffer full" condition
+  // recently. This throws away mic samples but the pro is that
+  // the ring buffer filling goes down to stable values.
+  //
   if (mic_count < 0) {
     mic_count++;
     mybuf->free = 1;
@@ -2000,6 +2020,9 @@ void saturn_post_micaudio(int bytesread, mybuffer *mybuf) {
   }
   int nptr = (mic_inptr + 1) & MICRINGBUFMASK;
   if (nptr != mic_outptr) {
+    //
+    // If there is free space in ring buffer, but UPD buffer there
+    //
     mic_line_buffer[mic_inptr] = mybuf;
     MEMORY_BARRIER;
     mic_inptr = nptr;
@@ -2012,13 +2035,18 @@ void saturn_post_micaudio(int bytesread, mybuffer *mybuf) {
   } else {
     t_print("%s: ring buffer overflow.\n", __func__);
     mybuf->free = 1;
-    // skip 16 mic buffers (21 msec)
-    mic_count = -16;
+    mic_count = -(MICRINGBUFLEN / 4); // number of buffers to be skipped
   }
 }
 
 void saturn_post_iq_data(int ddc, mybuffer *mybuf) {
   ASSERT_SERVER();
+  //
+  // It is important to spent as little time as possible in this
+  // function such that we do the next "recvfrom()" as soon as
+  // possible. So but UDP packet in RXIQ ring buffer of the DDC
+  // and that's it.
+  //
   if (ddc < 0 || ddc >= MAX_DDC) {
     t_print("%s: invalid DDC(%d) seen!\n", __func__, ddc);
     mybuf->free = 1;
@@ -2029,26 +2057,17 @@ void saturn_post_iq_data(int ddc, mybuffer *mybuf) {
     return;
   }
   //
-  // Check sequence
-  //
-  uint32_t sequence = ((uint32_t)(mybuf->buffer[0] & 0xFF) << 24)
-                      + ((uint32_t)(mybuf->buffer[1] & 0xFF) << 16)
-                      + ((uint32_t)(mybuf->buffer[2] & 0xFF) << 8)
-                      + ((uint32_t)(mybuf->buffer[3] & 0xFF));
-  if (ddc_sequence[ddc] != sequence) {
-    t_print("%s: DDC(%d) sequence error: expected %lu got %lu\n", __func__, ddc,
-            (unsigned long) ddc_sequence[ddc], (unsigned long) sequence);
-    sequence_errors++;
-  }
-  ddc_sequence[ddc] = sequence + 1;
-  //
-  // Skip packet, if ring buffer overflow condition was set
+  // Skip buffer if we have hit the "ring buffer full" condition
+  // recently.
   //
   if (iq_count[ddc] < 0) {
     iq_count[ddc]++;
     mybuf->free = 1;
     return;
   }
+  //
+  // If there is space in ring buffer, put packet there.
+  //
   int nptr = (iq_inptr[ddc] + 1) & RXIQRINGBUFMASK;
   if (nptr != iq_outptr[ddc]) {
     iq_buffer[ddc][iq_inptr[ddc]] = mybuf;
@@ -2063,8 +2082,7 @@ void saturn_post_iq_data(int ddc, mybuffer *mybuf) {
   } else {
     t_print("%s: DDC(%d) ring buffer overflow.\n", __func__, ddc);
     mybuf->free = 1;
-    // skip 128 incoming buffers
-    iq_count[ddc] = -128;
+    iq_count[ddc] = -(RXIQRINGBUFLEN / 4); // number of packets to be skipped
   }
 }
 
@@ -2094,6 +2112,19 @@ static gpointer iq_thread(gpointer data) {
     // This can happen when restarting the protocol
     if (mybuf->free) { continue; }
     buffer = (unsigned char *) mybuf->buffer;
+    //
+    // Check sequence
+    //
+    uint32_t sequence = ((uint32_t)(buffer[0] & 0xFF) << 24)
+                      + ((uint32_t)(buffer[1] & 0xFF) << 16)
+                      + ((uint32_t)(buffer[2] & 0xFF) << 8)
+                      + ((uint32_t)(buffer[3] & 0xFF));
+    if (ddc_sequence[ddc] != sequence) {
+      t_print("%s: DDC(%d) sequence error: expected %lu got %lu\n", __func__, ddc,
+              (unsigned long) ddc_sequence[ddc], (unsigned long) sequence);
+      sequence_errors++;
+    }
+    ddc_sequence[ddc] = sequence + 1;
     //
     //  Now comes the action table:
     //  for each DDC we have set up which action to be taken
