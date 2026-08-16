@@ -44,6 +44,7 @@
 #include "atomic.h"
 #include "audio.h"
 #include "band.h"
+#include "buffer.h"
 #include "discovered.h"
 #include "ext.h"
 #include "filter.h"
@@ -116,23 +117,23 @@ static GThread *new_protocol_rxaudio_thread_id;
 static GThread *new_protocol_txiq_thread_id;
 static GThread *new_protocol_timer_thread_id;
 
-static uint32_t high_priority_sequence = 0;
-static uint32_t general_sequence = 0;
-static uint32_t rx_specific_sequence = 0;
-static uint32_t tx_specific_sequence = 0;
+static uint32_t highprio_sent_sequence;
+static uint32_t general_sequence;
+static uint32_t rx_specific_sequence;
+static uint32_t tx_specific_sequence;
 static uint32_t ddc_sequence[MAX_DDC];
-static uint32_t tx_iq_sequence = 0;
-static uint32_t highprio_rcvd_sequence = 0;
-static uint32_t micsamples_sequence = 0;
+static uint32_t tx_iq_sequence;
+static uint32_t highprio_rcvd_sequence;
+static uint32_t micsamples_sequence;
 
 #ifdef __APPLE__
-  static sem_t *high_priority_sem_buffer;
+  static sem_t *high_priority_sem;
   static sem_t *mic_line_sem;
   static sem_t *iq_sem[MAX_DDC];
   static sem_t *txiq_sem;
   static sem_t *rxaudio_sem;
 #else
-  static sem_t high_priority_sem_buffer;
+  static sem_t high_priority_sem;
   static sem_t mic_line_sem;
   static sem_t iq_sem[MAX_DDC];
   static sem_t txiq_sem;
@@ -210,21 +211,11 @@ static pthread_mutex_t send_rxaudio_mutex   = PTHREAD_MUTEX_INITIALIZER;
 ////////////////////////////////////////////////////////////////////////////
 
 //
-// number of buffers allocated (for statistics)
-//
-static int num_buf = 0;
-
-//
-// head of buffer list
-//
-static mybuffer *buflist = NULL;
-
-//
 // The buffers used by new_protocol_thread
 //
 #define RXIQRINGBUFLEN  512
 #define RXIQRINGBUFMASK 511
-static volatile mybuffer *iq_buffer[MAX_DDC][RXIQRINGBUFLEN];
+static volatile p2buffer *iq_buffer[MAX_DDC][RXIQRINGBUFLEN];
 static volatile atomic_int iq_inptr[MAX_DDC] = { 0 };
 static volatile atomic_int iq_outptr[MAX_DDC] = { 0 };
 static volatile int iq_count[MAX_DDC] = { 0 };
@@ -233,13 +224,13 @@ static volatile int iq_count[MAX_DDC] = { 0 };
 
 #define HPRIORINGBUFLEN  64
 #define HPRIORINGBUFMASK 63
-static volatile mybuffer *high_priority_ring[HPRIORINGBUFLEN];
+static volatile p2buffer *high_priority_ring[HPRIORINGBUFLEN];
 static volatile atomic_int high_priority_inptr = 0;
 static volatile atomic_int high_priority_outptr = 0;
 
 #define MICRINGBUFLEN  64
 #define MICRINGBUFMASK 63
-static volatile mybuffer *mic_line_buffer[MICRINGBUFLEN];
+static volatile p2buffer *mic_line_buffer[MICRINGBUFLEN];
 static volatile atomic_int mic_inptr = 0;
 static volatile atomic_int mic_outptr = 0;
 static volatile int mic_count = 0;
@@ -277,53 +268,6 @@ static void  process_ps_iq_data(const unsigned char *buffer);
 static void process_div_iq_data(const unsigned char *buffer);
 static void  process_high_priority(const unsigned char *buffer);
 static void  process_mic_data(const unsigned char *buffer);
-
-//
-// Buffer management.
-// The buffers are *never* released to the operating system,
-// but have their own free/used flag.
-//
-static void mark_all_buffers_free(void) {
-  ASSERT_SERVER();
-  mybuffer *bp = buflist;
-  while (bp) {
-    bp->free = 1;
-    bp = bp->next;
-  }
-}
-
-static mybuffer *get_my_buffer(void) {
-  ASSERT_SERVER(NULL);
-  int i;
-  mybuffer *bp = buflist;
-  while (bp) {
-    if (bp->free) {
-      // found free buffer. Mark as used and return that one.
-      bp->free = 0;
-      return bp;
-    }
-    bp = bp->next;
-  }
-  //
-  // no free buffer found, allocate a bunch of new ones
-  // and add to the head of the list
-  //
-  for (i = 0; i < 64; i++) {
-    bp = g_new(mybuffer, 1);
-    if (!bp) {
-      fatal_error("FATAL: P2: out of memory");
-    } else {
-      bp->free = 1;
-      bp->next = buflist;
-      buflist = bp;
-      num_buf++;
-    }
-  }
-  t_print("%s: number of buffers increased to %d\n", __func__, num_buf);
-  // Mark the first buffer in list as used and return that one.
-  buflist->free = 0;
-  return buflist;
-}
 
 void schedule_high_priority(void) {
   ASSERT_SERVER();
@@ -465,13 +409,13 @@ void new_protocol_init(void) {
   // (HighPrio, Mic, rxIQ) and spawn these threads.
   //
 #ifdef __APPLE__
-  high_priority_sem_buffer = apple_sem(0);
+  high_priority_sem = apple_sem(0);
   mic_line_sem = apple_sem(0);
   for (i = 0; i < MAX_DDC; i++) {
     iq_sem[i] = apple_sem(0);
   }
 #else
-  (void)sem_init(&high_priority_sem_buffer, 0, 0); // check return value!
+  (void)sem_init(&high_priority_sem, 0, 0); // check return value!
   (void)sem_init(&mic_line_sem, 0, 0); // check return value!
   for (i = 0; i < MAX_DDC; i++) {
     (void)sem_init(&iq_sem[i], 0, 0); // check return value!
@@ -683,10 +627,10 @@ static void new_protocol_high_priority(void) {
   int txmode   = vfo_get_tx_mode();
   const BAND *txband = band_get_band(vfo[txvfo].band);
   const BAND *rxband = band_get_band(vfo[rxvfo].band);
-  high_priority_buffer_to_radio[0] = (high_priority_sequence >> 24) & 0xFF;
-  high_priority_buffer_to_radio[1] = (high_priority_sequence >> 16) & 0xFF;
-  high_priority_buffer_to_radio[2] = (high_priority_sequence >>  8) & 0xFF;
-  high_priority_buffer_to_radio[3] = (high_priority_sequence      ) & 0xFF;
+  high_priority_buffer_to_radio[0] = (highprio_sent_sequence >> 24) & 0xFF;
+  high_priority_buffer_to_radio[1] = (highprio_sent_sequence >> 16) & 0xFF;
+  high_priority_buffer_to_radio[2] = (highprio_sent_sequence >>  8) & 0xFF;
+  high_priority_buffer_to_radio[3] = (highprio_sent_sequence      ) & 0xFF;
   high_priority_buffer_to_radio[4] = P2running;
   if (xmit) {
     if (txmode == modeCWU || txmode == modeCWL) {
@@ -1270,7 +1214,7 @@ static void new_protocol_high_priority(void) {
   high_priority_buffer_to_radio[1429] = (alex1 >> 16) & 0xFF;
   high_priority_buffer_to_radio[1430] = (alex1 >>  8) & 0xFF;
   high_priority_buffer_to_radio[1431] = (alex1      ) & 0xFF;
-  //t_print("ALEX0 bits:  %02X %02X %02X %02X\n",high_priority_buffer_to_radio[1428],high_priority_buffer_to_radio[1429],high_priority_buffer_to_radio[1430],high_priority_buffer_to_radio[1431]);
+  //t_print("ALEX1 bits:  %02X %02X %02X %02X\n",high_priority_buffer_to_radio[1428],high_priority_buffer_to_radio[1429],high_priority_buffer_to_radio[1430],high_priority_buffer_to_radio[1431]);
   //
   // ADC step attenuator of ADC0 and ADC1
   //
@@ -1311,7 +1255,7 @@ static void new_protocol_high_priority(void) {
       t_print("sendto socket for high_priority: %d rather than %ld\n", rc, (long)sizeof(high_priority_buffer_to_radio));
     }
   }
-  high_priority_sequence++;
+  highprio_sent_sequence++;
   update_action_table();
   pthread_mutex_unlock(&hi_prio_mutex);
 }
@@ -1559,7 +1503,7 @@ void new_protocol_menu_stop(void) {
     //
     struct timeval tv;
     fd_set fds;
-    char *buffer = g_new(char, NET_BUFFER_SIZE);
+    char *buffer = g_new(char, P2_BUFFER_SIZE);
     tv.tv_usec = 50000;
     tv.tv_sec = 0;
     if (buffer != NULL) {
@@ -1567,7 +1511,7 @@ void new_protocol_menu_stop(void) {
         FD_ZERO(&fds);
         FD_SET(data_socket, &fds);
         if (select(data_socket + 1, &fds, NULL, NULL, &tv) <=  0) { break; }
-        recvfrom(data_socket, buffer, NET_BUFFER_SIZE, 0, (struct sockaddr*)&addr, &length);
+        recvfrom(data_socket, buffer, P2_BUFFER_SIZE, 0, (struct sockaddr*)&addr, &length);
       }
       g_free(buffer);
     }
@@ -1583,7 +1527,7 @@ void new_protocol_menu_start(void) {
   // reset sequence numbers, ring buffers, action table, etc.
   // no mutex needed since no threads yet spawned off
   //
-  high_priority_sequence = 0;
+  highprio_sent_sequence = 0;
   rx_specific_sequence = 0;
   tx_specific_sequence = 0;
   highprio_rcvd_sequence = 0;
@@ -1605,7 +1549,7 @@ void new_protocol_menu_start(void) {
   //
   // cannot use memset for atomic variables
   //
-  for (int i = 0; i < MAX_DDC; i++) {
+  for (unsigned int i = 0; i < MAX_DDC; i++) {
     iq_inptr[i] = 0;
     iq_outptr[i] = 0;
     iq_count[i] = 0;
@@ -1615,14 +1559,15 @@ void new_protocol_menu_start(void) {
   memset(rxid, 0, sizeof(rxid));
   update_action_table();
   //
-  // Mark all buffers free.
+  // This does pre-allocation upon program start
   //
-  if (have_saturn_xdma) {
-    saturn_free_buffers();
-  } else {
-    (void) get_my_buffer();  // this will pre-allocate a bunch at first start
-    mark_all_buffers_free(); // if restarting, set them free
+  for (unsigned int i = 0; i < 8; i++) {
+    (void) get_p2buffer();
   }
+  //
+  // Mark all buffers free
+  //
+  mark_p2buffers_free();   // if restarting, set them free
   P2running = 1;
   //
   // Make semaphores for the TXIQ and RXAUDIO tasks, and spawn these threads
@@ -1846,13 +1791,16 @@ static gpointer new_protocol_thread(gpointer data) {
   // Ideally, all data is just copied into ring buffers, and other threads
   // then take care of processing the data.
   //
+  // In "normal situations", there should be no malloc/free, and no mutex
+  // locking in this "hot path". We have to do, however sem_posts, to keep
+  // the consumers from "busy spinning".
+  //
   while (P2running) {
     int ddc;
     int sourceport;
     int bytesread;
-    mybuffer *mybuf;
-    mybuf = get_my_buffer();
-    bytesread = recvfrom(data_socket, mybuf->buffer, NET_BUFFER_SIZE, 0, (struct sockaddr*)&addr, &length);
+    p2buffer *mybuf = get_p2buffer();
+    bytesread = recvfrom(data_socket, mybuf->buffer, P2_BUFFER_SIZE, 0, (struct sockaddr*)&addr, &length);
     if (!P2running) {
       //
       // When restarting or leaving piHPSDR, it may happen that the
@@ -1879,10 +1827,6 @@ static gpointer new_protocol_thread(gpointer data) {
     case RX_IQ_TO_HOST_PORT_1:
     case RX_IQ_TO_HOST_PORT_2:
     case RX_IQ_TO_HOST_PORT_3:
-    case RX_IQ_TO_HOST_PORT_4:
-    case RX_IQ_TO_HOST_PORT_5:
-    case RX_IQ_TO_HOST_PORT_6:
-    case RX_IQ_TO_HOST_PORT_7:
       ddc = sourceport - RX_IQ_TO_HOST_PORT_0;
       saturn_post_iq_data(ddc, mybuf);
       break;
@@ -1899,7 +1843,7 @@ static gpointer new_protocol_thread(gpointer data) {
       saturn_post_high_priority(mybuf);
       break;
     case MIC_LINE_TO_HOST_PORT:
-      saturn_post_micaudio(bytesread, mybuf);
+      saturn_post_micaudio(mybuf);
       break;
     default:
       t_print("new_protocol_thread: Unknown port %d\n", sourceport);
@@ -1913,15 +1857,15 @@ static gpointer new_protocol_thread(gpointer data) {
 static gpointer high_priority_thread(gpointer data) {
   ASSERT_SERVER(NULL);
   int nptr;
-  mybuffer *mybuf;
+  p2buffer *mybuf;
   while (1) {
 #ifdef __APPLE__
-    sem_wait(high_priority_sem_buffer);
+    sem_wait(high_priority_sem);
 #else
-    sem_wait(&high_priority_sem_buffer);
+    sem_wait(&high_priority_sem);
 #endif
     nptr = (high_priority_outptr + 1) & HPRIORINGBUFMASK;
-    mybuf = (mybuffer *) high_priority_ring[high_priority_outptr];
+    mybuf = (p2buffer *) high_priority_ring[high_priority_outptr];
     MEMORY_BARRIER;
     high_priority_outptr = nptr;
     if (mybuf->free) { continue; }
@@ -1933,7 +1877,7 @@ static gpointer high_priority_thread(gpointer data) {
 
 static gpointer mic_line_thread(gpointer data) {
   ASSERT_SERVER(NULL);
-  mybuffer *mybuf;
+  p2buffer *mybuf;
   int nptr;
   //
   // Ideally, a mic sample buffer with 64 samples arrives
@@ -1946,7 +1890,7 @@ static gpointer mic_line_thread(gpointer data) {
     sem_wait(&mic_line_sem);
 #endif
     nptr = (mic_outptr + 1) & MICRINGBUFMASK;
-    mybuf = (mybuffer *) mic_line_buffer[mic_outptr];
+    mybuf = (p2buffer *) mic_line_buffer[mic_outptr];
     MEMORY_BARRIER;
     mic_outptr = nptr;
     if (mybuf->free) { continue; }
@@ -1963,7 +1907,7 @@ static gpointer mic_line_thread(gpointer data) {
 // fact that Rick first wrote them to support the XDMA
 // interface.
 //
-void saturn_post_high_priority(mybuffer *buffer) {
+void saturn_post_high_priority(p2buffer *buffer) {
   ASSERT_SERVER();
   //
   // It is important to spent as little time as possible in this
@@ -1982,9 +1926,9 @@ void saturn_post_high_priority(mybuffer *buffer) {
     high_priority_inptr = nptr;
     MEMORY_BARRIER;
 #ifdef __APPLE__
-    sem_post(high_priority_sem_buffer);
+    sem_post(high_priority_sem);
 #else
-    sem_post(&high_priority_sem_buffer);
+    sem_post(&high_priority_sem);
 #endif
   } else {
     //
@@ -1997,7 +1941,7 @@ void saturn_post_high_priority(mybuffer *buffer) {
   }
 }
 
-void saturn_post_micaudio(int bytesread, mybuffer *mybuf) {
+void saturn_post_micaudio(p2buffer *mybuf) {
   ASSERT_SERVER();
   //
   // It is important to spent as little time as possible in this
@@ -2039,7 +1983,7 @@ void saturn_post_micaudio(int bytesread, mybuffer *mybuf) {
   }
 }
 
-void saturn_post_iq_data(int ddc, mybuffer *mybuf) {
+void saturn_post_iq_data(int ddc, p2buffer *mybuf) {
   ASSERT_SERVER();
   //
   // It is important to spent as little time as possible in this
@@ -2090,7 +2034,7 @@ static gpointer iq_thread(gpointer data) {
   ASSERT_SERVER(NULL);
   int ddc = GPOINTER_TO_INT(data);
   int nptr;
-  volatile mybuffer *mybuf;
+  volatile p2buffer *mybuf;
   const unsigned char *buffer;
   //
   // At a regular pace, a buffer with 238 samples arrives

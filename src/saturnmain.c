@@ -123,99 +123,6 @@ static unsigned char* IQReadPtr[VNUMDDC];               // pointer for reading o
 static unsigned char* IQHeadPtr[VNUMDDC];               // ptr to 1st free location in I/Q memory
 static unsigned char* IQBasePtr[VNUMDDC];               // ptr to DMA location in I/Q memory
 
-// Memory buffers to be exchanged with PiHPSDR APIs
-#define DDCMYBUF 0
-#define MICMYBUF 1
-#define HPMYBUF  2
-#define MAXMYBUF 3
-//
-// number of buffers allocated (for statistics)
-//
-static int num_buf[MAXMYBUF];
-
-//
-// head of buffer list
-//
-static mybuffer *buflist[MAXMYBUF];
-
-//
-// Obtain a free buffer. If no one is available allocate
-// new ones. Note these buffer "live" as long as the
-// program lives. They are never released.
-//
-static mybuffer *get_my_buffer(int numlist) {
-  int i, j, first;
-  const char *desc;
-  mybuffer *bp = buflist[numlist];
-  while (bp) {
-    if (bp->free) {
-      // found free buffer. Mark as used and return that one.
-      bp->free = 0;
-      return bp;
-    }
-    bp = bp->next;
-  }
-  //
-  // No buffer free, or the first time we request a buffer:
-  // allocate (a) new one(s). Note we need very few
-  // HighPrio buffers, a limited amount of MicSample buffers,
-  // and a possibly large amount of DDC IQ buffers.
-  //
-  first = (bp == NULL);
-  switch (numlist) {
-  case HPMYBUF:
-    j = 4;
-    desc = "HP";
-    break;
-  case MICMYBUF:
-    j = 16;
-    desc = "MIC";
-    break;
-  case DDCMYBUF:
-    j = 64;
-    desc = "DDC";
-    break;
-  default:
-    // NOTREACHED
-    j = 5;
-    desc = "UNKNOWN";
-    break;
-  }
-  for (i = 0; i < j; i++) {
-    bp = g_new(mybuffer, 1);  // never released
-    if (bp) {
-      bp->free = 1;
-      bp->next = buflist[numlist];
-      buflist[numlist] = bp;
-      num_buf[numlist]++;
-    }
-  }
-  t_print("%s: number of buffer[%s] %s to %d\n", __func__, desc,
-          first ? "set" : "increased", num_buf[numlist]);
-  // Mark the first buffer in list as used and return that one.
-  buflist[numlist]->free = 0;
-  return buflist[numlist];
-}
-
-void saturn_free_buffers() {
-  //
-  // Mark all buffers as "free" but do not release storage
-  // This is called upon a protocol (re-)start, so first
-  // allocate a single buffer in each class, and then free
-  // everything. This leaves us will pre-allocated buffers
-  // on first start.
-  //
-  mybuffer *mybuf;
-  for (int i = 0; i < MAXMYBUF; i++) {
-    (void) get_my_buffer(i);  // this will pre-allocate
-    mybuf = buflist[i];
-    while (mybuf) {
-      mybuf->free = 1;
-      mybuf = mybuf->next;
-    }
-  }
-}
-
 //
 // Return "true" if allocation failed
 // from P2_app/OutDDCIQ.c commit 935592526fd0e144c3bc29b39cb18246c483bce0
@@ -681,7 +588,7 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
       uint8_t PTTBits;                                          // PTT bits - and change means a new message needed
       uint8_t  Byte;                                            // data being encoded
       uint16_t Word;                                            // data being encoded
-      mybuffer *mybuf = get_my_buffer(HPMYBUF);
+      p2buffer *mybuf = get_p2buffer();
       ReadStatusRegister();
       PTTBits = GetP2PTTKeyInputs() & 0xFF;
       mybuf->buffer[4] = PTTBits;
@@ -855,14 +762,14 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
       }
       DMAReadFromFPGA(DMAReadfile_fd, MicBasePtr, VDMAMICTRANSFERSIZE, VADDRMICSTREAMREAD);
       // create the packet
-      mybuffer *mybuf = get_my_buffer(MICMYBUF);
+      p2buffer *mybuf = get_p2buffer();
       mybuf->buffer[0] = (SequenceCounter >> 24) & 0xFF;           // add seq. count
       mybuf->buffer[1] = (SequenceCounter >> 16) & 0xFF;
       mybuf->buffer[2] = (SequenceCounter >>  8) & 0xFF;
       mybuf->buffer[3] = (SequenceCounter      ) & 0xFF;
       SequenceCounter++;
       memcpy(mybuf->buffer + 4, MicBasePtr, VDMAMICTRANSFERSIZE);  // copy in mic samples
-      saturn_post_micaudio(VMICPACKETSIZE, mybuf);
+      saturn_post_micaudio(mybuf);
     }
   }
   t_print("ending: %s\n", __func__);
@@ -954,7 +861,7 @@ static gpointer saturn_rx_thread(gpointer arg) {
         // Ship out DDC packets as long as there is enough data
         //
         while ((IQHeadPtr[DDC] - IQReadPtr[DDC]) > VIQBYTESPERFRAME) {
-          mybuffer *mybuf = get_my_buffer(DDCMYBUF);
+          p2buffer *mybuf = get_p2buffer();
           mybuf->buffer[0] = (SequenceCounter[DDC] >> 24) & 0xFF;        // add seq. count
           mybuf->buffer[1] = (SequenceCounter[DDC] >> 16) & 0xFF;
           mybuf->buffer[2] = (SequenceCounter[DDC] >>  8) & 0xFF;
