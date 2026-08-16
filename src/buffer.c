@@ -41,7 +41,7 @@
 
 static metisbuffer *metisbuflist[8];
 static unsigned int nummetisbuf;
-static unsigned int metisbufcnt;
+static unsigned int metisbufcnt = 7;
 
 metisbuffer *get_metisbuffer(void) {
   metisbufcnt = (metisbufcnt + 1) & 7;
@@ -74,7 +74,7 @@ metisbuffer *get_metisbuffer(void) {
 #ifdef USBOZY
 static ozybuffer *ozybuflist[8];
 static unsigned int numozybuf;
-static unsigned int ozybufcnt;
+static unsigned int ozybufcnt = 7;
 
 ozybuffer *get_ozybuffer(void) {
   ozybufcnt = (ozybufcnt + 1) & 7;
@@ -108,7 +108,7 @@ ozybuffer *get_ozybuffer(void) {
 
 static p2buffer *p2buflist[8];
 static unsigned int p2numbuf;
-static unsigned int p2bufcnt;
+static unsigned int p2bufcnt = 7;
 
 p2buffer *get_p2buffer(void) {
   p2bufcnt = (p2bufcnt + 1) & 7;

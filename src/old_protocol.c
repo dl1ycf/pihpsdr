@@ -138,7 +138,7 @@ static void ozy_send_buffer(unsigned char *buffer);
 static uint32_t send_sequence = 0;
 static int metis_offset = 8;
 
-static void metis_write(unsigned char ep, unsigned const char* buffer);
+static void metis_write(unsigned const char* buffer);
 static void metis_start_stop(int cmd);
 static void metis_send_buffer(const unsigned char* buffer, int length);
 
@@ -568,7 +568,7 @@ static gpointer ozy_ep6_rx_thread(gpointer arg) {
       t_print("old_protocol_ep6_read: ozy_read returned 0 bytes... retrying\n");
       ob->free = 1;
       continue;
-    } else if (bytes != 2048) {
+    } else if (bytes != EP6_BUFFER_SIZE) {
       t_print("old_protocol_ep6_read: OzyBulkRead failed %d bytes\n", bytes);
       t_perror("ozy_read(EP6 read failed");
       ob->free = 1;
@@ -784,7 +784,7 @@ static int metis_read(unsigned char *buffer, int len) {
   int bytes_read;
   int ret = -1;
   if (tcp_socket > 0) {
-    // TCP messages may be split, so collect exactly 1032 bytes.
+    // TCP messages may be split, so collect exactly one buffer.
     // Remember, this is a STREAMING protocol.
     bytes_read = 0;
     int left = len;
@@ -809,7 +809,7 @@ static int metis_read(unsigned char *buffer, int len) {
     usleep(100000);
     bytes_read = 0;
   }
-  if (bytes_read == 1032 && buffer[0] == 0xEF && buffer[1] == 0xFE && buffer[3] == 6) {
+  if (bytes_read == METIS_BUFFER_SIZE && buffer[0] == 0xEF && buffer[1] == 0xFE && buffer[3] == 6) {
     //
     // This is the data frame we are looking for
     //
@@ -832,8 +832,9 @@ static int metis_read(unsigned char *buffer, int len) {
 static void queue_metis_buffer(metisbuffer *mb) {
   ASSERT_SERVER();
   //
-  // An METIS buffer is a 1032 byte data block which contains
+  // An METIS buffer is a data block which contains
   // an 8-byte header followed by two 512-byte buffers
+  // 8 + 512 + 512 = METIS_BUFFER_SIZE
   //
   if (metis_skip_count < 0) {
     //
@@ -880,7 +881,7 @@ static gpointer metis_receive_thread(gpointer arg) {
     //
     if (pthread_mutex_trylock(&recv_mutex) == 0) {
       metisbuffer *mb = get_metisbuffer();
-      ret = P1running ? metis_read(mb->buffer, 1032) : -1;
+      ret = P1running ? metis_read(mb->buffer, METIS_BUFFER_SIZE) : -1;
       pthread_mutex_unlock(&recv_mutex);
       if (ret >= 0) {
         queue_metis_buffer(mb);
@@ -1453,7 +1454,7 @@ static gpointer process_ozy_input_buffer_thread(gpointer arg) {
   ASSERT_SERVER(NULL);
   //
   // This thread constantly monitors the input ring buffer and
-  // processes the data whenever a bunch is available. Note this
+  // processes the data whenever a buffer is available. Note this
   // thread does all the fexchange() with WDSP, since it calls
   // (via process_ozy_byte)
   //
@@ -1478,7 +1479,7 @@ static gpointer process_ozy_input_buffer_thread(gpointer arg) {
       if (ozy_ring_outptr != ozy_ring_inptr) {
         int nptr = (ozy_ring_outptr + 1) & OZYRINGBUFMASK;
         ozybuffer *ob = ozy_ringbuf[ozy_ring_outptr];
-        for (int i = 0; i < 2048; i++) {
+        for (int i = 0; i < EP6_BUFFER_SIZE; i++) {
           process_ozy_byte(ob->buffer[i] & 0xFF);
         }
         ob->free = 1;
@@ -1490,7 +1491,7 @@ static gpointer process_ozy_input_buffer_thread(gpointer arg) {
       if (metis_ring_inptr != metis_ring_outptr) {
         int nptr = (metis_ring_outptr + 1) & METISRINGBUFMASK;
         metisbuffer *mb = metis_ringbuf[metis_ring_outptr];
-        for (int i = 8; i < 1032; i++) {
+        for (int i = 8; i < METIS_BUFFER_SIZE; i++) {
           process_ozy_byte(mb->buffer[i] & 0xFF);
         }
         mb->free = 1;
@@ -2518,10 +2519,8 @@ static void ozy_send_buffer(unsigned char *buffer) {
     ozyusb_write(buffer);
 #endif
   } else {
-    metis_write(0x02, buffer);
+    metis_write(buffer);
   }
-  //t_print("C0=%02X C1=%02X C2=%02X C3=%02X C4=%02X\n",
-  //                buffer[C0],buffer[C1],buffer[C2],buffer[C3],buffer[C4]);
 }
 
 #ifdef USBOZY
@@ -2551,14 +2550,14 @@ static void ozyusb_write(unsigned char* buffer) {
 
 #endif
 
-static void metis_write(unsigned char ep, unsigned const char* buffer) {
+static void metis_write(unsigned const char* buffer) {
   ASSERT_SERVER();
   int i;
-  static unsigned char metis_buffer[1032];
+  static unsigned char metis_buffer[METIS_BUFFER_SIZE];
   //
-  // This alternately fill the data from buffer into the lower or upper half
-  // of metis_buffer, and if the upper half has been filled, sends this
-  // 1032-byte-buffer via UDP or TCP
+  // This alternately fills the data from buffer into the lower or upper half
+  // of metis_buffer, and if the upper half has been filled, sends the
+  // buffer via UDP or TCP
   //
   for (i = 0; i < P1_BUFSIZE; i++) {
     metis_buffer[i + metis_offset] = buffer[i];
@@ -2569,20 +2568,20 @@ static void metis_write(unsigned char ep, unsigned const char* buffer) {
     metis_buffer[0] = 0xEF;
     metis_buffer[1] = 0xFE;
     metis_buffer[2] = 0x01;
-    metis_buffer[3] = ep;
+    metis_buffer[3] = 0x02;
     metis_buffer[4] = (send_sequence >> 24) & 0xFF;
     metis_buffer[5] = (send_sequence >> 16) & 0xFF;
     metis_buffer[6] = (send_sequence >> 8) & 0xFF;
     metis_buffer[7] = (send_sequence) & 0xFF;
     send_sequence++;
-    metis_send_buffer(metis_buffer, 1032);
+    metis_send_buffer(metis_buffer, METIS_BUFFER_SIZE);
     metis_offset = 8;
   }
 }
 
 void old_protocol_run(void) {
   ASSERT_SERVER();
-  unsigned char buffer[1032];
+  unsigned char buffer[METIS_BUFFER_SIZE];
   t_print("%s\n", __func__);
   //
   // In TCP-ONLY mode, we possibly need to re-connect
@@ -2624,7 +2623,7 @@ void old_protocol_run(void) {
     // The next lines are never executed for OZY
     //
     metis_start_stop(1);      // sends METIS start packet
-    if (metis_read(buffer, 1032)  ==  0) { break; }  // valid packet received
+    if (metis_read(buffer, METIS_BUFFER_SIZE)  ==  0) { break; }  // valid packet received
     usleep(20000);
   }
   pthread_mutex_unlock(&send_mutex);
@@ -2635,30 +2634,36 @@ void old_protocol_run(void) {
 static void metis_start_stop(int cmd) {
   ASSERT_SERVER();
   int i;
-  unsigned char buffer[1032];
+  unsigned char buffer[METIS_BUFFER_SIZE]; // only 64 bytes used with UDP
   t_print("%s: %d\n", __func__, cmd);
-  if (device == DEVICE_OZY) { return; }
+  if (device == DEVICE_OZY) {
+    //
+    // OZY runs continuously and has not start/stop command
+    //
+    return;
+  }
   buffer[0] = 0xEF;
   buffer[1] = 0xFE;
   buffer[2] = 0x04; // start/stop command
   buffer[3] = cmd;  // send EP6 and EP4 data (0x00=stop)
   if (tcp_socket < 0) {
-    // use UDP  -- send a short packet
+    //
+    // UDP: prepeare 64-byte buffer and send it
+    //
     for (i = 4; i < 64; i++) {
       buffer[i] = 0x00;
     }
     metis_send_buffer(buffer, 64);
   } else {
-    // use TCP -- send a long packet
     //
-    // Stop the sending of TX/audio packets (1032-byte-length) and wait a while
-    // Then, send the start/stop buffer with a length of 1032
+    // TCP: first make sure that the TX/audio packet sending has stopped,
+    //      then prepeare a 'long' METIS buffer and send it.
     //
-    usleep(100000);
-    for (i = 4; i < 1032; i++) {
+    usleep(100000);  // wait until everything is sent
+    for (i = 4; i < METIS_BUFFER_SIZE; i++) {
       buffer[i] = 0x00;
     }
-    metis_send_buffer(buffer, 1032);
+    metis_send_buffer(buffer, METIS_BUFFER_SIZE);
     //
     // Wait a while before resuming sending TX/audio packets.
     // This prevents mangling of data from TX/audio and Start/Stop packets.
@@ -2679,27 +2684,33 @@ static void metis_start_stop(int cmd) {
 static void metis_send_buffer(const unsigned char* buffer, int length) {
   ASSERT_SERVER();
   //
-  // Send using either the UDP or TCP socket. Do not use TCP for
-  // packets that are not 1032 bytes long
+  // UDP packets can be variable length, but TCP packets must have a length
+  // of exactly METIS_BUFFER_SIZE.
   //
-  //t_print("%s: length=%d\n",__func__,length);
   if (tcp_socket >= 0) {
-    if (length != 1032) {
-      t_print("PROGRAMMING ERROR: TCP LENGTH != 1032\n");
+    //
+    // TCP connection active
+    //
+    if (length != METIS_BUFFER_SIZE) {
+      t_print("PROGRAMMING ERROR: TCP LENGTH INVALID\n");
       g_idle_add(fatal_error, "FATAL: P1 Programming Error in metis_send_buffer");
     }
     if (sendto(tcp_socket, buffer, length, 0, NULL, 0) != length) {
       t_perror("sendto socket failed for TCP metis_send_data\n");
     }
   } else if (data_socket >= 0) {
+    //
+    // UDP connection active
+    //
     int bytes_sent;
-    //t_print("%s: sendto %d for %s:%d length=%d\n",__func__,data_socket,inet_ntoa(data_addr.sin_addr),ntohs(data_addr.sin_port),length);
     bytes_sent = sendto(data_socket, buffer, length, 0, (struct sockaddr*)&data_addr, sizeof(data_addr));
     if (bytes_sent != length) {
       t_print("%s: UDP sendto failed: %d: %s\n", __func__, errno, strerror(errno));
     }
   } else {
-    // This should not happen
+    //
+    // This should not happen: neither TCP nor UDP socket available
+    //
     t_print("METIS send: neither UDP nor TCP socket available!\n");
     g_idle_add(fatal_error, "FATAL: P1 neither UDP nor TCP socket available");
   }

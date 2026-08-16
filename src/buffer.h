@@ -40,8 +40,6 @@
 #ifndef _BUFFER_H_
 #define _BUFFER_H_
 
-#define P2_BUFFER_SIZE    1500
-
 #define METIS_BUFFER_SIZE 1032
 struct metisbuffer_ {
   struct metisbuffer_ *next;
@@ -50,6 +48,7 @@ struct metisbuffer_ {
 };
 
 typedef struct metisbuffer_ metisbuffer;
+extern metisbuffer *get_metisbuffer(void);
 
 #ifdef USBOZY
 #define EP6_BUFFER_SIZE   2048
@@ -60,6 +59,7 @@ struct ozybuffer_ {
 };
 
 typedef struct ozybuffer_ ozybuffer;
+extern ozybuffer *get_ozybuffer(void);
 #endif
 
 #define P2_BUFFER_SIZE    1500
@@ -70,13 +70,7 @@ struct p2buffer_ {
 };
 
 typedef struct p2buffer_ p2buffer;
-
-extern metisbuffer *get_metisbuffer(void);
-#ifdef USBOZY
-extern ozybuffer *get_ozybuffer(void);
-#endif
 extern p2buffer *get_p2buffer(void);
-
 extern void mark_p2buffers_free(void);
 
 #endif
