@@ -21,6 +21,7 @@
 #define _NEW_PROTOCOL_H_
 
 #include "MacOS.h"   // for semaphores
+#include "buffer.h"
 #include "receiver.h"
 
 #define MAX_DDC 4
@@ -43,36 +44,6 @@
 #define RX_IQ_TO_HOST_PORT_1                          1036
 #define RX_IQ_TO_HOST_PORT_2                          1037
 #define RX_IQ_TO_HOST_PORT_3                          1038
-#define RX_IQ_TO_HOST_PORT_4                          1039
-#define RX_IQ_TO_HOST_PORT_5                          1040
-#define RX_IQ_TO_HOST_PORT_6                          1041
-#define RX_IQ_TO_HOST_PORT_7                          1042
-
-// Network buffers
-// Maximum length is 1444
-
-#define NET_BUFFER_SIZE  1500
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// PEDESTRIAN BUFFER MANAGEMENT
-//
-////////////////////////////////////////////////////////////////////////////
-//
-// One buffer. The fences can be used to detect over-writing
-// (feature currently not used).
-//
-////////////////////////////////////////////////////////////////////////////
-
-struct mybuffer_ {
-  struct mybuffer_ *next;
-  int             free;
-  long            lowfence;
-  unsigned char   buffer[NET_BUFFER_SIZE];
-  long            highfence;
-};
-
-typedef struct mybuffer_ mybuffer;
 
 #define MIC_SAMPLES 64
 
@@ -82,21 +53,15 @@ extern void schedule_receive_specific(void);
 extern void schedule_transmit_specific(void);
 
 extern void new_protocol_init(void);
-
-extern void filter_board_changed(void);
-extern void pa_changed(void);
-extern void tuner_changed(void);
-
 extern void new_protocol_audio_samples(double left, double right);
 extern void new_protocol_iq_samples(double isample, double qsample);
-extern void new_protocol_flush_iq_samples(void);
 extern void new_protocol_tx_audio_samples(double sample);
-
 extern void new_protocol_menu_start(void);
 extern void new_protocol_menu_stop(void);
-extern void saturn_post_iq_data(int ddc, mybuffer *buffer);
-extern void saturn_post_micaudio(int bytes, mybuffer *buffer);
-extern void saturn_post_high_priority(mybuffer *buffer);
+
+extern void saturn_post_iq_data(int ddc, p2buffer *buffer);
+extern void saturn_post_micaudio(p2buffer *buffer);
+extern void saturn_post_high_priority(p2buffer *buffer);
 
 //
 // if DUMP_TX_DATA is #defined, the first 1000000 samples
