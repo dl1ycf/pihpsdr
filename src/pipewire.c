@@ -56,6 +56,16 @@
 #define CW_LAT_TARGET      256   // sidetone target latency
 #define CW_LAT_HIGH        288   // sidetone high water mark
 
+//
+// The Pipewire "Quantum" (number of samples to be transferred in one callback)
+// is now set to 256 both for capture and playback.
+// There have been reports that a value of 128 (previously used for playback)
+// leads to frequent audio drop-outs with HDMI audio on some LINUX boxes.
+//
+
+#define PIPEWIRE_QUANTUM_CAPTURE  "256/48000"
+#define PIPEWIRE_QUANTUM_PLAYBACK "256/48000"
+
 int n_input_devices;
 int n_output_devices;
 
@@ -339,7 +349,7 @@ int audio_open_output(RECEIVER *rx) {
       PW_KEY_NODE_NAME, "pihpsdr-rx",
       PW_KEY_NODE_DESCRIPTION, "piHPSDR Playback",
       PW_KEY_TARGET_OBJECT, rx->audio_name,
-      PW_KEY_NODE_LATENCY, "128/48000",
+      PW_KEY_NODE_LATENCY, PIPEWIRE_QUANTUM_PLAYBACK,
       NULL
   );
 
@@ -517,7 +527,7 @@ int audio_open_input(TRANSMITTER *tx) {
       PW_KEY_MEDIA_ROLE, "DSP",
       PW_KEY_NODE_NAME, "piHPSDR capture",
       PW_KEY_TARGET_OBJECT, tx->audio_name,
-      PW_KEY_NODE_LATENCY, "256/48000",
+      PW_KEY_NODE_LATENCY, PIPEWIRE_QUANTUM_CAPTURE,
       NULL
   );
 
