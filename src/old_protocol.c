@@ -41,6 +41,7 @@
 #include "atomic.h"
 #include "audio.h"
 #include "band.h"
+#include "buffer.h"
 #include "discovered.h"
 #include "ext.h"
 #include "filter.h"
@@ -68,7 +69,7 @@
 #define DATA_PORT 1024
 
 #define SYNC 0x7F
-#define OZY_BUFFER_SIZE 512
+#define P1_BUFSIZE 512
 
 //
 // Atlas-Bus configuration bits (METIS/OZY)
@@ -129,17 +130,15 @@ static int mic_sample_divisor = 1;
 
 static int p1_command_loop = 1;
 
-static gpointer receive_thread(gpointer arg);
+static gpointer metis_receive_thread(gpointer arg);
 static gpointer process_ozy_input_buffer_thread(gpointer arg);
 
-static void queue_two_ozy_input_buffers(unsigned const char *buf1,
-                                        unsigned const char *buf2);
 static void ozy_send_buffer(unsigned char *buffer);
 
 static uint32_t send_sequence = 0;
 static int metis_offset = 8;
 
-static void metis_write(unsigned char ep, unsigned const char* buffer);
+static void metis_write(unsigned const char* buffer);
 static void metis_start_stop(int cmd);
 static void metis_send_buffer(const unsigned char* buffer, int length);
 
@@ -169,7 +168,6 @@ static int mercury_software_version[2] = { 0, 0 };
   static void ozyusb_write(unsigned char* buffer);
   #define EP6_IN_ID   0x86                        // end point = 6, direction toward PC
   #define EP2_OUT_ID  0x02                        // end point = 2, direction from PC
-  #define EP6_BUFFER_SIZE 2048
   #define USB_TIMEOUT -7
 #endif
 
@@ -200,6 +198,7 @@ static pthread_mutex_t audio_mutex   = PTHREAD_MUTEX_INITIALIZER;
 //
 static pthread_mutex_t send_mutex   = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t recv_mutex   = PTHREAD_MUTEX_INITIALIZER;
+
 
 //
 // Ring buffer for outgoing samples.
@@ -236,19 +235,28 @@ static volatile int txring_count  = 0;  // a sample counter
 //
 // If we want to store samples of about 75msec, this
 // corresponds to 480 kByte (PS, 5RX, 192k) or
-// 400 kByyte (2RX, 384k), so we use 512k
+// 400 kByyte (2RX, 384k), so we use either 512 Metis or 256 OZY buffers
 //
-#define RXRINGBUFLEN  524288  // must be multiple of 1024 since we queue double-buffers
-#define RXRINGBUFMASK 524287  // must be multiple of 1024 since we queue double-buffers
-static unsigned char *RXRINGBUF = NULL;
-static volatile atomic_int rxring_inptr  = 0;  // pointer updated when writing into the ring buffer
-static volatile atomic_int rxring_outptr = 0;  // pointer updated when reading from the ring buffer
-static volatile int rxring_count  = 0;  // a sample counter
+#define METISRINGBUFLEN   512
+#define METISRINGBUFMASK  511
+static metisbuffer *metis_ringbuf[METISRINGBUFLEN];
+static volatile atomic_int metis_ring_inptr  = 0;  // pointer updated when writing into the ring buffer
+static volatile atomic_int metis_ring_outptr = 0;  // pointer updated when reading from the ring buffer
+static volatile int metis_skip_count = 0;          // an overflow recovery pointer
+
+#ifdef USBOZY
+#define OZYRINGBUFLEN     256
+#define OZYRINGBUFMASK    255
+static ozybuffer *ozy_ringbuf[OZYRINGBUFLEN];
+static volatile atomic_int ozy_ring_inptr  = 0;
+static volatile atomic_int ozy_ring_outptr = 0;
+static volatile int ozy_skip_count = 0;           // an overflow recovery pointer
+#endif
 
 static gpointer old_protocol_txiq_thread(gpointer data) {
   ASSERT_SERVER(NULL);
-  unsigned char ozy_buf1[OZY_BUFFER_SIZE];
-  unsigned char ozy_buf2[OZY_BUFFER_SIZE];
+  unsigned char ozy_buf1[P1_BUFSIZE];
+  unsigned char ozy_buf2[P1_BUFSIZE];
   //
   // Ideally, an output METIS buffer with 126 samples is sent every 2625 usec.
   // We thus wait until we have 126 samples, and then send a packet.
@@ -374,9 +382,6 @@ void old_protocol_init(int rate) {
   if (TXRINGBUF == NULL) {
     TXRINGBUF = g_new(unsigned char, TXRINGBUFLEN);
   }
-  if (RXRINGBUF == NULL) {
-    RXRINGBUF = g_new(unsigned char, RXRINGBUFLEN);
-  }
 #ifdef __APPLE__
   txring_sem = apple_sem(0);
   rxring_sem = apple_sem(0);
@@ -393,18 +398,40 @@ void old_protocol_init(int rate) {
   if (device == DEVICE_OZY) {
 #ifdef USBOZY
     t_print("old_protocol_init: initialise ozy on USB\n");
+    //
+    // Pre-Allocate OZY buffers. Do this 8 times
+    // to allocate in all 8 lists. Then, mark them free.
+    //
+    ozybuffer *ob[8];
+    for (unsigned int i=0; i < 8; i++) {
+      ob[i] = get_ozybuffer(); // this will pre-allocate
+    }
+    for (unsigned int i=0; i < 8; i++) {
+      ob[i]->free = 1;
+    }
     ozy_initialise();
     P1running = 1;
     start_usb_receive_threads();
 #endif
   } else {
     t_print("old_protocol starting receive thread\n");
+    //
+    // Pre-Allocate METIS buffers. Do this 8 times
+    // to allocate in all 8 lists. Then, mark them free.
+    //
+    metisbuffer *mb[8];
+    for (unsigned int i=0; i < 8; i++) {
+      mb[i] = get_metisbuffer(); // this will pre-allocate
+    }
+    for (unsigned int i=0; i < 8; i++) {
+      mb[i]->free = 1;
+    }
     if (radio->use_tcp) {
       open_tcp_socket();
     } else  {
       open_udp_socket();
     }
-    g_thread_new( "METIS", receive_thread, NULL);
+    g_thread_new( "METIS", metis_receive_thread, NULL);
   }
   old_protocol_run();
 }
@@ -491,6 +518,34 @@ static gpointer ozy_i2c_thread(gpointer arg) {
   return NULL;  /* NOTREACHED */
 }
 
+static void queue_ozy_buffer(ozybuffer *ob) {
+  ASSERT_SERVER();
+  if (ozy_skip_count < 0) {
+    //
+    // There was a recent buffer overflow
+    //
+    ob->free = 1;
+    ozy_skip_count++;
+    return;
+  }
+  int nptr = (ozy_ring_inptr + 1) & OZYRINGBUFMASK;
+  if (nptr != ozy_ring_outptr) {
+    ozy_ringbuf[ozy_ring_inptr] = ob;
+    MEMORY_BARRIER;
+    ozy_ring_inptr = nptr;
+#ifdef __APPLE__
+    sem_post(rxring_sem);
+#else
+    sem_post(&rxring_sem);
+#endif
+  } else {
+    t_print("%s: input buffer overflow.\n", __func__);
+    // if an overflow is encountered, skip the next 128 input buffers
+    // to allow a "fresh start"
+    ozy_skip_count = -128;
+  }
+}
+
 //
 // receive thread for USB EP6 (512 byte USB Ozy frames)
 // this function loops reading 4 frames at a time through USB
@@ -498,26 +553,28 @@ static gpointer ozy_i2c_thread(gpointer arg) {
 //
 static gpointer ozy_ep6_rx_thread(gpointer arg) {
   ASSERT_SERVER(NULL);
-  t_print( "old_protocol: USB EP6 receive_thread\n");
-  static unsigned char ep6_inbuffer[EP6_BUFFER_SIZE];
+  t_print( "old_protocol: %s\n", __func__);
   for (;;) {
-    int bytes = ozy_read(EP6_IN_ID, ep6_inbuffer, EP6_BUFFER_SIZE); // read a 2K buffer at a time
+    ozybuffer *ob = get_ozybuffer();
+    int bytes = ozy_read(EP6_IN_ID, ob->buffer, EP6_BUFFER_SIZE);
     //
     // If the protocol has been stopped, just swallow all incoming packets
     //
-    if (!P1running) { continue; }
-    //t_print("%s: read %d bytes\n",__func__,bytes);
+    if (!P1running) {
+      ob->free = 1;
+      continue;
+    }
     if (bytes == 0) {
       t_print("old_protocol_ep6_read: ozy_read returned 0 bytes... retrying\n");
+      ob->free = 1;
       continue;
     } else if (bytes != EP6_BUFFER_SIZE) {
       t_print("old_protocol_ep6_read: OzyBulkRead failed %d bytes\n", bytes);
       t_perror("ozy_read(EP6 read failed");
-    } else
+      ob->free = 1;
+    } else {
       // process the received data normally
-    {
-      queue_two_ozy_input_buffers(&ep6_inbuffer[   0], &ep6_inbuffer[ 512]);
-      queue_two_ozy_input_buffers(&ep6_inbuffer[1024], &ep6_inbuffer[1536]);
+      queue_ozy_buffer(ob);
     }
   }
   return NULL;  /*NOTREACHED*/
@@ -718,7 +775,7 @@ static void open_tcp_socket(void) {
 
 static int metis_read(unsigned char *buffer, int len) {
   //
-  // Read one packet. In the TCP case, read eactly len bytes.
+  // Read one packet. In the TCP case, read exactly len bytes.
   // In the UDP case, len is the dimension of the buffer
   // return number of bytes read
   //
@@ -727,7 +784,7 @@ static int metis_read(unsigned char *buffer, int len) {
   int bytes_read;
   int ret = -1;
   if (tcp_socket > 0) {
-    // TCP messages may be split, so collect exactly 1032 bytes.
+    // TCP messages may be split, so collect exactly one buffer.
     // Remember, this is a STREAMING protocol.
     bytes_read = 0;
     int left = len;
@@ -752,7 +809,7 @@ static int metis_read(unsigned char *buffer, int len) {
     usleep(100000);
     bytes_read = 0;
   }
-  if (bytes_read == 1032 && buffer[0] == 0xEF && buffer[1] == 0xFE && buffer[3] == 6) {
+  if (bytes_read == METIS_BUFFER_SIZE && buffer[0] == 0xEF && buffer[1] == 0xFE && buffer[3] == 6) {
     //
     // This is the data frame we are looking for
     //
@@ -772,11 +829,43 @@ static int metis_read(unsigned char *buffer, int len) {
   return ret;
 }
 
-static gpointer receive_thread(gpointer arg) {
+static void queue_metis_buffer(metisbuffer *mb) {
+  ASSERT_SERVER();
+  //
+  // An METIS buffer is a data block which contains
+  // an 8-byte header followed by two 512-byte buffers
+  // 8 + 512 + 512 = METIS_BUFFER_SIZE
+  //
+  if (metis_skip_count < 0) {
+    //
+    // There was a recent buffer overflow
+    //
+    mb->free = 1;
+    metis_skip_count++;
+    return;
+  }
+  int nptr = (metis_ring_inptr + 1) & METISRINGBUFMASK;
+  if (nptr != metis_ring_outptr) {
+    metis_ringbuf[metis_ring_inptr] = mb;
+    MEMORY_BARRIER;
+    metis_ring_inptr = nptr;
+#ifdef __APPLE__
+    sem_post(rxring_sem);
+#else
+    sem_post(&rxring_sem);
+#endif
+  } else {
+    t_print("%s: input buffer overflow.\n", __func__);
+    // if an overflow is encountered, skip input buffers
+    // to allow a "fresh start"
+    metis_skip_count = -256;
+  }
+}
+
+static gpointer metis_receive_thread(gpointer arg) {
   ASSERT_SERVER(NULL);
-  unsigned char buffer[2000];
   int ret;
-  t_print( "old_protocol: receive_thread\n");
+  t_print( "old_protocol: %s\n", __func__);
   if (device == DEVICE_OZY) { return NULL; }  // should not happen
   for (;;) {
     //
@@ -791,10 +880,13 @@ static gpointer receive_thread(gpointer arg) {
     // this thread, e.g. when restarting the protocol
     //
     if (pthread_mutex_trylock(&recv_mutex) == 0) {
-      ret = P1running ? metis_read(buffer, 1032) : -1;
+      metisbuffer *mb = get_metisbuffer();
+      ret = P1running ? metis_read(mb->buffer, METIS_BUFFER_SIZE) : -1;
       pthread_mutex_unlock(&recv_mutex);
       if (ret >= 0) {
-        queue_two_ozy_input_buffers(&buffer[8], &buffer[520]);
+        queue_metis_buffer(mb);
+      } else {
+        mb->free = 1;
       }
     }
   }
@@ -1358,43 +1450,11 @@ static void process_ozy_byte(int b) {
   }
 }
 
-static void queue_two_ozy_input_buffers(unsigned const char *buf1,
-                                        unsigned const char *buf2) {
-  ASSERT_SERVER();
-  //
-  // To achieve minimum overhead in the RX thread, the data is
-  // simply put into a large ring buffer. We queue two buffers
-  // in one shot since this halves the number of semamphore operations
-  // at no cost (buffer fly in in pairs anyway)
-  //
-  if (rxring_count < 0) {
-    rxring_count++;
-    return;
-  }
-  int nptr = (rxring_inptr + 1024) & RXRINGBUFMASK;
-  if (nptr != rxring_outptr) {
-    memcpy((void *)(&RXRINGBUF[rxring_inptr    ]), buf1, OZY_BUFFER_SIZE);
-    memcpy((void *)(&RXRINGBUF[rxring_inptr + OZY_BUFFER_SIZE]), buf2, OZY_BUFFER_SIZE);
-    MEMORY_BARRIER;
-    rxring_inptr = nptr;
-#ifdef __APPLE__
-    sem_post(rxring_sem);
-#else
-    sem_post(&rxring_sem);
-#endif
-  } else {
-    t_print("%s: input buffer overflow.\n", __func__);
-    // if an overflow is encountered, skip the next 256 input buffers
-    // to allow a "fresh start"
-    rxring_count = -256;
-  }
-}
-
 static gpointer process_ozy_input_buffer_thread(gpointer arg) {
   ASSERT_SERVER(NULL);
   //
   // This thread constantly monitors the input ring buffer and
-  // processes the data whenever a bunch is available. Note this
+  // processes the data whenever a buffer is available. Note this
   // thread does all the fexchange() with WDSP, since it calls
   // (via process_ozy_byte)
   //
@@ -1407,18 +1467,38 @@ static gpointer process_ozy_input_buffer_thread(gpointer arg) {
 #else
     sem_wait(&rxring_sem);
 #endif
-    int nptr = (rxring_outptr + 1024) & RXRINGBUFMASK;
     //
-    // This data can change while processing one buffer
+    // This data must not change while processing a buffer
     //
     st_num_hpsdr_receivers = how_many_receivers();
     st_rxfdbk = rx_feedback_channel();
     st_txfdbk = tx_feedback_channel();
-    for (int i = 0; i < 1024; i++) {
-      process_ozy_byte(RXRINGBUF[rxring_outptr + i] & 0xFF);
+
+    if (device ==  DEVICE_OZY) {
+#ifdef USBOZY
+      if (ozy_ring_outptr != ozy_ring_inptr) {
+        int nptr = (ozy_ring_outptr + 1) & OZYRINGBUFMASK;
+        ozybuffer *ob = ozy_ringbuf[ozy_ring_outptr];
+        for (int i = 0; i < EP6_BUFFER_SIZE; i++) {
+          process_ozy_byte(ob->buffer[i] & 0xFF);
+        }
+        ob->free = 1;
+        MEMORY_BARRIER;
+        ozy_ring_outptr = nptr;
+      }
+#endif
+    } else  {
+      if (metis_ring_inptr != metis_ring_outptr) {
+        int nptr = (metis_ring_outptr + 1) & METISRINGBUFMASK;
+        metisbuffer *mb = metis_ringbuf[metis_ring_outptr];
+        for (int i = 8; i < METIS_BUFFER_SIZE; i++) {
+          process_ozy_byte(mb->buffer[i] & 0xFF);
+        }
+        mb->free = 1;
+        MEMORY_BARRIER;
+        metis_ring_outptr = nptr;
+      }
     }
-    MEMORY_BARRIER;
-    rxring_outptr = nptr;
   }
   return NULL;
 }
@@ -2439,18 +2519,16 @@ static void ozy_send_buffer(unsigned char *buffer) {
     ozyusb_write(buffer);
 #endif
   } else {
-    metis_write(0x02, buffer);
+    metis_write(buffer);
   }
-  //t_print("C0=%02X C1=%02X C2=%02X C3=%02X C4=%02X\n",
-  //                buffer[C0],buffer[C1],buffer[C2],buffer[C3],buffer[C4]);
 }
 
 #ifdef USBOZY
 static void ozyusb_write(unsigned char* buffer) {
   ASSERT_SERVER();
   int i;
-  i = ozy_write(EP2_OUT_ID, buffer, OZY_BUFFER_SIZE);
-  if (i != OZY_BUFFER_SIZE) {
+  i = ozy_write(EP2_OUT_ID, buffer, P1_BUFSIZE);
+  if (i != P1_BUFSIZE) {
     if (i == USB_TIMEOUT) {
       t_print("%s: ozy_write timeout\n", __func__);
     } else {
@@ -2472,16 +2550,16 @@ static void ozyusb_write(unsigned char* buffer) {
 
 #endif
 
-static void metis_write(unsigned char ep, unsigned const char* buffer) {
+static void metis_write(unsigned const char* buffer) {
   ASSERT_SERVER();
   int i;
-  static unsigned char metis_buffer[1032];
+  static unsigned char metis_buffer[METIS_BUFFER_SIZE];
   //
-  // This alternately fill the data from buffer into the lower or upper half
-  // of metis_buffer, and if the upper half has been filled, sends this
-  // 1032-byte-buffer via UDP or TCP
+  // This alternately fills the data from buffer into the lower or upper half
+  // of metis_buffer, and if the upper half has been filled, sends the
+  // buffer via UDP or TCP
   //
-  for (i = 0; i < OZY_BUFFER_SIZE; i++) {
+  for (i = 0; i < P1_BUFSIZE; i++) {
     metis_buffer[i + metis_offset] = buffer[i];
   }
   if (metis_offset == 8) {
@@ -2490,20 +2568,20 @@ static void metis_write(unsigned char ep, unsigned const char* buffer) {
     metis_buffer[0] = 0xEF;
     metis_buffer[1] = 0xFE;
     metis_buffer[2] = 0x01;
-    metis_buffer[3] = ep;
+    metis_buffer[3] = 0x02;
     metis_buffer[4] = (send_sequence >> 24) & 0xFF;
     metis_buffer[5] = (send_sequence >> 16) & 0xFF;
     metis_buffer[6] = (send_sequence >> 8) & 0xFF;
     metis_buffer[7] = (send_sequence) & 0xFF;
     send_sequence++;
-    metis_send_buffer(metis_buffer, 1032);
+    metis_send_buffer(metis_buffer, METIS_BUFFER_SIZE);
     metis_offset = 8;
   }
 }
 
 void old_protocol_run(void) {
   ASSERT_SERVER();
-  unsigned char buffer[2000];
+  unsigned char buffer[METIS_BUFFER_SIZE];
   t_print("%s\n", __func__);
   //
   // In TCP-ONLY mode, we possibly need to re-connect
@@ -2530,7 +2608,7 @@ void old_protocol_run(void) {
   // is waited for.
   //
   for (int i = 0; i < 10; i++) {
-    memset(buffer, 0, OZY_BUFFER_SIZE);
+    memset(buffer, 0, P1_BUFSIZE);
     metis_offset = 8;
     current_rx = 0;
     p1_command_loop = 1;
@@ -2545,7 +2623,7 @@ void old_protocol_run(void) {
     // The next lines are never executed for OZY
     //
     metis_start_stop(1);      // sends METIS start packet
-    if (metis_read(buffer, 1032)  ==  0) { break; }  // valid packet received
+    if (metis_read(buffer, METIS_BUFFER_SIZE)  ==  0) { break; }  // valid packet received
     usleep(20000);
   }
   pthread_mutex_unlock(&send_mutex);
@@ -2556,30 +2634,36 @@ void old_protocol_run(void) {
 static void metis_start_stop(int cmd) {
   ASSERT_SERVER();
   int i;
-  unsigned char buffer[1032];
+  unsigned char buffer[METIS_BUFFER_SIZE]; // only 64 bytes used with UDP
   t_print("%s: %d\n", __func__, cmd);
-  if (device == DEVICE_OZY) { return; }
+  if (device == DEVICE_OZY) {
+    //
+    // OZY runs continuously and has not start/stop command
+    //
+    return;
+  }
   buffer[0] = 0xEF;
   buffer[1] = 0xFE;
   buffer[2] = 0x04; // start/stop command
   buffer[3] = cmd;  // send EP6 and EP4 data (0x00=stop)
   if (tcp_socket < 0) {
-    // use UDP  -- send a short packet
+    //
+    // UDP: prepeare 64-byte buffer and send it
+    //
     for (i = 4; i < 64; i++) {
       buffer[i] = 0x00;
     }
     metis_send_buffer(buffer, 64);
   } else {
-    // use TCP -- send a long packet
     //
-    // Stop the sending of TX/audio packets (1032-byte-length) and wait a while
-    // Then, send the start/stop buffer with a length of 1032
+    // TCP: first make sure that the TX/audio packet sending has stopped,
+    //      then prepeare a 'long' METIS buffer and send it.
     //
-    usleep(100000);
-    for (i = 4; i < 1032; i++) {
+    usleep(100000);  // wait until everything is sent
+    for (i = 4; i < METIS_BUFFER_SIZE; i++) {
       buffer[i] = 0x00;
     }
-    metis_send_buffer(buffer, 1032);
+    metis_send_buffer(buffer, METIS_BUFFER_SIZE);
     //
     // Wait a while before resuming sending TX/audio packets.
     // This prevents mangling of data from TX/audio and Start/Stop packets.
@@ -2600,27 +2684,33 @@ static void metis_start_stop(int cmd) {
 static void metis_send_buffer(const unsigned char* buffer, int length) {
   ASSERT_SERVER();
   //
-  // Send using either the UDP or TCP socket. Do not use TCP for
-  // packets that are not 1032 bytes long
+  // UDP packets can be variable length, but TCP packets must have a length
+  // of exactly METIS_BUFFER_SIZE.
   //
-  //t_print("%s: length=%d\n",__func__,length);
   if (tcp_socket >= 0) {
-    if (length != 1032) {
-      t_print("PROGRAMMING ERROR: TCP LENGTH != 1032\n");
+    //
+    // TCP connection active
+    //
+    if (length != METIS_BUFFER_SIZE) {
+      t_print("PROGRAMMING ERROR: TCP LENGTH INVALID\n");
       g_idle_add(fatal_error, "FATAL: P1 Programming Error in metis_send_buffer");
     }
     if (sendto(tcp_socket, buffer, length, 0, NULL, 0) != length) {
       t_perror("sendto socket failed for TCP metis_send_data\n");
     }
   } else if (data_socket >= 0) {
+    //
+    // UDP connection active
+    //
     int bytes_sent;
-    //t_print("%s: sendto %d for %s:%d length=%d\n",__func__,data_socket,inet_ntoa(data_addr.sin_addr),ntohs(data_addr.sin_port),length);
     bytes_sent = sendto(data_socket, buffer, length, 0, (struct sockaddr*)&data_addr, sizeof(data_addr));
     if (bytes_sent != length) {
       t_print("%s: UDP sendto failed: %d: %s\n", __func__, errno, strerror(errno));
     }
   } else {
-    // This should not happen
+    //
+    // This should not happen: neither TCP nor UDP socket available
+    //
     t_print("METIS send: neither UDP nor TCP socket available!\n");
     g_idle_add(fatal_error, "FATAL: P1 neither UDP nor TCP socket available");
   }
