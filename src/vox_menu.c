@@ -137,7 +137,7 @@ void vox_menu(GtkWidget *parent) {
   GtkWidget *vox_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 1000.0, 1.0);
   gtk_widget_set_valign(vox_scale, GTK_ALIGN_CENTER);
   gtk_range_set_increments (GTK_RANGE(vox_scale), 1.0, 1.0);
-  gtk_range_set_value(GTK_RANGE(vox_scale), 1000.0*vox_threshold);
+  gtk_range_set_value(GTK_RANGE(vox_scale), 1000.0 * vox_threshold);
   gtk_grid_attach(GTK_GRID(grid), vox_scale, 1, 2, 3, 1);
   g_signal_connect(G_OBJECT(vox_scale), "value_changed", G_CALLBACK(vox_value_changed_cb), NULL);
   GtkWidget *hang_label = gtk_label_new("VOX Hang (ms)");

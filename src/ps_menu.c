@@ -112,7 +112,6 @@ static void att_spin_cb(GtkWidget *widget, gpointer data) {
 
 static void setpk_cb(GtkWidget *widget, gpointer data) {
   transmitter->ps_setpk = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-
   if (radio_is_remote) {
     send_psparams(cl_sock_tcp, transmitter);
   } else {
@@ -184,7 +183,7 @@ int ps_calibration_timer(gpointer arg) {
       // So everything between 140 and 165 is accepted without changing the attenuation
       //
       if (newcal && ((transmitter->psinfo[4] > 165 && transmitter->attenuation < tx_att_max) || (transmitter->psinfo[4] < 140
-                     && transmitter->attenuation > tx_att_min))) {
+          && transmitter->attenuation > tx_att_min))) {
         int delta_att;
         int new_att;
         if (transmitter->psinfo[4] > 275) {
@@ -249,15 +248,12 @@ static int info_thread(gpointer arg) {
   if (!running) {
     return G_SOURCE_REMOVE;
   }
-
-
   if (transmitter->puresignal) {
     //
     // Put Info/Colour on the buttons
     //
     static int  chkcnt = 0;
     gchar label[20];
-
     //
     // Get PS info. If the radio is remote, this is transmitted
     // periodically and the data is set be the client thread.
@@ -266,7 +262,6 @@ static int info_thread(gpointer arg) {
       tx_ps_getinfo(transmitter);
       tx_ps_getmx(transmitter);
     }
-
     if (transmitter->psinfo[14] == 0) {
       gtk_button_set_label(GTK_BUTTON(corr_info_b), "No Corr");
       gtk_widget_set_name(corr_info_b, "redbutton");
@@ -274,7 +269,6 @@ static int info_thread(gpointer arg) {
       gtk_button_set_label(GTK_BUTTON(corr_info_b), "Correcting");
       gtk_widget_set_name(corr_info_b, "greenbutton");
     }
-
     int fbk = transmitter->psinfo[4];
     snprintf(label, sizeof(label), "%d", fbk);
     gtk_button_set_label(GTK_BUTTON(feedbk_info_b), label);
@@ -287,10 +281,8 @@ static int info_thread(gpointer arg) {
     } else {
       gtk_widget_set_name(feedbk_info_b, "redbutton");
     }
-
     snprintf(label, sizeof(label), "%d", transmitter->psinfo[5]);
     gtk_button_set_label(GTK_BUTTON(cnt_info_b), label);
-
     switch (transmitter->psinfo[6]) {
     case 0:
       if (chkcnt > 0) {
@@ -345,7 +337,6 @@ static int info_thread(gpointer arg) {
       gtk_button_set_label(GTK_BUTTON(status_info_b), "TurnOn");
       break;
     }
-
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_att_spin), (double) transmitter->attenuation);
     snprintf(label, sizeof(label), "%6.3f", transmitter->ps_getmx);
     gtk_button_set_label(GTK_BUTTON(get_pk_b), label);
@@ -551,10 +542,8 @@ void ps_menu(GtkWidget *parent) {
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), transmitter->auto_on);
   gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(auto_cb), NULL);
-
   row++;
   col = 0;
-
   lbl = gtk_label_new("FeedBack");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_grid_attach(GTK_GRID(grid), lbl, col, row, 1, 1);

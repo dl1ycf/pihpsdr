@@ -1623,7 +1623,7 @@ void *handler_ep6(void *arg) {
           i1 = isample[rxptr];
           q1 = qsample[rxptr];
           ampl = i1 * i1 + q1 * q1;
-          fac3 = txdrv_dbl * (IM0 + IM1 * ampl + IM2 * ampl *ampl);
+          fac3 = txdrv_dbl * (IM0 + IM1 * ampl + IM2 * ampl * ampl);
           adc1isample = (txatt_dbl * i1 * fac3 + noiseItab[noiseIQpt] * p1noisefac) * 8388607.0;
           adc1qsample = (txatt_dbl * q1 * fac3 + noiseItab[noiseIQpt] * p1noisefac) * 8388607.0;
         } else if (diversity && do_tone == 1) {
@@ -1647,7 +1647,7 @@ void *handler_ep6(void *arg) {
         if (ptt && (ODEVICE == DEV_C25)) {
           i1 = isample[rxptr] * txdrv_dbl;
           q1 = qsample[rxptr] * txdrv_dbl;
-          fac3 = IM0 + IM1 * ampl + IM2 * ampl *ampl;
+          fac3 = IM0 + IM1 * ampl + IM2 * ampl * ampl;
           adc2isample = (txatt_dbl * i1 * fac3 + noiseItab[noiseIQpt] * p1noisefac) * 8388607.0;
           adc2qsample = (txatt_dbl * q1 * fac3 + noiseItab[noiseIQpt] * p1noisefac) * 8388607.0;
         } else if (diversity) {

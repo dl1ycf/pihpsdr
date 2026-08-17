@@ -95,9 +95,9 @@ AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
 #define AUDIO_LAT_LOW           512
 #define AUDIO_LAT_TARGET       8192
 #define AUDIO_LAT_HIGH        15872
-#define CW_LAT_LOW              224
-#define CW_LAT_TARGET           256
-#define CW_LAT_HIGH             288
+#define CW_LAT_LOW              256
+#define CW_LAT_TARGET           320    
+#define CW_LAT_HIGH             384
 
 //
 // AUDIO_GET_CARDS
@@ -263,7 +263,6 @@ static int pa_out_cb(const void *inputBuffer, void *outputBuffer, unsigned long 
         int oldpt;
         double rx_left = 0.0;
         double st_sample = 0.0;
-
         oldpt = rx->audio_buffer_outpt;
         if (oldpt != rx->audio_buffer_inpt) {
           rx_left = rx->audio_buffer[oldpt];
@@ -274,14 +273,12 @@ static int pa_out_cb(const void *inputBuffer, void *outputBuffer, unsigned long 
           MEMORY_BARRIER;
           rx->audio_buffer_outpt = (oldpt + 1) & RING_BUFFER_MASK;
         }
-
         oldpt = rx->st_buffer_outpt;
         if (oldpt != rx->st_buffer_inpt) {
           st_sample = rx->st_buffer[oldpt];
           MEMORY_BARRIER;
           rx->st_buffer_outpt = (oldpt + 1) & ST_BUFFER_MASK;
         }
-
         *out++ =  (float)(rx_left + st_sample);
       }
     } else {
@@ -291,7 +288,6 @@ static int pa_out_cb(const void *inputBuffer, void *outputBuffer, unsigned long 
         double rx_left = 0.0;
         double rx_right = 0.0;
         double st_sample = 0.0;
-
         oldpt = rx->audio_buffer_outpt;
         if (oldpt != rx->audio_buffer_inpt) {
           rx_left = rx->audio_buffer[2 * oldpt];
@@ -304,14 +300,12 @@ static int pa_out_cb(const void *inputBuffer, void *outputBuffer, unsigned long 
           MEMORY_BARRIER;
           rx->audio_buffer_outpt = (oldpt + 1) & RING_BUFFER_MASK;
         }
-
         oldpt = rx->st_buffer_outpt;
         if (oldpt != rx->st_buffer_inpt) {
           st_sample = rx->st_buffer[oldpt];
           MEMORY_BARRIER;
           rx->st_buffer_outpt = (oldpt + 1) & ST_BUFFER_MASK;
         }
-
         *out++ =  (float)(rx_left + st_sample);
         *out++ =  (float)(rx_right + st_sample);
       }
@@ -599,7 +593,7 @@ void audio_write (RECEIVER *rx, double left, double right) {
           oldpt = (oldpt + 1) & RING_BUFFER_MASK;
         }
       } else {
-        for (int i = 0; i < AUDIO_LAT_TARGET -avail; i++) {
+        for (int i = 0; i < AUDIO_LAT_TARGET - avail; i++) {
           buffer[2 * oldpt] = 0.0;
           buffer[2 * oldpt + 1] = 0.0;
           oldpt = (oldpt + 1) & RING_BUFFER_MASK;
@@ -659,7 +653,6 @@ void tx_audio_write(RECEIVER *rx, double sample) {
   int newpt;
   int avail = (inpt - rx->st_buffer_outpt) & ST_BUFFER_MASK;
   int adjust = 0;
-
   if (rx->cwaudio != 3) {
     // Transition RX -> TX
     if (avail < CW_LAT_TARGET) {
@@ -675,7 +668,6 @@ void tx_audio_write(RECEIVER *rx, double sample) {
     rx->cwcount = 0;
     avail = CW_LAT_TARGET;
   }
-
   if (sample != 0.0) { rx->cwcount = 0; }
   if (++rx->cwcount > 16) {
     rx->cwcount = 0;

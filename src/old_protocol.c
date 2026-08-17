@@ -245,12 +245,12 @@ static volatile atomic_int metis_ring_outptr = 0;  // pointer updated when readi
 static volatile int metis_skip_count = 0;          // an overflow recovery pointer
 
 #ifdef USBOZY
-#define OZYRINGBUFLEN     256
-#define OZYRINGBUFMASK    255
-static ozybuffer *ozy_ringbuf[OZYRINGBUFLEN];
-static volatile atomic_int ozy_ring_inptr  = 0;
-static volatile atomic_int ozy_ring_outptr = 0;
-static volatile int ozy_skip_count = 0;           // an overflow recovery pointer
+  #define OZYRINGBUFLEN     256
+  #define OZYRINGBUFMASK    255
+  static ozybuffer *ozy_ringbuf[OZYRINGBUFLEN];
+  static volatile atomic_int ozy_ring_inptr  = 0;
+  static volatile atomic_int ozy_ring_outptr = 0;
+  static volatile int ozy_skip_count = 0;           // an overflow recovery pointer
 #endif
 
 static gpointer old_protocol_txiq_thread(gpointer data) {
@@ -403,10 +403,10 @@ void old_protocol_init(int rate) {
     // to allocate in all 8 lists. Then, mark them free.
     //
     ozybuffer *ob[8];
-    for (unsigned int i=0; i < 8; i++) {
+    for (unsigned int i = 0; i < 8; i++) {
       ob[i] = get_ozybuffer(); // this will pre-allocate
     }
-    for (unsigned int i=0; i < 8; i++) {
+    for (unsigned int i = 0; i < 8; i++) {
       ob[i]->free = 1;
     }
     ozy_initialise();
@@ -420,10 +420,10 @@ void old_protocol_init(int rate) {
     // to allocate in all 8 lists. Then, mark them free.
     //
     metisbuffer *mb[8];
-    for (unsigned int i=0; i < 8; i++) {
+    for (unsigned int i = 0; i < 8; i++) {
       mb[i] = get_metisbuffer(); // this will pre-allocate
     }
-    for (unsigned int i=0; i < 8; i++) {
+    for (unsigned int i = 0; i < 8; i++) {
       mb[i]->free = 1;
     }
     if (radio->use_tcp) {
@@ -1473,7 +1473,6 @@ static gpointer process_ozy_input_buffer_thread(gpointer arg) {
     st_num_hpsdr_receivers = how_many_receivers();
     st_rxfdbk = rx_feedback_channel();
     st_txfdbk = tx_feedback_channel();
-
     if (device ==  DEVICE_OZY) {
 #ifdef USBOZY
       if (ozy_ring_outptr != ozy_ring_inptr) {

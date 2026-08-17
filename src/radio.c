@@ -885,9 +885,9 @@ static void radio_create_visual(void) {
       if (protocol == NEW_PROTOCOL || protocol == ORIGINAL_PROTOCOL) {
         tx_ps_set_sample_rate(transmitter, protocol == NEW_PROTOCOL ? 192000 : active_receiver->sample_rate);
         receiver[PS_TX_FEEDBACK] = rx_create_pure_signal_receiver(PS_TX_FEEDBACK,
-                                   protocol == ORIGINAL_PROTOCOL ? active_receiver->sample_rate : 192000, my_width, transmitter->fps);
+          protocol == ORIGINAL_PROTOCOL ? active_receiver->sample_rate : 192000, my_width, transmitter->fps);
         receiver[PS_RX_FEEDBACK] = rx_create_pure_signal_receiver(PS_RX_FEEDBACK,
-                                   protocol == ORIGINAL_PROTOCOL ? active_receiver->sample_rate : 192000, my_width, transmitter->fps);
+          protocol == ORIGINAL_PROTOCOL ? active_receiver->sample_rate : 192000, my_width, transmitter->fps);
       }
     }
   } else {
@@ -974,17 +974,17 @@ void radio_stop_program(void) {
     if (SerialPorts[id].enable) {
       disable_serial_rigctl(id);
       t_print("%s: Serial CAT(%d) closed\n", __func__, id);
-     }
+    }
   }
   if (SerialPorts[MAX_SERIAL].enable) {
     disable_serial_ptt(MAX_SERIAL);
     t_print("%s: Serial PTT closed\n", __func__);
   }
 #ifdef TCI
-    if (tci_enable) {
-      shutdown_tci();
-      t_print("%s: TCI closed\n", __func__);
-    }
+  if (tci_enable) {
+    shutdown_tci();
+    t_print("%s: TCI closed\n", __func__);
+  }
 #endif
   dxcluster_shutdown(); // save spots, close sqLITE
   t_print("%s: DX Cluster closed\n", __func__);

@@ -374,12 +374,12 @@ int fatal_error(gpointer data) {
   if (top_window) {
     GtkDialogFlags flags = GTK_DIALOG_DESTROY_WITH_PARENT;
     GtkWidget *dialog = gtk_message_dialog_new_with_markup (GTK_WINDOW(top_window),
-                        flags,
-                        GTK_MESSAGE_ERROR,
-                        GTK_BUTTONS_CLOSE,
-                        "<span color='red' size='x-large' weight='bold'>piHPSDR warning/error message:</span>"
-                        "\n\n<span size='x-large' weight='bold'>   %s</span>\n\n",
-                        msg);
+      flags,
+      GTK_MESSAGE_ERROR,
+      GTK_BUTTONS_CLOSE,
+      "<span color='red' size='x-large' weight='bold'>piHPSDR warning/error message:</span>"
+      "\n\n<span size='x-large' weight='bold'>   %s</span>\n\n",
+      msg);
     gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
   }
