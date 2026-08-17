@@ -296,7 +296,6 @@ static int tcp_connect(const char *host, int port, char *err_buf, int err_buf_le
   }
   int fd = -1;
   int flags = 0;
-
   /* Loop through all resolved addresses (IPv6 first, then IPv4) until one succeeds */
   for (struct addrinfo *rp = res; rp != NULL; rp = rp->ai_next) {
     fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
@@ -306,12 +305,10 @@ static int tcp_connect(const char *host, int port, char *err_buf, int err_buf_le
       }
       continue;
     }
-
     /* Non-blocking connect with a select() timeout. */
     flags = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETFL, flags | O_NONBLOCK);
     int crc = connect(fd, rp->ai_addr, rp->ai_addrlen);
-
     if (crc < 0 && errno != EINPROGRESS) {
       if (err_buf && rp->ai_next == NULL && err_buf[0] == '\0') {
         snprintf(err_buf, err_buf_len, "connect(): %s", strerror(errno));
@@ -320,7 +317,6 @@ static int tcp_connect(const char *host, int port, char *err_buf, int err_buf_le
       fd = -1;
       continue;
     }
-
     if (crc < 0) {
       /* Wait up to 5s per candidate address for connect to complete */
       int max_polls = 5;
@@ -340,7 +336,6 @@ static int tcp_connect(const char *host, int port, char *err_buf, int err_buf_le
           break;
         }
         if (sr == 0) { continue; }   /* 1s tick, keep polling */
-
         /* Socket woke — check actual status */
         int soerr = 0;
         socklen_t soerr_len = sizeof(soerr);
@@ -364,7 +359,6 @@ static int tcp_connect(const char *host, int port, char *err_buf, int err_buf_le
         }
         break;
       }
-
       if (!connected) {
         if (err_buf && rp->ai_next == NULL && err_buf[0] == '\0') {
           snprintf(err_buf, err_buf_len,
@@ -376,18 +370,14 @@ static int tcp_connect(const char *host, int port, char *err_buf, int err_buf_le
         continue;
       }
     }
-
     /* Connection succeeded */
     fcntl(fd, F_SETFL, flags);
     break;
   }
-
   freeaddrinfo(res);
-
   if (fd < 0) {
     return -1;
   }
-
   /* Set a 60s recv timeout for the steady-state read loop so the worker
    * thread can occasionally check worker_stop even when the cluster is quiet. */
   struct timeval tv = { .tv_sec = 60, .tv_usec = 0 };
@@ -550,9 +540,9 @@ static void set_default_settings(DXC_SETTINGS *s) {
   s->show_on_panadapter = 1;
   s->age_limit_sec      = 600;    /* 10 minutes */
   s->mode_ft8 = s->mode_ft4 = s->mode_cw = s->mode_ssb =
-                                s->mode_rtty = s->mode_other = 1;
+      s->mode_rtty = s->mode_other = 1;
   s->region_na = s->region_eu = s->region_as = s->region_sa =
-                                  s->region_af = s->region_oc = 1;
+      s->region_af = s->region_oc = 1;
   s->whitelist[0] = '\0';
   s->blacklist[0] = '\0';
 }

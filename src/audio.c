@@ -871,16 +871,16 @@ void audio_get_cards() {
                   char device_desc[256];
                   char *cp;
                   audio_format = formats[f]; // lock slot
-                  switch(dev_type) {
+                  switch (dev_type) {
                   case 1:
-                     snprintf(device_desc, sizeof(device_desc), "DM:%s", descr);
+                    snprintf(device_desc, sizeof(device_desc), "DM:%s", descr);
                     break;
                   case 2:
-                     snprintf(device_desc, sizeof(device_desc), "BT:%s", descr);
+                    snprintf(device_desc, sizeof(device_desc), "BT:%s", descr);
                     break;
                   default:
-                     //NOTREACHED
-                     snprintf(device_desc, sizeof(device_desc), "UK:%s", descr);
+                    //NOTREACHED
+                    snprintf(device_desc, sizeof(device_desc), "UK:%s", descr);
                     break;
                   }
                   // truncate description at newline

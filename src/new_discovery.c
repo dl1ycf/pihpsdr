@@ -234,6 +234,7 @@ static gpointer p2_discover_receive_thread(gpointer data) {
   unsigned char buffer[2048];
   struct timeval tv;
   int i;
+  int count = 0;
   int flag = GPOINTER_TO_INT(data);
   int oldnumdev = devices;
   double frequency_min, frequency_max;
@@ -242,6 +243,7 @@ static gpointer p2_discover_receive_thread(gpointer data) {
   setsockopt(discovery_socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
   len = sizeof(addr);
   while (1) {
+    if (devices >= MAX_DEVICES) { break; }
     if (flag != 1 && devices > oldnumdev) {
       //
       // For a 'directed' (UDP) discovery packet, return as soon as there
@@ -253,137 +255,148 @@ static gpointer p2_discover_receive_thread(gpointer data) {
     if (bytes_read < 0) {
       break;
     }
+    count++;
     t_print("%s: received %d bytes\n", __func__, bytes_read);
-    if (bytes_read == 1444) {
-      if (devices > 0) {
-        break;
+    //
+    // If there is no P2 radio, but e.g. a P1 radio still sending streaming packets,
+    // we will get invalid packets forever. So limit the number of "invalid" packets
+    // received after the last valid discovery reply packet to 16.
+    //
+    if (count > 16) { break; }
+    // Do some heuristics to determine whether this could be a valid discovery
+    // reply packets. Such packets
+    //
+    // - are short (60 bytes) compared to "streaming" packets
+    // - have a zero sequence number
+    // - byte4 is either 0x02 or 0x03
+    //
+    // So if the test is not passed, simply continue.
+    //
+    if (bytes_read > 128) { continue; }
+    if (buffer[0] != 0 || buffer[1] != 0 || buffer[2] != 0 || buffer[3] != 0) { continue; }
+    int status = buffer[4] & 0xFF;
+    if (status != 2 && status != 3)  { continue; }
+    //
+    // Now we are quite sure we have a valid reply
+    //
+    count = 0;
+    discovered[devices].protocol = NEW_PROTOCOL;
+    discovered[devices].device = buffer[11] & 0xFF;
+    discovered[devices].software_version = buffer[13] & 0xFF;
+    discovered[devices].status = status;
+    //
+    // The NEW_DEVICE_XXXX numbers are just 1000+board_id
+    //
+    discovered[devices].device += 1000;
+    switch (discovered[devices].device) {
+    case NEW_DEVICE_ATLAS:
+      snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Atlas");
+      frequency_min = 0.0;
+      frequency_max = 61440000.0;
+      break;
+    case NEW_DEVICE_HERMES2:
+      snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Hermes (Anan-10E/100B)");
+      frequency_min = 0.0;
+      frequency_max = 61440000.0;
+      break;
+    case NEW_DEVICE_HERMES:
+      snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Hermes");
+      frequency_min = 0.0;
+      frequency_max = 61440000.0;
+      break;
+    case NEW_DEVICE_ANGELIA:
+      snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Angelia");
+      frequency_min = 0.0;
+      frequency_max = 61440000.0;
+      break;
+    case NEW_DEVICE_ORION:
+      snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Orion");
+      frequency_min = 0.0;
+      frequency_max = 61440000.0;
+      break;
+    case NEW_DEVICE_ORION2:
+      snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Orion2");
+      frequency_min = 0.0;
+      frequency_max = 61440000.0;
+      break;
+    case NEW_DEVICE_SATURN:
+    case NEW_DEVICE_SATURN2:
+      discovered[devices].device = NEW_DEVICE_SATURN;
+      snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Saturn/G2");
+      frequency_min = 0.0;
+      frequency_max = 61440000.0;
+      break;
+    case NEW_DEVICE_G2E:
+      discovered[devices].device = NEW_DEVICE_G2E;
+      snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Anan G2E");
+      frequency_min = 0.0;
+      frequency_max = 61440000.0;
+      break;
+    case NEW_DEVICE_HERMES_LITE:
+      if (discovered[devices].software_version < 40) {
+        snprintf(discovered[devices].name, sizeof(discovered[devices].name), "HermesLite V1");
+      } else {
+        snprintf(discovered[devices].name, sizeof(discovered[devices].name), "HermesLite V2");
+        discovered[devices].device = NEW_DEVICE_HERMES_LITE2;
       }
-    } else {
-      if (buffer[0] == 0 && buffer[1] == 0 && buffer[2] == 0 && buffer[3] == 0) {
-        int status = buffer[4] & 0xFF;
-        if (status == 2 || status == 3) {
-          if (devices < MAX_DEVICES) {
-            discovered[devices].protocol = NEW_PROTOCOL;
-            discovered[devices].device = buffer[11] & 0xFF;
-            discovered[devices].software_version = buffer[13] & 0xFF;
-            discovered[devices].status = status;
-            //
-            // The NEW_DEVICE_XXXX numbers are just 1000+board_id
-            //
-            discovered[devices].device += 1000;
-            switch (discovered[devices].device) {
-            case NEW_DEVICE_ATLAS:
-              snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Atlas");
-              frequency_min = 0.0;
-              frequency_max = 61440000.0;
-              break;
-            case NEW_DEVICE_HERMES2:
-              snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Hermes (Anan-10E/100B)");
-              frequency_min = 0.0;
-              frequency_max = 61440000.0;
-              break;
-            case NEW_DEVICE_HERMES:
-              snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Hermes");
-              frequency_min = 0.0;
-              frequency_max = 61440000.0;
-              break;
-            case NEW_DEVICE_ANGELIA:
-              snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Angelia");
-              frequency_min = 0.0;
-              frequency_max = 61440000.0;
-              break;
-            case NEW_DEVICE_ORION:
-              snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Orion");
-              frequency_min = 0.0;
-              frequency_max = 61440000.0;
-              break;
-            case NEW_DEVICE_ORION2:
-              snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Orion2");
-              frequency_min = 0.0;
-              frequency_max = 61440000.0;
-              break;
-            case NEW_DEVICE_SATURN:
-            case NEW_DEVICE_SATURN2:
-              discovered[devices].device = NEW_DEVICE_SATURN;
-              snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Saturn/G2");
-              frequency_min = 0.0;
-              frequency_max = 61440000.0;
-              break;
-            case NEW_DEVICE_G2E:
-              discovered[devices].device = NEW_DEVICE_G2E;
-              snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Anan G2E");
-              frequency_min = 0.0;
-              frequency_max = 61440000.0;
-              break;
-            case NEW_DEVICE_HERMES_LITE:
-              if (discovered[devices].software_version < 40) {
-                snprintf(discovered[devices].name, sizeof(discovered[devices].name), "HermesLite V1");
-              } else {
-                snprintf(discovered[devices].name, sizeof(discovered[devices].name), "HermesLite V2");
-                discovered[devices].device = NEW_DEVICE_HERMES_LITE2;
-              }
-              frequency_min = 0.0;
-              frequency_max = 30720000.0;
-              break;
-            default:
-              snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Unknown");
-              frequency_min = 0.0;
-              frequency_max = 30720000.0;
-              break;
-            }
-            for (i = 0; i < 6; i++) {
-              discovered[devices].network.mac_address[i] = buffer[i + 5];
-            }
-            memcpy((void*)&discovered[devices].network.address, (void*)&addr, sizeof(addr));
-            discovered[devices].network.address_length = sizeof(addr);
-            memcpy((void*)&discovered[devices].network.interface_address, (void*)&interface_addr, sizeof(interface_addr));
-            memcpy((void*)&discovered[devices].network.interface_netmask, (void*)&interface_netmask,
-                   sizeof(interface_netmask));
-            discovered[devices].network.interface_length = sizeof(interface_addr);
-            snprintf(discovered[devices].network.interface_name, sizeof(discovered[devices].network.interface_name), "%s",
-                     interface_name);
-            discovered[devices].supported_receivers = 2;
-            //
-            // Info not yet made use of:
-            //
-            // buffer[12]: P2 version supported (e.g. 39 for 3.9)
-            // buffer[20]: number of DDCs
-            // buffer[23]: beta version number (if nonzero)
-            //             E.g. if buffer[13] is 21 and buffer[23] is 18 this
-            //             means firmware Version 2.1.18
-            //
-            // We put the additional info to stderr at least since it might be
-            // useful for debugging/development but do not store it in the
-            // "discovered" data structure.
-            //
-            discovered[devices].frequency_min = frequency_min;
-            discovered[devices].frequency_max = frequency_max;
-            t_print("%s: P2(%d) name=%s  device=%d (%dRX) software_version=%d(.%d) status=%d\n",
-                    __func__,
-                    buffer[12] & 0xFF,
-                    discovered[devices].name,
-                    discovered[devices].device - 1000,
-                    buffer[20] & 0xFF,
-                    discovered[devices].software_version,
-                    buffer[23] & 0xFF,
-                    discovered[devices].status);
-            t_print("%s: address=%s (%02X:%02X:%02X:%02X:%02X:%02X) on %s min=%0.3f MHz max=%0.3f MHz\n",
-                    __func__,
-                    inet_ntoa(discovered[devices].network.address.sin_addr),
-                    discovered[devices].network.mac_address[0],
-                    discovered[devices].network.mac_address[1],
-                    discovered[devices].network.mac_address[2],
-                    discovered[devices].network.mac_address[3],
-                    discovered[devices].network.mac_address[4],
-                    discovered[devices].network.mac_address[5],
-                    discovered[devices].network.interface_name,
-                    discovered[devices].frequency_min * 1E-6,
-                    discovered[devices].frequency_max * 1E-6);
-            devices++;
-          }
-        }
-      }
+      frequency_min = 0.0;
+      frequency_max = 30720000.0;
+      break;
+    default:
+      snprintf(discovered[devices].name, sizeof(discovered[devices].name), "Unknown");
+      frequency_min = 0.0;
+      frequency_max = 30720000.0;
+      break;
     }
+    for (i = 0; i < 6; i++) {
+      discovered[devices].network.mac_address[i] = buffer[i + 5];
+    }
+    memcpy((void*)&discovered[devices].network.address, (void*)&addr, sizeof(addr));
+    discovered[devices].network.address_length = sizeof(addr);
+    memcpy((void*)&discovered[devices].network.interface_address, (void*)&interface_addr, sizeof(interface_addr));
+    memcpy((void*)&discovered[devices].network.interface_netmask, (void*)&interface_netmask,
+           sizeof(interface_netmask));
+    discovered[devices].network.interface_length = sizeof(interface_addr);
+    snprintf(discovered[devices].network.interface_name, sizeof(discovered[devices].network.interface_name), "%s",
+             interface_name);
+    discovered[devices].supported_receivers = 2;
+    //
+    // Info not yet made use of:
+    //
+    // buffer[12]: P2 version supported (e.g. 39 for 3.9)
+    // buffer[20]: number of DDCs
+    // buffer[23]: beta version number (if nonzero)
+    //             E.g. if buffer[13] is 21 and buffer[23] is 18 this
+    //             means firmware Version 2.1.18
+    //
+    // We put the additional info to stderr at least since it might be
+    // useful for debugging/development but do not store it in the
+    // "discovered" data structure.
+    //
+    discovered[devices].frequency_min = frequency_min;
+    discovered[devices].frequency_max = frequency_max;
+    t_print("%s: P2(%d) name=%s  device=%d (%dRX) software_version=%d(.%d) status=%d\n",
+            __func__,
+            buffer[12] & 0xFF,
+            discovered[devices].name,
+            discovered[devices].device - 1000,
+            buffer[20] & 0xFF,
+            discovered[devices].software_version,
+            buffer[23] & 0xFF,
+            discovered[devices].status);
+    t_print("%s: address=%s (%02X:%02X:%02X:%02X:%02X:%02X) on %s min=%0.3f MHz max=%0.3f MHz\n",
+            __func__,
+            inet_ntoa(discovered[devices].network.address.sin_addr),
+            discovered[devices].network.mac_address[0],
+            discovered[devices].network.mac_address[1],
+            discovered[devices].network.mac_address[2],
+            discovered[devices].network.mac_address[3],
+            discovered[devices].network.mac_address[4],
+            discovered[devices].network.mac_address[5],
+            discovered[devices].network.interface_name,
+            discovered[devices].frequency_min * 1E-6,
+            discovered[devices].frequency_max * 1E-6);
+    devices++;
   }
   g_thread_exit(NULL);
   return NULL;

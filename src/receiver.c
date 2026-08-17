@@ -1124,7 +1124,7 @@ static void rx_process_buffer(RECEIVER *rx) {
   static double lvl = 0.0;
   double sum = 0.0;
   for (int i = 0; i < rx->output_samples; i++) {
-    sum += rx->audio_output_buffer[i * 2]*rx->audio_output_buffer[i * 2];
+    sum += rx->audio_output_buffer[i * 2] * rx->audio_output_buffer[i * 2];
     sum += rx->audio_output_buffer[(i * 2) + 1] * rx->audio_output_buffer[(i * 2) + 1];
   }
   lvl = 0.9 * lvl + (0.1 * sum) / rx->output_samples;

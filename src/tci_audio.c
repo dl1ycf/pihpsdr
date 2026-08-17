@@ -163,7 +163,6 @@ void tci_audio_handle_tx_frame (const TCI_STREAM *stream, size_t len) {
   int frames = sample_count / 2;  // number of MONO samples to copy
   TCI_TX_AUDIO_RING *ring = &tci_tx_audio_ring;
   g_mutex_lock (&ring->mutex); // locks every 11 ms
-
   for (int i = 0; i < frames; i++) {
     int newpt = (ring->inpt + 1) & TCI_TX_AUDIO_RING_MASK;
     if (newpt == ring->outpt) {

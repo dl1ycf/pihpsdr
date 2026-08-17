@@ -2060,9 +2060,9 @@ static gpointer iq_thread(gpointer data) {
     // Check sequence
     //
     uint32_t sequence = ((uint32_t)(buffer[0] & 0xFF) << 24)
-                      + ((uint32_t)(buffer[1] & 0xFF) << 16)
-                      + ((uint32_t)(buffer[2] & 0xFF) << 8)
-                      + ((uint32_t)(buffer[3] & 0xFF));
+                        + ((uint32_t)(buffer[1] & 0xFF) << 16)
+                        + ((uint32_t)(buffer[2] & 0xFF) << 8)
+                        + ((uint32_t)(buffer[3] & 0xFF));
     if (ddc_sequence[ddc] != sequence) {
       t_print("%s: DDC(%d) sequence error: expected %lu got %lu\n", __func__, ddc,
               (unsigned long) ddc_sequence[ddc], (unsigned long) sequence);

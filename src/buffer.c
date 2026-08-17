@@ -24,7 +24,7 @@
 //
 // Buffers are allocated once and stay alive during the whole duration
 // of the program. They are put in a linear linked list, such that
-// the search for a free buffer can take much time (cycling through 
+// the search for a free buffer can take much time (cycling through
 // the whole list). But this seemingly dumb method has two advantages:
 // - no malloc/free/mutex/atomic test-and-set during allocating and release,
 // - in normal operation, when only few buffers are used, the same

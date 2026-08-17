@@ -403,8 +403,8 @@ static gpointer remote_txaudio_thread(gpointer data) {
       if (vox_enabled) {
         if (amplitude > vox_threshold) {
           if (!vox_triggered) {
-             g_idle_add(ext_radio_set_vox,GINT_TO_POINTER(1));
-             vox_triggered = 1;
+            g_idle_add(ext_radio_set_vox, GINT_TO_POINTER(1));
+            vox_triggered = 1;
           }
           if (vox_hang > vox_min_hang) {
             vox_count = (int)(vox_hang * 48);
