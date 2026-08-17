@@ -28,8 +28,9 @@
 //
 
 //#define TXIQ_FIFO
-#define LOGFIRST
+//#define LOGFIRST
 #define LOGNUM 1920000
+#define RXIQPLAY
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -1045,7 +1046,7 @@ void *rx_thread(void *data) {
         *p++ = rxiqdump[dumpptr1++];
         *p++ = rxiqdump[dumpptr1++];
       }
-#ifdef LOGFIRST
+#if defined(LOGFIRST) && defined(RXIQPLAY)
     } else if (myddc == 2 && sync == 0 && myrate == 192 && labs(28500000L - rxfreq[myddc]) < 100000 && logfirst_count > 100000) {
       for (int i = 0; i < size; i++) {
         if (dumpptr2 >= 6 * (logfirst_count - 1)) { dumpptr2 = 0; }
