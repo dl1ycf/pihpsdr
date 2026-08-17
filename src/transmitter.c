@@ -1254,7 +1254,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   // Some WDSP settings that are never changed.
   // Most of these are the default anyway.
   //
-  TXASetMP(tx->id, 1);                                  // Always linear phase
+  TXASetMP(tx->id, 0);                                  // Always linear phase
   SetTXABandpassWindow(tx->id, 1);                      // Always 7-term BH
   SetTXABandpassRun(tx->id, 1);                         // enable TX bandpass
   SetTXACFIRRun(tx->id, SET(protocol == NEW_PROTOCOL)); // P2 firmware requires this
