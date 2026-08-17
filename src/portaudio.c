@@ -95,9 +95,9 @@ AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
 #define AUDIO_LAT_LOW           512
 #define AUDIO_LAT_TARGET       8192
 #define AUDIO_LAT_HIGH        15872
-#define CW_LAT_LOW              224
-#define CW_LAT_TARGET           256
-#define CW_LAT_HIGH             288
+#define CW_LAT_LOW              256
+#define CW_LAT_TARGET           320    
+#define CW_LAT_HIGH             384
 
 //
 // AUDIO_GET_CARDS

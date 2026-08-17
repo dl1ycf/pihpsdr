@@ -52,9 +52,9 @@
 #define AUDIO_LAT_LOW      512   // RX audio low water mark
 #define AUDIO_LAT_TARGET  8192   // RX audio target latency
 #define AUDIO_LAT_HIGH   15872   // RX audio high water mark
-#define CW_LAT_LOW         224   // sidetone low water mark
-#define CW_LAT_TARGET      256   // sidetone target latency
-#define CW_LAT_HIGH        288   // sidetone high water mark
+#define CW_LAT_LOW         320   // sidetone low water mark
+#define CW_LAT_TARGET      384   // sidetone target latency
+#define CW_LAT_HIGH        448   // sidetone high water mark
 
 //
 // The Pipewire "Quantum" (number of samples to be transferred in one callback)
