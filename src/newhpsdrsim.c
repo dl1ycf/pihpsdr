@@ -21,12 +21,16 @@
 //
 // TXIQ_FIFO:   monitors the TX FIFO filling
 // LOGFIRST:    dumps the TX IQ samples to a file,
-// .............for the first three seconds after the first
-// .............RX/TX transition
+//              the first ones after an RX/TX transition
+// LOGNUM:      Number of samples to be dumped if LOGFIRST is define
+// RXIQPLAY:    If LOGFIRST is defined, use samples from the LOGFIRST buffer
+//              and re-play them in the ADC1 (without noise)
 //
 
 //#define TXIQ_FIFO
 //#define LOGFIRST
+#define LOGNUM 1920000
+#define RXIQPLAY
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -47,9 +51,9 @@
 #include "hpsdrsim.h"
 
 #ifdef LOGFIRST
-  static double logfirst_is[576000];
-  static double logfirst_qs[576000];
+  static unsigned char logfirst_buf[6*LOGNUM];
   static int    logfirst_count = -1;
+  static int    logfirst_dumped = 0;
   static int    logfirst_num = 1;
 #endif
 
@@ -720,6 +724,7 @@ void *highprio_thread(void *data) {
       } else {
 #ifdef LOGFIRST
         logfirst_count = 0;
+        logfirst_dumped = 0;
 #endif
       }
     }
@@ -886,7 +891,8 @@ void *rx_thread(void *data) {
   int rxptr;
   int divptr;
   int decimation = 1;
-  int dumpptr = 0;
+  int dumpptr1 = 0;
+  int dumpptr2 = 0;
   unsigned int seed;
   double off, tonearg, tonedelta = 0.0;
   double off2, tonearg2, tonedelta2 = 0.0;
@@ -949,6 +955,7 @@ void *rx_thread(void *data) {
     // at 14.1 MHz: single-tone -73 dBm
     // at 21.1 MHz: two-tone signal
     // at 28.1 MHz: captured IQ
+    // at 28.5 MHz: last TX IQ data
     //
     if (myadc == 0 && labs(7100000L - rxfreq[myddc]) < 500 * myrate) {
       off = (double)(7100000 - rxfreq[myddc]);
@@ -1025,20 +1032,36 @@ void *rx_thread(void *data) {
     if (txptr < 0) {
       rxptr = NEWRTXLEN / 2 - 8192;
     }
-    if (have_rxiq && sync == 0 && myrate == 48 && myddc == 2 && labs(28100000L - rxfreq[myddc]) < 100000) {
+    if (have_rxiq && sync == 0 && myddc == 2 && labs(28100000L - rxfreq[myddc]) < 100000) {
       //
       // for RX0, if using 48k, 10m band, no Diversity: re-play dumped IQ data
       // in an endles loop
       //
       for (int i = 0; i < size; i++) {
-        *p++ = rxiqdump[dumpptr++];
-        *p++ = rxiqdump[dumpptr++];
-        *p++ = rxiqdump[dumpptr++];
-        *p++ = rxiqdump[dumpptr++];
-        *p++ = rxiqdump[dumpptr++];
-        *p++ = rxiqdump[dumpptr++];
-        if (dumpptr >= 6 * NUMDUMP) { dumpptr = 0; }
+        if (dumpptr1 >= 6 * (NUMDUMP - 1)) { dumpptr1 = 0; }
+        *p++ = rxiqdump[dumpptr1++];
+        *p++ = rxiqdump[dumpptr1++];
+        *p++ = rxiqdump[dumpptr1++];
+        *p++ = rxiqdump[dumpptr1++];
+        *p++ = rxiqdump[dumpptr1++];
+        *p++ = rxiqdump[dumpptr1++];
       }
+#if defined(LOGFIRST) && defined(RXIQPLAY)
+    } else if (myddc == 2 && sync == 0 && myrate == 192 && labs(28500000L - rxfreq[myddc]) < 100000 && logfirst_count > 100000) {
+      for (int i = 0; i < size; i++) {
+        if (dumpptr2 >= 6 * (logfirst_count - 1)) { dumpptr2 = 0; }
+        //
+        // This is a 0dBm signal, damp by 48 dB
+        *p++ = logfirst_buf[dumpptr2] & 128 ? 255 : 0;
+        *p++ = logfirst_buf[dumpptr2++];
+        *p++ = logfirst_buf[dumpptr2++];
+        dumpptr2++;
+        *p++ = logfirst_buf[dumpptr2] & 128 ? 255 : 0;
+        *p++ = logfirst_buf[dumpptr2++];
+        *p++ = logfirst_buf[dumpptr2++];
+        dumpptr2++;
+      }
+#endif
     } else {
       for (int i = 0; i < size; i++) {
         //
@@ -1242,6 +1265,29 @@ void *tx_thread(void * data) {
     double txmax = 0.0;
     for (i = 0; i < 240; i++) {
       // process 240 TX iq samples
+#ifdef LOGFIRST
+      if (logfirst_dumped == 0 && logfirst_count < 6*LOGNUM) {
+        unsigned char *src = p;
+        unsigned char *dst = &logfirst_buf[6*logfirst_count];
+        *dst++ = *src++;
+        *dst++ = *src++;
+        *dst++ = *src++;
+        *dst++ = *src++;
+        *dst++ = *src++;
+        *dst++ = *src++;
+        logfirst_count++;
+        if (logfirst_count >= LOGNUM || !ptt) {
+          char fname[64];
+          snprintf(fname, sizeof(fname), "FIRST.TX.IQ.%d", logfirst_num++);
+          int fd = open(fname, O_CREAT | O_WRONLY, 0600);
+          if (fd >= 0) {
+            write (fd, logfirst_buf, 6*logfirst_count);
+            close(fd);
+          }
+          logfirst_dumped = 1;
+        }
+      }
+#endif
       samp1  = (int)((signed char) (*p++)) << 16;
       samp1 |= (int)((((unsigned char)(*p++)) << 8) & 0xFF00);
       samp1 |= (int)((unsigned char)(*p++) & 0xFF);
@@ -1257,24 +1303,6 @@ void *tx_thread(void * data) {
       //
       di *= 1.116;
       dq *= 1.116;
-#ifdef LOGFIRST
-      if (logfirst_count >= 0 && logfirst_count < 576000) {
-        logfirst_is[logfirst_count  ] = di;
-        logfirst_qs[logfirst_count++] = dq;
-        if (logfirst_count >= 576000 || !ptt) {
-          char fname[64];
-          snprintf(fname, sizeof(fname), "FIRST.TX.IQ.%d", logfirst_num++);
-          FILE *fp = fopen(fname, "w");
-          if (fp) {
-            for (int j = 0; j < logfirst_count; j++) {
-              fprintf(fp, "%f %f\n", logfirst_is[j], logfirst_qs[j]);
-            }
-            fclose(fp);
-          }
-          logfirst_count = -1;
-        }
-      }
-#endif
       //
       // TX power
       //
