@@ -2135,6 +2135,7 @@ static void process_iq_data(const unsigned char *buffer, RECEIVER *rx) {
         int fd = open("RXIQDUMP", O_CREAT | O_WRONLY, 0600);
         if (fd >= 0) {
           write (fd, dumpiqbuf, 6 * NUMDUMP);
+          close(fd);
         }
         t_print("RXIQ dumped.\n");
         break;
