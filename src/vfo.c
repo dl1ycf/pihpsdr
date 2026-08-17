@@ -874,8 +874,8 @@ static gboolean vfo_configure_event_cb (GtkWidget *widget, GdkEventConfigure *ev
     cairo_surface_destroy (vfo_surface);
   }
   vfo_surface = cairo_image_surface_create(CAIRO_FORMAT_RGB24,
-                gtk_widget_get_allocated_width (widget),
-                gtk_widget_get_allocated_height (widget));
+    gtk_widget_get_allocated_width (widget),
+    gtk_widget_get_allocated_height (widget));
   //vfo_surface = gdk_window_create_similar_surface (gtk_widget_get_window (widget),
   //              CAIRO_CONTENT_COLOR,
   //              gtk_widget_get_allocated_width (widget),

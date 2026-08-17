@@ -591,7 +591,7 @@ static void *soapy_receive_single_thread(void *arg) {
   t_print("%s started, id=%d\n", __func__, id);
   while (rxthread_running) {
     int elements = SoapySDRDevice_readStream(soapy_device, rx_stream, buffs, max_rx_samples, &flags, &timeNs,
-                   timeoutUs);
+      timeoutUs);
     if (elements <= 0) {
       continue;
     }

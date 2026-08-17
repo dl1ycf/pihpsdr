@@ -178,7 +178,7 @@ void tx_set_out_of_band(TRANSMITTER *tx) {
   tx->out_of_band = 1;
   g_idle_add(ext_vfo_update, NULL);
   tx->out_of_band_timer_id = gdk_threads_add_timeout_full(G_PRIORITY_HIGH_IDLE, 1000,
-                             clear_out_of_band_warning, tx, NULL);
+    clear_out_of_band_warning, tx, NULL);
 }
 
 static void init_audio_ramp(double *ramp, int width) {
@@ -1823,7 +1823,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, double mic_sample) {
   if (vox_enabled) {
     if (amplitude >= vox_threshold) {
       if (!vox_triggered) {
-        g_idle_add(ext_radio_set_vox,GINT_TO_POINTER(1));
+        g_idle_add(ext_radio_set_vox, GINT_TO_POINTER(1));
         vox_triggered = 1;
       }
       //
@@ -2037,7 +2037,7 @@ void tx_set_displaying(TRANSMITTER *tx) {
       g_source_remove(tx->update_timer_id);
     }
     tx->update_timer_id = gdk_threads_add_timeout_full(G_PRIORITY_HIGH_IDLE, 1000 / tx->fps, tx_update_display,
-                          (gpointer)tx, NULL);
+      (gpointer)tx, NULL);
   } else {
     if (tx->update_timer_id > 0) {
       g_source_remove(tx->update_timer_id);

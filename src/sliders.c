@@ -512,7 +512,7 @@ int sliders_rf_gain(gpointer data) {
   // This ONLY moves the slider
   //
   int rxadc = receiver[id]->adc;
-  if (rf_gain_scale!= NULL && active_receiver->adc == rxadc) {
+  if (rf_gain_scale != NULL && active_receiver->adc == rxadc) {
     g_signal_handler_block(G_OBJECT(rf_gain_scale), rf_signal_id);
     gtk_range_set_value (GTK_RANGE(rf_gain_scale), adc[rxadc].gain);
     g_signal_handler_unblock(G_OBJECT(rf_gain_scale), rf_signal_id);
@@ -914,7 +914,7 @@ void sliders_create(int width, int height, int rows) {
           gtk_widget_set_halign(rf_gain_label, GTK_ALIGN_END);
           gtk_grid_attach(GTK_GRID(sliders_grid), rf_gain_label, pos, i, twidth, 1);
           rf_gain_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL,
-                          adc[0].min_gain, adc[0].max_gain, 1.0);
+            adc[0].min_gain, adc[0].max_gain, 1.0);
           gtk_widget_set_size_request(rf_gain_scale, 0, height);
           gtk_widget_set_valign(rf_gain_scale, GTK_ALIGN_CENTER);
           gtk_range_set_value (GTK_RANGE(rf_gain_scale), adc[0].gain);
@@ -1022,7 +1022,7 @@ void sliders_create(int width, int height, int rows) {
           gtk_grid_attach(GTK_GRID(sliders_grid), squelch_enable_b, pos + twidth, i, 1, 1);
           gtk_widget_set_halign(squelch_enable_b, GTK_ALIGN_CENTER);
           squelch_enable_signal_id = g_signal_connect(squelch_enable_b, "toggled",
-                                     G_CALLBACK(squelch_enable_cb), NULL);
+            G_CALLBACK(squelch_enable_cb), NULL);
         }
         break;
       case MIC_GAIN:
@@ -1099,7 +1099,7 @@ void sliders_create(int width, int height, int rows) {
           gtk_grid_attach(GTK_GRID(sliders_grid), cmpr_enable_b, pos + twidth, i, 1, 1);
           gtk_widget_set_halign(cmpr_enable_b, GTK_ALIGN_CENTER);
           cmpr_enable_signal_id = g_signal_connect(cmpr_enable_b, "toggled",
-                                  G_CALLBACK(cmpr_enable_cb), NULL);
+            G_CALLBACK(cmpr_enable_cb), NULL);
         }
         break;
       case PANADAPTER_LOW:

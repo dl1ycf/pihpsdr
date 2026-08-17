@@ -89,7 +89,7 @@ static void on_discovery_timeout(void *data, uint64_t expirations) {
 static void registry_event_global(void *data, uint32_t id, uint32_t permissions,
                                   const char *type, uint32_t version,
                                   const struct spa_dict *props) {
-  if (props == NULL) return;
+  if (props == NULL) { return; }
   if (strcmp(type, PW_TYPE_INTERFACE_Node) == 0) {
     const char *media_class = spa_dict_lookup(props, PW_KEY_MEDIA_CLASS);
     const char *name = spa_dict_lookup(props, PW_KEY_NODE_NAME);
@@ -118,9 +118,8 @@ void audio_get_cards() {
   n_input_devices = 0;
   n_output_devices = 0;
   pw_init(NULL, NULL);
-
   struct pw_main_loop *loop = pw_main_loop_new(NULL);
-  if (!loop) return;
+  if (!loop) { return; }
   struct pw_context *context = pw_context_new(pw_main_loop_get_loop(loop), NULL, 0);
   if (!context) {
     pw_main_loop_destroy(loop);
@@ -132,7 +131,6 @@ void audio_get_cards() {
     pw_main_loop_destroy(loop);
     return;
   }
-
   struct pw_registry *registry = pw_core_get_registry(core, PW_VERSION_REGISTRY, 0);
   struct spa_hook registry_listener;
   static const struct pw_registry_events registry_events = {
@@ -140,7 +138,6 @@ void audio_get_cards() {
     .global = registry_event_global,
   };
   pw_registry_add_listener(registry, &registry_listener, &registry_events, NULL);
-
   struct spa_source *timer = pw_loop_add_timer(pw_main_loop_get_loop(loop), on_discovery_timeout, loop);
   struct timespec value, interval;
   value.tv_sec = 0;
@@ -148,15 +145,12 @@ void audio_get_cards() {
   interval.tv_sec = 0;
   interval.tv_nsec = 0;
   pw_loop_update_timer(pw_main_loop_get_loop(loop), timer, &value, &interval, false);
-
   pw_main_loop_run(loop);
-
   spa_hook_remove(&registry_listener);
   pw_proxy_destroy((struct pw_proxy*)registry);
   pw_core_disconnect(core);
   pw_context_destroy(context);
   pw_main_loop_destroy(loop);
-
   for (int i = 0; i < n_input_devices; i++) {
     t_print("PipeWire Input: %s (%s)\n", input_devices[i].description, input_devices[i].name);
   }
@@ -172,27 +166,22 @@ static void pw_out_cb(void *data) {
   struct spa_buffer *buf;
   float *samples;
   uint32_t n_frames;
-
   if ((b = pw_stream_dequeue_buffer(h->stream)) == NULL) {
     return;
   }
-
   buf = b->buffer;
   samples = buf->datas[0].data;
-  if (!samples) return;
-
+  if (!samples) { return; }
   uint32_t max_size = buf->datas[0].maxsize;
   n_frames = max_size / (2 * sizeof(float));
   if (b->requested && b->requested < n_frames) {
     n_frames = b->requested;
   }
-
   for (uint32_t i = 0; i < n_frames; i++) {
     double rx_left = 0.0;
     double rx_right = 0.0;
     double st_sample = 0.0;
     int oldpt;
-
     oldpt = rx->audio_buffer_outpt;
     if (oldpt != rx->audio_buffer_inpt) {
       rx_left = rx->audio_buffer[oldpt * 2];
@@ -205,22 +194,18 @@ static void pw_out_cb(void *data) {
       MEMORY_BARRIER;
       rx->audio_buffer_outpt = (oldpt + 1) & RING_BUFFER_MASK;
     }
-
     oldpt = rx->st_buffer_outpt;
     if (oldpt != rx->st_buffer_inpt) {
       st_sample = rx->st_buffer[oldpt];
       MEMORY_BARRIER;
       rx->st_buffer_outpt = (oldpt + 1) & ST_BUFFER_MASK;
     }
-
     samples[i * 2] = (float)(rx_left + st_sample);
     samples[i * 2 + 1] = (float)(rx_right + st_sample);
   }
-
   buf->datas[0].chunk->offset = 0;
   buf->datas[0].chunk->size = n_frames * 2 * sizeof(float);
   buf->datas[0].chunk->stride = 2 * sizeof(float);
-
   pw_stream_queue_buffer(h->stream, b);
 }
 
@@ -231,23 +216,18 @@ static void pw_in_cb(void *data) {
   struct spa_buffer *buf;
   const float *samples;
   uint32_t n_frames;
-
   if ((b = pw_stream_dequeue_buffer(h->stream)) == NULL) {
     return;
   }
-
   buf = b->buffer;
   samples = buf->datas[0].data;
   if (!samples) {
     pw_stream_queue_buffer(h->stream, b);
     return;
   }
-
   n_frames = buf->datas[0].chunk->size / sizeof(float);
-
   if (tx->audio_buffer != NULL) {
     int inpt = tx->audio_buffer_inpt;
-
     for (uint32_t i = 0; i < n_frames; i++) {
       int newpt = (inpt + 1) & MIC_BUFFER_MASK;
       if (newpt != tx->audio_buffer_outpt) {
@@ -258,13 +238,11 @@ static void pw_in_cb(void *data) {
     MEMORY_BARRIER;
     tx->audio_buffer_inpt = inpt;
   }
-
   pw_stream_queue_buffer(h->stream, b);
 }
 
 int audio_open_output(RECEIVER *rx) {
   t_print("%s RX%d:%s\n", __func__, rx->id + 1, rx->audio_name);
-
   int err = 1;
   for (int i = 0; i < n_output_devices; i++) {
     if (!strcmp(rx->audio_name, output_devices[i].name)) {
@@ -277,17 +255,13 @@ int audio_open_output(RECEIVER *rx) {
     t_print("%s: not registered: %s\n", __func__, rx->audio_name);
     return -1;
   }
-
   g_mutex_lock(&rx->audio_mutex);
-
   rx->audio_buffer = NULL;
   rx->st_buffer = NULL;
   rx->audio_handle = NULL;
-
   double *aubuf = g_new(double, rx->local_audio_channels * RING_BUFFER_SIZE);
   double *stbuf = g_new(double, ST_BUFFER_SIZE);
   struct pipewire_handle *h = g_new0(struct pipewire_handle, 1);
-
   if (aubuf == NULL || stbuf == NULL || h == NULL) {
     g_free(aubuf);
     g_free(stbuf);
@@ -295,7 +269,6 @@ int audio_open_output(RECEIVER *rx) {
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
   }
-
   h->rx = rx;
   h->loop = pw_thread_loop_new("pihpsdr-playback", NULL);
   if (!h->loop) {
@@ -305,7 +278,6 @@ int audio_open_output(RECEIVER *rx) {
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
   }
-
   h->context = pw_context_new(pw_thread_loop_get_loop(h->loop), NULL, 0);
   if (!h->context) {
     pw_thread_loop_destroy(h->loop);
@@ -315,7 +287,6 @@ int audio_open_output(RECEIVER *rx) {
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
   }
-
   if (pw_thread_loop_start(h->loop) < 0) {
     pw_context_destroy(h->context);
     pw_thread_loop_destroy(h->loop);
@@ -325,9 +296,7 @@ int audio_open_output(RECEIVER *rx) {
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
   }
-
   pw_thread_loop_lock(h->loop);
-
   h->core = pw_context_connect(h->context, NULL, 0);
   if (!h->core) {
     pw_thread_loop_unlock(h->loop);
@@ -340,30 +309,26 @@ int audio_open_output(RECEIVER *rx) {
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
   }
-
   // Playback Stream properties
   struct pw_properties *props = pw_properties_new(
-      PW_KEY_MEDIA_TYPE, "Audio",
-      PW_KEY_MEDIA_CATEGORY, "Playback",
-      PW_KEY_MEDIA_ROLE, "DSP",
-      PW_KEY_NODE_NAME, "pihpsdr-rx",
-      PW_KEY_NODE_DESCRIPTION, "piHPSDR Playback",
-      PW_KEY_TARGET_OBJECT, rx->audio_name,
-      PW_KEY_NODE_LATENCY, PIPEWIRE_QUANTUM_PLAYBACK,
-      NULL
-  );
-
+                                  PW_KEY_MEDIA_TYPE, "Audio",
+                                  PW_KEY_MEDIA_CATEGORY, "Playback",
+                                  PW_KEY_MEDIA_ROLE, "DSP",
+                                  PW_KEY_NODE_NAME, "pihpsdr-rx",
+                                  PW_KEY_NODE_DESCRIPTION, "piHPSDR Playback",
+                                  PW_KEY_TARGET_OBJECT, rx->audio_name,
+                                  PW_KEY_NODE_LATENCY, PIPEWIRE_QUANTUM_PLAYBACK,
+                                  NULL
+                                );
   static const struct pw_stream_events stream_events = {
-      PW_VERSION_STREAM_EVENTS,
-      .process = pw_out_cb,
+    PW_VERSION_STREAM_EVENTS,
+    .process = pw_out_cb,
   };
-
   h->stream = pw_stream_new_simple(pw_thread_loop_get_loop(h->loop),
                                    "pihpsdr-playback",
                                    props,
                                    &stream_events,
                                    h);
-
   if (!h->stream) {
     pw_core_disconnect(h->core);
     pw_thread_loop_unlock(h->loop);
@@ -376,20 +341,17 @@ int audio_open_output(RECEIVER *rx) {
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
   }
-
   struct spa_audio_info_raw info = {
-      .format = SPA_AUDIO_FORMAT_F32,
-      .rate = 48000,
-      .channels = 2,
+    .format = SPA_AUDIO_FORMAT_F32,
+    .rate = 48000,
+    .channels = 2,
   };
   info.position[0] = SPA_AUDIO_CHANNEL_MONO;
   info.position[1] = SPA_AUDIO_CHANNEL_MONO + 1;
-
   uint8_t buffer[1024];
   struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
   const struct spa_pod *params[1];
   params[0] = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info);
-
   int res = pw_stream_connect(h->stream,
                               PW_DIRECTION_OUTPUT,
                               PW_ID_ANY,
@@ -410,15 +372,12 @@ int audio_open_output(RECEIVER *rx) {
     g_mutex_unlock(&rx->audio_mutex);
     return -1;
   }
-
   pw_thread_loop_unlock(h->loop);
-
   rx->audio_buffer_offset = 0;
   rx->audio_buffer_inpt = 0;
   rx->audio_buffer_outpt = 0;
   rx->st_buffer_inpt = 0;
   rx->st_buffer_outpt = 0;
-
   rx->audio_buffer = aubuf;
   rx->st_buffer = stbuf;
   rx->audio_handle = h;
@@ -426,7 +385,6 @@ int audio_open_output(RECEIVER *rx) {
   rx->cwcount = 0;
   rx->skipcnt = 0;
   rx->queued = 0;
-
   g_mutex_unlock(&rx->audio_mutex);
   return 0;
 }
@@ -434,11 +392,10 @@ int audio_open_output(RECEIVER *rx) {
 void audio_close_output(RECEIVER *rx) {
   t_print("%s RX%d:%s\n", __func__, rx->id + 1, rx->audio_name);
   g_mutex_lock(&rx->audio_mutex);
-
   struct pipewire_handle *h = rx->audio_handle;
   if (h != NULL) {
     pw_thread_loop_stop(h->loop);
-    if (h->stream) pw_stream_destroy(h->stream);
+    if (h->stream) { pw_stream_destroy(h->stream); }
     pw_core_disconnect(h->core);
     pw_context_destroy(h->context);
     pw_thread_loop_destroy(h->loop);
@@ -455,7 +412,6 @@ void audio_close_output(RECEIVER *rx) {
 
 int audio_open_input(TRANSMITTER *tx) {
   t_print("%s TX:%s\n", __func__, tx->audio_name);
-
   int err = 1;
   for (int i = 0; i < n_input_devices; i++) {
     if (!strcmp(tx->audio_name, input_devices[i].name)) {
@@ -467,19 +423,15 @@ int audio_open_input(TRANSMITTER *tx) {
     t_print("%s: not registered: %s\n", __func__, tx->audio_name);
     return -1;
   }
-
   g_mutex_lock(&tx->audio_mutex);
   tx->audio_handle = NULL;
   tx->audio_buffer = NULL;
-
   double *aub = g_new(double, MIC_BUFFER_SIZE);
   struct pipewire_handle *h = g_new0(struct pipewire_handle, 1);
-
   if (aub == NULL || h == NULL) {
     g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
-
   h->tx = tx;
   h->loop = pw_thread_loop_new("pihpsdr-capture", NULL);
   if (!h->loop) {
@@ -488,7 +440,6 @@ int audio_open_input(TRANSMITTER *tx) {
     g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
-
   h->context = pw_context_new(pw_thread_loop_get_loop(h->loop), NULL, 0);
   if (!h->context) {
     pw_thread_loop_destroy(h->loop);
@@ -497,7 +448,6 @@ int audio_open_input(TRANSMITTER *tx) {
     g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
-
   if (pw_thread_loop_start(h->loop) < 0) {
     pw_context_destroy(h->context);
     pw_thread_loop_destroy(h->loop);
@@ -506,9 +456,7 @@ int audio_open_input(TRANSMITTER *tx) {
     g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
-
   pw_thread_loop_lock(h->loop);
-
   h->core = pw_context_connect(h->context, NULL, 0);
   if (!h->core) {
     pw_thread_loop_unlock(h->loop);
@@ -520,22 +468,19 @@ int audio_open_input(TRANSMITTER *tx) {
     g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
-
   struct pw_properties *props = pw_properties_new(
-      PW_KEY_MEDIA_TYPE, "Audio",
-      PW_KEY_MEDIA_CATEGORY, "Capture",
-      PW_KEY_MEDIA_ROLE, "DSP",
-      PW_KEY_NODE_NAME, "piHPSDR capture",
-      PW_KEY_TARGET_OBJECT, tx->audio_name,
-      PW_KEY_NODE_LATENCY, PIPEWIRE_QUANTUM_CAPTURE,
-      NULL
-  );
-
+                                  PW_KEY_MEDIA_TYPE, "Audio",
+                                  PW_KEY_MEDIA_CATEGORY, "Capture",
+                                  PW_KEY_MEDIA_ROLE, "DSP",
+                                  PW_KEY_NODE_NAME, "piHPSDR capture",
+                                  PW_KEY_TARGET_OBJECT, tx->audio_name,
+                                  PW_KEY_NODE_LATENCY, PIPEWIRE_QUANTUM_CAPTURE,
+                                  NULL
+                                );
   static const struct pw_stream_events stream_events = {
-      PW_VERSION_STREAM_EVENTS,
-      .process = pw_in_cb,
+    PW_VERSION_STREAM_EVENTS,
+    .process = pw_in_cb,
   };
-
   h->stream = pw_stream_new_simple(pw_thread_loop_get_loop(h->loop),
                                    "pihpsdr-capture-stream",
                                    props,
@@ -552,19 +497,16 @@ int audio_open_input(TRANSMITTER *tx) {
     g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
-
   struct spa_audio_info_raw info = {
-      .format = SPA_AUDIO_FORMAT_F32,
-      .rate = 48000,
-      .channels = 1,
+    .format = SPA_AUDIO_FORMAT_F32,
+    .rate = 48000,
+    .channels = 1,
   };
   info.position[0] = SPA_AUDIO_CHANNEL_MONO;
-
   uint8_t buffer[1024];
   struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
   const struct spa_pod *params[1];
   params[0] = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info);
-
   int res = pw_stream_connect(h->stream,
                               PW_DIRECTION_INPUT,
                               PW_ID_ANY,
@@ -584,9 +526,7 @@ int audio_open_input(TRANSMITTER *tx) {
     g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
-
   pw_thread_loop_unlock(h->loop);
-
   tx->audio_buffer = aub;
   tx->audio_handle = h;
   tx->audio_buffer_inpt = 0;
@@ -608,7 +548,6 @@ void audio_close_input(TRANSMITTER *tx) {
     g_free(h);
     tx->audio_handle = NULL;
   }
-
   if (tx->audio_buffer != NULL) {
     g_free(tx->audio_buffer);
     tx->audio_buffer = NULL;
@@ -619,7 +558,6 @@ void audio_close_input(TRANSMITTER *tx) {
 double audio_get_next_mic_sample(TRANSMITTER *tx) {
   double sample;
   g_mutex_lock(&tx->audio_mutex);
-
   if ((tx->audio_buffer == NULL) || (tx->audio_buffer_outpt == tx->audio_buffer_inpt)) {
     sample = 0.0;
   } else {
@@ -628,7 +566,6 @@ double audio_get_next_mic_sample(TRANSMITTER *tx) {
     MEMORY_BARRIER;
     tx->audio_buffer_outpt = newpt;
   }
-
   g_mutex_unlock(&tx->audio_mutex);
   return sample;
 }
@@ -636,13 +573,10 @@ double audio_get_next_mic_sample(TRANSMITTER *tx) {
 void audio_write(RECEIVER *rx, double left, double right) {
   if (rx == active_receiver && radio_is_transmitting() && !duplex) { return; }
   if (rx->audio_handle == NULL || rx->audio_buffer == NULL) { return; }
-
   g_mutex_lock(&rx->audio_mutex);
   double *buffer = rx->audio_buffer;
   rx->cwaudio = 0;
-
   int avail = (rx->audio_buffer_inpt - rx->audio_buffer_outpt) & RING_BUFFER_MASK;
-
   if (avail < AUDIO_LAT_LOW) {
     //
     // Running the RX-audio for a very long time
@@ -664,7 +598,6 @@ void audio_write(RECEIVER *rx, double left, double right) {
     rx->audio_buffer_inpt = inpt;
     // Now buffer filling is exactly at AUDIO_LAT_TARGET
   }
-
   if (avail > AUDIO_LAT_HIGH) {
     //
     // Running the RX-audio for a very long time
@@ -677,16 +610,13 @@ void audio_write(RECEIVER *rx, double left, double right) {
     rx->audio_buffer_inpt = (rx->audio_buffer_inpt - avail + AUDIO_LAT_TARGET) & RING_BUFFER_MASK;
     // Now buffer filling ids exactly at AUDIO_LAT_TARGET
   }
-
   int newpt = (rx->audio_buffer_inpt + 1) & RING_BUFFER_MASK;
-
   if (newpt  != rx->audio_buffer_outpt) {
     rx->audio_buffer[rx->audio_buffer_inpt * 2] = left;
     rx->audio_buffer[rx->audio_buffer_inpt * 2 + 1] = right;
     MEMORY_BARRIER;
     rx->audio_buffer_inpt = newpt;
   }
-
   g_mutex_unlock(&rx->audio_mutex);
 }
 
@@ -700,7 +630,6 @@ void tx_audio_write(RECEIVER *rx, double sample) {
   int newpt;
   int avail = (inpt - rx->st_buffer_outpt) & ST_BUFFER_MASK;
   int adjust = 0;
-
   if (rx->cwaudio != 3) {
     // Transition RX -> TX
     if (avail < CW_LAT_TARGET) {
@@ -716,7 +645,6 @@ void tx_audio_write(RECEIVER *rx, double sample) {
     rx->cwcount = 0;
     avail = CW_LAT_TARGET;
   }
-
   if (sample != 0.0) { rx->cwcount = 0; }
   if (++rx->cwcount > 16) {
     rx->cwcount = 0;
@@ -726,7 +654,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
     if (avail > CW_LAT_HIGH) { adjust = 2; } // full: we are above high water mark
     if (avail < CW_LAT_LOW)  { adjust = 1; } // low: we are below low water mark
   }
-  switch(adjust) {
+  switch (adjust) {
   case 0:
     // Write sample directly to sidetone buffer
     newpt = (inpt + 1) & ST_BUFFER_MASK;
@@ -752,6 +680,5 @@ void tx_audio_write(RECEIVER *rx, double sample) {
     // just skip current "silent" sample (do nothing)
     break;
   }
-
   g_mutex_unlock(&rx->audio_mutex);
 }
