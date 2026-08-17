@@ -1267,7 +1267,7 @@ void *tx_thread(void * data) {
 #ifdef LOGFIRST
       if (logfirst_dumped == 0 && logfirst_count < 6*LOGNUM) {
         unsigned char *src = p;
-        unsigned char *dst = &logfirst_buf[6*logfirst_count++];
+        unsigned char *dst = &logfirst_buf[6*logfirst_count];
         *dst++ = *src++;
         *dst++ = *src++;
         *dst++ = *src++;
