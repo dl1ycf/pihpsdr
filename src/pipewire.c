@@ -99,14 +99,26 @@ static void registry_event_global(void *data, uint32_t id, uint32_t permissions,
         if (n_output_devices < MAX_AUDIO_DEVICES) {
           output_devices[n_output_devices].name = g_strdup(name);
           output_devices[n_output_devices].description = g_strdup(desc);
-          output_devices[n_output_devices].channels = 2;  // force STEREO
+          output_devices[n_output_devices].channels = 2; // unused
+          output_devices[n_output_devices].is_monitor = 0;
           n_output_devices++;
+        }
+	//
+	// Each output device can also be used for input through its monitor
+	//
+        if (n_input_devices < MAX_AUDIO_DEVICES) {
+          input_devices[n_input_devices].name = g_strdup(name);
+          input_devices[n_input_devices].description = g_strdup(desc);
+          input_devices[n_input_devices].channels = 1; // unused
+          input_devices[n_input_devices].is_monitor = 1;
+          n_input_devices++;
         }
       } else if (strcmp(media_class, "Audio/Source") == 0) {
         if (n_input_devices < MAX_AUDIO_DEVICES) {
           input_devices[n_input_devices].name = g_strdup(name);
           input_devices[n_input_devices].description = g_strdup(desc);
-          input_devices[n_input_devices].channels = 1;  // force MONO
+          input_devices[n_input_devices].channels = 1; // unused
+          output_devices[n_output_devices].is_monitor = 0;
           n_input_devices++;
         }
       }
@@ -246,7 +258,7 @@ int audio_open_output(RECEIVER *rx) {
   int err = 1;
   for (int i = 0; i < n_output_devices; i++) {
     if (!strcmp(rx->audio_name, output_devices[i].name)) {
-      rx->local_audio_channels = output_devices[i].channels;
+      rx->local_audio_channels = output_devices[i].channels; // unused
       err = 0;
       break;
     }
@@ -259,7 +271,7 @@ int audio_open_output(RECEIVER *rx) {
   rx->audio_buffer = NULL;
   rx->st_buffer = NULL;
   rx->audio_handle = NULL;
-  double *aubuf = g_new(double, rx->local_audio_channels * RING_BUFFER_SIZE);
+  double *aubuf = g_new(double, 2 * RING_BUFFER_SIZE);
   double *stbuf = g_new(double, ST_BUFFER_SIZE);
   struct pipewire_handle *h = g_new0(struct pipewire_handle, 1);
   if (aubuf == NULL || stbuf == NULL || h == NULL) {
@@ -413,8 +425,10 @@ void audio_close_output(RECEIVER *rx) {
 int audio_open_input(TRANSMITTER *tx) {
   t_print("%s TX:%s\n", __func__, tx->audio_name);
   int err = 1;
+  int monitor = 0;
   for (int i = 0; i < n_input_devices; i++) {
     if (!strcmp(tx->audio_name, input_devices[i].name)) {
+      monitor = input_devices[i].is_monitor;
       err = 0;
       break;
     }
@@ -477,6 +491,14 @@ int audio_open_input(TRANSMITTER *tx) {
                                   PW_KEY_NODE_LATENCY, PIPEWIRE_QUANTUM_CAPTURE,
                                   NULL
                                 );
+
+  if (monitor) {
+    //
+    // This is an audio output device, and we want to use its associated monitor
+    //
+    pw_properties_set(props, PW_KEY_STREAM_CAPTURE_SINK, "true");
+  }
+
   static const struct pw_stream_events stream_events = {
     PW_VERSION_STREAM_EVENTS,
     .process = pw_in_cb,

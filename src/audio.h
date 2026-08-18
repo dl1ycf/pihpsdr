@@ -36,6 +36,9 @@ typedef struct _audio_devices {
   snd_pcm_format_t format;
   int soft_resample;
 #endif
+#ifdef PIPEWIRE
+  int is_monitor;  // this is an output device
+#endif
 } AUDIO_DEVICE;
 
 extern int n_input_devices;
