@@ -24,6 +24,7 @@ piHPSDR should be compiled from the sources, consult the Manual (**link given ab
 
 Latest features:
 
+- new PipeWire audio module for LINUX (now the default)
 - Selectable color themes
 - more complete TCI implementation including TCI-Audio
 - DX cluster support
