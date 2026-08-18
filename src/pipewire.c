@@ -94,7 +94,12 @@ static void registry_event_global(void *data, uint32_t id, uint32_t permissions,
     const char *media_class = spa_dict_lookup(props, PW_KEY_MEDIA_CLASS);
     const char *name = spa_dict_lookup(props, PW_KEY_NODE_NAME);
     const char *desc = spa_dict_lookup(props, PW_KEY_NODE_DESCRIPTION);
-    if (media_class && name && desc) {
+    //
+    // If the "description" has not been given (e.g. when creating a null-sink
+    // device intended as a virtual audio cable) use the name instead
+    //
+    if (!desc) { desc = name; }
+    if (media_class && name) {
       if (strcmp(media_class, "Audio/Sink") == 0) {
         if (n_output_devices < MAX_AUDIO_DEVICES) {
           output_devices[n_output_devices].name = g_strdup(name);
@@ -103,12 +108,16 @@ static void registry_event_global(void *data, uint32_t id, uint32_t permissions,
           output_devices[n_output_devices].is_monitor = 0;
           n_output_devices++;
         }
-	//
-	// Each output device can also be used for input through its monitor
-	//
+        //
+        // Each output device can also be used for input through its monitor
+        // Pre-pend the description of the output device with "Monitor of"
+        //
         if (n_input_devices < MAX_AUDIO_DEVICES) {
           input_devices[n_input_devices].name = g_strdup(name);
-          input_devices[n_input_devices].description = g_strdup(desc);
+          size_t desclen = strlen(desc) + 16;
+          char *mondesc = g_new(char, desclen);
+          snprintf(mondesc, desclen, "Monitor of %s", desc);
+          input_devices[n_input_devices].description = mondesc;
           input_devices[n_input_devices].channels = 1; // unused
           input_devices[n_input_devices].is_monitor = 1;
           n_input_devices++;
