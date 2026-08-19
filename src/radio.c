@@ -2209,8 +2209,15 @@ void radio_load_filters(int b) {
 void radio_set_cw_speed(int val) {
   cw_keyer_speed = val;
   g_idle_add(sliders_wpm, NULL);
+  //
+  // keyer_update() must run regardless of radio_is_remote: in
+  // client/server mode the CLIENT runs its own local software
+  // iambic keyer thread (see iambic.c), and keyer_update() is what
+  // refreshes the dot/dash timing constants that thread reads.
+  // Only the direct hardware TX-buffer update is server-only.
+  //
+  keyer_update();
   if (!radio_is_remote) {
-    keyer_update();
     schedule_transmit_specific();
   }
   g_idle_add(ext_vfo_update, NULL);
