@@ -133,6 +133,12 @@ static void fm_lim_gain_cb(GtkWidget *widget, gpointer data) {
   rx_set_fm_limiter(myrx);
 }
 
+#ifdef TCI
+static void tci_volume_cb(GtkWidget *widget, gpointer data) {
+  myrx->tci_volume = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+}
+#endif
+
 static void squelch_value_cb(GtkWidget *widget, gpointer data) {
   double value = gtk_range_get_value(GTK_RANGE(widget));
   suppress_popup_sliders++;
@@ -398,6 +404,16 @@ void rx_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), btn, 2, row, 1, 1);
   g_signal_connect(btn, "value-changed", G_CALLBACK(fm_lim_gain_cb), NULL);
   row++;
+#ifdef TCI
+  lbl = gtk_label_new("TCI Audio Output Volume (dB):");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), lbl, 0, row, 2, 1);
+  btn = gtk_spin_button_new_with_range(-60.0, 0.0, 1.0);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), myrx->tci_volume);
+  gtk_grid_attach(GTK_GRID(grid), btn, 2, row, 1, 1);
+  g_signal_connect(btn, "value-changed", G_CALLBACK(tci_volume_cb), NULL);
+#endif
   //
   // RX Audio options, hard-wired to rows 1-3 in columns
   lbl = gtk_label_new("RX Audio Out");
