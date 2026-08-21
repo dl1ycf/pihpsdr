@@ -300,6 +300,7 @@ void rx_save_state(const RECEIVER *rx) {
   SetPropI1("receiver.%d.waterfall_high", rx->id,               rx->waterfall_high);
   SetPropI1("receiver.%d.waterfall_automatic", rx->id,          rx->waterfall_automatic);
   SetPropI1("receiver.%d.waterfall_percent", rx->id,            rx->waterfall_percent);
+  SetPropF1("receiver.%d.tci_volume", rx->id,                   rx->tci_volume);
   if (!radio_is_remote) {
     SetPropI1("receiver.%d.smetermode", rx->id,                 rx->smetermode);
     SetPropI1("receiver.%d.low_latency", rx->id,                rx->low_latency);
@@ -403,6 +404,7 @@ void rx_restore_state(RECEIVER *rx) {
   GetPropI1("receiver.%d.waterfall_high", rx->id,               rx->waterfall_high);
   GetPropI1("receiver.%d.waterfall_automatic", rx->id,          rx->waterfall_automatic);
   GetPropI1("receiver.%d.waterfall_percent", rx->id,            rx->waterfall_percent);
+  GetPropF1("receiver.%d.tci_volume", rx->id,                   rx->tci_volume);
   if (!radio_is_remote) {
     GetPropI1("receiver.%d.smetermode", rx->id,                 rx->smetermode);
     GetPropI1("receiver.%d.low_latency", rx->id,                rx->low_latency);
@@ -785,6 +787,7 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->display_average_mode = AVG_LOGRECURSIVE;
   rx->display_average_time = 120.0;
   rx->volume = -20.0;
+  rx->tci_volume = -20.0;
   rx->nb = 0;
   rx->nr = 0;
   rx->anf = 0;
@@ -1113,6 +1116,9 @@ static void rx_process_buffer(RECEIVER *rx) {
   // (or weaker)
   //
   double scale = 0.6 * pow(10.0, -0.05 * rx->volume);
+#ifdef TCI
+  double tciscale = pow(10.0, -0.05*(rx->volume - rx->tci_volume));
+#endif
   double unscale = 1.0 / scale;
   // Without DUPLEX; xmit will always be false.
   int xmit = radio_is_transmitting();
@@ -1167,6 +1173,17 @@ static void rx_process_buffer(RECEIVER *rx) {
     if (remoteclient.running) {
       remote_rxaudio(rx, left_sample);
     }
+#ifdef TCI
+    //
+    // tciscale is calculated such that the TCI audio output level
+    // does not depend on the RX AF-gain slider setting.
+    // Since TCI is mostly used for communication with digimode
+    // programs, we ship out before applying mute_rx or STEREO effects.
+    //
+    if (tci_audio_rx_active) {
+      tci_audio_rx_sample(rx->id, tciscale*left_sample, tciscale*right_sample);
+    }
+#endif
     if (xmit && mute_rx_while_transmitting) {
       left_sample = 0.0;
       right_sample = 0.0;
@@ -1188,11 +1205,6 @@ static void rx_process_buffer(RECEIVER *rx) {
     if (rx->local_audio) {
       audio_write(rx, left_sample, right_sample);
     }
-#ifdef TCI
-    if (tci_audio_rx_active) {
-      tci_audio_rx_sample(rx->id, left_sample, right_sample);
-    }
-#endif
     if (rx == active_receiver) {
       switch (protocol) {
       case ORIGINAL_PROTOCOL:
