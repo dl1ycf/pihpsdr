@@ -1558,16 +1558,13 @@ void new_protocol_menu_start(void) {
   memset(rxcase, 0, sizeof(rxcase));
   memset(rxid, 0, sizeof(rxid));
   update_action_table();
-  //
-  // This does pre-allocation upon program start
-  //
-  for (unsigned int i = 0; i < 8; i++) {
-    (void) get_p2buffer();
+  if (have_saturn_xdma) {
+    prealloc_satbuffers();
+    mark_satbuffers_free();
+  } else {
+    prealloc_p2buffers();
+    mark_p2buffers_free();
   }
-  //
-  // Mark all buffers free
-  //
-  mark_p2buffers_free();   // if restarting, set them free
   P2running = 1;
   //
   // Make semaphores for the TXIQ and RXAUDIO tasks, and spawn these threads

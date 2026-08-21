@@ -588,7 +588,7 @@ static gpointer saturn_high_priority_thread(gpointer arg) {
       uint8_t PTTBits;                                          // PTT bits - and change means a new message needed
       uint8_t  Byte;                                            // data being encoded
       uint16_t Word;                                            // data being encoded
-      p2buffer *mybuf = get_p2buffer();
+      p2buffer *mybuf = get_sathpbuffer();
       ReadStatusRegister();
       PTTBits = GetP2PTTKeyInputs() & 0xFF;
       mybuf->buffer[4] = PTTBits;
@@ -762,7 +762,7 @@ static gpointer saturn_micaudio_thread(gpointer arg) {
       }
       DMAReadFromFPGA(DMAReadfile_fd, MicBasePtr, VDMAMICTRANSFERSIZE, VADDRMICSTREAMREAD);
       // create the packet
-      p2buffer *mybuf = get_p2buffer();
+      p2buffer *mybuf = get_satmicbuffer();
       mybuf->buffer[0] = (SequenceCounter >> 24) & 0xFF;           // add seq. count
       mybuf->buffer[1] = (SequenceCounter >> 16) & 0xFF;
       mybuf->buffer[2] = (SequenceCounter >>  8) & 0xFF;
@@ -861,7 +861,7 @@ static gpointer saturn_rx_thread(gpointer arg) {
         // Ship out DDC packets as long as there is enough data
         //
         while ((IQHeadPtr[DDC] - IQReadPtr[DDC]) > VIQBYTESPERFRAME) {
-          p2buffer *mybuf = get_p2buffer();
+          p2buffer *mybuf = get_satrxbuffer();
           mybuf->buffer[0] = (SequenceCounter[DDC] >> 24) & 0xFF;        // add seq. count
           mybuf->buffer[1] = (SequenceCounter[DDC] >> 16) & 0xFF;
           mybuf->buffer[2] = (SequenceCounter[DDC] >>  8) & 0xFF;

@@ -71,6 +71,12 @@ struct p2buffer_ {
 
 typedef struct p2buffer_ p2buffer;
 extern p2buffer *get_p2buffer(void);
+extern p2buffer *get_satrxbuffer(void);
+extern p2buffer *get_sathpbuffer(void);
+extern p2buffer *get_satmicbuffer(void);
+extern void prealloc_p2buffers(void);
+extern void prealloc_satbuffers(void);
 extern void mark_p2buffers_free(void);
+extern void mark_satbuffers_free(void);
 
 #endif
