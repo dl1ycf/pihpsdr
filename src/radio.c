@@ -2664,7 +2664,7 @@ void radio_set_rf_gain(int id, double value) {
   //
   if (id == 0) {
     BAND *band = band_get_band(vfo[id].band);
-    band->gain = value;
+    band->RFgain = value;
   }
 }
 
@@ -2722,6 +2722,13 @@ void radio_set_agc_gain(int id, double value) {
   receiver[id]->agc_gain = value;
   rx_set_agc(receiver[id]);
   g_idle_add(sliders_agc_gain, GINT_TO_POINTER(100 * suppress_popup_sliders + id));
+  //
+  // If this is RX1, store value "by the band" unless AGC mode is FIXED
+  //
+  if (id == 0 && receiver[id]->agc != AGC_FIXED) {
+    BAND *band = band_get_band(vfo[id].band);
+    band->AGCgain = value;
+  }
 }
 
 void radio_set_c25_att(int id, int val) {
@@ -2928,7 +2935,7 @@ void radio_apply_band_settings(int flag, int id) {
   // the VFO of receiver #id, and the transmitter
   //
   // flag == 0: RX Antenna, TX Antenna, PA dis/enable status, TX drive level
-  // flag == 1: in addition, preamp/dither/attenuation/gain status
+  // flag == 1: in addition, preamp/dither/attenuation/gain/AGCgain status
   //
   // flag is nonzero if called from a "real" band change
   //
@@ -2958,10 +2965,16 @@ void radio_apply_band_settings(int flag, int id) {
       radio_set_c25_att(0, -12 * rxband->alexAttenuation + 18 * (rxband->preamp + rxband->dither));
     } else {
       radio_set_attenuation(id, rxband->attenuation);
-      radio_set_rf_gain(id, rxband->gain);
-      radio_set_panhigh(id, rxband->panhigh);
-      radio_set_panlow(id, rxband->panlow);
-      radio_set_panstep(id, rxband->panstep);
+      radio_set_rf_gain(id, rxband->RFgain);
+    }
+    radio_set_panhigh(id, rxband->panhigh);
+    radio_set_panlow(id, rxband->panlow);
+    radio_set_panstep(id, rxband->panstep);
+    //
+    // Never "move the AGC slider" if the AGC mode is FIXED
+    //
+    if (id < receivers && receiver[id]->agc != AGC_FIXED) {
+      radio_set_agc_gain(id, rxband->AGCgain);
     }
   }
   schedule_high_priority();         // possibly update RX/TX antennas, OC settings, ...

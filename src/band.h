@@ -78,9 +78,10 @@ struct _BAND {
   // Data that is automatically stored here, and applied whenever
   // a band change is done
   //
+  double RFgain;                  // position of the RF gain slider
+  double AGCgain;                 // position of the AGC gain slider
   int preamp;                     // This is to support C25 attenuation storage
   int dither;                     // This is to support C25 attenuation storage
-  double gain;                    // position of the RF gain slider
   int attenuation;                // position of the ATT slider
   int alexAttenuation;            // if ALEX: attenuator (0/1/2/3 for 0/10/20/30 dB)
   int panlow;                     // panadapter settings
