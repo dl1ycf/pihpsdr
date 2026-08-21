@@ -911,11 +911,11 @@ static void radio_create_visual(void) {
     transmitter->x = 0;
     transmitter->y = VFO_HEIGHT;
   }
-  // init local keyer if enabled
-  if (cw_keyer_internal == 0) {
-    t_print("%s: initialise keyer\n", __func__);
-    keyer_update();
-  }
+  //
+  // Set parameters for the internal keyer.
+  // This will init the local keyer if enabled
+  //
+  keyer_update();
   if (!radio_is_remote) {
     switch (protocol) {
     case ORIGINAL_PROTOCOL:
@@ -2209,8 +2209,8 @@ void radio_load_filters(int b) {
 void radio_set_cw_speed(int val) {
   cw_keyer_speed = val;
   g_idle_add(sliders_wpm, NULL);
+  keyer_update();
   if (!radio_is_remote) {
-    keyer_update();
     schedule_transmit_specific();
   }
   g_idle_add(ext_vfo_update, NULL);
