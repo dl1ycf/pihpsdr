@@ -47,6 +47,7 @@ typedef struct _receiver {
   int adc;
 
   double volume;  // in dB
+  double tci_volume;  // in dB, applies to TCI audio output only
 
   int dsp_size;
   int buffer_size;

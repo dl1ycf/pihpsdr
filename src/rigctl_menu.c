@@ -84,14 +84,13 @@ static void tci_enable_cb(GtkWidget *widget, gpointer data) {
 
 static void tci_port_changed_cb(GtkWidget *widget, gpointer data) {
   if (tci_enable) { shutdown_tci(); }
-  tci_port = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+  tci_port = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
   if (tci_enable) {
     if (launch_tci() != 0) {
       tci_enable = 0;
     }
   }
 }
-
 #endif
 
 static void rigctl_tcp_enable_cb(GtkWidget *widget, gpointer data) {
