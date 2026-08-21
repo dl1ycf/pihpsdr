@@ -521,7 +521,7 @@ void profiles_load_rx_profile(RECEIVER *rx, int m) {
     rx_set_equalizer(rx);
     rx_set_noise(rx);
     rx_filter_changed(rx);
-    suppress_popup_sliders++;
+    suppress_popup_sliders--;
     g_idle_add(ext_vfo_update, NULL);
   }
   //
