@@ -316,6 +316,10 @@ void tx_panadapter_update(TRANSMITTER *tx) {
     cairo_close_path (cr);
     cairo_fill_preserve (cr);
     cairo_set_line_width(cr, PAN_LINE_THIN);
+    if (tx->display_fill_border) {
+      cairo_set_source_rgba(cr, COLOUR_PAN_FILL1);
+      cairo_set_line_width(cr, PAN_LINE_THICK);
+    }
   } else {
     cairo_set_source_rgba(cr, COLOUR_PAN_LINE1);
     cairo_set_line_width(cr, PAN_LINE_THICK);
