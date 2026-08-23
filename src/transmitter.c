@@ -341,6 +341,7 @@ void tx_save_state(const TRANSMITTER *tx) {
   SetPropI1("transmitter.%d.dialog_x",                            tx->id,    tx->dialog_x);
   SetPropI1("transmitter.%d.dialog_y",                            tx->id,    tx->dialog_y);
   SetPropI1("transmitter.%d.display_filled",                      tx->id,    tx->display_filled);
+  SetPropI1("transmitter.%d.display_fillborder",                  tx->id,    tx->display_fill_border);
   if (!radio_is_remote) {
     SetPropI1("transmitter.%d.alcmode",                             tx->id,    tx->alcmode);
     SetPropI1("transmitter.%d.metermode",                           tx->id,    tx->metermode);
@@ -433,6 +434,7 @@ void tx_restore_state(TRANSMITTER *tx) {
   GetPropI1("transmitter.%d.dialog_x",                            tx->id,    tx->dialog_x);
   GetPropI1("transmitter.%d.dialog_y",                            tx->id,    tx->dialog_y);
   GetPropI1("transmitter.%d.display_filled",                      tx->id,    tx->display_filled);
+  GetPropI1("transmitter.%d.display_fillborder",                  tx->id,    tx->display_fill_border);
   if (!radio_is_remote) {
     GetPropI1("transmitter.%d.alcmode",                             tx->id,    tx->alcmode);
     GetPropI1("transmitter.%d.metermode",                           tx->id,    tx->metermode);
@@ -911,6 +913,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->dac = 0;
   tx->fps = 10;
   tx->display_filled = 0;
+  tx->display_fill_border = 0;
   tx->dsp_size = 2048;
   tx->fft_size = 2048;
   tx->alcmode = ALC_PEAK;
