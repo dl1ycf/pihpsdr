@@ -1077,7 +1077,7 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
   max_pwrcount++;
   max_outcount++;
   max_miccount++;
-  max_outcount++;
+  max_alccount++;
   //
   // From now on, ONLY use time-averaged values
   //
