@@ -224,6 +224,7 @@ typedef struct _transmitter {
   int dialog_y;
 
   int display_filled;
+  int display_fill_border;
 
   double *cw_sig_rf;      // contains the CW RF envelope
   double *p1stone;        // contains side tone (CW or TUNE), only used in P1

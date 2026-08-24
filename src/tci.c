@@ -113,7 +113,7 @@ typedef struct _client {
   int idle_queued;              // counter
   int last_trx;                 // last trx command rvcd. from the client
   struct lws *wsi;              // libwebsockets connection
-  GQueue *lws_tx_queue;         // queued PAYLOAD objects for LWS writable callback
+  GAsyncQueue *lws_tx_queue;    // queued PAYLOAD objects for LWS writable callback
   int initial_sent;             // initial state already sent via LWS
   int rx_audio_enabled[TCI_RX_AUDIO_MAX_RECEIVERS];
   int tx_audio_enabled;
@@ -210,9 +210,9 @@ static int tci_queue_frame (CLIENT *client, int type, const char* msg, int check
   client->idle_queued++;
   if (client->wsi != NULL) {
     if (client->lws_tx_queue == NULL) {
-      client->lws_tx_queue = g_queue_new();
+      client->lws_tx_queue = g_async_queue_new();
     }
-    g_queue_push_tail (client->lws_tx_queue, resp);
+    g_async_queue_push (client->lws_tx_queue, resp);
     tci_lws_pending_writable = 1;
     if (tci_lws_context != NULL) {
       lws_cancel_service (tci_lws_context);
@@ -240,10 +240,10 @@ static int tci_queue_binary_frame (CLIENT *client, const unsigned char* data, si
     return 0;
   }
   if (client->lws_tx_queue == NULL) {
-    client->lws_tx_queue = g_queue_new();
+    client->lws_tx_queue = g_async_queue_new();
   }
   client->idle_queued++;
-  g_queue_push_tail (client->lws_tx_queue, resp);
+  g_async_queue_push (client->lws_tx_queue, resp);
   tci_lws_pending_writable = 1;
   if (tci_lws_context != NULL) {
     lws_cancel_service (tci_lws_context);
@@ -544,6 +544,14 @@ static void tci_send_vfo (CLIENT *client, int v, int c) {
   tci_send_text (client, msg);
 }
 
+static void tci_broadcast_dds (int v) {
+  for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
+    if (tciclient[c].running) {
+      tci_send_dds (tciclient + c, v);
+    }
+  }
+}
+
 static void tci_broadcast_vfo (int v, int chan) {
   for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
     if (tciclient[c].running) {
@@ -552,9 +560,22 @@ static void tci_broadcast_vfo (int v, int chan) {
   }
 }
 
+static void tci_set_dds (CLIENT *client, int VfoNr,  long long SetFreq) {
+  if (VfoNr < 0 || VfoNr > 1) { return; }
+  if (VfoNr == VFO_A) {
+    vfo_id_set_frequency (VFO_A, SetFreq);
+    client->last_fa = SetFreq;
+    g_idle_add (ext_vfo_update, NULL);
+  } else {
+    vfo_id_set_frequency (VFO_B, SetFreq);
+    client->last_fb = SetFreq;
+    g_idle_add (ext_vfo_update, NULL);
+  }
+  tci_broadcast_dds (VfoNr);
+}
+
 static void tci_set_vfo (CLIENT *client, int VfoNr, int Ch, long long SetFreq) {
   if (VfoNr < 0 || VfoNr > 1) { return; }
-  if (VfoNr >= receivers) { return; }
   if (Ch < 0 || Ch > 1) { return; }
   if (VfoNr == VFO_A && Ch == 0) {
     vfo_id_set_frequency (VFO_A, SetFreq);
@@ -1848,6 +1869,15 @@ static void tci_cmd_modulation (CLIENT *client, const TCI_CMD *cmd) {
   }
 }
 
+static void tci_cmd_dds (CLIENT *client, const TCI_CMD *cmd) {
+  int VfoNr = tci_int (cmd->argv[0], 0);
+  if (cmd->argc >= 2) {
+    tci_set_dds (client, VfoNr, tci_ll (cmd->argv[1], 0));
+  } else {
+    tci_send_dds (client, VfoNr);
+  }
+}
+
 static void tci_cmd_vfo (CLIENT *client, const TCI_CMD *cmd) {
   int VfoNr = tci_int (cmd->argv[0], 0);
   int Ch = tci_int (cmd->argv[1], 0);
@@ -2277,6 +2307,7 @@ static const TCI_DISPATCH tci_dispatch[] = {
   { "audio_stop",        1,  1, tci_cmd_audio_stop },
   { "modulation",        1,  2, tci_cmd_modulation },
   { "vfo",               2,  3, tci_cmd_vfo },
+  { "dds",               1,  2, tci_cmd_dds },
   { "rx_smeter",         1,  3, tci_cmd_rx_smeter },
   { "drive",             0,  2, tci_cmd_drive },
   { "tune_drive",        1,  2, tci_cmd_tune_drive },
@@ -2414,12 +2445,14 @@ static gboolean tci_reporter (gpointer data) {
   int       mb = vfo[VFO_B].mode;
   if (fa != client->last_fa) {
     tci_send_vfo (client, 0, 0);
+    tci_send_dds (client, 0);
   }
   if (fb != client->last_fb) {
     tci_send_vfo (client, 0, 1);
     if (receivers > 1) {
       tci_send_vfo (client, 1, 0);
       tci_send_vfo (client, 1, 1);
+      tci_send_dds (client, 1);
     }
   }
   if (ma  != client->last_ma) {
@@ -2603,25 +2636,25 @@ static void tci_send_initial_state (CLIENT *client) {
 }
 
 static void tci_lws_free_queue (CLIENT *client) {
-  GQueue *queue;
+  GAsyncQueue *queue;
+  PAYLOAD *resp;
   queue = client->lws_tx_queue;
   client->lws_tx_queue = NULL;
   client->idle_queued = 0;
   if (queue == NULL) { return; }
-  while (!g_queue_is_empty (queue)) {
-    PAYLOAD *resp = (PAYLOAD *) g_queue_pop_head (queue);
+  while ((resp = g_async_queue_try_pop(queue)) != NULL) {
     g_free (resp->bin);
     g_free (resp);
   }
-  g_queue_free (queue);
+  g_async_queue_unref (queue);
 }
 
 static int tci_lws_write_queued (CLIENT *client) {
   PAYLOAD *resp = NULL;
   struct lws *wsi;
   wsi = client->wsi;
-  if (client->lws_tx_queue != NULL && !g_queue_is_empty (client->lws_tx_queue)) {
-    resp = (PAYLOAD*) g_queue_pop_head (client->lws_tx_queue);
+  if (client->lws_tx_queue != NULL) {
+    resp = g_async_queue_try_pop(client->lws_tx_queue);
   }
   if (resp == NULL) { return 0; }
   if (resp->type == opCLOSE || wsi == NULL) {
@@ -2662,7 +2695,7 @@ static int tci_lws_write_queued (CLIENT *client) {
     }
     return -1;
   }
-  if (client->wsi != NULL && client->lws_tx_queue != NULL && !g_queue_is_empty (client->lws_tx_queue)) {
+  if (client->wsi != NULL && client->lws_tx_queue != NULL && g_async_queue_length(client->lws_tx_queue) > 0) {
     lws_callback_on_writable (client->wsi);
   }
   return 0;
@@ -2692,7 +2725,7 @@ static int tci_lws_callback (struct lws *wsi, enum lws_callback_reasons reason,
     int c = tci_init_client (lws_get_socket_fd (wsi));
     if (c >= 0 && c < TCI_MAX_CLIENTS) {
       tciclient[c].wsi = wsi;
-      tciclient[c].lws_tx_queue = g_queue_new();
+      tciclient[c].lws_tx_queue = g_async_queue_new();
       t_print ("%s: starting client in slot %d: socket=%d\n", __func__, tciclient[c].seq, tciclient[c].fd);
       cat_control++;
       g_idle_add (ext_vfo_update, NULL);
@@ -2838,8 +2871,8 @@ static gpointer tci_lws_server (gpointer data) {
       for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
         CLIENT *client = tciclient + c;
         struct lws *wsi = NULL;
-        if (client->running && client->wsi != NULL &&
-            client->lws_tx_queue != NULL && !g_queue_is_empty (client->lws_tx_queue)) {
+        if (client->running && client->wsi != NULL && client->lws_tx_queue != NULL
+            && g_async_queue_length(client->lws_tx_queue) > 0) {
           wsi = client->wsi;
         }
         if (wsi != NULL) {

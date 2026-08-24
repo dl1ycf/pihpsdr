@@ -874,8 +874,8 @@ static gpointer client_tcp_thread(gpointer arg) {
     rx->waterfall_low = -140;
     rx->waterfall_automatic = 1;
     rx->waterfall_percent = 25;
-    rx->display_filled = 1;
-    rx->display_gradient = 1;
+    rx->display_filled = 0;
+    rx->display_gradient = 0;
     rx->local_audio = 0;
     snprintf(rx->audio_name, sizeof(rx->audio_name), "NO AUDIO");
     rx->mute_when_not_active = 0;
@@ -884,7 +884,8 @@ static gpointer client_tcp_thread(gpointer arg) {
   }
   active_receiver = receiver[0];
   g_mutex_init(&transmitter->display_mutex);
-  transmitter->display_filled = 1;
+  transmitter->display_filled = 0;
+  transmitter->display_fill_border = 0;
   transmitter->display_panadapter = 1;
   transmitter->display_waterfall = 0;
   transmitter->panadapter_high = 0;
