@@ -321,6 +321,7 @@ void rx_save_state(const RECEIVER *rx) {
     SetPropI1("receiver.%d.anf", rx->id,                        rx->anf);
     SetPropI1("receiver.%d.anf_taps", rx->id,                   rx->anf_taps);
     SetPropI1("receiver.%d.anf_delay", rx->id,                  rx->anf_delay);
+    SetPropF1("receiver.%d.anf_gain", rx->id,                   rx->anf_gain);
     SetPropF1("receiver.%d.anf_leakage", rx->id,                rx->anf_leakage);
     SetPropI1("receiver.%d.fm_limiter", rx->id,                 rx->fm_limiter);
     SetPropF1("receiver.%d.fm_limiter_gain", rx->id,            rx->fm_limiter_gain);
@@ -429,9 +430,9 @@ void rx_restore_state(RECEIVER *rx) {
     GetPropI1("receiver.%d.nb", rx->id,                         rx->nb);
     GetPropI1("receiver.%d.nr", rx->id,                         rx->nr);
     GetPropI1("receiver.%d.anf", rx->id,                        rx->anf);
-    GetPropI1("receiver.%d.anf", rx->id,                        rx->anf);
     GetPropI1("receiver.%d.anf_taps", rx->id,                   rx->anf_taps);
     GetPropI1("receiver.%d.anf_delay", rx->id,                  rx->anf_delay);
+    GetPropF1("receiver.%d.anf_gain", rx->id,                   rx->anf_gain);
     GetPropF1("receiver.%d.anf_leakage", rx->id,                rx->anf_leakage);
     GetPropI1("receiver.%d.fm_limiter", rx->id,                 rx->fm_limiter);
     GetPropF1("receiver.%d.fm_limiter_gain", rx->id,            rx->fm_limiter_gain);
@@ -2108,14 +2109,13 @@ void rx_set_noise(const RECEIVER *rx) {
   SetEXTNOBThreshold(rx->id,            rx->nb_thresh);
   SetEXTNOBRun(rx->id,                  (rx->nb == 2));
   //
-  // Disable all noise-reduction engines (and SNB)
+  // Disable the four noise-reduction engines
   // before updating their parameters.
   //
   SetRXAANRRun(rx->id, 0);
   SetRXAEMNRRun(rx->id, 0);
   SetRXARNNRRun(rx->id, 0);
   SetRXASBNRRun(rx->id, 0);
-  SetRXASNBARun(rx->id, 0);
   //
   // NR
   //
@@ -2135,14 +2135,6 @@ void rx_set_noise(const RECEIVER *rx) {
   SetRXAEMNRpost2Rate(rx->id,           (double) rx->nr2_post_rate);
   SetRXAEMNRaeRun(rx->id,               1); // ArtifactElminiation *always* ON
   SetRXAEMNRpost2Run(rx->id,            rx->nr2_post);
-  //
-  // ANF
-  //
-  SetRXAANFTaps(rx->id,                 rx->anf_taps);
-  SetRXAANFDelay(rx->id,                rx->anf_delay);
-  SetRXAANFGain(rx->id,                 pow(10.0, 0.05 * rx->anf_gain));
-  SetRXAANFLeakage(rx->id,              pow(10.0, 0.05 * rx->anf_leakage));
-  SetRXAANFPosition(rx->id,             rx->nr_agc);
   //
   // NR3
   //
@@ -2178,7 +2170,16 @@ void rx_set_noise(const RECEIVER *rx) {
     break;
   }
   //
-  // Set SNB run state
+  // ANF
+  //
+  SetRXAANFRun(rx->id,                  rx->anf);
+  SetRXAANFTaps(rx->id,                 rx->anf_taps);
+  SetRXAANFDelay(rx->id,                rx->anf_delay);
+  SetRXAANFGain(rx->id,                 pow(10.0, 0.05 * rx->anf_gain));
+  SetRXAANFLeakage(rx->id,              pow(10.0, 0.05 * rx->anf_leakage));
+  SetRXAANFPosition(rx->id,             rx->nr_agc);
+  //
+  // SNB
   //
   SetRXASNBARun(rx->id,                 rx->snb);
 }
