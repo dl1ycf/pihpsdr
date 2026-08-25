@@ -90,7 +90,9 @@ typedef struct _transmitter {
 
   cairo_surface_t *panadapter_surface;
 
-  int audiomonitor;  // put incoming mic samples to the "side tone" channel
+  int audiomonitor;     // put incoming mic samples to the "side tone" channel
+  int audiomon_db;      // monitor level in dB
+  double audiomon_vol;  // monitor level as a factor
 
   //
   // everything related to local (TX input) audio
