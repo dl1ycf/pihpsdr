@@ -18,6 +18,7 @@
 */
 
 #include <gtk/gtk.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -92,7 +93,8 @@ enum _tx_choices {
   TX_PHROT_ENABLE,
   TX_PHROT_STAGES,
   TX_PHROT_CORNER,
-  TX_PHROT_REVERSE
+  TX_PHROT_REVERSE,
+  TX_MON_VOLUME
 };
 
 enum _dexp_choices {
@@ -238,6 +240,10 @@ static void spinbtn_cb(GtkWidget *widget, gpointer data) {
       if (radio_is_remote) {
         send_txmenu(cl_sock_tcp);
       }
+      break;
+    case TX_MON_VOLUME:
+      transmitter->audiomon_db = vi;
+      transmitter->audiomon_vol = pow(10.0, 0.05*v);
       break;
     }
   } else if (d == CFCFREQ) {
@@ -673,10 +679,15 @@ void tx_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(tx_grid), btn, col, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(chkbtn_cb), GINT_TO_POINTER(TX_FM_EMP));
   col++;
-  btn = gtk_check_button_new_with_label("TX Audio Monitor");
+  btn = gtk_check_button_new_with_label("TX Monitor, dB:");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), transmitter->audiomonitor);
-  gtk_grid_attach(GTK_GRID(tx_grid), btn, col, row, 2, 1);
+  gtk_grid_attach(GTK_GRID(tx_grid), btn, col, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(chkbtn_cb), GINT_TO_POINTER(TX_AUDIO_MON));
+  col++;
+  btn = gtk_spin_button_new_with_range(-45.0, 0.0, 1.0);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), (double)transmitter->audiomon_db);
+  gtk_grid_attach(GTK_GRID(tx_grid), btn, col, row, 1, 1);
+  g_signal_connect(btn, "value_changed", G_CALLBACK(spinbtn_cb), GINT_TO_POINTER(TX_MON_VOLUME));
   row++;
   col = 0;
   label = gtk_label_new("Max Digi Drv");

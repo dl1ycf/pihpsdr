@@ -335,6 +335,7 @@ void tx_save_state(const TRANSMITTER *tx) {
   SetPropI1("transmitter.%d.panadapter_hide_noise_filled",        tx->id,    tx->panadapter_hide_noise_filled);
   SetPropI1("transmitter.%d.panadapter_peaks_in_passband_filled", tx->id,    tx->panadapter_peaks_in_passband_filled);
   SetPropI1("transmitter.%d.audiomonitor",                        tx->id,    tx->audiomonitor);
+  SetPropI1("transmitter.%d.audiomon_db",                         tx->id,    tx->audiomon_db);
   SetPropI1("transmitter.%d.local_audio",                         tx->id,    tx->local_audio);
   SetPropI1("transmitter.%d.add_hpsdr_mic_samples",               tx->id,    tx->add_hpsdr_mic_samples);
   SetPropS1("transmitter.%d.audio_name",                          tx->id,    tx->audio_name);
@@ -428,6 +429,7 @@ void tx_restore_state(TRANSMITTER *tx) {
   GetPropI1("transmitter.%d.local_microphone",                    tx->id,    tx->local_audio);
   GetPropS1("transmitter.%d.microphone_name",                     tx->id,    tx->audio_name);
   GetPropI1("transmitter.%d.audiomonitor",                        tx->id,    tx->audiomonitor);
+  GetPropI1("transmitter.%d.audiomon_db",                         tx->id,    tx->audiomon_db);
   GetPropI1("transmitter.%d.local_audio",                         tx->id,    tx->local_audio);
   GetPropI1("transmitter.%d.add_hpsdr_mic_samples",               tx->id,    tx->add_hpsdr_mic_samples);
   GetPropS1("transmitter.%d.audio_name",                          tx->id,    tx->audio_name);
@@ -1097,6 +1099,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->local_audio = 0;
   tx->add_hpsdr_mic_samples = 0;
   tx->audiomonitor = 0;
+  tx->audiomon_db = -12;
   tx->audio_flag = 0;
   g_mutex_init(&tx->audio_mutex);
   snprintf(tx->audio_name, sizeof(tx->audio_name), "%s", "NO AUDIO");
@@ -1188,6 +1191,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   //
   // allocate buffers
   //
+  tx->audiomon_vol = pow(10.0, 0.05*tx->audiomon_db);
   tx->mic_input_buffer = g_new(double, 2 * tx->buffer_size);
   tx->iq_output_buffer = g_new(double, 2 * tx->output_samples);
   tx->cw_sig_rf = g_new(double, tx->output_samples);
@@ -1874,11 +1878,9 @@ void tx_add_mic_sample(TRANSMITTER *tx, double mic_sample) {
   double tx_audio_sample = 0.0;
   if (can_tx_audio && transmitter->audiomonitor ) {
     //
-    // Apply volume setting of active receiver
+    // Apply volume as specified in the TX menu
     //
-    double vol = pow(10.0, 0.05 * active_receiver -> volume);
-    if (vol > 0.25) { vol = 0.25; }
-    tx_audio_sample = mic_sample * vol;
+    tx_audio_sample = mic_sample * tx->audiomon_vol;
     did_tx_audio = 1;
   }
   if (can_tx_audio && tx->tune && tx->swrtune && g_mutex_trylock(&tx->cw_ramp_mutex)) {
