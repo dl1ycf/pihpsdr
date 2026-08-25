@@ -134,8 +134,8 @@ static void setpk_cb(GtkWidget *widget, gpointer data) {
 int ps_calibration_timer(gpointer arg) {
   guint *timer = (guint *)arg;
   static int state = -1;
-  static int old5  = -1;
   static int old4  = -1;
+  static int count = 0;
   if (!transmitter->twotone || !transmitter->puresignal) {
     state = -1;
     *timer = 0;
@@ -146,7 +146,6 @@ int ps_calibration_timer(gpointer arg) {
     // Start two-tone experiment
     //
     state = 1;          // start with PS reset
-    old5 = -1;
   }
   int tx_att_min;
   int tx_att_max;
@@ -161,18 +160,23 @@ int ps_calibration_timer(gpointer arg) {
   }
   tx_ps_getinfo(transmitter);
   //
-  // newcal is set to 1 if we have a new calibration or a new feedback value
-  // TODO: consider setting newcal to 1 when it was zero upon the last 10
-  //       entries into this loop.
+  // newcal is set to 1 if we have a new feedback value or if the
+  // feedback value stayed constant for 10 entries. Having a new
+  // calibration is NOT a trigger for newcal, since it is possible
+  // to get a new calibration (psinfo[4] advances), but the
+  // psinfo[4] still correspondes to the level we had before we
+  // have updated tx attenuation. Such a situation then can
+  // lead to oscillations of the auto att value without finding
+  // the optimum. So now newcal is only triggered when the feedbk
+  // level changed, or when it stayed constant "really long".
   //
   int newcal = 0;
-  if (transmitter->psinfo[5] !=  old5) {
-    old5 = transmitter->psinfo[5];
-    newcal = 1;
-  }
-  if (transmitter->psinfo[4] > 0 && transmitter->psinfo[4] != old4) {
+  if (transmitter->psinfo[4] != old4 || count > 10) {
     old4 = transmitter->psinfo[4];
     newcal = 1;
+    count = 0;
+  } else {
+    count++;
   }
   if (transmitter->auto_on) {
     switch (state) {
@@ -180,7 +184,14 @@ int ps_calibration_timer(gpointer arg) {
       //
       // A value of 165 means 0.7 dB too strong
       // A value of 140 means 0.7 dB too weak
-      // So everything between 140 and 165 is accepted without changing the attenuation
+      // So everything between 140 and 165 is accepted without changing the attenuation to
+      // have some guard against too frequent re-adjustments.
+      //
+      // Increasing the drive slider slowly one sees that when a feedbk value of 166 is reached,
+      // the attenuation is increased by 1 dB and the feedbk value jumps down to 149,
+      // Decreasing the drive slider slowly one sees that whan a feedbk value of 139 is reached,
+      //the attenuation is decreased by 1 dB and the feedbk value jumps up to 156.
+      //
       //
       if (newcal && ((transmitter->psinfo[4] > 165 && transmitter->attenuation < tx_att_max) || (transmitter->psinfo[4] < 140
           && transmitter->attenuation > tx_att_min))) {
@@ -237,6 +248,10 @@ int ps_calibration_timer(gpointer arg) {
       tx_ps_resume(transmitter);
       break;
     }
+  } else {
+    // no tx attenuation: take care a new calibration sets in as soon
+    // as the "Auto" box is checked.
+    old4 = -1;
   }
   return G_SOURCE_CONTINUE;
 }
