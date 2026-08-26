@@ -76,13 +76,18 @@
  * with a sample packet received from a DDC
  */
 
-#define RXACTION_SKIP   0    // skip samples
-#define RXACTION_NORMAL 1    // deliver 238 samples to a receiver
-#define RXACTION_PS     2    // deliver 2*119 samples to PS engine
-#define RXACTION_DIV    3    // take 2*119 samples, mix them, deliver to a receiver
+// we only use DDC0-3
+#define MAX_DDC 4
 
-static int rxcase[MAX_DDC];
-static int rxid[MAX_DDC] = {0, 1, 0, 1}; // DDC0,1,2,3 mapped to RX0, RX1, RX0, RX1
+typedef enum _rxaction {
+  RXACTION_SKIP = 0,  // skip samples
+  RXACTION_RX1,       // take 238 samples, deliver to RX1
+  RXACTION_RX2,       // take 238 samples, deliver to RX2
+  RXACTION_PS,        // take 2*119 samples, deliver  to PS engine
+  RXACTION_DIV        // take 2*119 samples, mix them, deliver to DIVERSITY mixer
+} rxaction;
+
+static rxaction rxcase[MAX_DDC];
 
 int data_socket = -1;
 
@@ -242,15 +247,11 @@ static volatile int mic_count = 0;
 // periodically from  timer thread *and* asynchronously from everywhere else,
 // therefore we need to implement a critical section for each of these functions.
 //
-// A mutex for update_action_table is introduced such that rxcase[]
-// cannot be messed up.
-//
 
 static pthread_mutex_t rx_spec_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t tx_spec_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t hi_prio_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t general_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t action_mutex  = PTHREAD_MUTEX_INITIALIZER;
 
 static void new_protocol_high_priority(void);
 static void new_protocol_general(void);
@@ -300,12 +301,20 @@ void schedule_transmit_specific(void) {
 static void update_action_table(void) {
   ASSERT_SERVER();
   //
-  // Depending on the values of mox, puresignal, and diversity,
-  // determine the actions to be taken when a DDC packet arrives
+  // Depending on the values of mox, duplex, puresignal, and diversity,
+  // determine the actions to be taken when a DDC packet arrives.
+  // Here we must distinguish whether we have an "old" (use DDC0/1 for everything)
+  // or "new" (use DDC0/1 pair for DIVERSITY/PURESIGNAL, DDC2/3 for RX) radio.
   //
+  // This is called either when sending a RX specific packet (DDC settings changed)
+  // or a HighPrio packet
+  // Prevent the action table rxcased[] to be messed up by calling this
+  // concurrently from two threads.
+  //
+  static pthread_mutex_t action_mutex = PTHREAD_MUTEX_INITIALIZER;
   pthread_mutex_lock(&action_mutex);
   int flag = 0;
-  int xmit = radio_is_transmitting() | hpsdr_ptt; // store such that it cannot change while building the flag
+  int xmit = radio_is_transmitting() | hpsdr_ptt; // store locally such that it cannot change while building the flag
   //
   // newdev means: Use DDC2/3 for normal receive, otherwise (HERMES/HERMES2/G2E) use DDC0/1
   //
@@ -321,21 +330,20 @@ static void update_action_table(void) {
   // Note further, we do not use the diversity mixer upon transmitting.
   //
   // Therefore, the following 12 values for flag are possible:
-  // flag=     0   receive, olddev, no DIVERSITY:  use DDC0 for RX1, DDC1 for RX2
-  // flag=     1   receive , DIVERSITY, olddev:    use DDC0/1 pair for DIVERSITY (notreached)
-  // flag=   100   no DUPLEX, xmit, olddev:        skip samples
-  // flag=   110   no DUPLEX, PS, xmit, olddev:    use DDC0/1 pair for PS
-  // flag=  1000   receive, newdev, no DIVERSITY:  use DDC2 for RX1, DDC3 for RX2
-  // flag=  1001   receive, DIVERSITY, newdev:     use DDC0/1 pair for DIVERSITY
-  // flag=  1100   no DUPLEX, xmit, newdev:        skip samples
-  // flag=  1110   no DUPLEX, PS, xmit, newdev:    use DDC0/1 pair for PS
-  // flag= 10100   DUPLEX, xmit, olddev:           use DDC0 for RX1, DDC1 for RX2
-  // flag= 10110   DUPLEX, PS, xmit, olddev:       ignore DUPLEX and use DDC0/1 pair for PS
-  // flag= 11100   DUPLEX, xmit, newdev:           use DDC2 for RX1, DDC3 for RX2
-  // flag= 11110   DUPLEX, PS, xmit, newdev:       use DDC0/1 pair for PS, DDC2 for RX1, DDC3 for RX2
+  // flag=     0   OLD, receive, no DIVERSITY:      use DDC0 for RX1, DDC1 for RX2
+  // flag=     1   OLD, receive, DIVERSITY:         use DDC0/1 pair for DIVERSITY
+  // flag=   100   OLD, xmit, no DUPLEX:            skip samples
+  // flag=   110   OLD, xmit, DUPLEX:               use DDC0/1 pair for PS
+  // flag=  1000   NEW, receive, no DIVERSITY:      use DDC2 for RX1, DDC3 for RX2
+  // flag=  1001   NEW, receive, DIVERSITY:         use DDC0/1 pair for DIVERSITY
+  // flag=  1100   NEW, xmit, no DUPLEX:            skip samples
+  // flag=  1110   NEW, xmit, no DUPLEX, PS:        use DDC0/1 pair for PS
+  // flag= 10100   OLD, xmit, DUPLEX:               use DDC0 for RX1, DDC1 for RX2
+  // flag= 10110   OLD, xmit, DUPLEX, PS:           ignore DUPLEX and use DDC0/1 pair for PS
+  // flag= 11100   NEW, xmit, DUPLEX:               use DDC2 for RX1, DDC3 for RX2
+  // flag= 11110   NEW, xmit, DUPLEX, PS:           use DDC0/1 pair for PS, DDC2 for RX1, DDC3 for RX2
   //
   // Set up rxcase for each of the 12 cases
-  // note that rxid[i] can be left unspecified if rxcase[i] == RXACTION_SKIP
   //
   rxcase[0] = RXACTION_SKIP;
   rxcase[1] = RXACTION_SKIP;
@@ -344,12 +352,12 @@ static void update_action_table(void) {
   switch (flag) {
   case       0:                                                       // HERMES, RX, no DIVERSITY
   case   10100:                                                       // HERMES, TX, no PureSignal, DUPLEX
-    rxcase[0] = RXACTION_NORMAL;
+    rxcase[0] = RXACTION_RX1;
     if (receivers > 1) {
-      rxcase[1] = RXACTION_NORMAL;
+      rxcase[1] = RXACTION_RX2;
     }
     break;
-  case     1:                                                         // HERMES, RX, DIVERSITY (notreached)
+  case     1:                                                         // HERMES, RX, DIVERSITY
   case  1001:                                                         // ORION, RX, DIVERSITY
     rxcase[0] = RXACTION_DIV;
     break;
@@ -367,9 +375,9 @@ static void update_action_table(void) {
     __attribute__((fallthrough));
   case 1000:                                                          // ORION, RX, no DIVERSITY
   case 11100:                                                         // ORION, TX, no PureSignal, DUPLEX
-    rxcase[2] = RXACTION_NORMAL;
+    rxcase[2] = RXACTION_RX1;
     if (receivers > 1) {
-      rxcase[3] = RXACTION_NORMAL;
+      rxcase[3] = RXACTION_RX2;
     }
     break;
   default:
@@ -1255,7 +1263,7 @@ static void new_protocol_transmit_specific(void) {
   ASSERT_SERVER();
   unsigned char transmit_specific_buffer[60];
   int txvfo    = vfo_get_tx_vfo();    // VFO governing the TX frequency
-  int txmode   = vfo_get_tx_mode(); 
+  int txmode   = vfo_get_tx_mode();
   const BAND *txband = band_get_band(vfo[txvfo].band);
   memset(transmit_specific_buffer, 0, sizeof(transmit_specific_buffer));
   transmit_specific_buffer[0] = (tx_specific_sequence >> 24) & 0xFF;
@@ -2043,8 +2051,11 @@ static gpointer iq_thread(gpointer data) {
     switch (rxcase[ddc]) {
     case RXACTION_SKIP:
       break;
-    case RXACTION_NORMAL:
-      process_iq_data(buffer, receiver[rxid[ddc]]);
+    case RXACTION_RX1:
+      process_iq_data(buffer, receiver[0]);
+      break;
+    case RXACTION_RX2:
+      process_iq_data(buffer, receiver[1]);
       break;
     case RXACTION_PS:
       process_ps_iq_data(buffer);
@@ -2392,7 +2403,7 @@ static void process_mic_data(const unsigned char *buffer) {
   }
   micsamples_sequence = sequence + 1;
   b = 4;
-  for (i = 0; i < MIC_SAMPLES; i++) {
+  for (i = 0; i < 64; i++) {
     int16_t s = (buffer[b++] << 8);
     s |= (buffer[b++] & 0xFF);
     tx_add_mic_sample(transmitter, s * 0.00003051);
