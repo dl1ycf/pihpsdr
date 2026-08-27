@@ -196,11 +196,17 @@
 #define RADE_STAT_TO_Q(x)   (((x) - 4.0) / 8.0)
 
 //
-// Forgetting factor for the channel and covariance estimates, per modem
-// frame (120 ms). 0.08 gives roughly a 1.5 s time constant, which sits
-// under the fading rate we are trying to track.
+// The forgetting factor for the channel and covariance estimates comes
+// from the Averaging control in the Diversity menu, not from a constant
+// here. It was fixed at roughly 1.5 s to begin with, which turned out to
+// be far too short: at the pilot SNR a real signal delivers - swinging
+// between about -10 and +3 dB frame to frame - the resulting weight
+// swung with it and the movement itself degraded recovery.
 //
-#define RADE_ALPHA          0.08
+// The time constant that suits a given path is a judgement about how
+// fast it is fading, so it belongs to the operator.
+//
+#define RADE_FRAME_SECS     ((double)RADE_CORR_NMF / (double)RADE_CORR_FS)
 
 //
 // Decimator: taps per polyphase branch, and the low-pass corner. The
@@ -725,7 +731,7 @@ static void rade_mvdr_weight(double *wr, double *wi) {
 // Once locked, measure the channel on both arms at the tracked timing and
 // frequency, update the covariance of what is left over, and solve.
 //
-static int rade_track(double *wr, double *wi) {
+static int rade_track(double tau, double *wr, double *wi) {
   cplx pw[RADE_CORR_M];
   rade_pilot_at(lock_f, pw);
   //
@@ -803,9 +809,9 @@ static int rade_track(double *wr, double *wi) {
   if (++track_report >= 40) {
     track_report = 0;
     t_print("%s: tracking  pilot/floor %0.2f (drop below %0.1f)  f=%+0.1f Hz  "
-            "pilot %0.0f%% / %+0.1f dB  w=%+0.1f dB %+0.0f deg\n",
+            "pilot %0.0f%% / %+0.1f dB  w=%+0.1f dB %+0.0f deg  avg=%0.1fs\n",
             __func__, ratio, RADE_HOLD_RATIO, lock_f,
-            100.0 * rade_corr_quality, rade_corr_snr, div_gain, div_phase);
+            100.0 * rade_corr_quality, rade_corr_snr, div_gain, div_phase, tau);
   }
   //
   // h = correlation / pilot energy
@@ -834,7 +840,13 @@ static int rade_track(double *wr, double *wi) {
     sigpow += cabs2(cmul(h0, ref));
   }
 
-  double alpha = acc_valid ? RADE_ALPHA : 1.0;
+  //
+  // Per modem frame, from the operator's averaging time.
+  //
+  double alpha = 1.0 - exp(-RADE_FRAME_SECS / (tau > 0.05 ? tau : 0.05));
+
+  if (!acc_valid) { alpha = 1.0; }
+
   acc_valid = 1;
   acc_h0 = cadd(cscale(acc_h0, 1.0 - alpha), cscale(h0, alpha));
   acc_h1 = cadd(cscale(acc_h1, 1.0 - alpha), cscale(h1, alpha));
@@ -860,7 +872,8 @@ static int rade_track(double *wr, double *wi) {
 }
 
 int rade_corr_process(const float *arm0, const float *arm1, int n,
-                      int lsb, double offset_hz, double *wr, double *wi) {
+                      int lsb, double offset_hz, double tau,
+                      double *wr, double *wi) {
   if (!running) { return 0; }
 
   //
@@ -965,7 +978,7 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
       return 0;
     }
 
-    int ok = rade_track(wr, wi);
+    int ok = rade_track(tau, wr, wi);
 
     //
     // Advance whatever happened. The pilot moves on by exactly one modem

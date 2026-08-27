@@ -449,7 +449,7 @@ static void div_process_block(void) {
     double wr, wi;
 
     if (rade_corr_process(work0, work1, nfft, div_mode_is_lsb(ctx.mode),
-                          (double)ctx.offset, &wr, &wi)) {
+                          (double)ctx.offset, div_auto_tau, &wr, &wi)) {
       div_auto_coherence = rade_corr_quality;
       div_auto_holding = 0;
       div_apply_weight(wr, wi);
@@ -773,6 +773,8 @@ void diversity_auto_restore_state(void) {
   GetPropF0("diversity_auto_coherence_min",  div_auto_coherence_min);
 
   if (div_auto_tau < 0.1) { div_auto_tau = 0.1; }
+
+  if (div_auto_tau > 30.0) { div_auto_tau = 30.0; }
 
   if (div_auto_width < 10.0) { div_auto_width = 10.0; }
 }

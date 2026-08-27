@@ -472,10 +472,14 @@ void diversity_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), width_spin, 1, 10, 1, 1);
   g_signal_connect(width_spin, "value_changed", G_CALLBACK(width_cb), NULL);
   GtkWidget *tau_label = gtk_label_new("Averaging (s)");
+  gtk_widget_set_tooltip_text(tau_label,
+                              "Time constant for the gain/phase estimate. "
+                              "Longer is steadier but follows fading more slowly. "
+                              "RADE over an HF path usually wants several seconds.");
   gtk_widget_set_name(tau_label, "boldlabel");
   gtk_widget_set_halign(tau_label, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), tau_label, 0, 11, 1, 1);
-  tau_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.2, 10.0, 0.1);
+  tau_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.2, 30.0, 0.1);
   gtk_widget_set_size_request(tau_scale, 300, 25);
   gtk_range_set_value(GTK_RANGE(tau_scale), div_auto_tau);
   gtk_grid_attach(GTK_GRID(grid), tau_scale, 1, 11, 1, 1);

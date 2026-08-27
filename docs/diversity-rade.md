@@ -195,6 +195,42 @@ Fixing this also improved the synthetic interferer result from -26.5 dB
 to -36.8 dB, simply because tracking now runs on every frame instead of
 stalling after the first marginal one.
 
+## Averaging
+
+The time constant for the channel and covariance estimates comes from the
+**Averaging** control in the Diversity menu. It applies to both the
+wideband paths and the RADE V1 correlator, converted to a per-modem-frame
+forgetting factor for the latter.
+
+It was fixed at about 1.5 s to begin with, and that is far too short. At
+the pilot SNR a real signal delivers - swinging between roughly -10 and
++3 dB frame to frame - the weight swings with it, and the movement itself
+degrades recovery.
+
+Measured on a synthetic signal at that sort of pilot SNR, steady-state
+weight jitter against averaging time:
+
+| Averaging | Weight jitter (rms) |
+|---|---|
+| 1.5 s | 0.0309 |
+| 3 s | 0.0172 |
+| 6 s | 0.0106 |
+| 10 s | 0.0111 |
+| 20 s | 0.0138 |
+
+Three times less movement at 6 s than at 1.5 s. Past about 10 s it stops
+helping, because the estimate starts lagging the path instead of just
+smoothing the noise on it.
+
+The right value is a judgement about how fast a given path is fading, so
+it belongs to the operator rather than to a constant in the source. The
+slider now runs to 30 s; several seconds is a sensible starting point for
+RADE over HF.
+
+Note this is separate from the lock-hold smoothing, which is fixed at
+about 6 s and does a different job - deciding whether the pilot is still
+there at all, rather than tracking the channel.
+
 ## Known limits
 
 **Acquisition fails above roughly +15 dB interferer-to-pilot.** That is

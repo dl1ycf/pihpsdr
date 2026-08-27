@@ -73,14 +73,18 @@ extern void rade_corr_stop(void);
 extern void rade_corr_reset(void);
 
 //
-// Feed one block of n sample pairs at the DDC rate. lsb selects spectral
-// inversion for the lower-sideband case, offset_hz is vfo[0].offset.
+// Feed one block of n sample pairs at the DDC rate. lsb is only a hint
+// for the log - the spectral sense is detected, not assumed. offset_hz is
+// vfo[0].offset, and tau is the operator's averaging time in seconds,
+// which sets how fast the channel and covariance estimates follow the
+// path.
 //
 // Returns 1 when a new weight is available in *wr/*wi, in which case it
 // is expressed in the same sense as div_cos/div_sin, i.e. ready to be
 // applied as z0 + w*z1.
 //
 extern int rade_corr_process(const float *arm0, const float *arm1, int n,
-                             int lsb, double offset_hz, double *wr, double *wi);
+                             int lsb, double offset_hz, double tau,
+                             double *wr, double *wi);
 
 #endif
