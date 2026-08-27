@@ -42,16 +42,36 @@ sideband. USB and DIGU filters are positive, LSB and DIGL negative (see
 | USB, DIGU | +750 .. +2200 Hz |
 | LSB, DIGL | -2200 .. -750 Hz |
 
-For the pilot correlator, LSB additionally means the received baseband is
-spectrally **mirrored**, and a mirrored spectrum will not correlate against
-the pilot at all. Both arms are therefore conjugated before the decimator.
-That also conjugates both channel responses, so the resulting weight comes
-out conjugated and is conjugated back before it is returned - done in one
-place, at the end of `rade_mvdr_weight()`.
+### The correlator measures the sense rather than deriving it
 
-Order matters in the front end: shift into the tuned frame first, *then*
-mirror. `conj(z*exp(jt))` is not `conj(z)*exp(jt)`, so conjugating first
-inverts the sense of the CTUN offset correction.
+The first version derived the correlator's spectral sense from the mode
+too, conjugating the input for LSB. **It never acquired on air**, against
+a signal RADE itself was decoding at 10 dB SNR.
+
+The convention relating the raw DDC stream to the frame WDSP works in
+after `xshift()` is genuinely hard to pin down by reading the code: the
+direction implied by `xshift()` multiplying by `exp(+j*2*pi*offset*t)` and
+the direction implied by the signs of the USB and LSB filter edges do not
+agree, and I could not resolve which premise was wrong. Guessing is
+silent - the correlator looks at the mirror image and finds nothing, for
+ever, with no indication of why.
+
+So it is no longer derived. Correlating a mirrored stream against the
+pilot is identical to correlating the original stream against a *mirrored
+pilot*, and `conj(p)` is exactly the pilot with its carriers reflected
+about zero. Acquisition searches both pilot banks over the same decimated
+stream and keeps whichever correlates, at twice the acquisition cost and
+no extra front end.
+
+That removes conjugation from the sample path altogether, so there is no
+longer a weight to conjugate back: whichever bank wins, `h0` and `h1`
+describe the real untouched arms and the MVDR solution applies directly.
+
+The detected sense is shown in the status line ("normal spectrum" /
+"mirrored spectrum") alongside what the mode says, which is the only way
+we get to learn what the convention actually is. The stage 1 window still
+uses the mode, so if those two ever disagree on air, stage 1's window is
+the thing that is wrong.
 
 ## Stage 1: RADE passband
 
@@ -149,6 +169,17 @@ tracking perfectly. It is the share of pilot-span energy the pilot itself
 accounts for, which is genuinely small when something loud is sitting on
 top of it. Watch the LOCK indicator, not that number.
 
-**Untested on air.** Everything above is synthetic. The acquisition
-thresholds and the 32-pass integration are the parameters most likely to
-need adjusting against real signals.
+**The frequency search covers +/-50 Hz**, matching RADE's own
+acquisition. An earlier +/-25 Hz was another way to find nothing if the
+operator is slightly off frequency.
+
+**Acquisition logs its progress** once per completed integration set
+(about 4 s), reporting the statistic for both pilot banks, the threshold,
+the best frequency, and the decimated signal RMS:
+
+```
+rade_acquire: acq normal=2.31 mirrored=7.44 best=7.44 (need 6.0) f=+0.0 rms=1.2e-03 mode=USB
+```
+
+An RMS near zero means nothing is reaching the correlator at all, which is
+a different problem from failing to correlate.

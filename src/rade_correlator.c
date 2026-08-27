@@ -46,40 +46,50 @@
 //   h0, h1  and the residual covariance Rnn  ->  MVDR weight
 //
 // ----------------------------------------------------------------------
-// Sideband
+// Sideband, and why it is measured rather than derived
 // ----------------------------------------------------------------------
 //
-// RADE is received through an SSB passband. In the shifted frame,
-// positive frequency is above the suppressed carrier - the same sense in
-// which piHPSDR's filter edges are expressed (USB filters are positive,
-// LSB filters negative, see filterUSB/filterLSB in filter.c). So on USB
-// the modem sits at +750..+2200 Hz, and on LSB it is mirrored down to
-// -2200..-750 Hz.
+// RADE is received through an SSB passband, so the modem occupies
+// 750..2200 Hz on one side of the tuned carrier and the mirror image of
+// that on the other. Which way round depends on the sideband in use.
 //
-// A mirrored spectrum will not correlate against the pilot at all, so for
-// LSB we conjugate both arms before the decimator, which flips the
-// spectrum and puts the modem back at +750..+2200.
+// An earlier version of this decided that from vfo[].mode and conjugated
+// the input for the lower-sideband modes. It never acquired on air. The
+// convention relating the raw DDC stream to the frame WDSP works in
+// after xshift() is genuinely difficult to pin down by reading: the
+// direction implied by xshift() and the direction implied by the sign of
+// the USB and LSB filter edges do not agree, and guessing wrong is
+// completely silent - the correlator simply looks at the mirror image of
+// the signal and finds nothing, for ever.
 //
-// Conjugating both arms also conjugates both channel responses, so the
-// weight comes out conjugated too: in the conjugated domain z1' =
-// conj(h)*z0', and the MVDR solution there is the conjugate of the one we
-// need. rade_corr_process() therefore conjugates the weight back before
-// returning it. Getting this wrong is silent - the combiner would steer
-// to the mirror image of the right answer - so it is done in exactly one
-// place, at the end of rade_mvdr_weight().
+// So it is no longer derived. Correlating a mirrored stream against the
+// pilot is the same as correlating the original stream against a
+// *mirrored pilot*, and conj(p) is exactly the pilot with its carriers
+// reflected about zero. Acquisition therefore searches both pilot banks
+// over the same decimated stream and keeps whichever actually correlates,
+// at twice the acquisition cost and no extra front end.
+//
+// That also removes the conjugation from the sample path entirely, so
+// there is no longer a weight to conjugate back: the channel estimates
+// come from the real, untouched arms whichever bank wins, and the MVDR
+// solution applies to them directly.
+//
+// The detected sense is reported in the UI, which is the only way we get
+// to find out what the convention actually is.
 //
 
 //
-// Acquisition search. The operator has already tuned the signal, so a
-// +/-25 Hz coarse range is plenty; RADE's own acquisition searches +/-50
-// because it has to find the signal cold. Timing is searched on a coarse
-// grid first and then refined, which is what keeps this affordable: a
-// full 960-position by 40-frequency search costs 12 M complex MACs per
-// attempt, and we would be doing it several times a second.
+// Acquisition search. This matches the +/-50 Hz that RADE's own
+// acquisition covers: a first version searched only +/-25 Hz on the
+// grounds that the operator has already tuned the signal, which is one
+// more way to silently find nothing if they are a little off frequency.
+// Timing is searched on a coarse grid and then refined, which is what
+// keeps this affordable - a full 960-position search at every frequency
+// would cost tens of millions of complex MACs per attempt.
 //
-#define RADE_ACQ_FRANGE     50.0    // Hz, total span
+#define RADE_ACQ_FRANGE     100.0   // Hz, total span
 #define RADE_ACQ_FSTEP      5.0     // Hz
-#define RADE_ACQ_NFREQ      11
+#define RADE_ACQ_NFREQ      21
 #define RADE_ACQ_TSTEP      4       // coarse timing step, samples
 #define RADE_ACQ_TREFINE    4       // +/- refinement around the coarse peak
 
@@ -178,6 +188,7 @@ int    rade_corr_locked   = 0;
 double rade_corr_freq_off = 0.0;
 double rade_corr_snr      = 0.0;
 double rade_corr_quality  = 0.0;
+int    rade_corr_mirrored = 0;
 
 typedef struct {
   double re, im;
@@ -208,7 +219,12 @@ static int    ringw = 0;             // write index, samples
 static long   ringtotal = 0;         // total samples ever written
 
 static cplx   pilot[RADE_CORR_M];            // time domain pilot, no CP
-static cplx   pilot_w[RADE_ACQ_NFREQ][RADE_CORR_M];
+//
+// Two banks: the pilot as transmitted, and its mirror image. conj(p)
+// reflects every carrier about zero, so bank 1 finds the signal when the
+// baseband turns out to run the other way.
+//
+static cplx   pilot_w[2][RADE_ACQ_NFREQ][RADE_CORR_M];
 static double acq_freq[RADE_ACQ_NFREQ];
 static double pilot_energy = 0.0;
 
@@ -223,8 +239,9 @@ static long   next_process = 0;      // ringtotal at which to look again
 
 #define RADE_ACQ_NCELL  (RADE_CORR_NMF / RADE_ACQ_TSTEP)
 
-static double acq_grid[RADE_ACQ_NCELL][RADE_ACQ_NFREQ];
+static double acq_grid[2][RADE_ACQ_NCELL][RADE_ACQ_NFREQ];
 static int    acq_passes = 0;
+static int    lock_bank = 0;      // which pilot bank actually correlates
 
 static cplx   acc_h0, acc_h1;
 static cplx   acc_r01;
@@ -287,7 +304,8 @@ static void rade_corr_make_pilot(void) {
 
     for (int n = 0; n < RADE_CORR_M; n++) {
       cplx rot = cset(cos(w * n), sin(w * n));
-      pilot_w[f][n] = cmul(pilot[n], rot);
+      pilot_w[0][f][n] = cmul(pilot[n], rot);
+      pilot_w[1][f][n] = cmul(cconj(pilot[n]), rot);
     }
   }
 }
@@ -371,6 +389,7 @@ void rade_corr_reset(void) {
   lock_count = 0;
   drop_count = 0;
   lock_a = 0;
+  lock_bank = 0;
   lock_f = 0.0;
   acc_h0 = acc_h1 = cset(0.0, 0.0);
   acc_r01 = cset(0.0, 0.0);
@@ -418,7 +437,7 @@ static cplx rade_correlate(const float *r, long a, const cplx *pw) {
 //
 // Coarse then fine search for the pilot on arm 0.
 //
-static int rade_acquire(void) {
+static int rade_acquire(int lsb_hint) {
   long best_a = 0;
   int best_f = 0;
   //
@@ -440,17 +459,18 @@ static int rade_acquire(void) {
 
     if (a - RADE_CORR_NMF < 0 || ringtotal - (a - RADE_CORR_NMF) > RADE_RING) { continue; }
 
-    for (int f = 0; f < RADE_ACQ_NFREQ; f++) {
-      cplx d1 = rade_correlate(ring0, a, pilot_w[f]);
-      cplx d2 = rade_correlate(ring0, a - RADE_CORR_NMF, pilot_w[f]);
-      //
-      // Two consecutive pilots must both be present. Summing the
-      // magnitudes rather than the complex values keeps this insensitive
-      // to the phase rotation between frames, and lets passes accumulate
-      // without knowing the frequency offset exactly.
-      //
-      double m = sqrt(cabs2(d1)) + sqrt(cabs2(d2));
-      acq_grid[cell][f] += m;
+    for (int bank = 0; bank < 2; bank++) {
+      for (int f = 0; f < RADE_ACQ_NFREQ; f++) {
+        cplx d1 = rade_correlate(ring0, a, pilot_w[bank][f]);
+        cplx d2 = rade_correlate(ring0, a - RADE_CORR_NMF, pilot_w[bank][f]);
+        //
+        // Two consecutive pilots must both be present. Summing the
+        // magnitudes rather than the complex values keeps this insensitive
+        // to the phase rotation between frames, and lets passes accumulate
+        // without knowing the frequency offset exactly.
+        //
+        acq_grid[bank][cell][f] += sqrt(cabs2(d1)) + sqrt(cabs2(d2));
+      }
     }
   }
 
@@ -479,47 +499,72 @@ static int rade_acquire(void) {
   //
   const int guard = RADE_FLOOR_GUARD / RADE_ACQ_TSTEP;
   double stat = 0.0;
+  double stat_bank[2] = { 0.0, 0.0 };
+  int best_bank = 0;
 
-  for (int f = 0; f < RADE_ACQ_NFREQ; f++) {
-    int pk = 0;
+  for (int bank = 0; bank < 2; bank++) {
+    for (int f = 0; f < RADE_ACQ_NFREQ; f++) {
+      int pk = 0;
 
-    for (int cell = 1; cell < RADE_ACQ_NCELL; cell++) {
-      if (acq_grid[cell][f] > acq_grid[pk][f]) { pk = cell; }
-    }
+      for (int cell = 1; cell < RADE_ACQ_NCELL; cell++) {
+        if (acq_grid[bank][cell][f] > acq_grid[bank][pk][f]) { pk = cell; }
+      }
 
-    double sum = 0.0, sum2 = 0.0;
-    long n = 0;
+      double sum = 0.0, sum2 = 0.0;
+      long n = 0;
 
-    for (int cell = 0; cell < RADE_ACQ_NCELL; cell++) {
-      int d = cell - pk;
+      for (int cell = 0; cell < RADE_ACQ_NCELL; cell++) {
+        int d = cell - pk;
 
-      if (d < 0) { d = -d; }
+        if (d < 0) { d = -d; }
 
-      if (d > RADE_ACQ_NCELL / 2) { d = RADE_ACQ_NCELL - d; }
+        if (d > RADE_ACQ_NCELL / 2) { d = RADE_ACQ_NCELL - d; }
 
-      if (d <= guard) { continue; }
+        if (d <= guard) { continue; }
 
-      sum  += acq_grid[cell][f];
-      sum2 += acq_grid[cell][f] * acq_grid[cell][f];
-      n++;
-    }
+        sum  += acq_grid[bank][cell][f];
+        sum2 += acq_grid[bank][cell][f] * acq_grid[bank][cell][f];
+        n++;
+      }
 
-    if (n < 2) { continue; }
+      if (n < 2) { continue; }
 
-    double mean = sum / (double)n;
-    double var = sum2 / (double)n - mean * mean;
-    double sd = (var > 0.0) ? sqrt(var) : 0.0;
+      double mean = sum / (double)n;
+      double var = sum2 / (double)n - mean * mean;
+      double sd = (var > 0.0) ? sqrt(var) : 0.0;
 
-    if (sd <= 1e-20) { continue; }
+      if (sd <= 1e-20) { continue; }
 
-    double sf = (acq_grid[pk][f] - mean) / sd;
+      double sf = (acq_grid[bank][pk][f] - mean) / sd;
 
-    if (sf > stat) {
-      stat = sf;
-      best_f = f;
-      best_a = limit - ((limit - (long)pk * RADE_ACQ_TSTEP) % RADE_CORR_NMF);
+      if (sf > stat_bank[bank]) { stat_bank[bank] = sf; }
+
+      if (sf > stat) {
+        stat = sf;
+        best_bank = bank;
+        best_f = f;
+        best_a = limit - ((limit - (long)pk * RADE_ACQ_TSTEP) % RADE_CORR_NMF);
+      }
     }
   }
+
+  //
+  // Always report both banks. If neither ever rises, the signal is not
+  // reaching the correlator at all; if one is clearly better but still
+  // under threshold, the search is on the right track and the thresholds
+  // or the integration are what need attention.
+  //
+  double rms = 0.0;
+
+  for (int k = 0; k < RADE_CORR_NMF; k++) {
+    rms += cabs2(ring_get(ring0, ringtotal - 1 - k));
+  }
+
+  rms = sqrt(rms / (double)RADE_CORR_NMF);
+  t_print("%s: acq normal=%0.2f mirrored=%0.2f best=%0.2f (need %0.1f) "
+          "f=%+0.1f rms=%0.2e %s\n",
+          __func__, stat_bank[0], stat_bank[1], stat, RADE_LOCK_SIGMA,
+          acq_freq[best_f], rms, lsb_hint ? "mode=LSB" : "mode=USB");
 
 #ifdef RADE_DEBUG_STAT
   t_print("ACQ: stat=%.2f f=%0.1f\n", stat, acq_freq[best_f]);
@@ -551,7 +596,7 @@ static int rade_acquire(void) {
   for (long a = best_a - RADE_ACQ_TREFINE; a <= best_a + RADE_ACQ_TREFINE; a++) {
     if (a < 0 || a + RADE_CORR_M > ringtotal || ringtotal - a > RADE_RING) { continue; }
 
-    double m = cabs2(rade_correlate(ring0, a, pilot_w[best_f]));
+    double m = cabs2(rade_correlate(ring0, a, pilot_w[best_bank][best_f]));
 
     if (m > fine_best) {
       fine_best = m;
@@ -566,6 +611,8 @@ static int rade_acquire(void) {
   if (++lock_count < RADE_LOCK_FRAMES) { return 0; }
 
   lock_a = best_a;
+  lock_bank = best_bank;
+  rade_corr_mirrored = best_bank;
   lock_f = acq_freq[best_f];
   rade_corr_freq_off = lock_f;
   drop_count = 0;
@@ -581,7 +628,8 @@ static void rade_pilot_at(double f, cplx *out) {
 
   for (int n = 0; n < RADE_CORR_M; n++) {
     cplx rot = cset(cos(w * n), sin(w * n));
-    out[n] = cmul(pilot[n], rot);
+    cplx p = (lock_bank == 0) ? pilot[n] : cconj(pilot[n]);
+    out[n] = cmul(p, rot);
   }
 }
 
@@ -600,7 +648,7 @@ static void rade_pilot_at(double f, cplx *out) {
 // gracefully to the same thing the wideband "Sum" mode does when there is
 // no correlated interference to null.
 //
-static void rade_mvdr_weight(int lsb, double *wr, double *wi) {
+static void rade_mvdr_weight(double *wr, double *wi) {
   cplx r01 = acc_r01;
   double r00 = acc_r00;
   double r11 = acc_r11;
@@ -625,16 +673,13 @@ static void rade_mvdr_weight(int lsb, double *wr, double *wi) {
   //
   // num/den, then conjugate for the g^H combining sense.
   //
+  //
+  // num/den, then conjugate for the g^H combining sense. No sideband
+  // correction: the samples were never conjugated, so whichever pilot
+  // bank won, h0 and h1 describe the real arms directly.
+  //
   cplx q = cscale(cmul(num, cconj(den)), 1.0 / d2);
   q = cconj(q);
-
-  //
-  // On LSB both arms were conjugated ahead of the correlator, which
-  // conjugates the answer as well. Undo that here - the single place
-  // where the sideband sense re-enters.
-  //
-  if (lsb) { q = cconj(q); }
-
   *wr = q.re;
   *wi = q.im;
 }
@@ -643,7 +688,7 @@ static void rade_mvdr_weight(int lsb, double *wr, double *wi) {
 // Once locked, measure the channel on both arms at the tracked timing and
 // frequency, update the covariance of what is left over, and solve.
 //
-static int rade_track(int lsb, double *wr, double *wi) {
+static int rade_track(double *wr, double *wi) {
   cplx pw[RADE_CORR_M];
   rade_pilot_at(lock_f, pw);
   //
@@ -769,7 +814,7 @@ static int rade_track(int lsb, double *wr, double *wi) {
     rade_corr_quality = acc_sig / (acc_sig + acc_r00);
   }
 
-  rade_mvdr_weight(lsb, wr, wi);
+  rade_mvdr_weight(wr, wi);
   return 1;
 }
 
@@ -789,19 +834,12 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
     double i0 = arm0[2 * i], q0 = arm0[2 * i + 1];
     double i1 = arm1[2 * i], q1 = arm1[2 * i + 1];
     //
-    // Shift into the frame where the tuned carrier sits at zero, and only
-    // then mirror for the lower sideband. The order matters:
-    // conj(z*exp(j*t)) is not conj(z)*exp(j*t), so conjugating first
-    // would invert the sense of the offset correction.
+    // Shift into the frame where the tuned carrier sits at zero. Nothing
+    // else: the spectral sense is handled by choosing a pilot bank, not
+    // by touching the samples.
     //
     double r0 = i0 * c - q0 * s, m0 = i0 * s + q0 * c;
     double r1 = i1 * c - q1 * s, m1 = i1 * s + q1 * c;
-
-    if (lsb) {
-      m0 = -m0;
-      m1 = -m1;
-    }
-
     dline0[2 * dpos    ] = (float)r0;
     dline0[2 * dpos + 1] = (float)m0;
     dline1[2 * dpos    ] = (float)r1;
@@ -860,11 +898,12 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
 
     next_process = ringtotal + RADE_CORR_NMF;
 
-    if (!rade_acquire()) { return 0; }
+    if (!rade_acquire(lsb)) { return 0; }
 
     rade_corr_locked = 1;
-    t_print("%s: RADE pilot lock, a=%ld f=%0.1f Hz q=%0.2f %s\n",
-            __func__, lock_a, lock_f, rade_corr_quality, lsb ? "LSB" : "USB");
+    t_print("%s: RADE pilot LOCK  bank=%s  a=%ld  f=%+0.1f Hz  (mode says %s)\n",
+            __func__, lock_bank ? "mirrored" : "normal", lock_a, lock_f,
+            lsb ? "LSB" : "USB");
   }
 
   //
@@ -885,7 +924,7 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
       return 0;
     }
 
-    if (!rade_track(lsb, wr, wi)) { return 0; }
+    if (!rade_track(wr, wi)) { return 0; }
 
     updated = 1;
     lock_a += RADE_CORR_NMF;

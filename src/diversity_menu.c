@@ -231,7 +231,9 @@ static int status_update_cb(gpointer data) {
     snprintf(text, sizeof(text), "Auto off");
   } else if (div_auto_ref == DIV_REF_RADE_V1) {
     if (!rade_corr_locked) {
-      snprintf(text, sizeof(text), "RADE V1: searching for pilot   (%s)", div_mode_lsb_text());
+      snprintf(text, sizeof(text),
+               "RADE V1: searching for pilot   (mode %s) - see log for correlation",
+               div_mode_lsb_text());
     } else {
       //
       // "pilot" is the share of the energy in the pilot span that the
@@ -240,8 +242,9 @@ static int status_update_cb(gpointer data) {
       // situation this mode exists for. Lock state is the thing to watch.
       //
       snprintf(text, sizeof(text),
-               "RADE V1 LOCK (%s)   pilot %3.0f%% / %+0.1f dB   %+0.1f Hz   %+0.1f dB %+0.0f deg",
-               div_mode_lsb_text(), 100.0 * rade_corr_quality, rade_corr_snr,
+               "RADE V1 LOCK  %s spectrum (mode %s)   pilot %3.0f%% / %+0.1f dB   %+0.1f Hz   %+0.1f dB %+0.0f deg",
+               rade_corr_mirrored ? "mirrored" : "normal", div_mode_lsb_text(),
+               100.0 * rade_corr_quality, rade_corr_snr,
                rade_corr_freq_off, div_gain, div_phase);
     }
   } else if (div_auto_ref == DIV_REF_RADE_BAND) {

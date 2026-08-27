@@ -62,6 +62,7 @@ extern int    rade_corr_locked;      // pilot acquired and tracking
 extern double rade_corr_freq_off;    // Hz, carrier frequency offset
 extern double rade_corr_snr;         // dB, pilot SNR estimate
 extern double rade_corr_quality;     // 0..1, normalised pilot correlation
+extern int    rade_corr_mirrored;    // which spectral sense actually correlated
 
 //
 // ddc_rate must divide RADE_CORR_FS exactly (48k/96k/192k/384k all do).
