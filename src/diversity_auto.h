@@ -50,8 +50,16 @@ enum {
 //
 enum {
   DIV_REF_BAND = 0,   // all bins in the analysis window ("A")
-  DIV_REF_CARRIER     // the carrier bin only, located by the SAM PLL ("B")
+  DIV_REF_CARRIER,    // the carrier bin only, located by the SAM PLL ("B")
+  DIV_REF_RADE_BAND,  // window auto-placed on the FreeDV RADE passband
+  DIV_REF_RADE_V1     // RADE V1 pilot correlation + MVDR
 };
+
+//
+// True for the reference modes that place themselves on the RADE
+// passband, which follows the sideband in use.
+//
+#define DIV_REF_IS_RADE(r)  ((r) == DIV_REF_RADE_BAND || (r) == DIV_REF_RADE_V1)
 
 extern int    div_auto_mode;
 extern int    div_auto_ref;

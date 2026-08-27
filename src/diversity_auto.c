@@ -26,6 +26,7 @@
 #include "mode.h"
 #include "property.h"
 #include "radio.h"
+#include "rade_correlator.h"
 #include "receiver.h"
 #include "vfo.h"
 
@@ -205,6 +206,7 @@ void diversity_auto_reset(void) {
   // the accumulators, so zeroing them can at worst cost one block.
   //
   div_reset_stats();
+  rade_corr_reset();
 }
 
 //
@@ -233,6 +235,17 @@ static void div_make_window(void) {
     double x = 2.0 * M_PI * (double)i / (double)nfft;
     window[i] = (float)(a0 - a1 * cos(x) + a2 * cos(2.0 * x) - a3 * cos(3.0 * x));
   }
+}
+
+//
+// RADE arrives through an SSB passband, so which side of the tuned
+// frequency it sits on depends on the mode: LSB/DIGL put it below,
+// USB/DIGU above. Below 10 MHz LSB is the usual choice, but that is a
+// convention and not a rule, so we follow the mode actually in use
+// rather than guessing from the frequency.
+//
+static int div_mode_is_lsb(int mode) {
+  return (mode == modeLSB || mode == modeDIGL || mode == modeCWL);
 }
 
 //
@@ -292,6 +305,20 @@ static int div_bin_range(const struct div_context *ctx, int *klo, int *khi) {
     div_auto_carrier_valid = 1;
     flo = div_auto_carrier - DIV_CARRIER_BINS * binhz;
     fhi = div_auto_carrier + DIV_CARRIER_BINS * binhz;
+  } else if (DIV_REF_IS_RADE(ctx->ref)) {
+    //
+    // The RADE modem occupies 750..2200 Hz of audio. Mirror it below the
+    // carrier for the lower-sideband modes; positive frequency in this
+    // frame is the upper sideband, the same sense in which piHPSDR's
+    // filter edges are expressed.
+    //
+    if (div_mode_is_lsb(ctx->mode)) {
+      flo = -RADE_CORR_FHI;
+      fhi = -RADE_CORR_FLO;
+    } else {
+      flo = RADE_CORR_FLO;
+      fhi = RADE_CORR_FHI;
+    }
   } else if (ctx->follow) {
     //
     // Method A following the operator's filter.
@@ -390,7 +417,30 @@ static void div_process_block(void) {
     // different measurement.
     //
     div_reset_stats();
+    rade_corr_reset();
     lastctx = ctx;
+  }
+
+  if (ctx.ref == DIV_REF_RADE_V1) {
+    //
+    // Pilot-correlating path. This one does not use the FFT at all: it
+    // downconverts to the 8 kHz modem rate and correlates against the
+    // known RADE V1 pilot, which separates the wanted signal from noise
+    // and QRM well enough to estimate the two separately.
+    //
+    double wr, wi;
+
+    if (rade_corr_process(work0, work1, nfft, div_mode_is_lsb(ctx.mode),
+                          (double)ctx.offset, &wr, &wi)) {
+      div_auto_coherence = rade_corr_quality;
+      div_auto_holding = 0;
+      div_apply_weight(wr, wi);
+    } else {
+      div_auto_coherence = rade_corr_quality;
+      div_auto_holding = 1;
+    }
+
+    return;
   }
 
   if (!div_bin_range(&ctx, &klo, &khi)) {
@@ -587,6 +637,19 @@ void diversity_auto_start(void) {
   div_get_context(&lastctx);
   t_print("%s: nfft=%d bin=%0.2f Hz block=%0.1f ms rate=%d\n", __func__,
           nfft, binhz, 1000.0 * blocktime, receiver[0]->sample_rate);
+  if (div_auto_ref == DIV_REF_RADE_V1) {
+    if (!rade_corr_start(receiver[0]->sample_rate)) {
+      //
+      // The correlator needs a DDC rate that is a whole multiple of the
+      // 8 kHz modem rate. Every rate piHPSDR offers satisfies that, but
+      // fall back to the wideband RADE window rather than silently doing
+      // nothing if that ever stops being true.
+      //
+      t_print("%s: falling back to DIV_REF_RADE_BAND\n", __func__);
+      div_auto_ref = DIV_REF_RADE_BAND;
+    }
+  }
+
   worker = g_thread_new("div_auto", div_worker_thread, NULL);
   //
   // Set last: the sample path tests this without any lock.
@@ -618,6 +681,7 @@ void diversity_auto_stop(void) {
     have_plans = 0;
   }
 
+  rade_corr_stop();
   //
   // The sample and FFT buffers are deliberately not freed here; see the
   // note in diversity_auto_start().

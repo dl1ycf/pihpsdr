@@ -512,6 +512,7 @@ src/protocols.c \
 src/ps_menu.c \
 src/radio.c \
 src/radio_menu.c \
+src/rade_correlator.c \
 src/receiver.c \
 src/rigctl.c \
 src/rigctl_menu.c \
@@ -614,6 +615,7 @@ src/protocols.o \
 src/ps_menu.o \
 src/radio.o \
 src/radio_menu.o \
+src/rade_correlator.o \
 src/receiver.o \
 src/rigctl.o \
 src/rigctl_menu.o \

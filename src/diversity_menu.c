@@ -25,7 +25,9 @@
 #include "message.h"
 #include "new_menu.h"
 #include "radio.h"
+#include "rade_correlator.h"
 #include "receiver.h"
+#include "vfo.h"
 
 static GtkWidget *dialog = NULL;
 static GtkWidget *gain_coarse_scale = NULL;
@@ -142,6 +144,16 @@ static void phase_fine_changed_cb(GtkWidget *widget, gpointer data) {
 
 
 //
+// Which sideband the RADE window has placed itself on, for the status
+// line. Worth showing: if this reads the wrong way round the correlator
+// is looking at the mirror image of the signal and will never lock.
+//
+static const char *div_mode_lsb_text(void) {
+  int m = vfo[0].mode;
+  return (m == modeLSB || m == modeDIGL || m == modeCWL) ? "LSB" : "USB";
+}
+
+//
 // Manual gain/phase only make sense while the automatic loop is not
 // driving them, so they are greyed out when it is.
 //
@@ -156,9 +168,18 @@ static void update_manual_sensitivity(void) {
 
   if (phase_fine_scale)   { gtk_widget_set_sensitive(phase_fine_scale, manual); }
 
-  if (centre_spin) { gtk_widget_set_sensitive(centre_spin, !div_auto_follow_filter); }
+  //
+  // The RADE and SAM-carrier references place their own window, so the
+  // manual placement controls do not apply to them.
+  //
+  gboolean placed = (div_auto_ref == DIV_REF_BAND);
+  gboolean manual_window = placed && !div_auto_follow_filter;
 
-  if (width_spin)  { gtk_widget_set_sensitive(width_spin,  !div_auto_follow_filter); }
+  if (follow_b)    { gtk_widget_set_sensitive(follow_b, placed); }
+
+  if (centre_spin) { gtk_widget_set_sensitive(centre_spin, manual_window); }
+
+  if (width_spin)  { gtk_widget_set_sensitive(width_spin,  manual_window); }
 }
 
 //
@@ -208,6 +229,25 @@ static int status_update_cb(gpointer data) {
 
   if (!div_auto_running) {
     snprintf(text, sizeof(text), "Auto off");
+  } else if (div_auto_ref == DIV_REF_RADE_V1) {
+    if (!rade_corr_locked) {
+      snprintf(text, sizeof(text), "RADE V1: searching for pilot   (%s)", div_mode_lsb_text());
+    } else {
+      //
+      // "pilot" is the share of the energy in the pilot span that the
+      // pilot itself accounts for, so it reads low under strong QRM even
+      // though the correlator is tracking perfectly well - which is the
+      // situation this mode exists for. Lock state is the thing to watch.
+      //
+      snprintf(text, sizeof(text),
+               "RADE V1 LOCK (%s)   pilot %3.0f%% / %+0.1f dB   %+0.1f Hz   %+0.1f dB %+0.0f deg",
+               div_mode_lsb_text(), 100.0 * rade_corr_quality, rade_corr_snr,
+               rade_corr_freq_off, div_gain, div_phase);
+    }
+  } else if (div_auto_ref == DIV_REF_RADE_BAND) {
+    snprintf(text, sizeof(text), "RADE %s   coherence %3.0f%%   %s   %+0.1f dB %+0.0f deg",
+             div_mode_lsb_text(), 100.0 * div_auto_coherence,
+             div_auto_holding ? "HOLD" : "track", div_gain, div_phase);
   } else if (div_auto_ref == DIV_REF_CARRIER && !div_auto_carrier_valid) {
     //
     // The SAM PLL is only run in SAM; in plain AM the demodulator is an
@@ -236,8 +276,30 @@ static void auto_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void ref_changed_cb(GtkWidget *widget, gpointer data) {
+  int previous = div_auto_ref;
   div_auto_ref = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+
+  //
+  // On RADE the wanted signal is the one we are pointing at, so the
+  // sensible objective is to maximise its SNR rather than to null the
+  // strongest correlated thing in the window. Default to Sum on the way
+  // in; the operator can still choose otherwise afterwards.
+  //
+  if (DIV_REF_IS_RADE(div_auto_ref) && !DIV_REF_IS_RADE(previous)) {
+    div_auto_mode = DIV_AUTO_SUM;
+    gtk_combo_box_set_active(GTK_COMBO_BOX(auto_combo), div_auto_mode);
+  }
+
+  //
+  // The pilot correlator has its own front end, so it has to be brought
+  // up or torn down when this changes rather than just re-aimed.
+  //
+  if (div_auto_ref == DIV_REF_RADE_V1 || previous == DIV_REF_RADE_V1) {
+    diversity_auto_restart();
+  }
+
   diversity_auto_reset();
+  update_manual_sensitivity();
 }
 
 static void follow_cb(GtkWidget *widget, gpointer data) {
@@ -376,6 +438,8 @@ void diversity_menu(GtkWidget *parent) {
   ref_combo = gtk_combo_box_text_new();
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "Window (wideband)");
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "SAM carrier (PLL)");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "RADE passband");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "RADE V1 pilot (MVDR)");
   gtk_combo_box_set_active(GTK_COMBO_BOX(ref_combo), div_auto_ref);
   gtk_grid_attach(GTK_GRID(grid), ref_combo, 1, 7, 1, 1);
   g_signal_connect(ref_combo, "changed", G_CALLBACK(ref_changed_cb), NULL);

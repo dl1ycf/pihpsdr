@@ -19,3 +19,8 @@ LINUX/SoapySDR
 LINUX/SoapyPlutoSDR
 LINUX/SoapyRTLSDR
 release/LatexManual/piHPSDR-Manual.pdf
+dxhistory.db
+dxhistory.db-shm
+dxhistory.db-wal
+dxspots.csv
+
