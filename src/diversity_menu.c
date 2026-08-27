@@ -148,6 +148,10 @@ static void phase_fine_changed_cb(GtkWidget *widget, gpointer data) {
 // line. Worth showing: if this reads the wrong way round the correlator
 // is looking at the mirror image of the signal and will never lock.
 //
+static const char *div_rade_side_text(void) {
+  return (div_rade_side_get() < 0) ? "below" : "above";
+}
+
 static const char *div_mode_lsb_text(void) {
   int m = vfo[0].mode;
   return (m == modeLSB || m == modeDIGL || m == modeCWL) ? "LSB" : "USB";
@@ -248,8 +252,9 @@ static int status_update_cb(gpointer data) {
                rade_corr_freq_off, div_gain, div_phase);
     }
   } else if (div_auto_ref == DIV_REF_RADE_BAND) {
-    snprintf(text, sizeof(text), "RADE %s   coherence %3.0f%%   %s   %+0.1f dB %+0.0f deg",
-             div_mode_lsb_text(), 100.0 * div_auto_coherence,
+    snprintf(text, sizeof(text),
+             "RADE band %s carrier (mode %s)   coherence %3.0f%%   %s   %+0.1f dB %+0.0f deg",
+             div_rade_side_text(), div_mode_lsb_text(), 100.0 * div_auto_coherence,
              div_auto_holding ? "HOLD" : "track", div_gain, div_phase);
   } else if (div_auto_ref == DIV_REF_CARRIER && !div_auto_carrier_valid) {
     //

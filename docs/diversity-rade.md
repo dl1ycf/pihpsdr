@@ -68,10 +68,15 @@ longer a weight to conjugate back: whichever bank wins, `h0` and `h1`
 describe the real untouched arms and the MVDR solution applies directly.
 
 The detected sense is shown in the status line ("normal spectrum" /
-"mirrored spectrum") alongside what the mode says, which is the only way
-we get to learn what the convention actually is. The stage 1 window still
-uses the mode, so if those two ever disagree on air, stage 1's window is
-the thing that is wrong.
+"mirrored spectrum") alongside what the mode says.
+
+**On air the mode-based rule turned out to be backwards.** Against a real
+LSB signal the un-mirrored pilot bank scored 12.8 / 14.7 / 15.9 while the
+mirrored bank scored 3.6 / 4.1 / 4.0 - a decisive result the opposite way
+round from what deriving it from the mode predicted. Stage 1 therefore no
+longer uses the mode either: it sums the energy in the modem band on both
+sides of the carrier each block and keeps the stronger, and reports which
+side it chose next to what the mode says.
 
 ## Stage 1: RADE passband
 
@@ -142,12 +147,38 @@ relative to pilot RMS.
 | none | lock, weight matches `conj(h)` to ~1 degree, +4.1 dB signal |
 | +0.3 dB | lock, **-32.8 dB** interferer, +3.8 dB signal |
 | +6 dB | lock, **-31.3 dB** interferer, +3.9 dB signal |
-| +10 dB | lock, **-26.5 dB** interferer, +4.0 dB signal |
-| +14 dB | lock, **-25.5 dB** interferer, +4.0 dB signal |
+| +10 dB | lock, **-36.8 dB** interferer, +3.8 dB signal |
 | +20 dB and above | no lock |
 
 Identical on USB and LSB, with the weight coming out conjugated between
 them as it should.
+
+## Tracking
+
+Holding a lock is deliberately far more forgiving than getting one.
+
+The first version gated every tracking frame on a fresh detection
+statistic computed from one correlation and eight probes, against
+acquisition's 32 integrated passes over the whole timing-by-frequency
+grid. That is orders of magnitude noisier, and it threw away locks on
+signals that had just acquired at three times the required margin.
+
+Worse, the rejection path returned without advancing the pilot pointer.
+The pilot moves on by exactly one modem frame every 120 ms whether or not
+a given frame is liked, so a single marginal frame pinned `lock_a` while
+the ring kept filling, and a second or two later the lock ended with
+"pilot ran off the ring". On air that showed up as momentary locks that
+never held.
+
+Now the correlation magnitude at the moment of lock is remembered, a
+smoothed version of it is tracked, and the lock is dropped only if that
+falls 12 dB below the reference for twelve consecutive frames. The
+reference follows the signal upward so a later fade is measured against
+the real level. The pilot pointer always advances.
+
+Fixing this also improved the synthetic interferer result from -26.5 dB
+to -36.8 dB, simply because tracking now runs on every frame instead of
+stalling after the first marginal one.
 
 ## Known limits
 

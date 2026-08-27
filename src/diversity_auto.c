@@ -193,6 +193,16 @@ struct div_context {
 
 static struct div_context lastctx;
 
+//
+// +1 when the RADE modem is above the tuned carrier in this frame, -1
+// when below. Chosen from the measured spectrum each block.
+//
+static int div_rade_side = 1;
+
+int div_rade_side_get(void) {
+  return div_rade_side;
+}
+
 static void div_reset_stats(void) {
   acc_xy_re = acc_xy_im = acc_xx = acc_yy = 0.0;
   acc_valid = 0;
@@ -307,12 +317,20 @@ static int div_bin_range(const struct div_context *ctx, int *klo, int *khi) {
     fhi = div_auto_carrier + DIV_CARRIER_BINS * binhz;
   } else if (DIV_REF_IS_RADE(ctx->ref)) {
     //
-    // The RADE modem occupies 750..2200 Hz of audio. Mirror it below the
-    // carrier for the lower-sideband modes; positive frequency in this
-    // frame is the upper sideband, the same sense in which piHPSDR's
-    // filter edges are expressed.
+    // The RADE modem occupies 750..2200 Hz of audio, on one side of the
+    // tuned carrier or the other.
     //
-    if (div_mode_is_lsb(ctx->mode)) {
+    // Which side is decided by measurement, not from vfo[].mode. The
+    // first version derived it from the mode and put the window on the
+    // wrong side: on air, an LSB signal correlated against the
+    // un-mirrored pilot, the opposite of what the mode-based rule
+    // predicted. The convention relating this frame to RF could not be
+    // settled by reading the code either - see the note in
+    // rade_correlator.c - so both sides are evaluated and the one
+    // actually carrying the signal is used. div_rade_side is set from the
+    // spectrum in div_process_block().
+    //
+    if (div_rade_side < 0) {
       flo = -RADE_CORR_FHI;
       fhi = -RADE_CORR_FLO;
     } else {
@@ -461,6 +479,43 @@ static void div_process_block(void) {
 
   fftwf_execute(plan0);
   fftwf_execute(plan1);
+
+  if (ctx.ref == DIV_REF_RADE_BAND) {
+    //
+    // Compare the energy in the modem band on each side of the carrier
+    // and keep the stronger. Re-derives the bin range below if this
+    // changes the answer.
+    //
+    double up = 0.0, dn = 0.0;
+
+    for (int side = 0; side < 2; side++) {
+      double lo = side ? -RADE_CORR_FHI : RADE_CORR_FLO;
+      double hi = side ? -RADE_CORR_FLO : RADE_CORR_FHI;
+      int a = (int)floor((lo - (double)ctx.offset) / binhz);
+      int b = (int)ceil ((hi - (double)ctx.offset) / binhz);
+      double acc = 0.0;
+
+      for (int k = a; k <= b; k++) {
+        int idx = k % nfft;
+
+        if (idx < 0) { idx += nfft; }
+
+        acc += (double)fftout0[idx][0] * fftout0[idx][0]
+               + (double)fftout0[idx][1] * fftout0[idx][1];
+      }
+
+      if (side) { dn = acc; } else { up = acc; }
+    }
+
+    int want = (dn > up) ? -1 : 1;
+
+    if (want != div_rade_side) {
+      div_rade_side = want;
+      div_reset_stats();
+      div_bin_range(&ctx, &klo, &khi);
+    }
+  }
+
   double bxy_re = 0.0, bxy_im = 0.0, bxx = 0.0, byy = 0.0;
 
   for (int k = klo; k <= khi; k++) {

@@ -125,16 +125,25 @@
 // "could plausibly be noise".
 //
 #define RADE_LOCK_SIGMA     6.0
-#define RADE_DROP_SIGMA     4.0
 #define RADE_LOCK_FRAMES    3
 #define RADE_DROP_FRAMES    12
 
 //
-// Off-pilot positions sampled each frame to estimate the floor while
-// tracking. They land in the data symbols, where by construction there is
-// no pilot to find.
+// Holding a lock is deliberately far more forgiving than getting one.
 //
-#define RADE_FLOOR_PROBES   8
+// Acquisition integrates 32 passes over the whole timing-by-frequency
+// grid; a tracking frame has one correlation and a handful of probes, so
+// its statistic is enormously noisier. Gating each frame on a fresh
+// detection threw away locks on signals that had just acquired at three
+// times the required margin.
+//
+// Instead we remember the correlation magnitude at the moment of lock and
+// watch a smoothed version of it. Acquisition has already established
+// that the pilot is real; tracking only has to notice when it has
+// actually gone away.
+//
+#define RADE_HOLD_RATIO     0.25    // -12 dB from the level at lock
+#define RADE_MAG_ALPHA      0.10
 
 //
 // Timing cells within this many samples of the peak are excluded from the
@@ -181,7 +190,7 @@
 #define RADE_DEC_TAPS_PER_PHASE  16
 #define RADE_DEC_CUTOFF          3000.0
 
-#define RADE_RING       (4 * RADE_CORR_NMF)
+#define RADE_RING       (8 * RADE_CORR_NMF)
 #define RADE_ACQ_SPAN   (2 * RADE_CORR_NMF + RADE_CORR_M + RADE_CORR_NCP)
 
 int    rade_corr_locked   = 0;
@@ -242,6 +251,10 @@ static long   next_process = 0;      // ringtotal at which to look again
 static double acq_grid[2][RADE_ACQ_NCELL][RADE_ACQ_NFREQ];
 static int    acq_passes = 0;
 static int    lock_bank = 0;      // which pilot bank actually correlates
+
+static double lock_mag = 0.0;        // |correlation| when lock was declared
+static double mag_avg = 0.0;         // smoothed tracking magnitude
+static int    track_report = 0;
 
 static cplx   acc_h0, acc_h1;
 static cplx   acc_r01;
@@ -396,6 +409,9 @@ void rade_corr_reset(void) {
   acc_r00 = acc_r11 = 0.0;
   acc_sig = 0.0;
   acc_valid = 0;
+  lock_mag = 0.0;
+  mag_avg = 0.0;
+  track_report = 0;
   rade_corr_quality = 0.0;
   rade_corr_snr = 0.0;
   next_process = 0;
@@ -718,54 +734,45 @@ static int rade_track(double *wr, double *wi) {
   // symbols, where there is no pilot. Same statistic as acquisition uses,
   // so the lock and drop thresholds mean the same thing in both.
   //
-  double fsum = 0.0, fsum2 = 0.0;
-  int fn = 0;
+  double mag = sqrt(cabs2(d0));
 
-  for (int k = 1; k <= RADE_FLOOR_PROBES; k++) {
-    long a = lock_a + (long)k * (RADE_CORR_NMF / (RADE_FLOOR_PROBES + 1));
-
-    if (a + RADE_CORR_M > ringtotal) { continue; }
-
-    double m = sqrt(cabs2(rade_correlate(ring0, a, pw)));
-    fsum += m;
-    fsum2 += m * m;
-    fn++;
+  if (lock_mag <= 0.0) {
+    //
+    // First frame after acquisition sets the reference.
+    //
+    lock_mag = mag;
+    mag_avg = mag;
+  } else {
+    mag_avg += RADE_MAG_ALPHA * (mag - mag_avg);
   }
 
-  double stat = 0.0;
-
-  if (fn > 1) {
-    double mean = fsum / (double)fn;
-    double var = fsum2 / (double)fn - mean * mean;
-    double sd = (var > 0.0) ? sqrt(var) : 0.0;
-
-    if (sd > 1e-20) { stat = (sqrt(cabs2(d0)) - mean) / sd; }
-  }
-
-  rade_corr_quality = RADE_STAT_TO_Q(stat);
-
-  if (rade_corr_quality < 0.0) { rade_corr_quality = 0.0; }
-
-  if (rade_corr_quality > 1.0) { rade_corr_quality = 1.0; }
-
-  //
-  // The tracking floor is measured at other timings on the same
-  // frequency, so a strong narrowband interferer inflates it the same way
-  // it inflated a single acquisition column. Hold on to a lock through
-  // that rather than dropping: acquisition has already established the
-  // pilot is really there, and the residual covariance below is what
-  // actually deals with the interferer.
-  //
-  if (stat < RADE_DROP_SIGMA) {
+  if (mag_avg < RADE_HOLD_RATIO * lock_mag) {
     if (++drop_count >= RADE_DROP_FRAMES) {
-      t_print("%s: lost RADE pilot lock\n", __func__);
+      t_print("%s: lost RADE pilot lock (mag %0.3e vs %0.3e at lock)\n",
+              __func__, mag_avg, lock_mag);
       rade_corr_reset();
+      return 0;
     }
-
-    return 0;
+  } else {
+    drop_count = 0;
+    //
+    // Let the reference follow a signal that is genuinely getting
+    // stronger, so a fade later is measured against the real level rather
+    // than against whatever it happened to be at acquisition.
+    //
+    if (mag_avg > lock_mag) { lock_mag = mag_avg; }
   }
 
-  drop_count = 0;
+  //
+  // Roughly every five seconds, so a lock that is holding can be seen to
+  // be holding.
+  //
+  if (++track_report >= 40) {
+    track_report = 0;
+    t_print("%s: tracking  mag %0.2f of lock level  f=%+0.1f Hz  pilot %0.0f%% / %+0.1f dB\n",
+            __func__, mag_avg / (lock_mag > 0.0 ? lock_mag : 1.0), lock_f,
+            100.0 * rade_corr_quality, rade_corr_snr);
+  }
   //
   // h = correlation / pilot energy
   //
@@ -924,10 +931,25 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
       return 0;
     }
 
-    if (!rade_track(wr, wi)) { return 0; }
+    int ok = rade_track(wr, wi);
 
-    updated = 1;
+    //
+    // Advance whatever happened. The pilot moves on by exactly one modem
+    // frame every 120 ms regardless of whether we liked this one, and an
+    // earlier version returned here without stepping - which pinned
+    // lock_a while ringtotal kept growing, so a single marginal frame
+    // ended the lock a second or two later with "ran off the ring".
+    //
     lock_a += RADE_CORR_NMF;
+
+    if (!rade_corr_locked) {
+      //
+      // rade_track() gave up and reset us.
+      //
+      return 0;
+    }
+
+    if (ok) { updated = 1; }
   }
 
   return updated;
