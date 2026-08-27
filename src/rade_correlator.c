@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "message.h"
+#include "radio.h"
 #include "rade_correlator.h"
 
 //
@@ -126,7 +127,7 @@
 //
 #define RADE_LOCK_SIGMA     6.0
 #define RADE_LOCK_FRAMES    3
-#define RADE_DROP_FRAMES    12
+#define RADE_DROP_FRAMES    84      // ~10 s: ride out fades, not absences
 
 //
 // Holding a lock is deliberately far more forgiving than getting one.
@@ -137,13 +138,33 @@
 // detection threw away locks on signals that had just acquired at three
 // times the required margin.
 //
-// Instead we remember the correlation magnitude at the moment of lock and
-// watch a smoothed version of it. Acquisition has already established
-// that the pilot is real; tracking only has to notice when it has
-// actually gone away.
+// The criterion is the pilot correlation against the correlation floor
+// measured off-pilot in the same frame - a ratio, so it does not depend
+// on signal level at all.
 //
-#define RADE_HOLD_RATIO     0.25    // -12 dB from the level at lock
-#define RADE_MAG_ALPHA      0.10
+// It deliberately is *not* measured against the level at lock. A version
+// that did that ratcheted its reference up to the highest level ever
+// seen, so under fading the ratio lived permanently below one and any
+// deep enough fade eventually crossed the threshold and dropped the
+// lock. On air that gave 50-second locks that ended in a fade.
+//
+// Which is backwards for a diversity system: a fade is exactly when the
+// combining weight is worth the most. Losing the pilot for a few seconds
+// means keep going with the last good weight, not start again. Only a
+// signal that is really gone - end of over, or the operator retuning -
+// should force a re-acquisition, so the hold time is measured in tens of
+// seconds.
+//
+// 1.35 is chosen well below what a working lock shows: with a strong
+// in-band interferer inflating the floor, the synthetic case still holds
+// 1.9 to 2.2. A ratio of 1.0 would mean the pilot correlates no better
+// than the data symbols do, i.e. no detectable pilot at all. Erring low
+// is right - holding a stale weight for a few extra seconds after a
+// station stops is harmless, dropping during a fade is not.
+//
+#define RADE_HOLD_RATIO     1.35    // pilot / floor, below which we are unhappy
+#define RADE_MAG_ALPHA      0.02    // ~6 s at 8.33 modem frames/s
+#define RADE_FLOOR_PROBES   4
 
 //
 // Timing cells within this many samples of the peak are excluded from the
@@ -252,8 +273,8 @@ static double acq_grid[2][RADE_ACQ_NCELL][RADE_ACQ_NFREQ];
 static int    acq_passes = 0;
 static int    lock_bank = 0;      // which pilot bank actually correlates
 
-static double lock_mag = 0.0;        // |correlation| when lock was declared
-static double mag_avg = 0.0;         // smoothed tracking magnitude
+static double mag_avg = 0.0;         // smoothed pilot correlation
+static double floor_avg = 0.0;       // smoothed off-pilot correlation
 static int    track_report = 0;
 
 static cplx   acc_h0, acc_h1;
@@ -409,8 +430,8 @@ void rade_corr_reset(void) {
   acc_r00 = acc_r11 = 0.0;
   acc_sig = 0.0;
   acc_valid = 0;
-  lock_mag = 0.0;
   mag_avg = 0.0;
+  floor_avg = 0.0;
   track_report = 0;
   rade_corr_quality = 0.0;
   rade_corr_snr = 0.0;
@@ -735,32 +756,44 @@ static int rade_track(double *wr, double *wi) {
   // so the lock and drop thresholds mean the same thing in both.
   //
   double mag = sqrt(cabs2(d0));
+  //
+  // Correlation floor from positions inside the data symbols, where by
+  // construction there is no pilot. Same span, same template, so the
+  // ratio below is dimensionless and independent of signal level.
+  //
+  double fl = 0.0;
+  int fn = 0;
 
-  if (lock_mag <= 0.0) {
-    //
-    // First frame after acquisition sets the reference.
-    //
-    lock_mag = mag;
-    mag_avg = mag;
-  } else {
-    mag_avg += RADE_MAG_ALPHA * (mag - mag_avg);
+  for (int k = 1; k <= RADE_FLOOR_PROBES; k++) {
+    long a = lock_a + (long)k * (RADE_CORR_NMF / (RADE_FLOOR_PROBES + 1));
+
+    if (a + RADE_CORR_M > ringtotal) { continue; }
+
+    fl += sqrt(cabs2(rade_correlate(ring0, a, pw)));
+    fn++;
   }
 
-  if (mag_avg < RADE_HOLD_RATIO * lock_mag) {
+  if (fn > 0) { fl /= (double)fn; }
+
+  if (mag_avg <= 0.0) {
+    mag_avg = mag;
+    floor_avg = fl;
+  } else {
+    mag_avg   += RADE_MAG_ALPHA * (mag - mag_avg);
+    floor_avg += RADE_MAG_ALPHA * (fl - floor_avg);
+  }
+
+  double ratio = (floor_avg > 1e-30) ? (mag_avg / floor_avg) : 0.0;
+
+  if (ratio < RADE_HOLD_RATIO) {
     if (++drop_count >= RADE_DROP_FRAMES) {
-      t_print("%s: lost RADE pilot lock (mag %0.3e vs %0.3e at lock)\n",
-              __func__, mag_avg, lock_mag);
+      t_print("%s: lost RADE pilot lock (pilot/floor %0.2f for %0.0f s)\n",
+              __func__, ratio, (double)RADE_DROP_FRAMES / 8.33);
       rade_corr_reset();
       return 0;
     }
   } else {
     drop_count = 0;
-    //
-    // Let the reference follow a signal that is genuinely getting
-    // stronger, so a fade later is measured against the real level rather
-    // than against whatever it happened to be at acquisition.
-    //
-    if (mag_avg > lock_mag) { lock_mag = mag_avg; }
   }
 
   //
@@ -769,9 +802,10 @@ static int rade_track(double *wr, double *wi) {
   //
   if (++track_report >= 40) {
     track_report = 0;
-    t_print("%s: tracking  mag %0.2f of lock level  f=%+0.1f Hz  pilot %0.0f%% / %+0.1f dB\n",
-            __func__, mag_avg / (lock_mag > 0.0 ? lock_mag : 1.0), lock_f,
-            100.0 * rade_corr_quality, rade_corr_snr);
+    t_print("%s: tracking  pilot/floor %0.2f (drop below %0.1f)  f=%+0.1f Hz  "
+            "pilot %0.0f%% / %+0.1f dB  w=%+0.1f dB %+0.0f deg\n",
+            __func__, ratio, RADE_HOLD_RATIO, lock_f,
+            100.0 * rade_corr_quality, rade_corr_snr, div_gain, div_phase);
   }
   //
   // h = correlation / pilot energy

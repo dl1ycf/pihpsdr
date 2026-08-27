@@ -170,11 +170,26 @@ the ring kept filling, and a second or two later the lock ended with
 "pilot ran off the ring". On air that showed up as momentary locks that
 never held.
 
-Now the correlation magnitude at the moment of lock is remembered, a
-smoothed version of it is tracked, and the lock is dropped only if that
-falls 12 dB below the reference for twelve consecutive frames. The
-reference follows the signal upward so a later fade is measured against
-the real level. The pilot pointer always advances.
+The pilot pointer now always advances.
+
+The hold criterion went through one more iteration. Remembering the
+correlation magnitude at lock and watching for a drop below it looked
+reasonable and was not: the reference ratcheted up to the highest level
+ever seen, so under fading the ratio lived permanently below one and any
+deep enough fade eventually crossed the threshold. On air that gave
+50-second locks that always ended in a fade.
+
+That is backwards for a diversity system - a fade is exactly when the
+combining weight is worth the most, and losing the pilot for a few
+seconds means keep going with the last good weight, not start again.
+
+The criterion is now the pilot correlation against the correlation floor
+measured off-pilot in the same frame. That is a ratio, so it does not
+depend on signal level and cannot ratchet. Both terms are smoothed over
+about 6 seconds, and the lock is dropped only after the ratio stays below
+1.35 for ten seconds - long enough to ride out fades, short enough to
+notice an over ending. A working lock reads around 2 even with a strong
+in-band interferer inflating the floor.
 
 Fixing this also improved the synthetic interferer result from -26.5 dB
 to -36.8 dB, simply because tracking now runs on every frame instead of
