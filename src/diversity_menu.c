@@ -278,8 +278,32 @@ static int status_update_cb(gpointer data) {
 }
 
 static void auto_changed_cb(GtkWidget *widget, gpointer data) {
+  int previous = div_auto_mode;
   div_auto_mode = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-  diversity_auto_restart();
+
+  //
+  // Null and Sum are two formulas over the same accumulated cross and
+  // auto spectra - only the sign and which power normalises it differ, so
+  // the answers are 180 degrees apart. Nothing about the analysis depends
+  // on which is selected.
+  //
+  // So do not restart the engine here. Restarting resets those
+  // accumulators, and with a long averaging time both objectives then
+  // spent seconds re-converging from nothing, which made switching
+  // between them look like it did nothing at all.
+  //
+  // Only whether the analysis thread exists depends on this control.
+  //
+  if ((previous == DIV_AUTO_OFF) != (div_auto_mode == DIV_AUTO_OFF)) {
+    diversity_auto_restart();
+  } else {
+    //
+    // Apply the new objective at once rather than slewing to it: this is
+    // a deliberate operator action, usually to compare the two.
+    //
+    diversity_auto_jump();
+  }
+
   update_manual_sensitivity();
 }
 

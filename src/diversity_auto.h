@@ -88,6 +88,11 @@ extern int    div_auto_running;
 //
 extern int  div_rade_side_get(void);
 
+//
+// Apply the next weight update immediately instead of slewing to it.
+//
+extern void diversity_auto_jump(void);
+
 extern void diversity_auto_start(void);
 extern void diversity_auto_stop(void);
 extern void diversity_auto_restart(void);   // stop + start if it should be running

@@ -199,6 +199,15 @@ static struct div_context lastctx;
 //
 static int div_rade_side = 1;
 
+//
+// Set when the next weight update should be applied without slewing.
+//
+static int div_jump = 0;
+
+void diversity_auto_jump(void) {
+  div_jump = 1;
+}
+
 int div_rade_side_get(void) {
   return div_rade_side;
 }
@@ -393,8 +402,18 @@ static void div_apply_weight(double wr, double wi) {
   // - inaudible - and the alternative, locking per sample at up to 384 kHz,
   // is not worth it.
   //
-  div_cos += DIV_SLEW_FRAC * (wr - div_cos);
-  div_sin += DIV_SLEW_FRAC * (wi - div_sin);
+  if (div_jump) {
+    //
+    // The operator asked for a different objective; go straight there so
+    // the two can be compared without waiting out the slew.
+    //
+    div_jump = 0;
+    div_cos = wr;
+    div_sin = wi;
+  } else {
+    div_cos += DIV_SLEW_FRAC * (wr - div_cos);
+    div_sin += DIV_SLEW_FRAC * (wi - div_sin);
+  }
   //
   // Back-compute the values the menu, the props file and remote clients
   // work in, so everything stays consistent with what is actually being

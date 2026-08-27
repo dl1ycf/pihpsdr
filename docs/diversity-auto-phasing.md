@@ -52,7 +52,22 @@ with exponential forgetting across blocks. Then
 | Sum  | `w = +Sxy/Sxx` | equals `conj(h)` for `z1 = h*z0`, i.e. maximum ratio combining when both channels carry equal noise power. |
 
 The two cases use **different denominators**; they are not sign-flipped
-versions of one another.
+versions of one another. Since `Sxx` and `Syy` are both positive reals the
+two weights are nonetheless exactly 180 degrees apart, differing only in
+magnitude by `Sxx/Syy` - verified numerically at 180.00 degrees.
+
+Both are computed from the *same* accumulated statistics, so switching
+between them is only a change of formula. Nothing about the transform,
+the window, the bin mask or the accumulators depends on which is
+selected, and the change applies on the next block.
+
+An early version restarted the whole analysis engine when the objective
+changed, which reset those shared accumulators. With a long averaging
+time both objectives then spent seconds re-converging from nothing, so
+switching between them appeared to do nothing at all. The engine is now
+restarted only when the analysis thread itself has to start or stop, and
+an explicit change of objective is applied without slewing, since the
+operator is usually switching in order to compare the two.
 
 Fit quality is the magnitude squared coherence
 `gamma^2 = |Sxy|^2 / (Sxx*Syy)`, which is 1 when one complex weight
