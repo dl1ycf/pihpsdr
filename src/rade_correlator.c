@@ -155,16 +155,49 @@
 // should force a re-acquisition, so the hold time is measured in tens of
 // seconds.
 //
-// 1.35 is chosen well below what a working lock shows: with a strong
-// in-band interferer inflating the floor, the synthetic case still holds
-// 1.9 to 2.2. A ratio of 1.0 would mean the pilot correlates no better
-// than the data symbols do, i.e. no detectable pilot at all. Erring low
-// is right - holding a stale weight for a few extra seconds after a
-// station stops is harmless, dropping during a fade is not.
+// The thresholds are set from measurement against the off-frequency
+// reference below: a clean lock reads well into double figures, and pure
+// noise reads about 1. Erring low is right - holding a stale weight for a
+// few extra seconds after a station stops is harmless, dropping during a
+// fade is not.
 //
-#define RADE_HOLD_RATIO     1.35    // pilot / floor, below which we are unhappy
+#define RADE_HOLD_RATIO     2.00    // pilot / floor, below which we are unhappy
 #define RADE_MAG_ALPHA      0.02    // ~6 s at 8.33 modem frames/s
 #define RADE_FLOOR_PROBES   4
+
+//
+// Keeping the lock and trusting the current frame are two different
+// decisions, and conflating them was a bug worth spelling out.
+//
+// When the pilot went away the code kept the lock - correctly, so a fade
+// does not cost the weight - but then carried on feeding the channel
+// estimate and the covariance from correlations that were pure noise. For
+// up to the full hold time the combining weight was being steered by
+// nothing at all.
+//
+// So the frame gate is separate and faster: below it the accumulators and
+// the weight are frozen at their last good values, while the slow ratio
+// above decides whether the signal has been gone long enough to give up
+// and re-acquire.
+//
+#define RADE_USE_ALPHA      0.12    // ~1 s, for the freeze decision
+#define RADE_USE_RATIO      2.50
+
+//
+// The reference the pilot correlation is compared against is taken at the
+// *same* timing but at frequencies far outside the lock range.
+//
+// Probing off-pilot in time, which is the obvious thing, turns out to be
+// a poor discriminator: those positions land on data symbols carried on
+// the same subcarriers, and a random OFDM symbol correlates against the
+// pilot nearly as well as the pilot does. The ratio then sits close to
+// one even on a clean signal, and any threshold placed there chatters.
+//
+// A 20 ms correlation window has its first ambiguity null at 50 Hz, so
+// 300 Hz away the true pilot contributes essentially nothing while noise
+// and interference contribute exactly as much as they do on frequency.
+//
+#define RADE_FLOOR_DF       300.0
 
 //
 // Timing cells within this many samples of the peak are excluded from the
@@ -281,6 +314,9 @@ static int    lock_bank = 0;      // which pilot bank actually correlates
 
 static double mag_avg = 0.0;         // smoothed pilot correlation
 static double floor_avg = 0.0;       // smoothed off-pilot correlation
+static double use_mag = 0.0;         // faster pair, for the freeze decision
+static double use_floor = 0.0;
+static int    frozen = 0;
 static int    track_report = 0;
 
 static cplx   acc_h0, acc_h1;
@@ -438,6 +474,9 @@ void rade_corr_reset(void) {
   acc_valid = 0;
   mag_avg = 0.0;
   floor_avg = 0.0;
+  use_mag = 0.0;
+  use_floor = 0.0;
+  frozen = 0;
   track_report = 0;
   rade_corr_quality = 0.0;
   rade_corr_snr = 0.0;
@@ -770,12 +809,11 @@ static int rade_track(double tau, double *wr, double *wi) {
   double fl = 0.0;
   int fn = 0;
 
-  for (int k = 1; k <= RADE_FLOOR_PROBES; k++) {
-    long a = lock_a + (long)k * (RADE_CORR_NMF / (RADE_FLOOR_PROBES + 1));
-
-    if (a + RADE_CORR_M > ringtotal) { continue; }
-
-    fl += sqrt(cabs2(rade_correlate(ring0, a, pw)));
+  for (int k = 0; k < RADE_FLOOR_PROBES; k++) {
+    static const double df[RADE_FLOOR_PROBES] = { -2.0, -1.0, 1.0, 2.0 };
+    cplx pf[RADE_CORR_M];
+    rade_pilot_at(lock_f + df[k] * RADE_FLOOR_DF, pf);
+    fl += sqrt(cabs2(rade_correlate(ring0, lock_a, pf)));
     fn++;
   }
 
@@ -784,12 +822,17 @@ static int rade_track(double tau, double *wr, double *wi) {
   if (mag_avg <= 0.0) {
     mag_avg = mag;
     floor_avg = fl;
+    use_mag = mag;
+    use_floor = fl;
   } else {
     mag_avg   += RADE_MAG_ALPHA * (mag - mag_avg);
     floor_avg += RADE_MAG_ALPHA * (fl - floor_avg);
+    use_mag   += RADE_USE_ALPHA * (mag - use_mag);
+    use_floor += RADE_USE_ALPHA * (fl - use_floor);
   }
 
   double ratio = (floor_avg > 1e-30) ? (mag_avg / floor_avg) : 0.0;
+  double use_ratio = (use_floor > 1e-30) ? (use_mag / use_floor) : 0.0;
 
   if (ratio < RADE_HOLD_RATIO) {
     if (++drop_count >= RADE_DROP_FRAMES) {
@@ -802,6 +845,25 @@ static int rade_track(double tau, double *wr, double *wi) {
     drop_count = 0;
   }
 
+  if (use_ratio < RADE_USE_RATIO) {
+    //
+    // Nothing worth measuring in this frame. Keep the lock and keep the
+    // weight exactly where it was - do not let noise move it.
+    //
+    if (!frozen) {
+      frozen = 1;
+      t_print("%s: pilot lost, holding last weight (%+0.1f dB %+0.0f deg)\n",
+              __func__, div_gain, div_phase);
+    }
+
+    return 0;
+  }
+
+  if (frozen) {
+    frozen = 0;
+    t_print("%s: pilot back, resuming\n", __func__);
+  }
+
   //
   // Roughly every five seconds, so a lock that is holding can be seen to
   // be holding.
@@ -809,9 +871,10 @@ static int rade_track(double tau, double *wr, double *wi) {
   if (++track_report >= 40) {
     track_report = 0;
     t_print("%s: tracking  pilot/floor %0.2f (drop below %0.1f)  f=%+0.1f Hz  "
-            "pilot %0.0f%% / %+0.1f dB  w=%+0.1f dB %+0.0f deg  avg=%0.1fs\n",
+            "pilot %0.0f%% / %+0.1f dB  w=%+0.1f dB %+0.0f deg  avg=%0.1fs%s\n",
             __func__, ratio, RADE_HOLD_RATIO, lock_f,
-            100.0 * rade_corr_quality, rade_corr_snr, div_gain, div_phase, tau);
+            100.0 * rade_corr_quality, rade_corr_snr, div_gain, div_phase, tau,
+            frozen ? "  FROZEN" : "");
   }
   //
   // h = correlation / pilot energy

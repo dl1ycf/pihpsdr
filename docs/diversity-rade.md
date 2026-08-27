@@ -231,6 +231,59 @@ Note this is separate from the lock-hold smoothing, which is fixed at
 about 6 s and does a different job - deciding whether the pilot is still
 there at all, rather than tracking the channel.
 
+## Keeping the lock vs trusting the frame
+
+These are two different decisions and treating them as one was a bug.
+
+When the pilot went away the correlator kept the lock, which is right - a
+fade should not cost the weight - but then carried on feeding the channel
+estimate and the covariance from correlations that were pure noise. For up
+to the full hold time the combining weight was being steered by nothing at
+all. Reported from the air as "it's tracking even when there's no signal",
+which was literally what it was doing.
+
+There are now two gates on the same measurement:
+
+* a **fast** one (about 1 s) that freezes the accumulators and the weight
+  when the pilot is not there, holding the last good values;
+* a **slow** one (about 6 s, then ten seconds of hysteresis) that decides
+  the signal has been gone long enough to give up and re-acquire.
+
+The status log shows `FROZEN` while the weight is being held, and
+transitions are logged.
+
+### The reference matters
+
+Both gates compare the pilot correlation against a reference taken at the
+same timing but at frequencies far outside the lock range (+/-300 and
++/-600 Hz).
+
+Probing off-pilot *in time* is the obvious choice and is a poor
+discriminator: those positions land on data symbols carried on the same
+subcarriers, and a random OFDM symbol correlates against the pilot nearly
+as well as the pilot does. The ratio then sits close to one even on a
+clean signal, and a threshold placed there chatters - the freeze gate
+engaged and released several times a second, which meant it kept
+un-freezing and updating on noise anyway.
+
+A 20 ms correlation window has its first ambiguity null at 50 Hz, so
+300 Hz away the true pilot contributes essentially nothing while noise and
+interference contribute exactly as much as they do on frequency. With that
+reference a clean lock reads 6.0 to 6.1 against a freeze threshold of 2.5,
+which is a real margin.
+
+Measured: weight drift while frozen on a signal that stops fell from
+0.152 to 0.0046, a factor of 33, on a weight of magnitude 0.86. What
+remains is the gate's engagement transient, not ongoing wander.
+
+## False alarms
+
+Acquisition was never tested against noise until it was accused of finding
+pilots that were not there. It does not: over repeated runs of pure noise
+with no signal present, the statistic reaches 3.0 to 4.6 against a lock
+threshold of 6.0, and no run produced a lock. The 10.8 to 15.9 seen on air
+are genuine detections.
+
 ## Known limits
 
 **Acquisition fails above roughly +15 dB interferer-to-pilot.** That is
