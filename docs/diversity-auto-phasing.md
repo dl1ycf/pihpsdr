@@ -127,20 +127,31 @@ The window either follows the RX filter or is placed by hand with a centre
 and width, so it can be parked on a known noise, or sized to take in just
 the mark and space tones of an FSK signal.
 
-*SAM carrier* (method B) accumulates over the carrier bin only. The carrier
-is located from the SAM PLL via `GetRXAAMDCarrierFreq()`, added to
-`wdsp/amd.c` for this purpose.
+*Carrier* (method B) accumulates over the carrier bin only, with the
+carrier located from our own spectrum rather than from WDSP's SAM PLL.
 
-The PLL is only run in SAM: `xamd()` case 0 (plain AM) is an envelope
-detector that never touches `phs`/`omega`/`fil_out`, so their values are
-stale in any other mode. Carrier mode therefore requires SAM and says so in
-the status line rather than quietly using a stale frequency.
+The first version did use the PLL, via a `GetRXAAMDCarrierFreq()`
+accessor added to `wdsp/amd.c`. On air the reported frequency wandered by
+several Hz a second on a weak carrier, and the Averaging control did
+nothing about it - that control drives the weight accumulators, not
+WDSP's loop.
 
-Note that only the PLL's **frequency** is used, never its phase. The PLL
-sits inside RX0's chain, so it sees the already-combined signal and is
-delayed relative to our raw tap by the `nbp` filter's group delay. That
-does not matter: the estimate is a ratio between the two arms, and any
-constant phase offset is common to both and cancels exactly.
+The numbers explain it. WDSP creates the SAM PLL with `omegaN` 250 rad/s
+and unity damping, which is a 39.8 Hz natural frequency and about 25 Hz
+of one-sided loop noise bandwidth - roughly 7 Hz rms of frequency jitter
+on a carrier at 0 dB in that bandwidth. That is the right design for
+demodulating SAM, where the loop has to acquire quickly and follow drift,
+and about a hundred times wider than is wanted for measuring a carrier
+that is not going anywhere. It cannot be narrowed without spoiling the
+audio it exists to produce.
+
+Since the spectrum is computed every block anyway, the carrier is found
+as the peak bin within +/-500 Hz of the tuned frequency, refined by
+parabolic interpolation on log power across the three bins about the
+peak, and then smoothed with the operator's averaging time constant.
+Sub-bin accurate, as slow as the operator wants, and it works in plain AM
+as well - where the SAM PLL does not run at all, `xamd()` case 0 being a
+simple envelope detector that never touches `phs`, `omega` or `fil_out`.
 
 ## Things to know
 

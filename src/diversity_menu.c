@@ -257,13 +257,9 @@ static int status_update_cb(gpointer data) {
              div_rade_side_text(), div_mode_lsb_text(), 100.0 * div_auto_coherence,
              div_auto_holding ? "HOLD" : "track", div_gain, div_phase);
   } else if (div_auto_ref == DIV_REF_CARRIER && !div_auto_carrier_valid) {
-    //
-    // The SAM PLL is only run in SAM; in plain AM the demodulator is an
-    // envelope detector and there is no carrier frequency to be had.
-    //
-    snprintf(text, sizeof(text), "Needs SAM mode for the carrier PLL");
+    snprintf(text, sizeof(text), "Carrier: searching");
   } else if (div_auto_ref == DIV_REF_CARRIER) {
-    snprintf(text, sizeof(text), "Carrier %+0.1f Hz   coherence %3.0f%%   %s   %+0.1f dB  %+0.0f deg",
+    snprintf(text, sizeof(text), "Carrier %+0.2f Hz   coherence %3.0f%%   %s   %+0.1f dB  %+0.0f deg",
              div_auto_carrier, 100.0 * div_auto_coherence,
              div_auto_holding ? "HOLD" : "track", div_gain, div_phase);
   } else {
@@ -469,7 +465,7 @@ void diversity_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), ref_label, 0, 7, 1, 1);
   ref_combo = gtk_combo_box_text_new();
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "Window (wideband)");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "SAM carrier (PLL)");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "Carrier (AM/SAM)");
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "RADE passband");
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "RADE V1 pilot (MVDR)");
   gtk_combo_box_set_active(GTK_COMBO_BOX(ref_combo), div_auto_ref);

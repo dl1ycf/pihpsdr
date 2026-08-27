@@ -204,6 +204,18 @@ static int div_rade_side = 1;
 //
 static int div_jump = 0;
 
+//
+// Smoothed carrier frequency, shifted frame, for DIV_REF_CARRIER.
+//
+static double div_carrier_hz = 0.0;
+static int    div_carrier_valid = 0;
+
+//
+// How far either side of the tuned frequency to look for the carrier.
+// Generous for mistuning without letting a strong sideband component win.
+//
+#define DIV_CARRIER_SEARCH_HZ  500.0
+
 void diversity_auto_jump(void) {
   div_jump = 1;
 }
@@ -217,6 +229,7 @@ static void div_reset_stats(void) {
   acc_valid = 0;
   div_auto_coherence = 0.0;
   div_auto_holding = 1;
+  div_carrier_valid = 0;
 }
 
 void diversity_auto_reset(void) {
@@ -309,21 +322,14 @@ static int div_bin_range(const struct div_context *ctx, int *klo, int *khi) {
 
   if (ctx->ref == DIV_REF_CARRIER) {
     //
-    // Method B: the carrier bin only, located by the SAM PLL. The PLL is
-    // only run in SAM (in plain AM the demodulator is an envelope
-    // detector and the PLL state is stale), so there is nothing to
-    // measure in any other mode.
+    // The carrier bin only. The frequency comes from our own tracker
+    // above, not from the SAM PLL, so this works in any mode with a
+    // carrier and its smoothing is under the operator's control.
     //
-    if (ctx->mode != modeSAM || !GetRXAAMDPLLRunning(0)) {
-      div_auto_carrier = 0.0;
-      div_auto_carrier_valid = 0;
-      return 0;
-    }
+    if (!div_carrier_valid) { return 0; }
 
-    div_auto_carrier = GetRXAAMDCarrierFreq(0);
-    div_auto_carrier_valid = 1;
-    flo = div_auto_carrier - DIV_CARRIER_BINS * binhz;
-    fhi = div_auto_carrier + DIV_CARRIER_BINS * binhz;
+    flo = div_carrier_hz - DIV_CARRIER_BINS * binhz;
+    fhi = div_carrier_hz + DIV_CARRIER_BINS * binhz;
   } else if (DIV_REF_IS_RADE(ctx->ref)) {
     //
     // The RADE modem occupies 750..2200 Hz of audio, on one side of the
@@ -498,6 +504,88 @@ static void div_process_block(void) {
 
   fftwf_execute(plan0);
   fftwf_execute(plan1);
+
+  if (ctx.ref == DIV_REF_CARRIER) {
+    //
+    // Find the carrier ourselves rather than asking the SAM PLL.
+    //
+    // WDSP's SAM PLL is set up for fast acquisition and drift following:
+    // omegaN 250 rad/s with unity damping is a 39.8 Hz natural frequency
+    // and about 25 Hz of loop noise bandwidth, which on a weak carrier
+    // gives several Hz of frequency jitter. That is the right choice for
+    // demodulating SAM and the wrong one for measuring a stable carrier,
+    // and it cannot be narrowed without spoiling the audio it exists to
+    // produce.
+    //
+    // The spectrum is already in front of us, so the peak bin plus a
+    // parabolic interpolation over its neighbours gives a sub-bin
+    // estimate, and it can then be smoothed as slowly as the operator
+    // likes. It also works in plain AM, where the SAM PLL does not run at
+    // all.
+    //
+    int klo_s = (int)floor((-DIV_CARRIER_SEARCH_HZ - (double)ctx.offset) / binhz);
+    int khi_s = (int)ceil (( DIV_CARRIER_SEARCH_HZ - (double)ctx.offset) / binhz);
+    int peak = klo_s;
+    double peakval = -1.0;
+
+    for (int k = klo_s; k <= khi_s; k++) {
+      int idx = k % nfft;
+
+      if (idx < 0) { idx += nfft; }
+
+      double p = (double)fftout0[idx][0] * fftout0[idx][0]
+                 + (double)fftout0[idx][1] * fftout0[idx][1];
+
+      if (p > peakval) {
+        peakval = p;
+        peak = k;
+      }
+    }
+
+    double delta = 0.0;
+
+    if (peakval > 0.0) {
+      //
+      // Parabolic interpolation on log power over the three bins about
+      // the peak. Good to a small fraction of a bin for a windowed tone.
+      //
+      double m[3];
+
+      for (int j = 0; j < 3; j++) {
+        int idx = (peak - 1 + j) % nfft;
+
+        if (idx < 0) { idx += nfft; }
+
+        double p = (double)fftout0[idx][0] * fftout0[idx][0]
+                   + (double)fftout0[idx][1] * fftout0[idx][1];
+        m[j] = log(p > 1e-30 ? p : 1e-30);
+      }
+
+      double den2 = m[0] - 2.0 * m[1] + m[2];
+
+      if (fabs(den2) > 1e-12) {
+        delta = 0.5 * (m[0] - m[2]) / den2;
+      }
+
+      if (delta > 0.5) { delta = 0.5; }
+
+      if (delta < -0.5) { delta = -0.5; }
+    }
+
+    double hz = ((double)peak + delta) * binhz + (double)ctx.offset;
+    double a = 1.0 - exp(-blocktime / div_auto_tau);
+
+    if (!div_carrier_valid) {
+      div_carrier_hz = hz;
+      div_carrier_valid = 1;
+    } else {
+      div_carrier_hz += a * (hz - div_carrier_hz);
+    }
+
+    div_auto_carrier = div_carrier_hz;
+    div_auto_carrier_valid = 1;
+    div_bin_range(&ctx, &klo, &khi);
+  }
 
   if (ctx.ref == DIV_REF_RADE_BAND) {
     //
