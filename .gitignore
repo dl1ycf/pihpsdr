@@ -24,3 +24,4 @@ dxhistory.db-shm
 dxhistory.db-wal
 dxspots.csv
 
+test/diversity/test_modes_live

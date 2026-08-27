@@ -189,6 +189,30 @@ trivially safe.
 to analyse. The auto controls are greyed out; manual gain and phase still
 work and are sent over the wire as before.
 
+## Tests
+
+`test/diversity` holds a standalone check that drives the real engine with
+synthetic two-antenna data and asserts that **every reference mode
+actually produces a weight**:
+
+```
+make -C test/diversity run
+```
+
+It exists because "this mode silently never starts" is a failure this code
+has produced more than once. The carrier reference was the worst case: its
+bin range is computed before the transform, and it had been made to depend
+on a carrier frequency that only the tracker - which runs after the
+transform - could supply. The dependency was circular, so on a strong,
+perfectly tuned signal the mode sat on "searching" indefinitely. The bin
+range now starts from the tuned frequency, which is where an AM carrier
+is, and the tracker refines it from there.
+
+Note the test uses the real `RECEIVER` and `struct _vfo` types rather than
+stubs with a plausible subset of fields. A first version did the latter,
+read `filter_low` from the wrong offset, and reported two working modes as
+broken.
+
 ## Files
 
 | File | Change |
