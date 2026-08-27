@@ -113,6 +113,8 @@ extern void SetTXAFMAFFilter (int channel, double low, double high);
 extern void SetRXAAMDRun(int channel, int run);
 extern void SetRXAAMDSBMode(int channel, int sbmode);
 extern void SetRXAAMDFadeLevel(int channel, int levelfade);
+extern double GetRXAAMDCarrierFreq(int channel);
+extern int GetRXAAMDPLLRunning(int channel);
 
 //
 // Interfaces from ammod.c

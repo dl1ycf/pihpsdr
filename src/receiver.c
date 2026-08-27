@@ -29,6 +29,7 @@
 #include "channel.h"
 #include "client_server.h"
 #include "discovered.h"
+#include "diversity_auto.h"
 #include "ext.h"
 #include "filter.h"
 #include "main.h"
@@ -1286,6 +1287,16 @@ void rx_add_iq_samples(RECEIVER *rx, double i_sample, double q_sample) {
 
 void rx_add_div_iq_samples(RECEIVER *rx, double i0, double q0, double i1, double q1) {
   ASSERT_SERVER();
+
+  //
+  // Feed the raw, uncombined pair to the auto-phasing analysis. This
+  // happens before the summation below and before the noise blanker, so
+  // both antennas are seen with identical (that is, no) processing.
+  //
+  if (div_auto_running) {
+    diversity_auto_sample(i0, q0, i1, q1);
+  }
+
   //
   // Note that we sum the second channel onto the first one
   // and then simply pass to add_iq_samples
@@ -1431,6 +1442,14 @@ void rx_set_framerate(RECEIVER *rx) {
 
 void rx_change_sample_rate(RECEIVER *rx, int sample_rate) {
   //
+  // The auto-phasing FFT length is derived from the sample rate, so it has
+  // to be rebuilt. Stop it before the rate changes under it.
+  //
+  if (rx->id == 0) {
+    diversity_auto_stop();
+  }
+
+  //
   // If the sample rate decreases, a valid CTUN offset may become invalid
   //
   if (rx->sample_rate > sample_rate) {
@@ -1488,6 +1507,10 @@ void rx_change_sample_rate(RECEIVER *rx, int sample_rate) {
   g_mutex_unlock(&rx->mutex);
   t_print("%s: RXid=%d rate=%d buffer_size=%d output_samples=%d\n", __func__, rx->id, rx->sample_rate,
           rx->buffer_size, rx->output_samples);
+
+  if (rx->id == 0) {
+    diversity_auto_restart();
+  }
 }
 
 void rx_close(const RECEIVER *rx) {

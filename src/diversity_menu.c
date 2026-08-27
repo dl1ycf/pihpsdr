@@ -21,8 +21,11 @@
 #include <math.h>
 
 #include "client_server.h"
+#include "diversity_auto.h"
+#include "message.h"
 #include "new_menu.h"
 #include "radio.h"
+#include "receiver.h"
 
 static GtkWidget *dialog = NULL;
 static GtkWidget *gain_coarse_scale = NULL;
@@ -30,10 +33,33 @@ static GtkWidget *gain_fine_scale = NULL;
 static GtkWidget *phase_fine_scale = NULL;
 static GtkWidget *phase_coarse_scale = NULL;
 
+static GtkWidget *auto_combo = NULL;
+static GtkWidget *ref_combo = NULL;
+static GtkWidget *follow_b = NULL;
+static GtkWidget *centre_spin = NULL;
+static GtkWidget *width_spin = NULL;
+static GtkWidget *tau_scale = NULL;
+static GtkWidget *coh_scale = NULL;
+static GtkWidget *status_label = NULL;
+
 static double gain_coarse, gain_fine;
 static double phase_coarse, phase_fine;
 
+static guint status_timer = 0;
+
+//
+// Set while the status timer pushes automatically determined values into
+// the gain/phase sliders, so that the "value_changed" handlers below can
+// tell an operator adjustment from one of our own.
+//
+static int updating_from_auto = 0;
+
 static void cleanup(void) {
+  if (status_timer != 0) {
+    g_source_remove(status_timer);
+    status_timer = 0;
+  }
+
   if (dialog != NULL) {
     GtkWidget *tmp = dialog;
     dialog = NULL;
@@ -41,6 +67,14 @@ static void cleanup(void) {
     gain_fine_scale = NULL;
     phase_coarse_scale = NULL;
     phase_fine_scale = NULL;
+    auto_combo = NULL;
+    ref_combo = NULL;
+    follow_b = NULL;
+    centre_spin = NULL;
+    width_spin = NULL;
+    tau_scale = NULL;
+    coh_scale = NULL;
+    status_label = NULL;
     gtk_widget_destroy(tmp);
     sub_menu = NULL;
     active_menu  = NO_MENU;
@@ -59,6 +93,8 @@ static void diversity_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void gain_coarse_changed_cb(GtkWidget *widget, gpointer data) {
+  if (updating_from_auto) { return; }
+
   gain_coarse = gtk_range_get_value(GTK_RANGE(widget));
   div_gain = gain_coarse + gain_fine;
   if (radio_is_remote) {
@@ -69,6 +105,8 @@ static void gain_coarse_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void gain_fine_changed_cb(GtkWidget *widget, gpointer data) {
+  if (updating_from_auto) { return; }
+
   gain_fine = gtk_range_get_value(GTK_RANGE(widget));
   div_gain = gain_coarse + gain_fine;
   if (radio_is_remote) {
@@ -79,6 +117,8 @@ static void gain_fine_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void phase_coarse_changed_cb(GtkWidget *widget, gpointer data) {
+  if (updating_from_auto) { return; }
+
   phase_coarse = gtk_range_get_value(GTK_RANGE(widget));
   div_phase = phase_coarse + phase_fine;
   if (radio_is_remote) {
@@ -89,6 +129,8 @@ static void phase_coarse_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void phase_fine_changed_cb(GtkWidget *widget, gpointer data) {
+  if (updating_from_auto) { return; }
+
   phase_fine = gtk_range_get_value(GTK_RANGE(widget));
   div_phase = phase_coarse + phase_fine;
   if (radio_is_remote) {
@@ -96,6 +138,134 @@ static void phase_fine_changed_cb(GtkWidget *widget, gpointer data) {
     return;
   }
   radio_calc_div_params();
+}
+
+
+//
+// Manual gain/phase only make sense while the automatic loop is not
+// driving them, so they are greyed out when it is.
+//
+static void update_manual_sensitivity(void) {
+  gboolean manual = (div_auto_mode == DIV_AUTO_OFF);
+
+  if (gain_coarse_scale)  { gtk_widget_set_sensitive(gain_coarse_scale, manual); }
+
+  if (gain_fine_scale)    { gtk_widget_set_sensitive(gain_fine_scale, manual); }
+
+  if (phase_coarse_scale) { gtk_widget_set_sensitive(phase_coarse_scale, manual); }
+
+  if (phase_fine_scale)   { gtk_widget_set_sensitive(phase_fine_scale, manual); }
+
+  if (centre_spin) { gtk_widget_set_sensitive(centre_spin, !div_auto_follow_filter); }
+
+  if (width_spin)  { gtk_widget_set_sensitive(width_spin,  !div_auto_follow_filter); }
+}
+
+//
+// Reflect what the analysis thread is doing. It only ever writes plain
+// scalars, so the GUI polls them here rather than having a worker thread
+// touch widgets.
+//
+static int status_update_cb(gpointer data) {
+  char text[256];
+
+  if (dialog == NULL) {
+    status_timer = 0;
+    return G_SOURCE_REMOVE;
+  }
+
+  if (div_auto_mode != DIV_AUTO_OFF) {
+    //
+    // Track the automatically determined values in the manual sliders so
+    // the operator can see where the loop has settled, and so the sliders
+    // start from there if auto is switched off.
+    //
+    updating_from_auto = 1;
+    gain_coarse = 2.0 * round(0.5 * div_gain);
+
+    if (gain_coarse >  25.0) { gain_coarse =  25.0; }
+
+    if (gain_coarse < -25.0) { gain_coarse = -25.0; }
+
+    gain_fine = div_gain - gain_coarse;
+    phase_coarse = 4.0 * round(div_phase * 0.25);
+    phase_fine = div_phase - phase_coarse;
+
+    if (gain_fine >  2.0) { gain_fine =  2.0; }
+
+    if (gain_fine < -2.0) { gain_fine = -2.0; }
+
+    if (phase_fine >  5.0) { phase_fine =  5.0; }
+
+    if (phase_fine < -5.0) { phase_fine = -5.0; }
+
+    gtk_range_set_value(GTK_RANGE(gain_coarse_scale), gain_coarse);
+    gtk_range_set_value(GTK_RANGE(gain_fine_scale), gain_fine);
+    gtk_range_set_value(GTK_RANGE(phase_coarse_scale), phase_coarse);
+    gtk_range_set_value(GTK_RANGE(phase_fine_scale), phase_fine);
+    updating_from_auto = 0;
+  }
+
+  if (!div_auto_running) {
+    snprintf(text, sizeof(text), "Auto off");
+  } else if (div_auto_ref == DIV_REF_CARRIER && !div_auto_carrier_valid) {
+    //
+    // The SAM PLL is only run in SAM; in plain AM the demodulator is an
+    // envelope detector and there is no carrier frequency to be had.
+    //
+    snprintf(text, sizeof(text), "Needs SAM mode for the carrier PLL");
+  } else if (div_auto_ref == DIV_REF_CARRIER) {
+    snprintf(text, sizeof(text), "Carrier %+0.1f Hz   coherence %3.0f%%   %s   %+0.1f dB  %+0.0f deg",
+             div_auto_carrier, 100.0 * div_auto_coherence,
+             div_auto_holding ? "HOLD" : "track", div_gain, div_phase);
+  } else {
+    snprintf(text, sizeof(text), "Coherence %3.0f%%   %s   %+0.1f dB  %+0.0f deg",
+             100.0 * div_auto_coherence,
+             div_auto_holding ? "HOLD" : "track",
+             div_gain, div_phase);
+  }
+
+  gtk_label_set_text(GTK_LABEL(status_label), text);
+  return G_SOURCE_CONTINUE;
+}
+
+static void auto_changed_cb(GtkWidget *widget, gpointer data) {
+  div_auto_mode = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  diversity_auto_restart();
+  update_manual_sensitivity();
+}
+
+static void ref_changed_cb(GtkWidget *widget, gpointer data) {
+  div_auto_ref = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  diversity_auto_reset();
+}
+
+static void follow_cb(GtkWidget *widget, gpointer data) {
+  div_auto_follow_filter = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  diversity_auto_reset();
+  update_manual_sensitivity();
+}
+
+static void centre_cb(GtkWidget *widget, gpointer data) {
+  div_auto_centre = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+  diversity_auto_reset();
+}
+
+static void width_cb(GtkWidget *widget, gpointer data) {
+  div_auto_width = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+  diversity_auto_reset();
+}
+
+static void tau_cb(GtkWidget *widget, gpointer data) {
+  div_auto_tau = gtk_range_get_value(GTK_RANGE(widget));
+}
+
+static void coh_cb(GtkWidget *widget, gpointer data) {
+  div_auto_coherence_min = 0.01 * gtk_range_get_value(GTK_RANGE(widget));
+}
+
+static void reset_cb(GtkWidget *widget, gpointer data) {
+  diversity_auto_reset();
 }
 
 void diversity_menu(GtkWidget *parent) {
@@ -181,7 +351,99 @@ void diversity_menu(GtkWidget *parent) {
   gtk_widget_show(phase_fine_scale);
   gtk_grid_attach(GTK_GRID(grid), phase_fine_scale, 1, 4, 1, 1);
   g_signal_connect(G_OBJECT(phase_fine_scale), "value_changed", G_CALLBACK(phase_fine_changed_cb), NULL);
+  //
+  // ------------------------------------------------------------------
+  // Automatic phasing
+  // ------------------------------------------------------------------
+  //
+  GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+  gtk_grid_attach(GTK_GRID(grid), sep, 0, 5, 2, 1);
+  GtkWidget *auto_label = gtk_label_new("Auto");
+  gtk_widget_set_name(auto_label, "boldlabel");
+  gtk_widget_set_halign(auto_label, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), auto_label, 0, 6, 1, 1);
+  auto_combo = gtk_combo_box_text_new();
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_combo), "Off (manual)");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_combo), "Null (cancel common signal)");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_combo), "Sum (co-phase antennas)");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(auto_combo), div_auto_mode);
+  gtk_grid_attach(GTK_GRID(grid), auto_combo, 1, 6, 1, 1);
+  g_signal_connect(auto_combo, "changed", G_CALLBACK(auto_changed_cb), NULL);
+  GtkWidget *ref_label = gtk_label_new("Measure on");
+  gtk_widget_set_name(ref_label, "boldlabel");
+  gtk_widget_set_halign(ref_label, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), ref_label, 0, 7, 1, 1);
+  ref_combo = gtk_combo_box_text_new();
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "Window (wideband)");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "SAM carrier (PLL)");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(ref_combo), div_auto_ref);
+  gtk_grid_attach(GTK_GRID(grid), ref_combo, 1, 7, 1, 1);
+  g_signal_connect(ref_combo, "changed", G_CALLBACK(ref_changed_cb), NULL);
+  follow_b = gtk_check_button_new_with_label("Window follows RX filter");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(follow_b), div_auto_follow_filter);
+  gtk_grid_attach(GTK_GRID(grid), follow_b, 1, 8, 1, 1);
+  g_signal_connect(follow_b, "toggled", G_CALLBACK(follow_cb), NULL);
+  GtkWidget *centre_label = gtk_label_new("Window centre (Hz)");
+  gtk_widget_set_name(centre_label, "boldlabel");
+  gtk_widget_set_halign(centre_label, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), centre_label, 0, 9, 1, 1);
+  centre_spin = gtk_spin_button_new_with_range(-20000.0, 20000.0, 10.0);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(centre_spin), div_auto_centre);
+  gtk_grid_attach(GTK_GRID(grid), centre_spin, 1, 9, 1, 1);
+  g_signal_connect(centre_spin, "value_changed", G_CALLBACK(centre_cb), NULL);
+  GtkWidget *width_label = gtk_label_new("Window width (Hz)");
+  gtk_widget_set_name(width_label, "boldlabel");
+  gtk_widget_set_halign(width_label, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), width_label, 0, 10, 1, 1);
+  width_spin = gtk_spin_button_new_with_range(20.0, 40000.0, 10.0);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(width_spin), div_auto_width);
+  gtk_grid_attach(GTK_GRID(grid), width_spin, 1, 10, 1, 1);
+  g_signal_connect(width_spin, "value_changed", G_CALLBACK(width_cb), NULL);
+  GtkWidget *tau_label = gtk_label_new("Averaging (s)");
+  gtk_widget_set_name(tau_label, "boldlabel");
+  gtk_widget_set_halign(tau_label, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), tau_label, 0, 11, 1, 1);
+  tau_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.2, 10.0, 0.1);
+  gtk_widget_set_size_request(tau_scale, 300, 25);
+  gtk_range_set_value(GTK_RANGE(tau_scale), div_auto_tau);
+  gtk_grid_attach(GTK_GRID(grid), tau_scale, 1, 11, 1, 1);
+  g_signal_connect(G_OBJECT(tau_scale), "value_changed", G_CALLBACK(tau_cb), NULL);
+  GtkWidget *coh_label = gtk_label_new("Min coherence (%)");
+  gtk_widget_set_name(coh_label, "boldlabel");
+  gtk_widget_set_halign(coh_label, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), coh_label, 0, 12, 1, 1);
+  coh_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 95.0, 5.0);
+  gtk_widget_set_size_request(coh_scale, 300, 25);
+  gtk_range_set_value(GTK_RANGE(coh_scale), 100.0 * div_auto_coherence_min);
+  gtk_grid_attach(GTK_GRID(grid), coh_scale, 1, 12, 1, 1);
+  g_signal_connect(G_OBJECT(coh_scale), "value_changed", G_CALLBACK(coh_cb), NULL);
+  GtkWidget *reset_b = gtk_button_new_with_label("Restart averaging");
+  gtk_grid_attach(GTK_GRID(grid), reset_b, 0, 13, 1, 1);
+  g_signal_connect(reset_b, "clicked", G_CALLBACK(reset_cb), NULL);
+  status_label = gtk_label_new("");
+  gtk_widget_set_halign(status_label, GTK_ALIGN_START);
+  gtk_grid_attach(GTK_GRID(grid), status_label, 1, 13, 1, 1);
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
+  update_manual_sensitivity();
+
+  if (radio_is_remote) {
+    //
+    // The samples are combined on the server, so there is nothing here to
+    // analyse. Manual gain/phase still work, they are sent over the wire.
+    //
+    gtk_widget_set_sensitive(auto_combo, FALSE);
+    gtk_widget_set_sensitive(ref_combo, FALSE);
+    gtk_widget_set_sensitive(follow_b, FALSE);
+    gtk_widget_set_sensitive(centre_spin, FALSE);
+    gtk_widget_set_sensitive(width_spin, FALSE);
+    gtk_widget_set_sensitive(tau_scale, FALSE);
+    gtk_widget_set_sensitive(coh_scale, FALSE);
+    gtk_widget_set_sensitive(reset_b, FALSE);
+    gtk_label_set_text(GTK_LABEL(status_label), "Auto phasing runs on the radio side only");
+    return;
+  }
+
+  status_timer = g_timeout_add(250, status_update_cb, NULL);
 }

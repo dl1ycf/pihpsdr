@@ -471,6 +471,7 @@ src/cw_menu.c \
 src/discovered.c \
 src/discovery.c \
 src/display_menu.c \
+src/diversity_auto.c \
 src/diversity_menu.c \
 src/dxcluster_menu.c \
 src/dxcluster.c \
@@ -572,6 +573,7 @@ src/cw_menu.o \
 src/discovered.o \
 src/discovery.o \
 src/display_menu.o \
+src/diversity_auto.o \
 src/diversity_menu.o \
 src/dxcluster_menu.o \
 src/dxcluster.o \

@@ -37,6 +37,7 @@
 #include "client_server.h"
 #include "css.h"
 #include "discovered.h"
+#include "diversity_auto.h"
 #include "dxcluster.h"
 #include "ext.h"
 #include "filter.h"
@@ -1666,6 +1667,12 @@ void radio_start_radio(void) {
   g_idle_add(ext_vfo_update, NULL);
   schedule_high_priority();
   //
+  // DIVERSITY is restored from the props file without going through
+  // radio_set_diversity(), so the auto-phasing analysis has to be kicked
+  // off here for the case where both it and diversity were left enabled.
+  //
+  diversity_auto_restart();
+  //
   // Now the radio is up and running. Connect "Radio" keyboard interceptor
   //
   g_signal_handler_disconnect(top_window, keypress_signal_id);
@@ -2308,7 +2315,18 @@ void radio_set_diversity(int state) {
     schedule_high_priority();
     schedule_receive_specific();
     radio_calc_div_params();
+
+    //
+    // diversity_enabled was already set to state at the top of this block,
+    // which is what diversity_auto_start() keys off.
+    //
+    if (state) {
+      diversity_auto_start();
+    } else {
+      diversity_auto_stop();
+    }
   }
+
   diversity_enabled = state;
   g_idle_add(ext_vfo_update, NULL);
 }
@@ -3138,6 +3156,7 @@ static void radio_restore_state(void) {
     GetPropF0("diversity_phase",                             div_phase);
     GetPropF0("diversity_cos",                               div_cos);
     GetPropF0("diversity_sin",                               div_sin);
+    diversity_auto_restore_state();
     GetPropI0("new_pa_board",                                new_pa_board);
     GetPropI0("region",                                      region);
     GetPropI0("atlas_penelope",                              atlas_penelope);
@@ -3360,6 +3379,7 @@ void radio_save_state(void) {
     SetPropF0("diversity_phase",                             div_phase);
     SetPropF0("diversity_cos",                               div_cos);
     SetPropF0("diversity_sin",                               div_sin);
+    diversity_auto_save_state();
     SetPropI0("new_pa_board",                                new_pa_board);
     SetPropI0("region",                                      region);
     SetPropI0("atlas_penelope",                              atlas_penelope);

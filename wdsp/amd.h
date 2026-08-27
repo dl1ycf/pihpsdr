@@ -115,4 +115,8 @@ extern __declspec (dllexport) void SetRXAAMDSBMode(int channel, int sbmode);
 
 extern __declspec (dllexport) void SetRXAAMDFadeLevel(int channel, int levelfade);
 
+extern __declspec (dllexport) double GetRXAAMDCarrierFreq(int channel);
+
+extern __declspec (dllexport) int GetRXAAMDPLLRunning(int channel);
+
 #endif
