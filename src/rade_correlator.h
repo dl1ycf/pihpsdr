@@ -58,7 +58,8 @@
 //
 // Status, for the UI. Written by the analysis thread.
 //
-extern int    rade_corr_locked;      // pilot acquired and tracking
+extern int    rade_corr_locked;      // pilot acquired, confirmed and tracking
+extern int    rade_corr_confirming;  // a candidate is on probation
 extern double rade_corr_freq_off;    // Hz, carrier frequency offset
 extern double rade_corr_snr;         // dB, pilot SNR estimate
 extern double rade_corr_quality;     // 0..1, normalised pilot correlation
@@ -73,18 +74,27 @@ extern void rade_corr_stop(void);
 extern void rade_corr_reset(void);
 
 //
-// Feed one block of n sample pairs at the DDC rate. lsb is only a hint
-// for the log - the spectral sense is detected, not assumed. offset_hz is
-// vfo[0].offset, and tau is the operator's averaging time in seconds,
-// which sets how fast the channel and covariance estimates follow the
-// path.
+// Feed one block of n sample pairs at the DDC rate.
+//
+// expect_bank is the pilot bank the operator's sideband implies - 0 for a
+// modem above the tuned frequency, 1 for below, -1 when the passband does
+// not say. It is a prior, not a constraint: both banks are still searched
+// and the other one is taken if it wins by RADE_BANK_MARGIN.
+//
+// frame_off is the offset of WDSP's shifted frame from the raw DDC one,
+// in Hz - vfo[0].offset with the CW sidetone folded in. See the frequency
+// bookkeeping note in diversity_auto.c.
+//
+// tau is the operator's averaging time in seconds, which sets how fast the
+// channel and covariance estimates follow the path.
 //
 // Returns 1 when a new weight is available in *wr/*wi, in which case it
 // is expressed in the same sense as div_cos/div_sin, i.e. ready to be
-// applied as z0 + w*z1.
+// applied as z0 + w*z1. Nothing is produced while a candidate is on
+// probation.
 //
 extern int rade_corr_process(const float *arm0, const float *arm1, int n,
-                             int lsb, double offset_hz, double tau,
+                             int expect_bank, double frame_off, double tau,
                              double *wr, double *wi);
 
 #endif

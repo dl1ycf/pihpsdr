@@ -42,30 +42,59 @@ what the mode says, so the two can be compared.
 
 That is not how it started, and the reason for the change is worth keeping:
 
-### The correlator measures the sense rather than deriving it
+### The sideband is the prior, the search is the escape hatch
 
-The first version derived the correlator's spectral sense from the mode
-too, conjugating the input for LSB. **It never acquired on air**, against
-a signal RADE itself was decoding at 10 dB SNR.
+The first version derived the correlator's spectral sense from the mode,
+conjugating the input for LSB. **It never acquired on air**, against a
+signal RADE itself was decoding at 10 dB SNR. The conclusion drawn at the
+time was that the convention could not be reasoned about and had to be
+measured, so the derivation was removed entirely and both pilot banks
+searched blind.
 
-The convention relating the raw DDC stream to the frame WDSP works in
-after `xshift()` is genuinely hard to pin down by reading the code: the
-direction implied by `xshift()` multiplying by `exp(+j*2*pi*offset*t)` and
-the direction implied by the signs of the USB and LSB filter edges do not
-agree, and I could not resolve which premise was wrong. Guessing is
-silent - the correlator looks at the mirror image and finds nothing, for
-ever, with no indication of why.
+Half of that was right and half of it was covering for a different bug.
+The conversion between the raw DDC frame and the frame the passband is
+expressed in had the wrong sign - see "Frequency bookkeeping" in
+`diversity_auto.c` - so under CTUN or RIT nothing acquired whichever bank
+was used, which is not evidence about sidebands at all.
 
-So it is no longer derived. Correlating a mirrored stream against the
-pilot is identical to correlating the original stream against a *mirrored
-pilot*, and `conj(p)` is exactly the pilot with its carriers reflected
-about zero. Acquisition searches both pilot banks over the same decimated
-stream and keeps whichever correlates, at twice the acquisition cost and
-no extra front end.
+What is there now is a prior with an escape hatch:
 
-That removes conjugation from the sample path altogether, so there is no
-longer a weight to conjugate back: whichever bank wins, `h0` and `h1`
-describe the real untouched arms and the MVDR solution applies directly.
+- The operator's **passband** says which side to expect. Bank 0 is the
+  pilot as transmitted, carriers at +750..+2200 Hz, matching a modem
+  above the tuned frequency; bank 1 is its mirror. The midpoint of
+  `filter_low..filter_high` decides, which covers LSB, USB and the
+  digital modes without a mode table, and says nothing (returns "either")
+  for AM, SAM and FM.
+- Both banks are still searched. The unexpected one has to win by
+  `RADE_BANK_MARGIN` (1.5 sigma) before it is taken, and when it does,
+  the log says so.
+
+The prior earns its place because a blind two-way race is decided by noise
+on a signal near the noise floor, which is where RADE lives. On air that
+showed up in the wideband RADE mode, where the same choice places the
+analysis window: with no signal it settled on whichever side won the coin
+toss, and the green window on the panadapter sat above an LSB passband.
+The escape hatch earns its place because the sense of the raw baseband
+with respect to RF is still the one thing here never settled from first
+principles; if the margin is ever crossed on a real signal, the log will
+finally tell us.
+
+Either way conjugation stays out of the sample path, so there is no weight
+to conjugate back: whichever bank wins, `h0` and `h1` describe the real
+untouched arms and the MVDR solution applies directly.
+
+### The analysis window follows the passband too
+
+In the wideband RADE mode the window is the modem band, `750..2200 Hz` on
+the chosen side, **intersected with the operator's filter**. A narrower
+filter therefore narrows what is measured, which is the standing rule for
+every window mode: never measure outside what the operator is listening
+to. The panadapter overlay is clipped the same way, so what is drawn is
+what is being measured.
+
+The pilot correlator is different and is *not* clipped. It taps the raw
+stream ahead of WDSP and needs all thirty carriers whatever the filter is
+set to, so in RADE V1 the overlay shows the whole modem band.
 
 The detected sense is shown in the status line ("normal spectrum" /
 "mirrored spectrum") alongside what the mode says.
@@ -307,22 +336,57 @@ tracking perfectly. It is the share of pilot-span energy the pilot itself
 accounts for, which is genuinely small when something loud is sitting on
 top of it. Watch the LOCK indicator, not that number.
 
-**Acquisition takes about 11.5 s of continuous signal.** Declaring lock
-needs `RADE_LOCK_FRAMES` (3) consecutive evaluations, each integrating
-`RADE_ACQ_PASSES` (32) passes of one 120 ms modem frame. Deliberately
-conservative, but long for a conversational mode - the first thing to
-revisit if acquisition proves too slow on air.
+**Acquisition takes 1 to 5 s of continuous signal**, depending on how
+strong it is.
+
+It used to take 11.5 s for every signal however strong, because declaring
+lock needed three consecutive evaluations, each integrating 32 passes of
+one 120 ms modem frame: `3 x 32 x 120 ms`. Two things were wrong with
+that. The integration length was fixed, so a signal 20 dB above the
+threshold waited exactly as long as one at it; and the confirmation
+re-ran the entire blind search, which is an enormously expensive way to
+answer the question "is the thing we just found still there?".
+
+What happens now:
+
+1. **Progressive search.** The grid is scored at 8, 16 and 32 passes,
+   with thresholds of 7.5, 6.75 and 6.0 sigma. The early thresholds are
+   raised because scoring three times gives noise three chances; the
+   schedule as a whole has about the false-alarm rate of the single 6.0
+   test it replaces. A strong signal is found after 8 passes, just under
+   a second.
+2. **Cheap confirmation.** A detection is a *candidate*, not a lock. The
+   tracker follows it for `RADE_PROBATION` (8) frames, about a second,
+   applying the ordinary per-frame pilot-against-floor test at that one
+   timing and frequency - one correlation and four probes per frame
+   instead of another full search. **No weight is produced during
+   probation**, so a false alarm costs a second of waiting and never
+   moves the combiner. The status line shows "confirming candidate".
+
+Measured on synthetic signals at 48 kHz, all four of USB/LSB with and
+without CTUN acquire in **2.2 s** (`test/diversity/test_rade.c`), against
+11.5 s before, with no false lock in 12.8 s of noise.
+
+**Frequency is tracked once locked.** Acquisition leaves it quantised to
+the 5 Hz search grid, and a station drifts. The pilot correlation turns by
+`2*pi*df*T` from one modem frame to the next, `T` being 120 ms, so its
+phase advance measures the residual directly and unambiguously over
++/-4.17 Hz - which covers both the half-step quantisation and any drift a
+station on frequency will show. The loop is deliberately slow, about two
+seconds, since a few Hz per minute is 0.01 Hz in that time. It is skipped
+on any frame where the timing was nudged, because a one-sample shift
+rotates the correlation by more than any frequency error would.
 
 **The frequency search covers +/-50 Hz**, matching RADE's own
 acquisition. An earlier +/-25 Hz was another way to find nothing if the
 operator is slightly off frequency.
 
-**Acquisition logs its progress** once per completed integration set
-(about 4 s), reporting the statistic for both pilot banks, the threshold,
+**Acquisition logs its progress** at each scoring point - 1 s, 2 s and
+3.8 s into an integration - reporting the statistic for both pilot banks, the threshold,
 the best frequency, and the decimated signal RMS:
 
 ```
-rade_acquire: acq normal=2.31 mirrored=7.44 best=7.44 (need 6.0) f=+0.0 rms=1.2e-03 mode=USB
+rade_acquire: acq normal=2.31 mirrored=7.44 best=7.44 (need 6.00 after 16 passes) f=+0.0 rms=1.2e-03 expect=mirrored
 ```
 
 An RMS near zero means nothing is reaching the correlator at all, which is

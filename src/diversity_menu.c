@@ -255,7 +255,11 @@ static int status_update_cb(gpointer data) {
   if (!div_auto_running) {
     snprintf(text, sizeof(text), "Auto off");
   } else if (div_auto_ref == DIV_REF_RADE_V1) {
-    if (!rade_corr_locked) {
+    if (rade_corr_confirming) {
+      snprintf(text, sizeof(text),
+               "RADE V1: confirming candidate   %s spectrum   %+0.1f Hz",
+               rade_corr_mirrored ? "mirrored" : "normal", rade_corr_freq_off);
+    } else if (!rade_corr_locked) {
       snprintf(text, sizeof(text),
                "RADE V1: searching for pilot   (mode %s) - see log for correlation",
                div_mode_lsb_text());

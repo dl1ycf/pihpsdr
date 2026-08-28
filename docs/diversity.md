@@ -200,7 +200,28 @@ exactly on the filter shading, which is a convenient check that the
 frequency reference is right.
 
 In Carrier mode the band is the search region and a brighter vertical line
-marks where the tracker has settled within it.
+marks where the tracker has settled within it. In RADE passband mode it is
+the modem band clipped to the filter, as measured; in RADE V1 it is the
+whole modem band, because the pilot correlator taps the raw stream ahead
+of WDSP and is not affected by the filter.
+
+The frequency reference deserves a note, because it was wrong here until
+August 2026. The window and the filter edges live in WDSP's shifted frame,
+where the tuned signal sits at zero; the analysis works on the raw DDC
+stream, where it sits at `vfo[0].offset` (less the CW sidetone in CWU,
+plus it in CWL). So
+
+    raw = shifted + frame_off
+
+Two independent places in the code state that: the panadapter's own filter
+overlay, and WDSP's notch database, which compares absolute RF notch
+frequencies against `flow + tunefreq + shift`. It is also the only
+relation that puts the CW passband on the dial frequency. It had been
+reasoned out the other way from the sign of the rotation in
+`wdsp/shift.c`, which looks conclusive and is not; with CTUN off, RIT off
+and a phone mode — most testing — nothing showed. With CTUN on, the
+analysis measured a window `2 x offset` away from the one drawn on the
+screen, and RADE V1 could not acquire at all.
 
 ### Starting again
 
@@ -305,10 +326,21 @@ in plain AM, where the SAM PLL does not run at all.
 
 ### RADE passband
 
-Places the window on the FreeDV RADE modem band, 750-2200 Hz, on whichever
-side of the carrier actually carries it — measured each block by comparing
-the energy either side, not derived from the mode. Maximum ratio combining
-across the modem band; no QRM nulling.
+Places the window on the FreeDV RADE modem band, 750-2200 Hz, on the side
+of the tuned frequency the **operator's passband** puts it — the midpoint
+of the filter edges, which covers LSB, USB and the digital modes without a
+mode table. The window is then clipped to the filter, so a narrower filter
+narrows what is measured.
+
+The energy on the two sides is still compared, but only as an escape
+hatch: the other side has to be 6 dB stronger before it is believed, and
+the log says so when that happens. Taking the stronger side outright, as
+an earlier version did, is a coin toss on a signal near the noise floor —
+which is where RADE lives — so with no signal present the window settled
+wherever noise put it, and the green overlay could sit above an LSB
+passband indefinitely.
+
+Maximum ratio combining across the modem band; no QRM nulling.
 
 ### RADE V1 pilot (MVDR)
 
@@ -391,17 +423,28 @@ Run it yourself with `make -C test/diversity bench`.
 |---|---|
 | Weight slew | ~0.5 s |
 | Estimate settling | the Averaging control, 0.2-30 s |
-| **RADE V1 acquisition** | **~11.5 s** of continuous signal |
+| **RADE V1 acquisition** | **1-5 s** of continuous signal |
+| RADE V1 confirmation ("probation") | ~1 s of that |
 | RADE V1 freeze when the pilot goes | ~1 s |
 | RADE V1 lock drop | ~10 s |
 
-RADE V1 acquisition is the slow one and deserves explanation: declaring
-lock needs `RADE_LOCK_FRAMES` (3) consecutive evaluations, each
-integrating `RADE_ACQ_PASSES` (32) passes of one 120 ms modem frame. That
-is deliberately conservative — a false lock steers the array at noise —
-but 11.5 s of uninterrupted signal is a long time in a conversational
-mode, and it is the first thing to revisit if acquisition proves too slow
-in practice.
+RADE V1 acquisition is in two parts. The search scores its grid at 8, 16
+and 32 passes of a 120 ms modem frame, with the threshold coming down as
+the integration lengthens, so a strong signal is found in about a second
+and a weak one in under four. What it finds is a *candidate*: the tracker
+then follows that one timing and frequency for eight frames, applying its
+ordinary per-frame test, and **produces no weight until it confirms**. A
+false alarm therefore costs a second and never moves the combiner.
+
+This replaced a scheme that re-ran the entire blind search three times
+before declaring lock — `3 x 32 x 120 ms`, 11.5 s for every signal however
+strong. Confirming the one cell we care about answers the same question
+for a fraction of the cost. Measured: 2.2 s to lock on synthetic signals,
+USB and LSB, with and without CTUN.
+
+Once locked, the frequency is tracked from the pilot-to-pilot phase
+advance with a ~2 s time constant, which removes the 5 Hz search-grid
+quantisation and follows the few Hz per minute a station drifts.
 
 ---
 
@@ -415,7 +458,7 @@ in practice.
 | `src/receiver.c` | The combiner, and the tap into it |
 | `src/radio.c` | Start/stop, props, shutdown |
 | `src/new_protocol.c` | P2 DDC pairing and ADC configuration |
-| `test/diversity/` | Mode coverage test and the CPU benchmark |
+| `test/diversity/` | Mode coverage, window placement and weighting, RADE acquisition, CPU benchmark |
 
 ---
 

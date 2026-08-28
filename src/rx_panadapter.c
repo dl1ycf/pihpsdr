@@ -342,12 +342,31 @@ void rx_panadapter_update(RECEIVER *rx) {
 
     case DIV_REF_RADE_BAND:
     case DIV_REF_RADE_V1:
+      //
+      // The modem band, on the side the operator's sideband puts it.
+      //
+      // The wideband mode measures an FFT window and clips it to the
+      // operator's filter, so the overlay is clipped to match. The pilot
+      // correlator does not: it taps the raw stream ahead of WDSP and
+      // needs all thirty carriers whatever the filter is set to, so
+      // there the whole modem band is drawn.
+      //
       if (div_rade_side_get() < 0) {
         wlo = -RADE_CORR_FHI;
         whi = -RADE_CORR_FLO;
       } else {
         wlo = RADE_CORR_FLO;
         whi = RADE_CORR_FHI;
+      }
+
+      if (div_auto_ref == DIV_REF_RADE_BAND && rx->filter_high > rx->filter_low) {
+        double plo = fmax(wlo, (double)rx->filter_low);
+        double phi = fmin(whi, (double)rx->filter_high);
+
+        if (phi > plo) {
+          wlo = plo;
+          whi = phi;
+        }
       }
 
       break;

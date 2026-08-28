@@ -9,6 +9,25 @@ August 2026:
   a carrier other than the primary, coherence weighting for SSB voice,
   and a pilot-correlating MVDR mode for FreeDV RADE V1
 
+- diversity: the conversion between the raw DDC frame and the frame the
+  passband is expressed in had the wrong sign, so with CTUN or RIT in use
+  the analysis measured a window twice the offset away from the one drawn
+  on the panadapter, and the RADE V1 correlator could not acquire at all.
+  The CW sidetone was not accounted for either
+
+- diversity: the RADE analysis window and its panadapter overlay now
+  follow the operator's sideband and passband instead of taking whichever
+  side of the tuned frequency happened to be stronger, which with no
+  signal present put them on the wrong side
+
+- diversity: RADE V1 acquisition now takes 1-5 s depending on signal
+  strength instead of 11.5 s regardless of it, by scoring the search grid
+  progressively and confirming the candidate rather than repeating the
+  whole search. No weight is produced until the candidate confirms
+
+- diversity: RADE V1 now tracks the pilot frequency once locked, removing
+  the search-grid quantisation and following station drift
+
 - P2 diversity: ADC1 never received the dither/random setting, so the two
   receive chains were not configured identically
 

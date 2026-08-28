@@ -80,19 +80,43 @@
 // Frequency bookkeeping
 // ----------------------------------------------------------------------
 //
-// We tap the *raw* DDC streams, ahead of WDSP. WDSP's first stage is
-// xshift(), which multiplies by exp(+j*2*pi*offset*t) with
-// offset = vfo[0].offset, and the operator's passband
-// (RXASetPassband, filter_low/filter_high) is expressed in that shifted
-// frame, where the tuned signal sits at zero.
+// We tap the *raw* DDC streams, ahead of WDSP. The DDC is tuned to
+// vfo[0].frequency, so a bin at +f in our FFT is f Hz above that. The
+// operator's passband (filter_low/filter_high) is expressed in WDSP's
+// shifted frame instead, where the tuned signal sits at zero.
 //
-// So a frequency f in the shifted frame is at f - offset in the raw frame.
-// That single relation is all the conversion needed: the filter edges
-// arrive already in the shifted frame, and the carrier tracker produces
-// its estimate there by construction. We never have to decide whether the
-// raw baseband runs the same way as RF or is mirrored - which is just as
-// well, because that question could not be settled from the code and the
-// two attempts to reason it out both came to the wrong answer.
+// The relation between the two is
+//
+//     raw = shifted + frame_off
+//
+// with frame_off = vfo[0].offset, less the CW sidetone frequency in CWU
+// and plus it in CWL, because rx_set_filter() folds the sidetone into
+// filter_low/filter_high and rx_set_offset() takes it back out again
+// before handing the shift to WDSP.
+//
+// Two independent places in the code state that relation, and they agree:
+//
+//   - the panadapter draws the filter edges at cAp*filter_low + cAp*offset
+//     (rx_panadapter.c), with the same CW sidetone terms;
+//   - WDSP's own notch database compares absolute RF notch frequencies
+//     against flow + tunefreq + shift (wdsp/nbp.c, calc_nbp_impulse).
+//
+// It is also the only relation that puts the CW passband on the dial
+// frequency, where it has to be.
+//
+// This was wrong here until August 2026, as f - offset, reasoned out from
+// the sign of the rotation in wdsp/shift.c. Everything still lined up with
+// CTUN off, RIT off and a phone mode, which is most testing; with CTUN on
+// the analysis measured a window 2*offset away from the one drawn on the
+// screen, and in CW it was out by the sidetone frequency. Reasoning from
+// the two consumers of the convention beats reasoning from one producer
+// of it.
+//
+// This says nothing about whether the raw baseband runs the same way as
+// RF. It does - the spectrum display is fed the same untouched buffer
+// with the analyzer's flip flag clear, and it puts higher RF to the
+// right - but nothing here needs to rely on that except the choice of
+// which side the RADE modem sits on, which is discussed there.
 //
 // ----------------------------------------------------------------------
 //
@@ -132,6 +156,14 @@
 // The window spreads a pure tone over a few bins.
 //
 #define DIV_CARRIER_BINS    2
+
+//
+// How much stronger the wrong side of the tuned frequency has to be
+// before the RADE window is moved off the operator's sideband. 6 dB:
+// comfortably beyond what the two noise measurements differ by, well
+// under the difference a real signal makes.
+//
+#define DIV_RADE_FLIP       4.0
 
 //
 // Bin-weighting for the wideband window.
@@ -279,6 +311,7 @@ struct div_context {
   long long frequency;
   long long ctun_frequency;
   long long offset;
+  int       sidetone;
   int       sample_rate;
   int       mode;
   int       filter_low;
@@ -407,8 +440,41 @@ static void div_make_window(void) {
 // It survives only to be logged next to the measured answer, which is how
 // that was established and is worth keeping visible.
 //
-static int div_mode_is_lsb(int mode) {
-  return (mode == modeLSB || mode == modeDIGL || mode == modeCWL);
+//
+// Offset of WDSP's shifted frame from our raw one: raw = shifted +
+// div_frame_off(). See the frequency bookkeeping note at the top.
+//
+static double div_frame_off(const struct div_context *ctx) {
+  double off = (double)ctx->offset;
+
+  if (ctx->mode == modeCWU) {
+    off -= (double)ctx->sidetone;
+  } else if (ctx->mode == modeCWL) {
+    off += (double)ctx->sidetone;
+  }
+
+  return off;
+}
+
+//
+// Which side of the tuned frequency the RADE modem is on, from the
+// operator's own passband: the midpoint of filter_low..filter_high in the
+// shifted frame. Returns 0 when the passband straddles zero (AM, SAM, FM,
+// DSB), where it says nothing.
+//
+// The passband is used rather than vfo[].mode because it is what the
+// operator actually set and it covers the digital modes without a table:
+// an LSB-side passband is negative in this frame whatever the mode is
+// called.
+//
+static int div_rade_side_expected(const struct div_context *ctx) {
+  const double mid = 0.5 * ((double)ctx->filter_low + (double)ctx->filter_high);
+
+  if (mid >  0.5 * RADE_CORR_FLO) { return  1; }
+
+  if (mid < -0.5 * RADE_CORR_FLO) { return -1; }
+
+  return 0;
 }
 
 //
@@ -419,6 +485,7 @@ static void div_get_context(struct div_context *ctx) {
   ctx->frequency      = vfo[0].frequency;
   ctx->ctun_frequency = vfo[0].ctun_frequency;
   ctx->offset         = vfo[0].offset;
+  ctx->sidetone       = cw_keyer_sidetone_frequency;
   ctx->sample_rate    = rx->sample_rate;
   ctx->mode           = vfo[0].mode;
   ctx->filter_low     = rx->filter_low;
@@ -434,6 +501,7 @@ static int div_context_changed(const struct div_context *a, const struct div_con
   return a->frequency      != b->frequency      ||
          a->ctun_frequency != b->ctun_frequency ||
          a->offset         != b->offset         ||
+         a->sidetone       != b->sidetone       ||
          a->sample_rate    != b->sample_rate    ||
          a->mode           != b->mode           ||
          a->filter_low     != b->filter_low     ||
@@ -491,6 +559,27 @@ static int div_bin_range(const struct div_context *ctx, int *klo, int *khi) {
       flo = RADE_CORR_FLO;
       fhi = RADE_CORR_FHI;
     }
+
+    //
+    // Never measure outside what the operator is listening to. A 1.8 kHz
+    // filter on a 1.45 kHz modem band leaves most of it, and measuring the
+    // part they have filtered out would be measuring something they cannot
+    // hear the effect of.
+    //
+    // If the two do not overlap at all the filter is not for this signal;
+    // the modem band is then used as it stands rather than returning
+    // nothing, so the mode still works while the operator sorts the filter
+    // out.
+    //
+    if (ctx->filter_high > ctx->filter_low) {
+      double plo = flo > (double)ctx->filter_low  ? flo : (double)ctx->filter_low;
+      double phi = fhi < (double)ctx->filter_high ? fhi : (double)ctx->filter_high;
+
+      if (phi > plo) {
+        flo = plo;
+        fhi = phi;
+      }
+    }
   } else if (ctx->follow) {
     //
     // Method A following the operator's filter.
@@ -511,8 +600,11 @@ static int div_bin_range(const struct div_context *ctx, int *klo, int *khi) {
   //
   // Shifted frame -> raw frame. See the note at the top of this file.
   //
-  flo -= (double)ctx->offset;
-  fhi -= (double)ctx->offset;
+  {
+    const double off = div_frame_off(ctx);
+    flo += off;
+    fhi += off;
+  }
 
   //
   // Hold the window inside the first Nyquist zone.
@@ -644,9 +736,24 @@ static void div_process_block(void) {
     // and QRM well enough to estimate the two separately.
     //
     double wr, wi;
+    //
+    // The operator's sideband, as the bank to try first. Bank 0 is the
+    // pilot as transmitted, whose carriers are at +750..+2200 Hz, so it
+    // matches a modem sitting above the tuned frequency; bank 1 is its
+    // mirror. -1 means the passband does not say.
+    //
+    const int expect = div_rade_side_expected(&ctx);
+    const int bank = (expect == 0) ? -1 : (expect > 0 ? 0 : 1);
+    int ok = rade_corr_process(work0, work1, nfft, bank,
+                               div_frame_off(&ctx), div_auto_tau, &wr, &wi);
+    //
+    // Show where the correlator actually found it, not where we guessed:
+    // the overlay is the only feedback the operator gets about this.
+    //
+    div_rade_side = rade_corr_locked ? (rade_corr_mirrored ? -1 : 1)
+                    : (expect != 0 ? expect : div_rade_side);
 
-    if (rade_corr_process(work0, work1, nfft, div_mode_is_lsb(ctx.mode),
-                          (double)ctx.offset, div_auto_tau, &wr, &wi)) {
+    if (ok) {
       div_auto_coherence = rade_corr_quality;
       div_auto_holding = 0;
       div_apply_weight(wr, wi);
@@ -705,8 +812,9 @@ static void div_process_block(void) {
     // is then outside the search entirely. The selection has no memory
     // between blocks, so restricting the region is the whole mechanism.
     //
-    double slo = ctx.centre - 0.5 * ctx.width - (double)ctx.offset;
-    double shi = ctx.centre + 0.5 * ctx.width - (double)ctx.offset;
+    const double foff = div_frame_off(&ctx);
+    double slo = ctx.centre - 0.5 * ctx.width + foff;
+    double shi = ctx.centre + 0.5 * ctx.width + foff;
     const double snyq = 0.5 * (double)ctx.sample_rate - binhz;
 
     if (slo < -snyq) { slo = -snyq; }
@@ -762,7 +870,7 @@ static void div_process_block(void) {
       if (delta < -0.5) { delta = -0.5; }
     }
 
-    double hz = ((double)peak + delta) * binhz + (double)ctx.offset;
+    double hz = ((double)peak + delta) * binhz - foff;
 
     if (!div_auto_carrier_valid) {
       //
@@ -784,17 +892,29 @@ static void div_process_block(void) {
 
   if (ctx.ref == DIV_REF_RADE_BAND) {
     //
-    // Compare the energy in the modem band on each side of the carrier
-    // and keep the stronger. Re-derives the bin range below if this
-    // changes the answer.
+    // Which side of the tuned frequency to measure.
     //
+    // The operator's sideband decides it. An earlier version took only the
+    // stronger of the two sides by energy, which is a coin toss on a RADE
+    // signal near the noise floor - and RADE is usually near the noise
+    // floor, that being the point of it. It could sit on the wrong side
+    // indefinitely, and since the panadapter overlay is drawn from the
+    // sideband it was visibly wrong there too.
+    //
+    // The energy test is kept, but only as an escape hatch: the other side
+    // has to be DIV_RADE_FLIP times stronger before it is believed, which
+    // noise alone will not do. If that ever fires on air it is telling us
+    // the raw baseband is mirrored with respect to RF, so it says so in
+    // the log rather than just quietly moving.
+    //
+    const double foff = div_frame_off(&ctx);
     double up = 0.0, dn = 0.0;
 
     for (int side = 0; side < 2; side++) {
       double lo = side ? -RADE_CORR_FHI : RADE_CORR_FLO;
       double hi = side ? -RADE_CORR_FLO : RADE_CORR_FHI;
-      int a = (int)floor((lo - (double)ctx.offset) / binhz);
-      int b = (int)ceil ((hi - (double)ctx.offset) / binhz);
+      int a = (int)floor((lo + foff) / binhz);
+      int b = (int)ceil ((hi + foff) / binhz);
       double acc = 0.0;
 
       for (int k = a; k <= b; k++) {
@@ -809,7 +929,28 @@ static void div_process_block(void) {
       if (side) { dn = acc; } else { up = acc; }
     }
 
-    int want = (dn > up) ? -1 : 1;
+    int expect = div_rade_side_expected(&ctx);
+    int want;
+
+    if (expect != 0) {
+      const double mine  = (expect < 0) ? dn : up;
+      const double other = (expect < 0) ? up : dn;
+      want = (other > DIV_RADE_FLIP * mine) ? -expect : expect;
+
+      if (want != expect && want != div_rade_side) {
+        t_print("%s: RADE band: passband says %s but the %s side is %0.1f dB "
+                "stronger, following the signal\n", __func__,
+                (expect < 0) ? "below" : "above",
+                (want < 0) ? "below" : "above",
+                10.0 * log10((other + 1e-30) / (mine + 1e-30)));
+      }
+    } else {
+      //
+      // AM, SAM, FM: the passband says nothing, so the energy is all we
+      // have.
+      //
+      want = (dn > up) ? -1 : 1;
+    }
 
     if (want != div_rade_side) {
       div_rade_side = want;

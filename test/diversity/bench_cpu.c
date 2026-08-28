@@ -39,6 +39,7 @@ RECEIVER *receiver[8] = { &rx0 };
 int receivers = 2;
 int diversity_enabled = 1;
 int radio_is_remote = 0;
+int cw_keyer_sidetone_frequency = 800;
 double div_cos = 1.0, div_sin = 0.0, div_gain = 0.0, div_phase = 0.0;
 struct _vfo vfo[MAX_VFOS];
 void t_print(const char *fmt, ...) { (void)fmt; }        /* quiet */
@@ -151,11 +152,11 @@ int main(void) {
     { "RADE passband",    DIV_REF_RADE_BAND, 1,  4 },
     { "RADE V1 (search)", DIV_REF_RADE_V1,   0,  4 },
     //
-    // Declaring lock needs RADE_LOCK_FRAMES consecutive evaluations, each
-    // integrating RADE_ACQ_PASSES passes of one modem frame: 3 x 32 x
-    // 120 ms, so about 11.5 s of signal. Because nfft scales with the
-    // sample rate, a block is 85.3 ms at every rate and this settle is
-    // rate-independent.
+    // Declaring lock needs a grid detection - at 8, 16 or 32 passes of one
+    // modem frame, so 1 to 3.8 s - followed by RADE_PROBATION frames of
+    // confirmation, about a second. This settle is generous. Because nfft
+    // scales with the sample rate a block is 85.3 ms at every rate, so it
+    // is rate-independent.
     //
     { "RADE V1 (locked)", DIV_REF_RADE_V1,   1, 200 },
   };

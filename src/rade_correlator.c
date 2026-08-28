@@ -33,7 +33,7 @@
 //
 //   raw DDC IQ (both arms)
 //        |
-//        |  NCO shift by +offset, so the tuned carrier lands at 0 -
+//        |  NCO shift by -frame_off, so the tuned carrier lands at 0 -
 //        |  the same frame WDSP works in after xshift(). Nothing else is
 //        |  done to the samples; the spectral sense is handled by which
 //        |  pilot bank is used, not by conjugating the input.
@@ -54,29 +54,35 @@
 // 750..2200 Hz on one side of the tuned carrier and the mirror image of
 // that on the other. Which way round depends on the sideband in use.
 //
-// An earlier version of this decided that from vfo[].mode and conjugated
-// the input for the lower-sideband modes. It never acquired on air. The
-// convention relating the raw DDC stream to the frame WDSP works in
-// after xshift() is genuinely difficult to pin down by reading: the
-// direction implied by xshift() and the direction implied by the sign of
-// the USB and LSB filter edges do not agree, and guessing wrong is
-// completely silent - the correlator simply looks at the mirror image of
-// the signal and finds nothing, for ever.
+// An earlier version decided that from vfo[].mode and conjugated the
+// input for the lower-sideband modes. It never acquired on air, and
+// guessing wrong is completely silent - the correlator simply looks at
+// the mirror image of the signal and finds nothing, for ever. That the
+// conversion between the raw frame and WDSP's shifted one also had the
+// wrong sign at the time, so nothing acquired under CTUN either, did not
+// help the diagnosis.
 //
-// So it is no longer derived. Correlating a mirrored stream against the
-// pilot is the same as correlating the original stream against a
-// *mirrored pilot*, and conj(p) is exactly the pilot with its carriers
-// reflected about zero. Acquisition therefore searches both pilot banks
-// over the same decimated stream and keeps whichever actually correlates,
-// at twice the acquisition cost and no extra front end.
+// The arrangement now is a prior plus an escape hatch. Correlating a
+// mirrored stream against the pilot is the same as correlating the
+// original stream against a *mirrored pilot*, and conj(p) is exactly the
+// pilot with its carriers reflected about zero, so both banks are
+// searched over the same decimated stream. The operator's sideband says
+// which one to expect - bank 0, the pilot as transmitted, has its
+// carriers at +750..+2200 Hz and so matches a modem above the tuned
+// frequency - and the other bank has to win by RADE_BANK_MARGIN before it
+// is taken.
 //
-// That also removes the conjugation from the sample path entirely, so
-// there is no longer a weight to conjugate back: the channel estimates
-// come from the real, untouched arms whichever bank wins, and the MVDR
-// solution applies to them directly.
+// The prior matters because the two-way race is otherwise decided by
+// noise on a signal near the noise floor, which is where RADE lives.
+// The escape hatch matters because the sense of the raw baseband with
+// respect to RF is the one thing here that has never been settled by
+// reading the code; if it is ever crossed on a real signal, the log says
+// so and we will finally know.
 //
-// The detected sense is reported in the UI, which is the only way we get
-// to find out what the convention actually is.
+// Either way the conjugation stays out of the sample path, so there is no
+// weight to conjugate back: the channel estimates come from the real,
+// untouched arms whichever bank wins, and the MVDR solution applies to
+// them directly.
 //
 
 //
@@ -130,8 +136,52 @@
 // is a different and much more forgiving test - see RADE_HOLD_RATIO.
 //
 #define RADE_LOCK_SIGMA     6.0
-#define RADE_LOCK_FRAMES    3
 #define RADE_DROP_FRAMES    84      // ~10 s: ride out fades, not absences
+
+//
+// Acquisition time.
+//
+// The grid is scored at each of these pass counts rather than only at the
+// end, with a threshold that starts high and comes down as the
+// integration lengthens. A strong signal is therefore declared after
+// about a second instead of waiting out the full integration a weak one
+// needs, and the weak case is no worse than before.
+//
+// The thresholds are raised for the early looks because scoring three
+// times instead of once gives noise three chances: at 8 passes the
+// largest cell of a few thousand sits near 4 with a tail, and 7.5 keeps
+// the false-alarm rate of the whole schedule at about that of the single
+// 6.0 test it replaces.
+//
+// A candidate is not the same as a lock. What follows is RADE_PROBATION
+// frames of the ordinary tracking test at the candidate's timing and
+// frequency, during which no weight is produced: a false alarm therefore
+// costs a second of waiting and never moves the combiner. Confirming the
+// one cell we care about is enormously cheaper than the old scheme, which
+// re-ran the entire blind search RADE_LOCK_FRAMES times - 3 x 32 x 120 ms,
+// 11.5 s before a lock could ever be declared, on any signal however
+// strong. That was the dominant term in acquisition time and it bought
+// nothing that a cheap confirmation does not buy better.
+//
+#define RADE_ACQ_CHECKS     3
+static const int    rade_acq_at[RADE_ACQ_CHECKS]    = { 8, 16, 32 };
+static const double rade_acq_sigma[RADE_ACQ_CHECKS] = { 7.5, 6.75, RADE_LOCK_SIGMA };
+
+#define RADE_PROBATION      8       // frames, ~1 s
+
+//
+// How much better the pilot has to correlate against the mirrored bank
+// than against the one the operator's sideband implies before we believe
+// it. In sigma, on the acquisition statistic.
+//
+// The sideband is known - it is what the operator tuned - so it is used
+// as the prior rather than left to a blind two-way race that noise can
+// win. The escape hatch stays because the sense of the raw baseband with
+// respect to RF is the one thing here we have never been able to settle
+// by reading the code, and if this margin is ever crossed on a real
+// signal the log says so.
+//
+#define RADE_BANK_MARGIN    1.5
 
 //
 // Holding a lock is deliberately far more forgiving than getting one.
@@ -246,6 +296,26 @@
 #define RADE_FRAME_SECS     ((double)RADE_CORR_NMF / (double)RADE_CORR_FS)
 
 //
+// Frequency tracking once locked.
+//
+// Acquisition leaves the frequency quantised to the RADE_ACQ_FSTEP grid,
+// so up to half a step out, and a station drifts a few Hz a minute. The
+// phase advance of the pilot correlation from one modem frame to the next
+// measures the residual directly: one frame is 120 ms, so the
+// discriminator is unambiguous over +/-4.17 Hz, which covers both.
+//
+// It is deliberately slow - a couple of seconds - because there is
+// nothing fast to follow. A drift of a few Hz per minute is 0.01 Hz in
+// the time this settles.
+//
+// The update is skipped on any frame where the timing was nudged: a
+// one-sample shift rotates the correlation by 2*pi*1500/8000 radians all
+// by itself, which the discriminator cannot tell from a frequency error.
+//
+#define RADE_FREQ_ALPHA     0.05
+#define RADE_FREQ_LIMIT     (0.5 * RADE_ACQ_FRANGE + 10.0)
+
+//
 // Decimator: taps per polyphase branch, and the low-pass corner. The
 // filter only has to keep 750..2200 Hz and reject everything that would
 // alias into it after decimation to 8 kHz, which starts at 8000-2200 =
@@ -262,6 +332,7 @@ double rade_corr_freq_off = 0.0;
 double rade_corr_snr      = 0.0;
 double rade_corr_quality  = 0.0;
 int    rade_corr_mirrored = 0;
+int    rade_corr_confirming = 0;
 
 typedef struct {
   double re, im;
@@ -313,14 +384,19 @@ static double pilot_energy = 0.0;
 //
 static int64_t lock_a = 0;           // absolute sample index of the pilot
 static double lock_f = 0.0;          // Hz
-static int    lock_count = 0;
 static int    drop_count = 0;
+static int    tracking = 0;          // a candidate is being followed
+static int    probation = 0;         // frames of confirmation still owed
+static cplx   prev_d0;               // last frame's pilot correlation
+static int    prev_valid = 0;        // ... and whether it is usable
+static int    nudged = 0;            // timing moved this frame
 static int64_t next_process = 0;     // ringtotal at which to look again
 
 #define RADE_ACQ_NCELL  (RADE_CORR_NMF / RADE_ACQ_TSTEP)
 
 static double acq_grid[2][RADE_ACQ_NCELL][RADE_ACQ_NFREQ];
 static int    acq_passes = 0;
+static int    acq_check = 0;      // next entry of rade_acq_at[] to score at
 static int    lock_bank = 0;      // which pilot bank actually correlates
 
 static double mag_avg = 0.0;         // smoothed pilot correlation
@@ -468,13 +544,19 @@ void rade_corr_stop(void) {
   taps = NULL;
   dline0 = dline1 = ring0 = ring1 = NULL;
   rade_corr_locked = 0;
+  rade_corr_confirming = 0;
+  tracking = 0;
   rade_corr_quality = 0.0;
 }
 
 void rade_corr_reset(void) {
   rade_corr_locked = 0;
-  lock_count = 0;
+  rade_corr_confirming = 0;
+  tracking = 0;
   drop_count = 0;
+  probation = 0;
+  prev_valid = 0;
+  nudged = 0;
   lock_a = 0;
   lock_bank = 0;
   lock_f = 0.0;
@@ -494,6 +576,7 @@ void rade_corr_reset(void) {
   next_process = 0;
   memset(acq_grid, 0, sizeof(acq_grid));
   acq_passes = 0;
+  acq_check = 0;
 }
 
 //
@@ -538,7 +621,7 @@ static cplx rade_correlate(const float *r, int64_t a, const cplx *pw) {
 //
 // Coarse then fine search for the pilot on arm 0.
 //
-static int rade_acquire(int lsb_hint) {
+static int rade_acquire(int expect_bank) {
   int64_t best_a = 0;
   int best_f = 0;
   //
@@ -575,13 +658,24 @@ static int rade_acquire(int lsb_hint) {
     }
   }
 
-  if (++acq_passes < RADE_ACQ_PASSES) {
+  //
+  // Score the grid at 8, 16 and 32 passes rather than only at the end, so
+  // a signal strong enough to be seen early is not made to wait for the
+  // integration a weak one needs.
+  //
+  acq_passes++;
+
+  if (acq_check >= RADE_ACQ_CHECKS || acq_passes < rade_acq_at[acq_check]) {
     //
     // Keep integrating. Report progress so the UI does not look stalled.
     //
     rade_corr_quality = 0.0;
     return 0;
   }
+
+  const double need = rade_acq_sigma[acq_check];
+  const int last_check = (acq_check == RADE_ACQ_CHECKS - 1);
+  acq_check++;
 
   //
   // Score each frequency column separately.
@@ -601,6 +695,8 @@ static int rade_acquire(int lsb_hint) {
   const int guard = RADE_FLOOR_GUARD / RADE_ACQ_TSTEP;
   double stat = 0.0;
   double stat_bank[2] = { 0.0, 0.0 };
+  int bank_f[2] = { 0, 0 };
+  int64_t bank_a[2] = { 0, 0 };
   int best_bank = 0;
 
   for (int bank = 0; bank < 2; bank++) {
@@ -636,16 +732,37 @@ static int rade_acquire(int lsb_hint) {
 
       double sf = (acq_grid[bank][pk][f] - mean) / sd;
 
-      if (sf > stat_bank[bank]) { stat_bank[bank] = sf; }
-
-      if (sf > stat) {
-        stat = sf;
-        best_bank = bank;
-        best_f = f;
-        best_a = limit - ((limit - (int64_t)pk * RADE_ACQ_TSTEP) % RADE_CORR_NMF);
+      if (sf > stat_bank[bank]) {
+        stat_bank[bank] = sf;
+        bank_f[bank] = f;
+        bank_a[bank] = limit - ((limit - (int64_t)pk * RADE_ACQ_TSTEP) % RADE_CORR_NMF);
       }
     }
   }
+
+  //
+  // Pick the bank. The operator's sideband is the prior; the other one has
+  // to beat it by a clear margin to be taken. See RADE_BANK_MARGIN.
+  //
+  if (expect_bank < 0) {
+    best_bank = (stat_bank[1] > stat_bank[0]) ? 1 : 0;
+  } else {
+    const int other = 1 - expect_bank;
+    best_bank = (stat_bank[other] > stat_bank[expect_bank] + RADE_BANK_MARGIN)
+                ? other : expect_bank;
+
+    if (best_bank != expect_bank && stat_bank[best_bank] >= need) {
+      t_print("%s: pilot found on the %s bank, not the %s one the sideband "
+              "implies (%0.2f against %0.2f)\n", __func__,
+              best_bank ? "mirrored" : "normal",
+              expect_bank ? "mirrored" : "normal",
+              stat_bank[best_bank], stat_bank[expect_bank]);
+    }
+  }
+
+  stat = stat_bank[best_bank];
+  best_f = bank_f[best_bank];
+  best_a = bank_a[best_bank];
 
   //
   // Always report both banks. If neither ever rises, the signal is not
@@ -660,10 +777,11 @@ static int rade_acquire(int lsb_hint) {
   }
 
   rms = sqrt(rms / (double)RADE_CORR_NMF);
-  t_print("%s: acq normal=%0.2f mirrored=%0.2f best=%0.2f (need %0.1f) "
-          "f=%+0.1f rms=%0.2e %s\n",
-          __func__, stat_bank[0], stat_bank[1], stat, RADE_LOCK_SIGMA,
-          acq_freq[best_f], rms, lsb_hint ? "mode=LSB" : "mode=USB");
+  t_print("%s: acq normal=%0.2f mirrored=%0.2f best=%0.2f (need %0.2f after "
+          "%d passes) f=%+0.1f rms=%0.2e expect=%s\n",
+          __func__, stat_bank[0], stat_bank[1], stat, need, acq_passes,
+          acq_freq[best_f], rms,
+          expect_bank < 0 ? "either" : (expect_bank ? "mirrored" : "normal"));
 
 #ifdef RADE_DEBUG_STAT
   t_print("ACQ: stat=%.2f f=%0.1f\n", stat, acq_freq[best_f]);
@@ -675,14 +793,21 @@ static int rade_acquire(int lsb_hint) {
 
   if (rade_corr_quality > 1.0) { rade_corr_quality = 1.0; }
 
-  if (stat < RADE_LOCK_SIGMA) {
+  if (stat < need) {
+    if (!last_check) {
+      //
+      // Keep the grid and carry on integrating towards the next check.
+      //
+      return 0;
+    }
+
     //
-    // Not there yet. Start a fresh integration rather than carrying a
+    // Out of passes. Start a fresh integration rather than carrying a
     // stale grid forward.
     //
     memset(acq_grid, 0, sizeof(acq_grid));
     acq_passes = 0;
-    lock_count = 0;
+    acq_check = 0;
     return 0;
   }
 
@@ -706,9 +831,13 @@ static int rade_acquire(int lsb_hint) {
   best_a = fine_a;
   memset(acq_grid, 0, sizeof(acq_grid));
   acq_passes = 0;
-
-  if (++lock_count < RADE_LOCK_FRAMES) { return 0; }
-
+  acq_check = 0;
+  //
+  // A candidate, not yet a lock: rade_track() has to like it for
+  // RADE_PROBATION frames before any weight comes out of it.
+  //
+  probation = RADE_PROBATION;
+  prev_valid = 0;
   lock_a = best_a;
   lock_bank = best_bank;
   rade_corr_mirrored = best_bank;
@@ -806,6 +935,7 @@ static int rade_track(double tau, double *wr, double *wi) {
     }
   }
 
+  nudged = (best_a != lock_a);
   lock_a = best_a;
   cplx d0 = rade_correlate(ring0, lock_a, pw);
   cplx d1 = rade_correlate(ring1, lock_a, pw);
@@ -848,6 +978,68 @@ static int rade_track(double tau, double *wr, double *wi) {
 
   double ratio = (floor_avg > 1e-30) ? (mag_avg / floor_avg) : 0.0;
   double use_ratio = (use_floor > 1e-30) ? (use_mag / use_floor) : 0.0;
+
+  if (probation > 0) {
+    //
+    // Confirming a candidate from the search. The same test the tracker
+    // uses every frame, applied to the one cell the search picked - which
+    // is all a confirmation needs to be, and costs one correlation and
+    // four probes instead of another full blind search.
+    //
+    // No weight is produced while this runs, so a false alarm costs about
+    // a second and never touches the combiner.
+    //
+    // The test is on the smoothed ratio at the end of the probation, not
+    // on every frame. RADE_USE_ALPHA averages over about the same second,
+    // so by the last frame it is an average of the whole confirmation -
+    // and a real but weak signal that dips below the threshold in one
+    // frame of eight should not be thrown away, which is what a per-frame
+    // test would do.
+    if (--probation > 0) { return 0; }
+
+    if (use_ratio < RADE_USE_RATIO) {
+      t_print("%s: candidate did not confirm (pilot/floor %0.2f over %d "
+              "frames, need %0.1f), searching again\n", __func__, use_ratio,
+              RADE_PROBATION, RADE_USE_RATIO);
+      rade_corr_reset();
+      return 0;
+    }
+
+    rade_corr_locked = 1;
+    rade_corr_confirming = 0;
+    t_print("%s: RADE pilot LOCK confirmed  bank=%s  f=%+0.1f Hz  "
+            "pilot/floor %0.2f\n", __func__,
+            lock_bank ? "mirrored" : "normal", lock_f, use_ratio);
+    return 0;
+  }
+
+  //
+  // Frequency tracking.
+  //
+  // The pilot correlation turns by 2*pi*df*T from one modem frame to the
+  // next, T being 120 ms, so its phase advance measures the residual
+  // frequency error directly and unambiguously over +/-4.17 Hz. That
+  // covers both what acquisition leaves behind - half a 5 Hz grid step -
+  // and any drift a station on frequency will ever show.
+  //
+  // Skipped when the timing moved, because a one-sample nudge rotates the
+  // correlation on its own by more than any frequency error would.
+  //
+  if (prev_valid && !nudged) {
+    cplx r = cmul(d0, cconj(prev_d0));
+    double dphi = atan2(r.im, r.re);
+    double df = dphi / (2.0 * M_PI * RADE_FRAME_SECS);
+    lock_f += RADE_FREQ_ALPHA * df;
+
+    if (lock_f >  RADE_FREQ_LIMIT) { lock_f =  RADE_FREQ_LIMIT; }
+
+    if (lock_f < -RADE_FREQ_LIMIT) { lock_f = -RADE_FREQ_LIMIT; }
+
+    rade_corr_freq_off = lock_f;
+  }
+
+  prev_d0 = d0;
+  prev_valid = 1;
 
   if (ratio < RADE_HOLD_RATIO) {
     if (++drop_count >= RADE_DROP_FRAMES) {
@@ -950,7 +1142,7 @@ static int rade_track(double tau, double *wr, double *wi) {
 }
 
 int rade_corr_process(const float *arm0, const float *arm1, int n,
-                      int lsb, double offset_hz, double tau,
+                      int expect_bank, double frame_off, double tau,
                       double *wr, double *wi) {
   if (!running) { return 0; }
 
@@ -969,7 +1161,15 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
   // re-seeded from it at the top of every block, so the error inherent in
   // stepping a rotation cannot build up beyond one block.
   //
-  const double dphi = 2.0 * M_PI * offset_hz / (double)(decim * RADE_CORR_FS);
+  //
+  // Negative: the tuned signal sits at +frame_off in the raw stream, so
+  // bringing it to zero means rotating down by that much. See the
+  // frequency bookkeeping note in diversity_auto.c - this had the
+  // opposite sign until August 2026, which left the modem at 2*frame_off
+  // instead of at zero and so stopped the correlator acquiring at all
+  // whenever CTUN or RIT was in use.
+  //
+  const double dphi = -2.0 * M_PI * frame_off / (double)(decim * RADE_CORR_FS);
   const double cd = cos(dphi), sd = sin(dphi);
   double c = cos(nco_phase), s = sin(nco_phase);
 
@@ -1038,7 +1238,7 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
   //
   if (ringtotal < RADE_ACQ_SPAN) { return 0; }
 
-  if (!rade_corr_locked) {
+  if (!tracking) {
     //
     // Rate limit the search: it is by far the most expensive thing here,
     // and there is no point running it more than once per modem frame.
@@ -1047,12 +1247,19 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
 
     next_process = ringtotal + RADE_CORR_NMF;
 
-    if (!rade_acquire(lsb)) { return 0; }
+    if (!rade_acquire(expect_bank)) { return 0; }
 
-    rade_corr_locked = 1;
-    t_print("%s: RADE pilot LOCK  bank=%s  a=%ld  f=%+0.1f Hz  (mode says %s)\n",
-            __func__, lock_bank ? "mirrored" : "normal", lock_a, lock_f,
-            lsb ? "LSB" : "USB");
+    //
+    // A candidate. rade_track() follows it for RADE_PROBATION frames
+    // before rade_corr_locked goes up and any weight comes out.
+    //
+    tracking = 1;
+    rade_corr_confirming = 1;
+    t_print("%s: RADE pilot candidate  bank=%s  a=%lld  f=%+0.1f Hz  "
+            "(sideband implies %s)\n",
+            __func__, lock_bank ? "mirrored" : "normal", (long long)lock_a,
+            lock_f, expect_bank < 0 ? "either" :
+            (expect_bank ? "mirrored" : "normal"));
   }
 
   //
@@ -1084,7 +1291,7 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
     //
     lock_a += RADE_CORR_NMF;
 
-    if (!rade_corr_locked) {
+    if (!tracking) {
       //
       // rade_track() gave up and reset us.
       //
