@@ -33,7 +33,7 @@
 //
 //   raw DDC IQ (both arms)
 //        |
-//        |  NCO shift by -frame_off, so the tuned carrier lands at 0 -
+//        |  NCO shift by +frame_off, so the tuned carrier lands at 0 -
 //        |  the same frame WDSP works in after xshift(). Nothing else is
 //        |  done to the samples; the spectral sense is handled by which
 //        |  pilot bank is used, not by conjugating the input.
@@ -58,8 +58,17 @@
 // correlating the original stream against a *mirrored pilot*, and conj(p)
 // is exactly the pilot with its carriers reflected about zero. So the
 // sense is a choice of pilot bank: bank 0 is the pilot as transmitted,
-// carriers at +750..+2200 Hz, matching a modem above the tuned frequency;
-// bank 1 is its mirror, matching one below.
+// carriers at +750..+2200 Hz in the tapped buffer, and bank 1 is its
+// mirror.
+//
+// Bank 0 is the **LSB** bank. That is measured, not derived. The tapped
+// buffer is inverted with respect to RF - see the frequency bookkeeping
+// note in diversity_auto.c, which sets out the evidence - so an LSB
+// signal, already inverted by the transmitter, arrives here the right way
+// up and correlates against the pilot as transmitted. On air, in LSB, on
+// a weak signal:
+//
+//   acq normal=7.97 mirrored=4.75
 //
 // The operator's passband names the bank, and that is the only one
 // searched. A pilot on the other side of the tuned frequency is outside
@@ -68,21 +77,18 @@
 // whatever modem happens to be nearby. Only when the passband straddles
 // zero and so says nothing - AM, SAM, FM - are both banks searched.
 //
-// It has been all three ways round, and the history is worth keeping
-// because two of the three looked like they worked. Deriving the sense
-// from vfo[].mode and conjugating the input never acquired on air - but
-// the conversion between the raw frame and WDSP's shifted one had the
-// wrong sign at the time, so nothing acquired under CTUN whichever sense
-// was used, which makes that evidence worthless. Searching both banks
-// blind did acquire, and then left the choice to noise on a signal near
-// the noise floor, which is where RADE lives: the analysis window, and
-// the green overlay drawn from it, could settle on the wrong side of an
-// LSB passband and stay there, and on a marginal lock it could flip there
-// at the moment of locking. Constraining it to the passband is both the
-// right answer for this mode and the cheaper one - it halves the cost of
-// the search, which is by far the most expensive thing in this file.
+// It has been every way round. Deriving the sense from vfo[].mode and
+// conjugating the input never acquired on air, but the frame conversion
+// had the wrong sign at the time, so that evidence proved nothing.
+// Searching both banks blind did acquire, and then left the choice to
+// noise on a signal near the noise floor - which is where RADE lives - so
+// the analysis window, and the green overlay drawn from it, could settle
+// on the wrong side of an LSB passband, or flip there at the moment of
+// locking. Constraining it to the passband is both the right answer for
+// this mode and the cheaper one: it halves the search, which is by far
+// the most expensive thing in this file.
 //
-// Conjugation stays out of the sample path either way, so there is no
+// Conjugation stays out of the sample path throughout, so there is no
 // weight to conjugate back: whichever bank is used, h0 and h1 describe
 // the real untouched arms and the MVDR solution applies to them directly.
 //
@@ -766,8 +772,9 @@ static int rade_acquire(int expect_bank) {
   }
 
   rms = sqrt(rms / (double)RADE_CORR_NMF);
-  t_print("%s: acq %s=%0.2f (need %0.2f after %d passes) f=%+0.1f rms=%0.2e\n",
-          __func__, best_bank ? "mirrored" : "normal", stat, need, acq_passes,
+  t_print("%s: acq %s carrier =%0.2f (need %0.2f after %d passes) "
+          "f=%+0.1f rms=%0.2e\n",
+          __func__, best_bank ? "above" : "below", stat, need, acq_passes,
           acq_freq[best_f], rms);
 
 #ifdef RADE_DEBUG_STAT
@@ -994,9 +1001,9 @@ static int rade_track(double tau, double *wr, double *wi) {
 
     rade_corr_locked = 1;
     rade_corr_confirming = 0;
-    t_print("%s: RADE pilot LOCK confirmed  bank=%s  f=%+0.1f Hz  "
+    t_print("%s: RADE pilot LOCK confirmed  modem %s carrier  f=%+0.1f Hz  "
             "pilot/floor %0.2f\n", __func__,
-            lock_bank ? "mirrored" : "normal", lock_f, use_ratio);
+            lock_bank ? "above" : "below", lock_f, use_ratio);
     return 0;
   }
 
@@ -1149,14 +1156,12 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
   // stepping a rotation cannot build up beyond one block.
   //
   //
-  // Negative: the tuned signal sits at +frame_off in the raw stream, so
-  // bringing it to zero means rotating down by that much. See the
-  // frequency bookkeeping note in diversity_auto.c - this had the
-  // opposite sign until August 2026, which left the modem at 2*frame_off
-  // instead of at zero and so stopped the correlator acquiring at all
-  // whenever CTUN or RIT was in use.
+  // The tuned signal sits at -frame_off in the tapped buffer, because the
+  // buffer is inverted with respect to RF, so bringing it to zero means
+  // rotating *up* by that much. See the frequency bookkeeping note in
+  // diversity_auto.c.
   //
-  const double dphi = -2.0 * M_PI * frame_off / (double)(decim * RADE_CORR_FS);
+  const double dphi = 2.0 * M_PI * frame_off / (double)(decim * RADE_CORR_FS);
   const double cd = cos(dphi), sd = sin(dphi);
   double c = cos(nco_phase), s = sin(nco_phase);
 
@@ -1242,11 +1247,8 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
     //
     tracking = 1;
     rade_corr_confirming = 1;
-    t_print("%s: RADE pilot candidate  bank=%s  a=%lld  f=%+0.1f Hz  "
-            "(sideband implies %s)\n",
-            __func__, lock_bank ? "mirrored" : "normal", (long long)lock_a,
-            lock_f, expect_bank < 0 ? "either" :
-            (expect_bank ? "mirrored" : "normal"));
+    t_print("%s: RADE pilot candidate  modem %s carrier  a=%lld  f=%+0.1f Hz\n",
+            __func__, lock_bank ? "above" : "below", (long long)lock_a, lock_f);
   }
 
   //

@@ -148,8 +148,17 @@ static double run_ssb(int weighting, double noise, double *err_deg) {
   const int rate = 48000, nfft = 4096;
   const double hr = 0.62, hi = -0.48;
   rx0.sample_rate = rate;
-  rx0.filter_low = 200;
-  rx0.filter_high = 2800;
+  //
+  // An LSB passband. voice() below builds its energy at positive
+  // frequencies, and the tapped buffer is inverted with respect to RF -
+  // see the frequency bookkeeping note in diversity_auto.c - so an LSB
+  // passband is what puts the analysis window on top of it. With a USB
+  // passband the window would land on the image instead, which still
+  // measures the same channel but is not what the mode does on air.
+  //
+  rx0.filter_low = -2800;
+  rx0.filter_high = -200;
+  vfo[0].mode = modeLSB;
   div_auto_ref = DIV_REF_BAND;
   div_auto_mode = DIV_AUTO_SUM;
   div_auto_follow_filter = 1;        /* whole passband, as intended */

@@ -80,43 +80,56 @@
 // Frequency bookkeeping
 // ----------------------------------------------------------------------
 //
-// We tap the *raw* DDC streams, ahead of WDSP. The DDC is tuned to
-// vfo[0].frequency, so a bin at +f in our FFT is f Hz above that. The
-// operator's passband (filter_low/filter_high) is expressed in WDSP's
-// shifted frame instead, where the tuned signal sits at zero.
+// We tap the *raw* DDC streams, ahead of WDSP. The operator's passband
+// (filter_low/filter_high) and the window controls are expressed in
+// WDSP's shifted frame, where the tuned signal sits at zero. Converting
+// between the two takes an offset and a sign, and both have been wrong
+// here at different times.
 //
-// The relation between the two is
+// The offset. WDSP's frame is displaced from the dial by
 //
-//     raw = shifted + frame_off
+//     frame_off = vfo[0].offset, less the CW sidetone frequency in CWU
+//                 and plus it in CWL
 //
-// with frame_off = vfo[0].offset, less the CW sidetone frequency in CWU
-// and plus it in CWL, because rx_set_filter() folds the sidetone into
-// filter_low/filter_high and rx_set_offset() takes it back out again
-// before handing the shift to WDSP.
+// because rx_set_filter() folds the sidetone into filter_low/filter_high
+// and rx_set_offset() takes it back out before handing the shift to WDSP.
+// The panadapter draws the filter edges at cAp*filter_low + cAp*offset
+// with the same sidetone terms, and WDSP's notch database compares
+// absolute RF notch frequencies against flow + tunefreq + shift
+// (wdsp/nbp.c). It is also the only arrangement that puts the CW passband
+// on the dial frequency. So in *RF* terms, a shifted-frame frequency s is
+// at dial + frame_off + s.
 //
-// Two independent places in the code state that relation, and they agree:
+// The sign. The tapped buffer is spectrally inverted with respect to RF:
+// a signal above the dial appears at a *negative* complex frequency in
+// it, and one below the dial at a positive one. So
 //
-//   - the panadapter draws the filter edges at cAp*filter_low + cAp*offset
-//     (rx_panadapter.c), with the same CW sidetone terms;
-//   - WDSP's own notch database compares absolute RF notch frequencies
-//     against flow + tunefreq + shift (wdsp/nbp.c, calc_nbp_impulse).
+//     bin frequency = -(s + frame_off)
 //
-// It is also the only relation that puts the CW passband on the dial
-// frequency, where it has to be.
+// which is what div_shift_to_bin() computes.
 //
-// This was wrong here until August 2026, as f - offset, reasoned out from
-// the sign of the rotation in wdsp/shift.c. Everything still lined up with
-// CTUN off, RIT off and a phone mode, which is most testing; with CTUN on
-// the analysis measured a window 2*offset away from the one drawn on the
-// screen, and in CW it was out by the sidetone frequency. Reasoning from
-// the two consumers of the convention beats reasoning from one producer
-// of it.
+// That inversion is not derived, it is measured, and it has now been
+// measured three times on air:
 //
-// This says nothing about whether the raw baseband runs the same way as
-// RF. It does - the spectrum display is fed the same untouched buffer
-// with the analyzer's flip flag clear, and it puts higher RF to the
-// right - but nothing here needs to rely on that except the choice of
-// which side the RADE modem sits on, which is discussed there.
+//   - the wideband RADE mode compares the energy in the modem band on
+//     each side of the carrier. On an LSB RADE signal it found the energy
+//     at positive bin frequencies;
+//   - the V1 pilot correlator searches a normal and a mirrored pilot
+//     bank. On an LSB signal it locks the *normal* bank - carriers at
+//     +750..+2200 - twice, on separate occasions, by a wide margin
+//     (7.97 against 4.75 on a weak signal);
+//   - which is also what an operator expects: LSB inverts the audio on
+//     transmit, and if the path to this tap inverts it again the two
+//     cancel and the modem arrives the right way up.
+//
+// Reading the code does not give this answer, and three attempts to
+// derive it produced two different wrong ones. The chain that ought to
+// settle it - wdsp/shift.c, wdsp/analyzer.c and the panadapter's pixel
+// mapping - cannot all three be read consistently with each other, and
+// the measurement does not care. If this is ever revisited, revisit it
+// with a signal, not with a text editor: put a known carrier a few kHz
+// off the dial, run the Carrier reference, and see which way
+// div_auto_carrier moves.
 //
 // ----------------------------------------------------------------------
 //
@@ -450,6 +463,14 @@ static double div_frame_off(const struct div_context *ctx) {
 }
 
 //
+// Shifted frame -> the frequency our FFT bins are indexed by. Both the
+// displacement and the inversion; see the note at the top.
+//
+static double div_shift_to_bin(const struct div_context *ctx, double s) {
+  return -(s + div_frame_off(ctx));
+}
+
+//
 // Which side of the tuned frequency the RADE modem is on, from the
 // operator's own passband: the midpoint of filter_low..filter_high in the
 // shifted frame. Returns 0 when the passband straddles zero (AM, SAM, FM,
@@ -533,17 +554,10 @@ static int div_bin_range(const struct div_context *ctx, int *klo, int *khi) {
   } else if (DIV_REF_IS_RADE(ctx->ref)) {
     //
     // The RADE modem occupies 750..2200 Hz of audio, on one side of the
-    // tuned carrier or the other.
-    //
-    // Which side is decided by measurement, not from vfo[].mode. The
-    // first version derived it from the mode and put the window on the
-    // wrong side: on air, an LSB signal correlated against the
-    // un-mirrored pilot, the opposite of what the mode-based rule
-    // predicted. The convention relating this frame to RF could not be
-    // settled by reading the code either - see the note in
-    // rade_correlator.c - so both sides are evaluated and the one
-    // actually carrying the signal is used. div_rade_side is set from the
-    // spectrum in div_process_block().
+    // tuned carrier or the other. div_rade_side says which, in the
+    // shifted frame: -1 below the carrier, +1 above. It comes from the
+    // operator's passband, which is the only thing that should decide it
+    // - see the note above div_rade_side_expected().
     //
     if (div_rade_side < 0) {
       flo = -RADE_CORR_FHI;
@@ -591,12 +605,14 @@ static int div_bin_range(const struct div_context *ctx, int *klo, int *khi) {
   if (fhi <= flo) { return 0; }
 
   //
-  // Shifted frame -> raw frame. See the note at the top of this file.
+  // Shifted frame -> bin frequency. This inverts as well as displaces, so
+  // the two edges swap. See the note at the top of this file.
   //
   {
-    const double off = div_frame_off(ctx);
-    flo += off;
-    fhi += off;
+    const double a = div_shift_to_bin(ctx, flo);
+    const double b = div_shift_to_bin(ctx, fhi);
+    flo = (a < b) ? a : b;
+    fhi = (a < b) ? b : a;
   }
 
   //
@@ -730,13 +746,19 @@ static void div_process_block(void) {
     //
     double wr, wi;
     //
-    // The operator's sideband, as the bank to try first. Bank 0 is the
-    // pilot as transmitted, whose carriers are at +750..+2200 Hz, so it
-    // matches a modem sitting above the tuned frequency; bank 1 is its
-    // mirror. -1 means the passband does not say.
+    // The operator's sideband, as the pilot bank to search.
+    //
+    // Bank 0 is the pilot as transmitted, carriers at +750..+2200 Hz in
+    // the tapped buffer. The buffer is inverted with respect to RF, so
+    // those positive bin frequencies are *below* the dial: bank 0 is the
+    // LSB bank and bank 1 the USB one. See the frequency bookkeeping note
+    // at the top - this is the mapping the on-air logs give, and it is
+    // the opposite of the one reading the code suggests.
+    //
+    // -1 means the passband straddles the carrier and does not say.
     //
     const int expect = div_rade_side_expected(&ctx);
-    const int bank = (expect == 0) ? -1 : (expect > 0 ? 0 : 1);
+    const int bank = (expect == 0) ? -1 : (expect < 0 ? 0 : 1);
     int ok = rade_corr_process(work0, work1, nfft, bank,
                                div_frame_off(&ctx), div_auto_tau, &wr, &wi);
     //
@@ -750,7 +772,7 @@ static void div_process_block(void) {
     // answer is the only one there is.
     //
     div_rade_side = (expect != 0) ? expect
-                    : (rade_corr_locked ? (rade_corr_mirrored ? -1 : 1) : div_rade_side);
+                    : (rade_corr_locked ? (rade_corr_mirrored ? 1 : -1) : div_rade_side);
 
     if (ok) {
       div_auto_coherence = rade_corr_quality;
@@ -811,9 +833,10 @@ static void div_process_block(void) {
     // is then outside the search entirely. The selection has no memory
     // between blocks, so restricting the region is the whole mechanism.
     //
-    const double foff = div_frame_off(&ctx);
-    double slo = ctx.centre - 0.5 * ctx.width + foff;
-    double shi = ctx.centre + 0.5 * ctx.width + foff;
+    const double a = div_shift_to_bin(&ctx, ctx.centre - 0.5 * ctx.width);
+    const double b = div_shift_to_bin(&ctx, ctx.centre + 0.5 * ctx.width);
+    double slo = (a < b) ? a : b;
+    double shi = (a < b) ? b : a;
     const double snyq = 0.5 * (double)ctx.sample_rate - binhz;
 
     if (slo < -snyq) { slo = -snyq; }
@@ -869,7 +892,12 @@ static void div_process_block(void) {
       if (delta < -0.5) { delta = -0.5; }
     }
 
-    double hz = ((double)peak + delta) * binhz - foff;
+    //
+    // Bin frequency back to the shifted frame, which is what the menu,
+    // the overlay and div_bin_range() all work in: the inverse of
+    // div_shift_to_bin(), which is its own inverse up to the sign.
+    //
+    double hz = -((double)peak + delta) * binhz - div_frame_off(&ctx);
 
     if (!div_auto_carrier_valid) {
       //
@@ -911,14 +939,15 @@ static void div_process_block(void) {
       // AM, SAM, FM: the passband straddles the carrier and says nothing,
       // so the energy is all there is to go on.
       //
-      const double foff = div_frame_off(&ctx);
       double up = 0.0, dn = 0.0;
 
       for (int side = 0; side < 2; side++) {
         double lo = side ? -RADE_CORR_FHI : RADE_CORR_FLO;
         double hi = side ? -RADE_CORR_FLO : RADE_CORR_FHI;
-        int a = (int)floor((lo + foff) / binhz);
-        int b = (int)ceil ((hi + foff) / binhz);
+        double p = div_shift_to_bin(&ctx, lo);
+        double q = div_shift_to_bin(&ctx, hi);
+        int a = (int)floor(((p < q) ? p : q) / binhz);
+        int b = (int)ceil (((p < q) ? q : p) / binhz);
         double acc = 0.0;
 
         for (int k = a; k <= b; k++) {

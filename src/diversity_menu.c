@@ -257,8 +257,8 @@ static int status_update_cb(gpointer data) {
   } else if (div_auto_ref == DIV_REF_RADE_V1) {
     if (rade_corr_confirming) {
       snprintf(text, sizeof(text),
-               "RADE V1: confirming candidate   %s spectrum   %+0.1f Hz",
-               rade_corr_mirrored ? "mirrored" : "normal", rade_corr_freq_off);
+               "RADE V1: confirming candidate   modem %s carrier   %+0.1f Hz",
+               rade_corr_mirrored ? "above" : "below", rade_corr_freq_off);
     } else if (!rade_corr_locked) {
       snprintf(text, sizeof(text),
                "RADE V1: searching for pilot   (mode %s) - see log for correlation",
@@ -271,8 +271,8 @@ static int status_update_cb(gpointer data) {
       // situation this mode exists for. Lock state is the thing to watch.
       //
       snprintf(text, sizeof(text),
-               "RADE V1 LOCK  %s spectrum (mode %s)   pilot %3.0f%% / %+0.1f dB   %+0.1f Hz   %+0.1f dB %+0.0f deg",
-               rade_corr_mirrored ? "mirrored" : "normal", div_mode_lsb_text(),
+               "RADE V1 LOCK  modem %s carrier (mode %s)   pilot %3.0f%% / %+0.1f dB   %+0.1f Hz   %+0.1f dB %+0.0f deg",
+               rade_corr_mirrored ? "above" : "below", div_mode_lsb_text(),
                100.0 * rade_corr_quality, rade_corr_snr,
                rade_corr_freq_off, div_gain, div_phase);
     }

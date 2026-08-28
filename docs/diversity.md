@@ -205,23 +205,41 @@ the modem band clipped to the filter, as measured; in RADE V1 it is the
 whole modem band, because the pilot correlator taps the raw stream ahead
 of WDSP and is not affected by the filter.
 
-The frequency reference deserves a note, because it was wrong here until
-August 2026. The window and the filter edges live in WDSP's shifted frame,
-where the tuned signal sits at zero; the analysis works on the raw DDC
-stream, where it sits at `vfo[0].offset` (less the CW sidetone in CWU,
-plus it in CWL). So
+The frequency reference deserves a note, because both halves of it were
+wrong here at different times. The window and the filter edges live in
+WDSP's shifted frame, where the tuned signal sits at zero; the analysis
+works on the tapped DDC buffer. The conversion is
 
-    raw = shifted + frame_off
+    bin frequency = −(s + frame_off)
 
-Two independent places in the code state that: the panadapter's own filter
-overlay, and WDSP's notch database, which compares absolute RF notch
-frequencies against `flow + tunefreq + shift`. It is also the only
-relation that puts the CW passband on the dial frequency. It had been
-reasoned out the other way from the sign of the rotation in
-`wdsp/shift.c`, which looks conclusive and is not; with CTUN off, RIT off
-and a phone mode — most testing — nothing showed. With CTUN on, the
-analysis measured a window `2 x offset` away from the one drawn on the
-screen, and RADE V1 could not acquire at all.
+with `frame_off = vfo[0].offset`, less the CW sidetone in CWU and plus it
+in CWL.
+
+The **displacement** is stated by two independent places in the code: the
+panadapter's own filter overlay, and WDSP's notch database, which compares
+absolute RF notch frequencies against `flow + tunefreq + shift`. It is
+also the only arrangement that puts the CW passband on the dial frequency.
+
+The **inversion** is not derived, it is measured. The tapped buffer runs
+backwards with respect to RF: a signal above the dial appears at a
+negative complex frequency in it. Three on-air observations say so — the
+wideband RADE mode finding an LSB modem's energy at positive bin
+frequencies, the V1 correlator locking the un-mirrored pilot bank on an
+LSB signal twice by a wide margin, and the plain operator's expectation
+that LSB, having been inverted once by the transmitter, arrives here the
+right way up. Reading the code does not give this answer; `wdsp/shift.c`,
+`wdsp/analyzer.c` and the panadapter's pixel mapping cannot all three be
+read consistently with one another, and the measurement does not care.
+
+Neither error showed with a symmetric window, CTUN off and a phone mode,
+which is most bench testing. What they broke was everything asymmetric: a
+hand-placed window at +5 kHz measured −5 kHz, the RADE window sat on the
+wrong sideband, and with CTUN on the analysis measured a window `2 ×
+offset` away from the one drawn on the screen.
+
+If this is ever revisited, revisit it with a signal: put a known carrier a
+few kHz off the dial, run the Carrier reference, and see which way
+`div_auto_carrier` moves.
 
 ### Starting again
 

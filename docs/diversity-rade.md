@@ -44,45 +44,58 @@ That is not how it started, and the reason for the change is worth keeping:
 
 ### The passband decides the sideband, and nothing else
 
-The first version derived the correlator's spectral sense from the mode,
-conjugating the input for LSB. **It never acquired on air**, against a
-signal RADE itself was decoding at 10 dB SNR. The conclusion drawn at the
-time was that the convention could not be reasoned about and had to be
-measured, so the derivation was removed and both pilot banks searched
-blind.
+Bank 0 is the pilot as transmitted, carriers at +750..+2200 Hz in the
+tapped buffer; bank 1 is its mirror. **Bank 0 is the LSB bank.**
 
-That was the wrong lesson from a contaminated experiment. The conversion
-between the raw DDC frame and the frame the passband is expressed in had
-the wrong sign — see "Frequency bookkeeping" in `diversity_auto.c` — so
-under CTUN or RIT nothing acquired whichever bank was used. It is not
-evidence about sidebands at all.
+That is measured, not derived. The tapped buffer is spectrally inverted
+with respect to RF — see "Frequency bookkeeping" in `docs/diversity.md`
+— so an LSB signal, already inverted once by the transmitter, arrives at
+the correlator the right way up and correlates against the pilot as
+transmitted. On air, in LSB, on a weak signal:
 
-Blind two-bank search then acquired, and introduced its own fault: the
-choice between the banks is decided by noise on a signal near the noise
-floor, and that is where RADE lives. On air the wideband RADE window,
-which is placed by the same choice, settled above an LSB passband and
-stayed there; and in V1, a marginal lock could flip the green overlay
-across the carrier at the moment of locking.
+```
+rade_acquire: acq normal=7.97 mirrored=4.75
+```
 
-**The operator's passband now names the bank, and it is the only one
-searched.** Bank 0 is the pilot as transmitted, carriers at
-+750..+2200 Hz, matching a modem above the tuned frequency; bank 1 is its
-mirror. The midpoint of `filter_low..filter_high` decides, which covers
-LSB, USB and the digital modes without a mode table. Only when the
+This is the same thing an operator would say without any of the above:
+the mirroring an SSB transmitter applies is undone by the time the signal
+reaches the point where we correlate.
+
+**The operator's passband names the bank, and it is the only one
+searched.** The midpoint of `filter_low..filter_high` decides, which
+covers LSB, USB and the digital modes without a mode table. Only when the
 passband straddles zero and so says nothing — AM, SAM, FM — are both
 searched.
 
-The reasoning is not just that the passband is more reliable than a coin
-toss. **A RADE lock outside the passband is of no use.** This mode exists
-to extract and track coherence on the signal the operator has tuned; a
-modem on the other side of the carrier is a different signal, filtered out
-downstream, and steering the array at it would be actively wrong. Not
-looking there is also cheaper — the search is the most expensive thing in
-the module, and an SSB passband takes about a third off it at the lower
-sample rates (at 384 kHz the decimator dominates and it barely shows).
+The reasoning is not just reliability. **A RADE lock outside the passband
+is of no use.** This mode exists to extract and track coherence on the
+signal the operator has tuned; a modem on the other side of the carrier is
+a different signal, filtered out downstream, and steering the array at it
+would be actively wrong. Not looking there is also cheaper — the search is
+the most expensive thing in the module, and an SSB passband takes about a
+third off it at the lower sample rates (at 384 kHz the decimator dominates
+and it barely shows).
 
-Conjugation stays out of the sample path, so there is no weight to
-conjugate back: whichever bank is used, `h0` and `h1` describe the real
+#### How it got here
+
+Three arrangements, two of which looked like they worked.
+
+1. **Derived from `vfo[].mode`, conjugating the input for LSB.** Never
+   acquired on air. But the frame conversion had the wrong sign at the
+   time, so nothing acquired under CTUN whichever sense was used — that
+   experiment proved nothing about sidebands.
+2. **Both banks searched blind, take the winner.** Acquired, and
+   introduced its own fault: the choice between banks is decided by noise
+   on a signal near the noise floor, which is where RADE lives. The
+   wideband RADE window, placed by the same choice, settled above an LSB
+   passband and stayed there; in V1 a lock could flip the green overlay
+   across the carrier at the moment of locking.
+3. **The passband names it, and nothing else is searched.** Which also
+   made the on-air bank logs from stage 2 readable, and they are what
+   fixed the mapping.
+
+Conjugation stays out of the sample path throughout, so there is no weight
+to conjugate back: whichever bank is used, `h0` and `h1` describe the real
 untouched arms and the MVDR solution applies directly.
 
 ### The analysis window follows the passband too
@@ -384,11 +397,11 @@ acquisition. An earlier +/-25 Hz was another way to find nothing if the
 operator is slightly off frequency.
 
 **Acquisition logs its progress** at each scoring point - 1 s, 2 s and
-3.8 s into an integration - reporting the statistic for the pilot bank the passband
+3.8 s into an integration - reporting the statistic for the side the passband
 named, the threshold, the best frequency, and the decimated signal RMS:
 
 ```
-rade_acquire: acq mirrored=7.44 (need 6.00 after 16 passes) f=+0.0 rms=1.2e-03
+rade_acquire: acq below carrier =7.44 (need 6.00 after 16 passes) f=+0.0 rms=1.2e-03
 ```
 
 An RMS near zero means nothing is reaching the correlator at all, which is

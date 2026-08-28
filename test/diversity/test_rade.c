@@ -68,12 +68,18 @@ static double frand(void) { return 2.0 * ((double)rand() / RAND_MAX) - 1.0; }
 #define FRAMES 30                       /* modem frames in the replay buffer */
 
 /*
- * A continuous RADE-like stream at the DDC rate: pilot symbol then
- * RADE_CORR_NS data symbols, repeating.
+ * A continuous RADE-like stream as it arrives in the tapped buffer: pilot
+ * symbol then RADE_CORR_NS data symbols, repeating, at the DDC rate.
  *
- * side < 0 mirrors the modem below the tuned frequency, which is what an
- * LSB passband gives. off_hz then moves the whole thing so the tuned
- * point sits at +off_hz in the raw frame, as CTUN does.
+ * side is where the modem is in *RF* terms - -1 below the dial, as an LSB
+ * passband gives, +1 above it. The buffer is inverted with respect to RF
+ * (see the frequency bookkeeping note in diversity_auto.c), so below the
+ * dial is the un-mirrored, positive-frequency case here and above it is
+ * the mirrored one. Getting this backwards is exactly the mistake the
+ * on-air logs corrected, so it is spelled out rather than assumed.
+ *
+ * off_hz is vfo[0].offset: CTUN puts the tuned point at RF dial + off_hz,
+ * which is -off_hz in the buffer.
  *
  * The buffer is a whole number of modem frames long so replaying it end
  * to end keeps the pilot timing valid across the wrap.
@@ -126,15 +132,15 @@ static long gen(float **buf, int side, double off_hz, double noise) {
     double si = s8[2 * (i / DECIM) + 1];
 
     //
-    // Below the tuned frequency is the mirror image: conj() reflects
+    // Above the dial is the mirror image in this buffer: conj() reflects
     // every carrier about zero.
     //
-    if (side < 0) { si = -si; }
+    if (side > 0) { si = -si; }
 
     //
-    // ... and then the whole thing sits at +off_hz, where CTUN puts it.
+    // ... and the tuned point sits at -off_hz.
     //
-    double th = 2.0 * M_PI * off_hz * (double)i / (double)RATE;
+    double th = -2.0 * M_PI * off_hz * (double)i / (double)RATE;
     double c = cos(th), s = sin(th);
     double tr = sr * c - si * s;
     double ti = sr * s + si * c;
@@ -262,11 +268,11 @@ int main(int argc, char **argv) {
       continue;
     }
 
-    int want_mirror = (cases[i].pb < 0);
+    int want_mirror = (cases[i].pb > 0);
     int side_ok = (rade_corr_mirrored == want_mirror);
-    printf("  %-20s  locked in %5.2f s (%2d blocks)  %s spectrum  %s\n",
+    printf("  %-20s  locked in %5.2f s (%2d blocks)  modem %s carrier  %s\n",
            cases[i].name, secs(b), b,
-           rade_corr_mirrored ? "mirrored" : "normal",
+           rade_corr_mirrored ? "above" : "below",
            side_ok ? (secs(b) < was ? "OK" : "SLOW") : "WRONG SIDEBAND");
 
     if (!side_ok || secs(b) >= was) { ok = 0; }

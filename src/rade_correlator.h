@@ -76,13 +76,15 @@ extern void rade_corr_reset(void);
 //
 // Feed one block of n sample pairs at the DDC rate.
 //
-// expect_bank is the pilot bank the operator's sideband implies - 0 for a
-// modem above the tuned frequency, 1 for below, -1 when the passband does
-// not say. It is a prior, not a constraint: both banks are still searched
-// and the other one is taken if it wins by RADE_BANK_MARGIN.
+// expect_bank is the pilot bank the operator's passband names, and the
+// only one searched - 0 for a modem *below* the tuned frequency (LSB),
+// 1 for one above it (USB), -1 when the passband straddles the carrier
+// and does not say, where both are searched. The mapping is that way
+// round because the tapped buffer is inverted with respect to RF; see the
+// sideband note in rade_correlator.c.
 //
-// frame_off is the offset of WDSP's shifted frame from the raw DDC one,
-// in Hz - vfo[0].offset with the CW sidetone folded in. See the frequency
+// frame_off is the displacement of WDSP's shifted frame from the dial, in
+// Hz - vfo[0].offset with the CW sidetone folded in. See the frequency
 // bookkeeping note in diversity_auto.c.
 //
 // tau is the operator's averaging time in seconds, which sets how fast the
