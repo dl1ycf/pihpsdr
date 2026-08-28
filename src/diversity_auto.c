@@ -280,7 +280,20 @@ static int             fillptr = 0;
 // RADE V1's pilot timing, so it has to re-acquire rather than carry on
 // against a pilot that has silently moved.
 //
-static int             q_dropped = 0;
+//
+// A gap in the sample stream is recorded against the slot that follows
+// it, not in one counter read at dequeue time.
+//
+// A drop can only happen when the queue is full, which means DIV_QUEUE-1
+// blocks from *before* the gap are still waiting. Reading a global
+// counter at dequeue therefore reset the correlator three blocks early:
+// it re-acquired on pre-gap data and then tracked straight through the
+// discontinuity with nothing to tell it, which is exactly the failure -
+// the pilot slides by a non-multiple of the modem frame and the lock dies
+// a few seconds later - that this mechanism exists to prevent.
+//
+static int             q_pending_drop = 0;   // dropped since the last enqueue
+static int             q_gap[DIV_QUEUE];     // gap ahead of each queued slot
 
 //
 // Set by diversity_auto_reset() on the GTK thread, consumed by the worker
@@ -497,17 +510,6 @@ static void div_make_window(void) {
   }
 }
 
-//
-// What the mode says about which sideband is in use.
-//
-// This is *not* how the RADE window is placed. Both RADE modes measure
-// the side rather than deriving it - stage 1 from the energy either side
-// of the carrier, stage 2 from which pilot bank correlates - because on
-// air the mode-derived rule turned out to be the wrong way round.
-//
-// It survives only to be logged next to the measured answer, which is how
-// that was established and is worth keeping visible.
-//
 //
 // Offset of WDSP's shifted frame from our raw one: raw = shifted +
 // div_frame_off(). See the frequency bookkeeping note at the top.
@@ -998,10 +1000,20 @@ static void div_process_block(void) {
     }
 
     div_auto_carrier = div_carrier_hz;
+
     //
     // Re-aim the window now the carrier is known.
     //
-    div_bin_range(&ctx, &klo, &khi);
+    // The second call can fail where the first succeeded - the carrier can
+    // be near enough the Nyquist limit that its few bins clamp away to
+    // nothing - and klo/khi would then still hold the whole search window.
+    // Accumulating that as if it were the carrier bin is worse than not
+    // measuring at all.
+    //
+    if (!div_bin_range(&ctx, &klo, &khi)) {
+      div_auto_holding = 1;
+      return;
+    }
   }
 
   if (ctx.ref == DIV_REF_RADE_BAND) {
@@ -1055,10 +1067,25 @@ static void div_process_block(void) {
     if (want != div_rade_side) {
       div_rade_side = want;
       div_reset_stats();
-      div_bin_range(&ctx, &klo, &khi);
+
+      //
+      // As above: if the modem band on the new side is unreachable at this
+      // sample rate and offset, klo/khi still describe the old side, and
+      // accumulating there would be measuring the wrong sideband.
+      //
+      if (!div_bin_range(&ctx, &klo, &khi)) {
+        div_auto_holding = 1;
+        return;
+      }
     }
   }
 
+  //
+  // See below: weighting applies to the wide references only.
+  //
+  const int coherence_weighted = (ctx.weighting == DIV_WEIGHT_COHERENCE)
+                                 && (ctx.ref == DIV_REF_BAND
+                                     || ctx.ref == DIV_REF_RADE_BAND);
   //
   // Exponential forgetting across blocks, applied per bin.
   //
@@ -1116,7 +1143,14 @@ static void div_process_block(void) {
     double xx = bin_xx[idx], yy = bin_yy[idx];
     double w = 1.0;
 
-    if (ctx.weighting == DIV_WEIGHT_COHERENCE) {
+    //
+    // Only where there is a window of bins to choose between. The carrier
+    // reference accumulates a handful either side of one peak, all of them
+    // the same signal, so weighting them against each other does nothing -
+    // and the menu hides the control there, which would otherwise leave
+    // whichever setting was last chosen in Window mode silently in force.
+    //
+    if (coherence_weighted) {
       double den = xx * yy;
 
       if (den <= 0.0) { continue; }
@@ -1182,8 +1216,8 @@ static gpointer div_worker_thread(gpointer data) {
 
     work0 = qbuf0[q_tail];
     work1 = qbuf1[q_tail];
-    int dropped = q_dropped;
-    q_dropped = 0;
+    int dropped = q_gap[q_tail];
+    q_gap[q_tail] = 0;
     g_mutex_unlock(&mbox_mutex);
 
     if (reset_requested) {
@@ -1193,10 +1227,10 @@ static gpointer div_worker_thread(gpointer data) {
 
     if (dropped > 0) {
       //
-      // The sample stream has a hole in it. Everything the correlator
-      // knows about where the pilot is refers to a clock that has just
-      // skipped, so start again rather than track something that has
-      // moved.
+      // The block about to be processed is the first after a hole in the
+      // sample stream. Everything the correlator knows about where the
+      // pilot is refers to a clock that has just skipped, so start again
+      // rather than track something that has moved.
       //
       t_print("%s: dropped %d analysis block(s), re-acquiring\n", __func__, dropped);
       rade_corr_reset();
@@ -1234,11 +1268,16 @@ void diversity_auto_sample(double i0, double q0, double i1, double q1) {
   // waiting is DIV_QUEUE-1 and the head never collides with the tail.
   //
   if (q_count < DIV_QUEUE - 1) {
+    //
+    // This block is the first one after any gap, so it carries the count.
+    //
+    q_gap[q_head] = q_pending_drop;
+    q_pending_drop = 0;
     q_count++;
     q_head = (q_head + 1) % DIV_QUEUE;
     g_cond_signal(&mbox_cond);
   } else {
-    q_dropped++;
+    q_pending_drop++;
   }
 
   fill0 = qbuf0[q_head];
@@ -1308,7 +1347,8 @@ void diversity_auto_start(void) {
   g_mutex_lock(&mbox_mutex);
   fillptr = 0;
   q_head = q_tail = q_count = 0;
-  q_dropped = 0;
+  q_pending_drop = 0;
+  memset(q_gap, 0, sizeof(q_gap));
   reset_requested = 0;
   mbox_quit = 0;
   fill0 = qbuf0[0];

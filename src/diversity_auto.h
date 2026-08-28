@@ -56,9 +56,9 @@ enum {
 };
 
 //
-// True for the reference modes that place themselves on the RADE
-// passband. Which side of the carrier that is gets measured, not derived
-// from the mode - see div_mode_is_lsb() in diversity_auto.c.
+// True for the reference modes that place themselves on the RADE modem
+// band. Which side of the tuned frequency that is comes from the
+// operator's passband - see div_rade_side_expected() in diversity_auto.c.
 //
 #define DIV_REF_IS_RADE(r)  ((r) == DIV_REF_RADE_BAND || (r) == DIV_REF_RADE_V1)
 

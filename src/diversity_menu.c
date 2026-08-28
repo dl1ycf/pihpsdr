@@ -931,6 +931,8 @@ void diversity_menu(GtkWidget *parent) {
     gtk_widget_set_sensitive(follow_b, FALSE);
     gtk_widget_set_sensitive(centre_spin, FALSE);
     gtk_widget_set_sensitive(width_spin, FALSE);
+    gtk_widget_set_sensitive(res_combo, FALSE);
+    gtk_widget_set_sensitive(weight_combo, FALSE);
     gtk_widget_set_sensitive(tau_scale, FALSE);
     gtk_widget_set_sensitive(coh_scale, FALSE);
     gtk_widget_set_sensitive(reset_b, FALSE);

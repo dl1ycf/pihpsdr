@@ -1,12 +1,13 @@
 # Automatic diversity phasing: design rationale
 
-**This is the "why" document, and parts of it are history rather than
-specification.** For how the code currently works, see
-[`diversity.md`](diversity.md).
-
-Several designs here were tried against a live radio and abandoned. They
-are kept because each failed in a way that was silent, and knowing why
-stops them being re-invented.
+> **History, not specification.** Several designs here were tried against
+> a live radio and abandoned, and one section below records a conclusion
+> that was simply wrong. They are kept because each failed in a way that
+> was silent, and knowing why stops them being re-invented.
+>
+> For how the code works now, see [`diversity.md`](diversity.md). For how
+> to use it, see [`diversity-guide.md`](diversity-guide.md). **Do not take
+> anything in this file as a description of current behaviour.**
 
 Automatic determination of the DIVERSITY gain and phase, by measuring the
 cross spectrum of the two antennas over a narrow, operator-controlled slice
@@ -113,20 +114,30 @@ The window is a 4-term Blackman-Harris. The whole point is to look at one
 narrow slice of spectrum and ignore everything else, so its -92 dB
 sidelobes are worth having over the -31 dB of a Hann.
 
-### Frequency bookkeeping
+### Frequency bookkeeping — this section was wrong
 
-We tap the raw DDC streams, ahead of WDSP. WDSP's first stage is `xshift()`,
-which multiplies by `exp(+j*2*pi*offset*t)` with `offset = vfo[0].offset`.
-Everything after it — the operator's passband (`filter_low`/`filter_high`)
-is expressed in that shifted frame,
-where the tuned signal sits at zero. So a frequency `f` in the shifted
-frame is at `f - offset` in the raw frame, and that one relation covers
-both quantities.
+It read: *"a frequency `f` in the shifted frame is at `f - offset` in the
+raw frame … no sign constant is needed. Whether the raw DDC baseband runs
+the same way as RF or is mirrored never comes up."*
 
-This is worth stating explicitly because it means **no sign constant is
-needed**. Whether the raw DDC baseband runs the same way as RF or is
-mirrored never comes up: both quantities we care about arrive already
-expressed in the same frame as each other.
+Both halves of that are false, and it is left here as the warning it
+turned out to be. The offset has the other sign and the CW sidetone has to
+be folded in, and the tapped buffer **is** spectrally inverted with
+respect to RF, so a sign constant is exactly what is needed:
+
+```
+bin frequency = -(shifted + frame_off)
+```
+
+Nothing showed while the window was symmetric, CTUN off and the mode a
+phone one, which is most bench testing. What it broke was everything
+asymmetric: a window hand-placed at +5 kHz measured −5 kHz, the RADE
+window sat on the wrong sideband, and under CTUN the analysis measured a
+window `2 × offset` away from the one drawn on the panadapter.
+
+See "Frequency bookkeeping" in [`diversity.md`](diversity.md) for the
+relation that is actually implemented and the three on-air measurements
+that establish the inversion.
 
 ### Reference: window or carrier
 
@@ -157,9 +168,11 @@ that is not going anywhere. It cannot be narrowed without spoiling the
 audio it exists to produce.
 
 Since the spectrum is computed every block anyway, the carrier is found
-as the peak bin within +/-500 Hz of the tuned frequency, refined by
-parabolic interpolation on log power across the three bins about the
-peak, and then smoothed with the operator's averaging time constant.
+as the peak bin within the operator's window — a hard-coded ±500 Hz in
+the first version, which is why a carrier other than the primary could not
+be tracked — refined by parabolic interpolation on log power across the
+three bins about the peak, and then smoothed with the operator's averaging
+time constant.
 Sub-bin accurate, as slow as the operator wants, and it works in plain AM
 as well - where the SAM PLL does not run at all, `xamd()` case 0 being a
 simple envelope detector that never touches `phs`, `omega` or `fil_out`.

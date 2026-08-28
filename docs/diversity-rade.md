@@ -35,12 +35,13 @@ Barker-13 over the carriers scaled by sqrt(2), IDFT'd to the time domain.
 RADE arrives through an SSB passband, so the modem occupies 750-2200 Hz on
 one side of the tuned carrier and the mirror image of that on the other.
 
-**Which side is measured, not derived from the mode.** Stage 1 compares the
-energy either side of the carrier each block; stage 2 keeps whichever pilot
-bank correlates. Both report what they found in the status line next to
-what the mode says, so the two can be compared.
+**The operator's passband decides which side, and it is the only side
+looked at.** The midpoint of `filter_low`/`filter_high` names it, which
+covers LSB, USB and the digital modes without a mode table. Only when the
+passband straddles the carrier and so says nothing — AM, SAM, FM — is
+there any measurement involved.
 
-That is not how it started, and the reason for the change is worth keeping:
+It took three goes to get there, and the reasons are worth keeping:
 
 ### The passband decides the sideband, and nothing else
 
@@ -111,16 +112,16 @@ The pilot correlator is different and is *not* clipped. It taps the raw
 stream ahead of WDSP and needs all thirty carriers whatever the filter is
 set to, so in RADE V1 the overlay shows the whole modem band.
 
-The detected sense is shown in the status line ("normal spectrum" /
-"mirrored spectrum") alongside what the mode says.
+The side in use is shown in the status line as `LSB` or `USB`.
 
-**On air the mode-based rule turned out to be backwards.** Against a real
-LSB signal the un-mirrored pilot bank scored 12.8 / 14.7 / 15.9 while the
-mirrored bank scored 3.6 / 4.1 / 4.0 - a decisive result the opposite way
-round from what deriving it from the mode predicted. Stage 1 therefore no
-longer uses the mode either: it sums the energy in the modem band on both
-sides of the carrier each block and keeps the stronger, and reports which
-side it chose next to what the mode says.
+**On air the first mode-based rule was backwards**, and it took a long
+time to work out why. Against a real LSB signal the un-mirrored pilot bank
+scored 12.8 / 14.7 / 15.9 while the mirrored bank scored 3.6 / 4.1 / 4.0.
+That is a decisive result, and it says the tapped buffer is inverted with
+respect to RF - an LSB signal, already inverted once by the transmitter,
+arrives at the correlator the right way up. The mapping is now bank 0 for
+LSB, and the reasoning is set out under "Frequency bookkeeping" in
+[`diversity.md`](diversity.md).
 
 ## Stage 1: RADE passband
 

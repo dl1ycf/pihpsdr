@@ -2257,7 +2257,24 @@ void radio_calc_div_params(void) {
   div_sin = amplitude * sin(arg);
 }
 
+//
+// True while the automatic loop owns the weight, so a manual set from an
+// encoder, a popup slider or a remote client would be overwritten within
+// one analysis block - about 85 ms - after stepping the combined audio on
+// the way past.
+//
+// The diversity menu greys out its own four sliders for this. The encoder
+// actions and the remote path have no such check of their own, so it lives
+// here where every manual setter goes through it. Hold is the way to take
+// the weight over while the loop is running, and it makes this false.
+//
+static int radio_div_auto_owns_weight(void) {
+  return div_auto_running && div_auto_mode != DIV_AUTO_OFF && !div_auto_hold;
+}
+
 void radio_set_diversity_gain(double val) {
+  if (radio_div_auto_owns_weight()) { return; }
+
   if (val < -27.0) { val = -27.0; }
   if (val >  27.0) { val =  27.0; }
   div_gain = val;
@@ -2272,6 +2289,8 @@ void radio_set_diversity_gain(double val) {
 }
 
 void radio_set_diversity_phase(double value) {
+  if (radio_div_auto_owns_weight()) { return; }
+
   while (value >  180.0) { value -= 360.0; }
   while (value < -180.0) { value += 360.0; }
   div_phase = value;

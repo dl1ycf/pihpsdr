@@ -56,14 +56,20 @@
 #define RADE_CORR_FHI     2200.0
 
 //
-// Status, for the UI. Written by the analysis thread.
+// Status. Written by the analysis thread.
+//
+// The first three are read by the menu, which has room for the lock state,
+// the sideband and one number. The last three are diagnostics: they appear
+// in the tracking log rather than on screen, and are exported so that a
+// caller that wants them - a future status panel, a test - does not have
+// to reach into the correlator to find them.
 //
 extern int    rade_corr_locked;      // pilot acquired, confirmed and tracking
 extern int    rade_corr_confirming;  // a candidate is on probation
-extern double rade_corr_freq_off;    // Hz, carrier frequency offset
-extern double rade_corr_snr;         // dB, pilot SNR estimate
 extern double rade_corr_quality;     // 0..1, normalised pilot correlation
-extern int    rade_corr_mirrored;    // which spectral sense actually correlated
+extern int    rade_corr_mirrored;    // 1 if the modem is above the tuned freq
+extern double rade_corr_freq_off;    // Hz, tracked frequency offset
+extern double rade_corr_snr;         // dB, pilot SNR estimate
 
 //
 // ddc_rate must divide RADE_CORR_FS exactly (48k/96k/192k/384k all do).

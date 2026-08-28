@@ -51,8 +51,14 @@ Worth knowing when interpreting results. On pre-Orion2 boards only ADC0's
 path is under software control — ALEX high-pass, the TX low-pass when
 using ANT1-3, and the ALEX attenuator. ADC1 is a bare rear-panel input.
 So the relative gain and phase between the two antennas are stable within
-a band and **jump** when the band, antenna or attenuator changes. The
-analysis notices and starts again; see §4.
+a band and **jump** when the band, antenna or attenuator changes.
+
+The analysis discards its statistics and starts again on a change of
+frequency, sample rate, mode, filter edges or any window setting (§4) —
+but **not** on an antenna or attenuator change, which it does not watch.
+There the estimate simply re-converges over a few time constants, which is
+slower than a restart but arrives at the same place. **Restart averaging**
+is the button for it if the wait is unwelcome.
 
 ---
 
@@ -300,7 +306,7 @@ the feedlines, and 20 dB of cancellation needs the phase right to about
 
 So measuring a few kHz away costs nothing. The limit is the Nyquist
 frequency, ±half the sample rate: a window beyond it is pulled back to the
-edge and the status line says `[window clamped]`. Before that guard existed
+edge and the status line marks the first field with a `*`. Before that guard existed
 a window at +30 kHz on a 48 kHz stream was silently measured at −18 kHz
 instead.
 
@@ -559,8 +565,11 @@ quantisation and follows the few Hz per minute a station drifts.
 
 ## 10. Related
 
+- [`diversity-guide.md`](diversity-guide.md) — **start here**: what the
+  feature does and how to use it, with worked examples
 - [`diversity-rade.md`](diversity-rade.md) — the RADE modes in detail
-- [`diversity-auto-phasing.md`](diversity-auto-phasing.md) — design
-  rationale, and the approaches that were tried and abandoned
 - [`diversity-dither-fix.md`](diversity-dither-fix.md) — a P2 bug found
   along the way, where ADC1 never received the dither/random setting
+- [`diversity-auto-phasing.md`](diversity-auto-phasing.md) — design
+  history, including the approaches that were tried and abandoned. Not a
+  description of current behaviour

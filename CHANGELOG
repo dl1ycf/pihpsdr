@@ -9,6 +9,17 @@ August 2026:
   a carrier other than the primary, coherence weighting for SSB voice,
   and a pilot-correlating MVDR mode for FreeDV RADE V1
 
+- diversity: a dropped analysis block reset the RADE correlator three
+  blocks before the gap in the samples actually reached it, so it
+  re-acquired on pre-gap data and then tracked straight through the
+  discontinuity - the failure the mechanism exists to prevent. The drop
+  count now travels with the queue slot
+
+- diversity: the diversity gain and phase encoder actions, popup sliders
+  and remote sets are now inert while the automatic loop owns the weight,
+  as the menu sliders already were. They previously stepped the combined
+  audio and were overwritten within one analysis block
+
 - diversity: Hold and Invert buttons. Hold stops the loop applying its
   answer without stopping the loop, handing the gain and phase controls to
   the operator and applying the tracked answer in one step when released;
