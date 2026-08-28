@@ -20,6 +20,12 @@ August 2026:
   as the menu sliders already were. They previously stepped the combined
   audio and were overwritten within one analysis block
 
+- diversity: ticking Diversity Enable inside the diversity menu started
+  the analysis loop but left Hold and Invert greyed out, since the control
+  sensitivity was only refreshed on other events. It is now refreshed on
+  the status tick, so the controls also follow a loop started or stopped
+  from outside the menu
+
 - diversity: Hold and Invert buttons. Hold stops the loop applying its
   answer without stopping the loop, handing the gain and phase controls to
   the operator and applying the tracked answer in one step when released;

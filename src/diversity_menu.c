@@ -130,9 +130,16 @@ static gboolean close_cb(void) {
   return TRUE;
 }
 
+static void update_manual_sensitivity(void);
+
 static void diversity_cb(GtkWidget *widget, gpointer data) {
   int state = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  //
+  // This starts or stops the analysis thread, so what the controls below
+  // may be used for changes with it.
+  //
   radio_set_diversity(state);
+  update_manual_sensitivity();
 }
 
 static void gain_coarse_changed_cb(GtkWidget *widget, gpointer data) {
@@ -223,7 +230,9 @@ static void update_manual_sensitivity(void) {
   if (phase_fine_scale)   { gtk_widget_set_sensitive(phase_fine_scale, manual); }
 
   //
-  // Hold and Invert act on the loop, so they need one to act on.
+  // Hold and Invert act on the loop, so they need one to act on. This does
+  // not depend on which reference is selected - every one of them has a
+  // weight to hold and an objective to invert.
   //
   gboolean has_loop = (div_auto_mode != DIV_AUTO_OFF) && div_auto_running;
 
@@ -376,6 +385,21 @@ static int status_update_cb(gpointer data) {
     return G_SOURCE_REMOVE;
   }
 
+  //
+  // Whether the loop is running is not something this dialog is told
+  // about. It changes on the Diversity Enable tick, on a resolution
+  // change, and from outside the menu altogether - a toolbar action or a
+  // remote client can call radio_set_diversity() while it is open. Every
+  // one of those used to need its own call to keep the controls honest,
+  // and the Diversity Enable tick did not have one: enabling diversity
+  // from inside the dialog started the loop and left Hold and Invert
+  // greyed out until something else happened to refresh them.
+  //
+  // Doing it on the tick instead makes that class of bug impossible.
+  // gtk_widget_set_sensitive() returns immediately when the state is
+  // unchanged, so this is six comparisons four times a second.
+  //
+  update_manual_sensitivity();
   //
   // Track the automatically determined values in the manual sliders so
   // the operator can see where the loop has settled, and so the sliders
