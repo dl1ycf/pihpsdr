@@ -990,6 +990,14 @@ void radio_stop_program(void) {
   dxcluster_shutdown(); // save spots, close sqLITE
   t_print("%s: DX Cluster closed\n", __func__);
   if (!radio_is_remote) {
+    //
+    // Before the protocol goes away: the analysis thread is still writing
+    // div_cos/div_sin, and radio_save_state() below reads them. Stopping
+    // it here keeps the saved pair consistent rather than a cos from one
+    // update and a sin from the next.
+    //
+    diversity_auto_stop();
+    t_print("%s: diversity analysis stopped\n", __func__);
     radio_protocol_stop();
     t_print("%s: protocol stopped\n", __func__);
     radio_stop_radio();

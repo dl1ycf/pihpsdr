@@ -891,9 +891,14 @@ src/discovery.o: src/saturnmain.h
 src/display_menu.o: src/client_server.h src/mode.h src/receiver.h
 src/display_menu.o: src/atomic.h src/transmitter.h src/main.h src/new_menu.h
 src/display_menu.o: src/radio.h src/adc.h src/discovered.h
+src/diversity_auto.o: src/adc.h src/atomic.h src/discovered.h
+src/diversity_auto.o: src/diversity_auto.h src/message.h src/mode.h
+src/diversity_auto.o: src/property.h src/rade_correlator.h src/radio.h
+src/diversity_auto.o: src/receiver.h src/transmitter.h src/vfo.h
 src/diversity_menu.o: src/client_server.h src/mode.h src/receiver.h
 src/diversity_menu.o: src/atomic.h src/transmitter.h src/new_menu.h
 src/diversity_menu.o: src/radio.h src/adc.h src/discovered.h
+src/diversity_menu.o: src/diversity_auto.h src/rade_correlator.h src/vfo.h
 src/dxcluster.o: src/dxcluster.h src/dxcluster_db.h src/property.h
 src/dxcluster.o: src/message.h
 src/dxcluster_db.o: src/dxcluster_db.h src/dxcluster.h src/message.h
@@ -1058,6 +1063,9 @@ src/ps_menu.o: src/vfo.h
 src/pulseaudio.o: src/audio.h src/receiver.h src/atomic.h src/transmitter.h
 src/pulseaudio.o: src/client_server.h src/mode.h src/message.h src/radio.h
 src/pulseaudio.o: src/adc.h src/discovered.h src/vfo.h
+src/rade_correlator.o: src/adc.h src/atomic.h src/discovered.h src/message.h
+src/rade_correlator.o: src/rade_correlator.h src/radio.h src/receiver.h
+src/rade_correlator.o: src/transmitter.h
 src/radio.o: src/actions.h src/adc.h src/agc.h src/appearance.h src/css.h
 src/radio.o: src/audio.h src/receiver.h src/atomic.h src/transmitter.h
 src/radio.o: src/band.h src/bandstack.h src/channel.h src/client_server.h
@@ -1244,7 +1252,9 @@ src/new_protocol.o: src/MacOS.h src/buffer.h src/atomic.h src/receiver.h
 src/profiles.o: src/receiver.h src/atomic.h src/transmitter.h
 src/radio.o: src/adc.h src/discovered.h src/receiver.h src/atomic.h
 src/radio.o: src/transmitter.h
+src/radio.o: src/diversity_auto.h
 src/receiver.o: src/atomic.h
+src/receiver.o: src/diversity_auto.h
 src/rx_panadapter.o: src/receiver.h src/atomic.h
 src/saturndrivers.o: src/saturnregisters.h
 src/sliders.o: src/actions.h src/receiver.h src/atomic.h src/transmitter.h

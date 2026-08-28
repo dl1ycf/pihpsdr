@@ -1,4 +1,12 @@
-# Automatic diversity phasing
+# Automatic diversity phasing: design rationale
+
+**This is the "why" document, and parts of it are history rather than
+specification.** For how the code currently works, see
+[`diversity.md`](diversity.md).
+
+Several designs here were tried against a live radio and abandoned. They
+are kept because each failed in a way that was silent, and knowing why
+stops them being re-invented.
 
 Automatic determination of the DIVERSITY gain and phase, by measuring the
 cross spectrum of the two antennas over a narrow, operator-controlled slice
@@ -110,10 +118,10 @@ sidelobes are worth having over the -31 dB of a Hann.
 We tap the raw DDC streams, ahead of WDSP. WDSP's first stage is `xshift()`,
 which multiplies by `exp(+j*2*pi*offset*t)` with `offset = vfo[0].offset`.
 Everything after it — the operator's passband (`filter_low`/`filter_high`)
-and the SAM PLL's carrier frequency — is expressed in that shifted frame,
+is expressed in that shifted frame,
 where the tuned signal sits at zero. So a frequency `f` in the shifted
 frame is at `f - offset` in the raw frame, and that one relation covers
-both the filter edges and the PLL.
+both quantities.
 
 This is worth stating explicitly because it means **no sign constant is
 needed**. Whether the raw DDC baseband runs the same way as RF or is
@@ -131,7 +139,10 @@ the mark and space tones of an FSK signal.
 carrier located from our own spectrum rather than from WDSP's SAM PLL.
 
 The first version did use the PLL, via a `GetRXAAMDCarrierFreq()`
-accessor added to `wdsp/amd.c`. On air the reported frequency wandered by
+accessor added to `wdsp/amd.c`. That accessor has since been removed and
+the vendored WDSP tree restored to pristine - modifying it for this was a
+mistake, since piHPSDR carries WDSP verbatim and a local change to it is a
+permanent merge burden. On air the reported frequency wandered by
 several Hz a second on a weak carrier, and the Averaging control did
 nothing about it - that control drives the weight accumulators, not
 WDSP's loop.
@@ -221,7 +232,7 @@ broken.
 | `src/receiver.c` | tap in `rx_add_div_iq_samples()`; stop/restart around sample rate changes |
 | `src/radio.c` | start/stop with diversity, props, startup hook |
 | `src/diversity_menu.c` | controls and status readout |
-| `wdsp/amd.c`, `amd.h`, `wdsp.h` | `GetRXAAMDCarrierFreq()`, `GetRXAAMDPLLRunning()` |
+| `test/diversity/` | Mode coverage test and CPU benchmark |
 
 ## Not done yet
 

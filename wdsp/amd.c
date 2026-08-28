@@ -292,32 +292,3 @@ SetRXAAMDFadeLevel(int channel, int levelfade)
 	rxa[channel].amd.p->levelfade = levelfade;
 	LeaveCriticalSection (&ch[channel].csDSP);
 }
-
-//
-// Accessors for the SAM PLL state, added for the piHPSDR diversity
-// auto-phasing code. Note the PLL is only run in SAM mode (mode 1);
-// in plain AM (mode 0) the demodulator is a simple envelope detector
-// and phs/omega/fil_out keep whatever value they had before.
-//
-// GetRXAAMDCarrierFreq() returns the frequency the PLL is currently
-// locked to, in Hz, relative to the (shifted) baseband, i.e. relative
-// to the tuned frequency. The lock range is set by fmin/fmax.
-//
-// These read a double that the DSP thread updates inside its sample
-// loop without any lock. A torn read cannot happen for a naturally
-// aligned double on the platforms piHPSDR supports, and the value
-// changes slowly, so a plain read is good enough here.
-//
-PORT
-double GetRXAAMDCarrierFreq (int channel)
-{
-	AMD a = rxa[channel].amd.p;
-	return a->omega * a->sample_rate / TWOPI;
-}
-
-PORT
-int GetRXAAMDPLLRunning (int channel)
-{
-	AMD a = rxa[channel].amd.p;
-	return a->run && (a->mode == 1);
-}

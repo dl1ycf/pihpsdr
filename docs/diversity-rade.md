@@ -1,5 +1,8 @@
 # RADE diversity: passband window and V1 pilot correlator
 
+Detail on the two FreeDV RADE reference modes. For how diversity and the
+automatic loop work in general, see [`diversity.md`](diversity.md).
+
 Two additions to the diversity auto-phasing engine for FreeDV RADE, both
 selectable from the Diversity menu's "Measure on" list.
 
@@ -21,26 +24,23 @@ Ns   4          data symbols per modem frame
 Nmf  960        samples per modem frame = 120 ms
 ```
 
-Frame layout is one pilot symbol then four data symbols, so a known
-192-sample pilot recurs 8.33 times a second. The pilot symbols are
+Frame layout is one pilot symbol then four data symbols, so a known pilot
+recurs 8.33 times a second. The symbol is 192 samples including its cyclic
+prefix; the correlator's template is the 160-sample symbol itself, which
+is where the "20 ms correlation window" below comes from. The pilot symbols are
 Barker-13 over the carriers scaled by sqrt(2), IDFT'd to the time domain.
 
 ## Sideband
 
-RADE arrives through an SSB passband, so which side of the tuned frequency
-it occupies depends on the mode, not the frequency. Below 10 MHz LSB is
-the usual choice but that is convention, not a rule, so both modes follow
-`vfo[0].mode` rather than guessing.
+RADE arrives through an SSB passband, so the modem occupies 750-2200 Hz on
+one side of the tuned carrier and the mirror image of that on the other.
 
-In the shifted frame - the one WDSP works in after `xshift()`, and the one
-piHPSDR's filter edges are expressed in - positive frequency is the upper
-sideband. USB and DIGU filters are positive, LSB and DIGL negative (see
-`filterUSB` / `filterLSB` in `filter.c`). So:
+**Which side is measured, not derived from the mode.** Stage 1 compares the
+energy either side of the carrier each block; stage 2 keeps whichever pilot
+bank correlates. Both report what they found in the status line next to
+what the mode says, so the two can be compared.
 
-| Mode | RADE window |
-|---|---|
-| USB, DIGU | +750 .. +2200 Hz |
-| LSB, DIGL | -2200 .. -750 Hz |
+That is not how it started, and the reason for the change is worth keeping:
 
 ### The correlator measures the sense rather than deriving it
 
@@ -89,9 +89,10 @@ whatever is strongest and correlated, which is the interferer.
 
 ## Stage 2: RADE V1 pilot correlator (MVDR)
 
-`src/rade_correlator.c`. Per arm: NCO shift to the tuned frame, mirror for
-LSB, polyphase FIR decimation to 8 kHz, then correlation against the known
-pilot over a (timing, frequency) grid.
+`src/rade_correlator.c`. Per arm: NCO shift to the tuned frame, then
+polyphase FIR decimation to 8 kHz, then correlation against the known
+pilot over a (bank, timing, frequency) grid. The samples are not otherwise
+touched — the spectral sense is handled by which pilot bank is used.
 
 Once locked, each frame gives channel estimates `h0`, `h1` from the pilot
 correlation, and the **residual** `n_i = s_i - h_i*p` over the pilot span
@@ -150,15 +151,16 @@ relative to pilot RMS.
 | +10 dB | lock, **-36.8 dB** interferer, +3.8 dB signal |
 | +20 dB and above | no lock |
 
-Identical on USB and LSB, with the weight coming out conjugated between
-them as it should.
+Identical whichever way round the spectrum arrives; the correlator finds
+the sense itself and the weight it produces applies to the untouched arms
+either way.
 
 ## Tracking
 
 Holding a lock is deliberately far more forgiving than getting one.
 
 The first version gated every tracking frame on a fresh detection
-statistic computed from one correlation and eight probes, against
+statistic computed from one correlation and a handful of probes, against
 acquisition's 32 integrated passes over the whole timing-by-frequency
 grid. That is orders of magnitude noisier, and it threw away locks on
 signals that had just acquired at three times the required margin.
@@ -187,9 +189,10 @@ The criterion is now the pilot correlation against the correlation floor
 measured off-pilot in the same frame. That is a ratio, so it does not
 depend on signal level and cannot ratchet. Both terms are smoothed over
 about 6 seconds, and the lock is dropped only after the ratio stays below
-1.35 for ten seconds - long enough to ride out fades, short enough to
-notice an over ending. A working lock reads around 2 even with a strong
-in-band interferer inflating the floor.
+`RADE_HOLD_RATIO` (2.0) for ten seconds - long enough to ride out fades,
+short enough to notice an over ending. A working lock reads about 6 on
+this reference, so there is real margin; a ratio of 1 would mean the pilot
+correlates no better than anything else in the frame does.
 
 Fixing this also improved the synthetic interferer result from -26.5 dB
 to -36.8 dB, simply because tracking now runs on every frame instead of
@@ -303,6 +306,12 @@ energy by any amount of frame-rate integration.
 tracking perfectly. It is the share of pilot-span energy the pilot itself
 accounts for, which is genuinely small when something loud is sitting on
 top of it. Watch the LOCK indicator, not that number.
+
+**Acquisition takes about 11.5 s of continuous signal.** Declaring lock
+needs `RADE_LOCK_FRAMES` (3) consecutive evaluations, each integrating
+`RADE_ACQ_PASSES` (32) passes of one 120 ms modem frame. Deliberately
+conservative, but long for a conversational mode - the first thing to
+revisit if acquisition proves too slow on air.
 
 **The frequency search covers +/-50 Hz**, matching RADE's own
 acquisition. An earlier +/-25 Hz was another way to find nothing if the

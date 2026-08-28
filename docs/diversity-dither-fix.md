@@ -1,5 +1,8 @@
 # Protocol-2 diversity: ADC1 dither/random bit was never set
 
+Found while building the automatic phasing described in
+[`diversity.md`](diversity.md).
+
 ## Symptom
 
 With DIVERSITY enabled on a Protocol-2 radio, ADC0 and ADC1 ran with

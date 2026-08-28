@@ -19,8 +19,6 @@
 #include <math.h>
 #include <fftw3.h>
 
-#include <wdsp.h>
-
 #include "diversity_auto.h"
 #include "message.h"
 #include "mode.h"
@@ -37,7 +35,13 @@
 //
 // rx_add_div_iq_samples() forms  z = z0 + w*z1  with a single complex
 // weight w that is flat across the whole DDC passband. This module works
-// out a value for w from the cross spectrum of the two raw streams.
+// out a value for w.
+//
+// Three of the four reference modes do that from the cross spectrum of
+// the two raw streams, as described below. The fourth, DIV_REF_RADE_V1,
+// uses no transform at all: it hands the block to rade_correlator.c,
+// which correlates against the known FreeDV RADE pilot and solves for an
+// MVDR weight. See that file.
 //
 // Every block of nfft sample pairs is windowed and transformed. Writing
 // X0 and X1 for the two spectra, we accumulate, over the bins k that fall
@@ -77,16 +81,17 @@
 //
 // We tap the *raw* DDC streams, ahead of WDSP. WDSP's first stage is
 // xshift(), which multiplies by exp(+j*2*pi*offset*t) with
-// offset = vfo[0].offset, and everything after it - the operator's
-// passband (RXASetPassband, filter_low/filter_high) and the SAM PLL's
-// carrier frequency - is expressed in that shifted frame, where the tuned
-// signal sits at zero.
+// offset = vfo[0].offset, and the operator's passband
+// (RXASetPassband, filter_low/filter_high) is expressed in that shifted
+// frame, where the tuned signal sits at zero.
 //
-// So a frequency f in the shifted frame is at f - offset in the raw frame,
-// and that single relation covers both the filter edges and the PLL. We
-// never have to know whether the raw baseband runs the same way as RF or
-// is mirrored, because both quantities we care about arrive already
-// expressed in the same frame.
+// So a frequency f in the shifted frame is at f - offset in the raw frame.
+// That single relation is all the conversion needed: the filter edges
+// arrive already in the shifted frame, and the carrier tracker produces
+// its estimate there by construction. We never have to decide whether the
+// raw baseband runs the same way as RF or is mirrored - which is just as
+// well, because that question could not be settled from the code and the
+// two attempts to reason it out both came to the wrong answer.
 //
 // ----------------------------------------------------------------------
 //
@@ -155,13 +160,53 @@ static int             have_plans = 0;
 // Sample collection. fill[] is written by the RX sample path, work[] is
 // read by the analysis thread; the two are swapped when a block is ready.
 //
+//
+// A short queue rather than a single slot.
+//
+// The original design handed over one block at a time and dropped any
+// block that arrived while the worker was busy, on the grounds that the
+// estimate moves far more slowly than one block. That is true for the
+// three transform-based reference modes and quite wrong for RADE V1,
+// which tracks the pilot by *absolute* decimated sample index and carries
+// the NCO phase and the decimator delay line across blocks. A dropped
+// block slides the real pilot by a non-multiple of the modem frame -
+// 682 samples at 192 kHz against a 960-sample frame - which the one
+// sample of timing nudge in the tracker cannot recover, so the lock is
+// lost a few seconds later.
+//
+// It was also self-inflicted: acquisition is by far the most expensive
+// thing the worker does, so drops were most likely precisely while
+// searching, and were then repeated for up to RADE_ACQ_PASSES passes.
+//
+// The queue holds DIV_QUEUE buffers, one of which is always the one being
+// filled, so at most DIV_QUEUE-1 are ever waiting.
+//
+#define DIV_QUEUE 4
+
+static float          *qbuf0[DIV_QUEUE], *qbuf1[DIV_QUEUE];
+static int             q_head = 0;      // slot being filled
+static int             q_tail = 0;      // slot being processed
+static int             q_count = 0;     // slots waiting
 static float          *fill0 = NULL, *fill1 = NULL;
 static float          *work0 = NULL, *work1 = NULL;
 static int             fillptr = 0;
 
+//
+// Blocks the sample path had to throw away because the queue was full.
+// Read and cleared by the worker: a gap in the sample stream invalidates
+// RADE V1's pilot timing, so it has to re-acquire rather than carry on
+// against a pilot that has silently moved.
+//
+static int             q_dropped = 0;
+
+//
+// Set by diversity_auto_reset() on the GTK thread, consumed by the worker
+// between blocks. See the note there.
+//
+static int             reset_requested = 0;
+
 static GMutex          mbox_mutex;
 static GCond           mbox_cond;
-static int             mbox_full = 0;
 static int             mbox_quit = 0;
 static GThread        *worker = NULL;
 
@@ -195,7 +240,10 @@ static struct div_context lastctx;
 
 //
 // +1 when the RADE modem is above the tuned carrier in this frame, -1
-// when below. Chosen from the measured spectrum each block.
+// when below. Chosen from the measured spectrum, on every block in which
+// DIV_REF_RADE_BAND is the active reference; the other modes leave it
+// alone (DIV_REF_RADE_V1 determines the sense from its pilot bank, and
+// never reaches the transform).
 //
 static int div_rade_side = 1;
 
@@ -234,11 +282,17 @@ static void div_reset_stats(void) {
 
 void diversity_auto_reset(void) {
   //
-  // Safe to call from any thread: the analysis thread only ever adds to
-  // the accumulators, so zeroing them can at worst cost one block.
+  // Called from the GTK thread. Zeroing the transform accumulators from
+  // here is harmless - the worker only ever adds to them, so the worst
+  // case is one block's contribution lost.
+  //
+  // rade_corr_reset() is a different matter: it clears the correlator's
+  // lock state and memsets an 80 KB accumulation grid that the worker may
+  // be part way through reading. So it is requested here and performed by
+  // the worker between blocks instead.
   //
   div_reset_stats();
-  rade_corr_reset();
+  reset_requested = 1;
 }
 
 //
@@ -270,11 +324,15 @@ static void div_make_window(void) {
 }
 
 //
-// RADE arrives through an SSB passband, so which side of the tuned
-// frequency it sits on depends on the mode: LSB/DIGL put it below,
-// USB/DIGU above. Below 10 MHz LSB is the usual choice, but that is a
-// convention and not a rule, so we follow the mode actually in use
-// rather than guessing from the frequency.
+// What the mode says about which sideband is in use.
+//
+// This is *not* how the RADE window is placed. Both RADE modes measure
+// the side rather than deriving it - stage 1 from the energy either side
+// of the carrier, stage 2 from which pilot bank correlates - because on
+// air the mode-derived rule turned out to be the wrong way round.
+//
+// It survives only to be logged next to the measured answer, which is how
+// that was established and is worth keeping visible.
 //
 static int div_mode_is_lsb(int mode) {
   return (mode == modeLSB || mode == modeDIGL || mode == modeCWL);
@@ -703,7 +761,7 @@ static gpointer div_worker_thread(gpointer data) {
   for (;;) {
     g_mutex_lock(&mbox_mutex);
 
-    while (!mbox_full && !mbox_quit) {
+    while (q_count == 0 && !mbox_quit) {
       g_cond_wait(&mbox_cond, &mbox_mutex);
     }
 
@@ -712,15 +770,32 @@ static gpointer div_worker_thread(gpointer data) {
       break;
     }
 
+    work0 = qbuf0[q_tail];
+    work1 = qbuf1[q_tail];
+    int dropped = q_dropped;
+    q_dropped = 0;
     g_mutex_unlock(&mbox_mutex);
-    //
-    // mbox_full stays set while we work, so the sample path drops blocks
-    // instead of waiting for us. Dropping is harmless here: we are
-    // estimating something that changes far more slowly than one block.
-    //
+
+    if (reset_requested) {
+      reset_requested = 0;
+      rade_corr_reset();
+    }
+
+    if (dropped > 0) {
+      //
+      // The sample stream has a hole in it. Everything the correlator
+      // knows about where the pilot is refers to a clock that has just
+      // skipped, so start again rather than track something that has
+      // moved.
+      //
+      t_print("%s: dropped %d analysis block(s), re-acquiring\n", __func__, dropped);
+      rade_corr_reset();
+    }
+
     div_process_block();
     g_mutex_lock(&mbox_mutex);
-    mbox_full = 0;
+    q_count--;
+    q_tail = (q_tail + 1) % DIV_QUEUE;
     g_mutex_unlock(&mbox_mutex);
   }
 
@@ -744,16 +819,20 @@ void diversity_auto_sample(double i0, double q0, double i1, double q1) {
   fillptr = 0;
   g_mutex_lock(&mbox_mutex);
 
-  if (!mbox_full) {
-    float *t0 = work0, *t1 = work1;
-    work0 = fill0;
-    work1 = fill1;
-    fill0 = t0;
-    fill1 = t1;
-    mbox_full = 1;
+  //
+  // One slot is always reserved for filling, so the most that can be
+  // waiting is DIV_QUEUE-1 and the head never collides with the tail.
+  //
+  if (q_count < DIV_QUEUE - 1) {
+    q_count++;
+    q_head = (q_head + 1) % DIV_QUEUE;
     g_cond_signal(&mbox_cond);
+  } else {
+    q_dropped++;
   }
 
+  fill0 = qbuf0[q_head];
+  fill1 = qbuf1[q_head];
   g_mutex_unlock(&mbox_mutex);
 }
 
@@ -786,10 +865,10 @@ void diversity_auto_start(void) {
   //
   if (window == NULL) {
     window  = g_new(float, DIV_MAX_NFFT);
-    fill0   = g_new0(float, 2 * DIV_MAX_NFFT);
-    fill1   = g_new0(float, 2 * DIV_MAX_NFFT);
-    work0   = g_new0(float, 2 * DIV_MAX_NFFT);
-    work1   = g_new0(float, 2 * DIV_MAX_NFFT);
+    for (int i = 0; i < DIV_QUEUE; i++) {
+      qbuf0[i] = g_new0(float, 2 * DIV_MAX_NFFT);
+      qbuf1[i] = g_new0(float, 2 * DIV_MAX_NFFT);
+    }
     fftin0  = fftwf_malloc(sizeof(fftwf_complex) * DIV_MAX_NFFT);
     fftin1  = fftwf_malloc(sizeof(fftwf_complex) * DIV_MAX_NFFT);
     fftout0 = fftwf_malloc(sizeof(fftwf_complex) * DIV_MAX_NFFT);
@@ -806,9 +885,20 @@ void diversity_auto_start(void) {
   plan0 = fftwf_plan_dft_1d(nfft, fftin0, fftout0, FFTW_FORWARD, FFTW_ESTIMATE);
   plan1 = fftwf_plan_dft_1d(nfft, fftin1, fftout1, FFTW_FORWARD, FFTW_ESTIMATE);
   have_plans = 1;
+  //
+  // Under the mutex: a sample-path call that was still in flight when the
+  // previous stop cleared div_auto_running could otherwise enqueue a
+  // stale block after these were reset.
+  //
+  g_mutex_lock(&mbox_mutex);
   fillptr = 0;
-  mbox_full = 0;
+  q_head = q_tail = q_count = 0;
+  q_dropped = 0;
+  reset_requested = 0;
   mbox_quit = 0;
+  fill0 = qbuf0[0];
+  fill1 = qbuf1[0];
+  g_mutex_unlock(&mbox_mutex);
   div_reset_stats();
   div_get_context(&lastctx);
   t_print("%s: nfft=%d bin=%0.2f Hz block=%0.1f ms rate=%d\n", __func__,
@@ -893,9 +983,37 @@ void diversity_auto_restore_state(void) {
   GetPropF0("diversity_auto_tau",            div_auto_tau);
   GetPropF0("diversity_auto_coherence_min",  div_auto_coherence_min);
 
+  //
+  // Validate everything that came out of the file, not just the two that
+  // happened to get clamped first. A props file can be hand-edited or
+  // written by a future version, and an out-of-range value here is hard
+  // to diagnose from the UI: a bad reference shows a blank combo, and a
+  // coherence threshold above 1.0 wedges the loop in permanent HOLD with
+  // nothing on screen to say why.
+  //
+  if (div_auto_mode < DIV_AUTO_OFF || div_auto_mode > DIV_AUTO_SUM) {
+    div_auto_mode = DIV_AUTO_OFF;
+  }
+
+  if (div_auto_ref < DIV_REF_BAND || div_auto_ref > DIV_REF_RADE_V1) {
+    div_auto_ref = DIV_REF_BAND;
+  }
+
+  div_auto_follow_filter = div_auto_follow_filter ? 1 : 0;
+
   if (div_auto_tau < 0.1) { div_auto_tau = 0.1; }
 
   if (div_auto_tau > 30.0) { div_auto_tau = 30.0; }
 
   if (div_auto_width < 10.0) { div_auto_width = 10.0; }
+
+  if (div_auto_width > 40000.0) { div_auto_width = 40000.0; }
+
+  if (div_auto_centre < -20000.0) { div_auto_centre = -20000.0; }
+
+  if (div_auto_centre > 20000.0) { div_auto_centre = 20000.0; }
+
+  if (div_auto_coherence_min < 0.0) { div_auto_coherence_min = 0.0; }
+
+  if (div_auto_coherence_min > 0.95) { div_auto_coherence_min = 0.95; }
 }

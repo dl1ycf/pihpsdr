@@ -56,6 +56,14 @@ static guint status_timer = 0;
 //
 static int updating_from_auto = 0;
 
+//
+// Set while ref_changed_cb() is driving the objective combo. Without it,
+// auto_changed_cb() sees div_auto_mode already changed and concludes the
+// engine does not need starting - so selecting a RADE reference with Auto
+// set to Off silently started nothing at all.
+//
+static int updating_ref = 0;
+
 static void cleanup(void) {
   if (status_timer != 0) {
     g_source_remove(status_timer);
@@ -162,7 +170,13 @@ static const char *div_mode_lsb_text(void) {
 // driving them, so they are greyed out when it is.
 //
 static void update_manual_sensitivity(void) {
-  gboolean manual = (div_auto_mode == DIV_AUTO_OFF);
+  //
+  // Key on whether the loop is actually driving the weight, not merely on
+  // the objective combo: with Auto left on Sum in the props file and
+  // Diversity Enable unchecked, keying on the combo alone opened the menu
+  // with all four sliders dead and the status line saying "Auto off".
+  //
+  gboolean manual = (div_auto_mode == DIV_AUTO_OFF) || !div_auto_running;
 
   if (gain_coarse_scale)  { gtk_widget_set_sensitive(gain_coarse_scale, manual); }
 
@@ -173,8 +187,8 @@ static void update_manual_sensitivity(void) {
   if (phase_fine_scale)   { gtk_widget_set_sensitive(phase_fine_scale, manual); }
 
   //
-  // The RADE and SAM-carrier references place their own window, so the
-  // manual placement controls do not apply to them.
+  // The RADE and carrier references place their own window, so the manual
+  // placement controls do not apply to them.
   //
   gboolean placed = (div_auto_ref == DIV_REF_BAND);
   gboolean manual_window = placed && !div_auto_follow_filter;
@@ -277,6 +291,15 @@ static void auto_changed_cb(GtkWidget *widget, gpointer data) {
   int previous = div_auto_mode;
   div_auto_mode = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
 
+  if (updating_ref) {
+    //
+    // ref_changed_cb() moved div_auto_mode before setting this combo, so
+    // "previous" above is not the real previous value and the test below
+    // would draw the wrong conclusion. It decides about restarting.
+    //
+    return;
+  }
+
   //
   // Null and Sum are two formulas over the same accumulated cross and
   // auto spectra - only the sign and which power normalises it differ, so
@@ -305,6 +328,7 @@ static void auto_changed_cb(GtkWidget *widget, gpointer data) {
 
 static void ref_changed_cb(GtkWidget *widget, gpointer data) {
   int previous = div_auto_ref;
+  int was_off = (div_auto_mode == DIV_AUTO_OFF);
   div_auto_ref = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
 
   //
@@ -315,14 +339,19 @@ static void ref_changed_cb(GtkWidget *widget, gpointer data) {
   //
   if (DIV_REF_IS_RADE(div_auto_ref) && !DIV_REF_IS_RADE(previous)) {
     div_auto_mode = DIV_AUTO_SUM;
+    updating_ref = 1;
     gtk_combo_box_set_active(GTK_COMBO_BOX(auto_combo), div_auto_mode);
+    updating_ref = 0;
   }
 
   //
-  // The pilot correlator has its own front end, so it has to be brought
-  // up or torn down when this changes rather than just re-aimed.
+  // Restart if the analysis thread has to come up or go down - which
+  // includes the case just above, where selecting a RADE reference moved
+  // the objective off Off - or if the pilot correlator's own front end
+  // has to be built or torn down.
   //
-  if (div_auto_ref == DIV_REF_RADE_V1 || previous == DIV_REF_RADE_V1) {
+  if (was_off != (div_auto_mode == DIV_AUTO_OFF) ||
+      div_auto_ref == DIV_REF_RADE_V1 || previous == DIV_REF_RADE_V1) {
     diversity_auto_restart();
   }
 
@@ -354,6 +383,7 @@ static void coh_cb(GtkWidget *widget, gpointer data) {
   div_auto_coherence_min = 0.01 * gtk_range_get_value(GTK_RANGE(widget));
 }
 
+// cppcheck-suppress constParameterCallback
 static void reset_cb(GtkWidget *widget, gpointer data) {
   diversity_auto_reset();
 }

@@ -50,14 +50,15 @@ enum {
 //
 enum {
   DIV_REF_BAND = 0,   // all bins in the analysis window ("A")
-  DIV_REF_CARRIER,    // the carrier bin only, located by the SAM PLL ("B")
+  DIV_REF_CARRIER,    // the carrier bin only, found by our own tracker ("B")
   DIV_REF_RADE_BAND,  // window auto-placed on the FreeDV RADE passband
   DIV_REF_RADE_V1     // RADE V1 pilot correlation + MVDR
 };
 
 //
 // True for the reference modes that place themselves on the RADE
-// passband, which follows the sideband in use.
+// passband. Which side of the carrier that is gets measured, not derived
+// from the mode - see div_mode_is_lsb() in diversity_auto.c.
 //
 #define DIV_REF_IS_RADE(r)  ((r) == DIV_REF_RADE_BAND || (r) == DIV_REF_RADE_V1)
 
@@ -74,8 +75,8 @@ extern double div_auto_coherence_min;   // hold below this coherence
 //
 extern double div_auto_coherence;       // 0 ... 1, last estimate
 extern int    div_auto_holding;         // 1 if the loop is holding (no update)
-extern double div_auto_carrier;         // Hz, last SAM PLL carrier frequency
-extern int    div_auto_carrier_valid;   // 1 when the SAM PLL is actually running
+extern double div_auto_carrier;         // Hz, smoothed carrier estimate
+extern int    div_auto_carrier_valid;   // 1 once the tracker has an estimate
 
 //
 // div_auto_running is read once per sample by rx_add_div_iq_samples(),

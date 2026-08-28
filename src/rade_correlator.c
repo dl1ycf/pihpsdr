@@ -17,8 +17,9 @@
 
 #include <gtk/gtk.h>
 #include <math.h>
-#include <string.h>
 
+#include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "message.h"
@@ -33,15 +34,14 @@
 //   raw DDC IQ (both arms)
 //        |
 //        |  NCO shift by +offset, so the tuned carrier lands at 0 -
-//        |  the same frame WDSP works in after xshift()
-//        v
-//   [ conjugate, if lower sideband ]
-//        |
+//        |  the same frame WDSP works in after xshift(). Nothing else is
+//        |  done to the samples; the spectral sense is handled by which
+//        |  pilot bank is used, not by conjugating the input.
 //        v
 //   polyphase FIR decimator, DDC rate -> 8000 Hz
 //        |
 //        v
-//   ring buffer -> pilot correlation over (timing, frequency)
+//   ring buffer -> pilot correlation over (bank, timing, frequency)
 //        |
 //        v
 //   h0, h1  and the residual covariance Rnn  ->  MVDR weight
@@ -122,8 +122,12 @@
 // measures what is left in the right units.
 //
 // For pure Rayleigh noise this statistic lands near 4 for the largest of
-// a few thousand cells, so 6 to acquire and 4 to hold sit either side of
-// "could plausibly be noise".
+// a few thousand cells, so a threshold of 6 to acquire sits clear of
+// "could plausibly be noise". Measured against pure noise with no signal
+// at all it reaches 3.0 to 4.6 and never locks.
+//
+// This statistic is used for acquisition only. Holding an existing lock
+// is a different and much more forgiving test - see RADE_HOLD_RATIO.
 //
 #define RADE_LOCK_SIGMA     6.0
 #define RADE_LOCK_FRAMES    3
@@ -152,14 +156,14 @@
 // combining weight is worth the most. Losing the pilot for a few seconds
 // means keep going with the last good weight, not start again. Only a
 // signal that is really gone - end of over, or the operator retuning -
-// should force a re-acquisition, so the hold time is measured in tens of
-// seconds.
+// should force a re-acquisition, so the hold runs for RADE_DROP_FRAMES,
+// about ten seconds.
 //
 // The thresholds are set from measurement against the off-frequency
-// reference below: a clean lock reads well into double figures, and pure
-// noise reads about 1. Erring low is right - holding a stale weight for a
-// few extra seconds after a station stops is harmless, dropping during a
-// fade is not.
+// reference below, on which a clean lock reads about 6 and a ratio of 1
+// would mean the pilot correlates no better than anything else does.
+// Erring low is right - holding a stale weight for a few extra seconds
+// after a station stops is harmless, dropping during a fade is not.
 //
 #define RADE_HOLD_RATIO     2.00    // pilot / floor, below which we are unhappy
 #define RADE_MAG_ALPHA      0.02    // ~6 s at 8.33 modem frames/s
@@ -285,7 +289,14 @@ static double nco_phase = 0.0;       // shift NCO, radians
 static float *ring0 = NULL;          // decimated 8 kHz history, interleaved
 static float *ring1 = NULL;
 static int    ringw = 0;             // write index, samples
-static long   ringtotal = 0;         // total samples ever written
+//
+// The decimated sample clock. int64_t, not long: on a 32-bit build - and
+// 32-bit Raspberry Pi OS is a normal piHPSDR target - long is 32 bits,
+// which overflows after 2^31/8000 s, about 3.1 days of continuous RADE
+// operation. Signed overflow would then wrap these negative and
+// ring_get() would index the ring out of bounds.
+//
+static int64_t ringtotal = 0;        // total samples ever written
 
 static cplx   pilot[RADE_CORR_M];            // time domain pilot, no CP
 //
@@ -300,11 +311,11 @@ static double pilot_energy = 0.0;
 //
 // Tracking state
 //
-static long   lock_a = 0;            // absolute sample index of the pilot
+static int64_t lock_a = 0;           // absolute sample index of the pilot
 static double lock_f = 0.0;          // Hz
 static int    lock_count = 0;
 static int    drop_count = 0;
-static long   next_process = 0;      // ringtotal at which to look again
+static int64_t next_process = 0;     // ringtotal at which to look again
 
 #define RADE_ACQ_NCELL  (RADE_CORR_NMF / RADE_ACQ_TSTEP)
 
@@ -495,8 +506,16 @@ void rade_corr_reset(void) {
 // relative offset would therefore slide by a different amount every
 // block and walk straight off the pilot.
 //
-static inline cplx ring_get(const float *r, long a) {
+static inline cplx ring_get(const float *r, int64_t a) {
   int idx = (int)(a % RADE_RING);
+
+  //
+  // Callers all guard against a < 0, so this is belt and braces - but the
+  // cost is one predictable branch and the failure mode without it is an
+  // out-of-bounds read. RADE_RING is not a power of two, so masking is
+  // not an option.
+  //
+  if (idx < 0) { idx += RADE_RING; }
 
   return cset(r[2 * idx], r[2 * idx + 1]);
 }
@@ -505,7 +524,7 @@ static inline cplx ring_get(const float *r, long a) {
 // Correlate one arm against the pilot starting at absolute index a.
 // Returns sum rx * conj(p_w), which is h * pilot_energy.
 //
-static cplx rade_correlate(const float *r, long a, const cplx *pw) {
+static cplx rade_correlate(const float *r, int64_t a, const cplx *pw) {
   cplx acc = cset(0.0, 0.0);
 
   for (int n = 0; n < RADE_CORR_M; n++) {
@@ -520,12 +539,12 @@ static cplx rade_correlate(const float *r, long a, const cplx *pw) {
 // Coarse then fine search for the pilot on arm 0.
 //
 static int rade_acquire(int lsb_hint) {
-  long best_a = 0;
+  int64_t best_a = 0;
   int best_f = 0;
   //
   // The latest pilot pair we could be looking at ends here.
   //
-  const long limit = ringtotal - RADE_CORR_NMF - RADE_CORR_M;
+  const int64_t limit = ringtotal - RADE_CORR_NMF - RADE_CORR_M;
 
   if (limit < RADE_CORR_NMF) { return 0; }
 
@@ -536,8 +555,8 @@ static int rade_acquire(int lsb_hint) {
   // passes meaningful.
   //
   for (int cell = 0; cell < RADE_ACQ_NCELL; cell++) {
-    long phase_off = (long)cell * RADE_ACQ_TSTEP;
-    long a = limit - ((limit - phase_off) % RADE_CORR_NMF);
+    int64_t phase_off = (int64_t)cell * RADE_ACQ_TSTEP;
+    int64_t a = limit - ((limit - phase_off) % RADE_CORR_NMF);
 
     if (a - RADE_CORR_NMF < 0 || ringtotal - (a - RADE_CORR_NMF) > RADE_RING) { continue; }
 
@@ -596,9 +615,7 @@ static int rade_acquire(int lsb_hint) {
       long n = 0;
 
       for (int cell = 0; cell < RADE_ACQ_NCELL; cell++) {
-        int d = cell - pk;
-
-        if (d < 0) { d = -d; }
+        int d = abs(cell - pk);
 
         if (d > RADE_ACQ_NCELL / 2) { d = RADE_ACQ_NCELL - d; }
 
@@ -625,7 +642,7 @@ static int rade_acquire(int lsb_hint) {
         stat = sf;
         best_bank = bank;
         best_f = f;
-        best_a = limit - ((limit - (long)pk * RADE_ACQ_TSTEP) % RADE_CORR_NMF);
+        best_a = limit - ((limit - (int64_t)pk * RADE_ACQ_TSTEP) % RADE_CORR_NMF);
       }
     }
   }
@@ -673,9 +690,9 @@ static int rade_acquire(int lsb_hint) {
   // Refine the timing to the sample, around the coarse cell.
   //
   double fine_best = -1.0;
-  long fine_a = best_a;
+  int64_t fine_a = best_a;
 
-  for (long a = best_a - RADE_ACQ_TREFINE; a <= best_a + RADE_ACQ_TREFINE; a++) {
+  for (int64_t a = best_a - RADE_ACQ_TREFINE; a <= best_a + RADE_ACQ_TREFINE; a++) {
     if (a < 0 || a + RADE_CORR_M > ringtotal || ringtotal - a > RADE_RING) { continue; }
 
     double m = cabs2(rade_correlate(ring0, a, pilot_w[best_bank][best_f]));
@@ -753,9 +770,6 @@ static void rade_mvdr_weight(double *wr, double *wi) {
   }
 
   //
-  // num/den, then conjugate for the g^H combining sense.
-  //
-  //
   // num/den, then conjugate for the g^H combining sense. No sideband
   // correction: the samples were never conjugated, so whichever pilot
   // bank won, h0 and h1 describe the real arms directly.
@@ -779,9 +793,9 @@ static int rade_track(double tau, double *wr, double *wi) {
   // a full re-acquisition.
   //
   double best = -1.0;
-  long best_a = lock_a;
+  int64_t best_a = lock_a;
 
-  for (long a = lock_a - 1; a <= lock_a + 1; a++) {
+  for (int64_t a = lock_a - 1; a <= lock_a + 1; a++) {
     if (a < 0 || a + RADE_CORR_M > ringtotal || ringtotal - a > RADE_RING) { continue; }
 
     double m = cabs2(rade_correlate(ring0, a, pw));
@@ -795,16 +809,17 @@ static int rade_track(double tau, double *wr, double *wi) {
   lock_a = best_a;
   cplx d0 = rade_correlate(ring0, lock_a, pw);
   cplx d1 = rade_correlate(ring1, lock_a, pw);
-  //
-  // Estimate the correlation floor from positions inside the data
-  // symbols, where there is no pilot. Same statistic as acquisition uses,
-  // so the lock and drop thresholds mean the same thing in both.
-  //
   double mag = sqrt(cabs2(d0));
   //
-  // Correlation floor from positions inside the data symbols, where by
-  // construction there is no pilot. Same span, same template, so the
-  // ratio below is dimensionless and independent of signal level.
+  // Correlation floor: the same span and the same pilot, but rotated to
+  // frequencies far outside the lock range, where a real pilot cannot
+  // contribute and noise and interference contribute exactly as much as
+  // they do on frequency. See RADE_FLOOR_DF for why this is not probed
+  // off-pilot in time instead.
+  //
+  // The ratio below is therefore dimensionless and independent of signal
+  // level. It is not the acquisition statistic and its threshold does not
+  // mean the same thing.
   //
   double fl = 0.0;
   int fn = 0;
@@ -944,10 +959,21 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
   // into the ring. The NCO runs at the DDC rate; its phase is kept
   // between blocks so the rotation is continuous.
   //
+  // The rotation advances by complex multiply rather than by calling
+  // cos() and sin() per sample. At 384 kHz the per-sample form cost
+  // 768 000 transcendental calls a second - one to two percent of a core
+  // - for work that is six flops done this way. wdsp/shift.c does the
+  // same thing for the same reason.
+  //
+  // The exact phase is still accumulated separately and the rotator
+  // re-seeded from it at the top of every block, so the error inherent in
+  // stepping a rotation cannot build up beyond one block.
+  //
   const double dphi = 2.0 * M_PI * offset_hz / (double)(decim * RADE_CORR_FS);
+  const double cd = cos(dphi), sd = sin(dphi);
+  double c = cos(nco_phase), s = sin(nco_phase);
 
   for (int i = 0; i < n; i++) {
-    double c = cos(nco_phase), s = sin(nco_phase);
     double i0 = arm0[2 * i], q0 = arm0[2 * i + 1];
     double i1 = arm1[2 * i], q1 = arm1[2 * i + 1];
     //
@@ -961,12 +987,12 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
     dline0[2 * dpos + 1] = (float)m0;
     dline1[2 * dpos    ] = (float)r1;
     dline1[2 * dpos + 1] = (float)m1;
-    nco_phase += dphi;
-
-    if (nco_phase >  M_PI) { nco_phase -= 2.0 * M_PI; }
-
-    if (nco_phase < -M_PI) { nco_phase += 2.0 * M_PI; }
-
+    //
+    // Step the rotator by exp(j*dphi).
+    //
+    double ct = c;
+    c = ct * cd - s * sd;
+    s = ct * sd + s * cd;
     dpos++;
 
     if (dpos >= ntaps) { dpos = 0; }
@@ -1000,6 +1026,12 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
 
     if (ringw >= RADE_RING) { ringw = 0; }
   }
+
+  //
+  // Advance the exact phase by the whole block, so the next call re-seeds
+  // the rotator from a value that has not drifted.
+  //
+  nco_phase = fmod(nco_phase + dphi * (double)n, 2.0 * M_PI);
 
   //
   // Do not look until the ring holds a full acquisition span.
