@@ -22,19 +22,24 @@ CFLAGS  = -O2 -Wall -I$(TOP)/src -I$(TOP)/wdsp \
 LIBS    = `pkg-config --libs gtk+-3.0 fftw3f` -lm
 SRC     = $(TOP)/src/diversity_auto.c $(TOP)/src/rade_correlator.c
 
-all: test_modes_live bench_cpu
+all: test_modes_live test_window bench_cpu
 
 test_modes_live: test_modes_live.c $(SRC)
+	$(CC) $(CFLAGS) -o $@ $< $(SRC) $(LIBS)
+
+test_window: test_window.c $(SRC)
 	$(CC) $(CFLAGS) -o $@ $< $(SRC) $(LIBS)
 
 bench_cpu: bench_cpu.c $(SRC)
 	$(CC) $(CFLAGS) -o $@ $< $(SRC) $(LIBS)
 
-run: test_modes_live
+run: test_modes_live test_window
 	./test_modes_live
+	@echo
+	./test_window
 
 bench: bench_cpu
 	./bench_cpu
 
 clean:
-	rm -f test_modes_live bench_cpu
+	rm -f test_modes_live test_window bench_cpu

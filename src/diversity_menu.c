@@ -42,6 +42,8 @@ static GtkWidget *centre_spin = NULL;
 static GtkWidget *width_spin = NULL;
 static GtkWidget *tau_scale = NULL;
 static GtkWidget *coh_scale = NULL;
+static GtkWidget *res_combo = NULL;
+static GtkWidget *weight_combo = NULL;
 static GtkWidget *status_label = NULL;
 
 static double gain_coarse, gain_fine;
@@ -84,6 +86,8 @@ static void cleanup(void) {
     width_spin = NULL;
     tau_scale = NULL;
     coh_scale = NULL;
+    res_combo = NULL;
+    weight_combo = NULL;
     status_label = NULL;
     gtk_widget_destroy(tmp);
     sub_menu = NULL;
@@ -187,11 +191,14 @@ static void update_manual_sensitivity(void) {
   if (phase_fine_scale)   { gtk_widget_set_sensitive(phase_fine_scale, manual); }
 
   //
-  // The RADE and carrier references place their own window, so the manual
-  // placement controls do not apply to them.
+  // The RADE references place their own window. Window mode uses the
+  // controls to place the analysis window; Carrier mode uses the same two
+  // controls to say where to search for a carrier, which is what allows a
+  // carrier other than the primary to be tracked.
   //
   gboolean placed = (div_auto_ref == DIV_REF_BAND);
-  gboolean manual_window = placed && !div_auto_follow_filter;
+  gboolean manual_window = (div_auto_ref == DIV_REF_CARRIER)
+                           || (placed && !div_auto_follow_filter);
 
   if (follow_b)    { gtk_widget_set_sensitive(follow_b, placed); }
 
@@ -273,14 +280,18 @@ static int status_update_cb(gpointer data) {
   } else if (div_auto_ref == DIV_REF_CARRIER && !div_auto_carrier_valid) {
     snprintf(text, sizeof(text), "Carrier: searching");
   } else if (div_auto_ref == DIV_REF_CARRIER) {
-    snprintf(text, sizeof(text), "Carrier %+0.2f Hz   coherence %3.0f%%   %s   %+0.1f dB  %+0.0f deg",
-             div_auto_carrier, 100.0 * div_auto_coherence,
-             div_auto_holding ? "HOLD" : "track", div_gain, div_phase);
+    snprintf(text, sizeof(text),
+             "Carrier %+0.2f Hz   %0.1f Hz bins   coherence %3.0f%%   %s   %+0.1f dB  %+0.0f deg%s",
+             div_auto_carrier, div_auto_binhz, 100.0 * div_auto_coherence,
+             div_auto_holding ? "HOLD" : "track", div_gain, div_phase,
+             div_auto_clamped ? "   [window clamped]" : "");
   } else {
-    snprintf(text, sizeof(text), "Coherence %3.0f%%   %s   %+0.1f dB  %+0.0f deg",
+    snprintf(text, sizeof(text),
+             "Coherence %3.0f%%   %s   %0.1f Hz bins   %+0.1f dB  %+0.0f deg%s",
              100.0 * div_auto_coherence,
-             div_auto_holding ? "HOLD" : "track",
-             div_gain, div_phase);
+             div_auto_holding ? "HOLD" : "track", div_auto_binhz,
+             div_gain, div_phase,
+             div_auto_clamped ? "   [window clamped]" : "");
   }
 
   gtk_label_set_text(GTK_LABEL(status_label), text);
@@ -326,10 +337,45 @@ static void auto_changed_cb(GtkWidget *widget, gpointer data) {
   update_manual_sensitivity();
 }
 
+//
+// The window controls are modal: the Window and Carrier references each
+// keep their own centre and width, so aiming the carrier tracker at a
+// station 5 kHz away does not destroy the window set up for wideband
+// work, and going back restores it.
+//
+static void div_window_store(int ref) {
+  if (ref == DIV_REF_CARRIER) {
+    div_carrier_centre = div_auto_centre;
+    div_carrier_width  = div_auto_width;
+  } else if (ref == DIV_REF_BAND) {
+    div_band_centre = div_auto_centre;
+    div_band_width  = div_auto_width;
+  }
+}
+
+static void div_window_recall(int ref) {
+  if (ref == DIV_REF_CARRIER) {
+    div_auto_centre = div_carrier_centre;
+    div_auto_width  = div_carrier_width;
+  } else if (ref == DIV_REF_BAND) {
+    div_auto_centre = div_band_centre;
+    div_auto_width  = div_band_width;
+  }
+
+  if (centre_spin) {
+    updating_from_auto = 1;
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(centre_spin), div_auto_centre);
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(width_spin), div_auto_width);
+    updating_from_auto = 0;
+  }
+}
+
 static void ref_changed_cb(GtkWidget *widget, gpointer data) {
   int previous = div_auto_ref;
   int was_off = (div_auto_mode == DIV_AUTO_OFF);
+  div_window_store(previous);
   div_auto_ref = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  div_window_recall(div_auto_ref);
 
   //
   // On RADE the wanted signal is the one we are pointing at, so the
@@ -366,12 +412,18 @@ static void follow_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void centre_cb(GtkWidget *widget, gpointer data) {
+  if (updating_from_auto) { return; }
+
   div_auto_centre = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+  div_window_store(div_auto_ref);
   diversity_auto_reset();
 }
 
 static void width_cb(GtkWidget *widget, gpointer data) {
+  if (updating_from_auto) { return; }
+
   div_auto_width = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+  div_window_store(div_auto_ref);
   diversity_auto_reset();
 }
 
@@ -381,6 +433,24 @@ static void tau_cb(GtkWidget *widget, gpointer data) {
 
 static void coh_cb(GtkWidget *widget, gpointer data) {
   div_auto_coherence_min = 0.01 * gtk_range_get_value(GTK_RANGE(widget));
+}
+
+static void res_changed_cb(GtkWidget *widget, gpointer data) {
+  static const double res[] = { 12.0, 6.0, 3.0 };
+  int i = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+
+  if (i < 0 || i > 2) { i = 0; }
+
+  div_auto_resolution = res[i];
+  //
+  // The transform length changes, so the engine has to be rebuilt.
+  //
+  diversity_auto_restart();
+}
+
+static void weight_changed_cb(GtkWidget *widget, gpointer data) {
+  div_auto_weighting = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  diversity_auto_reset();
 }
 
 // cppcheck-suppress constParameterCallback
@@ -509,7 +579,14 @@ void diversity_menu(GtkWidget *parent) {
   gtk_widget_set_name(centre_label, "boldlabel");
   gtk_widget_set_halign(centre_label, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), centre_label, 0, 9, 1, 1);
-  centre_spin = gtk_spin_button_new_with_range(-20000.0, 20000.0, 10.0);
+  //
+  // Deliberately wide: the window is allowed outside the passband, and how
+  // far is a function of the sample rate. div_bin_range() clamps to the
+  // Nyquist limit for the rate in use and reports when it had to, which
+  // the status line shows - a fixed range here would be wrong at three
+  // rates out of four.
+  //
+  centre_spin = gtk_spin_button_new_with_range(-400000.0, 400000.0, 10.0);
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(centre_spin), div_auto_centre);
   gtk_grid_attach(GTK_GRID(grid), centre_spin, 1, 9, 1, 1);
   g_signal_connect(centre_spin, "value_changed", G_CALLBACK(centre_cb), NULL);
@@ -521,6 +598,38 @@ void diversity_menu(GtkWidget *parent) {
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(width_spin), div_auto_width);
   gtk_grid_attach(GTK_GRID(grid), width_spin, 1, 10, 1, 1);
   g_signal_connect(width_spin, "value_changed", G_CALLBACK(width_cb), NULL);
+  GtkWidget *res_label = gtk_label_new("Resolution");
+  gtk_widget_set_name(res_label, "boldlabel");
+  gtk_widget_set_halign(res_label, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), res_label, 0, 11, 1, 1);
+  res_combo = gtk_combo_box_text_new();
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(res_combo), "12 Hz bins (fast)");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(res_combo), "6 Hz bins");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(res_combo), "3 Hz bins (weak signals)");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(res_combo),
+                           div_auto_resolution > 9.0 ? 0 : (div_auto_resolution > 4.5 ? 1 : 2));
+  gtk_widget_set_tooltip_text(res_combo,
+                              "Finer bins lift a weak carrier further out of the noise, "
+                              "but each step doubles the block period and so halves the "
+                              "update rate. The bin width actually achieved is shown in "
+                              "the status line.");
+  gtk_grid_attach(GTK_GRID(grid), res_combo, 1, 11, 1, 1);
+  g_signal_connect(res_combo, "changed", G_CALLBACK(res_changed_cb), NULL);
+  GtkWidget *weight_label = gtk_label_new("Weighting");
+  gtk_widget_set_name(weight_label, "boldlabel");
+  gtk_widget_set_halign(weight_label, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), weight_label, 0, 12, 1, 1);
+  weight_combo = gtk_combo_box_text_new();
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(weight_combo), "Flat");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(weight_combo), "Coherence");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(weight_combo), div_auto_weighting);
+  gtk_widget_set_tooltip_text(weight_combo,
+                              "Coherence weights each frequency bin by how well the two "
+                              "antennas agree in it, so a wide window can be used on "
+                              "speech without the noise-only parts of it diluting the "
+                              "answer. Flat is the older behaviour.");
+  gtk_grid_attach(GTK_GRID(grid), weight_combo, 1, 12, 1, 1);
+  g_signal_connect(weight_combo, "changed", G_CALLBACK(weight_changed_cb), NULL);
   GtkWidget *tau_label = gtk_label_new("Averaging (s)");
   gtk_widget_set_tooltip_text(tau_label,
                               "Time constant for the gain/phase estimate. "
@@ -528,27 +637,27 @@ void diversity_menu(GtkWidget *parent) {
                               "RADE over an HF path usually wants several seconds.");
   gtk_widget_set_name(tau_label, "boldlabel");
   gtk_widget_set_halign(tau_label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), tau_label, 0, 11, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), tau_label, 0, 13, 1, 1);
   tau_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.2, 30.0, 0.1);
   gtk_widget_set_size_request(tau_scale, 300, 25);
   gtk_range_set_value(GTK_RANGE(tau_scale), div_auto_tau);
-  gtk_grid_attach(GTK_GRID(grid), tau_scale, 1, 11, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), tau_scale, 1, 13, 1, 1);
   g_signal_connect(G_OBJECT(tau_scale), "value_changed", G_CALLBACK(tau_cb), NULL);
   GtkWidget *coh_label = gtk_label_new("Min coherence (%)");
   gtk_widget_set_name(coh_label, "boldlabel");
   gtk_widget_set_halign(coh_label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), coh_label, 0, 12, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), coh_label, 0, 14, 1, 1);
   coh_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 95.0, 5.0);
   gtk_widget_set_size_request(coh_scale, 300, 25);
   gtk_range_set_value(GTK_RANGE(coh_scale), 100.0 * div_auto_coherence_min);
-  gtk_grid_attach(GTK_GRID(grid), coh_scale, 1, 12, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), coh_scale, 1, 14, 1, 1);
   g_signal_connect(G_OBJECT(coh_scale), "value_changed", G_CALLBACK(coh_cb), NULL);
   GtkWidget *reset_b = gtk_button_new_with_label("Restart averaging");
-  gtk_grid_attach(GTK_GRID(grid), reset_b, 0, 13, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), reset_b, 0, 15, 1, 1);
   g_signal_connect(reset_b, "clicked", G_CALLBACK(reset_cb), NULL);
   status_label = gtk_label_new("");
   gtk_widget_set_halign(status_label, GTK_ALIGN_START);
-  gtk_grid_attach(GTK_GRID(grid), status_label, 1, 13, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), status_label, 1, 15, 1, 1);
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);

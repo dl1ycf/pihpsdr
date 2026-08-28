@@ -3,6 +3,15 @@ LIST OF RECENT PIHPSDR CHANGES
 August 2026:
 ------------
 
+- automatic diversity phasing: the gain and phase can now be determined
+  from the two antenna streams instead of set by hand, with the analysis
+  window shown on the panadapter, a carrier tracker that can be aimed at
+  a carrier other than the primary, coherence weighting for SSB voice,
+  and a pilot-correlating MVDR mode for FreeDV RADE V1
+
+- P2 diversity: ADC1 never received the dither/random setting, so the two
+  receive chains were not configured identically
+
 - new PipeWire audio module, now the default for LINUX
 
 July 2026:

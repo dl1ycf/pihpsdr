@@ -69,6 +69,32 @@ extern double div_auto_centre;          // window centre (Hz, rel. to tuned freq
 extern double div_auto_width;           // window width (Hz)
 extern double div_auto_tau;             // adaptation time constant (seconds)
 extern double div_auto_coherence_min;   // hold below this coherence
+extern int    div_auto_weighting;       // DIV_WEIGHT_FLAT / _COHERENCE
+extern double div_auto_resolution;      // requested bin width, Hz
+
+//
+// The window controls are modal: the Window and Carrier references each
+// keep their own pair. div_auto_centre/width are the active pair.
+//
+extern double div_band_centre;
+extern double div_band_width;
+extern double div_carrier_centre;
+extern double div_carrier_width;
+
+//
+// Status: the window had to be clamped to the Nyquist limit, and the bin
+// width actually achieved.
+//
+extern int    div_auto_clamped;
+extern double div_auto_binhz;
+
+//
+// Bin weighting for the wideband window.
+//
+enum {
+  DIV_WEIGHT_FLAT = 0,
+  DIV_WEIGHT_COHERENCE
+};
 
 //
 // Read-only status, updated by the analysis thread

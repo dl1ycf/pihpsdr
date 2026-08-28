@@ -123,8 +123,9 @@ weight is, roughly twelve times a second.
 
 ### Block cadence
 
-`div_choose_nfft()` picks the transform length to land near a 12 Hz bin,
-so the **block is 85.3 ms at every sample rate**:
+`div_choose_nfft()` picks the transform length to land near the requested
+bin width, so at the default **Resolution** of 12 Hz the block is 85.3 ms
+at every sample rate:
 
 | Sample rate | nfft | bin | block |
 |---|---|---|---|
@@ -132,6 +133,22 @@ so the **block is 85.3 ms at every sample rate**:
 | 96 kHz | 8192 | 11.7 Hz | 85.3 ms |
 | 192 kHz | 16384 | 11.7 Hz | 85.3 ms |
 | 384 kHz | 32768 | 11.7 Hz | 85.3 ms |
+
+Asking for finer bins doubles nfft and therefore the block period. nfft is
+capped at 65536, so 3 Hz bins are unavailable at 384 kHz; the status line
+always shows the bin width actually achieved.
+
+| Resolution | Block | 48 kHz | 96 kHz | 192 kHz | 384 kHz |
+|---|---|---|---|---|---|
+| 12 Hz | 85 ms | yes | yes | yes | yes |
+| 6 Hz | 171 ms | yes | yes | yes | yes |
+| 3 Hz | 341 ms | yes | yes | yes | capped at 6 Hz |
+
+Finer bins lift a weak signal further out of the per-bin noise floor, which
+is a different thing from turning Averaging up: averaging reduces the
+variance of an estimate, resolution improves the SNR the estimate is made
+from. The cost is responsiveness — at 3 Hz the weight settles in about two
+seconds rather than half a second.
 
 ### The queue
 
@@ -171,6 +188,20 @@ distance per block (about a 0.5 s time constant) and back-computes
 `div_gain`/`div_phase` so the menu, the props file and remote clients stay
 consistent with what is actually applied.
 
+### Seeing where it is looking
+
+The analysis window is drawn on the RX panadapter as a translucent green
+band, using the theme's "ok" accent at low alpha. It is drawn under the
+spectrum trace, in the same place in the draw order as the notch shading.
+
+This matters most for a window placed outside the passband, which is
+otherwise completely invisible. In follow-filter mode the band lands
+exactly on the filter shading, which is a convenient check that the
+frequency reference is right.
+
+In Carrier mode the band is the search region and a brighter vertical line
+marks where the tracker has settled within it.
+
 ### Starting again
 
 The analysis watches the tuned frequency, sample rate, mode, filter edges
@@ -189,15 +220,78 @@ What part of the spectrum the decision is taken from. Selected by
 Every bin in the analysis window. The window either follows the RX filter
 or is placed by hand with **Window centre** and **Window width**, in Hz
 relative to the tuned frequency — the same reference the filter edges use.
-Hand placement lets the window be parked on a known noise, or sized to
-take in just the mark and space tones of an FSK signal.
+
+**The window may be placed outside the passband.** That is often the better
+way to cancel noise: measuring the noise on its own, clear of the wanted
+signal, gives a cleaner estimate of the noise channel than measuring it
+through the signal. It is also how you size a window to take in just the
+mark and space tones of an FSK signal.
+
+This works because the channel between the two antennas is flat over any
+realistic frequency gap. What curves it is the differential delay between
+the feedlines, and 20 dB of cancellation needs the phase right to about
+5.7°:
+
+| Δ delay | 1 kHz | 5 kHz | 10 kHz | 30 kHz |
+|---|---|---|---|---|
+| 10 m coax (50 ns) | 0.02° | 0.09° | 0.18° | 0.54° |
+| 30 m coax (152 ns) | 0.05° | 0.27° | 0.55° | 1.64° |
+| 100 m coax (505 ns) | 0.18° | 0.91° | 1.82° | 5.45° |
+
+So measuring a few kHz away costs nothing. The limit is the Nyquist
+frequency, ±half the sample rate: a window beyond it is pulled back to the
+edge and the status line says `[window clamped]`. Before that guard existed
+a window at +30 kHz on a 48 kHz stream was silently measured at −18 kHz
+instead.
+
+#### Weighting
+
+**Flat** sums the spectra over the window and divides, which makes the
+answer a power-weighted average of `h(f)` — dominated by the loudest bins
+whether or not the two antennas agree there, and diluted by noise-only
+bins that add to the denominator but not the numerator.
+
+**Coherence** weights each bin by its own magnitude-squared coherence, so
+bins carrying something both antennas hear dominate and noise-only bins
+fall out. This is what makes a wide window work on SSB voice, where the
+energy moves about constantly and there is no carrier to sit on: set the
+window to the whole passband and the estimator picks the bins worth using,
+following the voice as it moves, instead of the operator hand-placing a
+narrow window on the loudest point.
+
+Measured on synthetic speech — one narrow formant wandering across the
+passband, so only part of the window carries signal at any instant —
+against the true channel:
+
+| noise | flat gain err | flat phase | coherence gain err | coherence phase |
+|---|---|---|---|---|
+| 0.05 | 0.05 dB | 0.08° | 0.04 dB | 0.08° |
+| 0.20 | 0.60 dB | 0.32° | 0.41 dB | 0.30° |
+| 0.50 | 3.12 dB | 0.75° | **1.63 dB** | 0.78° |
+| 1.00 | 8.78 dB | 1.37° | **4.30 dB** | 1.10° |
+
+Coherence roughly halves the gain error wherever it matters, and the phase
+is much the same either way — which is what the theory says, since the
+noise-only bins bias the magnitude rather than the phase. Coherence is the
+default; Flat is kept so the two can be compared on air.
 
 ### Carrier (AM/SAM)
 
 The carrier bin only. The carrier is found from the spectrum: the peak bin
-within ±500 Hz of the tuned frequency, refined by parabolic interpolation
-on log power across the three bins about the peak, then smoothed with the
+**inside the analysis window**, refined by parabolic interpolation on log
+power across the three bins about the peak, then smoothed with the
 Averaging control.
+
+Because the search is confined to the window, a carrier other than the
+primary can be tracked — and therefore nulled. Park a 1 kHz window on
++5 kHz and the primary carrier is outside the search entirely. The
+panadapter shows the search region as a green band with a brighter line
+where the tracker has settled.
+
+**Window centre and width are modal.** The Window and Carrier references
+each keep their own pair, so aiming the carrier tracker at a station 5 kHz
+away does not destroy the window set up for wideband work; switching back
+restores it. Both pairs persist.
 
 Measured at 384 kHz, where a bin is 11.7 Hz wide: **0.03 Hz of error and
 0.002 Hz rms of jitter** at 11 s averaging, holding at −6 dB carrier SNR.
@@ -237,7 +331,9 @@ RADE the signal being pointed at is the wanted one.
 | **Auto** | Off / Null / Sum — the objective |
 | **Measure on** | Which reference (§5) |
 | **Window follows RX filter** | Window mode only |
-| **Window centre / width** | Window mode with the above unticked |
+| **Window centre / width** | Window mode with the above unticked, and the carrier search region in Carrier mode. Kept separately per mode |
+| **Resolution** | 12 / 6 / 3 Hz bins. Finer lifts weak signals out of the noise but halves the update rate each step |
+| **Weighting** | Flat or Coherence (see above) |
 | **Averaging** | 0.2-30 s. Time constant for the estimate, in every mode |
 | **Min coherence** | Below this the loop holds rather than adapts |
 | **Restart averaging** | Discards the accumulated statistics |
@@ -260,11 +356,15 @@ kind of scalar double-precision work, so scale accordingly.**
 
 | Mode | 48 kHz | 96 kHz | 192 kHz | 384 kHz |
 |---|---|---|---|---|
-| Window | 0.2 % | 0.5 % | 1.1 % | 2.0 % |
-| Carrier | 0.2 % | 0.5 % | 1.0 % | 1.8 % |
-| RADE passband | 0.2 % | 0.5 % | 0.9 % | 1.8 % |
-| RADE V1, **searching** | 7.7 % | 6.9 % | 7.5 % | 9.0 % |
-| RADE V1, locked | 0.5 % | 1.1 % | 2.2 % | 3.7 % |
+| Window | 0.2 % | 0.6 % | 1.2 % | 2.2 % |
+| Carrier | 0.3 % | 0.5 % | 1.2 % | 2.1 % |
+| RADE passband | 0.3 % | 0.6 % | 1.0 % | 1.3 % |
+| RADE V1, **searching** | 7.1 % | 6.4 % | 7.6 % | 7.1 % |
+| RADE V1, locked | 0.7 % | 1.4 % | 2.6 % | 4.6 % |
+
+At Resolution settings finer than 12 Hz the per-block cost roughly doubles
+with nfft, but so does the block period, so the cost per *second* is close
+to unchanged.
 
 Reading these:
 

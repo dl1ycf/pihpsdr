@@ -17,6 +17,7 @@
 
 #include <gtk/gtk.h>
 #include <math.h>
+#include <string.h>
 #include <fftw3.h>
 
 #include "diversity_auto.h"
@@ -101,6 +102,9 @@
 // rate to land near this, so the frequency resolution and the block
 // duration are the same whatever the radio is running at.
 //
+// The default target; the operator can ask for finer bins - see
+// div_auto_resolution.
+//
 #define DIV_TARGET_BIN_HZ   12.0
 #define DIV_MIN_NFFT        4096
 #define DIV_MAX_NFFT        65536
@@ -129,6 +133,22 @@
 //
 #define DIV_CARRIER_BINS    2
 
+//
+// Bin-weighting for the wideband window.
+//
+// Flat sums the cross and auto spectra over the window and divides, which
+// makes the answer a power-weighted average of h(f): dominated by the
+// loudest bins whether or not the two antennas actually agree there, and
+// diluted by noise-only bins that add to the denominator but not the
+// numerator.
+//
+// Coherence weights each bin by how well the antennas agree in it, so
+// bins carrying signal dominate and noise-only bins fall out. That is
+// what makes a wide window usable on SSB voice, where the energy moves
+// around constantly and there is no carrier to sit on.
+//
+// (the enum itself is in diversity_auto.h)
+
 int    div_auto_mode           = DIV_AUTO_OFF;
 int    div_auto_ref            = DIV_REF_BAND;
 int    div_auto_follow_filter  = 1;
@@ -136,6 +156,31 @@ double div_auto_centre         = 0.0;
 double div_auto_width          = 1000.0;
 double div_auto_tau            = 2.0;
 double div_auto_coherence_min  = 0.30;
+int    div_auto_weighting      = DIV_WEIGHT_COHERENCE;
+double div_auto_resolution     = DIV_TARGET_BIN_HZ;
+
+//
+// The window controls are modal: DIV_REF_BAND and DIV_REF_CARRIER each
+// keep their own centre and width, so moving between them does not
+// destroy the other's setting. div_auto_centre/width always hold the pair
+// for whichever reference is selected; these hold the pair for the other.
+//
+double div_band_centre         = 0.0;
+double div_band_width          = 1000.0;
+double div_carrier_centre      = 0.0;
+double div_carrier_width       = 1000.0;
+
+//
+// Set when the requested window had to be pulled inside the Nyquist
+// limit, so the UI can say so rather than quietly measuring elsewhere.
+//
+int    div_auto_clamped        = 0;
+
+//
+// The bin width actually achieved, which is not always the one asked for:
+// nfft is capped at DIV_MAX_NFFT.
+//
+double div_auto_binhz          = 0.0;
 
 double div_auto_coherence      = 0.0;
 int    div_auto_holding        = 1;
@@ -214,6 +259,14 @@ static GThread        *worker = NULL;
 // Accumulated statistics
 //
 static double          acc_xy_re, acc_xy_im, acc_xx, acc_yy;
+
+//
+// Per-bin running cross and auto spectra, allocated at DIV_MAX_NFFT with
+// the rest of the buffers. Indexed by wrapped bin, so only the bins
+// inside the current window are ever touched.
+//
+static double         *bin_xy_re = NULL, *bin_xy_im = NULL;
+static double         *bin_xx = NULL, *bin_yy = NULL;
 static int             acc_valid = 0;
 
 //
@@ -234,6 +287,7 @@ struct div_context {
   int       follow;
   double    centre;
   double    width;
+  int       weighting;
 };
 
 static struct div_context lastctx;
@@ -257,11 +311,6 @@ static int div_jump = 0;
 //
 static double div_carrier_hz = 0.0;
 
-//
-// How far either side of the tuned frequency to look for the carrier.
-// Generous for mistuning without letting a strong sideband component win.
-//
-#define DIV_CARRIER_SEARCH_HZ  500.0
 
 void diversity_auto_jump(void) {
   div_jump = 1;
@@ -273,6 +322,14 @@ int div_rade_side_get(void) {
 
 static void div_reset_stats(void) {
   acc_xy_re = acc_xy_im = acc_xx = acc_yy = 0.0;
+
+  if (bin_xy_re != NULL) {
+    memset(bin_xy_re, 0, DIV_MAX_NFFT * sizeof(double));
+    memset(bin_xy_im, 0, DIV_MAX_NFFT * sizeof(double));
+    memset(bin_xx,    0, DIV_MAX_NFFT * sizeof(double));
+    memset(bin_yy,    0, DIV_MAX_NFFT * sizeof(double));
+  }
+
   acc_valid = 0;
   div_auto_coherence = 0.0;
   div_auto_holding = 1;
@@ -299,10 +356,26 @@ void diversity_auto_reset(void) {
 // Pick an FFT length for this sample rate. Powers of two only, so that
 // fftw takes its fast path.
 //
-static int div_choose_nfft(int sample_rate) {
+//
+// Pick the transform length for a requested bin width.
+//
+// Finer bins raise a weak carrier further out of the per-bin noise floor,
+// which is the real sensitivity control - averaging only reduces the
+// variance of an estimate, it does not lift the signal. The cost is
+// responsiveness: the block period is nfft/rate, so every halving of the
+// bin width doubles it.
+//
+// nfft is capped at DIV_MAX_NFFT rather than growing to meet the request,
+// because the buffers are allocated at the cap whatever rate is running.
+// The achieved bin width is published in div_auto_binhz so the UI can
+// show what was actually obtained.
+//
+static int div_choose_nfft(int sample_rate, double target_hz) {
   int n = DIV_MIN_NFFT;
 
-  while (n < DIV_MAX_NFFT && (double)sample_rate / (double)n > DIV_TARGET_BIN_HZ) {
+  if (target_hz < 0.5) { target_hz = 0.5; }
+
+  while (n < DIV_MAX_NFFT && (double)sample_rate / (double)n > target_hz) {
     n <<= 1;
   }
 
@@ -354,6 +427,7 @@ static void div_get_context(struct div_context *ctx) {
   ctx->follow         = div_auto_follow_filter;
   ctx->centre         = div_auto_centre;
   ctx->width          = div_auto_width;
+  ctx->weighting      = div_auto_weighting;
 }
 
 static int div_context_changed(const struct div_context *a, const struct div_context *b) {
@@ -367,7 +441,8 @@ static int div_context_changed(const struct div_context *a, const struct div_con
          a->ref            != b->ref            ||
          a->follow         != b->follow         ||
          a->centre         != b->centre         ||
-         a->width          != b->width;
+         a->width          != b->width          ||
+         a->weighting      != b->weighting;
 }
 
 //
@@ -438,6 +513,39 @@ static int div_bin_range(const struct div_context *ctx, int *klo, int *khi) {
   //
   flo -= (double)ctx->offset;
   fhi -= (double)ctx->offset;
+
+  //
+  // Hold the window inside the first Nyquist zone.
+  //
+  // The accumulation loops index bins as k % nfft, so a bin outside
+  // [-nfft/2, nfft/2) is not an error - it silently becomes a *different*
+  // frequency. Before this guard a window edge at +30 kHz on a 48 kHz
+  // stream was measured at -18 kHz instead, with nothing to say so, and
+  // the spin ranges allowed exactly that.
+  //
+  // Clamping rather than rejecting keeps a partly-reachable window
+  // usable; div_auto_clamped tells the UI it happened.
+  //
+  const double nyq = 0.5 * (double)ctx->sample_rate - binhz;
+  div_auto_clamped = 0;
+
+  if (flo < -nyq) {
+    flo = -nyq;
+    div_auto_clamped = 1;
+  }
+
+  if (fhi > nyq) {
+    fhi = nyq;
+    div_auto_clamped = 1;
+  }
+
+  if (fhi <= flo) {
+    //
+    // Entirely outside the usable spectrum.
+    //
+    return 0;
+  }
+
   *klo = (int)floor(flo / binhz);
   *khi = (int)ceil (fhi / binhz);
 
@@ -590,8 +698,23 @@ static void div_process_block(void) {
     // likes. It also works in plain AM, where the SAM PLL does not run at
     // all.
     //
-    int klo_s = (int)floor((-DIV_CARRIER_SEARCH_HZ - (double)ctx.offset) / binhz);
-    int khi_s = (int)ceil (( DIV_CARRIER_SEARCH_HZ - (double)ctx.offset) / binhz);
+    //
+    // Search where the operator pointed us, not blindly around the tuned
+    // frequency. Parking a 1 kHz window on +5 kHz is what lets a carrier
+    // other than the primary be tracked - and nulled - since the primary
+    // is then outside the search entirely. The selection has no memory
+    // between blocks, so restricting the region is the whole mechanism.
+    //
+    double slo = ctx.centre - 0.5 * ctx.width - (double)ctx.offset;
+    double shi = ctx.centre + 0.5 * ctx.width - (double)ctx.offset;
+    const double snyq = 0.5 * (double)ctx.sample_rate - binhz;
+
+    if (slo < -snyq) { slo = -snyq; }
+
+    if (shi >  snyq) { shi =  snyq; }
+
+    int klo_s = (int)floor(slo / binhz);
+    int khi_s = (int)ceil (shi / binhz);
     int peak = klo_s;
     double peakval = -1.0;
 
@@ -695,8 +818,21 @@ static void div_process_block(void) {
     }
   }
 
-  double bxy_re = 0.0, bxy_im = 0.0, bxx = 0.0, byy = 0.0;
+  //
+  // Exponential forgetting across blocks, applied per bin.
+  //
+  double alpha = 1.0 - exp(-blocktime / div_auto_tau);
 
+  if (!acc_valid) {
+    alpha = 1.0;
+    acc_valid = 1;
+  }
+
+  //
+  // Per-bin running spectra. Keeping these per bin rather than as four
+  // scalars is what allows the bins to be weighted by how well the two
+  // antennas agree in each - see below.
+  //
   for (int k = klo; k <= khi; k++) {
     int idx = k % nfft;
 
@@ -707,28 +843,61 @@ static void div_process_block(void) {
     //
     // X0 * conj(X1)
     //
-    bxy_re += i0 * i1 + q0 * q1;
-    bxy_im += q0 * i1 - i0 * q1;
-    bxx    += i0 * i0 + q0 * q0;
-    byy    += i1 * i1 + q1 * q1;
+    bin_xy_re[idx] += alpha * ((i0 * i1 + q0 * q1) - bin_xy_re[idx]);
+    bin_xy_im[idx] += alpha * ((q0 * i1 - i0 * q1) - bin_xy_im[idx]);
+    bin_xx[idx]    += alpha * ((i0 * i0 + q0 * q0) - bin_xx[idx]);
+    bin_yy[idx]    += alpha * ((i1 * i1 + q1 * q1) - bin_yy[idx]);
   }
 
   //
-  // Exponential forgetting across blocks
+  // Combine the bins.
   //
-  double alpha = 1.0 - exp(-blocktime / div_auto_tau);
+  // Flat reproduces the original behaviour: sum everything and divide,
+  // which is a power-weighted average of h(f). It is dominated by the
+  // loudest bins whether or not the antennas agree there, and noise-only
+  // bins dilute it by adding to the denominator but not the numerator.
+  //
+  // Coherence weights each bin by its own magnitude-squared coherence, so
+  // bins carrying a signal both antennas hear dominate and noise-only
+  // bins fall out. That is what makes a wide window work on SSB voice,
+  // where the energy moves about constantly and there is no carrier to
+  // sit on: the window can span the whole passband and the estimator
+  // picks the bins worth using, following the voice as it moves.
+  //
+  acc_xy_re = acc_xy_im = acc_xx = acc_yy = 0.0;
+  double wsum = 0.0;
 
-  if (!acc_valid) {
-    alpha = 1.0;
-    acc_valid = 1;
+  for (int k = klo; k <= khi; k++) {
+    int idx = k % nfft;
+
+    if (idx < 0) { idx += nfft; }
+
+    double xx = bin_xx[idx], yy = bin_yy[idx];
+    double w = 1.0;
+
+    if (ctx.weighting == DIV_WEIGHT_COHERENCE) {
+      double den = xx * yy;
+
+      if (den <= 0.0) { continue; }
+
+      double g2 = (bin_xy_re[idx] * bin_xy_re[idx]
+                   + bin_xy_im[idx] * bin_xy_im[idx]) / den;
+
+      if (g2 > 1.0) { g2 = 1.0; }
+
+      w = g2;
+
+      if (w <= 0.0) { continue; }
+    }
+
+    acc_xy_re += w * bin_xy_re[idx];
+    acc_xy_im += w * bin_xy_im[idx];
+    acc_xx    += w * xx;
+    acc_yy    += w * yy;
+    wsum      += w;
   }
 
-  acc_xy_re += alpha * (bxy_re - acc_xy_re);
-  acc_xy_im += alpha * (bxy_im - acc_xy_im);
-  acc_xx    += alpha * (bxx    - acc_xx);
-  acc_yy    += alpha * (byy    - acc_yy);
-
-  if (acc_xx <= 0.0 || acc_yy <= 0.0) {
+  if (acc_xx <= 0.0 || acc_yy <= 0.0 || wsum <= 0.0) {
     div_auto_coherence = 0.0;
     div_auto_holding = 1;
     return;
@@ -850,8 +1019,9 @@ void diversity_auto_start(void) {
   //
   if (radio_is_remote) { return; }
 
-  nfft = div_choose_nfft(receiver[0]->sample_rate);
+  nfft = div_choose_nfft(receiver[0]->sample_rate, div_auto_resolution);
   binhz = (double)receiver[0]->sample_rate / (double)nfft;
+  div_auto_binhz = binhz;
   blocktime = (double)nfft / (double)receiver[0]->sample_rate;
   //
   // The buffers are allocated once, at the largest size we will ever use,
@@ -865,6 +1035,10 @@ void diversity_auto_start(void) {
   //
   if (window == NULL) {
     window  = g_new(float, DIV_MAX_NFFT);
+    bin_xy_re = g_new0(double, DIV_MAX_NFFT);
+    bin_xy_im = g_new0(double, DIV_MAX_NFFT);
+    bin_xx    = g_new0(double, DIV_MAX_NFFT);
+    bin_yy    = g_new0(double, DIV_MAX_NFFT);
     for (int i = 0; i < DIV_QUEUE; i++) {
       qbuf0[i] = g_new0(float, 2 * DIV_MAX_NFFT);
       qbuf1[i] = g_new0(float, 2 * DIV_MAX_NFFT);
@@ -972,6 +1146,12 @@ void diversity_auto_save_state(void) {
   SetPropF0("diversity_auto_width",          div_auto_width);
   SetPropF0("diversity_auto_tau",            div_auto_tau);
   SetPropF0("diversity_auto_coherence_min",  div_auto_coherence_min);
+  SetPropI0("diversity_auto_weighting",      div_auto_weighting);
+  SetPropF0("diversity_auto_resolution",     div_auto_resolution);
+  SetPropF0("diversity_band_centre",         div_band_centre);
+  SetPropF0("diversity_band_width",          div_band_width);
+  SetPropF0("diversity_carrier_centre",      div_carrier_centre);
+  SetPropF0("diversity_carrier_width",       div_carrier_width);
 }
 
 void diversity_auto_restore_state(void) {
@@ -982,6 +1162,12 @@ void diversity_auto_restore_state(void) {
   GetPropF0("diversity_auto_width",          div_auto_width);
   GetPropF0("diversity_auto_tau",            div_auto_tau);
   GetPropF0("diversity_auto_coherence_min",  div_auto_coherence_min);
+  GetPropI0("diversity_auto_weighting",      div_auto_weighting);
+  GetPropF0("diversity_auto_resolution",     div_auto_resolution);
+  GetPropF0("diversity_band_centre",         div_band_centre);
+  GetPropF0("diversity_band_width",          div_band_width);
+  GetPropF0("diversity_carrier_centre",      div_carrier_centre);
+  GetPropF0("diversity_carrier_width",       div_carrier_width);
 
   //
   // Validate everything that came out of the file, not just the two that
@@ -1001,17 +1187,53 @@ void diversity_auto_restore_state(void) {
 
   div_auto_follow_filter = div_auto_follow_filter ? 1 : 0;
 
-  if (div_auto_tau < 0.1) { div_auto_tau = 0.1; }
+  //
+  // 0.2, not 0.1, to match the slider's minimum.
+  //
+  if (div_auto_tau < 0.2) { div_auto_tau = 0.2; }
 
   if (div_auto_tau > 30.0) { div_auto_tau = 30.0; }
 
-  if (div_auto_width < 10.0) { div_auto_width = 10.0; }
+  if (div_auto_weighting < DIV_WEIGHT_FLAT || div_auto_weighting > DIV_WEIGHT_COHERENCE) {
+    div_auto_weighting = DIV_WEIGHT_COHERENCE;
+  }
+
+  if (div_auto_resolution < 3.0)  { div_auto_resolution = 3.0; }
+
+  if (div_auto_resolution > 12.0) { div_auto_resolution = 12.0; }
+
+  if (div_band_width < 20.0)       { div_band_width = 20.0; }
+
+  if (div_band_width > 40000.0)    { div_band_width = 40000.0; }
+
+  if (div_band_centre < -400000.0) { div_band_centre = -400000.0; }
+
+  if (div_band_centre >  400000.0) { div_band_centre =  400000.0; }
+
+  if (div_carrier_width < 20.0)    { div_carrier_width = 20.0; }
+
+  if (div_carrier_width > 40000.0) { div_carrier_width = 40000.0; }
+
+  if (div_carrier_centre < -400000.0) { div_carrier_centre = -400000.0; }
+
+  if (div_carrier_centre >  400000.0) { div_carrier_centre =  400000.0; }
+
+  //
+  // 20.0, not 10.0: the spin button's minimum is 20, so a restored value
+  // below it was silently snapped up the first time the menu was opened.
+  //
+  if (div_auto_width < 20.0) { div_auto_width = 20.0; }
 
   if (div_auto_width > 40000.0) { div_auto_width = 40000.0; }
 
-  if (div_auto_centre < -20000.0) { div_auto_centre = -20000.0; }
+  //
+  // Deliberately generous: the window is allowed outside the passband, and
+  // how far is a function of the sample rate, so div_bin_range() does the
+  // real limiting against the Nyquist frequency at the rate in use.
+  //
+  if (div_auto_centre < -400000.0) { div_auto_centre = -400000.0; }
 
-  if (div_auto_centre > 20000.0) { div_auto_centre = 20000.0; }
+  if (div_auto_centre >  400000.0) { div_auto_centre =  400000.0; }
 
   if (div_auto_coherence_min < 0.0) { div_auto_coherence_min = 0.0; }
 

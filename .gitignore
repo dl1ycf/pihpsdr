@@ -26,3 +26,4 @@ dxspots.csv
 
 test/diversity/test_modes_live
 test/diversity/bench_cpu
+test/diversity/test_window

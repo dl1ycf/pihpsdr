@@ -32,6 +32,8 @@
 #include "band.h"
 #include "client_server.h"
 #include "discovered.h"
+#include "diversity_auto.h"
+#include "rade_correlator.h"
 #include "dxcluster_popup.h"
 #include "gpio.h"
 #include "message.h"
@@ -298,6 +300,105 @@ void rx_panadapter_update(RECEIVER *rx) {
       }
     }
   }
+  //
+  // Diversity analysis window.
+  //
+  // Where the automatic phasing is measuring. Worth showing for the same
+  // reason a notch is: it is an invisible setting that changes what the
+  // radio does, and it can legitimately sit outside the passband, where
+  // there is otherwise nothing at all to see.
+  //
+  // The frequency reference is the one the filter edges use, not the one
+  // the notches use - notch centres are stored relative to the dial,
+  // while div_auto_centre is in the shifted frame like filter_low and
+  // filter_high. In follow-filter mode the band therefore lands exactly
+  // on the filter shading, which is a free check that this is right.
+  //
+  if (diversity_enabled && div_auto_mode != DIV_AUTO_OFF && rx->id == 0) {
+    double wlo = 0.0, whi = 0.0;
+    int show = 1;
+
+    switch (div_auto_ref) {
+    case DIV_REF_BAND:
+      if (div_auto_follow_filter) {
+        wlo = rx->filter_low;
+        whi = rx->filter_high;
+      } else {
+        wlo = div_auto_centre - 0.5 * div_auto_width;
+        whi = div_auto_centre + 0.5 * div_auto_width;
+      }
+
+      break;
+
+    case DIV_REF_CARRIER:
+      //
+      // The search region, not the few bins finally accumulated: it is
+      // the region the operator sets, and seeing it is how they aim at a
+      // carrier other than the primary.
+      //
+      wlo = div_auto_centre - 0.5 * div_auto_width;
+      whi = div_auto_centre + 0.5 * div_auto_width;
+      break;
+
+    case DIV_REF_RADE_BAND:
+    case DIV_REF_RADE_V1:
+      if (div_rade_side_get() < 0) {
+        wlo = -RADE_CORR_FHI;
+        whi = -RADE_CORR_FLO;
+      } else {
+        wlo = RADE_CORR_FLO;
+        whi = RADE_CORR_FHI;
+      }
+
+      break;
+
+    default:
+      show = 0;
+      break;
+    }
+
+    if (show && whi > wlo) {
+      double l = rx->cAp * wlo + xoffset + rx->cBp;
+      double r = rx->cAp * whi + xoffset + rx->cBp;
+
+      if (mode == modeCWU) {
+        l -= cw_keyer_sidetone_frequency * rx->cAp;
+        r -= cw_keyer_sidetone_frequency * rx->cAp;
+      } else if (mode == modeCWL) {
+        l += cw_keyer_sidetone_frequency * rx->cAp;
+        r += cw_keyer_sidetone_frequency * rx->cAp;
+      }
+
+      //
+      // The theme's "ok" accent at a low alpha of our own. Reusing an
+      // existing colour keeps this out of theme.c entirely; the alpha is
+      // set here because "ok" is opaque, being meant for text and lines.
+      //
+      const THEME *t = theme_get_active();
+      cairo_set_source_rgba(cr, t->ok[0], t->ok[1], t->ok[2], 0.20);
+      cairo_rectangle(cr, l, 0.0, r - l, myheight);
+      cairo_fill(cr);
+
+      //
+      // In carrier mode, mark where the tracker has actually settled
+      // inside that region.
+      //
+      if (div_auto_ref == DIV_REF_CARRIER && div_auto_carrier_valid) {
+        double c = rx->cAp * div_auto_carrier + xoffset + rx->cBp;
+
+        if (mode == modeCWU) { c -= cw_keyer_sidetone_frequency * rx->cAp; }
+
+        if (mode == modeCWL) { c += cw_keyer_sidetone_frequency * rx->cAp; }
+
+        cairo_set_source_rgba(cr, t->ok[0], t->ok[1], t->ok[2], 0.80);
+        cairo_set_line_width(cr, PAN_LINE_THIN);
+        cairo_move_to(cr, c, 0.0);
+        cairo_line_to(cr, c, myheight);
+        cairo_stroke(cr);
+      }
+    }
+  }
+
   //
   // (Multi-) Notches
   //
