@@ -190,18 +190,19 @@ consistent with what is actually applied.
 
 ### Seeing where it is looking
 
-The status line is held to a fixed 48 characters in four columns — what
+The status line is held to a fixed 44 characters in four columns — what
 is being measured, what the loop is doing, one detail belonging to the
-mode, and the weight — in a monospace face. It is the widest thing in the
-dialog and so sets the minimum window width, and building every line to
-the same length out of fields that truncate as well as pad means nothing
-arriving at run time can widen it. The predecessor was a printf per mode,
-the longest around a hundred characters.
+mode, and the weight — in a monospace face, with a small margin at each
+end. It is the widest thing in the dialog and so sets the minimum window
+width, and building every line to the same length out of fields that
+truncate as well as pad means nothing arriving at run time can widen it.
+The predecessor was a printf per mode, the longest around a hundred
+characters.
 
 ```
-Win 12Hz  track  coh 100%      -2.1 dB   +32 deg
-Car  3Hz* HOLD   +400000 Hz   -12.3 dB  +179 deg
-RADE V1   LOCK   LSB 100%      -2.1 dB   +32 deg
+Win 12Hz  track  coh 100%     -2.1 dB   +32°
+Car  3Hz* HOLD   +400000 Hz  -12.3 dB  +179°
+RADE V1   LOCK   LSB 100%     -2.1 dB   +32°
 ```
 
 A `*` on the first field means the window ran past the Nyquist limit for

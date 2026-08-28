@@ -303,17 +303,28 @@ static void update_visibility(void) {
 //
 #define DIV_STATUS_TAG    9
 #define DIV_STATUS_STATE  6
-#define DIV_STATUS_DETAIL 11
+#define DIV_STATUS_DETAIL 10
 //
-// Three fields, three separating spaces, and a 19-character weight:
-//   "%+6.1f dB %+5.0f deg"
+// Three fields, three separating spaces, and a 16-character weight:
+//   "%+6.1f dB %+5.0f°"
 //
-#define DIV_STATUS_CHARS  (DIV_STATUS_TAG + DIV_STATUS_STATE + DIV_STATUS_DETAIL + 3 + 19)
+// The degree sign is one character but two bytes, so this is a count of
+// *characters* - which is what gtk_label_set_width_chars() wants, and
+// what the fields are padded to. It is not strlen().
+//
+#define DIV_STATUS_CHARS  (DIV_STATUS_TAG + DIV_STATUS_STATE + DIV_STATUS_DETAIL + 3 + 16)
+
+//
+// A small breathing space at each end. The label is the widest thing in
+// the dialog, so this is the only reason it is not hard against both
+// window edges.
+//
+#define DIV_STATUS_MARGIN 6
 
 static void div_status_set(const char *tag, const char *state, const char *detail,
                            double g, double p) {
   char text[128];
-  snprintf(text, sizeof(text), "%-*.*s %-*.*s %-*.*s %+6.1f dB %+5.0f deg",
+  snprintf(text, sizeof(text), "%-*.*s %-*.*s %-*.*s %+6.1f dB %+5.0f°",
            DIV_STATUS_TAG, DIV_STATUS_TAG, tag,
            DIV_STATUS_STATE, DIV_STATUS_STATE, state,
            DIV_STATUS_DETAIL, DIV_STATUS_DETAIL, detail,
@@ -406,8 +417,12 @@ static int status_update_cb(gpointer data) {
       state = "search";
     } else {
       state = div_auto_hold ? "HOLD" : (div_auto_holding ? "wait" : "track");
+      //
+      // One decimal, and none at all past 10 kHz: the field is ten
+      // characters and "+400000 Hz" is exactly that.
+      //
       snprintf(detail, sizeof(detail),
-               (fabs(div_auto_carrier) < 10000.0) ? "%+.2f Hz" : "%+.0f Hz",
+               (fabs(div_auto_carrier) < 10000.0) ? "%+.1f Hz" : "%+.0f Hz",
                div_auto_carrier);
     }
 
@@ -884,7 +899,10 @@ void diversity_menu(GtkWidget *parent) {
   // already need and cannot push the dialog wider whatever it has to say.
   //
   status_label = gtk_label_new("");
-  gtk_widget_set_halign(status_label, GTK_ALIGN_START);
+  gtk_widget_set_halign(status_label, GTK_ALIGN_FILL);
+  gtk_label_set_xalign(GTK_LABEL(status_label), 0.0);
+  gtk_widget_set_margin_start(status_label, DIV_STATUS_MARGIN);
+  gtk_widget_set_margin_end(status_label, DIV_STATUS_MARGIN);
   gtk_label_set_width_chars(GTK_LABEL(status_label), DIV_STATUS_CHARS);
   gtk_label_set_max_width_chars(GTK_LABEL(status_label), DIV_STATUS_CHARS);
   {
