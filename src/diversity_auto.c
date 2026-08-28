@@ -360,7 +360,37 @@ double div_track_phase = 0.0;
 static double div_carrier_hz = 0.0;
 
 
-void diversity_auto_jump(void) {
+//
+// Swap Null for Sum, or the other way about.
+//
+// The two are the same measurement with the sign of the answer and the
+// normalising power exchanged, so they land essentially 180 degrees
+// apart. Setting div_jump alone was not enough: it only takes effect when
+// the loop next produces a weight, and it may not be producing one - the
+// coherence gate can be holding, the RADE correlator can be frozen on a
+// fade, and under operator Hold nothing is applied at all. The control
+// then changed which answer was being computed while leaving the audio
+// exactly as it was, which is not what "invert" means to anyone.
+//
+// So the weight in force is turned through 180 degrees here and now,
+// whatever the loop is doing, and div_jump is set so that when the loop
+// does have something it goes straight there rather than slewing.
+//
+// Under Hold this acts on the operator's own manual weight, which is the
+// only thing being applied then, and is exactly what is wanted.
+//
+void diversity_auto_invert(void) {
+  div_cos = -div_cos;
+  div_sin = -div_sin;
+  div_phase += 180.0;
+
+  while (div_phase >  180.0) { div_phase -= 360.0; }
+
+  while (div_phase < -180.0) { div_phase += 360.0; }
+
+  //
+  // The magnitude is unchanged, so div_gain is left alone.
+  //
   div_jump = 1;
 }
 

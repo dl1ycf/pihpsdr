@@ -127,9 +127,13 @@ extern double div_track_phase;          // degrees
 extern void   diversity_auto_set_hold(int on);
 
 //
-// Apply the next weight update immediately instead of slewing to it.
+// Swap Null for Sum. Turns the weight in force through 180 degrees at
+// once - whether or not the loop is currently applying anything, and
+// whether or not Hold is set - as well as changing which answer the loop
+// computes from here on. The next update from the loop is then applied in
+// one step rather than slewed to.
 //
-extern void diversity_auto_jump(void);
+extern void diversity_auto_invert(void);
 
 extern void diversity_auto_start(void);
 extern void diversity_auto_stop(void);

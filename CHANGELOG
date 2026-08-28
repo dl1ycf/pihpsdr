@@ -12,7 +12,8 @@ August 2026:
 - diversity: Hold and Invert buttons. Hold stops the loop applying its
   answer without stopping the loop, handing the gain and phase controls to
   the operator and applying the tracked answer in one step when released;
-  Invert swaps Null and Sum
+  Invert swaps Null and Sum and turns the weight in force through 180
+  degrees at the same time, in or out of Hold
 
 - diversity: the menu now hides the controls the selected measure mode
   cannot use rather than greying them out, and the status line is held to

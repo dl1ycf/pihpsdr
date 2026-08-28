@@ -440,11 +440,22 @@ would be a mystery.
 
 ### Invert
 
-Swaps Null and Sum. The two are the same measurement with the sign of the
-answer and the normalising power exchanged, so they are 180 degrees apart,
-and the switch is applied at once rather than slewed. It is the quickest
-way to tell whether the array is pointed at the wanted signal or at the
-interference.
+Swaps Null and Sum, and **turns the weight in force through 180 degrees at
+the same time**, whether or not the loop is currently applying anything
+and whether or not Hold is set. It is the quickest way to tell whether the
+array is pointed at the wanted signal or at the interference.
+
+Both halves are needed. Changing the objective alone only takes effect
+when the loop next produces a weight, and it may not be producing one: the
+coherence gate can be holding, the RADE correlator can be frozen on a
+fade, and under Hold nothing is applied at all. The control then changed
+what was being computed while leaving the audio exactly as it was.
+
+Under Hold it acts on the operator's own manual weight, which is the only
+thing being applied then.
+
+The objective combo takes the same path, so the button and the combo
+cannot behave differently.
 
 Settings persist in the props file as `diversity_auto_*` and are range
 checked on restore.

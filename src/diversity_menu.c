@@ -60,10 +60,6 @@ static GtkWidget *res_label = NULL;
 static GtkWidget *weight_label = NULL;
 static GtkWidget *coh_label = NULL;
 
-//
-// Set while invert_cb() drives the objective combo.
-//
-static int updating_invert = 0;
 
 static double gain_coarse, gain_fine;
 static double phase_coarse, phase_fine;
@@ -326,6 +322,39 @@ static void div_status_set(const char *tag, const char *state, const char *detai
 }
 
 //
+// Put div_gain/div_phase - what is actually being applied - into the four
+// manual sliders, split into their coarse and fine parts.
+//
+static void update_sliders_from_weight(void) {
+  if (gain_coarse_scale == NULL) { return; }
+
+  updating_from_auto = 1;
+  gain_coarse = 2.0 * round(0.5 * div_gain);
+
+  if (gain_coarse >  25.0) { gain_coarse =  25.0; }
+
+  if (gain_coarse < -25.0) { gain_coarse = -25.0; }
+
+  gain_fine = div_gain - gain_coarse;
+  phase_coarse = 4.0 * round(div_phase * 0.25);
+  phase_fine = div_phase - phase_coarse;
+
+  if (gain_fine >  2.0) { gain_fine =  2.0; }
+
+  if (gain_fine < -2.0) { gain_fine = -2.0; }
+
+  if (phase_fine >  5.0) { phase_fine =  5.0; }
+
+  if (phase_fine < -5.0) { phase_fine = -5.0; }
+
+  gtk_range_set_value(GTK_RANGE(gain_coarse_scale), gain_coarse);
+  gtk_range_set_value(GTK_RANGE(gain_fine_scale), gain_fine);
+  gtk_range_set_value(GTK_RANGE(phase_coarse_scale), phase_coarse);
+  gtk_range_set_value(GTK_RANGE(phase_fine_scale), phase_fine);
+  updating_from_auto = 0;
+}
+
+//
 // Reflect what the analysis thread is doing. It only ever writes plain
 // scalars, so the GUI polls them here rather than having a worker thread
 // touch widgets.
@@ -336,39 +365,16 @@ static int status_update_cb(gpointer data) {
     return G_SOURCE_REMOVE;
   }
 
+  //
+  // Track the automatically determined values in the manual sliders so
+  // the operator can see where the loop has settled, and so the sliders
+  // start from there if auto is switched off.
+  //
+  // Not under Hold: the sliders belong to the operator then, and moving
+  // them underneath would make the control useless.
+  //
   if (div_auto_mode != DIV_AUTO_OFF && !div_auto_hold) {
-    //
-    // Track the automatically determined values in the manual sliders so
-    // the operator can see where the loop has settled, and so the sliders
-    // start from there if auto is switched off.
-    //
-    // Not under Hold: the sliders belong to the operator then, and moving
-    // them underneath would make the control useless.
-    //
-    updating_from_auto = 1;
-    gain_coarse = 2.0 * round(0.5 * div_gain);
-
-    if (gain_coarse >  25.0) { gain_coarse =  25.0; }
-
-    if (gain_coarse < -25.0) { gain_coarse = -25.0; }
-
-    gain_fine = div_gain - gain_coarse;
-    phase_coarse = 4.0 * round(div_phase * 0.25);
-    phase_fine = div_phase - phase_coarse;
-
-    if (gain_fine >  2.0) { gain_fine =  2.0; }
-
-    if (gain_fine < -2.0) { gain_fine = -2.0; }
-
-    if (phase_fine >  5.0) { phase_fine =  5.0; }
-
-    if (phase_fine < -5.0) { phase_fine = -5.0; }
-
-    gtk_range_set_value(GTK_RANGE(gain_coarse_scale), gain_coarse);
-    gtk_range_set_value(GTK_RANGE(gain_fine_scale), gain_fine);
-    gtk_range_set_value(GTK_RANGE(phase_coarse_scale), phase_coarse);
-    gtk_range_set_value(GTK_RANGE(phase_fine_scale), phase_fine);
-    updating_from_auto = 0;
+    update_sliders_from_weight();
   }
 
   if (!div_auto_running) {
@@ -453,7 +459,7 @@ static void auto_changed_cb(GtkWidget *widget, gpointer data) {
   int previous = div_auto_mode;
   div_auto_mode = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
 
-  if (updating_ref || updating_invert) {
+  if (updating_ref) {
     //
     // ref_changed_cb() moved div_auto_mode before setting this combo, so
     // "previous" above is not the real previous value and the test below
@@ -477,12 +483,23 @@ static void auto_changed_cb(GtkWidget *widget, gpointer data) {
   //
   if ((previous == DIV_AUTO_OFF) != (div_auto_mode == DIV_AUTO_OFF)) {
     diversity_auto_restart();
-  } else {
+  } else if (previous != div_auto_mode) {
     //
-    // Apply the new objective at once rather than slewing to it: this is
-    // a deliberate operator action, usually to compare the two.
+    // Null <-> Sum. Turn the weight in force through 180 degrees now, as
+    // well as changing which answer the loop computes: the two objectives
+    // are that far apart, and waiting for the loop to get there does not
+    // work when it is not applying anything - see diversity_auto_invert().
     //
-    diversity_auto_jump();
+    // This is the same path the Invert button takes, deliberately, so the
+    // button and the combo cannot behave differently.
+    //
+    diversity_auto_invert();
+
+    if (radio_is_remote) {
+      send_diversity(cl_sock_tcp, diversity_enabled, div_gain, div_phase);
+    }
+
+    update_sliders_from_weight();
   }
 
   update_manual_sensitivity();
@@ -495,21 +512,18 @@ static void auto_changed_cb(GtkWidget *widget, gpointer data) {
 // pointed at the wanted signal or at the interference, which is worth a
 // button of its own rather than a trip through the combo.
 //
-// It goes through the combo so there is one code path that decides about
-// restarting and about jumping rather than slewing.
+// It does nothing but move the combo: everything else - turning the
+// weight in force through 180 degrees, telling the loop not to slew, and
+// putting the new value in the sliders - happens in auto_changed_cb(), so
+// there is exactly one description of what changing the objective does.
 //
+// cppcheck-suppress constParameterCallback
 static void invert_cb(GtkWidget *widget, gpointer data) {
   if (div_auto_mode == DIV_AUTO_OFF) { return; }
 
-  int want = (div_auto_mode == DIV_AUTO_NULL) ? DIV_AUTO_SUM : DIV_AUTO_NULL;
-  div_auto_mode = want;
-  updating_invert = 1;
-  gtk_combo_box_set_active(GTK_COMBO_BOX(auto_combo), want);
-  updating_invert = 0;
-  //
-  // A deliberate operator action to compare the two, so do not slew.
-  //
-  diversity_auto_jump();
+  gtk_combo_box_set_active(GTK_COMBO_BOX(auto_combo),
+                           (div_auto_mode == DIV_AUTO_NULL) ? DIV_AUTO_SUM
+                           : DIV_AUTO_NULL);
 }
 
 // cppcheck-suppress constParameterCallback
