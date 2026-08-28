@@ -146,11 +146,19 @@ static void feed(const float *buf, long nd, long *pos, int nfft) {
 
 int main(void) {
   const int rates[] = { 48000, 96000, 192000, 384000 };
-  struct { const char *name; int ref; int carrier; int settle; } modes[] = {
-    { "Window",           DIV_REF_BAND,      1,  4 },
-    { "Carrier",          DIV_REF_CARRIER,   1,  4 },
-    { "RADE passband",    DIV_REF_RADE_BAND, 1,  4 },
-    { "RADE V1 (search)", DIV_REF_RADE_V1,   0,  4 },
+  //
+  // The filter matters for the RADE modes: the pilot search only looks at
+  // the bank the operator's passband names, so an SSB passband halves it.
+  // Both are reported, because AM/SAM/FM leave the passband straddling
+  // the carrier, which says nothing and costs the full search.
+  //
+  struct {
+    const char *name; int ref; int carrier; int settle; int flo; int fhi;
+  } modes[] = {
+    { "Window",           DIV_REF_BAND,      1,  4, -8000, 8000 },
+    { "Carrier",          DIV_REF_CARRIER,   1,  4, -8000, 8000 },
+    { "RADE passband",    DIV_REF_RADE_BAND, 1,  4,   200, 2800 },
+    { "RADE V1 (search)", DIV_REF_RADE_V1,   0,  4,   200, 2800 },
     //
     // Declaring lock needs a grid detection - at 8, 16 or 32 passes of one
     // modem frame, so 1 to 3.8 s - followed by RADE_PROBATION frames of
@@ -158,12 +166,11 @@ int main(void) {
     // scales with the sample rate a block is 85.3 ms at every rate, so it
     // is rate-independent.
     //
-    { "RADE V1 (locked)", DIV_REF_RADE_V1,   1, 200 },
+    { "RADE V1 (locked)", DIV_REF_RADE_V1,   1, 200,   200, 2800 },
+    { "RADE V1 (AM pb)",  DIV_REF_RADE_V1,   0,   4, -8000, 8000 },
   };
   memset(&rx0, 0, sizeof(rx0));
   rx0.id = 0;
-  rx0.filter_low = -8000;
-  rx0.filter_high = 8000;
   memset(vfo, 0, sizeof(vfo));
   vfo[0].frequency = 7100000;
   vfo[0].ctun_frequency = 7100000;
@@ -198,6 +205,8 @@ int main(void) {
       while (nfft < 65536 && (double)rates[r] / nfft > 12.0) { nfft <<= 1; }
 
       rx0.sample_rate = rates[r];
+      rx0.filter_low = modes[m].flo;
+      rx0.filter_high = modes[m].fhi;
       div_auto_ref = modes[m].ref;
       div_auto_mode = DIV_AUTO_SUM;
       div_auto_follow_filter = 1;
@@ -229,6 +238,11 @@ int main(void) {
         note = modes[m].carrier ? (locked ? "  [locked]" : "  [DID NOT LOCK]")
                : (locked ? "  [UNEXPECTED LOCK]" : "  [searching]");
       }
+
+      //
+      // The generator puts the modem above the tuned frequency, so the
+      // USB passband above is the one that finds it.
+      //
 
       printf("%-18s %5dk %7d %9.2f %10.1f%s\n",
              r ? "" : modes[m].name, rates[r] / 1000, nfft, ms,

@@ -13,8 +13,10 @@
  *    searches. It is now a progressive search followed by a cheap
  *    confirmation, so a strong signal should be well under half of that.
  *
- * 2. Sideband. An LSB passband must put the modem below the tuned
- *    frequency - the mirrored pilot bank - and a USB one above it. The
+ * 2. Sideband. The operator's passband names the pilot bank and is the
+ *    only one searched: an LSB passband looks below the tuned frequency
+ *    and a USB one above it, and a modem on the other side is not found
+ *    at all - a lock outside the passband is of no use to this mode. The
  *    green analysis window on the panadapter is drawn from the same
  *    answer, which is how the operator noticed it was wrong.
  *
@@ -150,10 +152,10 @@ static long gen(float **buf, int side, double off_hz, double noise) {
  * Run until locked or out of patience. Returns the number of blocks fed,
  * or -1 if it never locked. One block is NFFT samples, 85.3 ms.
  */
-static int run(int side, double off_hz, double noise, int maxblocks, int seed) {
+static int run(int side, int pb, double off_hz, double noise, int maxblocks, int seed) {
   rx0.sample_rate = RATE;
 
-  if (side < 0) {
+  if (pb < 0) {
     rx0.filter_low = -2800;
     rx0.filter_high = -200;
     vfo[0].mode = modeDIGL;
@@ -224,26 +226,45 @@ int main(int argc, char **argv) {
   // regressed to the old scheme.
   //
   const double was = 11.5;
-  struct { const char *name; int side; double off; double noise; int max; } cases[] = {
-    { "USB, no CTUN",      +1,     0.0, 0.01, 120 },
-    { "LSB, no CTUN",      -1,     0.0, 0.01, 120 },
-    { "LSB, CTUN +5 kHz",  -1,  5000.0, 0.01, 120 },
-    { "USB, CTUN -3 kHz",  +1, -3000.0, 0.01, 120 },
+  //
+  // sig is where the modem actually is; pb is the sideband the operator
+  // has selected. The last two have them disagreeing, which must not
+  // produce a lock: that modem is outside the passband.
+  //
+  struct {
+    const char *name; int sig; int pb; double off; int want; int max;
+  } cases[] = {
+    { "USB passband",         +1, +1,     0.0, 1, 120 },
+    { "LSB passband",         -1, -1,     0.0, 1, 120 },
+    { "LSB, CTUN +5 kHz",     -1, -1,  5000.0, 1, 120 },
+    { "USB, CTUN -3 kHz",     +1, +1, -3000.0, 1, 120 },
+    { "modem above LSB pb",   +1, -1,     0.0, 0, 120 },
+    { "modem below USB pb",   -1, +1,     0.0, 0, 120 },
   };
 
   for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
-    int b = run(cases[i].side, cases[i].off, cases[i].noise, cases[i].max, 7 + i);
+    int b = run(cases[i].sig, cases[i].pb, cases[i].off, 0.01, cases[i].max, 7 + i);
+
+    if (!cases[i].want) {
+      printf("  %-20s  %s\n", cases[i].name,
+             (b < 0) ? "not found, as it should not be   OK"
+             : "LOCKED OUTSIDE THE PASSBAND   FAIL");
+
+      if (b >= 0) { ok = 0; }
+
+      continue;
+    }
 
     if (b < 0) {
-      printf("  %-18s  DID NOT LOCK in %0.1f s   FAIL\n",
+      printf("  %-20s  DID NOT LOCK in %0.1f s   FAIL\n",
              cases[i].name, secs(cases[i].max));
       ok = 0;
       continue;
     }
 
-    int want_mirror = (cases[i].side < 0);
+    int want_mirror = (cases[i].pb < 0);
     int side_ok = (rade_corr_mirrored == want_mirror);
-    printf("  %-18s  locked in %5.2f s (%2d blocks)  %s spectrum  %s\n",
+    printf("  %-20s  locked in %5.2f s (%2d blocks)  %s spectrum  %s\n",
            cases[i].name, secs(b), b,
            rade_corr_mirrored ? "mirrored" : "normal",
            side_ok ? (secs(b) < was ? "OK" : "SLOW") : "WRONG SIDEBAND");

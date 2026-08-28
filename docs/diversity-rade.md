@@ -42,51 +42,53 @@ what the mode says, so the two can be compared.
 
 That is not how it started, and the reason for the change is worth keeping:
 
-### The sideband is the prior, the search is the escape hatch
+### The passband decides the sideband, and nothing else
 
 The first version derived the correlator's spectral sense from the mode,
 conjugating the input for LSB. **It never acquired on air**, against a
 signal RADE itself was decoding at 10 dB SNR. The conclusion drawn at the
 time was that the convention could not be reasoned about and had to be
-measured, so the derivation was removed entirely and both pilot banks
-searched blind.
+measured, so the derivation was removed and both pilot banks searched
+blind.
 
-Half of that was right and half of it was covering for a different bug.
-The conversion between the raw DDC frame and the frame the passband is
-expressed in had the wrong sign - see "Frequency bookkeeping" in
-`diversity_auto.c` - so under CTUN or RIT nothing acquired whichever bank
-was used, which is not evidence about sidebands at all.
+That was the wrong lesson from a contaminated experiment. The conversion
+between the raw DDC frame and the frame the passband is expressed in had
+the wrong sign — see "Frequency bookkeeping" in `diversity_auto.c` — so
+under CTUN or RIT nothing acquired whichever bank was used. It is not
+evidence about sidebands at all.
 
-What is there now is a prior with an escape hatch:
+Blind two-bank search then acquired, and introduced its own fault: the
+choice between the banks is decided by noise on a signal near the noise
+floor, and that is where RADE lives. On air the wideband RADE window,
+which is placed by the same choice, settled above an LSB passband and
+stayed there; and in V1, a marginal lock could flip the green overlay
+across the carrier at the moment of locking.
 
-- The operator's **passband** says which side to expect. Bank 0 is the
-  pilot as transmitted, carriers at +750..+2200 Hz, matching a modem
-  above the tuned frequency; bank 1 is its mirror. The midpoint of
-  `filter_low..filter_high` decides, which covers LSB, USB and the
-  digital modes without a mode table, and says nothing (returns "either")
-  for AM, SAM and FM.
-- Both banks are still searched. The unexpected one has to win by
-  `RADE_BANK_MARGIN` (1.5 sigma) before it is taken, and when it does,
-  the log says so.
+**The operator's passband now names the bank, and it is the only one
+searched.** Bank 0 is the pilot as transmitted, carriers at
++750..+2200 Hz, matching a modem above the tuned frequency; bank 1 is its
+mirror. The midpoint of `filter_low..filter_high` decides, which covers
+LSB, USB and the digital modes without a mode table. Only when the
+passband straddles zero and so says nothing — AM, SAM, FM — are both
+searched.
 
-The prior earns its place because a blind two-way race is decided by noise
-on a signal near the noise floor, which is where RADE lives. On air that
-showed up in the wideband RADE mode, where the same choice places the
-analysis window: with no signal it settled on whichever side won the coin
-toss, and the green window on the panadapter sat above an LSB passband.
-The escape hatch earns its place because the sense of the raw baseband
-with respect to RF is still the one thing here never settled from first
-principles; if the margin is ever crossed on a real signal, the log will
-finally tell us.
+The reasoning is not just that the passband is more reliable than a coin
+toss. **A RADE lock outside the passband is of no use.** This mode exists
+to extract and track coherence on the signal the operator has tuned; a
+modem on the other side of the carrier is a different signal, filtered out
+downstream, and steering the array at it would be actively wrong. Not
+looking there is also cheaper — the search is the most expensive thing in
+the module, and an SSB passband takes about a third off it at the lower
+sample rates (at 384 kHz the decimator dominates and it barely shows).
 
-Either way conjugation stays out of the sample path, so there is no weight
-to conjugate back: whichever bank wins, `h0` and `h1` describe the real
+Conjugation stays out of the sample path, so there is no weight to
+conjugate back: whichever bank is used, `h0` and `h1` describe the real
 untouched arms and the MVDR solution applies directly.
 
 ### The analysis window follows the passband too
 
 In the wideband RADE mode the window is the modem band, `750..2200 Hz` on
-the chosen side, **intersected with the operator's filter**. A narrower
+the side the passband names, **intersected with the operator's filter**. A narrower
 filter therefore narrows what is measured, which is the standing rule for
 every window mode: never measure outside what the operator is listening
 to. The panadapter overlay is clipped the same way, so what is drawn is
@@ -382,11 +384,11 @@ acquisition. An earlier +/-25 Hz was another way to find nothing if the
 operator is slightly off frequency.
 
 **Acquisition logs its progress** at each scoring point - 1 s, 2 s and
-3.8 s into an integration - reporting the statistic for both pilot banks, the threshold,
-the best frequency, and the decimated signal RMS:
+3.8 s into an integration - reporting the statistic for the pilot bank the passband
+named, the threshold, the best frequency, and the decimated signal RMS:
 
 ```
-rade_acquire: acq normal=2.31 mirrored=7.44 best=7.44 (need 6.00 after 16 passes) f=+0.0 rms=1.2e-03 expect=mirrored
+rade_acquire: acq mirrored=7.44 (need 6.00 after 16 passes) f=+0.0 rms=1.2e-03
 ```
 
 An RMS near zero means nothing is reaching the correlator at all, which is

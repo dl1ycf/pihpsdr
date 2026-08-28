@@ -15,10 +15,12 @@ August 2026:
   on the panadapter, and the RADE V1 correlator could not acquire at all.
   The CW sidetone was not accounted for either
 
-- diversity: the RADE analysis window and its panadapter overlay now
-  follow the operator's sideband and passband instead of taking whichever
-  side of the tuned frequency happened to be stronger, which with no
-  signal present put them on the wrong side
+- diversity: the RADE analysis window, the pilot search and the panadapter
+  overlay now follow the operator's sideband and passband, instead of
+  taking whichever side of the tuned frequency happened to correlate or be
+  stronger. A RADE lock outside the passband is of no use, so that side is
+  no longer looked at, which also takes about a third off the cost of the
+  pilot search
 
 - diversity: RADE V1 acquisition now takes 1-5 s depending on signal
   strength instead of 11.5 s regardless of it, by scoring the search grid

@@ -47,42 +47,44 @@
 //   h0, h1  and the residual covariance Rnn  ->  MVDR weight
 //
 // ----------------------------------------------------------------------
-// Sideband, and why it is measured rather than derived
+// Sideband: the operator's passband decides it
 // ----------------------------------------------------------------------
 //
 // RADE is received through an SSB passband, so the modem occupies
 // 750..2200 Hz on one side of the tuned carrier and the mirror image of
 // that on the other. Which way round depends on the sideband in use.
 //
-// An earlier version decided that from vfo[].mode and conjugated the
-// input for the lower-sideband modes. It never acquired on air, and
-// guessing wrong is completely silent - the correlator simply looks at
-// the mirror image of the signal and finds nothing, for ever. That the
-// conversion between the raw frame and WDSP's shifted one also had the
-// wrong sign at the time, so nothing acquired under CTUN either, did not
-// help the diagnosis.
+// Correlating a mirrored stream against the pilot is the same as
+// correlating the original stream against a *mirrored pilot*, and conj(p)
+// is exactly the pilot with its carriers reflected about zero. So the
+// sense is a choice of pilot bank: bank 0 is the pilot as transmitted,
+// carriers at +750..+2200 Hz, matching a modem above the tuned frequency;
+// bank 1 is its mirror, matching one below.
 //
-// The arrangement now is a prior plus an escape hatch. Correlating a
-// mirrored stream against the pilot is the same as correlating the
-// original stream against a *mirrored pilot*, and conj(p) is exactly the
-// pilot with its carriers reflected about zero, so both banks are
-// searched over the same decimated stream. The operator's sideband says
-// which one to expect - bank 0, the pilot as transmitted, has its
-// carriers at +750..+2200 Hz and so matches a modem above the tuned
-// frequency - and the other bank has to win by RADE_BANK_MARGIN before it
-// is taken.
+// The operator's passband names the bank, and that is the only one
+// searched. A pilot on the other side of the tuned frequency is outside
+// the passband, and a lock there is of no use: this mode exists to pull
+// coherence out of the signal the operator is listening to, not to find
+// whatever modem happens to be nearby. Only when the passband straddles
+// zero and so says nothing - AM, SAM, FM - are both banks searched.
 //
-// The prior matters because the two-way race is otherwise decided by
-// noise on a signal near the noise floor, which is where RADE lives.
-// The escape hatch matters because the sense of the raw baseband with
-// respect to RF is the one thing here that has never been settled by
-// reading the code; if it is ever crossed on a real signal, the log says
-// so and we will finally know.
+// It has been all three ways round, and the history is worth keeping
+// because two of the three looked like they worked. Deriving the sense
+// from vfo[].mode and conjugating the input never acquired on air - but
+// the conversion between the raw frame and WDSP's shifted one had the
+// wrong sign at the time, so nothing acquired under CTUN whichever sense
+// was used, which makes that evidence worthless. Searching both banks
+// blind did acquire, and then left the choice to noise on a signal near
+// the noise floor, which is where RADE lives: the analysis window, and
+// the green overlay drawn from it, could settle on the wrong side of an
+// LSB passband and stay there, and on a marginal lock it could flip there
+// at the moment of locking. Constraining it to the passband is both the
+// right answer for this mode and the cheaper one - it halves the cost of
+// the search, which is by far the most expensive thing in this file.
 //
-// Either way the conjugation stays out of the sample path, so there is no
-// weight to conjugate back: the channel estimates come from the real,
-// untouched arms whichever bank wins, and the MVDR solution applies to
-// them directly.
+// Conjugation stays out of the sample path either way, so there is no
+// weight to conjugate back: whichever bank is used, h0 and h1 describe
+// the real untouched arms and the MVDR solution applies to them directly.
 //
 
 //
@@ -169,19 +171,6 @@ static const double rade_acq_sigma[RADE_ACQ_CHECKS] = { 7.5, 6.75, RADE_LOCK_SIG
 
 #define RADE_PROBATION      8       // frames, ~1 s
 
-//
-// How much better the pilot has to correlate against the mirrored bank
-// than against the one the operator's sideband implies before we believe
-// it. In sigma, on the acquisition statistic.
-//
-// The sideband is known - it is what the operator tuned - so it is used
-// as the prior rather than left to a blind two-way race that noise can
-// win. The escape hatch stays because the sense of the raw baseband with
-// respect to RF is the one thing here we have never been able to settle
-// by reading the code, and if this margin is ever crossed on a real
-// signal the log says so.
-//
-#define RADE_BANK_MARGIN    1.5
 
 //
 // Holding a lock is deliberately far more forgiving than getting one.
@@ -625,6 +614,20 @@ static int rade_acquire(int expect_bank) {
   int64_t best_a = 0;
   int best_f = 0;
   //
+  // Which pilot banks to search. The operator's sideband names one, and
+  // that is the only one looked at: a pilot on the other side of the
+  // tuned frequency is outside the passband, and a RADE lock outside the
+  // passband is of no use to anybody - this mode exists to pull coherence
+  // out of the signal the operator is listening to, not to find whatever
+  // modem happens to be nearby. It also halves the cost of the search,
+  // which is by far the most expensive thing in this file.
+  //
+  // Only when the passband straddles zero and so says nothing - AM, SAM,
+  // FM - are both searched.
+  //
+  const int bank_lo = (expect_bank < 0) ? 0 : expect_bank;
+  const int bank_hi = (expect_bank < 0) ? 1 : expect_bank;
+  //
   // The latest pilot pair we could be looking at ends here.
   //
   const int64_t limit = ringtotal - RADE_CORR_NMF - RADE_CORR_M;
@@ -643,7 +646,7 @@ static int rade_acquire(int expect_bank) {
 
     if (a - RADE_CORR_NMF < 0 || ringtotal - (a - RADE_CORR_NMF) > RADE_RING) { continue; }
 
-    for (int bank = 0; bank < 2; bank++) {
+    for (int bank = bank_lo; bank <= bank_hi; bank++) {
       for (int f = 0; f < RADE_ACQ_NFREQ; f++) {
         cplx d1 = rade_correlate(ring0, a, pilot_w[bank][f]);
         cplx d2 = rade_correlate(ring0, a - RADE_CORR_NMF, pilot_w[bank][f]);
@@ -699,7 +702,7 @@ static int rade_acquire(int expect_bank) {
   int64_t bank_a[2] = { 0, 0 };
   int best_bank = 0;
 
-  for (int bank = 0; bank < 2; bank++) {
+  for (int bank = bank_lo; bank <= bank_hi; bank++) {
     for (int f = 0; f < RADE_ACQ_NFREQ; f++) {
       int pk = 0;
 
@@ -741,25 +744,11 @@ static int rade_acquire(int expect_bank) {
   }
 
   //
-  // Pick the bank. The operator's sideband is the prior; the other one has
-  // to beat it by a clear margin to be taken. See RADE_BANK_MARGIN.
+  // The operator's sideband names the bank; only when it says nothing is
+  // there a choice to make here.
   //
-  if (expect_bank < 0) {
-    best_bank = (stat_bank[1] > stat_bank[0]) ? 1 : 0;
-  } else {
-    const int other = 1 - expect_bank;
-    best_bank = (stat_bank[other] > stat_bank[expect_bank] + RADE_BANK_MARGIN)
-                ? other : expect_bank;
-
-    if (best_bank != expect_bank && stat_bank[best_bank] >= need) {
-      t_print("%s: pilot found on the %s bank, not the %s one the sideband "
-              "implies (%0.2f against %0.2f)\n", __func__,
-              best_bank ? "mirrored" : "normal",
-              expect_bank ? "mirrored" : "normal",
-              stat_bank[best_bank], stat_bank[expect_bank]);
-    }
-  }
-
+  best_bank = (expect_bank < 0) ? ((stat_bank[1] > stat_bank[0]) ? 1 : 0)
+              : expect_bank;
   stat = stat_bank[best_bank];
   best_f = bank_f[best_bank];
   best_a = bank_a[best_bank];
@@ -777,11 +766,9 @@ static int rade_acquire(int expect_bank) {
   }
 
   rms = sqrt(rms / (double)RADE_CORR_NMF);
-  t_print("%s: acq normal=%0.2f mirrored=%0.2f best=%0.2f (need %0.2f after "
-          "%d passes) f=%+0.1f rms=%0.2e expect=%s\n",
-          __func__, stat_bank[0], stat_bank[1], stat, need, acq_passes,
-          acq_freq[best_f], rms,
-          expect_bank < 0 ? "either" : (expect_bank ? "mirrored" : "normal"));
+  t_print("%s: acq %s=%0.2f (need %0.2f after %d passes) f=%+0.1f rms=%0.2e\n",
+          __func__, best_bank ? "mirrored" : "normal", stat, need, acq_passes,
+          acq_freq[best_f], rms);
 
 #ifdef RADE_DEBUG_STAT
   t_print("ACQ: stat=%.2f f=%0.1f\n", stat, acq_freq[best_f]);

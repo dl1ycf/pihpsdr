@@ -157,13 +157,6 @@
 //
 #define DIV_CARRIER_BINS    2
 
-//
-// How much stronger the wrong side of the tuned frequency has to be
-// before the RADE window is moved off the operator's sideband. 6 dB:
-// comfortably beyond what the two noise measurements differ by, well
-// under the difference a real signal makes.
-//
-#define DIV_RADE_FLIP       4.0
 
 //
 // Bin-weighting for the wideband window.
@@ -747,11 +740,17 @@ static void div_process_block(void) {
     int ok = rade_corr_process(work0, work1, nfft, bank,
                                div_frame_off(&ctx), div_auto_tau, &wr, &wi);
     //
-    // Show where the correlator actually found it, not where we guessed:
-    // the overlay is the only feedback the operator gets about this.
+    // The overlay follows the passband, locked or not. It used to switch
+    // to the bank the correlator reported once it locked, which is how a
+    // lock on the wrong side of an LSB passband announced itself: the
+    // green box jumped across the carrier at the moment of locking. There
+    // is nothing to report any more - the correlator only searches the
+    // bank the passband names - and the only case where it still chooses
+    // is AM/SAM/FM, where the passband says nothing and the correlator's
+    // answer is the only one there is.
     //
-    div_rade_side = rade_corr_locked ? (rade_corr_mirrored ? -1 : 1)
-                    : (expect != 0 ? expect : div_rade_side);
+    div_rade_side = (expect != 0) ? expect
+                    : (rade_corr_locked ? (rade_corr_mirrored ? -1 : 1) : div_rade_side);
 
     if (ok) {
       div_auto_coherence = rade_corr_quality;
@@ -894,61 +893,46 @@ static void div_process_block(void) {
     //
     // Which side of the tuned frequency to measure.
     //
-    // The operator's sideband decides it. An earlier version took only the
-    // stronger of the two sides by energy, which is a coin toss on a RADE
-    // signal near the noise floor - and RADE is usually near the noise
-    // floor, that being the point of it. It could sit on the wrong side
-    // indefinitely, and since the panadapter overlay is drawn from the
-    // sideband it was visibly wrong there too.
+    // The operator's passband decides it, full stop. An earlier version
+    // took the stronger of the two sides by energy, which is a coin toss
+    // on a RADE signal near the noise floor - and RADE is usually near the
+    // noise floor, that being the point of it - so it could sit on the
+    // wrong side indefinitely, and the panadapter overlay with it.
     //
-    // The energy test is kept, but only as an escape hatch: the other side
-    // has to be DIV_RADE_FLIP times stronger before it is believed, which
-    // noise alone will not do. If that ever fires on air it is telling us
-    // the raw baseband is mirrored with respect to RF, so it says so in
-    // the log rather than just quietly moving.
+    // Measuring the side the operator is not listening to is not a
+    // fallback worth having here. Whatever is over there is a different
+    // signal, and combining for it would optimise the array for something
+    // that is filtered out downstream.
     //
-    const double foff = div_frame_off(&ctx);
-    double up = 0.0, dn = 0.0;
+    int want = div_rade_side_expected(&ctx);
 
-    for (int side = 0; side < 2; side++) {
-      double lo = side ? -RADE_CORR_FHI : RADE_CORR_FLO;
-      double hi = side ? -RADE_CORR_FLO : RADE_CORR_FHI;
-      int a = (int)floor((lo + foff) / binhz);
-      int b = (int)ceil ((hi + foff) / binhz);
-      double acc = 0.0;
+    if (want == 0) {
+      //
+      // AM, SAM, FM: the passband straddles the carrier and says nothing,
+      // so the energy is all there is to go on.
+      //
+      const double foff = div_frame_off(&ctx);
+      double up = 0.0, dn = 0.0;
 
-      for (int k = a; k <= b; k++) {
-        int idx = k % nfft;
+      for (int side = 0; side < 2; side++) {
+        double lo = side ? -RADE_CORR_FHI : RADE_CORR_FLO;
+        double hi = side ? -RADE_CORR_FLO : RADE_CORR_FHI;
+        int a = (int)floor((lo + foff) / binhz);
+        int b = (int)ceil ((hi + foff) / binhz);
+        double acc = 0.0;
 
-        if (idx < 0) { idx += nfft; }
+        for (int k = a; k <= b; k++) {
+          int idx = k % nfft;
 
-        acc += (double)fftout0[idx][0] * fftout0[idx][0]
-               + (double)fftout0[idx][1] * fftout0[idx][1];
+          if (idx < 0) { idx += nfft; }
+
+          acc += (double)fftout0[idx][0] * fftout0[idx][0]
+                 + (double)fftout0[idx][1] * fftout0[idx][1];
+        }
+
+        if (side) { dn = acc; } else { up = acc; }
       }
 
-      if (side) { dn = acc; } else { up = acc; }
-    }
-
-    int expect = div_rade_side_expected(&ctx);
-    int want;
-
-    if (expect != 0) {
-      const double mine  = (expect < 0) ? dn : up;
-      const double other = (expect < 0) ? up : dn;
-      want = (other > DIV_RADE_FLIP * mine) ? -expect : expect;
-
-      if (want != expect && want != div_rade_side) {
-        t_print("%s: RADE band: passband says %s but the %s side is %0.1f dB "
-                "stronger, following the signal\n", __func__,
-                (expect < 0) ? "below" : "above",
-                (want < 0) ? "below" : "above",
-                10.0 * log10((other + 1e-30) / (mine + 1e-30)));
-      }
-    } else {
-      //
-      // AM, SAM, FM: the passband says nothing, so the energy is all we
-      // have.
-      //
       want = (dn > up) ? -1 : 1;
     }
 

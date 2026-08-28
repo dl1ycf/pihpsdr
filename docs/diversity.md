@@ -332,20 +332,25 @@ of the filter edges, which covers LSB, USB and the digital modes without a
 mode table. The window is then clipped to the filter, so a narrower filter
 narrows what is measured.
 
-The energy on the two sides is still compared, but only as an escape
-hatch: the other side has to be 6 dB stronger before it is believed, and
-the log says so when that happens. Taking the stronger side outright, as
-an earlier version did, is a coin toss on a signal near the noise floor —
-which is where RADE lives — so with no signal present the window settled
-wherever noise put it, and the green overlay could sit above an LSB
-passband indefinitely.
+The passband decides it outright. Taking the stronger of the two sides by
+energy, as an earlier version did, is a coin toss on a signal near the
+noise floor — which is where RADE lives — so with no signal present the
+window settled wherever noise put it and the green overlay could sit above
+an LSB passband indefinitely. The energy comparison survives only for AM,
+SAM and FM, where the passband straddles the carrier and says nothing.
+
+Measuring the side the operator is not listening to is not a fallback
+worth having: whatever is over there is a different signal, filtered out
+downstream, and combining for it would optimise the array for something
+that never reaches the audio.
 
 Maximum ratio combining across the modem band; no QRM nulling.
 
 ### RADE V1 pilot (MVDR)
 
-Correlates against RADE V1's known pilot to separate the wanted signal
-from everything else, which allows the interference covariance to be
+Correlates against RADE V1's known pilot — on the side of the tuned
+frequency the operator's passband names, and only that side — to separate
+the wanted signal from everything else, which allows the interference covariance to be
 estimated separately and a null steered onto QRM rather than onto the
 signal. Uses no transform at all. See [`diversity-rade.md`](diversity-rade.md).
 
@@ -388,11 +393,18 @@ kind of scalar double-precision work, so scale accordingly.**
 
 | Mode | 48 kHz | 96 kHz | 192 kHz | 384 kHz |
 |---|---|---|---|---|
-| Window | 0.2 % | 0.6 % | 1.2 % | 2.2 % |
-| Carrier | 0.3 % | 0.5 % | 1.2 % | 2.1 % |
-| RADE passband | 0.3 % | 0.6 % | 1.0 % | 1.3 % |
-| RADE V1, **searching** | 7.1 % | 6.4 % | 7.6 % | 7.1 % |
-| RADE V1, locked | 0.7 % | 1.4 % | 2.6 % | 4.6 % |
+| Window | 0.2 % | 0.4 % | 0.9 % | 1.7 % |
+| Carrier | 0.2 % | 0.4 % | 0.9 % | 1.3 % |
+| RADE passband | 0.2 % | 0.4 % | 0.8 % | 1.4 % |
+| RADE V1, **searching** | 4.7 % | 5.4 % | 4.9 % | 7.1 % |
+| RADE V1, searching, AM passband | 6.2 % | 6.5 % | 7.8 % | 7.2 % |
+| RADE V1, locked | 0.5 % | 1.0 % | 1.8 % | 3.6 % |
+
+The two searching rows are the same work over one pilot bank and over
+two. An SSB passband names the bank, so only one is searched; AM, SAM and
+FM say nothing and cost both. The saving is less than half because the
+decimator is a fixed cost that grows with the sample rate — by 384 kHz it
+dominates and the difference nearly vanishes.
 
 At Resolution settings finer than 12 Hz the per-block cost roughly doubles
 with nfft, but so does the block period, so the cost per *second* is close
@@ -403,7 +415,7 @@ Reading these:
 - The transform modes scale with `nfft` and are cheap.
 - **RADE V1 while searching is by far the peak load** and is nearly
   rate-independent, because acquisition works on the fixed 8 kHz decimated
-  stream. It costs 5-6 points more than tracking does. On a Pi this is the
+  stream. It costs 3-4 points more than tracking does. On a Pi this is the
   number to watch: it is the state the engine sits in whenever there is no
   RADE signal to lock to.
 - RADE V1 once locked scales with the sample rate, because what remains is
