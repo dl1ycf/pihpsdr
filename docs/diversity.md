@@ -190,6 +190,26 @@ consistent with what is actually applied.
 
 ### Seeing where it is looking
 
+The status line is held to a fixed 48 characters in four columns — what
+is being measured, what the loop is doing, one detail belonging to the
+mode, and the weight — in a monospace face. It is the widest thing in the
+dialog and so sets the minimum window width, and building every line to
+the same length out of fields that truncate as well as pad means nothing
+arriving at run time can widen it. The predecessor was a printf per mode,
+the longest around a hundred characters.
+
+```
+Win 12Hz  track  coh 100%      -2.1 dB   +32 deg
+Car  3Hz* HOLD   +400000 Hz   -12.3 dB  +179 deg
+RADE V1   LOCK   LSB 100%      -2.1 dB   +32 deg
+```
+
+A `*` on the first field means the window ran past the Nyquist limit for
+this sample rate and was clamped. Under **Hold** the weight shown is the
+one the loop has *tracked to*, not the one being applied — the sliders
+show what is applied, and seeing the two apart is the point of the
+control.
+
 The analysis window is drawn on the RX panadapter as a translucent green
 band, using the theme's "ok" accent at low alpha. It is drawn under the
 spectrum trace, in the same place in the draw order as the notch shading.
@@ -379,19 +399,52 @@ RADE the signal being pointed at is the wanted one.
 
 ## 6. Operator controls
 
-| Control | Effect |
-|---|---|
-| **Diversity Enable** | The whole feature, including the DDC re-plumbing |
-| **Gain / Phase** (coarse, fine) | Manual weight; live when Auto is not driving |
-| **Auto** | Off / Null / Sum — the objective |
-| **Measure on** | Which reference (§5) |
-| **Window follows RX filter** | Window mode only |
-| **Window centre / width** | Window mode with the above unticked, and the carrier search region in Carrier mode. Kept separately per mode |
-| **Resolution** | 12 / 6 / 3 Hz bins. Finer lifts weak signals out of the noise but halves the update rate each step |
-| **Weighting** | Flat or Coherence (see above) |
-| **Averaging** | 0.2-30 s. Time constant for the estimate, in every mode |
-| **Min coherence** | Below this the loop holds rather than adapts |
-| **Restart averaging** | Discards the accumulated statistics |
+| Control | Effect | Shown for |
+|---|---|---|
+| **Diversity Enable** | The whole feature, including the DDC re-plumbing | always |
+| **Gain / Phase** (coarse, fine) | Manual weight; live when Auto is not driving, and under **Hold** | always |
+| **Auto** | Off / Null / Sum — the objective | always |
+| **Measure on** | Which reference (§5) | always |
+| **Window follows RX filter** | — | Window |
+| **Window centre / width** | The analysis window, or the carrier search region in Carrier mode. Kept separately per mode | Window (unticked), Carrier |
+| **Resolution** | 12 / 6 / 3 Hz bins. Finer lifts weak signals out of the noise but halves the update rate each step | all but RADE V1 |
+| **Weighting** | Flat or Coherence (see above) | Window, RADE passband |
+| **Averaging** | 0.2-30 s. Time constant for the estimate | always |
+| **Min coherence** | Below this the loop holds rather than adapts | all but RADE V1 |
+| **Restart averaging** | Discards the accumulated statistics | always |
+| **Hold** | Stops applying the loop's answer without stopping the loop | always |
+| **Invert** | Swaps Null and Sum | always |
+
+Rows that the selected reference cannot use are **hidden, not greyed
+out**. The RADE references place their own window, so four rows never
+applied to them; the pilot correlator uses no transform at all, so two
+more do not either. Greying them left a tall dialog of mostly dead
+controls.
+
+### Hold
+
+Stops the loop *applying* its answer. It keeps measuring, and the status
+line keeps showing where it has got to, but the gain and phase controls
+become the operator's meanwhile. Releasing puts the tracked answer in
+place in one step rather than slewing to it.
+
+That makes two things easy that were not: comparing the loop's answer
+against a hand-set one on the same signal, and holding a good weight
+through a period when the band is doing something the loop should not
+follow, without losing the loop's progress.
+
+It is an operating state rather than a setting, so it is not persisted,
+and it is released when the dialog closes — there is no indicator for it
+anywhere else, and a loop that had silently stopped applying anything
+would be a mystery.
+
+### Invert
+
+Swaps Null and Sum. The two are the same measurement with the sign of the
+answer and the normalising power exchanged, so they are 180 degrees apart,
+and the switch is applied at once rather than slewed. It is the quickest
+way to tell whether the array is pointed at the wanted signal or at the
+interference.
 
 Settings persist in the props file as `diversity_auto_*` and are range
 checked on restore.

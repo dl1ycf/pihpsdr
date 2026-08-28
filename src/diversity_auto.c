@@ -346,6 +346,15 @@ static int div_rade_side = 1;
 static int div_jump = 0;
 
 //
+// Operator hold. The analysis carries on; only the application of its
+// answer is suspended. Not persisted - it is an operating state, not a
+// setting, and coming back up held would be baffling.
+//
+int    div_auto_hold = 0;
+double div_track_gain = 0.0;
+double div_track_phase = 0.0;
+
+//
 // Smoothed carrier frequency, shifted frame, for DIV_REF_CARRIER.
 //
 static double div_carrier_hz = 0.0;
@@ -353,6 +362,23 @@ static double div_carrier_hz = 0.0;
 
 void diversity_auto_jump(void) {
   div_jump = 1;
+}
+
+void diversity_auto_set_hold(int on) {
+  on = on ? 1 : 0;
+
+  if (on == div_auto_hold) { return; }
+
+  div_auto_hold = on;
+
+  if (!on) {
+    //
+    // Apply what the loop has tracked to meanwhile, in one step. Done by
+    // the analysis thread on its next block rather than here, so the
+    // weight is only ever written from one place.
+    //
+    div_jump = 1;
+  }
 }
 
 int div_rade_side_get(void) {
@@ -374,6 +400,12 @@ static void div_reset_stats(void) {
   div_auto_holding = 1;
   div_carrier_hz = 0.0;
   div_auto_carrier_valid = 0;
+  //
+  // Start the tracked readout from what is actually applied, so it does
+  // not claim 0 dB / 0 degrees before the loop has produced anything.
+  //
+  div_track_gain = div_gain;
+  div_track_phase = div_phase;
 }
 
 void diversity_auto_reset(void) {
@@ -672,6 +704,31 @@ static void div_apply_weight(double wr, double wi) {
   if (mag > DIV_MAX_WEIGHT) {
     wr *= DIV_MAX_WEIGHT / mag;
     wi *= DIV_MAX_WEIGHT / mag;
+  }
+
+  //
+  // Where the loop has got to, in the units the operator reads. Kept
+  // separately from div_gain/div_phase, which describe what is actually
+  // being applied to the samples: under Hold the two diverge, and being
+  // able to see the tracked answer while the manual controls hold a
+  // different one is the whole point of the control.
+  //
+  div_track_gain = (mag > 1.0e-9) ? 20.0 * log10(mag) : -27.0;
+
+  if (div_track_gain >  27.0) { div_track_gain =  27.0; }
+
+  if (div_track_gain < -27.0) { div_track_gain = -27.0; }
+
+  div_track_phase = atan2(wi, wr) * (180.0 / M_PI);
+
+  if (div_auto_hold) {
+    //
+    // Hold: keep measuring, stop applying. The operator has the gain and
+    // phase controls meanwhile, and releasing sets div_jump so the next
+    // block puts the tracked answer in place in one step rather than
+    // slewing to it from wherever they left it.
+    //
+    return;
   }
 
   //

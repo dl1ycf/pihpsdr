@@ -9,6 +9,16 @@ August 2026:
   a carrier other than the primary, coherence weighting for SSB voice,
   and a pilot-correlating MVDR mode for FreeDV RADE V1
 
+- diversity: Hold and Invert buttons. Hold stops the loop applying its
+  answer without stopping the loop, handing the gain and phase controls to
+  the operator and applying the tracked answer in one step when released;
+  Invert swaps Null and Sum
+
+- diversity: the menu now hides the controls the selected measure mode
+  cannot use rather than greying them out, and the status line is held to
+  a fixed width in fixed columns so it no longer dictates a dialog half
+  again as wide as the controls need
+
 - diversity: the conversion between the tapped DDC buffer and the frame
   the passband is expressed in was wrong in both its displacement and its
   sign. The buffer is inverted with respect to RF, which had not been

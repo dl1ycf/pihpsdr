@@ -116,6 +116,17 @@ extern int    div_auto_running;
 extern int  div_rade_side_get(void);
 
 //
+// Operator hold: the analysis keeps running and keeps updating
+// div_track_gain/div_track_phase, but stops writing the weight, so the
+// manual gain and phase controls have it. Releasing applies the tracked
+// answer in one step.
+//
+extern int    div_auto_hold;
+extern double div_track_gain;           // dB, where the loop has got to
+extern double div_track_phase;          // degrees
+extern void   diversity_auto_set_hold(int on);
+
+//
 // Apply the next weight update immediately instead of slewing to it.
 //
 extern void diversity_auto_jump(void);

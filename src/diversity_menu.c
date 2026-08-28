@@ -45,6 +45,25 @@ static GtkWidget *coh_scale = NULL;
 static GtkWidget *res_combo = NULL;
 static GtkWidget *weight_combo = NULL;
 static GtkWidget *status_label = NULL;
+static GtkWidget *hold_b = NULL;
+static GtkWidget *invert_b = NULL;
+static GtkWidget *reset_b = NULL;
+
+//
+// The labels of the rows that come and go with the measure mode. A row
+// only disappears if everything in it is hidden, so the label has to be
+// hidden with its control.
+//
+static GtkWidget *centre_label = NULL;
+static GtkWidget *width_label = NULL;
+static GtkWidget *res_label = NULL;
+static GtkWidget *weight_label = NULL;
+static GtkWidget *coh_label = NULL;
+
+//
+// Set while invert_cb() drives the objective combo.
+//
+static int updating_invert = 0;
 
 static double gain_coarse, gain_fine;
 static double phase_coarse, phase_fine;
@@ -89,6 +108,20 @@ static void cleanup(void) {
     res_combo = NULL;
     weight_combo = NULL;
     status_label = NULL;
+    hold_b = NULL;
+    invert_b = NULL;
+    reset_b = NULL;
+    centre_label = NULL;
+    width_label = NULL;
+    res_label = NULL;
+    weight_label = NULL;
+    coh_label = NULL;
+    //
+    // Hold is an operating state with no indicator outside this dialog,
+    // so leaving it set with the dialog shut would silently stop the loop
+    // applying anything with nothing on screen to explain it.
+    //
+    diversity_auto_set_hold(0);
     gtk_widget_destroy(tmp);
     sub_menu = NULL;
     active_menu  = NO_MENU;
@@ -156,17 +189,16 @@ static void phase_fine_changed_cb(GtkWidget *widget, gpointer data) {
 
 
 //
-// Which sideband the RADE window has placed itself on, for the status
-// line. Worth showing: if this reads the wrong way round the correlator
-// is looking at the mirror image of the signal and will never lock.
+// Which sideband the RADE modem is on, as the operator set it. Shown
+// because it is the one thing about this mode they can get wrong: with
+// the passband on the wrong sideband the correlator is looking at the
+// mirror image of the signal and will never lock.
+//
+// Internally this is "the modem is below/above the carrier"; LSB and USB
+// is what an operator reads.
 //
 static const char *div_rade_side_text(void) {
-  return (div_rade_side_get() < 0) ? "below" : "above";
-}
-
-static const char *div_mode_lsb_text(void) {
-  int m = vfo[0].mode;
-  return (m == modeLSB || m == modeDIGL || m == modeCWL) ? "LSB" : "USB";
+  return (div_rade_side_get() < 0) ? "LSB" : "USB";
 }
 
 //
@@ -180,7 +212,11 @@ static void update_manual_sensitivity(void) {
   // Diversity Enable unchecked, keying on the combo alone opened the menu
   // with all four sliders dead and the status line saying "Auto off".
   //
-  gboolean manual = (div_auto_mode == DIV_AUTO_OFF) || !div_auto_running;
+  // Hold counts as manual. That is what it is for: the loop carries on
+  // measuring while the operator has the controls.
+  //
+  gboolean manual = (div_auto_mode == DIV_AUTO_OFF) || !div_auto_running
+                    || div_auto_hold;
 
   if (gain_coarse_scale)  { gtk_widget_set_sensitive(gain_coarse_scale, manual); }
 
@@ -191,20 +227,102 @@ static void update_manual_sensitivity(void) {
   if (phase_fine_scale)   { gtk_widget_set_sensitive(phase_fine_scale, manual); }
 
   //
-  // The RADE references place their own window. Window mode uses the
-  // controls to place the analysis window; Carrier mode uses the same two
-  // controls to say where to search for a carrier, which is what allows a
-  // carrier other than the primary to be tracked.
+  // Hold and Invert act on the loop, so they need one to act on.
   //
-  gboolean placed = (div_auto_ref == DIV_REF_BAND);
-  gboolean manual_window = (div_auto_ref == DIV_REF_CARRIER)
-                           || (placed && !div_auto_follow_filter);
+  gboolean has_loop = (div_auto_mode != DIV_AUTO_OFF) && div_auto_running;
 
-  if (follow_b)    { gtk_widget_set_sensitive(follow_b, placed); }
+  if (hold_b)   { gtk_widget_set_sensitive(hold_b, has_loop); }
 
-  if (centre_spin) { gtk_widget_set_sensitive(centre_spin, manual_window); }
+  if (invert_b) { gtk_widget_set_sensitive(invert_b, has_loop); }
+}
 
-  if (width_spin)  { gtk_widget_set_sensitive(width_spin,  manual_window); }
+//
+// Show only what the selected measure mode can actually use.
+//
+// Greying out was the previous answer and it made a tall dialog of mostly
+// dead controls: the RADE references place their own window, so four of
+// the rows never applied to them, and the pilot correlator uses no
+// transform at all, so two more do not either.
+//
+// Hiding rather than disabling relies on a GtkGrid row collapsing when
+// everything in it is hidden, which is why the labels are tracked
+// alongside their controls.
+//
+static void div_show_row(GtkWidget *label, GtkWidget *widget, gboolean on) {
+  if (label)  { gtk_widget_set_visible(label, on); }
+
+  if (widget) { gtk_widget_set_visible(widget, on); }
+}
+
+static void update_visibility(void) {
+  const int ref = div_auto_ref;
+  //
+  // Window mode places the analysis window; Carrier mode uses the same two
+  // controls to say where to look for a carrier, which is what allows one
+  // other than the primary to be tracked. The RADE references derive the
+  // window from the modem band and the operator's filter, so neither the
+  // follow tick nor the centre and width mean anything there.
+  //
+  const gboolean is_band    = (ref == DIV_REF_BAND);
+  const gboolean is_carrier = (ref == DIV_REF_CARRIER);
+  const gboolean placeable  = is_carrier || (is_band && !div_auto_follow_filter);
+  //
+  // Everything except the pilot correlator works from the transform, so
+  // only it has no use for a bin resolution or a coherence threshold.
+  //
+  const gboolean uses_fft = (ref != DIV_REF_RADE_V1);
+  //
+  // Per-bin weighting needs a window with bins to weight. The carrier
+  // reference accumulates a handful either side of one peak, where it has
+  // nothing to choose between.
+  //
+  const gboolean wide = is_band || (ref == DIV_REF_RADE_BAND);
+
+  if (follow_b) { gtk_widget_set_visible(follow_b, is_band); }
+
+  div_show_row(centre_label, centre_spin, placeable);
+  div_show_row(width_label,  width_spin,  placeable);
+  div_show_row(res_label,    res_combo,   uses_fft);
+  div_show_row(weight_label, weight_combo, wide);
+  div_show_row(coh_label,    coh_scale,   uses_fft);
+}
+
+//
+// The status line.
+//
+// It is the widest thing in the dialog, so it sets the minimum window
+// width, and it must not grow. Every line is therefore built to exactly
+// DIV_STATUS_CHARS characters out of four fixed fields - what is being
+// measured, what the loop is doing, one detail belonging to the mode, and
+// the weight - each printed with a precision that truncates as well as a
+// width that pads. Nothing that arrives at run time can widen it.
+//
+// It is set in a monospace face for the same reason: fixed character
+// counts only line up in a fixed-width font, and a status line whose
+// columns wander is harder to read at a glance than an unaligned one.
+//
+// The predecessor was a printf per mode, the longest around a hundred
+// characters, and it dictated a dialog half again as wide as the controls
+// needed.
+//
+#define DIV_STATUS_TAG    9
+#define DIV_STATUS_STATE  6
+#define DIV_STATUS_DETAIL 11
+//
+// Three fields, three separating spaces, and a 19-character weight:
+//   "%+6.1f dB %+5.0f deg"
+//
+#define DIV_STATUS_CHARS  (DIV_STATUS_TAG + DIV_STATUS_STATE + DIV_STATUS_DETAIL + 3 + 19)
+
+static void div_status_set(const char *tag, const char *state, const char *detail,
+                           double g, double p) {
+  char text[128];
+  snprintf(text, sizeof(text), "%-*.*s %-*.*s %-*.*s %+6.1f dB %+5.0f deg",
+           DIV_STATUS_TAG, DIV_STATUS_TAG, tag,
+           DIV_STATUS_STATE, DIV_STATUS_STATE, state,
+           DIV_STATUS_DETAIL, DIV_STATUS_DETAIL, detail,
+           g, p);
+  gtk_label_set_text(GTK_LABEL(status_label), text);
 }
 
 //
@@ -213,18 +331,19 @@ static void update_manual_sensitivity(void) {
 // touch widgets.
 //
 static int status_update_cb(gpointer data) {
-  char text[256];
-
   if (dialog == NULL) {
     status_timer = 0;
     return G_SOURCE_REMOVE;
   }
 
-  if (div_auto_mode != DIV_AUTO_OFF) {
+  if (div_auto_mode != DIV_AUTO_OFF && !div_auto_hold) {
     //
     // Track the automatically determined values in the manual sliders so
     // the operator can see where the loop has settled, and so the sliders
     // start from there if auto is switched off.
+    //
+    // Not under Hold: the sliders belong to the operator then, and moving
+    // them underneath would make the control useless.
     //
     updating_from_auto = 1;
     gain_coarse = 2.0 * round(0.5 * div_gain);
@@ -253,52 +372,80 @@ static int status_update_cb(gpointer data) {
   }
 
   if (!div_auto_running) {
-    snprintf(text, sizeof(text), "Auto off");
-  } else if (div_auto_ref == DIV_REF_RADE_V1) {
-    if (rade_corr_confirming) {
-      snprintf(text, sizeof(text),
-               "RADE V1: confirming candidate   modem %s carrier   %+0.1f Hz",
-               rade_corr_mirrored ? "above" : "below", rade_corr_freq_off);
-    } else if (!rade_corr_locked) {
-      snprintf(text, sizeof(text),
-               "RADE V1: searching for pilot   (mode %s) - see log for correlation",
-               div_mode_lsb_text());
-    } else {
-      //
-      // "pilot" is the share of the energy in the pilot span that the
-      // pilot itself accounts for, so it reads low under strong QRM even
-      // though the correlator is tracking perfectly well - which is the
-      // situation this mode exists for. Lock state is the thing to watch.
-      //
-      snprintf(text, sizeof(text),
-               "RADE V1 LOCK  modem %s carrier (mode %s)   pilot %3.0f%% / %+0.1f dB   %+0.1f Hz   %+0.1f dB %+0.0f deg",
-               rade_corr_mirrored ? "above" : "below", div_mode_lsb_text(),
-               100.0 * rade_corr_quality, rade_corr_snr,
-               rade_corr_freq_off, div_gain, div_phase);
-    }
-  } else if (div_auto_ref == DIV_REF_RADE_BAND) {
-    snprintf(text, sizeof(text),
-             "RADE band %s carrier (mode %s)   coherence %3.0f%%   %s   %+0.1f dB %+0.0f deg",
-             div_rade_side_text(), div_mode_lsb_text(), 100.0 * div_auto_coherence,
-             div_auto_holding ? "HOLD" : "track", div_gain, div_phase);
-  } else if (div_auto_ref == DIV_REF_CARRIER && !div_auto_carrier_valid) {
-    snprintf(text, sizeof(text), "Carrier: searching");
-  } else if (div_auto_ref == DIV_REF_CARRIER) {
-    snprintf(text, sizeof(text),
-             "Carrier %+0.2f Hz   %0.1f Hz bins   coherence %3.0f%%   %s   %+0.1f dB  %+0.0f deg%s",
-             div_auto_carrier, div_auto_binhz, 100.0 * div_auto_coherence,
-             div_auto_holding ? "HOLD" : "track", div_gain, div_phase,
-             div_auto_clamped ? "   [window clamped]" : "");
-  } else {
-    snprintf(text, sizeof(text),
-             "Coherence %3.0f%%   %s   %0.1f Hz bins   %+0.1f dB  %+0.0f deg%s",
-             100.0 * div_auto_coherence,
-             div_auto_holding ? "HOLD" : "track", div_auto_binhz,
-             div_gain, div_phase,
-             div_auto_clamped ? "   [window clamped]" : "");
+    div_status_set("Auto off", "", "", div_gain, div_phase);
+    return G_SOURCE_CONTINUE;
   }
 
-  gtk_label_set_text(GTK_LABEL(status_label), text);
+  char tag[32], detail[32];
+  const char *state;
+  //
+  // Under Hold the weight shown is the one the loop has tracked to, not
+  // the one being applied - seeing the two apart is the point of it. The
+  // sliders show what is applied.
+  //
+  const double g = div_auto_hold ? div_track_gain  : div_gain;
+  const double p = div_auto_hold ? div_track_phase : div_phase;
+  //
+  // "*" on the tag: the window ran past the Nyquist limit for this sample
+  // rate and was clamped, so it is not the one that was asked for.
+  //
+  const char *clamp = div_auto_clamped ? "*" : "";
+  detail[0] = 0;
+
+  switch (div_auto_ref) {
+  case DIV_REF_CARRIER:
+    snprintf(tag, sizeof(tag), "Car %.0fHz%s", div_auto_binhz, clamp);
+
+    if (!div_auto_carrier_valid) {
+      state = "search";
+    } else {
+      state = div_auto_hold ? "HOLD" : (div_auto_holding ? "wait" : "track");
+      snprintf(detail, sizeof(detail),
+               (fabs(div_auto_carrier) < 10000.0) ? "%+.2f Hz" : "%+.0f Hz",
+               div_auto_carrier);
+    }
+
+    break;
+
+  case DIV_REF_RADE_BAND:
+    snprintf(tag, sizeof(tag), "RADE %s", div_rade_side_text());
+    state = div_auto_hold ? "HOLD" : (div_auto_holding ? "wait" : "track");
+    snprintf(detail, sizeof(detail), "coh %3.0f%%", 100.0 * div_auto_coherence);
+    break;
+
+  case DIV_REF_RADE_V1:
+    snprintf(tag, sizeof(tag), "RADE V1");
+
+    if (rade_corr_locked) {
+      //
+      // The pilot percentage is the share of the energy in the pilot span
+      // that the pilot itself accounts for, so it reads low under strong
+      // QRM even while the correlator tracks perfectly well - which is
+      // the situation this mode exists for. Lock is the thing to watch.
+      //
+      //
+      // "fade": locked, but the pilot is not currently strong enough to
+      // measure from, so the weight is frozen at its last good value.
+      // That is a fade, not a loss - the lock is kept for ten seconds.
+      //
+      state = div_auto_hold ? "HOLD" : (div_auto_holding ? "fade" : "LOCK");
+      snprintf(detail, sizeof(detail), "%s %3.0f%%",
+               div_rade_side_text(), 100.0 * rade_corr_quality);
+    } else {
+      state = rade_corr_confirming ? "confrm" : "search";
+      snprintf(detail, sizeof(detail), "%s", div_rade_side_text());
+    }
+
+    break;
+
+  default:
+    snprintf(tag, sizeof(tag), "Win %.0fHz%s", div_auto_binhz, clamp);
+    state = div_auto_hold ? "HOLD" : (div_auto_holding ? "wait" : "track");
+    snprintf(detail, sizeof(detail), "coh %3.0f%%", 100.0 * div_auto_coherence);
+    break;
+  }
+
+  div_status_set(tag, state, detail, g, p);
   return G_SOURCE_CONTINUE;
 }
 
@@ -306,7 +453,7 @@ static void auto_changed_cb(GtkWidget *widget, gpointer data) {
   int previous = div_auto_mode;
   div_auto_mode = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
 
-  if (updating_ref) {
+  if (updating_ref || updating_invert) {
     //
     // ref_changed_cb() moved div_auto_mode before setting this combo, so
     // "previous" above is not the real previous value and the test below
@@ -338,6 +485,36 @@ static void auto_changed_cb(GtkWidget *widget, gpointer data) {
     diversity_auto_jump();
   }
 
+  update_manual_sensitivity();
+}
+
+//
+// Null and Sum are the same measurement with the sign of the answer and
+// the power that normalises it exchanged, so they are 180 degrees apart.
+// Swapping between them is the quickest way to tell whether the array is
+// pointed at the wanted signal or at the interference, which is worth a
+// button of its own rather than a trip through the combo.
+//
+// It goes through the combo so there is one code path that decides about
+// restarting and about jumping rather than slewing.
+//
+static void invert_cb(GtkWidget *widget, gpointer data) {
+  if (div_auto_mode == DIV_AUTO_OFF) { return; }
+
+  int want = (div_auto_mode == DIV_AUTO_NULL) ? DIV_AUTO_SUM : DIV_AUTO_NULL;
+  div_auto_mode = want;
+  updating_invert = 1;
+  gtk_combo_box_set_active(GTK_COMBO_BOX(auto_combo), want);
+  updating_invert = 0;
+  //
+  // A deliberate operator action to compare the two, so do not slew.
+  //
+  diversity_auto_jump();
+}
+
+// cppcheck-suppress constParameterCallback
+static void hold_cb(GtkWidget *widget, gpointer data) {
+  diversity_auto_set_hold(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)));
   update_manual_sensitivity();
 }
 
@@ -407,12 +584,14 @@ static void ref_changed_cb(GtkWidget *widget, gpointer data) {
 
   diversity_auto_reset();
   update_manual_sensitivity();
+  update_visibility();
 }
 
 static void follow_cb(GtkWidget *widget, gpointer data) {
   div_auto_follow_filter = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   diversity_auto_reset();
   update_manual_sensitivity();
+  update_visibility();
 }
 
 static void centre_cb(GtkWidget *widget, gpointer data) {
@@ -579,7 +758,7 @@ void diversity_menu(GtkWidget *parent) {
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(follow_b), div_auto_follow_filter);
   gtk_grid_attach(GTK_GRID(grid), follow_b, 1, 8, 1, 1);
   g_signal_connect(follow_b, "toggled", G_CALLBACK(follow_cb), NULL);
-  GtkWidget *centre_label = gtk_label_new("Window centre (Hz)");
+  centre_label = gtk_label_new("Window centre (Hz)");
   gtk_widget_set_name(centre_label, "boldlabel");
   gtk_widget_set_halign(centre_label, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), centre_label, 0, 9, 1, 1);
@@ -594,7 +773,7 @@ void diversity_menu(GtkWidget *parent) {
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(centre_spin), div_auto_centre);
   gtk_grid_attach(GTK_GRID(grid), centre_spin, 1, 9, 1, 1);
   g_signal_connect(centre_spin, "value_changed", G_CALLBACK(centre_cb), NULL);
-  GtkWidget *width_label = gtk_label_new("Window width (Hz)");
+  width_label = gtk_label_new("Window width (Hz)");
   gtk_widget_set_name(width_label, "boldlabel");
   gtk_widget_set_halign(width_label, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), width_label, 0, 10, 1, 1);
@@ -602,7 +781,7 @@ void diversity_menu(GtkWidget *parent) {
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(width_spin), div_auto_width);
   gtk_grid_attach(GTK_GRID(grid), width_spin, 1, 10, 1, 1);
   g_signal_connect(width_spin, "value_changed", G_CALLBACK(width_cb), NULL);
-  GtkWidget *res_label = gtk_label_new("Resolution");
+  res_label = gtk_label_new("Resolution");
   gtk_widget_set_name(res_label, "boldlabel");
   gtk_widget_set_halign(res_label, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), res_label, 0, 11, 1, 1);
@@ -619,7 +798,7 @@ void diversity_menu(GtkWidget *parent) {
                               "the status line.");
   gtk_grid_attach(GTK_GRID(grid), res_combo, 1, 11, 1, 1);
   g_signal_connect(res_combo, "changed", G_CALLBACK(res_changed_cb), NULL);
-  GtkWidget *weight_label = gtk_label_new("Weighting");
+  weight_label = gtk_label_new("Weighting");
   gtk_widget_set_name(weight_label, "boldlabel");
   gtk_widget_set_halign(weight_label, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), weight_label, 0, 12, 1, 1);
@@ -647,7 +826,7 @@ void diversity_menu(GtkWidget *parent) {
   gtk_range_set_value(GTK_RANGE(tau_scale), div_auto_tau);
   gtk_grid_attach(GTK_GRID(grid), tau_scale, 1, 13, 1, 1);
   g_signal_connect(G_OBJECT(tau_scale), "value_changed", G_CALLBACK(tau_cb), NULL);
-  GtkWidget *coh_label = gtk_label_new("Min coherence (%)");
+  coh_label = gtk_label_new("Min coherence (%)");
   gtk_widget_set_name(coh_label, "boldlabel");
   gtk_widget_set_halign(coh_label, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), coh_label, 0, 14, 1, 1);
@@ -656,16 +835,59 @@ void diversity_menu(GtkWidget *parent) {
   gtk_range_set_value(GTK_RANGE(coh_scale), 100.0 * div_auto_coherence_min);
   gtk_grid_attach(GTK_GRID(grid), coh_scale, 1, 14, 1, 1);
   g_signal_connect(G_OBJECT(coh_scale), "value_changed", G_CALLBACK(coh_cb), NULL);
-  GtkWidget *reset_b = gtk_button_new_with_label("Restart averaging");
-  gtk_grid_attach(GTK_GRID(grid), reset_b, 0, 15, 1, 1);
+  //
+  // The three things done while listening rather than while setting up,
+  // on one row of their own.
+  //
+  GtkWidget *buttons = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+  reset_b = gtk_button_new_with_label("Restart averaging");
+  gtk_widget_set_tooltip_text(reset_b,
+                              "Discard the accumulated statistics and start the "
+                              "estimate again from nothing.");
   g_signal_connect(reset_b, "clicked", G_CALLBACK(reset_cb), NULL);
+  gtk_box_pack_start(GTK_BOX(buttons), reset_b, FALSE, FALSE, 0);
+  hold_b = gtk_toggle_button_new_with_label("Hold");
+  gtk_widget_set_tooltip_text(hold_b,
+                              "Stop applying the loop's answer without stopping the "
+                              "loop. The gain and phase controls become yours while "
+                              "it is held, and releasing puts the tracked answer in "
+                              "place in one step. The status line shows the tracked "
+                              "value meanwhile, so the two can be compared.");
+  g_signal_connect(hold_b, "toggled", G_CALLBACK(hold_cb), NULL);
+  gtk_box_pack_start(GTK_BOX(buttons), hold_b, FALSE, FALSE, 0);
+  invert_b = gtk_button_new_with_label("Invert");
+  gtk_widget_set_tooltip_text(invert_b,
+                              "Swap Null and Sum. The two answers are 180 degrees "
+                              "apart, so this is the quick way to tell whether the "
+                              "array is pointed at the wanted signal or at the "
+                              "interference.");
+  g_signal_connect(invert_b, "clicked", G_CALLBACK(invert_cb), NULL);
+  gtk_box_pack_start(GTK_BOX(buttons), invert_b, FALSE, FALSE, 0);
+  gtk_grid_attach(GTK_GRID(grid), buttons, 0, 15, 2, 1);
+  //
+  // The status line spans both columns and is held to exactly
+  // DIV_STATUS_CHARS characters, so it fits inside the width the controls
+  // already need and cannot push the dialog wider whatever it has to say.
+  //
   status_label = gtk_label_new("");
   gtk_widget_set_halign(status_label, GTK_ALIGN_START);
-  gtk_grid_attach(GTK_GRID(grid), status_label, 1, 15, 1, 1);
+  gtk_label_set_width_chars(GTK_LABEL(status_label), DIV_STATUS_CHARS);
+  gtk_label_set_max_width_chars(GTK_LABEL(status_label), DIV_STATUS_CHARS);
+  {
+    PangoAttrList *attrs = pango_attr_list_new();
+    pango_attr_list_insert(attrs, pango_attr_family_new("monospace"));
+    gtk_label_set_attributes(GTK_LABEL(status_label), attrs);
+    pango_attr_list_unref(attrs);
+  }
+  gtk_grid_attach(GTK_GRID(grid), status_label, 0, 16, 2, 1);
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
   update_manual_sensitivity();
+  //
+  // After show_all, which would otherwise have shown every row.
+  //
+  update_visibility();
 
   if (radio_is_remote) {
     //
@@ -680,7 +902,9 @@ void diversity_menu(GtkWidget *parent) {
     gtk_widget_set_sensitive(tau_scale, FALSE);
     gtk_widget_set_sensitive(coh_scale, FALSE);
     gtk_widget_set_sensitive(reset_b, FALSE);
-    gtk_label_set_text(GTK_LABEL(status_label), "Auto phasing runs on the radio side only");
+    gtk_widget_set_sensitive(hold_b, FALSE);
+    gtk_widget_set_sensitive(invert_b, FALSE);
+    div_status_set("Remote", "", "radio side", div_gain, div_phase);
     return;
   }
 
