@@ -623,7 +623,7 @@ void display_menu(GtkWidget *parent) {
     g_signal_connect(btn, "toggled", G_CALLBACK(tx_filled_cb), NULL);
     btn = gtk_check_button_new_with_label("... with border");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), transmitter->display_fill_border);
-    gtk_grid_attach(GTK_GRID(tx_grid), btn, col + 1, row, 2, 1);
+    gtk_grid_attach(GTK_GRID(tx_grid), btn, col + 1, row, 1, 1);
     g_signal_connect(btn, "toggled", G_CALLBACK(tx_fillborder_cb), NULL);
     if (!radio_is_remote) {
       row += 4;
