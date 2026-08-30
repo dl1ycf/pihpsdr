@@ -180,6 +180,7 @@ int audio_open_input(TRANSMITTER *tx) {
   //
   // Look up device name and determine device ID
   //
+  tx->local_audio_active = 0;
   padev = -1;
   for (i = 0; i < n_input_devices; i++) {
     if (!strcmp(tx->audio_name, input_devices[i].name)) {
@@ -195,7 +196,6 @@ int audio_open_input(TRANSMITTER *tx) {
     t_print("%s: not registered: %s\n", __func__, tx->audio_name);
     return -1;
   }
-  g_mutex_lock(&tx->audio_mutex);
   bzero(&inputParameters, sizeof(inputParameters)); //not necessary if you are filling in all the fields
   inputParameters.channelCount = 1;   // MONO
   inputParameters.device = padev;
@@ -207,7 +207,6 @@ int audio_open_input(TRANSMITTER *tx) {
   if (err != paNoError) {
     t_print("%s: open stream error %s\n", __func__, Pa_GetErrorText(err));
     tx->audio_handle = NULL;
-    g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
   tx->audio_buffer = g_new(double, MIC_BUFFER_SIZE);
@@ -216,7 +215,6 @@ int audio_open_input(TRANSMITTER *tx) {
     Pa_CloseStream(tx->audio_handle);
     tx->audio_handle = NULL;
     t_print("%s: alloc buffer failed.\n", __func__);
-    g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
   err = Pa_StartStream(tx->audio_handle);
@@ -226,13 +224,12 @@ int audio_open_input(TRANSMITTER *tx) {
     tx->audio_handle = NULL;
     g_free(tx->audio_buffer);
     tx->audio_buffer = NULL;
-    g_mutex_unlock(&tx->audio_mutex);
     return -1;
   }
   //
   // Finished!
   //
-  g_mutex_unlock(&tx->audio_mutex);
+  tx->local_audio_active = 1;
   return 0;
 }
 
@@ -246,16 +243,15 @@ static int pa_out_cb(const void *inputBuffer, void *outputBuffer, unsigned long 
   // Assume paFloat32 is represented as "float" in C
   float *out = (float *)outputBuffer;
   RECEIVER *rx = (RECEIVER *)userdata;
-  if (rx->local_audio == 0) {
+  if (rx->local_audio_active == 0) {
     // This usually means we are in audio_close_output() and then
-    // we should not hit the mutex
+    // we should quickly return
     return paContinue;
   }
   if (out == NULL) {
     t_print("%s: bogus audio buffer in callback\n", __func__);
     return paContinue;
   }
-  g_mutex_lock(&rx->audio_mutex);
   if (rx->audio_buffer != NULL && rx->st_buffer != NULL) {
     if (rx->local_audio_channels == 1) {
       // MONO code
@@ -311,7 +307,6 @@ static int pa_out_cb(const void *inputBuffer, void *outputBuffer, unsigned long 
       }
     }
   }
-  g_mutex_unlock(&rx->audio_mutex);
   return paContinue;
 }
 
@@ -325,9 +320,10 @@ static int pa_in_cb(const void *inputBuffer, void *outputBuffer, unsigned long f
   // Assume paFloat32 is represented as "float" in C
   const float *in = (float *)inputBuffer;
   TRANSMITTER *tx = (TRANSMITTER *)userdata;
-  if (tx->local_audio == 0) {
+  if (tx->local_audio_active == 0) {
     // This usually means we are in audio_close_input() and then
-    // we should not hit the mutex
+    // we should quickly return. If we pass beyond this point,
+    // it is guaranteed that the buffers will be valid at least 50 msec
     return paContinue;
   }
   if (in == NULL) {
@@ -335,10 +331,7 @@ static int pa_in_cb(const void *inputBuffer, void *outputBuffer, unsigned long f
     t_print("%s: bogus audio buffer in callback\n", __func__);
     return paContinue;
   }
-  g_mutex_lock(&tx->audio_mutex);
   if (tx->audio_buffer != NULL) {
-    //
-    // mutex protected: ring buffer cannot vanish
     //
     // Normally there is a slight mis-match between the 48kHz sample
     // rate of the audio input device and the 48kHz rate of the
@@ -357,9 +350,18 @@ static int pa_in_cb(const void *inputBuffer, void *outputBuffer, unsigned long f
     if (!radio_is_transmitting()) {
       if (tx->audio_flag) {
         tx->audio_flag = 0;
-        tx->audio_buffer_outpt = 0;
-        tx->audio_buffer_inpt  = 960;
-        bzero(tx->audio_buffer, 960 * sizeof(double));
+        int avail = (tx->audio_buffer_inpt - tx->audio_buffer_outpt) & MIC_BUFFER_MASK;
+        t_print("%s:avail=%d\n", __func__, avail);
+        if (avail >= 960) {
+          // Discard from input buffer
+          tx->audio_buffer_inpt  = (tx->audio_buffer_outpt + 960) & MIC_BUFFER_MASK;
+        } else {
+          // add some silence
+          for (int i = avail; i < 960; i++) {
+            tx->audio_buffer[tx->audio_buffer_inpt] = 0.0;
+            tx->audio_buffer_inpt = (tx->audio_buffer_inpt + 1) & MIC_BUFFER_MASK;
+          }
+        }
       }
     } else {
       tx->audio_flag = 1;
@@ -378,7 +380,6 @@ static int pa_in_cb(const void *inputBuffer, void *outputBuffer, unsigned long f
       }
     }
   }
-  g_mutex_unlock(&tx->audio_mutex);
   return paContinue;
 }
 
@@ -388,12 +389,7 @@ static int pa_in_cb(const void *inputBuffer, void *outputBuffer, unsigned long f
 //
 double audio_get_next_mic_sample(TRANSMITTER *tx) {
   double sample;
-  g_mutex_lock(&tx->audio_mutex);
-  //
-  // mutex protected (for every single sample!):
-  // ring buffer cannot vanish while being processed here
-  //
-  if ((tx->audio_buffer == NULL) || (tx->audio_buffer_outpt == tx->audio_buffer_inpt)) {
+  if (tx->local_audio_active == 0 || (tx->audio_buffer == NULL) || (tx->audio_buffer_outpt == tx->audio_buffer_inpt)) {
     // no buffer, or nothing in buffer: insert silence
     sample = 0.0;
   } else {
@@ -402,7 +398,6 @@ double audio_get_next_mic_sample(TRANSMITTER *tx) {
     MEMORY_BARRIER;
     tx->audio_buffer_outpt = newpt;
   }
-  g_mutex_unlock(&tx->audio_mutex);
   return sample;
 }
 
@@ -420,6 +415,7 @@ int audio_open_output(RECEIVER *rx) {
   //
   // Look up device name and determine device ID
   //
+  rx->local_audio_active = 0;
   channels = 0;
   padev = -1;
   for (i = 0; i < n_output_devices; i++) {
@@ -437,7 +433,6 @@ int audio_open_output(RECEIVER *rx) {
     t_print("%s: not registered: %s\n", __func__, rx->audio_name);
     return -1;
   }
-  g_mutex_lock(&rx->audio_mutex);
   bzero(&outputParameters, sizeof(outputParameters)); //not necessary if you are filling in all the fields
   outputParameters.device = padev;
   outputParameters.hostApiSpecificStreamInfo = NULL;
@@ -451,7 +446,6 @@ int audio_open_output(RECEIVER *rx) {
   if (err != paNoError) {
     t_print("%s: open stream error %s\n", __func__, Pa_GetErrorText(err));
     rx->audio_handle = NULL;
-    g_mutex_unlock(&rx->audio_mutex);
     return -1;
   }
   //
@@ -471,7 +465,6 @@ int audio_open_output(RECEIVER *rx) {
     g_free(rx->st_buffer);
     rx->audio_buffer = NULL;
     rx->st_buffer = NULL;
-    g_mutex_unlock(&rx->audio_mutex);
     return -1;
   }
   err = Pa_StartStream(rx->audio_handle);
@@ -483,7 +476,6 @@ int audio_open_output(RECEIVER *rx) {
     g_free(rx->st_buffer);
     rx->audio_buffer = NULL;
     rx->st_buffer = NULL;
-    g_mutex_unlock(&rx->audio_mutex);
     return -1;
   }
   rx->cwaudio = 0;
@@ -491,7 +483,7 @@ int audio_open_output(RECEIVER *rx) {
   //
   // Finished!
   //
-  g_mutex_unlock(&rx->audio_mutex);
+  rx->local_audio_active = 1;
   return 0;
 }
 
@@ -503,7 +495,8 @@ int audio_open_output(RECEIVER *rx) {
 void audio_close_input(TRANSMITTER *tx) {
   t_print("%s: TX:%s\n", __func__, tx->audio_name);
   tx->local_audio = 0;
-  g_mutex_lock(&tx->audio_mutex);
+  tx->local_audio_active = 0;
+  usleep(50000);
   if (tx->audio_handle != NULL) {
     PaError err = Pa_StopStream(tx->audio_handle);
     if (err != paNoError) {
@@ -517,7 +510,6 @@ void audio_close_input(TRANSMITTER *tx) {
   }
   g_free(tx->audio_buffer);
   tx->audio_buffer = NULL;
-  g_mutex_unlock(&tx->audio_mutex);
 }
 
 //
@@ -528,7 +520,8 @@ void audio_close_input(TRANSMITTER *tx) {
 void audio_close_output(RECEIVER *rx) {
   t_print("%s: RX%d:%s\n", __func__, rx->id + 1, rx->audio_name);
   rx->local_audio = 0;
-  g_mutex_lock(&rx->audio_mutex);
+  rx->local_audio_active = 0;
+  usleep(50000);
   if (rx->audio_handle != NULL) {
     PaError err = Pa_StopStream(rx->audio_handle);
     if (err != paNoError) {
@@ -544,7 +537,6 @@ void audio_close_output(RECEIVER *rx) {
   rx->audio_buffer = NULL;
   g_free(rx->st_buffer);
   rx->st_buffer = NULL;
-  g_mutex_unlock(&rx->audio_mutex);
 }
 
 //
@@ -554,20 +546,13 @@ void audio_close_output(RECEIVER *rx) {
 // we have to store the data such that the PA callback function
 // can access it.
 //
-// Note that the check on radio_is_transmitting() takes care that "blocking"
-// by the mutex can only occur in the moment of a RX/TX transition if
-// both audio_write() and tx_audio_write() get a "go".
-//
-// So mutex locking/unlocking should only cost few CPU cycles in
-// normal operation.
-//
 void audio_write (RECEIVER *rx, double left, double right) {
   double *buffer = rx->audio_buffer;
   //
   // If transmitting without duplex, quickly return
   //
+  if (rx->local_audio_active == 0) { return; }
   if (rx == active_receiver && radio_is_transmitting() && !duplex) { return; }
-  g_mutex_lock(&rx->audio_mutex);
   rx->cwaudio = 0;
   if (rx->audio_handle != NULL && buffer != NULL) {
     int avail = (rx->audio_buffer_inpt - rx->audio_buffer_outpt) & RING_BUFFER_MASK;
@@ -632,7 +617,6 @@ void audio_write (RECEIVER *rx, double left, double right) {
       rx->audio_buffer_inpt = newpt;
     }
   }
-  g_mutex_unlock(&rx->audio_mutex);
   return;
 }
 
@@ -644,9 +628,7 @@ void audio_write (RECEIVER *rx, double left, double right) {
 // a zero sample to keep the buffer filling at CW_LAT_TARGET.
 //
 void tx_audio_write(RECEIVER *rx, double sample) {
-  g_mutex_lock(&rx->audio_mutex);
-  if (rx->st_buffer == NULL) {
-    g_mutex_unlock(&rx->audio_mutex);
+  if (rx->local_audio_active == 0 || rx->st_buffer == NULL) {
     return;
   }
   int inpt = rx->st_buffer_inpt;
@@ -709,7 +691,6 @@ void tx_audio_write(RECEIVER *rx, double sample) {
     //
     break;
   }
-  g_mutex_unlock(&rx->audio_mutex);
   return;
 }
 
