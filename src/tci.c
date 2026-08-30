@@ -470,7 +470,8 @@ static void tci_service_rx_audio (void) {
 
 //
 // To keep things  simple, tci_send_dds does not report
-// the center frequency but the "real" RX frequency
+// the center frequency but the VFO frequency, which may
+// be different if using CTUN.
 //
 static void tci_send_dds (CLIENT *client, int v) {
   long long f;
@@ -838,10 +839,29 @@ static void tci_broadcast_rx_mute_state (int receiver_id, int state) {
   }
 }
 
-static double tci_sql_db_from_slider(double value) {
-  if (value < 0.0) { value = 0.0; }
-  if (value > 100.0) { value = 100.0; }
-  return ((value / 100.0) * 140.0) - 140.0;
+static double conv_sql_pi_to_tci(double pival) {
+  //
+  // Convert a piHPSDR squelch level (range: 0...100) to a TCI squelch level (range: -140...0)
+  // Both scales are logarithmic, so the linear mapping is
+  //
+  //  piHPSDR      TCI
+  //  -----------------
+  //     0         -140
+  //    50          -70
+  //   100            0
+  //
+  double tcival = (pival * 1.4) -140.0;
+  if (tcival < -140.0) { tcival = -140.0; }
+  if (tcival >    0.0) { tcival =    0.0; }
+  return tcival;
+}
+
+static double conv_sql_tci_to_pi(double tcival) {
+  // opposite of conv_sql_pi_to_tci()
+  double pival = (tcival + 140.0) * 0.71429;
+  if (pival > 100.0) { pival = 100.0; }
+  if (pival <   0.0) { pival =   0.0; }
+  return pival;
 }
 
 static void tci_send_sql_enable (CLIENT *client, int receiver_id) {
@@ -863,15 +883,7 @@ static void tci_send_sql_level (CLIENT *client, int receiver_id) {
   char msg[MAXMSGSIZE];
   double value;
   if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  value = tci_sql_db_from_slider(receiver[receiver_id]->squelch);
-  snprintf (msg, MAXMSGSIZE, "sql_level:%d,%0.0f;", receiver_id, value);
-  tci_send_text (client, msg);
-}
-
-static void tci_send_sql_level_value (CLIENT *client, int receiver_id, double value) {
-  char msg[MAXMSGSIZE];
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
-  value = tci_clamp_double(value, -140.0, 0.0);
+  value = conv_sql_pi_to_tci(receiver[receiver_id]->squelch);
   snprintf (msg, MAXMSGSIZE, "sql_level:%d,%0.0f;", receiver_id, value);
   tci_send_text (client, msg);
 }
@@ -1650,9 +1662,6 @@ static void tci_cmd_rx_nr_enable (CLIENT *client, const TCI_CMD *cmd) {
   }
 }
 
-
-
-
 static void tci_cmd_volume (CLIENT *client, const TCI_CMD *cmd) {
   if (cmd->argc >= 1) {
     double volume = tci_clamp_double(tci_double(cmd->argv[0], 0.0), -40.0, 0.0);
@@ -1744,15 +1753,17 @@ static void tci_cmd_sql_level (CLIENT *client, const TCI_CMD *cmd) {
     return;
   }
   if (cmd->argc >= 2) {
-    double level_db = tci_clamp_double(tci_double(cmd->argv[1], tci_sql_db_from_slider(receiver[receiver_id]->squelch)),
-                                       -140.0, 0.0);
-    tci_send_sql_level_value(client, receiver_id, level_db);
+    double tci_db = conv_sql_pi_to_tci(receiver[receiver_id]->squelch); // current value
+    tci_db = tci_double(cmd->argv[1], tci_db);                          // convert string, take current value if it fails
+    tci_db = tci_clamp_double(tci_db, -140.0, 0.0);                     // restrict to legal interval
+    //
+    // Apply value
+    //
     ++suppress_popup_sliders;
-    radio_set_squelch(receiver_id, level_db);
+    radio_set_squelch(receiver_id, conv_sql_tci_to_pi(tci_db));
     --suppress_popup_sliders;
-  } else {
-    tci_send_sql_level(client, receiver_id);
   }
+  tci_send_sql_level(client, receiver_id);
 }
 
 static void tci_cmd_rx_sensors_enable (CLIENT *client, const TCI_CMD *cmd) {
@@ -1763,21 +1774,6 @@ static void tci_cmd_tx_sensors_enable (CLIENT *client, const TCI_CMD *cmd) {
   client->txsensor = tci_bool (cmd->argv[0]);
 }
 
-static void tci_cmd_spot (CLIENT *client, const TCI_CMD *cmd) {
-}
-
-static void tci_cmd_spot_delete (CLIENT *client, const TCI_CMD *cmd) {
-}
-
-static void tci_cmd_spot_clear (CLIENT *client, const TCI_CMD *cmd) {
-}
-
-
-static void tci_cmd_iq_start (CLIENT *client, const TCI_CMD *cmd) {
-}
-
-static void tci_cmd_iq_stop (CLIENT *client, const TCI_CMD *cmd) {
-}
 
 static void tci_cmd_audio_start (CLIENT *client, const TCI_CMD *cmd) {
   int receiver_id = tci_int (cmd->argv[0], 0);
@@ -2289,8 +2285,6 @@ static const TCI_DISPATCH tci_dispatch[] = {
   { "rx_volume",         2,  3, tci_cmd_rx_volume },
   { "agc_gain",          1,  2, tci_cmd_agc_gain },
   { "agc_mode",          1,  2, tci_cmd_agc_mode },
-  { "iq_start",          0,  1, tci_cmd_iq_start },
-  { "iq_stop",           0,  1, tci_cmd_iq_stop },
   { "iq_samplerate",     1,  1, tci_cmd_iq_samplerate },
   { "mon_volume",        0,  1, tci_cmd_mon_volume },
   { "mon_enable",        0,  1, tci_cmd_mon_enable },
@@ -2300,9 +2294,6 @@ static const TCI_DISPATCH tci_dispatch[] = {
   { "audio_stream_samples",        0, -1, tci_cmd_audio_stream_samples },
   { "rx_sensors_enable", 1,  2, tci_cmd_rx_sensors_enable },
   { "tx_sensors_enable", 1,  2, tci_cmd_tx_sensors_enable },
-  { "spot",              3,  5, tci_cmd_spot },
-  { "spot_delete",       1,  1, tci_cmd_spot_delete },
-  { "spot_clear",        0,  0, tci_cmd_spot_clear },
   { "audio_start",       1,  1, tci_cmd_audio_start },
   { "audio_stop",        1,  1, tci_cmd_audio_stop },
   { "modulation",        1,  2, tci_cmd_modulation },
@@ -2345,7 +2336,7 @@ static void tci_handle_text (CLIENT *client, char* msg) {
     d->handler (client, &cmd);
     return;
   }
-  if (rigctl_debug) { t_print ("TCI%d unknown command: %s\n", client->seq, cmd.cmd ? cmd.cmd : "(null)"); }
+  if (rigctl_debug) { t_print ("TCI%d unimplemented command: %s\n", client->seq, cmd.cmd ? cmd.cmd : "(null)"); }
 }
 
 static void tci_send_smeter (CLIENT *client, int v) {
