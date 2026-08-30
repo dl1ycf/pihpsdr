@@ -171,7 +171,7 @@ static void adc_filter_bypass_cb(GtkWidget *widget, gpointer data) {
 
 //
 // possible the device has been changed:
-// call audo_close_output with old device, audio_open_output with new one
+// call audio_close_output with old device, audio_open_output with new one
 //
 static void local_output_changed_cb(GtkWidget *widget, gpointer data) {
   int i = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
