@@ -237,6 +237,61 @@ stubs with a plausible subset of fields. A first version did the latter,
 read `filter_low` from the wrong offset, and reported two working modes as
 broken.
 
+### The digital mode proposal, and what was wrong with it
+
+`diversity-digital-iq-proposal.md` proposed a new reference for digital
+modes, built around tracking polar rotation and measuring dispersion in
+I/Q space. Something was built under that name, but almost none of this
+survived, and the parts that did not are worth recording because each of
+them reads plausibly.
+
+**Most of it already existed.** The proposed pipeline — cross-spectral
+accumulation of `Sxy/Sxx/Syy`, coherence weighting, `w = ±Sxy/Sxx` or
+`-Sxy/Syy`, a 15 % slew — is a description of `div_process_block()` as it
+already stood. So was the headline feature of placing the analysis window
+outside the passband: the hand-placed branch of `div_bin_range()` has
+never looked at the filter edges, and only the RADE branch clips to them.
+The proposed *Allow outside passband* checkbox would have been wired to
+nothing at all. The only clamp is the Nyquist one, which is an aliasing
+guard and must not be defeatable.
+
+**Aligning the phase trajectories of the two arms would have destroyed
+the measurement.** The proposal called for tracking each arm's polar
+rotation and aligning them before accumulating the cross spectrum. The
+relative phase between `z0` and `z1` *is* the quantity being estimated;
+removing it removes the answer. It would also have bought nothing even if
+it were harmless — both DDCs are given the same NCO frequency, so a
+common frequency offset appears identically in both arms and cancels
+exactly in `X0·conj(X1)`.
+
+**Phase-space dispersion cannot be measured at this tap.** The proposal's
+rationale rests on constellation tightness and envelope stability. The
+tap is raw I/Q at the full DDC rate, ahead of WDSP: no matched filter, no
+symbol timing, no downconversion to the signal's own centre. There is no
+constellation there to measure the dispersion of, and building one would
+mean the filter and resampler this design does not have.
+
+Constant-modulus methods were considered on the same grounds and rejected
+on stronger ones. CMA earns its keep against ISI and multipath, and this
+array has neither: DDC1 is locked to DDC0 with no relative sample delay,
+so the channel between the arms is a memoryless complex gain, for which
+maximum ratio combining is provably SNR-optimal. CMA could at best match
+it and at worst settle into a different local minimum. PSK31 and QAM are
+not constant-envelope in any case.
+
+**The ±1500 Hz default was right by accident.** It was derived from the
+tapped buffer being spectrally inverted — but the centre and width
+controls live in the shifted frame, and `div_shift_to_bin()` applies the
+inversion downstream of them, so reasoning from the inverted frame here
+double-counts. USB is `+1500` and LSB is `-1500` because that is where
+the *filter edges* are, not because of the inversion. The mode built
+instead uses the follow-filter tick and carries no frequency constant.
+
+What was left after all that was a preset, which is not worth a reference
+mode. What the mode actually does — measure the noise on the empty part
+of the passband and solve MVDR against it — was not in the proposal at
+all.
+
 ## Files
 
 | File | Change |
@@ -245,7 +300,7 @@ broken.
 | `src/receiver.c` | tap in `rx_add_div_iq_samples()`; stop/restart around sample rate changes |
 | `src/radio.c` | start/stop with diversity, props, startup hook |
 | `src/diversity_menu.c` | controls and status readout |
-| `test/diversity/` | Mode coverage test and CPU benchmark |
+| `test/diversity/` | Mode coverage, window placement and keying, digital-mode checks, RADE acquisition, CPU benchmark |
 
 ## Not done yet
 

@@ -49,7 +49,8 @@ int main(void) {
     { "Window/Null",  DIV_REF_BAND,      DIV_AUTO_NULL },
     { "Window/Sum",   DIV_REF_BAND,      DIV_AUTO_SUM  },
     { "Carrier/Sum",  DIV_REF_CARRIER,   DIV_AUTO_SUM  },
-    { "RADEband/Sum", DIV_REF_RADE_BAND, DIV_AUTO_SUM  },
+    { "Digital/Sum",  DIV_REF_DIGITAL_IQ, DIV_AUTO_SUM  },
+    { "Digital/Null", DIV_REF_DIGITAL_IQ, DIV_AUTO_NULL },
   };
   int fails = 0;
   for (unsigned c = 0; c < sizeof(cases)/sizeof(cases[0]); c++) {

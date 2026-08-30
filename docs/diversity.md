@@ -3,10 +3,14 @@
 How two-antenna diversity works, and how the automatic phasing added on top
 of it functions.
 
-This is the reference document. Two companions cover narrower ground:
-[`diversity-rade.md`](diversity-rade.md) for the FreeDV RADE modes, and
+This is the reference document. Four companions cover narrower ground:
+[`diversity-rade.md`](diversity-rade.md) for the FreeDV RADE V1 correlator,
+[`diversity-digital-iq-proposal.md`](diversity-digital-iq-proposal.md)
+for the Digital I/Q reference,
 [`diversity-auto-phasing.md`](diversity-auto-phasing.md) for the design
-rationale and the ideas that were tried and discarded.
+rationale and the ideas that were tried and discarded, and
+[`diversity-measurements.md`](diversity-measurements.md) for what all of
+it measurably does on recorded on-air signals.
 
 ---
 
@@ -185,6 +189,41 @@ Fit quality is the magnitude-squared coherence
 `γ² = |Sxy|²/(Sxx·Syy)`. Below the **Min coherence** setting the loop
 holds rather than chasing noise, and the status line says `HOLD`.
 
+### Noticing that the signal has stopped
+
+Coherence alone does not notice. The accumulators forget exponentially,
+so when a transmission ends `Sxy`, `Sxx` and `Syy` all decay *together*
+and `γ²` stays near 1 the whole way down — a 30 dB signal at the default
+2 s averaging kept the loop reporting `track` for 5.8 time constants,
+about **twelve seconds**, adjusting the weight on noise the entire time.
+Once per gap, on every mode that has gaps.
+
+So each block also compares this block's power, over the same bins and
+with the same weights the estimate uses, against the smoothed power
+accumulated over them. More than 10 dB apart and the statistics no longer
+describe what is on the air: the loop holds, and the weight stays at the
+last value measured on a real signal — which is what is wanted across a
+gap. Measured: `track` to holding in **one block**, with the weight
+unmoved.
+
+The test scales itself. It fires on a signal well out of the noise, which
+is exactly where stale statistics do the most harm, and stays quiet on a
+weak one, where they hold little signal to be stale about. 10 dB is
+comfortably past ordinary fading and far short of a signal stopping, and
+holding through a deep fade is wanted anyway. It is one-sided, so a
+signal *starting* never trips it.
+
+It holds rather than flushing. The accumulators go on decaying at the
+operator's averaging time either way, but flushing would put the loop one
+block from the start, where the single-block cross spectrum is perfectly
+coherent by construction and any bin at all looks like a signal.
+
+**This matters most on CW**, where the signal is absent for most of a
+transmission rather than only between them. The loop previously spent
+every key-up period walking the weight around on noise; it now measures
+only while there is something to measure, so the estimate is built from
+key-down periods alone.
+
 ### Applying the weight
 
 `div_apply_weight()` clamps `|w|` to +20 dB — inside the sliders' ±27 dB,
@@ -209,7 +248,14 @@ characters.
 Win 12Hz  track  coh 100%     -2.1 dB   +32°
 Car  3Hz* HOLD   +400000 Hz  -12.3 dB  +179°
 RADE V1   LOCK   LSB 100%     -2.1 dB   +32°
+Dig 12Hz  track  occ  293Hz   -2.1 dB   +38°
+Dig 12Hz  search no signal    +0.0 dB    +0°
 ```
+
+In Digital I/Q the third field is the width of what was found occupied,
+which is checkable against the darker band on the panadapter, and
+`search` means the region is in the right place but empty - as against
+`wait`, which means something was found and then rejected as incoherent.
 
 A `*` on the first field means the window ran past the Nyquist limit for
 this sample rate and was clamped. Under **Hold** the weight shown is the
@@ -227,10 +273,13 @@ exactly on the filter shading, which is a convenient check that the
 frequency reference is right.
 
 In Carrier mode the band is the search region and a brighter vertical line
-marks where the tracker has settled within it. In RADE passband mode it is
-the modem band clipped to the filter, as measured; in RADE V1 it is the
-whole modem band, because the pilot correlator taps the raw stream ahead
-of WDSP and is not affected by the filter.
+marks where the tracker has settled within it. In Digital I/Q it is again
+the search region, with the bins found occupied shaded more strongly over
+the top, so the operator's setting and the measurement are both visible -
+seeing them disagree is how a region placed on the wrong thing shows
+itself. In RADE V1 it is the whole modem band, because the pilot
+correlator taps the raw stream ahead of WDSP and is not affected by the
+filter.
 
 The frequency reference deserves a note, because both halves of it were
 wrong here at different times. The window and the filter edges live in
@@ -369,38 +418,136 @@ SAM and about a hundred times wider than suits measuring a carrier that is
 not going anywhere. Working from the spectrum also means this mode works
 in plain AM, where the SAM PLL does not run at all.
 
-### RADE passband
-
-Places the window on the FreeDV RADE modem band, 750-2200 Hz, on the side
-of the tuned frequency the **operator's passband** puts it — the midpoint
-of the filter edges, which covers LSB, USB and the digital modes without a
-mode table. The window is then clipped to the filter, so a narrower filter
-narrows what is measured.
-
-The passband decides it outright. Taking the stronger of the two sides by
-energy, as an earlier version did, is a coin toss on a signal near the
-noise floor — which is where RADE lives — so with no signal present the
-window settled wherever noise put it and the green overlay could sit above
-an LSB passband indefinitely. The energy comparison survives only for AM,
-SAM and FM, where the passband straddles the carrier and says nothing.
-
-Measuring the side the operator is not listening to is not a fallback
-worth having: whatever is over there is a different signal, filtered out
-downstream, and combining for it would optimise the array for something
-that never reaches the audio.
-
-Maximum ratio combining across the modem band; no QRM nulling.
-
 ### RADE V1 pilot (MVDR)
 
 Correlates against RADE V1's known pilot — on the side of the tuned
 frequency the operator's passband names, and only that side — to separate
 the wanted signal from everything else, which allows the interference covariance to be
 estimated separately and a null steered onto QRM rather than onto the
-signal. Uses no transform at all. See [`diversity-rade.md`](diversity-rade.md).
+signal. The covariance comes from the off-carrier bins of the pilot span,
+on the modem's own side of the tuned frequency, so the rejected sideband
+cannot get into it; the channel is accumulated as a cross-spectrum, so a
+residual frequency error cannot decohere it. Both of those replaced
+simpler versions that measurably did not work — see
+[`diversity-measurements.md`](diversity-measurements.md).
+Uses no transform at all. See [`diversity-rade.md`](diversity-rade.md).
 
-Selecting either RADE reference sets the objective to **Sum**, since on
-RADE the signal being pointed at is the wanted one.
+Selecting the RADE V1 reference sets the objective to **Sum**, since the
+signal the pilot correlator is pointing at is the wanted one. **Null**
+turns that answer through 180 degrees to cancel the RADE station instead,
+which is the quickest way to check the array is pointed at it. The
+correlator has only one answer to compute - MVDR against the interference
+covariance already maximises the pilot's SINR - so unlike the transform
+references the two objectives here really are a sign flip.
+
+Unlike every other reference, this one holds a *lock* - a timing, a
+frequency and a pilot bank it keeps returning to - so it is the only one
+with something to give up. The **Hang** control decides when: how long
+the lock outlives the pilot before the correlator searches again. Long
+rides out a fade on a single station, which is when the weight is worth
+the most; short is what a frequency several stations take turns on wants,
+where each arrives over its own path and until the lock is dropped the
+new one is being combined with the old one's answer. See
+[`diversity-rade.md`](diversity-rade.md).
+
+The wideband **RADE passband** reference that used to sit alongside it has
+been retired. It placed a window on the 750-2200 Hz modem band, on the
+side of the tuned frequency the operator's passband implied, and clipped
+it to the filter. Digital I/Q does the same thing from the same passband
+and does it better: it finds where the modem's energy actually is rather
+than assuming the nominal band, and it measures the noise separately
+instead of assuming both branches carry the same amount. Its slot in the
+props file's `diversity_auto_ref` is migrated to Digital I/Q on restore.
+
+### Digital I/Q (occupancy MVDR)
+
+For a narrow digital signal - FT8, RTTY, PSK31, VARA, JS8 - in a passband
+that is mostly empty. It is the only reference that measures the *noise*
+separately from the signal, and everything it does differently follows
+from that.
+
+The other references have no picture of the noise on its own, so **Sum**
+has to assume the two branches carry equal, uncorrelated noise. That is
+what makes `w = +Sxy/Sxx` maximum ratio combining. On a real station the
+assumption is usually false in two ways at once: ADC1 is often a small
+loop or an active whip on a bare rear-panel input, several dB noisier
+than the main antenna (§1), and much of what both antennas hear is
+common-mode hash picked up on the feedlines, which is *correlated*
+between them. Sum is blind to both.
+
+A digital signal is narrow, so the empty part of the passband can simply
+be looked at:
+
+1. **The region.** The analysis region is the RX filter with **Window
+   follows RX filter** ticked, or a hand-placed centre and width without
+   it - the same two controls as Window mode, kept as their own modal
+   pair. Following the filter needs no sideband table and no ±1500 Hz
+   constant: the passband is already on the correct side of the tuned
+   frequency in USB, LSB, DIGU, DIGL and CW, and under CTUN.
+2. **Occupancy.** The noise floor is the **median** of the bin powers
+   over the region - a median, not a mean, so a signal filling part of
+   the region cannot drag the floor up and hide itself. Bins more than
+   6 dB above it *and* coherent between the two antennas are signal.
+
+   This test has no false-alarm control that scales with the region: three
+   bins clearing the threshold is the requirement whether the region holds
+   thirty of them or two hundred. On a wide region full of nothing but
+   noise, three will. Measured on a no-signal capture the mode produces a
+   weight on 30 % of blocks, and it is why the reference is the wrong one
+   for a narrow CW passband. See
+   [`diversity-measurements.md`](diversity-measurements.md).
+3. **The covariance.** Everything at least four bins clear of an occupied
+   bin is noise, and `R` is accumulated over it. Correlation is not a
+   disqualification here - correlated noise is precisely what `R` exists
+   to describe.
+4. **The solve.** `w = R⁻¹h`, with `h0 = ΣSxx` and `h1 = conj(ΣSxy)` over
+   the signal bins. Diagonally loaded at 1 %, the same 2×2 solve the RADE
+   V1 correlator uses (`div_mvdr2()`), which reaches `R` and `h` from
+   pilot correlations instead.
+
+With `R` diagonal and equal the solve reduces to `conj(h1/h0)`, which is
+exactly `+Sxy/Sxx` - so **the mode degenerates to Sum when the noise
+really is equal and uncorrelated**, which is both the right behaviour and
+the property the tests pin down.
+
+**The guard band is not optional.** A signal 40 dB above the noise puts
+more into its neighbouring bins, through the analysis window's skirts,
+than the noise floor holds - and those bins are correlated with the
+signal's own channel. Feeding them to `R` tells MVDR that the direction
+the signal arrives from is interference, and it steers the null straight
+onto it. This is the standard failure of MVDR trained on data containing
+the wanted signal, and it was observed here before the guard existed: on
+a synthetic test the weight moved 8° off the correct answer. Four bins is
+where the Blackman-Harris skirts have gone.
+
+**A transmission ending is noticed by the shared staleness test** (§4),
+which matters more here than anywhere else: the occupancy test is a ratio
+against the median floor, so it is scale invariant and would not see the
+level collapse at all. When it fires, the occupied span is withdrawn from
+the status line and the panadapter as well, so a signal that has gone
+stops being drawn as one.
+
+**What it cannot do is separate a wanted signal from co-channel QRM.**
+Both are occupied and both are correlated between the arms, so occupancy
+has nothing to tell them apart by - that is what the RADE V1 pilot is
+for. Here the operator separates them by placing the region, and **Null**
+cancels what the region is sitting on, exactly as in Window mode. Both
+objectives are meaningful, so unlike the RADE references this one does
+not force Sum on selection.
+
+**A full region is not an empty one.** If the signal covers the whole
+region the median *is* the signal and occupancy finds nothing - which is
+what a filter set snugly around the signal looks like, with the follow
+tick on, which is what a careful operator does. Holding there would be a
+trap: the better the filter, the more certainly the mode would do
+nothing. Coherence tells the two apart. A full region is coherent, so it
+is accumulated whole and falls through to plain maximum ratio combining;
+an empty one is not, and holds.
+
+Measured on synthetic 2-FSK against a two-path channel: identical to the
+Window reference within 0.2 dB when both branches carry the same noise,
+**13 dB better output SINR** when the aux branch is 20 dB noisier, and
+one block from `track` to `search` when the signal stops.
 
 ---
 
@@ -412,11 +559,12 @@ RADE the signal being pointed at is the wanted one.
 | **Gain / Phase** (coarse, fine) | Manual weight; live when Auto is not driving, and under **Hold** | always |
 | **Auto** | Off / Null / Sum — the objective | always |
 | **Measure on** | Which reference (§5) | always |
-| **Window follows RX filter** | — | Window |
-| **Window centre / width** | The analysis window, or the carrier search region in Carrier mode. Kept separately per mode | Window (unticked), Carrier |
+| **Window follows RX filter** | — | Window, Digital I/Q |
+| **Window centre / width** | The analysis window, the carrier search region in Carrier mode, or the occupancy search region in Digital I/Q. Kept separately per mode | Window (unticked), Carrier, Digital I/Q (unticked) |
 | **Resolution** | 12 / 6 / 3 Hz bins. Finer lifts weak signals out of the noise but halves the update rate each step | all but RADE V1 |
-| **Weighting** | Flat or Coherence (see above) | Window, RADE passband |
+| **Weighting** | Flat or Coherence (see above) | Window |
 | **Averaging** | 0.2-30 s. Time constant for the estimate | always |
+| **Hang** | 1-30 s. How long a lock outlives the pilot before the correlator searches again | RADE V1 |
 | **Min coherence** | Below this the loop holds rather than adapts | all but RADE V1 |
 | **Restart averaging** | Discards the accumulated statistics | always |
 | **Hold** | Stops applying the loop's answer without stopping the loop | always |
@@ -427,6 +575,10 @@ out**. The RADE references place their own window, so four rows never
 applied to them; the pilot correlator uses no transform at all, so two
 more do not either. Greying them left a tall dialog of mostly dead
 controls.
+
+Digital I/Q hides Weighting for the same kind of reason: the occupancy
+split has already decided which bins carry signal, which is the job that
+control was doing.
 
 ### Hold
 
@@ -464,8 +616,19 @@ thing being applied then.
 The objective combo takes the same path, so the button and the combo
 cannot behave differently.
 
-Settings persist in the props file as `diversity_auto_*` and are range
-checked on restore.
+For a while this control was inert in **RADE V1** and looked broken rather
+than unimplemented. The correlator's answer was applied whatever the
+objective said, so Invert turned `div_cos`/`div_sin` over immediately -
+the audio changed - and then the next block wrote the un-inverted answer
+back and slewed straight to it. Every reference now applies the sign the
+objective asks for.
+
+Settings persist in the props file as `diversity_auto_*`, with the modal
+window pairs as `diversity_band_*`, `diversity_carrier_*` and
+`diversity_digital_*`, and are range checked on restore. New reference
+modes go on the end of the enum: the value is what is written to the
+file, so inserting one in the middle silently changes what an existing
+file means.
 
 The automatic loop runs on the radio side only. On a remote client the
 combining happens on the server, so the auto controls are greyed out;
@@ -484,7 +647,7 @@ kind of scalar double-precision work, so scale accordingly.**
 |---|---|---|---|---|
 | Window | 0.2 % | 0.4 % | 0.9 % | 1.7 % |
 | Carrier | 0.2 % | 0.4 % | 0.9 % | 1.3 % |
-| RADE passband | 0.2 % | 0.4 % | 0.8 % | 1.4 % |
+| Digital I/Q | 0.3 % | 0.7 % | 1.0 % | 2.4 % |
 | RADE V1, **searching** | 4.7 % | 5.4 % | 4.9 % | 7.1 % |
 | RADE V1, searching, AM passband | 6.2 % | 6.5 % | 7.8 % | 7.2 % |
 | RADE V1, locked | 0.5 % | 1.0 % | 1.8 % | 3.6 % |
@@ -501,7 +664,9 @@ to unchanged.
 
 Reading these:
 
-- The transform modes scale with `nfft` and are cheap.
+- The transform modes scale with `nfft` and are cheap. Digital I/Q adds a
+  partial sort for the median noise floor, capped at 4096 samples however
+  wide the region is, which is why it stays with the rest of them.
 - **RADE V1 while searching is by far the peak load** and is nearly
   rate-independent, because acquisition works on the fixed 8 kHz decimated
   stream. It costs 3-4 points more than tracking does. On a Pi this is the
@@ -527,7 +692,7 @@ Run it yourself with `make -C test/diversity bench`.
 | **RADE V1 acquisition** | **1-5 s** of continuous signal |
 | RADE V1 confirmation ("probation") | ~1 s of that |
 | RADE V1 freeze when the pilot goes | ~1 s |
-| RADE V1 lock drop | ~10 s |
+| RADE V1 lock drop | the **Hang** control, 1-30 s, plus the ~1 s the freeze gate takes |
 
 RADE V1 acquisition is in two parts. The search scores its grid at 8, 16
 and 32 passes of a 120 ms modem frame, with the threshold coming down as
@@ -553,13 +718,13 @@ quantisation and follows the few Hz per minute a station drifts.
 
 | File | Role |
 |---|---|
-| `src/diversity_auto.c`, `.h` | The engine: tap, queue, worker, transform modes, weight |
-| `src/rade_correlator.c`, `.h` | RADE V1 pilot correlation and MVDR |
+| `src/diversity_auto.c`, `.h` | The engine: tap, queue, worker, transform modes, occupancy split, weight |
+| `src/rade_correlator.c`, `.h` | RADE V1 pilot correlation; the MVDR solve itself is `div_mvdr2()`, shared with Digital I/Q |
 | `src/diversity_menu.c` | Controls and status |
 | `src/receiver.c` | The combiner, and the tap into it |
 | `src/radio.c` | Start/stop, props, shutdown |
 | `src/new_protocol.c` | P2 DDC pairing and ADC configuration |
-| `test/diversity/` | Mode coverage, window placement and weighting, RADE acquisition, CPU benchmark |
+| `test/diversity/` | Mode coverage, window placement, weighting and keying, RADE acquisition, Digital I/Q occupancy and MVDR, props migration, CPU benchmark |
 
 ---
 
@@ -567,7 +732,13 @@ quantisation and follows the few Hz per minute a station drifts.
 
 - [`diversity-guide.md`](diversity-guide.md) — **start here**: what the
   feature does and how to use it, with worked examples
-- [`diversity-rade.md`](diversity-rade.md) — the RADE modes in detail
+- [`diversity-rade.md`](diversity-rade.md) — the RADE V1 pilot correlator in detail
+- [`diversity-measurements.md`](diversity-measurements.md) — what the
+  combiners measurably do on recorded on-air captures, band by band.
+  Ongoing; it is the record that decides what the constants should be
+- [`diversity-digital-iq-proposal.md`](diversity-digital-iq-proposal.md) —
+  the Digital I/Q reference in detail, and what the proposal it grew out
+  of got wrong
 - [`diversity-dither-fix.md`](diversity-dither-fix.md) — a P2 bug found
   along the way, where ADC1 never received the dither/random setting
 - [`diversity-auto-phasing.md`](diversity-auto-phasing.md) — design

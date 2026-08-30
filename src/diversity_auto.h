@@ -51,16 +51,17 @@ enum {
 enum {
   DIV_REF_BAND = 0,   // all bins in the analysis window ("A")
   DIV_REF_CARRIER,    // the carrier bin only, found by our own tracker ("B")
-  DIV_REF_RADE_BAND,  // window auto-placed on the FreeDV RADE passband
-  DIV_REF_RADE_V1     // RADE V1 pilot correlation + MVDR
+  DIV_REF_RADE_V1,    // RADE V1 pilot correlation + MVDR
+  DIV_REF_DIGITAL_IQ  // occupied bins in the window, split, then MVDR
 };
 
 //
-// True for the reference modes that place themselves on the RADE modem
-// band. Which side of the tuned frequency that is comes from the
-// operator's passband - see div_rade_side_expected() in diversity_auto.c.
+// New references go on the end. The value is what is written to the
+// props file, so inserting one in the middle - or removing one, as the
+// RADE passband reference was - silently changes what an existing file
+// means. diversity_auto_restore_state() migrates instead; see
+// DIV_REF_SCHEME there.
 //
-#define DIV_REF_IS_RADE(r)  ((r) == DIV_REF_RADE_BAND || (r) == DIV_REF_RADE_V1)
 
 extern int    div_auto_mode;
 extern int    div_auto_ref;
@@ -68,18 +69,23 @@ extern int    div_auto_follow_filter;   // analysis window follows the RX filter
 extern double div_auto_centre;          // window centre (Hz, rel. to tuned freq)
 extern double div_auto_width;           // window width (Hz)
 extern double div_auto_tau;             // adaptation time constant (seconds)
+extern double div_auto_hang;            // hold a RADE lock this long after the
+                                        // pilot goes away, before re-acquiring
 extern double div_auto_coherence_min;   // hold below this coherence
 extern int    div_auto_weighting;       // DIV_WEIGHT_FLAT / _COHERENCE
 extern double div_auto_resolution;      // requested bin width, Hz
 
 //
-// The window controls are modal: the Window and Carrier references each
-// keep their own pair. div_auto_centre/width are the active pair.
+// The window controls are modal: the Window, Carrier and Digital I/Q
+// references each keep their own pair. div_auto_centre/width are the
+// active pair.
 //
 extern double div_band_centre;
 extern double div_band_width;
 extern double div_carrier_centre;
 extern double div_carrier_width;
+extern double div_digital_centre;
+extern double div_digital_width;
 
 //
 // Status: the window had to be clamped to the Nyquist limit, and the bin
@@ -103,6 +109,17 @@ extern double div_auto_coherence;       // 0 ... 1, last estimate
 extern int    div_auto_holding;         // 1 if the loop is holding (no update)
 extern double div_auto_carrier;         // Hz, smoothed carrier estimate
 extern int    div_auto_carrier_valid;   // 1 once the tracker has an estimate
+
+//
+// Digital I/Q: the span of the bins found occupied inside the search
+// region, in the shifted frame, for the overlay and the status line.
+// Not the accumulation set - that is a per-bin mask, and the quiet gap
+// between an FSK mark and space lies inside this span while counting as
+// noise. See div_digital_solve().
+//
+extern double div_auto_occ_lo;
+extern double div_auto_occ_hi;
+extern int    div_auto_occ_valid;
 
 //
 // div_auto_running is read once per sample by rx_add_div_iq_samples(),
@@ -134,6 +151,18 @@ extern void   diversity_auto_set_hold(int on);
 // one step rather than slewed to.
 //
 extern void diversity_auto_invert(void);
+
+//
+// MVDR for a two-element array: w = R^-1 h, normalised so arm 0 carries
+// unity and expressed as the weight the combiner applies to arm 1.
+//
+// R = [[r00, r01], [conj(r01), r11]] is the interference-plus-noise
+// covariance and h = [h0, h1] the channel. Shared with the RADE V1
+// correlator, which reaches the same two matrices by a different route.
+//
+extern void div_mvdr2(double r00, double r11, double r01re, double r01im,
+                      double h0re, double h0im, double h1re, double h1im,
+                      double *wr, double *wi);
 
 extern void diversity_auto_start(void);
 extern void diversity_auto_stop(void);

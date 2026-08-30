@@ -157,7 +157,7 @@ int main(void) {
   } modes[] = {
     { "Window",           DIV_REF_BAND,      1,  4, -8000, 8000 },
     { "Carrier",          DIV_REF_CARRIER,   1,  4, -8000, 8000 },
-    { "RADE passband",    DIV_REF_RADE_BAND, 1,  4,   200, 2800 },
+    { "Digital I/Q",      DIV_REF_DIGITAL_IQ, 1,  4,  -2800, -200 },
     { "RADE V1 (search)", DIV_REF_RADE_V1,   0,  4,   200, 2800 },
     //
     // Declaring lock needs a grid detection - at 8, 16 or 32 passes of one

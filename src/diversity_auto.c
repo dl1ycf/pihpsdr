@@ -29,6 +29,20 @@
 #include "receiver.h"
 #include "vfo.h"
 
+#ifdef DIVERSITY_CAPTURE
+  //
+  // DEVELOPMENT TOOL - remove with the rest of the capture instrument.
+  // See src/diversity_capture.h and test/diversity/devtools/README.md.
+  //
+  #include "diversity_capture.h"
+  //
+  // Blocks the sample path lost immediately ahead of the one about to be
+  // processed. The worker knows it; the capture hook, further down, needs
+  // it to mark the discontinuity in the file.
+  //
+  static int divcap_dropped = 0;
+#endif
+
 //
 // ----------------------------------------------------------------------
 // Theory of operation
@@ -170,6 +184,111 @@
 //
 #define DIV_CARRIER_BINS    2
 
+//
+// Digital I/Q occupancy detection.
+//
+// How far a bin has to stand above the noise floor of the search region
+// to count as occupied. 6 dB is deliberately low: the split only has to
+// be good enough to keep the signal out of the noise covariance, and a
+// bin wrongly called noise costs far more than one wrongly called
+// signal - it puts the wanted signal into R and steers the null onto it.
+//
+#define DIV_OCC_DB          6.0
+
+//
+// The floor is the median of the bin powers over the region, which is
+// robust to a signal filling a good part of it. Sorting is O(n log n) per
+// block, so the number of bins that go into the estimate is capped and a
+// wider region is sampled by striding rather than by sorting more. 4096
+// bins is far more than the estimate needs and costs well under a
+// millisecond.
+//
+#define DIV_OCC_MAX_SAMPLES 4096
+
+//
+// Fewer occupied bins than this and there is nothing worth calling a
+// signal, whatever the coherence says.
+//
+#define DIV_OCC_MIN_BINS    3
+
+//
+// How far this block's power in the bins being measured may fall below
+// the smoothed power accumulated over them before the statistics are
+// declared stale and the loop holds.
+//
+// This is what notices a transmission ending, and without it nothing
+// does. The accumulators forget exponentially, so Sxy, Sxx and Syy decay
+// together and the coherence gate sees gamma^2 stay near 1 the whole way
+// down; the Digital I/Q occupancy test is a ratio against the median
+// floor and is scale invariant, so it does not see the level collapse at
+// all. Left to the forgetting factor alone a 30 dB signal at tau = 2 s
+// keeps the loop "tracking" for 5.8 tau - about twelve seconds of walking
+// the weight around on noise, once per gap.
+//
+// Comparing the two answers "is the thing these statistics describe still
+// there", which is the question that actually matters, and it scales
+// itself: it fires on a signal well out of the noise, which is exactly
+// the case where stale statistics do the most harm, and stays quiet on a
+// weak one, where they contain little signal to be stale about.
+//
+// It matters most on a keyed mode. CW is the extreme case - the signal is
+// absent for most of a transmission, not just between them - and the loop
+// previously spent every key-up period adjusting the weight on noise. It
+// now measures only while there is something to measure.
+//
+// 10 dB is comfortably past ordinary fading and far short of a signal
+// stopping. Holding through a deep fade is wanted anyway.
+//
+#define DIV_STALE_DB        10.0
+
+//
+// Bins either side of an occupied one that are excluded from the noise
+// covariance as well as from the signal.
+//
+// Without this the mode cancels the signal it is trying to receive. A
+// strong signal spreads past its own bins - the analysis window's skirts
+// are 92 dB down but a signal 40 dB above the noise still puts more into
+// its neighbours than the noise floor holds - and those bins are
+// correlated between the arms with the signal's own channel. Feeding them
+// to R tells MVDR that the direction the signal arrives from is
+// interference, and it dutifully steers the null onto it.
+//
+// This is the standard failure of MVDR trained on data containing the
+// desired signal, and a guard band is the standard answer to it. Four
+// bins is where the Blackman-Harris skirts have gone; the cost is four
+// bins of noise estimate either side of the signal, which a mostly empty
+// passband has plenty of.
+//
+#define DIV_OCC_GUARD       4
+
+//
+// How far the receiver may be retuned before the accumulated statistics
+// are thrown away.
+//
+// This was an exact comparison, so every click of the tuning knob - one
+// hertz on a fine step - discarded the channel estimate, the covariance
+// and the correlator's lock. Measured on a recorded capture of an
+// operator tuning around: 23 resets over 30 analysis blocks, a median of
+// one block between them, against the 31 blocks the operator's averaging
+// time asks for. The mode spends the whole of a tune permanently in the
+// first block or two of an estimate that needs thirty-one, and stays
+// there for an averaging time after the knob stops.
+//
+// The antenna-to-antenna transfer h1/h0 is a property of the two antennas
+// and the path. It does not change because the dial moved a hertz. What a
+// retune changes is *which* signal is in the window, and 20 Hz is far too
+// little to change that: it is under a tenth of the narrowest CW filter,
+// and well inside the +/-60 Hz the RADE correlator tracks, so a lock
+// survives it. Tuning across a band to a different station moves
+// kilohertz and still resets.
+//
+// Cumulative, not per block: the comparison below is against the context
+// as it was at the last reset, so twenty single-hertz steps count as
+// twenty hertz. Comparing against the previous block would never fire at
+// all, which would be worse than resetting too often.
+//
+#define DIV_RETUNE_HZ       20
+
 
 //
 // Bin-weighting for the wideband window.
@@ -193,20 +312,30 @@ int    div_auto_follow_filter  = 1;
 double div_auto_centre         = 0.0;
 double div_auto_width          = 1000.0;
 double div_auto_tau            = 2.0;
+double div_auto_hang           = 10.0;
 double div_auto_coherence_min  = 0.30;
 int    div_auto_weighting      = DIV_WEIGHT_COHERENCE;
 double div_auto_resolution     = DIV_TARGET_BIN_HZ;
 
 //
-// The window controls are modal: DIV_REF_BAND and DIV_REF_CARRIER each
-// keep their own centre and width, so moving between them does not
-// destroy the other's setting. div_auto_centre/width always hold the pair
-// for whichever reference is selected; these hold the pair for the other.
+// The window controls are modal: DIV_REF_BAND, DIV_REF_CARRIER and
+// DIV_REF_DIGITAL_IQ each keep their own centre and width, so moving
+// between them does not destroy the others' settings. div_auto_centre and
+// div_auto_width always hold the pair for whichever reference is
+// selected; these hold the pairs for the rest.
 //
 double div_band_centre         = 0.0;
 double div_band_width          = 1000.0;
 double div_carrier_centre      = 0.0;
 double div_carrier_width       = 1000.0;
+//
+// The digital default is the whole SSB audio passband rather than a
+// narrow slice: occupancy narrows it from there, so the operator does not
+// have to know how wide the signal is. It is only reachable at all with
+// the follow tick cleared.
+//
+double div_digital_centre      = 0.0;
+double div_digital_width       = 2600.0;
 
 //
 // Set when the requested window had to be pulled inside the Nyquist
@@ -224,6 +353,10 @@ double div_auto_coherence      = 0.0;
 int    div_auto_holding        = 1;
 double div_auto_carrier        = 0.0;
 int    div_auto_carrier_valid  = 0;
+
+double div_auto_occ_lo         = 0.0;
+double div_auto_occ_hi         = 0.0;
+int    div_auto_occ_valid      = 0;
 
 int    div_auto_running        = 0;
 
@@ -321,6 +454,19 @@ static double         *bin_xx = NULL, *bin_yy = NULL;
 static int             acc_valid = 0;
 
 //
+// Scratch for the Digital I/Q noise-floor median. Sized at
+// DIV_OCC_MAX_SAMPLES rather than DIV_MAX_NFFT because the estimate is
+// strided down to that many bins however wide the region is.
+//
+static double         *occ_scratch = NULL;
+
+//
+// Which bins were found occupied, by wrapped index, so the noise pass can
+// keep its distance from them. See DIV_OCC_GUARD.
+//
+static unsigned char  *occ_mask = NULL;
+
+//
 // Everything the bin mask depends on. When any of it changes the
 // accumulated statistics describe a different measurement and have to be
 // thrown away, so we watch it here rather than hooking every call site
@@ -346,10 +492,9 @@ static struct div_context lastctx;
 
 //
 // +1 when the RADE modem is above the tuned carrier in this frame, -1
-// when below. Chosen from the measured spectrum, on every block in which
-// DIV_REF_RADE_BAND is the active reference; the other modes leave it
-// alone (DIV_REF_RADE_V1 determines the sense from its pilot bank, and
-// never reaches the transform).
+// when below. Written by DIV_REF_RADE_V1 on every block, from the
+// operator's passband, and read by the menu and the panadapter overlay.
+// The other references leave it alone.
 //
 static int div_rade_side = 1;
 
@@ -443,6 +588,9 @@ static void div_reset_stats(void) {
   div_auto_holding = 1;
   div_carrier_hz = 0.0;
   div_auto_carrier_valid = 0;
+  div_auto_occ_valid = 0;
+  div_auto_occ_lo = 0.0;
+  div_auto_occ_hi = 0.0;
   //
   // Start the tracked readout from what is actually applied, so it does
   // not claim 0 dB / 0 degrees before the loop has produced anything.
@@ -575,10 +723,16 @@ static void div_get_context(struct div_context *ctx) {
   ctx->weighting      = div_auto_weighting;
 }
 
+//
+// b is the context as it stood at the last reset, not the previous
+// block - div_process_block() only writes lastctx when it resets - so the
+// three frequency comparisons below are against where the estimate was
+// actually made. See DIV_RETUNE_HZ.
+//
 static int div_context_changed(const struct div_context *a, const struct div_context *b) {
-  return a->frequency      != b->frequency      ||
-         a->ctun_frequency != b->ctun_frequency ||
-         a->offset         != b->offset         ||
+  return llabs(a->frequency      - b->frequency)      > DIV_RETUNE_HZ ||
+         llabs(a->ctun_frequency - b->ctun_frequency) > DIV_RETUNE_HZ ||
+         llabs(a->offset         - b->offset)         > DIV_RETUNE_HZ ||
          a->sidetone       != b->sidetone       ||
          a->sample_rate    != b->sample_rate    ||
          a->mode           != b->mode           ||
@@ -615,41 +769,29 @@ static int div_bin_range(const struct div_context *ctx, int *klo, int *khi) {
     //
     flo = div_carrier_hz - DIV_CARRIER_BINS * binhz;
     fhi = div_carrier_hz + DIV_CARRIER_BINS * binhz;
-  } else if (DIV_REF_IS_RADE(ctx->ref)) {
+  } else if (ctx->ref == DIV_REF_DIGITAL_IQ) {
     //
-    // The RADE modem occupies 750..2200 Hz of audio, on one side of the
-    // tuned carrier or the other. div_rade_side says which, in the
-    // shifted frame: -1 below the carrier, +1 above. It comes from the
-    // operator's passband, which is the only thing that should decide it
-    // - see the note above div_rade_side_expected().
+    // The *search region*, not the bins finally accumulated. Occupancy
+    // narrows it after the transform - see div_digital_solve().
     //
-    if (div_rade_side < 0) {
-      flo = -RADE_CORR_FHI;
-      fhi = -RADE_CORR_FLO;
+    // Nothing computed from the spectrum may appear here: this runs
+    // before the transform, and making the bin range depend on something
+    // only the transform can supply is exactly what left the carrier
+    // reference sitting on "searching" for ever. The region therefore
+    // starts from the filter or from the operator's own numbers, both of
+    // which are always available.
+    //
+    // Following the filter is the default and wants no sideband table:
+    // the passband is already on the right side of the tuned frequency in
+    // every mode, DIGU/DIGL and CW included, and under CTUN too. That is
+    // why there is no +/-1500 Hz constant anywhere in this mode.
+    //
+    if (ctx->follow) {
+      flo = ctx->filter_low;
+      fhi = ctx->filter_high;
     } else {
-      flo = RADE_CORR_FLO;
-      fhi = RADE_CORR_FHI;
-    }
-
-    //
-    // Never measure outside what the operator is listening to. A 1.8 kHz
-    // filter on a 1.45 kHz modem band leaves most of it, and measuring the
-    // part they have filtered out would be measuring something they cannot
-    // hear the effect of.
-    //
-    // If the two do not overlap at all the filter is not for this signal;
-    // the modem band is then used as it stands rather than returning
-    // nothing, so the mode still works while the operator sorts the filter
-    // out.
-    //
-    if (ctx->filter_high > ctx->filter_low) {
-      double plo = flo > (double)ctx->filter_low  ? flo : (double)ctx->filter_low;
-      double phi = fhi < (double)ctx->filter_high ? fhi : (double)ctx->filter_high;
-
-      if (phi > plo) {
-        flo = plo;
-        fhi = phi;
-      }
+      flo = ctx->centre - 0.5 * ctx->width;
+      fhi = ctx->centre + 0.5 * ctx->width;
     }
   } else if (ctx->follow) {
     //
@@ -723,6 +865,63 @@ static int div_bin_range(const struct div_context *ctx, int *klo, int *khi) {
   if (*khi < *klo) { return 0; }
 
   return 1;
+}
+
+//
+// MVDR for a two-element array.
+//
+// For R = [[r00, r01], [conj(r01), r11]] and h = [h0, h1], the weight
+// vector g = R^-1 h is
+//
+//   g0 = (r11*h0 - r01*h1)       / det
+//   g1 = (r00*h1 - conj(r01)*h0) / det
+//
+// The combiner forms y = z0 + w*z1, which is g^H z with arm 0 normalised
+// to unity, so the weight it wants is conj(g1/g0) - and det cancels.
+//
+// With R diagonal and equal - two arms carrying the same, uncorrelated
+// noise - this reduces to conj(h1/h0), which is exactly the maximum ratio
+// combining answer the wideband "Sum" mode computes as +Sxy/Sxx. So the
+// mode degenerates to the older one whenever there is no correlated
+// interference to null, which is both the right behaviour and the easiest
+// property to test.
+//
+// Shared with the RADE V1 correlator, which arrives at the same two
+// matrices from pilot correlations rather than from spectral occupancy.
+//
+void div_mvdr2(double r00, double r11, double r01re, double r01im,
+               double h0re, double h0im, double h1re, double h1im,
+               double *wr, double *wi) {
+  //
+  // Diagonal loading. Without it a nearly singular covariance - two arms
+  // seeing almost identical noise - produces an enormous weight out of
+  // what is mostly estimation error.
+  //
+  const double load = 0.01 * (r00 + r11) + 1e-20;
+  r00 += load;
+  r11 += load;
+  //
+  // num = r00*h1 - conj(r01)*h0,  den = r11*h0 - r01*h1
+  //
+  const double numre = r00 * h1re - (r01re * h0re + r01im * h0im);
+  const double numim = r00 * h1im - (r01re * h0im - r01im * h0re);
+  const double denre = r11 * h0re - (r01re * h1re - r01im * h1im);
+  const double denim = r11 * h0im - (r01re * h1im + r01im * h1re);
+  const double d2 = denre * denre + denim * denim;
+
+  if (!(d2 > 1e-30)) {
+    *wr = 0.0;
+    *wi = 0.0;
+    return;
+  }
+
+  //
+  // num/den, then conjugated for the g^H combining sense.
+  //
+  const double qre = (numre * denre + numim * denim) / d2;
+  const double qim = (numim * denre - numre * denim) / d2;
+  *wr =  qre;
+  *wi = -qim;
 }
 
 //
@@ -802,6 +1001,344 @@ static void div_apply_weight(double wr, double wi) {
   div_phase = atan2(div_sin, div_cos) * (180.0 / M_PI);
 }
 
+static int div_occ_cmp(const void *a, const void *b) {
+  const double x = *(const double *)a;
+  const double y = *(const double *)b;
+  return (x > y) - (x < y);
+}
+
+//
+// Digital I/Q: split the search region into signal and noise by spectral
+// occupancy, then solve.
+//
+// The wideband references treat every bin in the window the same way, or
+// weight it by its own coherence. Neither of them ever forms a picture of
+// the *noise* on its own, so "Sum" has to assume the two branches carry
+// equal, uncorrelated noise - which is what makes w = +Sxy/Sxx maximum
+// ratio combining. On a real station that assumption is usually false:
+// ADC1 is often a small loop or an active whip on a bare rear-panel
+// input, and much of what both antennas hear is common-mode noise picked
+// up on the feedlines, which is correlated between them.
+//
+// A digital signal is narrow and sits in a passband that is mostly empty,
+// so here the noise can simply be looked at directly: the bins that carry
+// no signal are the noise, and the covariance measured over them is what
+// MVDR needs. w = R^-1 h then whitens against both an unequal branch
+// noise level and a correlated one, and degenerates exactly to +Sxy/Sxx
+// when the noise really is equal and uncorrelated.
+//
+// What this does *not* do is separate a wanted signal from co-channel QRM
+// inside the same region: both are occupied and both are correlated
+// between the arms, so occupancy cannot tell them apart. That is what the
+// RADE V1 pilot is for. Here the operator separates them by placing the
+// region, and nulls with the Null objective, exactly as in Window mode.
+//
+static void div_digital_solve(const struct div_context *ctx, int klo, int khi) {
+  const int n = khi - klo + 1;
+
+  //
+  // The noise floor, as the median of the bin powers over the region.
+  //
+  // A median rather than a mean because a signal filling a good part of
+  // the region would drag a mean up with it and hide itself. Sorting is
+  // the only per-block cost this mode adds over the wideband ones, so the
+  // sample count is capped and a wider region is strided down to it
+  // rather than sorted in full.
+  //
+  const int stride = (n > DIV_OCC_MAX_SAMPLES) ? (n / DIV_OCC_MAX_SAMPLES + 1) : 1;
+  int ns = 0;
+
+  for (int k = klo; k <= khi && ns < DIV_OCC_MAX_SAMPLES; k += stride) {
+    int idx = k % nfft;
+
+    if (idx < 0) { idx += nfft; }
+
+    occ_scratch[ns++] = bin_xx[idx] + bin_yy[idx];
+  }
+
+  if (ns < DIV_OCC_MIN_BINS) {
+    div_auto_occ_valid = 0;
+    div_auto_coherence = 0.0;
+    div_auto_holding = 1;
+    return;
+  }
+
+  qsort(occ_scratch, ns, sizeof(double), div_occ_cmp);
+  const double floorp = occ_scratch[ns / 2];
+  const double thresh = floorp * pow(10.0, DIV_OCC_DB / 10.0);
+  //
+  // Signal: above the floor *and* coherent between the arms.
+  // Noise:  below the floor, whether or not it is coherent - correlated
+  //         noise is precisely what R exists to describe, so it must not
+  //         be excluded for being correlated.
+  //
+  // A bin that is loud but incoherent - a burst on one antenna only -
+  // belongs to neither. Putting it in R would describe noise the arms do
+  // not actually share; calling it signal would aim the array at it.
+  //
+  double sig_xy_re = 0.0, sig_xy_im = 0.0, sig_xx = 0.0, sig_yy = 0.0;
+  double r01re = 0.0, r01im = 0.0, r00 = 0.0, r11 = 0.0;
+  int nsig = 0, nnoise = 0;
+  int kmin = 0, kmax = 0;
+  //
+  // This block's power in the signal bins against the smoothed power
+  // that selected them. See DIV_STALE_DB.
+  //
+  double cur_sig = 0.0, acc_sig = 0.0;
+  memset(occ_mask, 0, (size_t)nfft);
+
+  //
+  // First pass: which bins carry signal, and the channel over them.
+  //
+  for (int k = klo; k <= khi; k++) {
+    int idx = k % nfft;
+
+    if (idx < 0) { idx += nfft; }
+
+    const double xx = bin_xx[idx], yy = bin_yy[idx];
+    const double xyre = bin_xy_re[idx], xyim = bin_xy_im[idx];
+
+    if (xx + yy > thresh) {
+      const double den = xx * yy;
+
+      if (den <= 0.0) { continue; }
+
+      double g2 = (xyre * xyre + xyim * xyim) / den;
+
+      if (g2 > 1.0) { g2 = 1.0; }
+
+      if (g2 < div_auto_coherence_min) { continue; }
+
+      if (nsig == 0) { kmin = kmax = k; }
+
+      if (k < kmin) { kmin = k; }
+
+      if (k > kmax) { kmax = k; }
+
+      occ_mask[idx] = 1;
+
+      //
+      // Weighted by the bin's own coherence, for the reason the wideband
+      // window offers the same choice: summing flat makes h a
+      // power-weighted average of h(f), and the marginal bins that only
+      // just cleared the occupancy threshold then add their noise to the
+      // denominator while adding little signal to the numerator.
+      //
+      // Occupancy has already thrown out the bins that are pure noise,
+      // so this is a smaller correction here than it is over a whole
+      // passband - on a strong signal every occupied bin has g2 near 1
+      // and it does nothing at all. It earns its place on a weak one,
+      // where the threshold sits just above the floor and most of the
+      // occupied bins are marginal.
+      //
+      // Not an operator control: the threshold has already decided which
+      // bins count as signal, and this only stops the weakest of those
+      // dominating by weight of numbers.
+      //
+      sig_xy_re += g2 * xyre;
+      sig_xy_im += g2 * xyim;
+      sig_xx    += g2 * xx;
+      sig_yy    += g2 * yy;
+      cur_sig   += (double)fftout0[idx][0] * fftout0[idx][0]
+                   + (double)fftout0[idx][1] * fftout0[idx][1]
+                   + (double)fftout1[idx][0] * fftout1[idx][0]
+                   + (double)fftout1[idx][1] * fftout1[idx][1];
+      acc_sig   += xx + yy;
+      nsig++;
+    }
+  }
+
+  //
+  // Second pass: the noise covariance, from the bins that are neither
+  // occupied nor next to an occupied one.
+  //
+  // Correlation is deliberately not a disqualification here. Common-mode
+  // noise picked up on both feedlines is correlated, and describing it is
+  // the whole reason R is measured separately - excluding coherent bins
+  // would throw away the one thing this mode can do that Sum cannot.
+  // Distance from the signal is what keeps the signal out of R instead.
+  //
+  for (int k = klo; k <= khi; k++) {
+    int idx = k % nfft;
+
+    if (idx < 0) { idx += nfft; }
+
+    int near = 0;
+
+    for (int d = -DIV_OCC_GUARD; d <= DIV_OCC_GUARD && !near; d++) {
+      int j = (k + d) % nfft;
+
+      if (j < 0) { j += nfft; }
+
+      if (occ_mask[j]) { near = 1; }
+    }
+
+    if (near) { continue; }
+
+    r01re += bin_xy_re[idx];
+    r01im += bin_xy_im[idx];
+    r00   += bin_xx[idx];
+    r11   += bin_yy[idx];
+    nnoise++;
+  }
+
+  if (nsig < DIV_OCC_MIN_BINS) {
+    //
+    // Nothing stands out. Two very different situations look like this
+    // and the difference matters, because one of them wants a weight and
+    // the other must not get one.
+    //
+    // The region is *empty*: it is all noise, the median is the noise and
+    // nothing clears it. Hold. A weight invented from noise would be
+    // applied across the whole passband.
+    //
+    // The region is *full*: the signal covers all of it, so the median is
+    // the signal and nothing clears that either. This is not a corner
+    // case - it is what a filter set snugly around the signal looks like,
+    // with the follow tick on, which is what a careful operator does.
+    // Holding there would be a trap: the better the filter, the more
+    // certainly the mode would do nothing.
+    //
+    // Coherence tells them apart. Accumulate the region as a whole and
+    // let the ordinary gate below decide: a full region is coherent and
+    // gets a weight, an empty one is not and holds. With every bin called
+    // signal there are no noise bins left, so the solve falls through to
+    // plain maximum ratio combining further down - which is the right
+    // answer when nothing is known about the noise, and is exactly what
+    // the wideband Window reference would have produced.
+    //
+    sig_xy_re = sig_xy_im = sig_xx = sig_yy = 0.0;
+    r01re = r01im = r00 = r11 = 0.0;
+    cur_sig = acc_sig = 0.0;
+    nsig = nnoise = 0;
+
+    for (int k = klo; k <= khi; k++) {
+      int idx = k % nfft;
+
+      if (idx < 0) { idx += nfft; }
+
+      const double xx = bin_xx[idx], yy = bin_yy[idx];
+      const double den = xx * yy;
+
+      if (den <= 0.0) { continue; }
+
+      double g2 = (bin_xy_re[idx] * bin_xy_re[idx]
+                   + bin_xy_im[idx] * bin_xy_im[idx]) / den;
+
+      if (g2 > 1.0) { g2 = 1.0; }
+
+      sig_xy_re += g2 * bin_xy_re[idx];
+      sig_xy_im += g2 * bin_xy_im[idx];
+      sig_xx    += g2 * xx;
+      sig_yy    += g2 * yy;
+      cur_sig   += (double)fftout0[idx][0] * fftout0[idx][0]
+                   + (double)fftout0[idx][1] * fftout0[idx][1]
+                   + (double)fftout1[idx][0] * fftout1[idx][0]
+                   + (double)fftout1[idx][1] * fftout1[idx][1];
+      acc_sig   += xx + yy;
+      nsig++;
+    }
+
+    kmin = klo;
+    kmax = khi;
+  }
+
+  if (nsig < DIV_OCC_MIN_BINS || sig_xx <= 0.0 || sig_yy <= 0.0) {
+    div_auto_occ_valid = 0;
+    div_auto_coherence = 0.0;
+    div_auto_holding = 1;
+    return;
+  }
+
+  //
+  // Have the bins we chose actually still got a signal in them?
+  //
+  // Deliberately before the span is published and before any solve, so
+  // that a transmission ending clears the overlay and the status line
+  // rather than leaving both asserting a signal that has gone.
+  //
+  // Holding rather than flushing. The accumulators keep decaying at the
+  // operator's averaging time either way, but the weight in force is the
+  // last one measured on a real signal, which is what is wanted across a
+  // gap. Flushing would put the loop one block from the start, where the
+  // single-block cross spectrum is perfectly coherent by construction and
+  // any bin at all looks like a signal.
+  //
+  if (acc_sig > 0.0 && cur_sig * pow(10.0, DIV_STALE_DB / 10.0) < acc_sig) {
+    div_auto_occ_valid = 0;
+    div_auto_holding = 1;
+    return;
+  }
+
+  //
+  // Publish the occupied span for the overlay and the status line, back
+  // in the shifted frame the operator's controls use. Half a bin either
+  // side so a single occupied bin still has a width to draw. The mapping
+  // inverts, so the edges swap - see div_shift_to_bin().
+  //
+  {
+    const double fo = div_frame_off(ctx);
+    const double sa = -((double)kmin - 0.5) * binhz - fo;
+    const double sb = -((double)kmax + 0.5) * binhz - fo;
+    div_auto_occ_lo = (sa < sb) ? sa : sb;
+    div_auto_occ_hi = (sa < sb) ? sb : sa;
+    div_auto_occ_valid = 1;
+  }
+  const double xy2 = sig_xy_re * sig_xy_re + sig_xy_im * sig_xy_im;
+  div_auto_coherence = xy2 / (sig_xx * sig_yy);
+
+  if (div_auto_coherence > 1.0) { div_auto_coherence = 1.0; }
+
+  if (div_auto_coherence < div_auto_coherence_min) {
+    div_auto_holding = 1;
+    return;
+  }
+
+  div_auto_holding = 0;
+
+  if (div_auto_mode != DIV_AUTO_SUM) {
+    //
+    // Null cancels what the region is sitting on, which is the occupied
+    // part of it - the same objective as everywhere else, restricted to
+    // the bins that carry something. MVDR has no part in it: it maximises
+    // the signal-to-interference ratio of the thing it is pointed at, and
+    // Null exists to do the opposite.
+    //
+    div_apply_weight(-sig_xy_re / sig_yy, -sig_xy_im / sig_yy);
+    return;
+  }
+
+  if (nnoise < DIV_OCC_MIN_BINS || r00 <= 0.0 || r11 <= 0.0) {
+    //
+    // The signal fills the region, so there are no noise bins to build R
+    // from. Diagonal loading would not rescue an empty covariance - it
+    // would just return the unweighted answer through a longer route - so
+    // take the maximum ratio combining weight directly and say nothing:
+    // it is the correct answer when nothing is known about the noise.
+    //
+    div_apply_weight(sig_xy_re / sig_xx, sig_xy_im / sig_xx);
+    return;
+  }
+
+  //
+  // h with arm 0 as the reference. Writing z_m = a_m s + n_m and
+  // accumulating over the signal bins,
+  //
+  //   Sxx = |a0|^2 S,   Sxy = a0 conj(a1) S
+  //
+  // so h0 = Sxx = a0 * (conj(a0) S) and h1 = conj(Sxy) = a1 * (conj(a0) S)
+  // are the two channels scaled by one common complex factor, which is
+  // all MVDR needs since the solve normalises arm 0 to unity.
+  //
+  {
+    double wr, wi;
+    div_mvdr2(r00, r11, r01re, r01im,
+              sig_xx, 0.0, sig_xy_re, -sig_xy_im,
+              &wr, &wi);
+    div_apply_weight(wr, wi);
+  }
+}
+
 //
 // Process one block. Runs on the analysis thread.
 //
@@ -826,6 +1363,65 @@ static void div_process_block(void) {
     lastctx = ctx;
   }
 
+#ifdef DIVERSITY_CAPTURE
+
+  //
+  // DEVELOPMENT TOOL - remove with the rest of the capture instrument.
+  //
+  // The tap. This block is what the correlator is about to be given, and
+  // the correlator globals still hold what the previous block left, so a
+  // record written here is an (input, state) pair the replay can be
+  // checked against. See src/diversity_capture.h.
+  //
+  if (div_capture_active) {
+    struct divcap_block m;
+    memset(&m, 0, sizeof(m));
+    m.dropped         = (guint32)divcap_dropped;
+    m.rec_flags       = 0;
+    m.frequency       = (gint64)ctx.frequency;
+    m.ctun_frequency  = (gint64)ctx.ctun_frequency;
+    m.offset          = (gint64)ctx.offset;
+    m.sidetone        = ctx.sidetone;
+    m.ctx_sample_rate = ctx.sample_rate;
+    m.mode            = ctx.mode;
+    m.filter_low      = ctx.filter_low;
+    m.filter_high     = ctx.filter_high;
+    m.ref             = ctx.ref;
+    m.follow          = ctx.follow;
+    m.weighting       = ctx.weighting;
+    m.centre          = ctx.centre;
+    m.width           = ctx.width;
+    //
+    // Recorded whatever the reference is, so a capture taken while
+    // watching one mode can still be replayed into another. The RADE
+    // branch below derives these two the same way.
+    //
+    {
+      const int expect = div_rade_side_expected(&ctx);
+      m.expect_bank = (expect == 0) ? -1 : (expect < 0 ? 0 : 1);
+    }
+    m.auto_mode        = div_auto_mode;
+    m.frame_off        = div_frame_off(&ctx);
+    m.tau              = div_auto_tau;
+    m.hang             = div_auto_hang;
+    m.live_locked      = rade_corr_locked;
+    m.live_confirming  = rade_corr_confirming;
+    m.live_mirrored    = rade_corr_mirrored;
+    m.live_holding     = div_auto_holding;
+    m.live_quality     = rade_corr_quality;
+    m.live_freq_off    = rade_corr_freq_off;
+    m.live_snr         = rade_corr_snr;
+    m.live_coherence   = div_auto_coherence;
+    m.live_track_gain  = div_track_gain;
+    m.live_track_phase = div_track_phase;
+    m.live_cos         = div_cos;
+    m.live_sin         = div_sin;
+    diversity_capture_block(work0, work1, &m);
+  }
+
+  divcap_dropped = 0;
+#endif
+
   if (ctx.ref == DIV_REF_RADE_V1) {
     //
     // Pilot-correlating path. This one does not use the FFT at all: it
@@ -849,7 +1445,8 @@ static void div_process_block(void) {
     const int expect = div_rade_side_expected(&ctx);
     const int bank = (expect == 0) ? -1 : (expect < 0 ? 0 : 1);
     int ok = rade_corr_process(work0, work1, nfft, bank,
-                               div_frame_off(&ctx), div_auto_tau, &wr, &wi);
+                               div_frame_off(&ctx), div_auto_tau, div_auto_hang,
+                               &wr, &wi);
     //
     // The overlay follows the passband, locked or not. It used to switch
     // to the bank the correlator reported once it locked, which is how a
@@ -866,7 +1463,26 @@ static void div_process_block(void) {
     if (ok) {
       div_auto_coherence = rade_corr_quality;
       div_auto_holding = 0;
-      div_apply_weight(wr, wi);
+      //
+      // Respect the objective, as every other reference does.
+      //
+      // The correlator always solves for the weight that maximises the
+      // pilot's SINR - that is what MVDR against the interference
+      // covariance means, and there is no second answer to compute.
+      // Turning it through 180 degrees is what Null asks for here:
+      // cancel the signal the pilot is pointing at rather than combine
+      // for it, which is how an operator checks that the array really is
+      // pointed at the RADE station and not at something else.
+      //
+      // Without this the objective and the Invert button were inert in
+      // this mode. diversity_auto_invert() turns div_cos/div_sin over
+      // immediately, so the audio changed - and then the next block
+      // applied the un-inverted answer again and slewed straight back,
+      // which looks like a control that does not work rather than one
+      // that is not implemented.
+      //
+      const double sign = (div_auto_mode == DIV_AUTO_SUM) ? 1.0 : -1.0;
+      div_apply_weight(sign * wr, sign * wi);
     } else {
       div_auto_coherence = rade_corr_quality;
       div_auto_holding = 1;
@@ -1016,76 +1632,11 @@ static void div_process_block(void) {
     }
   }
 
-  if (ctx.ref == DIV_REF_RADE_BAND) {
-    //
-    // Which side of the tuned frequency to measure.
-    //
-    // The operator's passband decides it, full stop. An earlier version
-    // took the stronger of the two sides by energy, which is a coin toss
-    // on a RADE signal near the noise floor - and RADE is usually near the
-    // noise floor, that being the point of it - so it could sit on the
-    // wrong side indefinitely, and the panadapter overlay with it.
-    //
-    // Measuring the side the operator is not listening to is not a
-    // fallback worth having here. Whatever is over there is a different
-    // signal, and combining for it would optimise the array for something
-    // that is filtered out downstream.
-    //
-    int want = div_rade_side_expected(&ctx);
-
-    if (want == 0) {
-      //
-      // AM, SAM, FM: the passband straddles the carrier and says nothing,
-      // so the energy is all there is to go on.
-      //
-      double up = 0.0, dn = 0.0;
-
-      for (int side = 0; side < 2; side++) {
-        double lo = side ? -RADE_CORR_FHI : RADE_CORR_FLO;
-        double hi = side ? -RADE_CORR_FLO : RADE_CORR_FHI;
-        double p = div_shift_to_bin(&ctx, lo);
-        double q = div_shift_to_bin(&ctx, hi);
-        int a = (int)floor(((p < q) ? p : q) / binhz);
-        int b = (int)ceil (((p < q) ? q : p) / binhz);
-        double acc = 0.0;
-
-        for (int k = a; k <= b; k++) {
-          int idx = k % nfft;
-
-          if (idx < 0) { idx += nfft; }
-
-          acc += (double)fftout0[idx][0] * fftout0[idx][0]
-                 + (double)fftout0[idx][1] * fftout0[idx][1];
-        }
-
-        if (side) { dn = acc; } else { up = acc; }
-      }
-
-      want = (dn > up) ? -1 : 1;
-    }
-
-    if (want != div_rade_side) {
-      div_rade_side = want;
-      div_reset_stats();
-
-      //
-      // As above: if the modem band on the new side is unreachable at this
-      // sample rate and offset, klo/khi still describe the old side, and
-      // accumulating there would be measuring the wrong sideband.
-      //
-      if (!div_bin_range(&ctx, &klo, &khi)) {
-        div_auto_holding = 1;
-        return;
-      }
-    }
-  }
-
   //
-  // See below: weighting applies to the wide references only.
+  // See below: weighting applies to the wideband window only.
   //
   const int coherence_weighted = (ctx.weighting == DIV_WEIGHT_COHERENCE)
-                                 && (ctx.ref == DIV_REF_BAND
-                                     || ctx.ref == DIV_REF_RADE_BAND);
+                                 && (ctx.ref == DIV_REF_BAND);
   //
   // Exponential forgetting across blocks, applied per bin.
   //
@@ -1118,6 +1669,16 @@ static void div_process_block(void) {
   }
 
   //
+  // Digital I/Q takes it from here. The region has been accumulated;
+  // which of its bins are signal is decided from the spectrum, which is
+  // why this cannot happen in div_bin_range() with the rest.
+  //
+  if (ctx.ref == DIV_REF_DIGITAL_IQ) {
+    div_digital_solve(&ctx, klo, khi);
+    return;
+  }
+
+  //
   // Combine the bins.
   //
   // Flat reproduces the original behaviour: sum everything and divide,
@@ -1134,6 +1695,12 @@ static void div_process_block(void) {
   //
   acc_xy_re = acc_xy_im = acc_xx = acc_yy = 0.0;
   double wsum = 0.0;
+  //
+  // This block's power against the smoothed power, over the same bins and
+  // with the same weights, so the staleness test below asks about exactly
+  // what the estimate is being made from. See DIV_STALE_DB.
+  //
+  double cur_p = 0.0, acc_p = 0.0;
 
   for (int k = klo; k <= khi; k++) {
     int idx = k % nfft;
@@ -1169,11 +1736,29 @@ static void div_process_block(void) {
     acc_xy_im += w * bin_xy_im[idx];
     acc_xx    += w * xx;
     acc_yy    += w * yy;
+    cur_p     += w * ((double)fftout0[idx][0] * fftout0[idx][0]
+                      + (double)fftout0[idx][1] * fftout0[idx][1]
+                      + (double)fftout1[idx][0] * fftout1[idx][0]
+                      + (double)fftout1[idx][1] * fftout1[idx][1]);
+    acc_p     += w * (xx + yy);
     wsum      += w;
   }
 
   if (acc_xx <= 0.0 || acc_yy <= 0.0 || wsum <= 0.0) {
     div_auto_coherence = 0.0;
+    div_auto_holding = 1;
+    return;
+  }
+
+  //
+  // Is what these statistics describe still on the air?
+  //
+  // Under Coherence weighting the comparison is weighted too, so it
+  // follows the bins the estimate actually rests on rather than the whole
+  // window - which is what makes it sensitive to a narrow signal, a CW
+  // carrier included, stopping inside a wide filter.
+  //
+  if (acc_p > 0.0 && cur_p * pow(10.0, DIV_STALE_DB / 10.0) < acc_p) {
     div_auto_holding = 1;
     return;
   }
@@ -1224,6 +1809,14 @@ static gpointer div_worker_thread(gpointer data) {
       reset_requested = 0;
       rade_corr_reset();
     }
+
+#ifdef DIVERSITY_CAPTURE
+    //
+    // DEVELOPMENT TOOL - the capture hook in div_process_block() marks
+    // the discontinuity in the file. Remove with the rest.
+    //
+    divcap_dropped = dropped;
+#endif
 
     if (dropped > 0) {
       //
@@ -1319,6 +1912,8 @@ void diversity_auto_start(void) {
     bin_xy_im = g_new0(double, DIV_MAX_NFFT);
     bin_xx    = g_new0(double, DIV_MAX_NFFT);
     bin_yy    = g_new0(double, DIV_MAX_NFFT);
+    occ_scratch = g_new0(double, DIV_OCC_MAX_SAMPLES);
+    occ_mask    = g_new0(unsigned char, DIV_MAX_NFFT);
     for (int i = 0; i < DIV_QUEUE; i++) {
       qbuf0[i] = g_new0(float, 2 * DIV_MAX_NFFT);
       qbuf1[i] = g_new0(float, 2 * DIV_MAX_NFFT);
@@ -1363,11 +1958,13 @@ void diversity_auto_start(void) {
       //
       // The correlator needs a DDC rate that is a whole multiple of the
       // 8 kHz modem rate. Every rate piHPSDR offers satisfies that, but
-      // fall back to the wideband RADE window rather than silently doing
-      // nothing if that ever stops being true.
+      // fall back to Digital I/Q rather than silently doing nothing if
+      // that ever stops being true - it places itself on the operator's
+      // passband and finds the modem's occupied bins there, which is the
+      // job the retired RADE passband reference used to do.
       //
-      t_print("%s: falling back to DIV_REF_RADE_BAND\n", __func__);
-      div_auto_ref = DIV_REF_RADE_BAND;
+      t_print("%s: falling back to DIV_REF_DIGITAL_IQ\n", __func__);
+      div_auto_ref = DIV_REF_DIGITAL_IQ;
     }
   }
 
@@ -1378,8 +1975,32 @@ void diversity_auto_start(void) {
   div_auto_running = 1;
 }
 
+#ifdef DIVERSITY_CAPTURE
+//
+// DEVELOPMENT TOOL - remove with the rest of the capture instrument.
+//
+// The menu arms the capture through here because the block geometry it
+// has to be sized for - nfft - is private to this file.
+//
+int diversity_auto_capture_start(void) {
+  if (!div_auto_running || receivers < 1 || receiver[0] == NULL) { return 0; }
+
+  return diversity_capture_start(receiver[0]->sample_rate, nfft);
+}
+
+#endif
+
 void diversity_auto_stop(void) {
   if (!div_auto_running) { return; }
+
+#ifdef DIVERSITY_CAPTURE
+  //
+  // The blocks stop here, so the file has to be closed here: a capture
+  // left armed across a sample-rate change would otherwise be waiting for
+  // a thread that is never going to feed it again.
+  //
+  diversity_capture_stop();
+#endif
 
   //
   // Stop the sample path feeding us first, then wake the thread so it can
@@ -1419,13 +2040,31 @@ void diversity_auto_restart(void) {
   }
 }
 
+//
+// Numbering scheme for diversity_auto_ref.
+//
+// Scheme 1 was BAND, CARRIER, RADE_BAND, RADE_V1, DIGITAL_IQ. The RADE
+// passband reference has since been retired - Digital I/Q does the same
+// job from the operator's passband and does it better - so scheme 2 is
+// BAND, CARRIER, RADE_V1, DIGITAL_IQ, and every value from 2 upwards
+// means something different from what it used to.
+//
+// A file written before this key existed carries no scheme, and the two
+// numberings cannot be told apart by inspection: a stored 2 is either the
+// old RADE passband or the new RADE V1. Writing the scheme is what makes
+// the migration below unambiguous rather than a guess.
+//
+#define DIV_REF_SCHEME 2
+
 void diversity_auto_save_state(void) {
   SetPropI0("diversity_auto_mode",           div_auto_mode);
   SetPropI0("diversity_auto_ref",            div_auto_ref);
+  SetPropI0("diversity_auto_ref_scheme",     DIV_REF_SCHEME);
   SetPropI0("diversity_auto_follow_filter",  div_auto_follow_filter);
   SetPropF0("diversity_auto_centre",         div_auto_centre);
   SetPropF0("diversity_auto_width",          div_auto_width);
   SetPropF0("diversity_auto_tau",            div_auto_tau);
+  SetPropF0("diversity_auto_hang",           div_auto_hang);
   SetPropF0("diversity_auto_coherence_min",  div_auto_coherence_min);
   SetPropI0("diversity_auto_weighting",      div_auto_weighting);
   SetPropF0("diversity_auto_resolution",     div_auto_resolution);
@@ -1433,6 +2072,8 @@ void diversity_auto_save_state(void) {
   SetPropF0("diversity_band_width",          div_band_width);
   SetPropF0("diversity_carrier_centre",      div_carrier_centre);
   SetPropF0("diversity_carrier_width",       div_carrier_width);
+  SetPropF0("diversity_digital_centre",      div_digital_centre);
+  SetPropF0("diversity_digital_width",       div_digital_width);
 }
 
 void diversity_auto_restore_state(void) {
@@ -1442,6 +2083,7 @@ void diversity_auto_restore_state(void) {
   GetPropF0("diversity_auto_centre",         div_auto_centre);
   GetPropF0("diversity_auto_width",          div_auto_width);
   GetPropF0("diversity_auto_tau",            div_auto_tau);
+  GetPropF0("diversity_auto_hang",           div_auto_hang);
   GetPropF0("diversity_auto_coherence_min",  div_auto_coherence_min);
   GetPropI0("diversity_auto_weighting",      div_auto_weighting);
   GetPropF0("diversity_auto_resolution",     div_auto_resolution);
@@ -1449,6 +2091,8 @@ void diversity_auto_restore_state(void) {
   GetPropF0("diversity_band_width",          div_band_width);
   GetPropF0("diversity_carrier_centre",      div_carrier_centre);
   GetPropF0("diversity_carrier_width",       div_carrier_width);
+  GetPropF0("diversity_digital_centre",      div_digital_centre);
+  GetPropF0("diversity_digital_width",       div_digital_width);
 
   //
   // Validate everything that came out of the file, not just the two that
@@ -1462,7 +2106,40 @@ void diversity_auto_restore_state(void) {
     div_auto_mode = DIV_AUTO_OFF;
   }
 
-  if (div_auto_ref < DIV_REF_BAND || div_auto_ref > DIV_REF_RADE_V1) {
+  //
+  // Migrate a reference written under the old numbering. Absent key means
+  // scheme 1; see DIV_REF_SCHEME.
+  //
+  {
+    //
+    // GetPropI0 leaves the variable alone when the key is absent, so the
+    // default here has to be the *old* scheme - a file that predates the
+    // key is exactly the one that needs migrating.
+    //
+    int scheme = 1;
+    GetPropI0("diversity_auto_ref_scheme", scheme);
+
+    if (scheme < 2) {
+      switch (div_auto_ref) {
+      case 2:
+        //
+        // The RADE passband reference. Digital I/Q replaces it: it places
+        // itself on the operator's passband in the same way and finds the
+        // modem's occupied bins inside it, so an operator who was using
+        // that lands on its successor rather than on something unrelated.
+        //
+        div_auto_ref = DIV_REF_DIGITAL_IQ;
+        break;
+
+      case 3: div_auto_ref = DIV_REF_RADE_V1;    break;   // was RADE V1
+      case 4: div_auto_ref = DIV_REF_DIGITAL_IQ; break;   // was Digital I/Q
+
+      default: break;                                     // 0 and 1 unmoved
+      }
+    }
+  }
+
+  if (div_auto_ref < DIV_REF_BAND || div_auto_ref > DIV_REF_DIGITAL_IQ) {
     div_auto_ref = DIV_REF_BAND;
   }
 
@@ -1474,6 +2151,15 @@ void diversity_auto_restore_state(void) {
   if (div_auto_tau < 0.2) { div_auto_tau = 0.2; }
 
   if (div_auto_tau > 30.0) { div_auto_tau = 30.0; }
+
+  //
+  // Both ends match the slider. Zero is deliberately not allowed: the
+  // hang has to outlast the gate that feeds it, which averages over
+  // about a second, or a single noisy frame would end a lock.
+  //
+  if (div_auto_hang < 1.0)  { div_auto_hang = 1.0; }
+
+  if (div_auto_hang > 30.0) { div_auto_hang = 30.0; }
 
   if (div_auto_weighting < DIV_WEIGHT_FLAT || div_auto_weighting > DIV_WEIGHT_COHERENCE) {
     div_auto_weighting = DIV_WEIGHT_COHERENCE;
@@ -1498,6 +2184,14 @@ void diversity_auto_restore_state(void) {
   if (div_carrier_centre < -400000.0) { div_carrier_centre = -400000.0; }
 
   if (div_carrier_centre >  400000.0) { div_carrier_centre =  400000.0; }
+
+  if (div_digital_width < 20.0)    { div_digital_width = 20.0; }
+
+  if (div_digital_width > 40000.0) { div_digital_width = 40000.0; }
+
+  if (div_digital_centre < -400000.0) { div_digital_centre = -400000.0; }
+
+  if (div_digital_centre >  400000.0) { div_digital_centre =  400000.0; }
 
   //
   // 20.0, not 10.0: the spin button's minimum is 20, so a restored value

@@ -1,15 +1,25 @@
 # RADE diversity: passband window and V1 pilot correlator
 
 Detail on the two FreeDV RADE reference modes. For how diversity and the
-automatic loop work in general, see [`diversity.md`](diversity.md).
+automatic loop work in general, see [`diversity.md`](diversity.md). For
+what this mode measurably does on recorded on-air signals - which is not
+what the synthetic tests suggested - see
+[`diversity-measurements.md`](diversity-measurements.md).
 
-Two additions to the diversity auto-phasing engine for FreeDV RADE, both
-selectable from the Diversity menu's "Measure on" list.
+The pilot-correlating RADE V1 reference, selectable from the Diversity
+menu's "Measure on" list. (A wideband RADE passband reference used to sit
+alongside it and has been retired - see "Stage 1" below.)
 
-Selecting either sets the objective to **Sum (max SNR)** rather than the
-usual Null default: on RADE the signal we are pointing at *is* the wanted
-one, so the job is to maximise its SNR, not to cancel the strongest
-correlated thing in the window. The operator can still override it.
+Selecting it sets the objective to **Sum (max SNR)** rather than the usual
+Null default: on RADE the signal we are pointing at *is* the wanted one,
+so the job is to maximise its SNR, not to cancel the strongest correlated
+thing in the window. The operator can still override it, and **Null** then
+turns the correlator's answer through 180 degrees to cancel the RADE
+station rather than combine for it - which is the quickest way to check
+that the array really is pointed at it. That objective used to be ignored
+here: the correlator's answer was applied whatever was selected, so the
+Invert button changed the audio for one block and then slewed straight
+back.
 
 ## RADE waveform, for reference
 
@@ -123,14 +133,29 @@ arrives at the correlator the right way up. The mapping is now bank 0 for
 LSB, and the reasoning is set out under "Frequency bookkeeping" in
 [`diversity.md`](diversity.md).
 
-## Stage 1: RADE passband
+## Stage 1: RADE passband — retired
 
-Places the existing cross-spectrum window on 750..2200 Hz on the correct
-side of the carrier. Everything else is the wideband engine unchanged.
+The first RADE mode placed an FFT window on the nominal 750-2200 Hz modem
+band, on the side of the tuned frequency the operator's passband implied,
+clipped it to the filter, and did maximum ratio combining across it.
 
-Gives maximum ratio combining across the modem band. It does **not** null
-QRM: under a correlated interferer, plain cross-correlation locks onto
-whatever is strongest and correlated, which is the interferer.
+It has been removed. The **Digital I/Q** reference does the same job from
+the same passband and does it better: it finds where the modem's energy
+actually is rather than assuming the nominal band, and it measures the
+noise on the empty part of the passband instead of assuming both branches
+carry equal, uncorrelated noise. For a signal that lives near the noise
+floor, which is the point of RADE, that second difference is the one that
+counts. See §5 of [`diversity.md`](diversity.md).
+
+Its `diversity_auto_ref` value is migrated to Digital I/Q on restore, so
+a props file that selected it comes back on its successor.
+
+What survives from it is the rule about which sideband to measure, which
+RADE V1 still uses: the operator's passband decides, full stop. Taking
+the stronger of the two sides by energy was tried first and is a coin
+toss on a signal near the noise floor — with no signal present the window
+settled wherever noise put it, and the overlay could sit above an LSB
+passband indefinitely.
 
 ## Stage 2: RADE V1 pilot correlator (MVDR)
 
@@ -139,9 +164,10 @@ polyphase FIR decimation to 8 kHz, then correlation against the known
 pilot over a (bank, timing, frequency) grid. The samples are not otherwise
 touched — the spectral sense is handled by which pilot bank is used.
 
-Once locked, each frame gives channel estimates `h0`, `h1` from the pilot
-correlation, and the **residual** `n_i = s_i - h_i*p` over the pilot span
-gives the interference covariance `Rnn` separately from the signal. Then
+Once locked, each frame gives a pilot correlation `d0`, `d1` per arm. The
+channel is accumulated from those as the **cross-spectrum** `d1*conj(d0)`
+and `|d0|^2`, and the interference covariance `Rnn` is measured in the
+**off-carrier bins** of the same span. Then
 
 ```
 w = conj( g1/g0 ),   g = Rnn^-1 h
@@ -150,6 +176,75 @@ w = conj( g1/g0 ),   g = Rnn^-1 h
 with 1% diagonal loading. With `Rnn` diagonal and equal this reduces to
 `conj(h1/h0)`, the maximum ratio answer, so it degenerates gracefully to
 what stage 1 does when there is no correlated interference to null.
+
+Both of those started out as something simpler and were changed after
+being measured against recorded on-air captures, so the reasoning is worth
+having in one place.
+
+### Why the covariance is not the pilot-span residual
+
+It was, originally: `n_i = s_i - h_i*p`, on the reasoning that removing
+the wanted signal from the span leaves the interference. That reasoning is
+wrong, and it was costing more than everything else in this file put
+together.
+
+One scalar `h` is fitted across the whole pilot symbol, so only that one
+component comes out. Everything else inside the decimator's +/-3 kHz view
+stays in the residual — and on real captures that is dominated by whatever
+occupies the **rejected sideband**: a station of comparable power, 0.80 to
+0.84 coherent between the arms, that WDSP's own filter throws away and the
+operator never hears. Measured inter-arm coherence of the residual ran
+0.61 to 0.80 against 0.11 to 0.49 for the true noise, on every capture, on
+three bands, with the phase wrong as well.
+
+MVDR then did exactly what it was told and steered a null onto it. That
+null lands close to the wanted signal's own inter-arm phase, so the
+combiner subtracted the signal it was there to combine.
+
+The span is 160 samples at 8 kHz, so its DFT bins *are* the modem's own
+50 Hz carrier grid: the 30 carriers are bins 15..44 and the bins either
+side of them carry the noise and QRM the modem is sitting in, but no
+modem. `Rnn` is measured directly in those, 300 Hz to 2850 Hz, on the
+pilot bank's own side of the tuned frequency — which is what keeps the
+rejected sideband out, by construction rather than by hoping.
+
+### Why the channel is a cross-spectrum
+
+`acc_h0` and `acc_h1` used to be coherent EWMAs of `h0` and `h1`. They are
+averages of a phasor that is still turning: `rade_pilot_at()` rebuilds the
+reference from `n = 0` every frame while the received pilot advances with
+the sample index, so `d0` turns by `2*pi*f*T` from frame to frame whatever
+`f` is.
+
+At the operator's 10.5 s averaging the coherent part measured 16 to 28 dB
+below the per-frame `|h0|`, with the phase dragged 36 to 51 degrees off —
+and it got *worse* the longer Averaging was set, which is the opposite of
+what that control promises.
+
+`d1*conj(d0)` and `|d0|^2` are `h1*conj(h0)` and `|h0|^2` up to one common
+real scale, which is all the solve needs, and both are invariant to a
+rotation the two arms share. It is the same form `div_digital_solve()`
+already uses in `bin_xy`/`bin_xx`.
+
+### What the pair was worth
+
+Decode-scored against librade over three 40 m captures, mean
+`rade_snrdB_3k_est()` against the better antenna alone:
+
+| capture | before | after |
+|---|---|---|
+| `213155` | -3.4 dB | **+0.5 dB** |
+| `233133` | -0.5 dB | **+0.5 dB** |
+| `233241` | -1.8 dB | **-0.0 dB** |
+
+The mode went from losing to the better antenna on all three to matching
+or beating it on all three. Detection is untouched: lock uptime,
+acquisitions and time to first lock are the same to within their own
+scatter. See [`diversity-measurements.md`](diversity-measurements.md).
+
+Note that `rade_corr_snr` and `rade_corr_quality` read higher than they
+used to, and should: a station in the rejected sideband is no longer being
+counted as interference to the one being received.
 
 ### librade is not used
 
@@ -232,12 +327,11 @@ seconds means keep going with the last good weight, not start again.
 
 The criterion is now the pilot correlation against the correlation floor
 measured off-pilot in the same frame. That is a ratio, so it does not
-depend on signal level and cannot ratchet. Both terms are smoothed over
-about 6 seconds, and the lock is dropped only after the ratio stays below
-`RADE_HOLD_RATIO` (2.0) for ten seconds - long enough to ride out fades,
-short enough to notice an over ending. A working lock reads about 6 on
+depend on signal level and cannot ratchet. A working lock reads about 6 on
 this reference, so there is real margin; a ratio of 1 would mean the pilot
-correlates no better than anything else in the frame does.
+correlates no better than anything else in the frame does. How long the
+ratio has to stay down before the lock is given up is the **Hang** control
+- see below.
 
 Fixing this also improved the synthetic interferer result from -26.5 dB
 to -36.8 dB, simply because tracking now runs on every frame instead of
@@ -254,6 +348,14 @@ It was fixed at about 1.5 s to begin with, and that is far too short. At
 the pilot SNR a real signal delivers - swinging between roughly -10 and
 +3 dB frame to frame - the weight swings with it, and the movement itself
 degrades recovery.
+
+For a long time lengthening it also made the channel estimate *worse*,
+because the accumulators were coherent averages of a still-rotating
+phasor. That is fixed - see "Why the channel is a cross-spectrum" above -
+so the control now does what it says in both directions. The measurements
+below predate the fix and were taken on a synthetic signal with no
+residual frequency offset, where the defect does not show; they still
+describe the jitter-against-lag trade the control is for.
 
 Measured on a synthetic signal at that sort of pilot SNR, steady-state
 weight jitter against averaging time:
@@ -279,6 +381,61 @@ Note this is separate from the lock-hold smoothing, which is fixed at
 about 6 s and does a different job - deciding whether the pilot is still
 there at all, rather than tracking the channel.
 
+### What was verified, and one thing that was not
+
+The control does reach the correlator and is converted as described.
+`div_auto_tau` is passed to `rade_corr_process()` and on to `rade_track()`,
+which forms
+
+    alpha = 1 - exp(-T / tau),   T = RADE_CORR_NMF / RADE_CORR_FS = 0.12 s
+
+and that is the exact discrete equivalent of a first-order lag with time
+constant `tau`, provided a frame really does arrive every `T`. It does:
+counted over 400 blocks, 285 of them carried a correlator update, which
+is 0.713 per block against the 0.711 the arithmetic gives (4096 samples,
+decimated by 6, over 960 samples a frame). So the accumulators are given
+the time constant the slider says.
+
+The fixed constants nearby also read as documented: `RADE_MAG_ALPHA` 0.02
+is 6.0 s at 8.33 frames a second, `RADE_USE_ALPHA` 0.12 is 1.0 s, and
+`RADE_PROBATION` 8 frames is 0.96 s.
+
+What is *not* the averaging time is how long the **weight** takes to
+settle after the channel changes. Stepping the aux arm's channel through
+90 degrees at constant magnitude - which leaves the residual covariance
+alone, so only the channel estimate has to move - and timing the tracked
+weight to 63% of its journey, over three seeds each:
+
+| Averaging | Weight settled in | Ratio |
+|---|---|---|
+| 1.5 s | 5.1 s | 3.4 |
+| 3 s | 11.1 s | 3.7 |
+| 6 s | 22.0 s | 3.7 |
+| 12 s | 41.1 s | 3.4 |
+
+Consistently about three and a half times the setting, and not a simple
+exponential either: the weight moves quickly for a block or two, swings
+well past the target - magnitude dipping to around 0.05 against a target
+of 0.78 - and then recovers slowly. That shape has not been run to
+ground, and no mechanism should be inferred from these numbers beyond
+what they say.
+
+They do not contradict the sentence above them. `alpha` is the time
+constant of the *estimates*, which is what that sentence claims and what
+the frame-rate check confirms. But an operator reading "Averaging" will
+reasonably expect it to be how long the weight takes to follow a change,
+and on a large one it is several times longer than that. Worth knowing
+when setting it, and worth measuring properly before anyone tunes
+against it.
+
+A caveat on the measurement: a 90-degree step is a violent thing to do to
+a channel, far more than a fading path does between frames, and the
+overshoot may well be particular to it. The jitter figures below are on a
+static channel for the same reason - which is also why they fall all the
+way to 20 s here, where the table above rises past 10 s. That rise is
+attributed to the estimate lagging a fading path, and a bench channel
+that does not fade cannot show it.
+
 ## Keeping the lock vs trusting the frame
 
 These are two different decisions and treating them as one was a bug.
@@ -294,8 +451,8 @@ There are now two gates on the same measurement:
 
 * a **fast** one (about 1 s) that freezes the accumulators and the weight
   when the pilot is not there, holding the last good values;
-* a **slow** one (about 6 s, then ten seconds of hysteresis) that decides
-  the signal has been gone long enough to give up and re-acquire.
+* a **hang**, counted in consecutive frozen frames, that decides the
+  signal has been gone long enough to give up and re-acquire.
 
 The status log shows `FROZEN` while the weight is being held, and
 transitions are logged.
@@ -324,13 +481,117 @@ Measured: weight drift while frozen on a signal that stops fell from
 0.152 to 0.0046, a factor of 33, on a weight of magnitude 0.86. What
 remains is the gate's engagement transient, not ongoing wander.
 
+## Hang
+
+`RADE V1 pilot` is the only reference that holds a *lock* - a timing, a
+frequency and a pilot bank it keeps returning to. The other references
+measure whatever is in the window this block and forget it over the
+averaging time; there is nothing for them to give up. So the **Hang**
+control appears only for this one.
+
+It sets how long a lock survives after the pilot stops being detectable,
+before the correlator gives up and searches again. The range is 1 to 30
+seconds and the default is 10.
+
+The trade is straightforward in one direction and less obvious in the
+other. Long is what a single station on a fading path wants: a fade is
+exactly when the combining weight is worth the most, and a lock given up
+in a fade has to be bought back with a fresh acquisition on a signal that
+is, at that moment, at its weakest.
+
+Short is what a frequency several stations are taking turns on wants, and
+that case is the reason the control exists. Each station arrives over its
+own path and has its own best gain and phase; until the lock on the last
+one is given up, the new one is being combined with the wrong weight, and
+the wrong weight on a two-antenna combiner is not neutral - it can be
+subtracting.
+
+### What it replaced
+
+A fixed ten seconds, counted off the **slow** ratio - the same
+pilot-to-floor measure but smoothed with a six-second time constant. That
+was too slow twice over. On a signal that simply stopped, the slow average
+took about seven seconds to fall from the six a clean lock reads to the
+two the test wanted, and only then did the ten start. Sixteen seconds.
+
+Sixteen seconds is not what the ten was meant to mean, and on a
+roundtable it is most of a short over: the combiner spent the beginning
+of every over applying the previous station's weight.
+
+The hang is now counted off the **fast** gate instead. That gate already
+decides, about a second at a time, whether a frame is worth measuring,
+and consecutive frames that are not are exactly what "the pilot is not
+there" means. One good frame resets the count, so a fade that flickers
+does not accumulate towards a drop - only a continuous absence does.
+
+`RADE_HOLD_RATIO` and its counter are gone with it. The slow average
+survives as the *reported* health of a lock, which is what a
+level-independent ratio over several seconds is good for.
+
+### Measured
+
+Two stations on one frequency, the second half a modem frame away in
+timing with a different channel, the first stopping dead as the second
+starts:
+
+| Hang | Lock dropped | Re-locked |
+|---|---|---|
+| 2 s | 3.6 s after the changeover | 2.0 s later |
+| 10 s | 11.5 s after the changeover | 2.0 s later |
+
+Eight seconds more hang cost 7.9 seconds more before the drop, so the
+setting is what decides. The roughly 1.5 s on top of it in both rows is
+the fast gate's own averaging, which has to run down before the count can
+start.
+
+One thing this measurement showed that a stopping signal does not. While
+the fast gate is running down, the accumulators are still being fed - and
+here what they are being fed is not the noise a signal that stopped
+leaves behind, but *another strong station*, whose data symbols correlate
+against the pilot well enough to move the weight. The weight takes a real
+kick in that first second or so before the freeze engages, and after that
+it is held to within 0.5 dB and 5 degrees for the whole of the hang.
+
+The kick costs nothing that lasts, because the re-acquisition that
+follows starts the channel estimate again from nothing rather than
+averaging into it. Measured end to end, the weight after the changeover
+lands within a quarter of the distance from the old station's answer to
+what the new station gives when it is the only one there.
+
 ## False alarms
 
 Acquisition was never tested against noise until it was accused of finding
 pilots that were not there. It does not: over repeated runs of pure noise
-with no signal present, the statistic reaches 3.0 to 4.6 against a lock
-threshold of 6.0, and no run produced a lock. The 10.8 to 15.9 seen on air
-are genuine detections.
+with no signal present, the statistic reaches 3.0 to 4.6, and no run
+produced a lock. The 10.8 to 15.9 seen on air are genuine detections.
+
+The 32-pass threshold has since come down from 6.0 to **4.8**, which is
+closer to that 4.6 ceiling than it looks: what the threshold produces is a
+*candidate*, and probation then has to confirm it on a pilot-to-floor
+ratio rather than on this statistic. Re-measured at 4.8 over two minutes
+of pure noise: no false candidates and no false locks.
+
+Be clear about what that bought, because it is not what the arithmetic
+suggests. It does pass a weak signal through this gate - at the point
+where a 32-pass score of 5.90 used to miss 6.0 by a tenth, a candidate is
+now raised at the correct frequency. But across 7 SNRs x 3 seeds and 5
+noise levels x 5 seeds on synthetic signals, 4.8 and 6.0 give **identical
+outcomes**: everything that locks at one locks at the other, in the same
+number of blocks. The extra candidates are turned down by probation, at
+pilot/floor 1.83 against the 2.5 `RADE_USE_RATIO` requires.
+
+So `RADE_USE_RATIO` is what currently sets the weak-signal floor, not the
+acquisition sigma. It is also the constant holding the false-alarm line,
+so it should not be moved without measuring what it lets through.
+
+Both halves of that have since been measured against recorded captures,
+and only the second survived. Varying `RADE_USE_RATIO` over 1.75 to 3.0
+leaves lock uptime on real signals unchanged to within a few points, so it
+is not the weak-signal floor of anything; but on recorded dead air it does
+hold the false-alarm line, and below 2.00 that line breaks. The value
+stays at 2.50. Note also that the "pure noise" runs above were synthetic:
+real band noise is markedly harsher on this threshold. See
+[`diversity-measurements.md`](diversity-measurements.md).
 
 ## Known limits
 
@@ -348,9 +609,15 @@ is periodic over the modem frame, so it is indistinguishable from pilot
 energy by any amount of frame-rate integration.
 
 **The displayed "pilot" percentage reads low under strong QRM** even while
-tracking perfectly. It is the share of pilot-span energy the pilot itself
+tracking perfectly. It is the share of the span energy the pilot itself
 accounts for, which is genuinely small when something loud is sitting on
 top of it. Watch the LOCK indicator, not that number.
+
+It reads *higher* than it did before the covariance moved off the
+pilot-span residual, because a station in the rejected sideband is no
+longer counted against it. Only interference the modem is actually sitting
+in depresses it now, which is the more useful reading of the two - but any
+number written down from an older build is not comparable.
 
 **Acquisition takes 1 to 5 s of continuous signal**, depending on how
 strong it is.
@@ -366,10 +633,10 @@ answer the question "is the thing we just found still there?".
 What happens now:
 
 1. **Progressive search.** The grid is scored at 8, 16 and 32 passes,
-   with thresholds of 7.5, 6.75 and 6.0 sigma. The early thresholds are
-   raised because scoring three times gives noise three chances; the
-   schedule as a whole has about the false-alarm rate of the single 6.0
-   test it replaces. A strong signal is found after 8 passes, just under
+   with thresholds of 7.5, 6.75 and 4.8 sigma. The early thresholds are
+   raised because scoring three times gives noise three chances; the last
+   one is low because probation, not it, is what a candidate has to
+   survive. A strong signal is found after 8 passes, just under
    a second.
 2. **Cheap confirmation.** A detection is a *candidate*, not a lock. The
    tracker follows it for `RADE_PROBATION` (8) frames, about a second,
@@ -386,9 +653,20 @@ without CTUN acquire in **2.2 s** (`test/diversity/test_rade.c`), against
 **Frequency is tracked once locked.** Acquisition leaves it quantised to
 the 5 Hz search grid, and a station drifts. The pilot correlation turns by
 `2*pi*df*T` from one modem frame to the next, `T` being 120 ms, so its
-phase advance measures the residual directly and unambiguously over
-+/-4.17 Hz - which covers both the half-step quantisation and any drift a
-station on frequency will show. The loop is deliberately slow, about two
+phase advance measures the residual, unambiguously over +/-4.17 Hz about
+the tracked offset - which covers both the half-step quantisation and any
+drift a station on frequency will show.
+
+The advance `lock_f` already accounts for has to be subtracted first, and
+for a long time it was not. The reference is rebuilt from `n = 0` every
+frame while the received pilot advances with the sample index, so the raw
+phase step measures the *absolute* offset rather than the residual, and
+feeding that back made the loop an integrator with no error signal in it:
+`lock_f` walked away instead of converging. Replaying a capture of two
+real stations it drifted from +19 Hz to +8 Hz over 25 seconds on one over
+and was still moving at the end of the other. With the expected advance
+removed it settles in a second or two and stays there (+22.6 Hz and
+-17.5 Hz on those same two overs). The loop is deliberately slow, about two
 seconds, since a few Hz per minute is 0.01 Hz in that time. It is skipped
 on any frame where the timing was nudged, because a one-sample shift
 rotates the correlation by more than any frequency error would.

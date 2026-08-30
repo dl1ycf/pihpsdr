@@ -3,6 +3,127 @@ LIST OF RECENT PIHPSDR CHANGES
 August 2026:
 ------------
 
+- diversity: the RADE V1 pilot reference no longer builds its interference
+  covariance from the pilot-span residual. Fitting one scalar channel
+  across the pilot symbol removes only that one component, so everything
+  else in the correlator's +/-3 kHz view stayed in the "noise" - dominated,
+  on every recorded capture, by whatever occupied the rejected sideband: a
+  station of comparable power that WDSP filters away and the operator never
+  hears. Measured inter-arm coherence of that residual ran 0.61 to 0.80
+  where the true noise was 0.11 to 0.49, so MVDR steered its null onto it,
+  and the null landed close to the wanted signal's own inter-arm phase. The
+  covariance is now measured in the off-carrier bins of the same span -
+  300 to 2850 Hz, on the pilot bank's own side of the tuned frequency,
+  excluding the modem's 750-2200 Hz carriers - which keeps the rejected
+  sideband out by construction
+
+- diversity: the RADE V1 channel estimate is now accumulated as the
+  cross-spectrum d1*conj(d0) and |d0|^2 rather than as coherent averages of
+  the two arms' pilot correlations. The old pair averaged a phasor that was
+  still turning: at the operator's 10.5 s averaging the coherent part sat 16
+  to 28 dB below the per-frame magnitude with its phase dragged 36 to 51
+  degrees off, and it got worse the longer Averaging was set - the opposite
+  of what that control promises. Both new terms are invariant to a rotation
+  the two arms share
+
+  Together with the covariance change, decode-scored against librade over
+  three 40 m captures of real RADE stations: the mode moves from 3.4, 0.5
+  and 1.8 dB *below* the better antenna alone to +0.5, +0.5 and -0.0 dB.
+  Detection is unaffected - lock uptime, acquisitions and time to first
+  lock are unchanged, and the false-alarm threshold stays at 2.50. Note the
+  displayed pilot percentage and SNR read higher than before, because a
+  station in the rejected sideband is no longer counted as interference
+
+- diversity: fixed the RADE V1 frequency discriminator, which measured the
+  absolute offset rather than the residual. The pilot reference is rebuilt
+  from sample zero every frame while the received pilot advances with the
+  sample index, so the phase step between frames is 2*pi*f*T whatever the
+  tracker already holds; feeding that back made the loop an integrator with
+  no error signal in it and the tracked frequency walked away instead of
+  converging. Replaying a real capture it drifted from +19 to +8 Hz over 25
+  seconds; it now settles within a second or two and stays there
+
+- diversity: rade_corr_reset() now clears the reported frequency offset and
+  sideband. They are only written when a lock is taken, so they survived a
+  reset and the menu went on showing the previous lock's values until the
+  correlator re-acquired
+
+- diversity: retuning by less than 20 Hz no longer throws away the
+  accumulated statistics. The context comparison was exact, so a one-hertz
+  step of the tuning knob discarded the channel estimate, the covariance
+  and the correlator's lock. Measured on a capture of an operator tuning
+  around: 23 resets over 30 analysis blocks, a median of one block between
+  them, against the 31 blocks the operator's averaging time asks for - so
+  the loop spent the whole of a tune in the first block or two of an
+  estimate that needed thirty-one. The antenna-to-antenna transfer is a
+  property of the antennas and the path and does not change because the
+  dial moved a hertz; a real QSY moves kilohertz and still resets, as does
+  any filter change. Block-to-block movement of the applied weight while
+  tuning drops from 0.368 to 0.205, and every other recorded capture
+  replays identically
+
+- diversity: new **Hang** control for the RADE V1 pilot reference, 1 to
+  30 seconds, setting how long a lock outlives the pilot before the
+  correlator gives up and searches again. Long rides out a fade on one
+  station; short is what a frequency several stations take turns on
+  wants, where each arrives over its own path and wants its own weight.
+  It replaces a fixed ten seconds that was counted off a six-second
+  average, so a station that simply stopped took about sixteen seconds to
+  let go of - most of a short over, during which the new station was
+  being combined with the old one's gain and phase. The hang is now
+  counted off the one-second freeze gate instead, and one good frame
+  resets it, so a fade that flickers still does not accumulate towards a
+  drop. Measured on two stations swapping: 2 s drops the lock 3.6 s after
+  the changeover and re-locks 2.0 s later, 10 s drops it at 11.5 s
+
+- diversity: the RADE V1 reference now respects the Auto objective. It
+  always solves for the weight that maximises the pilot's SINR, and that
+  answer was applied whatever the operator had selected, so Null and the
+  Invert button did nothing here that lasted - the weight turned over and
+  then slewed straight back on the next block. Null now turns the
+  correlator's answer through 180 degrees, cancelling the RADE station
+  rather than combining for it
+
+- diversity: RADE V1's 32-pass acquisition threshold lowered from 6.0 to
+  4.8 sigma, so a weak pilot that scores just short of the old threshold
+  now raises a candidate. Safe because a candidate is not a lock: the
+  probation frames that follow confirm it on a pilot-to-floor ratio
+  instead, and produce no weight while they run - measured over two
+  minutes of pure noise at 4.8, no false candidates and no false locks.
+  Note that on synthetic signals this changes no outcomes: the extra
+  candidates are turned down by probation, so RADE_USE_RATIO rather than
+  the acquisition sigma is what currently sets the weak-signal floor
+
+- diversity: the wideband "RADE passband" reference has been removed.
+  Digital I/Q supersedes it - it starts from the same passband, finds
+  where the modem's energy actually is rather than assuming the nominal
+  750-2200 Hz band, and measures the noise separately instead of
+  assuming both branches carry equal, uncorrelated noise, which for a
+  signal that lives near the noise floor is the difference that counts.
+  A props file selecting it is migrated to Digital I/Q on restore
+
+- diversity: every transform reference now notices a transmission
+  ending. Nothing else in the loop could: the coherence gate sees Sxy,
+  Sxx and Syy decay together with gamma^2 staying near 1, and Digital
+  I/Q's occupancy test is a ratio against the noise floor and so is
+  scale invariant, so a 30 dB signal at 2 s averaging kept the loop
+  "tracking" noise for around twelve seconds after every transmission.
+  It now compares each block's power against the smoothed power
+  accumulated over the same bins and holds when they part company - one
+  block instead of twelve seconds, with the weight left where the last
+  real signal put it. This matters
+  most on CW, where the signal is absent for most of a transmission
+  rather than only between them, and the loop was previously averaging
+  key-down and key-up together
+
+- diversity: a new "Measure on" reference, Digital I/Q, for narrow
+  digital signals in a mostly empty passband. It finds the occupied bins
+  in the analysis region from the spectrum, measures the noise covariance
+  over the bins that are left, and solves w = R^-1 h. Sum then handles a
+  noisier aux antenna and correlated common-mode noise, neither of which
+  the older Sum could - it assumes both branches carry equal,
+  uncorrelated noise. Degenerates exactly to the older Sum when they do
+
 - automatic diversity phasing: the gain and phase can now be determined
   from the two antenna streams instead of set by hand, with the analysis
   window shown on the panadapter, a carrier tracker that can be aimed at

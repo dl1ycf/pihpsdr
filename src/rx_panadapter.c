@@ -340,16 +340,30 @@ void rx_panadapter_update(RECEIVER *rx) {
       whi = div_auto_centre + 0.5 * div_auto_width;
       break;
 
-    case DIV_REF_RADE_BAND:
+    case DIV_REF_DIGITAL_IQ:
+      //
+      // Again the search region. What was found occupied inside it is
+      // drawn over the top further down, so both are visible at once:
+      // the region is the operator's setting and the span is the
+      // measurement, and seeing them disagree is how a region placed on
+      // the wrong thing shows itself.
+      //
+      if (div_auto_follow_filter) {
+        wlo = rx->filter_low;
+        whi = rx->filter_high;
+      } else {
+        wlo = div_auto_centre - 0.5 * div_auto_width;
+        whi = div_auto_centre + 0.5 * div_auto_width;
+      }
+
+      break;
+
     case DIV_REF_RADE_V1:
       //
-      // The modem band, on the side the operator's sideband puts it.
-      //
-      // The wideband mode measures an FFT window and clips it to the
-      // operator's filter, so the overlay is clipped to match. The pilot
-      // correlator does not: it taps the raw stream ahead of WDSP and
-      // needs all thirty carriers whatever the filter is set to, so
-      // there the whole modem band is drawn.
+      // The whole modem band, on the side the operator's sideband puts
+      // it, and deliberately not clipped to the filter: the pilot
+      // correlator taps the raw stream ahead of WDSP and needs all thirty
+      // carriers whatever the filter is set to.
       //
       if (div_rade_side_get() < 0) {
         wlo = -RADE_CORR_FHI;
@@ -357,16 +371,6 @@ void rx_panadapter_update(RECEIVER *rx) {
       } else {
         wlo = RADE_CORR_FLO;
         whi = RADE_CORR_FHI;
-      }
-
-      if (div_auto_ref == DIV_REF_RADE_BAND && rx->filter_high > rx->filter_low) {
-        double plo = fmax(wlo, (double)rx->filter_low);
-        double phi = fmin(whi, (double)rx->filter_high);
-
-        if (phi > plo) {
-          wlo = plo;
-          whi = phi;
-        }
       }
 
       break;
@@ -397,6 +401,39 @@ void rx_panadapter_update(RECEIVER *rx) {
       cairo_set_source_rgba(cr, t->ok[0], t->ok[1], t->ok[2], 0.20);
       cairo_rectangle(cr, l, 0.0, r - l, myheight);
       cairo_fill(cr);
+
+      //
+      // In digital mode, shade the bins found occupied inside the region.
+      // Same accent again but stronger, so it reads as "this part of the
+      // region is what is being measured" rather than as a second thing.
+      //
+      if (div_auto_ref == DIV_REF_DIGITAL_IQ && div_auto_occ_valid) {
+        double ol = rx->cAp * div_auto_occ_lo + xoffset + rx->cBp;
+        double oh = rx->cAp * div_auto_occ_hi + xoffset + rx->cBp;
+
+        if (mode == modeCWU) {
+          ol -= cw_keyer_sidetone_frequency * rx->cAp;
+          oh -= cw_keyer_sidetone_frequency * rx->cAp;
+        } else if (mode == modeCWL) {
+          ol += cw_keyer_sidetone_frequency * rx->cAp;
+          oh += cw_keyer_sidetone_frequency * rx->cAp;
+        }
+
+        //
+        // Clipped to the region: the span is computed from bin indices
+        // and rounded outwards by half a bin, so it can overhang the
+        // region it came from by a fraction of a bin.
+        //
+        if (ol < l) { ol = l; }
+
+        if (oh > r) { oh = r; }
+
+        if (oh > ol) {
+          cairo_set_source_rgba(cr, t->ok[0], t->ok[1], t->ok[2], 0.35);
+          cairo_rectangle(cr, ol, 0.0, oh - ol, myheight);
+          cairo_fill(cr);
+        }
+      }
 
       //
       // In carrier mode, mark where the tracker has actually settled

@@ -22,6 +22,12 @@
 
 #include "client_server.h"
 #include "diversity_auto.h"
+#ifdef DIVERSITY_CAPTURE
+  //
+  // DEVELOPMENT TOOL - remove with the rest of the capture instrument.
+  //
+  #include "diversity_capture.h"
+#endif
 #include "message.h"
 #include "new_menu.h"
 #include "radio.h"
@@ -41,6 +47,7 @@ static GtkWidget *follow_b = NULL;
 static GtkWidget *centre_spin = NULL;
 static GtkWidget *width_spin = NULL;
 static GtkWidget *tau_scale = NULL;
+static GtkWidget *hang_scale = NULL;
 static GtkWidget *coh_scale = NULL;
 static GtkWidget *res_combo = NULL;
 static GtkWidget *weight_combo = NULL;
@@ -59,6 +66,7 @@ static GtkWidget *width_label = NULL;
 static GtkWidget *res_label = NULL;
 static GtkWidget *weight_label = NULL;
 static GtkWidget *coh_label = NULL;
+static GtkWidget *hang_label = NULL;
 
 
 static double gain_coarse, gain_fine;
@@ -81,6 +89,47 @@ static int updating_from_auto = 0;
 //
 static int updating_ref = 0;
 
+#ifdef DIVERSITY_CAPTURE
+//
+// ===================================================================
+//  DEVELOPMENT TOOL - NOT PART OF THE DIVERSITY FEATURE.
+//  Compiled only under "make DIVCAP=1". Delete this block, the one in
+//  the button row and the one in status_update_cb() when the RADE
+//  tuning work is finished. See test/diversity/devtools/README.md.
+// ===================================================================
+//
+// Records the analysis blocks to a file so a real signal can be replayed
+// into the correlator offline. Where the file goes, how long it runs and
+// what note is stored with it come from the environment
+// (PIHPSDR_DIVCAP_DIR / _SECONDS / _NOTE) rather than from properties,
+// so that nothing about this survives in an operator's config once the
+// instrument is removed.
+//
+static GtkWidget *divcap_b = NULL;
+
+//
+// Declared here rather than in diversity_auto.h: nfft is private to
+// diversity_auto.c, so the arming call has to live there, but the header
+// is a permanent file and this is not.
+//
+extern int diversity_auto_capture_start(void);
+
+static void divcap_cb(GtkWidget *widget, gpointer data) {
+  if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
+    if (!diversity_auto_capture_start()) {
+      //
+      // No analysis thread running, or the file would not open. Come back
+      // out rather than sit there looking armed.
+      //
+      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), FALSE);
+    }
+  } else {
+    diversity_capture_stop();
+  }
+}
+
+#endif
+
 static void cleanup(void) {
   if (status_timer != 0) {
     g_source_remove(status_timer);
@@ -100,6 +149,7 @@ static void cleanup(void) {
     centre_spin = NULL;
     width_spin = NULL;
     tau_scale = NULL;
+    hang_scale = NULL;
     coh_scale = NULL;
     res_combo = NULL;
     weight_combo = NULL;
@@ -107,11 +157,22 @@ static void cleanup(void) {
     hold_b = NULL;
     invert_b = NULL;
     reset_b = NULL;
+#ifdef DIVERSITY_CAPTURE
+    //
+    // DEVELOPMENT TOOL - remove with the rest of the capture instrument.
+    //
+    // The capture itself carries on: closing the menu is not a reason to
+    // stop recording, and it stops itself when its budget is up. Only the
+    // widget goes.
+    //
+    divcap_b = NULL;
+#endif
     centre_label = NULL;
     width_label = NULL;
     res_label = NULL;
     weight_label = NULL;
     coh_label = NULL;
+    hang_label = NULL;
     //
     // Hold is an operating state with no indicator outside this dialog,
     // so leaving it set with the dialog shut would silently stop the loop
@@ -270,26 +331,45 @@ static void update_visibility(void) {
   //
   const gboolean is_band    = (ref == DIV_REF_BAND);
   const gboolean is_carrier = (ref == DIV_REF_CARRIER);
-  const gboolean placeable  = is_carrier || (is_band && !div_auto_follow_filter);
+  //
+  // Digital I/Q places a search region the same way Window places a
+  // window, and takes the follow tick for the same reason: following the
+  // passband puts the region on the right side of the tuned frequency in
+  // every mode without a sideband table, which is how this mode avoids
+  // needing one.
+  //
+  const gboolean is_digital = (ref == DIV_REF_DIGITAL_IQ);
+  const gboolean follows    = is_band || is_digital;
+  const gboolean placeable  = is_carrier || (follows && !div_auto_follow_filter);
   //
   // Everything except the pilot correlator works from the transform, so
   // only it has no use for a bin resolution or a coherence threshold.
   //
   const gboolean uses_fft = (ref != DIV_REF_RADE_V1);
   //
-  // Per-bin weighting needs a window with bins to weight. The carrier
-  // reference accumulates a handful either side of one peak, where it has
-  // nothing to choose between.
+  // Per-bin weighting needs a window with bins to weight, and only the
+  // wideband window has one. The carrier reference accumulates a handful
+  // either side of one peak, where there is nothing to choose between;
+  // Digital I/Q decides which bins carry signal by occupancy, which is
+  // the job Coherence weighting was doing.
   //
-  const gboolean wide = is_band || (ref == DIV_REF_RADE_BAND);
+  const gboolean wide = is_band;
+  //
+  // Only the pilot correlator holds a lock that can be given up and
+  // re-acquired, so only it has a hang time. The wideband references have
+  // nothing to re-acquire: they stop accumulating when the signal goes
+  // and pick the next one up as it arrives, over the averaging time.
+  //
+  const gboolean has_lock = (ref == DIV_REF_RADE_V1);
 
-  if (follow_b) { gtk_widget_set_visible(follow_b, is_band); }
+  if (follow_b) { gtk_widget_set_visible(follow_b, follows); }
 
   div_show_row(centre_label, centre_spin, placeable);
   div_show_row(width_label,  width_spin,  placeable);
   div_show_row(res_label,    res_combo,   uses_fft);
   div_show_row(weight_label, weight_combo, wide);
   div_show_row(coh_label,    coh_scale,   uses_fft);
+  div_show_row(hang_label,   hang_scale,  has_lock);
 }
 
 //
@@ -452,12 +532,6 @@ static int status_update_cb(gpointer data) {
 
     break;
 
-  case DIV_REF_RADE_BAND:
-    snprintf(tag, sizeof(tag), "RADE %s", div_rade_side_text());
-    state = div_auto_hold ? "HOLD" : (div_auto_holding ? "wait" : "track");
-    snprintf(detail, sizeof(detail), "coh %3.0f%%", 100.0 * div_auto_coherence);
-    break;
-
   case DIV_REF_RADE_V1:
     snprintf(tag, sizeof(tag), "RADE V1");
 
@@ -483,6 +557,32 @@ static int status_update_cb(gpointer data) {
 
     break;
 
+  case DIV_REF_DIGITAL_IQ:
+    snprintf(tag, sizeof(tag), "Dig %.0fHz%s", div_auto_binhz, clamp);
+
+    if (!div_auto_occ_valid) {
+      //
+      // Nothing in the region stands above its own noise floor. This is
+      // the ordinary no-signal state, not a fault, and it is the one
+      // worth distinguishing: it says the region is in the right place
+      // but empty, where "wait" would say something was found and then
+      // rejected for incoherence.
+      //
+      state = div_auto_hold ? "HOLD" : "search";
+      snprintf(detail, sizeof(detail), "no signal");
+    } else {
+      state = div_auto_hold ? "HOLD" : (div_auto_holding ? "wait" : "track");
+      //
+      // The occupied width rather than the coherence: it is what the
+      // occupancy split decided, and it is checkable against the darker
+      // band on the panadapter.
+      //
+      snprintf(detail, sizeof(detail), "occ %4.0fHz",
+               div_auto_occ_hi - div_auto_occ_lo);
+    }
+
+    break;
+
   default:
     snprintf(tag, sizeof(tag), "Win %.0fHz%s", div_auto_binhz, clamp);
     state = div_auto_hold ? "HOLD" : (div_auto_holding ? "wait" : "track");
@@ -490,6 +590,28 @@ static int status_update_cb(gpointer data) {
     break;
   }
 
+#ifdef DIVERSITY_CAPTURE
+
+  //
+  // DEVELOPMENT TOOL - remove with the rest of the capture instrument.
+  //
+  // The count goes on the button rather than into the status line, which
+  // is held to exactly DIV_STATUS_CHARS and has no room to spare.
+  //
+  if (divcap_b != NULL) {
+    char cap[48];
+    diversity_capture_status(cap, sizeof(cap));
+    gtk_button_set_label(GTK_BUTTON(divcap_b), (cap[0] != '\0') ? cap : "Capture");
+
+    if (!div_capture_active && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(divcap_b))) {
+      //
+      // It reached its block budget and closed itself. Follow it out.
+      //
+      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(divcap_b), FALSE);
+    }
+  }
+
+#endif
   div_status_set(tag, state, detail, g, p);
   return G_SOURCE_CONTINUE;
 }
@@ -572,10 +694,10 @@ static void hold_cb(GtkWidget *widget, gpointer data) {
 }
 
 //
-// The window controls are modal: the Window and Carrier references each
-// keep their own centre and width, so aiming the carrier tracker at a
-// station 5 kHz away does not destroy the window set up for wideband
-// work, and going back restores it.
+// The window controls are modal: the Window, Carrier and Digital I/Q
+// references each keep their own centre and width, so aiming the carrier
+// tracker at a station 5 kHz away does not destroy the window set up for
+// wideband work, and going back restores it.
 //
 static void div_window_store(int ref) {
   if (ref == DIV_REF_CARRIER) {
@@ -584,6 +706,9 @@ static void div_window_store(int ref) {
   } else if (ref == DIV_REF_BAND) {
     div_band_centre = div_auto_centre;
     div_band_width  = div_auto_width;
+  } else if (ref == DIV_REF_DIGITAL_IQ) {
+    div_digital_centre = div_auto_centre;
+    div_digital_width  = div_auto_width;
   }
 }
 
@@ -594,6 +719,9 @@ static void div_window_recall(int ref) {
   } else if (ref == DIV_REF_BAND) {
     div_auto_centre = div_band_centre;
     div_auto_width  = div_band_width;
+  } else if (ref == DIV_REF_DIGITAL_IQ) {
+    div_auto_centre = div_digital_centre;
+    div_auto_width  = div_digital_width;
   }
 
   if (centre_spin) {
@@ -612,12 +740,13 @@ static void ref_changed_cb(GtkWidget *widget, gpointer data) {
   div_window_recall(div_auto_ref);
 
   //
-  // On RADE the wanted signal is the one we are pointing at, so the
-  // sensible objective is to maximise its SNR rather than to null the
-  // strongest correlated thing in the window. Default to Sum on the way
-  // in; the operator can still choose otherwise afterwards.
+  // On RADE V1 the wanted signal is the one the pilot correlator is
+  // pointing at, so the sensible objective is to maximise its SNR rather
+  // than to null the strongest correlated thing in the window. Default to
+  // Sum on the way in; the operator can still choose otherwise
+  // afterwards.
   //
-  if (DIV_REF_IS_RADE(div_auto_ref) && !DIV_REF_IS_RADE(previous)) {
+  if (div_auto_ref == DIV_REF_RADE_V1 && previous != DIV_REF_RADE_V1) {
     div_auto_mode = DIV_AUTO_SUM;
     updating_ref = 1;
     gtk_combo_box_set_active(GTK_COMBO_BOX(auto_combo), div_auto_mode);
@@ -661,6 +790,11 @@ static void width_cb(GtkWidget *widget, gpointer data) {
   div_auto_width = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
   div_window_store(div_auto_ref);
   diversity_auto_reset();
+}
+
+static void hang_cb(GtkWidget *widget, gpointer data) {
+  (void)data;
+  div_auto_hang = gtk_range_get_value(GTK_RANGE(widget));
 }
 
 static void tau_cb(GtkWidget *widget, gpointer data) {
@@ -802,8 +936,8 @@ void diversity_menu(GtkWidget *parent) {
   ref_combo = gtk_combo_box_text_new();
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "Window (wideband)");
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "Carrier (AM/SAM)");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "RADE passband");
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "RADE V1 pilot (MVDR)");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "Digital I/Q (occupancy MVDR)");
   gtk_combo_box_set_active(GTK_COMBO_BOX(ref_combo), div_auto_ref);
   gtk_grid_attach(GTK_GRID(grid), ref_combo, 1, 7, 1, 1);
   g_signal_connect(ref_combo, "changed", G_CALLBACK(ref_changed_cb), NULL);
@@ -888,6 +1022,23 @@ void diversity_menu(GtkWidget *parent) {
   gtk_range_set_value(GTK_RANGE(coh_scale), 100.0 * div_auto_coherence_min);
   gtk_grid_attach(GTK_GRID(grid), coh_scale, 1, 14, 1, 1);
   g_signal_connect(G_OBJECT(coh_scale), "value_changed", G_CALLBACK(coh_cb), NULL);
+  hang_label = gtk_label_new("Hang (s)");
+  gtk_widget_set_tooltip_text(hang_label,
+                              "How long a RADE lock is held after the pilot stops "
+                              "being detectable, before the correlator gives up and "
+                              "searches again. Long rides out a fade on one station. "
+                              "Short is what a frequency several stations take turns "
+                              "on wants: each has its own best gain and phase, and "
+                              "until the lock is dropped the previous station's is "
+                              "still being applied.");
+  gtk_widget_set_name(hang_label, "boldlabel");
+  gtk_widget_set_halign(hang_label, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(grid), hang_label, 0, 15, 1, 1);
+  hang_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 1.0, 30.0, 0.5);
+  gtk_widget_set_size_request(hang_scale, 300, 25);
+  gtk_range_set_value(GTK_RANGE(hang_scale), div_auto_hang);
+  gtk_grid_attach(GTK_GRID(grid), hang_scale, 1, 15, 1, 1);
+  g_signal_connect(G_OBJECT(hang_scale), "value_changed", G_CALLBACK(hang_cb), NULL);
   //
   // The three things done while listening rather than while setting up,
   // on one row of their own.
@@ -916,7 +1067,27 @@ void diversity_menu(GtkWidget *parent) {
                               "interference.");
   g_signal_connect(invert_b, "clicked", G_CALLBACK(invert_cb), NULL);
   gtk_box_pack_start(GTK_BOX(buttons), invert_b, FALSE, FALSE, 0);
-  gtk_grid_attach(GTK_GRID(grid), buttons, 0, 15, 2, 1);
+#ifdef DIVERSITY_CAPTURE
+  //
+  // DEVELOPMENT TOOL - remove with the rest of the capture instrument.
+  //
+  divcap_b = gtk_toggle_button_new_with_label("Capture");
+  gtk_widget_set_tooltip_text(divcap_b,
+                              "Development tool. Record the two antenna streams as "
+                              "the analysis thread sees them, for replaying into the "
+                              "correlator offline. Stops by itself at "
+                              "PIHPSDR_DIVCAP_SECONDS (default 60). The label counts "
+                              "blocks written.");
+  //
+  // A capture survives the menu being closed, so a menu opened while one
+  // is running has to come up showing it. Set before the handler is
+  // connected, so this does not read as the operator pressing it.
+  //
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(divcap_b), div_capture_active != 0);
+  g_signal_connect(divcap_b, "toggled", G_CALLBACK(divcap_cb), NULL);
+  gtk_box_pack_start(GTK_BOX(buttons), divcap_b, FALSE, FALSE, 0);
+#endif
+  gtk_grid_attach(GTK_GRID(grid), buttons, 0, 16, 2, 1);
   //
   // The status line spans both columns and is held to exactly
   // DIV_STATUS_CHARS characters, so it fits inside the width the controls
@@ -935,7 +1106,7 @@ void diversity_menu(GtkWidget *parent) {
     gtk_label_set_attributes(GTK_LABEL(status_label), attrs);
     pango_attr_list_unref(attrs);
   }
-  gtk_grid_attach(GTK_GRID(grid), status_label, 0, 16, 2, 1);
+  gtk_grid_attach(GTK_GRID(grid), status_label, 0, 17, 2, 1);
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
@@ -958,10 +1129,20 @@ void diversity_menu(GtkWidget *parent) {
     gtk_widget_set_sensitive(res_combo, FALSE);
     gtk_widget_set_sensitive(weight_combo, FALSE);
     gtk_widget_set_sensitive(tau_scale, FALSE);
+    gtk_widget_set_sensitive(hang_scale, FALSE);
     gtk_widget_set_sensitive(coh_scale, FALSE);
     gtk_widget_set_sensitive(reset_b, FALSE);
     gtk_widget_set_sensitive(hold_b, FALSE);
     gtk_widget_set_sensitive(invert_b, FALSE);
+#ifdef DIVERSITY_CAPTURE
+    //
+    // DEVELOPMENT TOOL - remove with the rest of the capture instrument.
+    //
+    // Nothing to record here: the samples are combined on the server and
+    // the analysis thread never runs on a remote client.
+    //
+    gtk_widget_set_sensitive(divcap_b, FALSE);
+#endif
     div_status_set("Remote", "", "radio side", div_gain, div_phase);
     return;
   }

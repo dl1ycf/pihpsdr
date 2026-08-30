@@ -1,183 +1,166 @@
-# Proposal: I/Q-Space Digital Mode Diversity Correlation Routine
+# The Digital I/Q reference
 
-## Executive Summary
+> **This was a proposal; it is now shipped behaviour**, and not what the
+> proposal asked for. Most of what the proposal specified already existed,
+> and two of its central ideas could not work at the tap point it aimed
+> at. What was built instead — an occupancy split feeding a two-element
+> MVDR solve — is described here, and the reasoning that was discarded is
+> recorded in [`diversity-auto-phasing.md`](diversity-auto-phasing.md).
+>
+> The reference description is §5 of [`diversity.md`](diversity.md), and
+> how to use it is §3 of [`diversity-guide.md`](diversity-guide.md).
 
-piHPSDR's automatic diversity combiner (`src/diversity_auto.c`) currently supports four reference modes:
-1. **`DIV_REF_BAND`**: FFT wideband analysis following filter or manual window (Flat or Coherence-weighted).
-2. **`DIV_REF_CARRIER`**: Carrier-bin tracker for narrow AM/SAM tones.
-3. **`DIV_REF_RADE_BAND`**: FreeDV RADE passband power matching.
-4. **`DIV_REF_RADE_V1`**: Pilot correlation & MVDR beamforming for FreeDV RADE V1.
+## What it is for
 
-This proposal introduces a dedicated **I/Q-Space Digital Mode Diversity Correlator** (`DIV_REF_DIGITAL_IQ`). This routine targets constant-envelope and continuous-phase digital modes (e.g. FSK derivatives, BPSK, QPSK, QAM) where signal quality correlates to phase-space dispersion, polar rotation stability, and envelope consistency in I/Q baseband space.
+A narrow digital signal — FT8, RTTY, PSK31, VARA, JS8 — in a passband
+that is mostly empty. The empty part is the point: it is where the noise
+can be measured on its own.
 
-Key features:
-- **Default Center Frequencies**: Automatically defaults to **-1500 Hz** in LSB and **+1500 Hz** in USB modes.
-- **Selectable Modulation Width**: User-selectable bandwidth, defaulting to **500 Hz** (with an option for weighted full passband).
-- **Flexible Window Placement**: Allows positioning the detection window **outside** the main passband to track and null strong adjacent-channel digital interference (`DIV_AUTO_NULL`).
-- **Constant Envelope / Continuous Phase Focus**: Optimized for constant modulation modes (FSK/PSK/QAM); does not require or rely on On-Off Keying (OOK/CW keying).
+It also **replaces the wideband RADE passband reference**, which has been
+removed. That mode placed a window on the nominal 750-2200 Hz modem band
+and clipped it to the filter; this one starts from the same passband,
+finds where the modem's energy actually is, and measures the noise
+separately — which for a signal living near the noise floor, as RADE
+does, is the difference that counts.
 
----
+## The problem it solves
 
-## Technical & Mathematical Rationale in I/Q Space
+Every other reference computes **Sum** as `w = +Sxy/Sxx`. That is maximum
+ratio combining *only* when the two branches carry equal, uncorrelated
+noise, because nothing in the estimator ever forms a picture of the noise
+apart from the signal. On a real station the assumption fails twice over:
 
-```
-                 Main Antenna (ADC0) -> z0(t) ---\
-                                                   +--> Combined y(t) = z0(t) + w * z1(t)
-Aux Antenna (ADC1) -> z1(t) -- [ Weight w ] -----/
-                                     ^
-                                     | (w = div_cos + j*div_sin)
-                      +--------------+--------------+
-                      |  I/Q Digital Correlator     |
-                      |  - Polar Rotation Tracking  |
-                      |  - Phase Space Dispersion   |
-                      |  - Sub-band Filtering       |
-                      +-----------------------------+
-```
+- **Unequal branch noise.** On pre-Orion2 boards ADC1 is a bare
+  rear-panel input, usually fed by a small loop or an active whip several
+  dB noisier than the main antenna (`diversity.md` §1). Sum weights it as
+  though it were as quiet as ADC0. The SINR-optimal weight is
+  `conj(h)·N0/N1`; Sum computes `conj(h)`.
+- **Correlated noise.** Much of what both antennas hear is common-mode
+  hash conducted along both feedlines. Sum has no term for the
+  correlation between the two branches' noise at all.
 
-### 1. Polar Rotation ($\theta(t) = 2\pi \Delta f t$) & Frequency Offsets
-In complex baseband (I/Q space), a tuning offset $\Delta f$ manifests as a continuous polar rotation:
-$$z(t) = A(t) e^{j(2\pi \Delta f t + \phi(t))}$$
-- **Carrier Offset Estimation**: The polar rotation rate $\frac{d\theta}{d t} = 2\pi \Delta f$ represents the center carrier or symbol rate frequency offset relative to the nominal receiver NCO.
-- **Phase Trajectory Alignment**: By tracking polar rotation across the tapped I/Q buffers ($z_0$ and $z_1$), the estimator aligns the phase trajectories of both receiver channels prior to cross-spectral accumulation.
+A second antenna exists largely to do something about the second of
+these, and the older objective could not use it.
 
-### 2. Phase Space Dispersion & SNR Correlation
-For constant-envelope digital modulation modes (2-FSK, 4-FSK, 8-FSK, MSK, GFSK, BPSK, QPSK):
-- **Ideal Signal Trajectory**: In the absence of fading or noise, the I/Q samples trace a well-defined constellation ring or tight phase clusters with constant envelope magnitude $|z(t)| = C$ and smooth phase derivative $\frac{d\phi}{d t}$.
-- **Degraded/Faded Trajectory**: Multipath fading, destructive interference, and additive noise pull samples toward the origin ($|z(t)| \to 0$), dispersing phase trajectories across I/Q space.
-- **Diversity Combining Metric**: 
-  - **Phase Space Width / SNR Correlation**: Maximizing the magnitude-squared coherence $\gamma^2 = \frac{|S_{xy}|^2}{S_{xx} S_{yy}}$ over the digital sub-band co-phases the antennas such that the combined signal trajectory $y(t) = z_0(t) + w z_1(t)$ maximizes envelope stability and phase-space separation.
-  - Wider, clean phase-space trajectories directly correlate to improved signal-to-noise ratio (SNR) and lower bit error rates (BER) at the decoder.
-
----
-
-## Sub-band Location & Placement Rules
-
-### Default Frequencies & Passband Inversion
-In USB/LSB digital operations (e.g. FT8, RTTY, PSK31, VARA, FSK441), digital audio signals sit around audio frequencies of 1500 Hz. Because piHPSDR's tapped DDC stream is spectrally inverted:
-- **USB**: Baseband digital signal is centered at **+1500 Hz**.
-- **LSB**: Baseband digital signal is centered at **-1500 Hz**.
-
-The proposed default detection window will automatically populate based on the active mode (USB $\to +1500\text{ Hz}$, LSB $\to -1500\text{ Hz}$), with a default detection width of **500 Hz**.
-
-### Out-of-Passband Interference Nulling
-Placing the detection window outside the receiver passband allows the automatic combiner to lock onto an adjacent digital signal (e.g. a strong $+3000\text{ Hz}$ interferer) and compute the exact complex weight $w = -S_{xy}/S_{yy}$ to cancel it via `DIV_AUTO_NULL`.
-
----
-
-## Proposed System Architecture & Algorithm Design
-
-### 1. Reference Mode Definition
-In `src/diversity_auto.h`:
-```c
-enum {
-  DIV_REF_BAND = 0,   // Wideband FFT window
-  DIV_REF_CARRIER,    // Carrier tracking (AM/SAM)
-  DIV_REF_RADE_BAND,  // FreeDV RADE passband
-  DIV_REF_RADE_V1,    // FreeDV RADE V1 pilot MVDR
-  DIV_REF_DIGITAL_IQ  // NEW: I/Q-Space Digital Mode Correlator (FSK/PSK/QAM)
-};
-```
-
-### 2. Signal Processing Pipeline
+## How it works
 
 ```
-[ Raw I/Q Taps z0, z1 ]
-         │
-         ▼
-[ Sub-band Selection & Windowing ] 
-   - Center: Default +/-1500 Hz (or manual)
-   - Width: Default 500 Hz (or manual)
-   - Supports Out-of-Passband Placement
-         │
-         ▼
-[ Polar Rotation & Carrier Tracking ]
-   - Sub-bin parabolic peak tracking of carrier/subcarrier center
-   - Phase derivative estimation
-         │
-         ▼
-[ Cross-Spectral Accumulation ]
-   - Sxy = sum X0(k) * conj(X1(k))
-   - Sxx = sum |X0(k)|^2,  Syy = sum |X1(k)|^2
-   - Coherence weighting across modulation bandwidth
-         │
-         ▼
-[ Complex Weight Solver & Slewer ]
-   - Null Mode: w = -Sxy / Syy  (Cancel out-of-band or co-channel QRM)
-   - Sum Mode : w = +Sxy / Sxx  (Maximum Ratio Combining in I/Q space)
-   - Slew 15% / block into div_cos / div_sin
+region        = RX filter (follow ticked), or centre ± width/2
+    │
+    ▼   the transform is computed every block anyway
+floor         = median of (Sxx+Syy) over the region
+occupied      = bins > floor + 6 dB, and coherent between the arms
+    │
+    ├── this block's power in those bins more than 10 dB below
+    │   the smoothed power that chose them?  -> stale, hold
+    │
+    ├── signal bins ──────────> h0 = Σ g²·Sxx,  h1 = conj(Σ g²·Sxy)
+    │
+    └── bins ≥ 4 clear of any
+        occupied bin ────────> r00 = Σ Sxx, r11 = Σ Syy, r01 = Σ Sxy
+    │
+    ▼
+Sum  : w = R⁻¹h        (div_mvdr2(), 1 % diagonal loading)
+Null : w = -Sxy/Syy    over the occupied bins only
+    │
+    ▼   div_apply_weight(): +20 dB clamp, 15 % slew per block
 ```
 
----
+Four things about this are load-bearing.
 
-## Detailed Component Changes
+**A median, not a mean.** A signal filling part of the region would drag a
+mean up with it and hide itself behind its own floor.
 
----
+**A guard band.** A signal 40 dB above the noise puts more into its
+neighbouring bins, through the analysis window's skirts, than the noise
+floor holds — and those bins carry the signal's own channel. Feeding them
+to `R` tells MVDR that the direction the signal arrives from is
+interference, and it steers the null onto it. This is the textbook
+failure of MVDR trained on data containing the desired signal, and it was
+observed here: on a synthetic test with a strong interferer the weight
+sat 8° off the correct answer until the guard was added.
 
-### Component 1: Engine & Estimator Core
-`src/diversity_auto.h`, `src/diversity_auto.c`
+**Correlated bins are not excluded from `R`.** Correlated noise is
+precisely what `R` exists to describe; excluding coherent bins would
+throw away the one thing this mode can do that Sum cannot. Distance from
+the signal, not correlation, is what keeps the signal out of `R`.
 
-#### [MODIFY] [diversity_auto.h](file:///home/bminish/sdr/bm-pihpsdr/src/diversity_auto.h)
-- Add `DIV_REF_DIGITAL_IQ` to `div_auto_ref` enum.
-- Add global variables for digital mode parameters:
-  - `div_digital_centre` (default $+1500\text{ Hz}$ for USB, $-1500\text{ Hz}$ for LSB).
-  - `div_digital_width` (default $500\text{ Hz}$).
-  - `div_digital_allow_outside` (boolean flag to allow out-of-passband windowing).
+**A transmission ending is not visible to anything else in the loop.**
+Occupancy is a ratio against the median floor, so it is scale invariant
+and does not see the level collapse; the coherence gate does not either,
+because `Sxy`, `Sxx` and `Syy` decay together and `γ²` stays near 1 all
+the way down. A 30 dB signal at 2 s averaging therefore kept the loop
+reporting `track` for about twelve seconds after the transmission
+stopped, adjusting the weight on noise the whole time.
 
-#### [MODIFY] [diversity_auto.c](file:///home/bminish/sdr/bm-pihpsdr/src/diversity_auto.c)
-- **Sub-band Bin Calculation (`div_bin_range`)**:
-  - Handle `DIV_REF_DIGITAL_IQ` mode.
-  - Automatically calculate sub-band limits around `div_digital_centre` $\pm \frac{1}{2}\text{div\_digital\_width}$.
-  - When `div_digital_allow_outside` is true, bypass clipping to `filter_low..filter_high`, permitting out-of-passband placement up to the Nyquist limit.
-- **Polar Rotation Tracking (`div_process_block`)**:
-  - For digital modes, compute the sub-band spectral peak and I/Q trajectory center offset within the selected 500 Hz window.
-  - Perform coherence-weighted accumulator update ($S_{xy}, S_{xx}, S_{yy}$).
-- **Default Mode Initialization**:
-  - Automatically update `div_digital_centre` when switching receiver modes (USB $\to +1500\text{ Hz}$, LSB $\to -1500\text{ Hz}$).
+Found here first, it turned out to be general, and the staleness test
+that fixes it now runs for every transform reference — see §4 of
+[`diversity.md`](diversity.md). It matters most on CW, where the signal
+is absent for most of a transmission rather than only between them. What
+is particular to this mode is that when it fires, the occupied span is
+withdrawn from the status line and the panadapter too, so a signal that
+has gone stops being drawn as one.
 
----
+**Full and empty regions look the same and must not be treated the same.**
+If the signal covers the region, the median *is* the signal and nothing
+clears it — which is what a filter set snugly around the signal looks
+like. Holding there would mean the better the filter, the less the mode
+does. Coherence separates the two cases: a full region is coherent and is
+accumulated whole, falling through to plain MRC; an empty one holds.
 
-### Component 2: User Interface & Panadapter Display
-`src/diversity_menu.c`, `src/rx_panadapter.c`
+## Why there is no ±1500 Hz constant
 
-#### [MODIFY] [diversity_menu.c](file:///home/bminish/sdr/bm-pihpsdr/src/diversity_menu.c)
-- Add `"Digital I/Q (FSK/PSK)"` option to `ref_combo`.
-- Add GTK controls for Digital I/Q mode:
-  - **Center Frequency Spin Button** (Hz, range $-10000$ to $+10000\text{ Hz}$).
-  - **Width Spin Button** (Hz, range $50$ to $5000\text{ Hz}$, default $500\text{ Hz}$).
-  - **Allow Outside Passband Checkbox** (toggles out-of-passband placement).
-- Update `ref_changed_cb()` to show/hide relevant controls when `DIV_REF_DIGITAL_IQ` is selected.
+The proposal's default was +1500 Hz in USB and −1500 Hz in LSB, derived
+from the tapped buffer's spectral inversion. That reasoning double-counts:
+the centre and width controls live in WDSP's *shifted* frame, and
+`div_shift_to_bin()` applies the inversion downstream of them. A mode
+table would also miss DIGU, DIGL, CW and CTUN.
 
-#### [MODIFY] [rx_panadapter.c](file:///home/bminish/sdr/bm-pihpsdr/src/rx_panadapter.c)
-- Draw translucent green overlay band for the Digital I/Q analysis window.
-- Draw a dashed indicator line at the digital center frequency ($\pm 1500\text{ Hz}$).
+The **Window follows RX filter** tick does the whole job instead. The
+operator's passband is already on the correct side of the tuned frequency
+in every mode, so following it needs no constant and no table — the same
+argument that put the RADE references on `div_rade_side_expected()`
+rather than on `vfo[].mode`.
 
----
+## What it cannot do
 
-### Component 3: Testing & Verification
-`test/diversity/`
+**Separate a wanted signal from co-channel QRM.** Both are occupied and
+both are correlated between the arms, so occupancy has nothing to tell
+them apart by. That is what the RADE V1 pilot is for. Here the operator
+separates them by placing the region, and **Null** cancels what the
+region is sitting on — so unlike the RADE references, this one does not
+force Sum on selection. Both objectives mean something.
 
-#### [NEW] [test_digital_iq.c](file:///home/bminish/sdr/bm-pihpsdr/test/diversity/test_digital_iq.c)
-- Unit test script generating synthetic 2-FSK and BPSK complex baseband signals with simulated antenna phase shift and gain difference.
-- Verifies convergence of `w` under `DIV_AUTO_SUM` (MRC) and `DIV_AUTO_NULL` (Interference cancellation).
-- Verifies performance with out-of-passband adjacent signal tracking.
+## Measured
 
----
+`test/diversity/test_digital.c`, on synthetic 2-FSK through a two-path
+channel. FSK rather than a tone deliberately: a full-scale pure tone
+leaks across the whole region even through a Blackman-Harris window, and
+that leakage is correlated between the arms, so every result would be
+measuring window sidelobes.
 
-## Verification Plan
+| Check | Result |
+|---|---|
+| Equal, uncorrelated branch noise | Within 0.2 dB and 2.3° of the Window reference on identical data — it degenerates as the algebra says |
+| Aux branch 20 dB noisier | **+30.0 dB output SINR against Sum's +16.7 dB** |
+| Correlated interferer clear of the signal | Stays on the signal, +38.9° against a true +37.7°; without the guard band, +29.5° |
+| Occupancy span | Centre within 1 Hz of the true −1500 Hz, which also pins the frame conversion |
+| Noise only | No weight produced at all |
+| Signal fills the region | Falls back to MRC, within 0.1 dB of `conj(h)` |
+| Strong signal stops dead | `track` to `search` in **one block** (0.09 s), weight unmoved. Without the staleness gate it never stopped tracking at all inside 17 s |
 
-### Automated Tests
-1. **Compile Verification**:
-   ```bash
-   make clean && make -j4
-   ```
-2. **Diversity Test Suite**:
-   ```bash
-   make -C test/diversity run
-   ```
-3. **Synthetic Digital IQ Benchmark**:
-   - Run `test_digital_iq` to verify weight accuracy ($< 0.1\text{ dB}$ gain error, $< 0.5^\circ$ phase error) on FSK, BPSK, and QPSK test vectors.
+CPU cost is 0.3 % of one core at 48 kHz and 2.4 % at 384 kHz on an
+i7-12700K, alongside the other transform modes; the median is capped at
+4096 samples however wide the region is.
 
-### Manual Verification
-- Test `DIV_REF_DIGITAL_IQ` on live FT8/RTTY signals:
-  - Set Auto to `Sum` $\to$ verify enhanced signal constellation and reduced BER.
-  - Set Auto to `Null` with window parked on adjacent channel digital interferer $\to$ verify nulling of adjacent signal by $> 30\text{ dB}$.
+## Files
+
+| File | Change |
+|---|---|
+| `src/diversity_auto.c`, `.h` | `DIV_REF_DIGITAL_IQ`, `div_digital_solve()`, `div_mvdr2()`, the modal window pair and its props |
+| `src/rade_correlator.c` | `rade_mvdr_weight()` now calls the shared `div_mvdr2()` |
+| `src/diversity_menu.c` | Combo entry, third modal pair, visibility, status line |
+| `src/rx_panadapter.c` | Search region and occupied span overlay |
+| `test/diversity/test_digital.c` | The seven checks above |
+| `test/diversity/test_window.c` | A keyed carrier, for the staleness test on the Window reference |
+| `test/diversity/test_props.c` | `diversity_auto_ref` migration across the retired RADE passband slot |

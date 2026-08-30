@@ -67,8 +67,8 @@ than after the loop reconverges.
 The feature ships **off** — `Auto` starts at `Off (manual)` and the weight
 stays where you left it. Null is offered first of the two objectives,
 cancelling a local noise source being the more common need. Selecting
-either RADE reference switches to Sum, since on RADE the signal being
-pointed at is the wanted one.
+the RADE V1 reference switches to Sum, since the signal the pilot
+correlator is pointing at is the wanted one.
 
 ---
 
@@ -109,12 +109,6 @@ park a 1 kHz window on +5 kHz and the primary is outside the search
 entirely, so you can null the station carrying that carrier while
 listening to the one on frequency.
 
-### RADE passband
-
-Places the window on the FreeDV RADE modem band, 750–2200 Hz, on the side
-of the tuned frequency your passband implies, clipped to your filter.
-Maximum ratio combining across the modem band. No QRM nulling.
-
 ### RADE V1 pilot (MVDR)
 
 The most capable and the most specialised. It correlates against RADE V1's
@@ -125,20 +119,91 @@ QRM rather than onto the signal you are trying to decode.
 
 It needs an actual RADE V1 signal and takes 1–5 s to acquire.
 
+### Digital I/Q (occupancy MVDR)
+
+For a narrow digital signal — FT8, RTTY, PSK31, VARA, JS8 — in a passband
+that is otherwise empty. Tick **Window follows RX filter** and it works
+out the rest: it finds where the signal actually is inside your passband,
+measures the noise on the empty part, and combines against that.
+
+That last bit is what makes it different. Every other reference has to
+assume your two antennas are equally noisy, because it has no way to look
+at the noise on its own. Yours probably are not — the aux is often a
+small loop or a whip — and a lot of what both antennas hear is
+common-mode hash off the feedlines, arriving on both. This mode measures
+both and combines accordingly. Where that assumption *does* hold, it
+gives the same answer the Window reference would.
+
+Use it for:
+
+- **Any digital mode, as the first thing to try.** Follow the filter,
+  Auto `Sum`, and leave it. Compare against `Window` with **Hold** if you
+  want to see what it is buying you.
+- **A noisy second antenna.** This is where it wins biggest: it will back
+  the aux antenna off on its own rather than weighting it as if it were
+  as quiet as the main one.
+- **A narrow filter around a strong signal.** Setting the filter snugly
+  round one is fine — the mode notices the region is full rather than
+  empty and falls back to plain co-phasing. A narrow filter with only
+  weak signals in it is the case it does badly; see "Not for CW" below.
+
+**Between transmissions it stops rather than drifts** — see §4. The
+status line changes to `search` / `no signal` within a block and the
+shaded band clears, so `track` → `search` → `track` is what you should
+see across an FT8 gap.
+
+It will *not* pull a wanted signal out from under co-channel QRM sitting
+on top of it: both look equally like signal to it. Park the region on the
+interferer and use `Null` for that, or use RADE V1 if it is a RADE
+signal.
+
+**Not for CW.** Measured on two 20 m CW captures with a 600 Hz filter, it
+came out 1.6 to 2.0 dB *below* simply using the better antenna. The
+occupancy split needs a signal that stands clear of the noise across a
+region with room to spare, and a narrow filter on ordinary band CW gives
+it neither: the strongest carrier is only 3.6 to 4.5 dB over the region
+median, and enough noise bins clear the threshold to keep the loop
+adapting on nothing. Use **Window** there. The same numbers are in
+`docs/diversity-measurements.md` if you want to see the working.
+
+The status line shows the occupied width it found, and the panadapter
+shades those bins more strongly inside the search region — if the dark
+band is not on your signal, the region is in the wrong place.
+
 ---
 
 ## 4. The rest of the controls
 
 | Control | What it is for |
 |---|---|
-| **Window centre / width** | Where to look. Kept separately for Window and Carrier, so aiming the carrier tracker does not destroy your wideband window |
+| **Window centre / width** | Where to look. Kept separately for Window, Carrier and Digital I/Q, so aiming the carrier tracker does not destroy your wideband window |
 | **Resolution** | 12 / 6 / 3 Hz bins. Finer bins lift a weak signal out of the per-bin noise floor — a different thing from Averaging, which reduces the variance of an estimate rather than improving the SNR it is made from. Each step halves the update rate |
 | **Weighting** | `Coherence` weights each bin by how well the two antennas agree in it. On speech it roughly halves the gain error, because the noise-only parts of a wide window stop diluting the answer. `Flat` is the older behaviour, kept for comparison |
 | **Averaging** | 0.2–30 s time constant. Longer is steadier and follows fading more slowly. A weak AM carrier or an HF RADE path usually wants several seconds |
-| **Min coherence** | Below this the loop holds rather than adapts, so it does not chase noise when there is nothing worth combining |
+| **Min coherence** | Below this the loop holds rather than adapts, so it does not chase noise when there is nothing worth combining. Genuinely a per-path control, not a set-and-forget one: measured across recorded captures the *noise* on its own is 0.07 to 0.58 coherent between the arms, so on a path near the top of that range the default 0.30 cannot tell a signal both antennas hear from noise both antennas hear. If the loop adapts when there is plainly nothing there, raise it |
+| **Hang** | 1–30 s, `RADE V1 pilot` only. How long a lock is held after the pilot goes before the correlator gives up and searches again. Long rides out a fade on one station; short is what a frequency several stations take turns on wants |
 | **Restart averaging** | Throw away the statistics and start again |
 | **Hold** | Stop *applying* the answer without stopping the loop |
 | **Invert** | Swap Null and Sum |
+
+### When the signal stops
+
+Every reference now stops measuring within a block of the signal going
+away, and holds the weight it had. You do not have to do anything about
+it, but it is worth knowing what you are looking at: `track` dropping to
+`wait` or `search` the moment a station stops sending is the loop working
+properly, not losing lock.
+
+Before this, the loop kept "tracking" for about twelve seconds after each
+transmission — the averaging has to decay before the coherence figure
+notices anything is wrong — and spent that time adjusting the weight on
+noise.
+
+**On CW this is the difference between the feature being useful and not.**
+The signal is absent for most of a transmission, not just between them,
+so the loop was previously averaging key-down and key-up together and
+being pulled toward the noise on every gap. It now measures only while
+the key is down.
 
 ### Hold
 
@@ -172,13 +237,14 @@ loop is doing, one detail belonging to the mode, and the weight.
 Win 12Hz  track  coh 100%     -2.1 dB   +32°
 Car  3Hz* HOLD   +400000 Hz  -12.3 dB  +179°
 RADE V1   LOCK   LSB 100%     -2.1 dB   +32°
+Dig 12Hz  track  occ  293Hz   -2.1 dB   +38°
 ```
 
 | Field | Meaning |
 |---|---|
 | First | The reference, and for the transform modes the bin width actually achieved. A `*` means the window ran past the Nyquist limit for this sample rate and was clamped |
-| Second | `track` adapting · `wait` holding, nothing coherent enough to measure · `HOLD` your Hold · `search` looking · `confrm` confirming a RADE candidate · `LOCK` RADE tracking · `fade` RADE locked but the pilot is too weak to measure from |
-| Third | Coherence, or the carrier frequency, or the RADE sideband and pilot percentage |
+| Second | `track` adapting · `wait` holding, nothing coherent enough to measure · `HOLD` your Hold · `search` looking — in Digital I/Q that means the region is empty or the signal has stopped · `confrm` confirming a RADE candidate · `LOCK` RADE tracking · `fade` RADE locked but the pilot is too weak to measure from |
+| Third | Coherence, or the carrier frequency, or the RADE sideband and pilot percentage, or in Digital I/Q the occupied width found — `no signal` if the region is empty |
 | Fourth | The weight. Under Hold this is the value the loop has **tracked to**, not the one being applied — the sliders show what is applied, and seeing the two apart is the point of the control |
 
 On the RX panadapter the analysis window is drawn as a translucent green
@@ -186,7 +252,9 @@ band under the trace. It is worth watching: it is otherwise an invisible
 setting that changes what the radio does, and it can legitimately sit
 outside the passband where there is nothing else to see. In Carrier mode a
 brighter line marks where the tracker has settled inside the search
-region.
+region, and in Digital I/Q the bins found occupied are shaded more
+strongly inside it — if that darker band is not sitting on your signal,
+the search region is in the wrong place.
 
 With **Window follows RX filter** ticked, the green band lands exactly on
 the filter shading. That is a free check that the frequency conversion is
@@ -223,10 +291,32 @@ wrong, and with the passband on the wrong sideband it will never lock.
 Averaging several seconds. Expect `search` → `confrm` → `LOCK` within a
 few seconds of the transmission starting.
 
+Set **Hang** for the company you are keeping. Working one station on a
+fading path, leave it long: a fade is when the combining weight is worth
+the most, and a lock dropped in one has to be bought back on the signal
+at its weakest. On a net or a roundtable, bring it down to two or three
+seconds. Each station arrives over its own path with its own best gain
+and phase, and until the lock on the last one is given up the new one is
+being combined with the wrong weight — which on two antennas is not
+neutral, it can be subtracting. At 2 s the lock is dropped about three
+and a half seconds after the changeover and re-made about two seconds
+after that.
+
 **Comparing against your own settings.**
 Let the loop settle, press **Hold**, and set the gain and phase by hand.
 The status line's fourth field still shows what the loop makes of it.
 Release Hold to snap back to the loop's answer.
+
+---
+
+### FT8 or RTTY, ordinary conditions
+
+Measure on `Digital I/Q`, follow the filter, Auto `Sum`. Check the darker
+shaded band on the panadapter lands on the signal. Nothing else to set.
+
+If your aux antenna is much noisier than the main one — a whip or a small
+loop — this is where it earns its keep, and comparing it against `Window`
+with **Hold** is the quickest way to hear the difference.
 
 ---
 
@@ -259,11 +349,19 @@ watch there. Measured numbers are in
 
 ### Four references, built in stages
 
-Window and Carrier first, then the two RADE modes. The carrier tracker
-originally used WDSP's SAM PLL, which turned out to be about a hundred
-times wider than wanted for measuring a stable carrier — 25 Hz of loop
-bandwidth gives roughly 7 Hz of jitter. Finding the peak in our own
-spectrum instead gives 0.002 Hz and works in plain AM as well.
+Window and Carrier first, then the two RADE modes, then Digital I/Q —
+which then replaced the wideband RADE passband mode, leaving four. The
+carrier tracker originally used WDSP's SAM PLL, which turned out to be
+about a hundred times wider than wanted for measuring a stable carrier —
+25 Hz of loop bandwidth gives roughly 7 Hz of jitter. Finding the peak in
+our own spectrum instead gives 0.002 Hz and works in plain AM as well.
+
+Digital I/Q came last and is the only one that measures the noise apart
+from the signal. That turned out to need a guard band around the occupied
+bins: without one, a strong signal's own skirts land in the noise
+estimate, MVDR reads the direction the signal arrives from as
+interference, and steers the null onto it. It moved the answer 8° off on
+a synthetic test before the guard existed.
 
 ### Things that only measurement settled
 
@@ -347,7 +445,7 @@ therefore stable within a band and jumps when the band changes.
 - [`diversity.md`](diversity.md) — the reference: how each part works,
   every control, measured CPU and timings, and the frequency bookkeeping
   in full
-- [`diversity-rade.md`](diversity-rade.md) — the RADE modes in detail,
+- [`diversity-rade.md`](diversity-rade.md) — the RADE V1 pilot correlator in detail,
   including the pilot, the MVDR solution and the acquisition statistics
 - [`diversity-dither-fix.md`](diversity-dither-fix.md) — the P2 dither bug
 - [`diversity-auto-phasing.md`](diversity-auto-phasing.md) — design

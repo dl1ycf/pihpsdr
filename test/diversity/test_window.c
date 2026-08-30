@@ -52,6 +52,120 @@ static double frand(void) { return 2.0 * ((double)rand() / RAND_MAX) - 1.0; }
 static void settle(void) { g_usleep(15000); }
 
 /* ------------------------------------------------------------------ */
+/* 3. a keyed carrier                                                 */
+/* ------------------------------------------------------------------ */
+
+/*
+ * CW is the hardest case for an exponentially forgetting estimator,
+ * because the signal is absent for most of a transmission rather than
+ * only between them. While the accumulators decay at the operator's
+ * averaging time, Sxy, Sxx and Syy decay together, so the coherence gate
+ * sees gamma^2 stay near 1 and the loop goes on reporting "track" with
+ * nothing but noise in front of it - for 5.8 time constants on a 30 dB
+ * signal, which is about twelve seconds at the default averaging.
+ *
+ * What is checked here is that it stops promptly instead, and without
+ * dragging the weight away from the answer key-down gave it.
+ */
+static int test_keyed(void) {
+  const int rate = 48000, nfft = 4096;
+  const double hr = 0.62, hi = -0.48;
+  const double nz = 0.03;                 /* a carrier ~30 dB out */
+  rx0.sample_rate = rate;
+  /*
+   * A 500 Hz CW filter. rx_set_filter() folds the sidetone into the
+   * filter edges and div_frame_off() takes it back out, so a carrier on
+   * the dial lands in the middle of the passband - which is where a
+   * correctly tuned CW signal is, and is the arrangement that convention
+   * exists to produce.
+   */
+  rx0.filter_low = -1050;
+  rx0.filter_high = -550;
+  vfo[0].mode = modeCWL;
+  vfo[0].frequency = 7010000;
+  vfo[0].ctun_frequency = 7010000;
+  vfo[0].offset = 0;
+  div_auto_ref = DIV_REF_BAND;
+  div_auto_mode = DIV_AUTO_SUM;
+  div_auto_follow_filter = 1;
+  div_auto_tau = 2.0;
+  div_auto_coherence_min = 0.30;
+  div_auto_weighting = DIV_WEIGHT_COHERENCE;
+  div_auto_resolution = 12.0;
+  div_cos = 1.0;
+  div_sin = 0.0;
+  div_gain = 0.0;
+  div_phase = 0.0;
+  srand(23);
+  diversity_auto_start();
+  double ph = 0.0;
+  /*
+   * Where a correctly tuned CW carrier actually is in the tapped buffer:
+   * near the dial, not at the sidetone. rx_set_filter() folds the
+   * sidetone into the filter edges and div_frame_off() takes it back out,
+   * so the -1050..-550 passband maps to bin frequencies -250..+250 - and
+   * that is the whole point of the convention, it puts the CW passband on
+   * the dial frequency. 100 Hz off, as a station one might actually be
+   * listening to.
+   */
+  const double tone = 100.0;
+
+  /* key down, long enough to converge */
+  for (int b = 0; b < 90; b++) {
+    for (int n = 0; n < nfft; n++) {
+      ph += 2.0 * M_PI * tone / rate;
+      const double s = cos(ph), t = sin(ph);
+      diversity_auto_sample(s + nz * frand(), t + nz * frand(),
+                            hr * s - hi * t + nz * frand(),
+                            hr * t + hi * s + nz * frand());
+    }
+
+    settle();
+  }
+
+  g_usleep(300000);
+  const double g0 = div_gain, p0 = div_phase;
+  const double blockms = 1000.0 * (double)nfft / (double)rate;
+  int held = -1;
+
+  /* key up: nothing but noise from here */
+  for (int b = 0; b < 200; b++) {
+    for (int n = 0; n < nfft; n++) {
+      diversity_auto_sample(nz * frand(), nz * frand(),
+                            nz * frand(), nz * frand());
+    }
+
+    settle();
+    g_usleep(3000);
+
+    if (held < 0 && div_auto_holding) { held = b + 1; }
+  }
+
+  g_usleep(300000);
+  const double dg = fabs(div_gain - g0);
+  double dp = div_phase - p0;
+
+  while (dp >  180.0) { dp -= 360.0; }
+
+  while (dp < -180.0) { dp += 360.0; }
+
+  dp = fabs(dp);
+  diversity_auto_stop();
+  const double secs = (held < 0) ? -1.0 : held * blockms / 1000.0;
+  const int good = (held > 0) && (secs < 2.0) && (dg < 0.5) && (dp < 5.0);
+  printf("  keyed carrier, key-up: ");
+
+  if (held < 0) {
+    printf("still tracking after %.1f s", 200 * blockms / 1000.0);
+  } else {
+    printf("held after %.2f s", secs);
+  }
+
+  printf(", drift %.2f dB %.1f deg  %s\n", dg, dp, good ? "OK" : "FAIL");
+  return good;
+}
+
+/* ------------------------------------------------------------------ */
 /* 1. window placement                                                */
 /* ------------------------------------------------------------------ */
 
@@ -251,6 +365,8 @@ int main(int argc, char **argv) {
   int a = test_placement();
   printf("\n");
   int b = test_weighting();
-  printf("\n%s\n", (a && b) ? "PASS" : "FAIL");
-  return (a && b) ? 0 : 1;
+  printf("\n");
+  int c = test_keyed();
+  printf("\n%s\n", (a && b && c) ? "PASS" : "FAIL");
+  return (a && b && c) ? 0 : 1;
 }

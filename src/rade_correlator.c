@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "diversity_auto.h"
 #include "message.h"
 #include "radio.h"
 #include "rade_correlator.h"
@@ -136,15 +137,41 @@
 // measures what is left in the right units.
 //
 // For pure Rayleigh noise this statistic lands near 4 for the largest of
-// a few thousand cells, so a threshold of 6 to acquire sits clear of
-// "could plausibly be noise". Measured against pure noise with no signal
-// at all it reaches 3.0 to 4.6 and never locks.
+// a few thousand cells, so a threshold well clear of "could plausibly be
+// noise" is wanted. Measured against pure noise with no signal at all the
+// statistic reaches 3.0 to 4.6.
 //
 // This statistic is used for acquisition only. Holding an existing lock
-// is a different and much more forgiving test - see RADE_HOLD_RATIO.
+// is a different and much more forgiving test - see RADE_USE_RATIO and
+// the hang time it is counted against.
 //
-#define RADE_LOCK_SIGMA     6.0
-#define RADE_DROP_FRAMES    84      // ~10 s: ride out fades, not absences
+// 4.8 rather than the 6.0 this started at.
+//
+// The threshold does not have to carry the whole false-alarm budget on
+// its own, because what it produces is a *candidate*, not a lock:
+// RADE_PROBATION frames of the ordinary tracking test follow, no weight
+// is produced while they run, and that test is a pilot-to-floor ratio
+// rather than this statistic, so it fails a noise candidate on different
+// evidence. Measured over two minutes of pure noise at 4.8: no false
+// candidates at all, and no false locks.
+//
+// Be clear about what lowering it did and did not buy, because the
+// numbers are not what one would guess. It does let a weak signal through
+// this gate - at the point where a 32-pass score of 5.90 used to miss 6.0
+// by a tenth, a candidate is now raised at the correct frequency. But
+// across 7 SNRs x 3 seeds and 5 noise levels x 5 seeds on synthetic
+// signals, 4.8 and 6.0 produce *identical* outcomes: every case that
+// locks at one locks at the other, in the same number of blocks. The
+// candidates the lower threshold raises are then turned down by
+// probation, at pilot/floor 1.83 against the 2.5 RADE_USE_RATIO wants.
+//
+// So RADE_USE_RATIO, not this, is what currently sets the weak-signal
+// floor. That is the constant to look at if the threshold needs to come
+// down further - and it is the one that is actually holding the
+// false-alarm line, so it should not be moved without measuring what it
+// lets through.
+//
+#define RADE_LOCK_SIGMA     4.8
 
 //
 // Acquisition time.
@@ -201,16 +228,34 @@ static const double rade_acq_sigma[RADE_ACQ_CHECKS] = { 7.5, 6.75, RADE_LOCK_SIG
 // combining weight is worth the most. Losing the pilot for a few seconds
 // means keep going with the last good weight, not start again. Only a
 // signal that is really gone - end of over, or the operator retuning -
-// should force a re-acquisition, so the hold runs for RADE_DROP_FRAMES,
-// about ten seconds.
+// should force a re-acquisition.
 //
-// The thresholds are set from measurement against the off-frequency
-// reference below, on which a clean lock reads about 6 and a ratio of 1
-// would mean the pilot correlates no better than anything else does.
-// Erring low is right - holding a stale weight for a few extra seconds
-// after a station stops is harmless, dropping during a fade is not.
+// How long "really gone" is depends on what the operator is listening to,
+// so it is the Hang control in the Diversity menu rather than a constant
+// here, and it arrives as the hang argument to rade_corr_process().
 //
-#define RADE_HOLD_RATIO     2.00    // pilot / floor, below which we are unhappy
+// It replaced a fixed ten seconds counted off the *slow* ratio below,
+// which was too slow twice over. That average has a six-second time
+// constant, so on a signal that simply stopped it took about seven
+// seconds to fall from the six a clean lock reads to the two the test
+// wanted, and only then did the ten start. Sixteen seconds of holding one
+// station's weight is not what the ten was meant to mean, and on a
+// frequency where several stations take turns it is most of an over -
+// each one has its own optimal weight, and the combiner spent the
+// beginning of every over applying the previous station's.
+//
+// So the hang is counted off the fast gate instead: RADE_USE_RATIO below
+// already decides, about a second at a time, whether this frame is worth
+// measuring, and consecutive frames that are not are exactly what "the
+// pilot is not there" means. One good frame resets the count, so a fade
+// that flickers does not accumulate towards a drop - only a continuous
+// absence does.
+//
+// mag_avg/floor_avg survive as the *reported* health of a lock, which is
+// what a level-independent ratio over several seconds is good for: a
+// clean lock reads about 6 on it, and 1 would mean the pilot correlates
+// no better than anything else in the frame does.
+//
 #define RADE_MAG_ALPHA      0.02    // ~6 s at 8.33 modem frames/s
 #define RADE_FLOOR_PROBES   4
 
@@ -253,6 +298,42 @@ static const double rade_acq_sigma[RADE_ACQ_CHECKS] = { 7.5, 6.75, RADE_LOCK_SIG
 // floor estimate, so the pilot does not contaminate its own reference.
 //
 #define RADE_FLOOR_GUARD    12
+
+//
+// Which bins the interference covariance is measured in.
+//
+// The pilot span is 160 samples at 8 kHz, so its DFT bins are exactly the
+// modem's own 50 Hz carrier grid: carrier c sits in bin 15+c and the 30
+// carriers fill bins 15..44. The bins immediately either side carry
+// noise, QRM and the skirts of whatever else is in the passband, but no
+// modem - which is what a covariance for MVDR has to be built from.
+//
+// 300 Hz to 2850 Hz, off the carriers: a bin either side of everything a
+// 2.7 kHz filter passes, and inside the decimator's 3 kHz corner at both
+// ends. Twenty-two bins per frame, EWMA'd over the operator's averaging
+// time, so the estimate behind the solve is thousands of samples deep
+// even though one frame contributes twenty-two.
+//
+// They are placed on the modem's *own* side of the tuned frequency,
+// which is the part that matters. What made the old pilot-span residual
+// useless was that it swept in the rejected sideband - a whole station
+// WDSP filters away and the operator never hears - and MVDR nulled that
+// instead of the interference. Choosing the bins by the pilot bank keeps
+// the other sideband out by construction.
+//
+// Clipping the set to the operator's passband as well was tried, and
+// measured worse: on a 2 kHz filter it drops back to the eleven bins
+// immediately beside the carriers and gives up 0.9 dB, because halving
+// the bin count doubles the variance of R. The 350 Hz beyond a tight
+// filter that this keeps is the same band noise the modem is sitting in,
+// not a second station. See docs/diversity-measurements.md.
+//
+#define RADE_GUARD_LO0      6       //  300 Hz
+#define RADE_GUARD_HI1      57      // 2850 Hz
+#define RADE_CARRIER_K0     15      //  750 Hz, first modem carrier
+#define RADE_CARRIER_K1     44      // 2200 Hz, last
+#define RADE_GUARD_BINS     ((RADE_CARRIER_K0 - RADE_GUARD_LO0) + \
+                             (RADE_GUARD_HI1 - RADE_CARRIER_K1))
 
 //
 // Acquisition passes accumulated before the decision. The pilot lands in
@@ -335,7 +416,6 @@ typedef struct {
 
 static inline cplx cset(double r, double i)      { cplx c = {r, i}; return c; }
 static inline cplx cadd(cplx a, cplx b)          { return cset(a.re + b.re, a.im + b.im); }
-static inline cplx csub(cplx a, cplx b)          { return cset(a.re - b.re, a.im - b.im); }
 static inline cplx cmul(cplx a, cplx b)          { return cset(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re); }
 static inline cplx cscale(cplx a, double s)      { return cset(a.re * s, a.im * s); }
 static inline cplx cconj(cplx a)                 { return cset(a.re, -a.im); }
@@ -401,7 +481,13 @@ static double use_floor = 0.0;
 static int    frozen = 0;
 static int    track_report = 0;
 
-static cplx   acc_h0, acc_h1;
+//
+// The channel, as a cross-spectrum: acc_x01 averages d1*conj(d0) and
+// acc_x00 averages |d0|^2. See the note in rade_track() for why the two
+// arms' correlations are not averaged coherently on their own.
+//
+static cplx   acc_x01;
+static double acc_x00 = 0.0;
 static cplx   acc_r01;
 static double acc_r00 = 0.0, acc_r11 = 0.0;
 static double acc_sig = 0.0;
@@ -555,7 +641,8 @@ void rade_corr_reset(void) {
   lock_a = 0;
   lock_bank = 0;
   lock_f = 0.0;
-  acc_h0 = acc_h1 = cset(0.0, 0.0);
+  acc_x01 = cset(0.0, 0.0);
+  acc_x00 = 0.0;
   acc_r01 = cset(0.0, 0.0);
   acc_r00 = acc_r11 = 0.0;
   acc_sig = 0.0;
@@ -568,6 +655,13 @@ void rade_corr_reset(void) {
   track_report = 0;
   rade_corr_quality = 0.0;
   rade_corr_snr = 0.0;
+  //
+  // These two are only ever written when a lock is taken, so without this
+  // they survive a reset - and the menu goes on showing the last lock's
+  // sideband and frequency for as long as re-acquisition takes.
+  //
+  rade_corr_freq_off = 0.0;
+  rade_corr_mirrored = 0;
   next_process = 0;
   memset(acq_grid, 0, sizeof(acq_grid));
   acq_passes = 0;
@@ -607,6 +701,41 @@ static cplx rade_correlate(const float *r, int64_t a, const cplx *pw) {
 
   for (int n = 0; n < RADE_CORR_M; n++) {
     acc = cadd(acc, cmul(ring_get(r, a + n), cconj(pw[n])));
+  }
+
+  return acc;
+}
+
+//
+// One DFT bin of the pilot span, at an arbitrary frequency: the sum over
+// the span of x[n] * exp(-j*2*pi*hz*n/Fs).
+//
+// Deliberately unnormalised. By Parseval sum_k |G_k|^2 = M * sum_n
+// |x_n|^2, so the *mean* of |G|^2 over a set of bins estimates the energy
+// over the span directly - the same unit the residual sums it replaced
+// were in, which is what keeps rade_corr_snr and rade_corr_quality
+// meaning what they meant.
+//
+// The rotation is stepped rather than evaluated per sample, as
+// rade_corr_process() does with the NCO and for the same reason; over
+// 160 steps there is nothing for the error to accumulate into.
+//
+static cplx rade_dft_bin(const float *r, int64_t a, double hz) {
+  const double w = 2.0 * M_PI * hz / (double)RADE_CORR_FS;
+  const double cd = cos(w), sd = sin(w);
+  double c = 1.0, s = 0.0;
+  cplx acc = cset(0.0, 0.0);
+
+  for (int n = 0; n < RADE_CORR_M; n++) {
+    cplx x = ring_get(r, a + n);
+    //
+    // x * conj(exp(j*w*n))
+    //
+    acc.re += x.re * c + x.im * s;
+    acc.im += x.im * c - x.re * s;
+    const double ct = c;
+    c = ct * cd - s * sd;
+    s = ct * sd + s * cd;
   }
 
   return acc;
@@ -859,55 +988,32 @@ static void rade_pilot_at(double f, cplx *out) {
 // MVDR: w = R^-1 h, normalised so the arm 0 coefficient is 1, then
 // expressed as the weight the combiner applies to arm 1.
 //
-// For R = [[r00, r01], [conj(r01), r11]] and h = [h0, h1]:
+// The solve itself is div_mvdr2() in diversity_auto.c, shared with the
+// Digital I/Q reference, which reaches the same covariance and channel
+// from spectral occupancy instead of from pilot correlations. Only the
+// route to R and h differs, so there is one copy of the algebra.
 //
-//   g0 = (r11*h0 - r01*h1)      / det
-//   g1 = (r00*h1 - conj(r01)*h0) / det
-//
-// The combiner forms y = g^H z, so the arm 1 weight relative to arm 0 is
-// conj(g1/g0). With R diagonal and equal this reduces to conj(h1/h0),
-// which is the maximum ratio combining answer - so this degenerates
-// gracefully to the same thing the wideband "Sum" mode does when there is
-// no correlated interference to null.
+// No sideband correction on the way in: the samples were never
+// conjugated, so whichever pilot bank won, h0 and h1 describe the real
+// arms directly.
 //
 static void rade_mvdr_weight(double *wr, double *wi) {
-  cplx r01 = acc_r01;
-  double r00 = acc_r00;
-  double r11 = acc_r11;
   //
-  // Diagonal loading. Without it, a noise covariance that is nearly
-  // singular - two arms seeing almost identical noise - produces an
-  // enormous weight from what is mostly estimation error.
+  // h0 = |a0|^2 S and h1 = a1 conj(a0) S: the two channels scaled by one
+  // common factor, which is all the solve needs since it normalises arm 0
+  // to unity. The same shape div_digital_solve() hands it from bin_xx and
+  // bin_xy.
   //
-  double load = 0.01 * (r00 + r11) + 1e-20;
-  r00 += load;
-  r11 += load;
-  cplx num = csub(cscale(acc_h1, r00), cmul(cconj(r01), acc_h0));
-  cplx den = csub(cscale(acc_h0, r11), cmul(r01, acc_h1));
-  double d2 = cabs2(den);
-
-  if (d2 < 1e-30) {
-    *wr = 0.0;
-    *wi = 0.0;
-    return;
-  }
-
-  //
-  // num/den, then conjugate for the g^H combining sense. No sideband
-  // correction: the samples were never conjugated, so whichever pilot
-  // bank won, h0 and h1 describe the real arms directly.
-  //
-  cplx q = cscale(cmul(num, cconj(den)), 1.0 / d2);
-  q = cconj(q);
-  *wr = q.re;
-  *wi = q.im;
+  div_mvdr2(acc_r00, acc_r11, acc_r01.re, acc_r01.im,
+            acc_x00, 0.0, acc_x01.re, acc_x01.im,
+            wr, wi);
 }
 
 //
 // Once locked, measure the channel on both arms at the tracked timing and
 // frequency, update the covariance of what is left over, and solve.
 //
-static int rade_track(double tau, double *wr, double *wi) {
+static int rade_track(double tau, double hang, double *wr, double *wi) {
   cplx pw[RADE_CORR_M];
   rade_pilot_at(lock_f, pw);
   //
@@ -1021,7 +1127,25 @@ static int rade_track(double tau, double *wr, double *wi) {
   //
   if (prev_valid && !nudged) {
     cplx r = cmul(d0, cconj(prev_d0));
-    double dphi = atan2(r.im, r.re);
+    //
+    // Subtract the advance the tracked offset already accounts for.
+    //
+    // rade_pilot_at() rebuilds the reference from n = 0 every frame while
+    // the received pilot advances with lock_a, so the raw phase step is
+    // 2*pi*f*T for the *absolute* offset f, whatever lock_f already
+    // holds. Used directly it made this an integrator with no error
+    // signal in it: lock_f gained alpha*f per frame and walked away
+    // instead of converging, which is what the on-air captures show it
+    // doing (+20 Hz to +8 Hz over 25 s on one of them) until the matched
+    // filter had drifted far enough off to cost the lock.
+    //
+    // With the expected advance removed this measures the residual, which
+    // is what the note at RADE_FREQ_ALPHA has always claimed it measures
+    // - and the +/-4.17 Hz unambiguous range is about lock_f rather than
+    // about zero.
+    //
+    double dphi = atan2(r.im, r.re) - 2.0 * M_PI * lock_f * RADE_FRAME_SECS;
+    dphi = remainder(dphi, 2.0 * M_PI);
     double df = dphi / (2.0 * M_PI * RADE_FRAME_SECS);
     lock_f += RADE_FREQ_ALPHA * df;
 
@@ -1035,30 +1159,39 @@ static int rade_track(double tau, double *wr, double *wi) {
   prev_d0 = d0;
   prev_valid = 1;
 
-  if (ratio < RADE_HOLD_RATIO) {
-    if (++drop_count >= RADE_DROP_FRAMES) {
-      t_print("%s: lost RADE pilot lock (pilot/floor %0.2f for %0.0f s)\n",
-              __func__, ratio, (double)RADE_DROP_FRAMES / 8.33);
-      rade_corr_reset();
-      return 0;
-    }
-  } else {
-    drop_count = 0;
-  }
-
   if (use_ratio < RADE_USE_RATIO) {
     //
-    // Nothing worth measuring in this frame. Keep the lock and keep the
-    // weight exactly where it was - do not let noise move it.
+    // Nothing worth measuring in this frame. Keep the weight exactly
+    // where it was - do not let noise move it - and start counting
+    // towards the operator's hang time.
     //
     if (!frozen) {
       frozen = 1;
-      t_print("%s: pilot lost, holding last weight (%+0.1f dB %+0.0f deg)\n",
-              __func__, div_gain, div_phase);
+      t_print("%s: pilot lost, holding last weight (%+0.1f dB %+0.0f deg) "
+              "for up to %0.0f s\n", __func__, div_gain, div_phase, hang);
+    }
+
+    //
+    // At least one frame, whatever the caller passed: a hang shorter than
+    // the second RADE_USE_ALPHA averages over would end a lock on a
+    // single noisy frame, which is the failure the smoothing exists to
+    // prevent.
+    //
+    int limit = (int)lround(hang / RADE_FRAME_SECS);
+
+    if (limit < 1) { limit = 1; }
+
+    if (++drop_count >= limit) {
+      t_print("%s: lost RADE pilot lock (pilot/floor %0.2f, gone %0.1f s), "
+              "searching again\n", __func__, ratio,
+              drop_count * RADE_FRAME_SECS);
+      rade_corr_reset();
     }
 
     return 0;
   }
+
+  drop_count = 0;
 
   if (frozen) {
     frozen = 0;
@@ -1071,39 +1204,81 @@ static int rade_track(double tau, double *wr, double *wi) {
   //
   if (++track_report >= 40) {
     track_report = 0;
-    t_print("%s: tracking  pilot/floor %0.2f (drop below %0.1f)  f=%+0.1f Hz  "
-            "pilot %0.0f%% / %+0.1f dB  w=%+0.1f dB %+0.0f deg  avg=%0.1fs%s\n",
-            __func__, ratio, RADE_HOLD_RATIO, lock_f,
-            100.0 * rade_corr_quality, rade_corr_snr, div_gain, div_phase, tau,
-            frozen ? "  FROZEN" : "");
+    t_print("%s: tracking  pilot/floor %0.2f  f=%+0.1f Hz  "
+            "pilot %0.0f%% / %+0.1f dB  w=%+0.1f dB %+0.0f deg  "
+            "avg=%0.1fs hang=%0.1fs%s\n",
+            __func__, ratio, lock_f,
+            100.0 * rade_corr_quality, rade_corr_snr, div_gain, div_phase,
+            tau, hang, frozen ? "  FROZEN" : "");
   }
   //
-  // h = correlation / pilot energy
+  // The channel, as a cross-spectrum rather than as two coherent means.
+  //
+  // d1*conj(d0) and |d0|^2 are h1*conj(h0) and |h0|^2 up to one common
+  // real scale, which is all div_mvdr2() needs. What that buys is that
+  // both are invariant to a rotation the two arms share - and the pilot
+  // correlation carries a large one, for the reason set out at the
+  // frequency discriminator above: d0 turns by 2*pi*f*T from frame to
+  // frame whatever f is.
+  //
+  // Averaging d0 and d1 coherently through that is averaging a spinning
+  // phasor, and on air it showed: at the operator's 10.5 s averaging the
+  // coherent part sat 16 to 28 dB below the per-frame |h0| and its phase
+  // was dragged 36 to 51 degrees off. Worse, it degraded further the
+  // longer the operator set Averaging, which is the opposite of what that
+  // control promises. See docs/diversity-measurements.md.
   //
   cplx h0 = cscale(d0, 1.0 / pilot_energy);
-  cplx h1 = cscale(d1, 1.0 / pilot_energy);
+  cplx x01 = cmul(d1, cconj(d0));
+  double x00 = cabs2(d0);
   //
-  // Residual over the pilot span: whatever is not the wanted signal.
-  // This is the whole point of using the pilot - it separates the RADE
-  // signal from noise and QRM, so the covariance below describes the
-  // interference alone and the solution nulls it instead of the signal.
+  // Interference covariance, from the bins the modem does not occupy.
+  //
+  // This used to be the residual x - h*pw over the pilot span, on the
+  // reasoning that removing the wanted signal leaves the interference. It
+  // does not. One scalar h is fitted across the whole symbol, so
+  // everything else inside the decimator's +/-3 kHz view stays in the
+  // residual - and on air that is dominated by whatever occupies the
+  // *rejected* sideband, a station of comparable power that WDSP filters
+  // away and the operator never hears.
+  //
+  // Measured against recorded captures on two bands the residual's
+  // inter-arm coherence ran 0.61 to 0.80 where the true noise was 0.11 to
+  // 0.49, with the phase wrong as well. MVDR did exactly what it was told
+  // and steered its null onto that - and the null landed close to the
+  // wanted signal's own inter-arm phase, so the combiner subtracted the
+  // signal it was there to combine. Decode-scored, it cost 0.5 to 3.4 dB
+  // against simply using the better antenna.
+  //
+  // So the covariance is measured where a pilot cannot contribute instead
+  // - see RADE_GUARD_LO0. The guard bins are placed relative to lock_f so
+  // the set follows the station, and mirrored for bank 1, whose carriers
+  // are below the tuned frequency in this frame rather than above it.
   //
   double e0 = 0.0, e1 = 0.0;
   cplx e01 = cset(0.0, 0.0);
-  double sigpow = 0.0;
+  const double gsign = (lock_bank == 0) ? 1.0 : -1.0;
+  const double dbin = (double)RADE_CORR_FS / (double)RADE_CORR_M;
 
-  for (int n = 0; n < RADE_CORR_M; n++) {
-    cplx x0 = ring_get(ring0, lock_a + n);
-    cplx x1 = ring_get(ring1, lock_a + n);
-    cplx ref = pw[n];
-    cplx r0 = csub(x0, cmul(h0, ref));
-    cplx r1 = csub(x1, cmul(h1, ref));
-    e0  += cabs2(r0);
-    e1  += cabs2(r1);
-    e01  = cadd(e01, cmul(r0, cconj(r1)));
-    sigpow += cabs2(cmul(h0, ref));
+  for (int k = RADE_GUARD_LO0; k <= RADE_GUARD_HI1; k++) {
+    if (k >= RADE_CARRIER_K0 && k <= RADE_CARRIER_K1) { continue; }
+
+    const double hz = lock_f + gsign * (double)k * dbin;
+    cplx g0 = rade_dft_bin(ring0, lock_a, hz);
+    cplx g1 = rade_dft_bin(ring1, lock_a, hz);
+    e0  += cabs2(g0);
+    e1  += cabs2(g1);
+    e01  = cadd(e01, cmul(g0, cconj(g1)));
   }
 
+  e0 /= (double)RADE_GUARD_BINS;
+  e1 /= (double)RADE_GUARD_BINS;
+  e01 = cscale(e01, 1.0 / (double)RADE_GUARD_BINS);
+  //
+  // The pilot's own energy over the span, which is what the residual loop
+  // used to accumulate a term at a time.
+  //
+  const double sigpow = cabs2(h0) * pilot_energy;
   //
   // Per modem frame, from the operator's averaging time.
   //
@@ -1112,8 +1287,8 @@ static int rade_track(double tau, double *wr, double *wi) {
   if (!acc_valid) { alpha = 1.0; }
 
   acc_valid = 1;
-  acc_h0 = cadd(cscale(acc_h0, 1.0 - alpha), cscale(h0, alpha));
-  acc_h1 = cadd(cscale(acc_h1, 1.0 - alpha), cscale(h1, alpha));
+  acc_x01 = cadd(cscale(acc_x01, 1.0 - alpha), cscale(x01, alpha));
+  acc_x00 += alpha * (x00 - acc_x00);
   acc_r00 += alpha * (e0 - acc_r00);
   acc_r11 += alpha * (e1 - acc_r11);
   acc_r01 = cadd(cscale(acc_r01, 1.0 - alpha), cscale(e01, alpha));
@@ -1122,11 +1297,17 @@ static int rade_track(double tau, double *wr, double *wi) {
   if (acc_r00 > 1e-20 && acc_sig > 0.0) {
     rade_corr_snr = 10.0 * log10(acc_sig / acc_r00);
     //
-    // Report the fraction of the pilot-span energy the pilot itself
-    // accounts for. The sigma statistic above is the right thing for the
-    // lock decision but makes a poor display: a strong interferer inflates
-    // the timing-domain floor it is measured against, so it pins to zero
+    // Report the fraction of the span energy the pilot itself accounts
+    // for, against the interference estimated off-carrier beside it. The
+    // sigma statistic above is the right thing for the lock decision but
+    // makes a poor display: a strong interferer inflates the
+    // timing-domain floor it is measured against, so it pins to zero
     // while the correlator is in fact tracking perfectly well.
+    //
+    // Both this and rade_corr_snr read higher than they did before the
+    // covariance moved off the pilot-span residual, and should: a station
+    // in the rejected sideband is no longer counted as interference to
+    // the one being received.
     //
     rade_corr_quality = acc_sig / (acc_sig + acc_r00);
   }
@@ -1137,7 +1318,7 @@ static int rade_track(double tau, double *wr, double *wi) {
 
 int rade_corr_process(const float *arm0, const float *arm1, int n,
                       int expect_bank, double frame_off, double tau,
-                      double *wr, double *wi) {
+                      double hang, double *wr, double *wi) {
   if (!running) { return 0; }
 
   //
@@ -1269,7 +1450,7 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
       return 0;
     }
 
-    int ok = rade_track(tau, wr, wi);
+    int ok = rade_track(tau, hang, wr, wi);
 
     //
     // Advance whatever happened. The pilot moves on by exactly one modem
