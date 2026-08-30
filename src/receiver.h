@@ -216,7 +216,8 @@ typedef struct _receiver {
   // an opaque data structure referred to by audio_handle.
   //
   int audio_channel;                      // STEREO or LEFT or RIGHT
-  int local_audio;                        // RX audio to sound card is active
+  int local_audio;                        // local audio selected for RX
+  int local_audio_active;                 // RX audio to sound card is active
   int local_audio_channels;               // 1 or 2, indicates mono or stereo.
   char audio_name[128];                   // name of currently used audio output device
   GMutex audio_mutex;                     // Mutex that can be used for buffer management

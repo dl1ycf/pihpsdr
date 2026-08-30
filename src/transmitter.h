@@ -97,7 +97,8 @@ typedef struct _transmitter {
   //
   // everything related to local (TX input) audio
   //
-  int local_audio;                    // sound card input is active
+  int local_audio;                    // local audio selected for TX
+  int local_audio_active;             // sound card input is active
   //
   // if add_hpsdr_mic_samples && local_audio && hpsdr_ptt, add the
   // mic samples from the HPSDR radio to the local audio TX input stream

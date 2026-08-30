@@ -1097,6 +1097,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->dexp_filter_low  =    1000;
   tx->dexp_filter_high =    2000;
   tx->local_audio = 0;
+  tx->local_audio_active = 0;
   tx->add_hpsdr_mic_samples = 0;
   tx->audiomonitor = 0;
   tx->audiomon_db = -12;
