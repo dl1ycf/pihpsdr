@@ -52,6 +52,7 @@ static GtkWidget *coh_scale = NULL;
 static GtkWidget *res_combo = NULL;
 static GtkWidget *weight_combo = NULL;
 static GtkWidget *status_label = NULL;
+static GtkWidget *arm_label = NULL;
 static GtkWidget *hold_b = NULL;
 static GtkWidget *invert_b = NULL;
 static GtkWidget *reset_b = NULL;
@@ -154,6 +155,7 @@ static void cleanup(void) {
     res_combo = NULL;
     weight_combo = NULL;
     status_label = NULL;
+    arm_label = NULL;
     hold_b = NULL;
     invert_b = NULL;
     reset_b = NULL;
@@ -370,6 +372,17 @@ static void update_visibility(void) {
   div_show_row(weight_label, weight_combo, wide);
   div_show_row(coh_label,    coh_scale,   uses_fft);
   div_show_row(hang_label,   hang_scale,  has_lock);
+  //
+  // A window keeps whatever size it has been given: the rows collapse but
+  // the dialog does not follow them up, so what was a row becomes blank
+  // space below the status line. Asking for 1x1 is the GTK idiom for
+  // "back to the natural size of what is visible now", the minimum being
+  // a floor it cannot go under. Skipped while the dialog is still being
+  // built, where there is no size to correct yet.
+  //
+  if (dialog != NULL && gtk_widget_get_visible(dialog)) {
+    gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
+  }
 }
 
 //
@@ -459,6 +472,44 @@ static void update_sliders_from_weight(void) {
 // scalars, so the GUI polls them here rather than having a worker thread
 // touch widgets.
 //
+//
+// The second status line: which antenna is measuring better, and which
+// one the selection objective is using.
+//
+// Worth its own line in every mode, not just in Best. An antenna that
+// reads 12 dB down because it is deaf and one that reads 12 dB down
+// because it is quiet look identical on the panadapter and want opposite
+// weights - which is the case the 60 m captures turned up. See Finding 13
+// in docs/diversity-measurements.md.
+//
+// Held to DIV_STATUS_CHARS by construction, like the line above it: the
+// longest string this can produce is exactly that wide.
+//
+static void div_arm_status_set(void) {
+  char text[96];
+
+  if (arm_label == NULL) { return; }
+
+  if (!div_auto_running || !div_auto_arm_valid) {
+    snprintf(text, sizeof(text), "Antennas  measuring");
+  } else {
+    double d = fabs(div_auto_arm_db);
+    char sel[20];
+    sel[0] = 0;
+
+    if (d > 99.9) { d = 99.9; }
+
+    if (div_auto_mode == DIV_AUTO_BEST) {
+      snprintf(sel, sizeof(sel), "  using ADC%d", div_auto_arm_pick);
+    }
+
+    snprintf(text, sizeof(text), "Antennas  ADC%d better by %4.1f dB%s",
+             (div_auto_arm_db > 0.0) ? 1 : 0, d, sel);
+  }
+
+  gtk_label_set_text(GTK_LABEL(arm_label), text);
+}
+
 static int status_update_cb(gpointer data) {
   if (dialog == NULL) {
     status_timer = 0;
@@ -491,6 +542,8 @@ static int status_update_cb(gpointer data) {
   if (div_auto_mode != DIV_AUTO_OFF && !div_auto_hold) {
     update_sliders_from_weight();
   }
+
+  div_arm_status_set();
 
   if (!div_auto_running) {
     div_status_set("Auto off", "", "", div_gain, div_phase);
@@ -644,7 +697,8 @@ static void auto_changed_cb(GtkWidget *widget, gpointer data) {
   //
   if ((previous == DIV_AUTO_OFF) != (div_auto_mode == DIV_AUTO_OFF)) {
     diversity_auto_restart();
-  } else if (previous != div_auto_mode) {
+  } else if ((previous == DIV_AUTO_NULL && div_auto_mode == DIV_AUTO_SUM) ||
+             (previous == DIV_AUTO_SUM && div_auto_mode == DIV_AUTO_NULL)) {
     //
     // Null <-> Sum. Turn the weight in force through 180 degrees now, as
     // well as changing which answer the loop computes: the two objectives
@@ -926,6 +980,15 @@ void diversity_menu(GtkWidget *parent) {
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_combo), "Off (manual)");
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_combo), "Null (cancel common signal)");
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_combo), "Sum (co-phase antennas)");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_combo), "Best (use the better antenna)");
+  gtk_widget_set_tooltip_text(auto_combo,
+                              "Sum combines both antennas. Best measures the "
+                              "signal-to-noise ratio on each and hands the "
+                              "output to whichever is winning, which is worth "
+                              "having when one antenna is much better than the "
+                              "other - and when it is not, Sum is worth about "
+                              "1.7 dB more. Null is the diagnostic: it cancels "
+                              "what the two antennas hear in common.");
   gtk_combo_box_set_active(GTK_COMBO_BOX(auto_combo), div_auto_mode);
   gtk_grid_attach(GTK_GRID(grid), auto_combo, 1, 6, 1, 1);
   g_signal_connect(auto_combo, "changed", G_CALLBACK(auto_changed_cb), NULL);
@@ -1107,14 +1170,52 @@ void diversity_menu(GtkWidget *parent) {
     pango_attr_list_unref(attrs);
   }
   gtk_grid_attach(GTK_GRID(grid), status_label, 0, 17, 2, 1);
+  //
+  // Second line, same treatment: monospace, the same fixed width, so the
+  // two line up and neither can widen the dialog.
+  //
+  arm_label = gtk_label_new("");
+  gtk_widget_set_halign(arm_label, GTK_ALIGN_FILL);
+  gtk_label_set_xalign(GTK_LABEL(arm_label), 0.0);
+  gtk_widget_set_margin_start(arm_label, DIV_STATUS_MARGIN);
+  gtk_widget_set_margin_end(arm_label, DIV_STATUS_MARGIN);
+  gtk_label_set_width_chars(GTK_LABEL(arm_label), DIV_STATUS_CHARS);
+  gtk_label_set_max_width_chars(GTK_LABEL(arm_label), DIV_STATUS_CHARS);
+  {
+    PangoAttrList *attrs = pango_attr_list_new();
+    pango_attr_list_insert(attrs, pango_attr_family_new("monospace"));
+    gtk_label_set_attributes(GTK_LABEL(arm_label), attrs);
+    pango_attr_list_unref(attrs);
+  }
+  gtk_grid_attach(GTK_GRID(grid), arm_label, 0, 18, 2, 1);
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
+  //
+  // The rows that come and go with the measure mode are put out of
+  // show_all's reach and given their initial state before the dialog is
+  // shown, rather than being hidden again afterwards. Hiding them
+  // afterwards sized the window for every row and then left it at that
+  // size, so the dialog opened with the rows that do not apply to the
+  // selected reference replaced by their own height in blank space.
+  //
+  {
+    GtkWidget *optional[] = {
+      follow_b,
+      centre_label, centre_spin,
+      width_label,  width_spin,
+      res_label,    res_combo,
+      weight_label, weight_combo,
+      coh_label,    coh_scale,
+      hang_label,   hang_scale
+    };
+
+    for (unsigned int i = 0; i < G_N_ELEMENTS(optional); i++) {
+      gtk_widget_set_no_show_all(optional[i], TRUE);
+    }
+  }
+  update_visibility();
   gtk_widget_show_all(dialog);
   update_manual_sensitivity();
-  //
-  // After show_all, which would otherwise have shown every row.
-  //
-  update_visibility();
 
   if (radio_is_remote) {
     //
@@ -1144,6 +1245,7 @@ void diversity_menu(GtkWidget *parent) {
     gtk_widget_set_sensitive(divcap_b, FALSE);
 #endif
     div_status_set("Remote", "", "radio side", div_gain, div_phase);
+    gtk_label_set_text(GTK_LABEL(arm_label), "Antennas  radio side");
     return;
   }
 

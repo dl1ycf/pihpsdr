@@ -72,6 +72,25 @@ extern double rade_corr_freq_off;    // Hz, tracked frequency offset
 extern double rade_corr_snr;         // dB, pilot SNR estimate
 
 //
+// Which arm carries the better pilot SNR, and by how much, in dB.
+// Positive means arm 1. Both the channel and the per-arm noise are
+// already in the tracker's accumulators, so this costs one logarithm a
+// frame and needs no new measurement. Valid only while locked.
+//
+extern double rade_corr_arm_db;
+extern int    rade_corr_arm_valid;
+
+//
+// The unit weight that brings arm 1 onto arm 0 in phase, i.e. conj(h1/h0)
+// normalised. The antenna-selection objective needs a direction and not a
+// magnitude, and this is the one the MVDR weight is not: MVDR's phase
+// answers a different question and on air the two differ by tens of
+// degrees.
+//
+extern double rade_corr_arm_cos;
+extern double rade_corr_arm_sin;
+
+//
 // ddc_rate must divide RADE_CORR_FS exactly (48k/96k/192k/384k all do).
 // Returns 0 if the correlator cannot run at this rate.
 //

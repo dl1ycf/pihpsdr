@@ -168,6 +168,64 @@
 #define DIV_MAX_WEIGHT      10.0    // +20 dB
 
 //
+// How far div_mvdr2()'s denominator may cancel before the solve is called
+// degenerate. A relative test, not an absolute one - see the note there.
+// 1e-9 is seven orders of magnitude clear of double precision and still
+// rejects a genuinely singular pair.
+//
+#define DIV_MVDR_EPS        1e-9
+
+//
+// DIV_AUTO_BEST: how much better one antenna must measure before the
+// selection moves to it, and how fast the per-arm noise floor is allowed
+// to creep up when the reference has no noise bins of its own and has to
+// track a minimum over time instead.
+//
+// The hysteresis matters most where it matters least: two antennas within
+// a decibel of each other are the case where the choice does not matter
+// and the case where an ungated comparison would chatter between them.
+//
+// The floor rise is slow deliberately. It only has to outrun a change of
+// band conditions, and anything faster starts following the signal it is
+// supposed to be measuring underneath.
+//
+#define DIV_BEST_HYST_DB    1.0
+#define DIV_FLOOR_RISE_DB   0.2     // dB per second
+
+//
+// The floor is tracked on power smoothed over this, not over the
+// operator's averaging time.
+//
+// That distinction is the whole mechanism. Averaging is seconds to tens
+// of seconds, longer than the gap between two overs and far longer than
+// the gap between two syllables, so a minimum taken over the averaged
+// power never sees a gap at all - it lands on a moment that still holds
+// signal, on both arms, in the same ratio as the signal itself, and the
+// estimate cancels to exactly 0.0 dB. Measured doing precisely that on
+// the voice captures before this was separated out.
+//
+#define DIV_FLOOR_TAU       0.5     // seconds
+
+//
+// How far the window power must stand above the tracked floor, on both
+// arms, before that floor is taken to be noise.
+//
+// Without this the tracker answers confidently and wrongly. Its minimum
+// is only a noise floor if the capture contained a moment with no signal
+// in it; where the signal never stops, the minimum is signal too, and
+// since both arms carry the same signal scaled by the same path the two
+// minima are in the same ratio as the two powers. Everything then
+// cancels and the estimate comes out at exactly 0.0 dB - not "the arms
+// are equal" but "this method has told you nothing". Simulated and then
+// confirmed on the 60 m RADE captures, which have no gaps in them at all
+// and where it read +0.0 dB against a truth of +2.5.
+//
+// Six decibels is enough to say the floor was set under conditions
+// genuinely different from now.
+//
+#define DIV_ARM_MIN_DB      6.0
+
+//
 // Fraction of the remaining distance to the target that w moves in one
 // block. With ~85 ms blocks this settles in a little over a second from
 // any starting point, which is fast enough to be useful and slow enough
@@ -353,6 +411,19 @@ double div_auto_coherence      = 0.0;
 int    div_auto_holding        = 1;
 double div_auto_carrier        = 0.0;
 int    div_auto_carrier_valid  = 0;
+
+double div_auto_arm_db         = 0.0;
+int    div_auto_arm_valid      = 0;
+int    div_auto_arm_pick       = 0;
+
+//
+// Per-arm noise floors for the references that have no noise bins to
+// measure one in. See div_arm_floor_update().
+//
+static double arm_floor0 = 0.0, arm_floor1 = 0.0;
+static int    arm_floor_valid = 0;
+static double arm_pw0 = 0.0, arm_pw1 = 0.0;
+static double arm_fast0 = 0.0, arm_fast1 = 0.0;
 
 double div_auto_occ_lo         = 0.0;
 double div_auto_occ_hi         = 0.0;
@@ -584,6 +655,12 @@ static void div_reset_stats(void) {
   }
 
   acc_valid = 0;
+  arm_floor_valid = 0;
+  arm_floor0 = arm_floor1 = 0.0;
+  arm_pw0 = arm_pw1 = 0.0;
+  arm_fast0 = arm_fast1 = 0.0;
+  div_auto_arm_valid = 0;
+  div_auto_arm_db = 0.0;
   div_auto_coherence = 0.0;
   div_auto_holding = 1;
   div_carrier_hz = 0.0;
@@ -908,8 +985,35 @@ void div_mvdr2(double r00, double r11, double r01re, double r01im,
   const double denre = r11 * h0re - (r01re * h1re - r01im * h1im);
   const double denim = r11 * h0im - (r01re * h1im + r01im * h1re);
   const double d2 = denre * denre + denim * denim;
+  //
+  // Reject a degenerate solve, and only that.
+  //
+  // This used to read "d2 > 1e-30", which is an absolute magnitude test
+  // on a quantity that has no fixed magnitude. den is a difference of two
+  // products of energies, so on the RADE path it goes as the eighth power
+  // of the sample level: measured across the recorded captures it lands
+  // anywhere between 1e-28 and 1e-34 with nothing wrong with any of them.
+  // The test fired on between half and all of the frames of every capture
+  // but the loudest, returned a weight of exactly zero - which mutes the
+  // second antenna and shows in the menu as the -27 dB floor with phase 0,
+  // indistinguishable from a real answer - and cost up to 2.0 dB against
+  // simply using the better antenna. See Finding 11 in
+  // docs/diversity-measurements.md.
+  //
+  // What makes the answer meaningless is not that den is small but that
+  // it is small *compared with the two terms it is the difference of*,
+  // which is the catastrophic-cancellation condition and is scale-free.
+  // DIV_MVDR_EPS is far above the point where double precision runs out,
+  // so this now fires only on a covariance that really is singular
+  // against the channel - and the diagonal loading above has already made
+  // that very difficult to arrange.
+  //
+  const double h0m  = sqrt(h0re * h0re + h0im * h0im);
+  const double h1m  = sqrt(h1re * h1re + h1im * h1im);
+  const double r01m = sqrt(r01re * r01re + r01im * r01im);
+  const double scale = r11 * h0m + r01m * h1m;
 
-  if (!(d2 > 1e-30)) {
+  if (!(scale > 0.0) || !(d2 > DIV_MVDR_EPS * DIV_MVDR_EPS * scale * scale)) {
     *wr = 0.0;
     *wi = 0.0;
     return;
@@ -922,6 +1026,145 @@ void div_mvdr2(double r00, double r11, double r01re, double r01im,
   const double qim = (numim * denre - numre * denim) / d2;
   *wr =  qre;
   *wi = -qim;
+}
+
+//
+// ------------------------------------------------------------------
+// Which antenna is better
+// ------------------------------------------------------------------
+//
+// Every reference can say something about the two arms separately, and
+// what it needs to say it is the same in each case: the signal power on
+// each arm, and the noise power on each arm. The advantage of arm 1 is
+// then (S1/N1)/(S0/N0), and where the reference measures the channel
+// ratio rather than the two signal powers - which all of them do - that
+// is |h1/h0|^2 * (N0/N1).
+//
+// The RADE V1 and Digital I/Q references already have both halves: their
+// MVDR covariance is a measurement of N0 and N1 taken off the signal. The
+// wideband Window and Carrier references have no such thing, so they get
+// a noise floor tracked over time instead - see div_arm_floor_update().
+//
+// This is worth publishing whatever objective is running. Nothing an
+// operator can otherwise see separates an antenna that reads 12 dB down
+// because it is deaf from one that reads 12 dB down because it is quiet,
+// and the two want opposite weights - which is exactly the case the 60 m
+// captures turned up. See Finding 13 in docs/diversity-measurements.md.
+//
+static void div_arm_publish(int valid, double db) {
+  div_auto_arm_valid = valid;
+
+  if (valid) { div_auto_arm_db = db; }
+}
+
+//
+// Minimum statistics: the noise floor of a channel is the quietest it has
+// recently been. Track the smoothed in-window power down instantly and
+// let it creep back up slowly, so a gap between overs sets it and a long
+// transmission does not drag it along.
+//
+// Crude next to a covariance measured off the carriers, and the only
+// thing available to a reference whose window is the whole passband: the
+// bins outside it are the rejected sideband, and Finding 1 is the record
+// of what happens when that is used as a noise reference.
+//
+static void div_arm_floor_update(double p0, double p1) {
+  if (!(p0 > 0.0) || !(p1 > 0.0)) { return; }
+
+  if (!arm_floor_valid) {
+    arm_floor0 = p0;
+    arm_floor1 = p1;
+    arm_floor_valid = 1;
+    return;
+  }
+
+  const double rise = pow(10.0, 0.1 * DIV_FLOOR_RISE_DB * blocktime);
+  arm_floor0 = (p0 < arm_floor0) ? p0 : arm_floor0 * rise;
+  arm_floor1 = (p1 < arm_floor1) ? p1 : arm_floor1 * rise;
+}
+
+//
+// The advantage of arm 1, in dB, from the tracked floors. Fails while
+// the floor has not been established, and while either arm is sitting on
+// its own floor - there is no signal to compare then, and the ratio of
+// two noises is not an answer to the question.
+//
+static int div_arm_from_floor(double p0, double p1, double *db) {
+  if (!arm_floor_valid || arm_floor0 <= 0.0 || arm_floor1 <= 0.0) { return 0; }
+
+  const double s0 = p0 - arm_floor0;
+  const double s1 = p1 - arm_floor1;
+
+  if (!(s0 > 0.0) || !(s1 > 0.0)) { return 0; }
+
+  //
+  // Both arms have to stand clear of their own floor, or the floor is not
+  // yet known to be noise. See DIV_ARM_MIN_DB.
+  //
+  const double need = pow(10.0, 0.1 * DIV_ARM_MIN_DB) - 1.0;
+
+  if (s0 < need * arm_floor0 || s1 < need * arm_floor1) { return 0; }
+
+  *db = 10.0 * log10((s1 / arm_floor1) / (s0 / arm_floor0));
+  return 1;
+}
+
+//
+// Write a new weight, rate limited. Called from the analysis thread.
+//
+static void div_apply_weight(double wr, double wi);
+
+//
+// DIV_AUTO_BEST: give the output to whichever antenna is measuring
+// better.
+//
+// Not a switch, because the combiner cannot express one. It forms
+// z0 + w*z1 with arm 0 pinned at unity gain (see receiver.c), so "use
+// arm 1 only" exists only as the limit w -> infinity, and the nearest
+// reachable point is w at the clamp with the co-phasing angle - arm 1
+// dominant with arm 0 co-phased in underneath it, 20 dB down. That is not
+// a compromise forced on us: measured against a decoder it beat the full
+// MVDR solve by 0.6 dB on the one capture where the two antennas
+// disagreed about which was better, because the residue of arm 0 is still
+// doing useful combining. Selecting arm 0 needs no such trick - w = 0 is
+// exact.
+//
+// cophase_re/im only has to point the right way; its magnitude is thrown
+// away. Every reference already computes it, as the Sum weight.
+//
+static void div_apply_best(double cophase_re, double cophase_im) {
+  if (!div_auto_arm_valid) {
+    //
+    // Nothing to choose on. Hold rather than guess - and in particular do
+    // not fall back to arm 0, which would silently turn the mode into
+    // "diversity off" whenever the estimate was unavailable.
+    //
+    div_auto_holding = 1;
+    return;
+  }
+
+  if (div_auto_arm_pick == 0) {
+    if (div_auto_arm_db >  DIV_BEST_HYST_DB) { div_auto_arm_pick = 1; }
+  } else {
+    if (div_auto_arm_db < -DIV_BEST_HYST_DB) { div_auto_arm_pick = 0; }
+  }
+
+  if (div_auto_arm_pick == 0) {
+    div_auto_holding = 0;
+    div_apply_weight(0.0, 0.0);
+    return;
+  }
+
+  const double m = sqrt(cophase_re * cophase_re + cophase_im * cophase_im);
+
+  if (!(m > 0.0)) {
+    div_auto_holding = 1;
+    return;
+  }
+
+  const double k = DIV_MAX_WEIGHT / m;
+  div_auto_holding = 0;
+  div_apply_weight(cophase_re * k, cophase_im * k);
 }
 
 //
@@ -1295,8 +1538,35 @@ static void div_digital_solve(const struct div_context *ctx, int klo, int khi) {
   }
 
   div_auto_holding = 0;
+  //
+  // Per-arm SNR, from the same two sets of bins the solve uses: the
+  // channel ratio over the occupied ones, the two noise powers over the
+  // rest. Where occupancy found no noise bins there is nothing to divide
+  // by and the estimate is simply unavailable.
+  //
+  {
+    double db = 0.0;
+    int ok = 0;
 
-  if (div_auto_mode != DIV_AUTO_SUM) {
+    if (nnoise >= DIV_OCC_MIN_BINS && r00 > 0.0 && r11 > 0.0 && sig_xx > 0.0) {
+      const double hr = (sig_xy_re * sig_xy_re + sig_xy_im * sig_xy_im)
+                        / (sig_xx * sig_xx);
+
+      if (hr > 0.0) {
+        db = 10.0 * log10(hr * r00 / r11);
+        ok = 1;
+      }
+    }
+
+    div_arm_publish(ok, db);
+  }
+
+  if (div_auto_mode == DIV_AUTO_BEST) {
+    div_apply_best(sig_xy_re / sig_xx, sig_xy_im / sig_xx);
+    return;
+  }
+
+  if (div_auto_mode == DIV_AUTO_NULL) {
     //
     // Null cancels what the region is sitting on, which is the occupied
     // part of it - the same objective as everywhere else, restricted to
@@ -1460,9 +1730,29 @@ static void div_process_block(void) {
     div_rade_side = (expect != 0) ? expect
                     : (rade_corr_locked ? (rade_corr_mirrored ? 1 : -1) : div_rade_side);
 
+    //
+    // The correlator measures both arms whenever it is locked, whether or
+    // not it produced a weight this block.
+    //
+    div_arm_publish(rade_corr_arm_valid, rade_corr_arm_db);
+
     if (ok) {
       div_auto_coherence = rade_corr_quality;
       div_auto_holding = 0;
+
+      if (div_auto_mode == DIV_AUTO_BEST) {
+        //
+        // rade_corr_arm_cos/sin is the unit weight that brings arm 1 onto
+        // arm 0 in phase, which is all div_apply_best() wants. The MVDR
+        // weight in wr/wi would do at a pinch but its phase is not the
+        // co-phasing one - measured 18 degrees off on the capture where
+        // arm 1 won - and the whole point of this mode is not to depend
+        // on that solve.
+        //
+        div_apply_best(rade_corr_arm_cos, rade_corr_arm_sin);
+        return;
+      }
+
       //
       // Respect the objective, as every other reference does.
       //
@@ -1647,6 +1937,8 @@ static void div_process_block(void) {
     acc_valid = 1;
   }
 
+  double cur_xx = 0.0, cur_yy = 0.0;
+
   //
   // Per-bin running spectra. Keeping these per bin rather than as four
   // scalars is what allows the bins to be weighted by how well the two
@@ -1666,6 +1958,14 @@ static void div_process_block(void) {
     bin_xy_im[idx] += alpha * ((q0 * i1 - i0 * q1) - bin_xy_im[idx]);
     bin_xx[idx]    += alpha * ((i0 * i0 + q0 * q0) - bin_xx[idx]);
     bin_yy[idx]    += alpha * ((i1 * i1 + q1 * q1) - bin_yy[idx]);
+    //
+    // Unweighted window power per arm, for the noise floor tracker. It
+    // has to be unweighted and it has to be per arm: a coherence-weighted
+    // sum follows the signal, which is the one thing a noise floor must
+    // not do.
+    //
+    cur_xx += i0 * i0 + q0 * q0;
+    cur_yy += i1 * i1 + q1 * q1;
   }
 
   //
@@ -1744,6 +2044,36 @@ static void div_process_block(void) {
     wsum      += w;
   }
 
+  //
+  // Per-arm signal and noise, before any of the gates below: the floor
+  // has to go on learning while the loop is holding, because holding is
+  // mostly what it does between overs and between overs is when the floor
+  // is measurable.
+  //
+  arm_pw0 += alpha * (cur_xx - arm_pw0);
+  arm_pw1 += alpha * (cur_yy - arm_pw1);
+  {
+    //
+    // A second, much shorter smoothing, for the floor only. See
+    // DIV_FLOOR_TAU.
+    //
+    const double fa = 1.0 - exp(-blocktime / DIV_FLOOR_TAU);
+    arm_fast0 += fa * (cur_xx - arm_fast0);
+    arm_fast1 += fa * (cur_yy - arm_fast1);
+  }
+  div_arm_floor_update(arm_fast0, arm_fast1);
+  {
+    //
+    // Evaluated into a local first: the order in which a call's arguments
+    // are evaluated is unspecified, so passing the estimate and the
+    // function that produces it in one expression reads the estimate
+    // before it has been written.
+    //
+    double db = 0.0;
+    const int ok = div_arm_from_floor(arm_pw0, arm_pw1, &db);
+    div_arm_publish(ok, db);
+  }
+
   if (acc_xx <= 0.0 || acc_yy <= 0.0 || wsum <= 0.0) {
     div_auto_coherence = 0.0;
     div_auto_holding = 1;
@@ -1778,6 +2108,12 @@ static void div_process_block(void) {
   }
 
   div_auto_holding = 0;
+
+  if (div_auto_mode == DIV_AUTO_BEST) {
+    div_apply_best(acc_xy_re / acc_xx, acc_xy_im / acc_xx);
+    return;
+  }
+
   double den = (div_auto_mode == DIV_AUTO_SUM) ? acc_xx : acc_yy;
   double sign = (div_auto_mode == DIV_AUTO_SUM) ? 1.0 : -1.0;
   div_apply_weight(sign * acc_xy_re / den, sign * acc_xy_im / den);
@@ -2102,7 +2438,7 @@ void diversity_auto_restore_state(void) {
   // coherence threshold above 1.0 wedges the loop in permanent HOLD with
   // nothing on screen to say why.
   //
-  if (div_auto_mode < DIV_AUTO_OFF || div_auto_mode > DIV_AUTO_SUM) {
+  if (div_auto_mode < DIV_AUTO_OFF || div_auto_mode > DIV_AUTO_BEST) {
     div_auto_mode = DIV_AUTO_OFF;
   }
 

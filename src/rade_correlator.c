@@ -407,6 +407,10 @@ int    rade_corr_locked   = 0;
 double rade_corr_freq_off = 0.0;
 double rade_corr_snr      = 0.0;
 double rade_corr_quality  = 0.0;
+double rade_corr_arm_db   = 0.0;
+int    rade_corr_arm_valid = 0;
+double rade_corr_arm_cos  = 1.0;
+double rade_corr_arm_sin  = 0.0;
 int    rade_corr_mirrored = 0;
 int    rade_corr_confirming = 0;
 
@@ -655,6 +659,10 @@ void rade_corr_reset(void) {
   track_report = 0;
   rade_corr_quality = 0.0;
   rade_corr_snr = 0.0;
+  rade_corr_arm_db = 0.0;
+  rade_corr_arm_valid = 0;
+  rade_corr_arm_cos = 1.0;
+  rade_corr_arm_sin = 0.0;
   //
   // These two are only ever written when a lock is taken, so without this
   // they survive a reset - and the menu goes on showing the last lock's
@@ -1310,6 +1318,35 @@ static int rade_track(double tau, double hang, double *wr, double *wi) {
     // the one being received.
     //
     rade_corr_quality = acc_sig / (acc_sig + acc_r00);
+  }
+
+  //
+  // Per-arm pilot SNR, for the antenna-selection objective and for the
+  // menu.
+  //
+  // acc_x00 is |a0|^2 S and acc_x01 is a1 conj(a0) S, so the signal
+  // powers are acc_x00 and |acc_x01|^2 / acc_x00 up to the one common
+  // factor that cancels in the ratio; acc_r00 and acc_r11 are the two
+  // noise powers, measured off the carriers beside the pilot. The
+  // advantage of arm 1 is therefore
+  //
+  //   |acc_x01/acc_x00|^2 * (acc_r00/acc_r11)
+  //
+  // which is the same expression the wideband and Digital I/Q references
+  // arrive at from their own statistics. Nothing new is measured for it.
+  //
+  if (acc_x00 > 0.0 && acc_r00 > 0.0 && acc_r11 > 0.0 && cabs2(acc_x01) > 0.0) {
+    const double hr = cabs2(acc_x01) / (acc_x00 * acc_x00);
+    const double m = sqrt(cabs2(acc_x01));
+    rade_corr_arm_db = 10.0 * log10(hr * acc_r00 / acc_r11);
+    //
+    // conj(acc_x01)/|acc_x01|: acc_x00 is real and positive, so
+    // acc_x01/acc_x00 is a1/a0 and its conjugate is the direction that
+    // adds arm 1 in phase rather than against.
+    //
+    rade_corr_arm_cos =  acc_x01.re / m;
+    rade_corr_arm_sin = -acc_x01.im / m;
+    rade_corr_arm_valid = 1;
   }
 
   rade_mvdr_weight(wr, wi);

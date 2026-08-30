@@ -14,8 +14,20 @@ again from the raw `.divc` files alone.
 changed; see "What was changed, and what it scored" at the end, which is
 where the after figures live. Finding 8's *mechanism* did not survive the
 attempt to fix it and has been corrected in place. The threshold policy is
-settled for now. Still open: the USB pilot bank has never been correlated
-on air, and the Digital I/Q occupancy test has no false-alarm control.
+settled for now.
+
+**Finding 11** - the MVDR solve returning a weight of exactly zero, the
+second antenna muted, the menu showing -27 dB, on between half and all of
+the frames of every RADE capture in this document bar one - has been
+found and fixed. RADE V1 now beats the better antenna on five of the six
+captures it can be scored on. **Finding 14** adds an antenna-selection
+objective and measures it; it is a floor, not a ceiling, and Sum remains
+the right default. Still open: the Digital I/Q occupancy test has no
+false-alarm control, and its per-arm SNR estimate is the weakest of the
+four (Finding 14).
+
+The USB pilot bank, previously the most valuable missing measurement, is
+now confirmed on air - see Finding 12.
 
 Read in order, the findings divide into two groups. The **Window**
 reference gains 1.6 to 1.8 dB over the better antenna on every voice
@@ -25,16 +37,26 @@ in each case for a reason that has been isolated and measured. RADE V1 has
 since been repaired and now matches or beats the better antenna on all
 three captures it was scored against; Digital I/Q on CW has not.
 
+Read Finding 3 and the repair scored under it with Finding 11 beside
+them. Those numbers were honest about what the shipping code delivered at
+the time, but they were obtained with the solve returning zero on two
+thirds of the frames of two of the three captures, which is not what the
+surrounding text assumes was happening. The figures under "What was
+changed, and what it scored" supersede them.
+
 For how the modes work, see [`diversity.md`](diversity.md) and
 [`diversity-rade.md`](diversity-rade.md).
 
 ## Capture set
 
-All Angelia, 48 kHz DDC, averaging 10.5 s, hang 5.2 s, objective Sum. The
-RADE captures are 703 blocks of nfft 4096 (85.3 ms each) = 60 s. The rest
-vary, because the operator's Resolution control sets the transform size:
-nfft 4096, 8192 and 16384 all appear, giving 85, 171 and **341 ms** per
-analysis block. That matters more than it looks - at nfft 16384 the 10.5 s
+All Angelia, averaging 10.5 s, hang 5.2 s, objective Sum. The August 29
+captures are at a **48 kHz** DDC; the 60 m set of August 30 is the first
+at **192 kHz**, 351 blocks of nfft 32768 (170.7 ms each) = 60 s. The
+40 m RADE captures are 703 blocks of nfft 4096 (85.3 ms each) = 60 s. The
+rest vary, because the operator's Resolution control sets the transform
+size: nfft 4096, 8192, 16384 and 32768 all appear, giving 85, 171, 341
+and **171 ms** per analysis block (the last at four times the sample
+rate). That matters more than it looks - at nfft 16384 the 10.5 s
 averaging time is only 31 blocks, so the loop is coarse in time as well as
 fine in frequency. Every capture recorded **0 dropped and 0 skipped
 blocks**, so none of the analysis below is working around a lossy
@@ -59,10 +81,22 @@ recording.
 | `000328` | 14.262 | USB | Window, coherence | analog voice, 60 s, 5 filter changes |
 | `001054` | 14.0522 | CWL | Digital I/Q | CW, 60 s, nfft 16384 |
 | `001157` | 14.0522 | CWL | Digital I/Q | CW, 60 s, **operator tuning: 23 context changes** |
+| `110923` | 5.3685 | USB | RADE V1 | **first bank-1 capture**, locked 65 % |
+| `111051` | 5.3685 | USB | RADE V1 | two acquisitions, arm 1 the *better* antenna |
+| `111328` | 5.3685 | USB | RADE V1 | **none** - band noise, 192 kHz |
+| `111734` | 5.3715 | USB | RADE V1 | locked 70 % |
 
-The four "none" captures are the most valuable ones in the set. A capture
+The five "none" captures are the most valuable ones in the set. A capture
 of nothing is what says whether a detector threshold is safe, and it costs
 nothing but a minute of a quiet band.
+
+The four 60 m captures were taken with **no note recorded**, which the
+devtools README asks for and which nothing enforces. What is known of
+them comes from the operator afterwards: ADC0 is the main antenna,
+sometimes tuned and sometimes not, ADC1 an untuned doublet. That
+asymmetry is the subject of Finding 13, and the missing note is the
+reason it had to be established by measurement rather than read off the
+file.
 
 `231724` and `232052` are a matched pair: same band, same path, five
 minutes apart, one running each reference. That comparison did more work
@@ -254,12 +288,32 @@ Every other capture contradicts it:
 | `000012` | 80 m voice | +2.4 dB | 0.066 |
 | `001054` | 20 m CW | - | 0.266 |
 | `001157` | 20 m CW | - | 0.578 |
+| `110923` | 60 m | -2.1 dB | 0.75 |
+| `111051` | 60 m | -13.1 dB | 0.72 |
+| `111328` | 60 m | -10.2 dB | **0.14** |
+| `111734` | 60 m | -11.6 dB | 0.86 |
 
 On `231724` the ideal MVDR weight and the ideal MRC weight are 51 degrees
 apart, so the cross term is doing real work there.
 
 **Confine the covariance to the passband; do not diagonalise it.** One
 capture would have led the other way.
+
+The four 60 m rows are measured differently from the rest and the
+difference matters: there is no dead air in three of them, so the noise
+figure is taken in the correlator's own guard bins - 300 to 2850 Hz on
+the modem's side of the tuned frequency, off the 50 Hz carrier grid -
+rather than in a silent stretch. `111328`, which has no signal at all, is
+measured both ways and agrees to 0.2 dB, which is what licenses the
+other three.
+
+They also stretch the coherence range at both ends. `111734` at 0.86 is
+the highest noise coherence in the set and `111328` at 0.14 nearly the
+lowest, on the same two antennas four minutes apart. What separates them
+is how far the band noise stands above the receivers': `111328` is 10 dB
+quieter than its neighbours and both arms are close to their own noise
+floors, which are independent. When external noise dominates it is
+shared, and the inter-arm coherence goes with it. See Finding 10.
 
 Note also that which antenna is better *flips between bands* - arm 1 is
 3.7 dB quieter on 40 m and 4.0 to 6.2 dB noisier on 80/20 m. There is a
@@ -605,7 +659,9 @@ context block by block.
 
 `div_auto_coherence_min` defaults to **0.30**. The inter-arm coherence of
 the *noise*, measured in dead air across every capture in this document,
-runs from **0.066 to 0.578**, with a median around 0.28.
+runs from **0.066 to 0.86**, with a median around 0.28. The 60 m captures
+added the top of that range: 0.72, 0.75 and 0.86 on three of them, and
+0.14 on the fourth (Finding 4).
 
 On a path where the noise is 0.10 correlated the gate does what it is for.
 On one where the noise is 0.44 or 0.58 correlated, "the two antennas agree
@@ -619,18 +675,440 @@ cannot distinguish the two - but it is a limit worth stating, and it
 argues for the gate being a per-path operator control rather than a
 constant.
 
+The 60 m captures sharpen it. At 0.86 the gate is not merely unable to
+separate signal from noise, it is a formality: every block passes it
+whatever is or is not there. And the thing that decides where in the
+0.14-0.86 range a path sits is not the antennas or the band but how far
+the band noise is above the receiver's own, which changes with the hour
+and with the weather.
+
+## Finding 11: the MVDR solve returns exactly zero, and mutes the second antenna
+
+The operator's report was that the RADE V1 lock sat at about -25 dB gain,
+which did not feel right. It is not a gain. It is `div_mvdr2()` returning
+`(0, 0)`, which `div_apply_weight()` renders as its floor:
+
+```c
+div_track_gain = (mag > 1.0e-9) ? 20.0 * log10(mag) : -27.0;
+```
+
+so the menu shows **-27.0 dB with phase exactly 0**, which is
+indistinguishable from a tracked answer and is not one. The weight
+actually applied then slews towards zero and stays there: on the three
+60 m captures with a signal the recorded `div_cos, div_sin` has a median
+magnitude of **-175, -119 and -86 dB**. Arm 1 was muted for the whole
+minute. The operator was listening to ADC0 alone with the menu reporting
+a lock, a quality of 0.8 and a pilot SNR of 8 dB - all of which were
+true, and none of which reached the audio.
+
+`div_mvdr2()` has exactly one exact-zero exit:
+
+```c
+const double d2 = denre * denre + denim * denim;
+if (!(d2 > 1e-30)) { *wr = 0.0; *wi = 0.0; return; }
+```
+
+`den = r11*h0 - r01*h1` is a product of two *energies*. On the RADE path
+`h` comes from pilot correlations (`|d0|^2`, `d1 conj(d0)`) and `R` from
+160-sample DFT bins, both built from samples of order 1e-4, so `d2` is
+that scale to the eighth power. It has no fixed magnitude, and the
+threshold does.
+
+Measured per capture, over every locked modem frame, `d2` against the
+1e-30 the guard tests it against:
+
+| capture | band / DDC | frames | zero | `d2` median | decades vs 1e-30 |
+|---|---|---|---|---|---|
+| `213155` | 40 m, 48 k | 419 | **0 %** | 8.4e-29 | +1.9 |
+| `232052` | 80 m, 48 k | 41 | 49 % | 1.0e-30 | +0.0 |
+| `233241` | 40 m, 48 k | 194 | 71 % | 5.1e-31 | -0.3 |
+| `233133` | 40 m, 48 k | 186 | 65 % | 2.1e-31 | -0.7 |
+| `111051` | 60 m, 192 k | 295 | 66 % | 1.7e-31 | -0.8 |
+| `231724` | 80 m, 48 k | 172 | 91 % | 1.5e-31 | -0.8 |
+| `111734` | 60 m, 192 k | 306 | **100 %** | 5.1e-32 | -1.3 |
+| `110923` | 60 m, 192 k | 280 | **100 %** | 2.0e-34 | -3.7 |
+
+The threshold sits *inside* the operating range - `232052` straddles it
+exactly - and every capture in the set except the loudest one spends most
+of its frames below it. This is not a 60 m problem and not a 192 kHz
+problem; those captures are simply the quiet end of a distribution the
+guard was always cutting through.
+
+### It is scale, not a singular matrix
+
+The guard is presumably meant to catch a singular `R`, and the covariance
+here really is highly correlated between the arms (0.57 to 0.80), so that
+had to be ruled out rather than assumed. Replaying each capture with the
+input samples multiplied by a constant settles it: a factor of ten raises
+`d2` by **eight decades** and changes nothing else, because both `R` and
+`h` scale together and the solve normalises arm 0 to unity.
+
+| capture | scale 1 | 10 | 100 | 1000 |
+|---|---|---|---|---|
+| `110923` | 100 % zero, jitter 0.00000 | 0 %, 0.15349 | 0 %, 0.15349 | 0 %, 0.15349 |
+| `111051` | 66 % zero, jitter 3.61813 | 0 %, 8.18489 | 0 %, 8.18489 | 0 %, 8.18489 |
+| `111734` | 100 % zero, jitter 0.00000 | 0 %, 0.53162 | 0 %, 0.53162 | 0 %, 0.53162 |
+| `233133` | 65 % zero, jitter 0.16862 | 0 %, 0.31140 | 0 %, 0.31140 | 0 %, 0.31140 |
+| `233241` | 71 % zero, jitter 0.08265 | 0 %, 0.21365 | 0 %, 0.21365 | 0 %, 0.21365 |
+| `213155` | 0 % zero, jitter 0.43416 | 0 %, 0.43416 | 0 %, 0.43416 | 0 %, 0.43416 |
+
+Bit-identical from ×10 upward: once the guard stops firing the answer is
+scale-invariant, which is what says the matrix was never singular.
+`213155`, where the guard never fires at all, is identical at ×1 too -
+the control that says the ×10 replay is not doing anything else.
+
+Acquisition, lock uptime, time to first lock and the solve count are
+unchanged at every scale. The detector never saw this; only the weight
+did.
+
+### What it costs, decode-scored
+
+Three librade receivers per capture plus a fourth driven by the weight
+sequence the same code produces with the guard out of the way. Mean
+`rade_snrdB_3k_est()`; sync was 100 % on every stream except where noted,
+so the SNR column is the one that separates them (Trap 3).
+
+| capture | arm 0 | arm 1 | as it ran | unguarded | shipped vs better arm | unguarded vs better arm |
+|---|---|---|---|---|---|---|
+| `110923` 60 m | 9.8 | 8.2 | 9.8 | 11.5 | +0.0 | **+1.7** |
+| `111051` 60 m | 9.7 | **12.2** | 10.2 | 13.4 | **-2.0** | **+1.2** |
+| `111734` 60 m | **7.3** | 6.8 | 7.3 | 9.2 | +0.0 | **+1.8** |
+| `213155` 40 m | 7.2 | 9.6 | 10.0 | 10.0 | +0.5 | +0.5 |
+| `233133` 40 m | 9.4 | 1.5 | 9.9 | 10.0 | +0.5 | +0.6 |
+| `233241` 40 m | 10.3 | 4.8 | 10.3 | 9.9 | -0.0 | -0.4 |
+
+Two things to take from this.
+
+**On the 60 m captures the defect costs 1.7 to 1.8 dB**, and on `111051`
+it costs 2.0 dB against the better antenna outright, because there arm 1
+*was* the better antenna by 2.5 dB and the zero weight is precisely the
+instruction to throw it away. "As it ran" equals arm 0 alone to a tenth
+of a decibel on all three, which is what a muted second branch looks like
+from the decoder.
+
+**On the 40 m captures it costs almost nothing**, even where the guard
+fires on two thirds of frames. Arm 1 is 5 to 8 dB worse there, so a
+weight near zero is close to right anyway, and the frames that do solve
+plus the 0.15 slew keep the applied weight somewhere sane between them.
+That is why this survived the work in "What was changed, and what it
+scored": those captures cannot see it. It also means the +0.5 / +0.5 /
+-0.0 dB recorded there is not evidence that the repaired estimator is
+working - the solve behind it was returning zero most of the time.
+
+`233241` scores 0.4 dB *worse* unguarded, which is the same
+mis-estimated-oracle capture Finding 3 already flags; it is the one place
+where doing nothing happened to be better than the answer.
+
+### Fixed
+
+`div_mvdr2()` now tests whether `den` is small *compared with the two
+terms it is the difference of*, which is the catastrophic-cancellation
+condition and is scale-free, instead of comparing it with a constant. See
+"What was changed, and what it scored" for the after figures: the zero
+disappears on all eight captures, the weight becomes bit-identical to the
+x10 control above, and detection is untouched.
+
+## Finding 12: the USB pilot bank, confirmed on air at last
+
+Four captures on 60 m (5.3685 and 5.3715 MHz **USB**, RADE V1, 192 kHz
+DDC, filter +150 to +2850). `div_rade_side_expected()` derived
+`expect_bank = 1` for all four, as Finding 7 said it would, and this time
+there was a station there.
+
+| | `110923` | `111051` | `111328` | `111734` |
+|---|---|---|---|---|
+| acquisitions | 1 | 2 | **0** | 2 |
+| time to first lock | 2.05 s | 2.05 s | never | 3.41 s |
+| lock uptime, replayed cold | 65 % | 68 % | 0 % | 70 % |
+| mean quality | 0.81 | 0.60 | - | 0.82 |
+| mean pilot SNR | 6.4 dB | 1.7 dB | - | 6.8 dB |
+
+**Bank 1 acquires, confirms, tracks and holds on a real signal.** That
+was the single most valuable missing measurement in this document and it
+is now made. The mapping in `rade_correlator.c` is right on both
+sidebands, not just the one it was measured on.
+
+The frame inversion is confirmed a third time, and for the first time
+with a RADE signal rather than voice. With the modem on USB its carriers
+must land at -2200 to -800 Hz in the tapped buffer. Energy there against
+the mirror band at +800 to +2200:
+
+| `110923` | `111051` | `111328` | `111734` |
+|---|---|---|---|
+| +18.1 dB | +11.9 dB | +1.8 dB | +22.7 dB |
+
+`111328`'s 1.8 dB is the control: no signal, no asymmetry.
+
+### 192 kHz changes nothing that was measured here
+
+The first captures in the set at a DDC rate other than 48 kHz. `decim`
+goes from 6 to 24, `ntaps` from 97 to 385, and the analysis block becomes
+170.7 ms - **longer than the 120 ms modem frame** for the first time, so
+a block now carries one or two frames rather than always less than one.
+Measured: 1.23 solved frames per locked block on all three, 0 dropped and
+0 skipped blocks in all four, acquisition timing indistinguishable from
+the 48 kHz captures.
+
+Frequency tracking settles rather than walking, which is the failure
+Finding 2 fixed and the thing most likely to be rate-sensitive. On
+`110923` `lock_f` stays inside 1.2 Hz for the whole minute (sd 0.27 Hz
+over the first half, 0.20 over the second); on `111734` it converges and
+then holds to sd 0.01 Hz. `111051`'s second half is noisier at 4.1 Hz
+because it re-acquires onto a different station mid-capture. Nothing
+approaches the +/-60 Hz `RADE_FREQ_LIMIT`.
+
+Threshold behaviour is unchanged too. Lock uptime over `use_ratio` 1.75
+to 3.00 varies by 3.1 points on `110923`, 4.6 on `111051` and 0.3 on
+`111734`, with no monotone trend in any of them - the same
+scatter-not-trend the 40 m captures gave.
+
+## Finding 13: the estimator measured the antenna difference correctly
+
+The 60 m pair is badly asymmetric - a main antenna on ADC0 against an
+untuned doublet on ADC1 - so it is a direct test of whether the
+correlator's `h` and `R` describe the two arms honestly, or whether the
+weight it produced was wrong because the measurement behind it was.
+
+The measurement is honest. `acc_x01/acc_x00` and `acc_r11/acc_r00` from
+the correlator, against the same two quantities measured independently
+from the raw blocks by FFT - the channel over the modem band, the noise
+over the correlator's own guard bins:
+
+| | correlator `h1/h0` | independent | correlator `r11/r00` | independent | corr `R` coh | indep |
+|---|---|---|---|---|---|---|
+| `110923` | -2.1 dB, +82 deg | -2.8 dB, +83 deg | -1.7 dB | -2.1 dB | 0.80 | 0.75 |
+| `111051` | -11.4 dB, -36 deg | -12.9 dB, -73 deg | -14.8 dB | -13.1 dB | 0.57 | 0.72 |
+| `111734` | -12.3 dB, +24 deg | -13.1 dB, +31 deg | -12.0 dB | -11.6 dB | 0.79 | 0.86 |
+
+Channel magnitude agrees to 1.5 dB, noise ratio to 1.7 dB, phase to 7
+degrees on two of three. The exception is `111051`, 37 degrees out, and
+it is the capture with a mean pilot SNR of 1.7 dB and two stations in it
+- the independent figure averages the whole minute over the whole modem
+band and cannot separate them either. Nothing here suggests the estimator
+is fooled by a weak second antenna.
+
+**What it means for the antennas.** The doublet is 11 to 13 dB down on
+signal, which reads like the worse antenna and is not: its noise is 12 to
+15 dB down as well. On `111051` it decoded **2.5 dB better than the main
+antenna** (12.2 against 9.7). A branch can be much quieter and much less
+sensitive at the same time, and only the ratio decides which to use -
+which is exactly what MVDR computes and what Finding 11 threw away. The
+weight the same numbers give with the guard out of the way is -1.1 dB at
+-48 degrees, +20.1 dB at +18, and +4.9 dB at +19: on two of three
+captures the correct answer is to weight the *quiet* antenna up, not
+down.
+
+This is also the clearest case yet for showing per-arm SNR in the menu.
+Nothing an operator can see distinguishes "ADC1 is 12 dB down because it
+is deaf" from "ADC1 is 12 dB down because it is quiet", and the two want
+opposite weights.
+
+### And on the no-signal capture
+
+`111328` was taken as band noise with a weak coherent source audible in
+it. Averaged over the minute in 50 Hz bins across the correlator's whole
++/-3 kHz view, **no bin exceeds 0.35 inter-arm coherence** and the mean
+over 300 to 2850 Hz is 0.10 - the lowest in the capture set. Whatever the
+source is, it is not a steady common-mode signal the array could null,
+and it is not what a two-branch combiner is for. The most coherent
+features in the capture (0.2 to 0.35) sit at +2.6 kHz and +3.6 to
++3.9 kHz, outside the passband and mostly outside the decimator.
+
+## Finding 14: the weight clamp, and an antenna-selection objective
+
+This one started as a question about `DIV_MAX_WEIGHT` and ended as a
+fourth objective in the menu.
+
+### Why a weight clamp is an awkward control
+
+`src/receiver.c` forms
+
+```c
+i_sample = i0 + (div_cos * i1 - div_sin * q1);
+```
+
+so arm 0 is hard-wired at unity and `w` is a **ratio**, not a pair of
+gains. The control is therefore asymmetric in a way the clamp inherits:
+"ignore arm 1" is `w = 0`, exact and always reachable, while "ignore
+arm 0" is `w -> infinity` and the clamp decides how close one may get.
+
+And how large `w` has to be before arm 0 stops contributing depends on
+arm 1's *level*, not on which antenna is better. On `111051` the doublet's
+noise is 14.8 dB below the main antenna's, so even at the +20 dB clamp
+arm 0 still supplies 23 % of the output noise power. Swap the two antennas
+over and the same physical preference is expressed as `w = -20 dB`, well
+inside the clamp with room to spare.
+
+### The clamp value is not the problem
+
+Only one capture goes near it:
+
+| capture | median \|w\| | p90 | frames at or over +20 dB |
+|---|---|---|---|
+| `110923` | -1.1 dB | 0.0 dB | 0 % |
+| `111051` | **+20.1 dB** | +21.2 dB | **52 %** |
+| `111734` | +4.9 dB | +8.7 dB | 0 % |
+| `213155` | -0.5 dB | +2.3 dB | 0 % |
+| `233133` | -9.0 dB | -8.1 dB | 0 % |
+| `233241` | -14.7 dB | -11.9 dB | 0 % |
+
+And clamping costs almost nothing. Output SINR computed from the
+correlator's own `h` and `R` - a pilot-domain metric, so Trap 1 applies
+and it is used here only to compare weights that differ in magnitude
+under one model - puts the cost of the +20 dB clamp at **0.02 dB** on
+`111051` and 0.00 dB everywhere else. Tightening it to +9.5 dB costs
+1.03 dB; to 0 dB, 2.31 dB.
+
+So the dilemma is not the number. It is that **a weight on the rail is
+unreadable**: `den = r11*h0 - r01*h1` collapses when the guard-bin
+covariance carries the same inter-arm signature as the signal, which is
+what "the dominant interference is the band noise both antennas hear"
+means, and the noise coherence on these captures runs 0.57 to 0.86. Large
+`|w|` therefore has two causes that look identical from outside - arm 1
+genuinely deserves the weight, or the denominator nearly cancelled - and
+no clamp value separates them, because what separates them is not in
+`|w|`.
+
+One intuition that had to be abandoned: that fixing Finding 11's guard
+would push frames onto the rail, both being about a small `den`. It does
+not. The frames the guard zeroed want the *same* weight as the frames it
+passed - median `|w|` -9.0 against -9.1 dB on `233133`, -14.7 against
+-14.7 on `233241`. The guard fired on absolute level and nothing else.
+The two meet only on `111051`, where the honest answer is large
+everywhere.
+
+### DIV_AUTO_BEST
+
+Since the combiner cannot express selection, the missing endpoint has been
+given a name instead: a fourth objective beside Off, Null and Sum that
+hands the output to whichever antenna is measuring better.
+
+It needs one number no reference previously published, the per-arm SNR,
+and in three of the four cases that number was already sitting in the
+accumulators:
+
+| reference | signal | noise | new measurement needed |
+|---|---|---|---|
+| RADE V1 | `acc_x00`, `acc_x01` | `acc_r00`, `acc_r11` (guard bins) | none |
+| Digital I/Q | `sig_xx`, `sig_xy` | `r00`, `r11` (occupancy split) | none |
+| Window | window power per arm | tracked floor | a minimum-statistics floor |
+| Carrier | as Window | as Window | as Window |
+
+In each case the advantage of arm 1 is `|h1/h0|^2 * (N0/N1)` - the
+channel ratio the Sum weight already computes, divided by the noise
+ratio. Selecting arm 0 is `w = 0`; selecting arm 1 is `w` at the clamp
+with the co-phasing angle, which is not a switch but is the nearest
+reachable point to one, and leaves arm 0 combining in 20 dB down.
+
+### Two traps in the floor tracker, one of them a real result
+
+The Window and Carrier references have no noise measurement at all, and
+per-arm SNR is **not identifiable** from a single window's second-order
+statistics: `Sxx`, `Syy` and `|Sxy|` give three equations in four
+unknowns, and coherence pins down only the *product* of the two arms'
+signal fractions. The information has to come from bins with no signal in
+them, or from times with no signal in them. Window and Carrier have
+neither to hand, so they track a floor over time.
+
+Doing that naively fails, and fails *confidently*. A minimum taken over
+the power smoothed at the operator's averaging time never sees a gap -
+10.5 s is longer than the pause between two overs and far longer than the
+one between two syllables - so the minimum still holds signal, on both
+arms, in the same ratio as the signal itself. Everything cancels and the
+answer is exactly 0.0 dB, which reads as "the arms are equal" and means
+"this method has told you nothing". It did precisely that on all four
+60 m captures, against a truth of +2.5 dB on one of them. The floor is
+now tracked on a separate 0.5 s smoothing, and an estimate is published
+only where both arms stand 6 dB clear of their own floor.
+
+The second trap was ordinary and is recorded because it wasted a
+measurement: `div_arm_publish(div_arm_from_floor(..., &db), db)` reads
+`db` before the call that fills it, argument evaluation order being
+unspecified, and produced a bit-exact 0.0 dB that looked exactly like the
+degeneracy above. Two different faults with the same signature, found one
+after the other.
+
+### What the four references actually pick
+
+Selection against the arm that decodes better (Findings 3 and 11) or
+measures better in the passband (Findings 6 and 7):
+
+| capture | better arm | Window | Carrier | RADE V1 | Digital I/Q |
+|---|---|---|---|---|---|
+| `110923` | ADC0 | ADC0 | ADC0 | ADC0 | ADC0 |
+| `111051` | ADC1 | ADC1 | ADC1 | ADC1 | **ADC0** |
+| `111734` | ADC0 | ADC0 | ADC0 | ADC0 | ADC0 |
+| `213155` | ADC1 | ADC1 | ADC1 | **ADC0** | **ADC0** |
+| `233133` | ADC0 | ADC0 | ADC0 | ADC0 | ADC0 |
+| `233241` | ADC0 | ADC0 | ADC0 | ADC0 | ADC0 |
+| `235853` | ADC1 | **ADC0** | **ADC0** | no lock | **ADC0** |
+| `000012` | ADC1 | ADC1 | ADC1 | no lock | **ADC0** |
+| `000209` | ADC1 | ADC1 | ADC1 | no lock | ADC1 |
+| `000328` | ADC1 | ADC1 | ADC1 | no lock | **ADC0** |
+| **correct** | | **9/10** | **9/10** | **5/6** | **5/10** |
+
+The wideband floor tracker is the best of the four despite being the
+crudest, and it is right on `213155` where the RADE guard-bin statistic is
+wrong. Its one miss, `235853`, has the two antennas 0.53 dB apart - inside
+the selection hysteresis, so the "wrong" pick costs half a decibel.
+Digital I/Q is the weakest by a distance, which is consistent with the
+correction under Finding 8: its noise bins come from an occupancy split
+with no false-alarm control.
+
+RADE V1 reports nothing on the four voice captures, correctly - there is
+no pilot to lock to and therefore no per-arm measurement, and the mode
+holds rather than guessing.
+
+### Decode-scored, Best is a floor and Sum is a ceiling
+
+Against the better arm, with the Finding 11 fix in place:
+
+| capture | Sum | Best, RADE V1 statistic | Best, Window statistic |
+|---|---|---|---|
+| `110923` | **+1.7** | +0.1 | +0.0 |
+| `111051` | +1.2 | **+1.9** | -1.0 |
+| `111734` | **+1.8** | +0.0 | +0.0 |
+| `213155` | +0.5 | **-2.5** | +0.9 |
+| `233133` | **+0.6** | -0.1 | +0.0 |
+| `233241` | -0.4 | -0.0 | -0.1 |
+| mean | **+0.90** | -0.43 | -0.03 |
+
+This is what selection is: it cannot beat the better antenna, and where
+the two antennas are close - `110923` and `111734`, half a decibel to a
+decibel and a half apart, which is where diversity is supposed to earn
+its keep - real combining is worth 1.7 to 1.8 dB and selection collects
+none of it. It wins on exactly one capture, `111051`, where arm 1 is the
+better antenna and the MVDR solve is partly degenerate; there it beats Sum
+by 0.7 dB.
+
+A wrong pick is expensive: -2.5 dB on `213155` from the RADE statistic.
+Selection has no coherence gate to hide behind - it acts on every block
+where it has an estimate at all.
+
+**Sum stays the default.** Best is worth having for the case the 60 m
+captures found - one antenna much better than the other, where Sum's
+answer is a large weight on a rail and hard to trust - and for
+establishing what the antennas are actually doing, which is why the
+per-arm figure is now on the menu whatever objective is running. It is
+not a general improvement and the numbers above say so.
+
 ## False alarms
 
 Locks produced on captures with no RADE signal anywhere. Cells are
 `acquisitions / percent of the capture locked`.
 
-| `use_ratio` | `231532` 80 m quiet | `232750` 80 m quiet | `233423` 20 m noise+SSB | `233615` 160 m QRM |
-|---|---|---|---|---|
-| 1.00 | 0 | 0 | 1 / 27 % | 1 / 90 % |
-| 1.25 | 0 | 0 | 1 / 27 % | 2 / 66 % |
-| 1.50 | 0 | 0 | 0 | 1 / 33 % |
-| 1.75 | 0 | 0 | 0 | 0 |
-| 2.00 and above | 0 | 0 | 0 | 0 |
+| `use_ratio` | `231532` 80 m quiet | `232750` 80 m quiet | `111328` 60 m quiet | `233423` 20 m noise+SSB | `233615` 160 m QRM |
+|---|---|---|---|---|---|
+| 1.00 | 0 | 0 | 0 | 1 / 27 % | 1 / 90 % |
+| 1.25 | 0 | 0 | 0 | 1 / 27 % | 2 / 66 % |
+| 1.50 | 0 | 0 | 0 | 0 | 1 / 33 % |
+| 1.75 | 0 | 0 | 0 | 0 | 0 |
+| 2.00 and above | 0 | 0 | 0 | 0 | 0 |
+
+`111328` is the first dead-air capture at 192 kHz and on 60 m, and it
+produces **no acquisition at any threshold from 1.00 upward** - the
+cleanest column in the table. The blind-search false-alarm rate does not
+change with the sample rate.
 
 Separately, `232052` - dead air *following* a real over - produces a false
 lock at `use_ratio` 2.00 and below: 53.2 to 59.9 s, frequency pinned at
@@ -668,36 +1146,45 @@ holds is the false-alarm line, and that part stands.
 - **Bank 0 is the LSB bank.** 7.5 to 15.4 sigma in bank 0 against 1.7 to
   4.6 in bank 1, on every over on 40 m and 80 m. The mapping in
   `rade_correlator.c` is right.
+- **Bank 1 is the USB bank, and it correlates on air.** Three 60 m USB
+  captures acquire, confirm, track and hold in bank 1, 65 to 70 % uptime,
+  quality 0.60 to 0.82 (Finding 12). Both banks are now measured on real
+  signals rather than one measured and one derived.
 - **The tapped buffer is inverted with respect to RF, on both sidebands.**
   An LSB filter of -2850..-150 puts the signal at +150..+2850 in the
   tapped frame; a USB filter of +150..+5150 puts it at -5150..-150
-  (Finding 7). This was previously only checked on LSB.
+  (Finding 7), and a USB RADE signal puts its carriers at -2200..-800,
+  11.9 to 22.7 dB above the mirror band (Finding 12). Checked on voice
+  and on the modem, on both sidebands.
 - **The flat scalar channel model is right.** `h1/h0` measured per
   subcarrier varies by +/-0.3 to +/-0.63 dB in magnitude and +/-3 to
   +/-12 degrees in phase across 750-2200 Hz. Differential delay between
   the arms is under 6 us. A single complex weight is the correct model.
   This rests on the RADE captures; a voice passband cannot resolve it
   either way (Finding 6).
-- **Every reference holds correctly when there is no signal.** On all four
+- **Every reference holds correctly when there is no signal.** On all five
   no-signal captures RADE V1 reported locked 0.00, holding 1.00,
-  coherence 0.003-0.008, and Digital I/Q never produced a weight. On the
+  coherence 0.003-0.008 (0.00 recorded and 0 acquisitions replayed on
+  `111328`), and Digital I/Q never produced a weight. On the
   voice captures all three references hold through the gaps between overs.
   None of them invents an answer from noise, including with the 160 m
   interferer at full strength on ADC0.
 - **Reception is often close to anti-phase, but not always.**
   `arg(h1/h0)` measured -177, -161, -162, -105, -7 and -4 degrees across
-  the overs. It is just the path; nothing structural.
+  the 40/80 m overs, and +82, -36 and +24 on 60 m. It is just the path;
+  nothing structural, and the 60 m set shows the whole circle is in use.
 
 ## What is still open
 
-- **The USB pilot bank has still never been tested on air.** Three USB
-  captures now exist (`233423`, `000209`, `000328`) and none contains a
-  RADE signal. `div_rade_side_expected()` is confirmed to *derive* bank 1
-  for USB, and the frame inversion is confirmed on both sidebands
-  (Finding 7), but nothing has ever correlated a real pilot in bank 1.
-  A USB RADE capture with a real station remains the single most valuable
-  thing missing.
-- **Threshold policy needs more dead air.** Four quiet captures is enough
+- **The zero-weight guard is measured but not fixed.** Finding 11. What
+  is missing before it can be is the corrected weight scored across the
+  whole capture set rather than the six it was scored on here, and an
+  answer to what `111051` does when the corrected weight sits on the
+  `DIV_MAX_WEIGHT` rail. Everything else in this document that scores the
+  RADE combiner needs re-reading once it is: the "after" figures under
+  "What was changed, and what it scored" were taken with the solve
+  returning zero on most frames.
+- **Threshold policy needs more dead air.** Five quiet captures is enough
   to say 2.50 is safe and 1.50 is not; it is not enough to place the
   boundary. Dead-air captures are cheap and need no station.
 - **No capture yet has a wanted signal *and* strong common-mode noise.**
@@ -779,6 +1266,15 @@ better antenna alone:
 on all three to matching or beating it on all three, and lands within
 0.4 dB of the offline bound everywhere.
 
+**Read this table with Finding 11.** On `233133` and `233241` the solve
+behind these numbers was returning a weight of exactly zero on 65 % and
+71 % of frames, and on those two captures arm 1 is 5 to 8 dB worse, so
+zero is close to right and the defect is invisible here. Only `213155`
+exercised the repaired estimator on most of its frames. The repair is not
+in question - it is measured in the covariance and the channel, in
+Findings 1 and 2 - but the decibels in this table are a weaker
+confirmation of it than they look.
+
 Detection is untouched, which is the thing to check when a tracking loop
 changes. Lock uptime, acquisitions and time to first lock are the same as
 before to within their own scatter, on the real-signal captures and across
@@ -808,6 +1304,60 @@ the bins by pilot bank is what deals with that.
 
 Finding 9. Details and measurements under "Acted on" there.
 
+### `src/diversity_auto.c` — the MVDR guard is relative, not absolute
+
+Finding 11. `div_mvdr2()` rejected a solve on `d2 > 1e-30`, an absolute
+test on a quantity with no absolute scale, and returned a weight of
+exactly zero when it fired - muting the second antenna and showing the
+operator a -27 dB "tracked" value with phase 0. It now tests `d2` against
+the two terms `den` is the difference of, scaled by `DIV_MVDR_EPS`, which
+is the catastrophic-cancellation condition it was presumably always meant
+to be.
+
+| capture | zero frames before | after | weight jitter before | after |
+|---|---|---|---|---|
+| `110923` 60 m | 100 % | **0 %** | 0.00000 | 0.15349 |
+| `111051` 60 m | 66 % | **0 %** | 3.61813 | 8.18489 |
+| `111734` 60 m | 100 % | **0 %** | 0.00000 | 0.53162 |
+| `231724` 80 m | 91 % | **0 %** | 0.07595 | 0.37029 |
+| `232052` 80 m | 49 % | **0 %** | 0.12367 | 0.07455 |
+| `233133` 40 m | 65 % | **0 %** | 0.16862 | 0.31140 |
+| `233241` 40 m | 71 % | **0 %** | 0.08265 | 0.21365 |
+| `213155` 40 m | 0 % | 0 % | 0.43416 | 0.43416 |
+
+Every "after" jitter is bit-identical to the x10-input control in
+Finding 11, which is what says the answer is now the scale-invariant one
+the algebra always described. `213155`, where the guard never fired, is
+unchanged to the last digit.
+
+Decode-scored against librade, against the better antenna alone:
+
+| capture | before | after |
+|---|---|---|
+| `110923` 60 m | +0.0 | **+1.7** |
+| `111051` 60 m | -2.0 | **+1.2** |
+| `111734` 60 m | +0.0 | **+1.8** |
+| `213155` 40 m | +0.5 | +0.5 |
+| `233133` 40 m | +0.5 | **+0.6** |
+| `233241` 40 m | -0.0 | -0.4 |
+
+RADE V1 now beats the better antenna on five of six. Detection is
+untouched - identical acquisitions, lock uptime and time to first lock on
+all eight captures, the guard being downstream of every decision the
+detector makes.
+
+`DIV_MAX_WEIGHT` is deliberately left at 10.0. Finding 14 measures the
+cost of that clamp at 0.02 dB on the one capture that reaches it.
+
+### `src/diversity_auto.c`, `src/rade_correlator.c` — antenna selection
+
+Finding 14. A fourth objective, `DIV_AUTO_BEST`, and the per-arm SNR it
+acts on, published by all four references and shown on a second status
+line whatever objective is running. Measured in Finding 14: it picks
+correctly on 9 of 10 captures from the wideband references, 5 of 6 from
+RADE V1 and 5 of 10 from Digital I/Q, and decode-scores 1.3 dB behind Sum
+on average. It is a fallback, not a default.
+
 ### What was thrown away
 
 The Digital I/Q occupancy guard written for Finding 8. It moved the score
@@ -835,6 +1385,31 @@ make -C test/diversity/devtools     # replay_rade, run_ref, test_capture
 `run_ref` drives the whole engine so the Digital I/Q solve can be run over
 a recording; `score_rade` decodes. See
 [`test/diversity/devtools/README.md`](../test/diversity/devtools/README.md).
+
+Findings 11 and 13 need one thing the committed tools do not provide: the
+values `div_mvdr2()` is handed. They were taken from a throwaway copy of
+`build/rade_correlator_tunable.c` - the generated file `score_rade`
+already `#include`s - with two edits and nothing else:
+
+- a `double instr_scale` applied to `arm0[]` and `arm1[]` where
+  `rade_corr_process()` reads them, which is what the scale table in
+  Finding 11 sweeps;
+- a dump of `acc_r00, acc_r11, acc_r01, acc_x00, acc_x01` and the
+  determinant `d2` immediately before the `rade_mvdr_weight()` call in
+  `rade_track()`.
+
+Driven by `divcap_replay()` with default options it reproduces the
+shipping path exactly; `--weights` writes the per-block weight in
+`replay_rade`'s format, which is what `score_rade --weights fixed=...`
+takes for the "unguarded" column. `src/` is not touched, and the copy is
+not worth committing - two edits against a generated file are quicker to
+redo than to maintain.
+
+The independent channel and noise figures in Finding 13 need no tools at
+all: read the blocks out of the `.divc` with the layout in
+`src/diversity_capture.h`, FFT each arm, and take the cross-spectrum over
+the modem band for `h1/h0` and over the guard bins for `R`. Being a
+separate implementation is the whole point of them.
 
 The capture files themselves are not in the repository - they are 46 MB a
 minute. Keep them alongside this page for as long as the numbers here

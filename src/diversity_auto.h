@@ -42,8 +42,14 @@
 enum {
   DIV_AUTO_OFF = 0,   // manual gain/phase only
   DIV_AUTO_NULL,      // minimise the correlated component (noise cancelling)
-  DIV_AUTO_SUM        // co-phase the two antennas (maximum ratio combining)
+  DIV_AUTO_SUM,       // co-phase the two antennas (maximum ratio combining)
+  DIV_AUTO_BEST       // use whichever antenna has the better SNR
 };
+
+//
+// New modes go on the end, for the same reason new references do: the
+// value is what lands in the props file.
+//
 
 //
 // div_auto_ref: what part of the spectrum the decision is taken from
@@ -108,6 +114,23 @@ enum {
 extern double div_auto_coherence;       // 0 ... 1, last estimate
 extern int    div_auto_holding;         // 1 if the loop is holding (no update)
 extern double div_auto_carrier;         // Hz, smoothed carrier estimate
+
+//
+// Which antenna is carrying the better signal-to-noise ratio, and by how
+// much. Positive means ADC1. Every reference estimates it - it is the
+// decision DIV_AUTO_BEST acts on - and it is worth showing whatever mode
+// is running, because nothing else an operator can see distinguishes an
+// antenna that is 12 dB down because it is deaf from one that is 12 dB
+// down because it is quiet. The two want opposite weights.
+//
+// _valid is 0 until the reference has something to judge on: a
+// measurement of the signal on both arms and a noise floor to divide it
+// by. _pick is what DIV_AUTO_BEST last decided, 0 for ADC0 and 1 for
+// ADC1, and is meaningless while _valid is 0.
+//
+extern double div_auto_arm_db;
+extern int    div_auto_arm_valid;
+extern int    div_auto_arm_pick;
 extern int    div_auto_carrier_valid;   // 1 once the tracker has an estimate
 
 //
