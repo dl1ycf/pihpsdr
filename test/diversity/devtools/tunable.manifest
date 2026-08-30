@@ -1,0 +1,34 @@
+#
+# Constants lifted out of src/rade_correlator.c and turned into fields of
+# rade_tuning, so that replay_rade can sweep them without a rebuild.
+#
+# One name per line. "define NAME" removes a "#define NAME ..." line;
+# "array NAME" removes a "static const ... NAME[...] = ...;" line. Every
+# name must be found or the generator fails - that is the point of the
+# manifest, and it is what makes a renamed constant an error rather than
+# a silently ignored sweep.
+#
+# Deliberately NOT here:
+#
+#   RADE_ACQ_FRANGE, RADE_ACQ_FSTEP, RADE_ACQ_TSTEP
+#   RADE_DEC_CUTOFF, RADE_DEC_TAPS_PER_PHASE
+#       size static arrays and the pre-rotated pilot tables, so changing
+#       them at runtime means reallocation. Rebuild with -D to sweep one.
+#
+#   RADE_FLOOR_PROBES
+#       sizes the df[] array beside it.
+#
+#   RADE_LOCK_SIGMA, RADE_ACQ_PASSES
+#       only ever reached through rade_acq_sigma[] and rade_acq_at[],
+#       which are here.
+#
+array  rade_acq_at
+array  rade_acq_sigma
+define RADE_PROBATION
+define RADE_MAG_ALPHA
+define RADE_USE_ALPHA
+define RADE_USE_RATIO
+define RADE_FLOOR_DF
+define RADE_FLOOR_GUARD
+define RADE_FREQ_ALPHA
+define RADE_FREQ_LIMIT

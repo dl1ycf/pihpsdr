@@ -651,6 +651,42 @@ src/vox_menu.o \
 src/xvtr_menu.o \
 src/waterfall.o
 
+ifdef DIVCAP
+#
+# DEVELOPMENT ONLY - diversity I/Q capture.
+#
+# Instrumentation for tuning the RADE V1 pilot correlator against
+# recorded real-world signals. Not part of the diversity feature: this
+# block, the guarded blocks in src/diversity_auto.c and
+# src/diversity_menu.c, and src/diversity_capture.[ch] all come out
+# before it is submitted upstream. See test/diversity/devtools/README.md,
+# which has a script that does it.
+#
+# The comment lives inside the conditional so that removing the
+# conditional removes the comment with it.
+#
+CFLAGS  += -DDIVERSITY_CAPTURE
+SOURCES += src/diversity_capture.c
+OBJS    += src/diversity_capture.o
+#
+# Switching the instrument on or off changes -D for two files that are
+# built either way, and make cannot see a changed flag - it only looks at
+# timestamps. A stamp file records which way the last build went, and the
+# two objects go when it disagrees.
+#
+# Both directions matter. Without this, "make DIVCAP=1" after a plain make
+# links a menu that calls an arming function the engine was not compiled
+# with; and a plain make after DIVCAP=1 leaves the instrument silently
+# compiled into a binary that is supposed to be clean.
+#
+DIVCAP_SWITCH := $(shell test -f src/.divcap-on || \
+    { rm -f src/diversity_auto.o src/diversity_menu.o; touch src/.divcap-on; })
+else
+DIVCAP_SWITCH := $(shell test -f src/.divcap-on && \
+    rm -f src/.divcap-on src/diversity_auto.o src/diversity_menu.o \
+          src/diversity_capture.o)
+endif
+
 ##############################################################################
 #
 # How to link the program

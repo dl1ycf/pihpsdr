@@ -28,3 +28,14 @@ test/diversity/test_modes_live
 test/diversity/bench_cpu
 test/diversity/test_window
 test/diversity/test_rade
+test/diversity/test_digital
+test/diversity/test_props
+
+# development-only diversity I/Q captures (see test/diversity/devtools)
+*.divc
+src/.divcap-*
+test/diversity/devtools/build/
+test/diversity/devtools/replay_rade
+test/diversity/devtools/run_ref
+test/diversity/devtools/score_rade
+test/diversity/devtools/test_capture
