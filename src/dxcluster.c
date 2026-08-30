@@ -449,6 +449,7 @@ static void *worker_main(void *arg) {
     set_state(DXC_CONNECTING);
     t_print("dxcluster: connecting to %s:%d\n", s.server, s.port);
     int fd = tcp_connect(s.server, s.port, NULL, 0);
+    if (worker_stop) { break; }
     if (fd < 0) {
       set_state(DXC_ERROR);
       t_print("dxcluster: connect failed; backoff %ds\n", backoff);
@@ -459,9 +460,11 @@ static void *worker_main(void *arg) {
     }
     /* Wait briefly for the "login:" prompt then send callsign */
     int n = sock_read(fd, rxbuf, sizeof(rxbuf));
+    if (worker_stop) { break; }
     if (n > 0 && s.callsign[0]) {
       sock_writeln(fd, s.callsign);
     }
+    if (worker_stop) { break; }
     pthread_mutex_lock(&state_lock);
     sock_fd = fd;
     set_state_locked(DXC_CONNECTED);
@@ -472,6 +475,7 @@ static void *worker_main(void *arg) {
     /* Read loop */
     while (!worker_stop) {
       n = sock_read(fd, rxbuf, sizeof(rxbuf));
+      if (worker_stop) { break; }
       if (n <= 0) {
         /* Distinguish timeout (recv returns -1 with EAGAIN) from peer close */
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -486,7 +490,11 @@ static void *worker_main(void *arg) {
         if (c == '\r') { continue; }
         if (c == '\n') {
           line_buf[line_pos] = '\0';
-          if (line_pos > 0) { handle_line(line_buf); }
+          //
+          // It is important that the database is not touched
+          // after worker_stop has been set
+          //
+          if (line_pos > 0 && !worker_stop) { handle_line(line_buf); }
           line_pos = 0;
         } else if (line_pos < (int)sizeof(line_buf) - 1) {
           line_buf[line_pos++] = c;
@@ -593,14 +601,23 @@ void dxcluster_shutdown(void) {
   //
   // This is called when the program terminates.
   // Do not wait too long for threads etc.
+  // Set worker_stop to 1 and wait a small while.
+  // Then we know the worker will not access the database any more
   //
   if (!worker_running) { return; }
   worker_stop = 1;
+  usleep(50000);
   pthread_mutex_lock(&state_lock);
   close_socket_locked();
   pthread_mutex_unlock(&state_lock);
   wake_worker();
-  pthread_join(worker_tid, NULL);
+  //
+  // If the worker is busy in tcp_connect() or sock_read(), it can take a while
+  // to "join" the thread. Since we call this when exiting the program, it may
+  // be allowed to skip the join here. Care has been taken in the worker thread
+  // that worker_stop is queried after each action which may have taken long.
+  //
+  //pthread_join(worker_tid, NULL);
   worker_running = 0;
   /* Persist ring buffer */
   FILE *f = fopen("dxspots.csv", "w");
