@@ -89,6 +89,7 @@ int main(int argc, char **argv) {
   unsigned seed = 0;
   int usleep_us = 12000;
   int weighting = -1;
+  int mode = -1;
 
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "-v")) { verbose = 1; }
@@ -99,6 +100,18 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[i], "--tau")   && i + 1 < argc) { tau     = atof(argv[++i]); }
     else if (!strcmp(argv[i], "--hang")  && i + 1 < argc) { hang    = atof(argv[++i]); }
     else if (!strcmp(argv[i], "--pace")  && i + 1 < argc) { usleep_us = atoi(argv[++i]); }
+    else if (!strcmp(argv[i], "--mode") && i + 1 < argc) {
+      /* null|sum|best, overriding the objective the capture recorded */
+      const char *a = argv[++i];
+      mode = !strcmp(a, "null") ? DIV_AUTO_NULL
+             : !strcmp(a, "sum") ? DIV_AUTO_SUM
+             : !strcmp(a, "best") ? DIV_AUTO_BEST : -2;
+
+      if (mode == -2) {
+        fprintf(stderr, "%s: --mode wants null, sum or best\n", argv[0]);
+        return 2;
+      }
+    }
     else if (!strcmp(argv[i], "--weighting") && i + 1 < argc) {
       /* flat|coherence, for the wideband window reference */
       const char *a = argv[++i];
@@ -112,7 +125,8 @@ int main(int argc, char **argv) {
     }
     else if (argv[i][0] == '-') {
       fprintf(stderr, "usage: %s FILE.divc --ref band|carrier|rade|digital --out W.csv\n"
-              "       [--weighting flat|coherence] [--noise RMS] [--seed N]\n"
+              "       [--mode null|sum|best] [--weighting flat|coherence]\n"
+              "       [--noise RMS] [--seed N]\n"
               "       [--tau S] [--hang S] [--pace US] [-v]\n", argv[0]);
       return 2;
     } else { path = argv[i]; }
@@ -155,7 +169,7 @@ int main(int argc, char **argv) {
   rx0.sample_rate = m.ctx_sample_rate;
   set_context(&m);
   div_auto_ref  = ref;
-  div_auto_mode = m.auto_mode;
+  div_auto_mode = (mode >= 0) ? mode : m.auto_mode;
   div_auto_follow_filter = m.follow;
   div_auto_weighting     = (weighting >= 0) ? weighting : m.weighting;
   div_auto_centre = m.centre;
@@ -167,7 +181,8 @@ int main(int argc, char **argv) {
 
   if (out == NULL) { perror(outp); return 1; }
 
-  fprintf(out, "block,t,locked,confirming,quality,snr,freq_off,ok,wr,wi\n");
+  fprintf(out, "block,t,locked,confirming,quality,snr,freq_off,ok,wr,wi,"
+          "arm_valid,arm_db,arm_pick\n");
   divcap_noise_seed(seed);
   diversity_auto_start();
   fseek(f, data_start, SEEK_SET);
@@ -201,11 +216,12 @@ int main(int argc, char **argv) {
      * what the radio applies, slew and Hold and objective included, which
      * is the thing to score when two references are being compared.
      */
-    fprintf(out, "%ld,%.4f,%d,%d,%.6g,%.4f,%.4f,%d,%.9g,%.9g\n",
+    fprintf(out, "%ld,%.4f,%d,%d,%.6g,%.4f,%.4f,%d,%.9g,%.9g,%d,%.3f,%d\n",
             nb, (double)nb * nfft / h.sample_rate,
             rade_corr_locked, rade_corr_confirming, div_auto_coherence,
             rade_corr_snr, rade_corr_freq_off, !div_auto_holding,
-            div_cos, div_sin);
+            div_cos, div_sin,
+            div_auto_arm_valid, div_auto_arm_db, div_auto_arm_pick);
     nb++;
   }
 
