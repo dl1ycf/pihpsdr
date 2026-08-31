@@ -61,18 +61,24 @@ static void save_xvtr (void) {
       }
       //
       // Patch up the frequencies:
-      // frequencyMax must be at most frequencyLO + max radio frequency
-      // frequencyMin must be at least frequencyLO + min radio frequency
+      // Both frequencyMin and frequencyMax must be in the range
+      // frequencyLO + radio_frequency_min ... frequencyLO + radio_frequency_mix
       //
-      if ((xvtr->frequencyMin < xvtr->frequencyLO + radio->frequency_min) ||
-          (xvtr->frequencyMin > xvtr->frequencyLO + radio->frequency_max)) {
+      if (xvtr->frequencyMin < xvtr->frequencyLO + radio->frequency_min) {
         xvtr->frequencyMin = xvtr->frequencyLO + radio->frequency_min;
+        t_print("MinFreq(1) set to =%lld\n", xvtr->frequencyMax);
+      }
+      if (xvtr->frequencyMin > xvtr->frequencyLO + radio->frequency_max) {
+        xvtr->frequencyMin = xvtr->frequencyLO + radio->frequency_max;
+        t_print("MinFreq(2) set to =%lld\n", xvtr->frequencyMax);
       }
       if (xvtr->frequencyMax < xvtr->frequencyMin) {
         xvtr->frequencyMax = xvtr->frequencyMin + 1000000LL;
+        t_print("MaxFreq(1) set to =%lld\n", xvtr->frequencyMax);
       }
       if (xvtr->frequencyMax > xvtr->frequencyLO + radio->frequency_max) {
         xvtr->frequencyMax = xvtr->frequencyLO + radio->frequency_max;
+        t_print("MaxFreq(2) set to =%lld\n", xvtr->frequencyMax);
       }
       //
       // Initialise all bandstack entries where the frequency is not inside the

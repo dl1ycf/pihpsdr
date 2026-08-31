@@ -24,8 +24,6 @@
 #include "buffer.h"
 #include "receiver.h"
 
-#define MAX_DDC 4
-
 // port definitions from host
 #define GENERAL_REGISTERS_FROM_HOST_PORT              1024
 #define PROGRAMMING_FROM_HOST_PORT                    1024
@@ -44,8 +42,6 @@
 #define RX_IQ_TO_HOST_PORT_1                          1036
 #define RX_IQ_TO_HOST_PORT_2                          1037
 #define RX_IQ_TO_HOST_PORT_3                          1038
-
-#define MIC_SAMPLES 64
 
 extern void schedule_high_priority(void);
 extern void schedule_general(void);

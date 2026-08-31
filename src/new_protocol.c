@@ -76,13 +76,18 @@
  * with a sample packet received from a DDC
  */
 
-#define RXACTION_SKIP   0    // skip samples
-#define RXACTION_NORMAL 1    // deliver 238 samples to a receiver
-#define RXACTION_PS     2    // deliver 2*119 samples to PS engine
-#define RXACTION_DIV    3    // take 2*119 samples, mix them, deliver to a receiver
+// we only use DDC0-3
+#define MAX_DDC 4
 
-static int rxcase[MAX_DDC];
-static int rxid[MAX_DDC];
+typedef enum _rxaction {
+  RXACTION_SKIP = 0,  // skip samples
+  RXACTION_RX1,       // take 238 samples, deliver to RX1
+  RXACTION_RX2,       // take 238 samples, deliver to RX2
+  RXACTION_PS,        // take 2*119 samples, deliver  to PS engine
+  RXACTION_DIV        // take 2*119 samples, mix them, deliver to DIVERSITY mixer
+} rxaction;
+
+static rxaction rxcase[MAX_DDC];
 
 int data_socket = -1;
 
@@ -150,9 +155,6 @@ static uint32_t audio_sequence = 0;
 static struct sockaddr_in addr;
 static socklen_t length = sizeof(addr);
 
-// Use this to track whether the PA is currently enabled
-static int local_pa_enable = 0;
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // Ring buffer for outgoing samples.
@@ -189,7 +191,11 @@ static volatile atomic_int rxaudio_inptr  = 0;  // pointer updated when writing 
 static volatile atomic_int rxaudio_outptr = 0;  // pointer updated when reading from the ring buffer
 static volatile int rxaudio_count         = 0;  // number of samples queued since last sem_post
 static volatile int rxaudio_flag          = 2;  // 0: RX or duplex, 1: TX without duplex
-
+//
+// The audio buffer needs a mutex since both RX and TX threads may write to
+// this one (CW side tone), and the ring buffer is drained upon each RX/TX
+// transition.
+//
 static pthread_mutex_t send_rxaudio_mutex   = PTHREAD_MUTEX_INITIALIZER;
 
 /////////////////////////////////////////////////////////////////////////////
@@ -240,11 +246,6 @@ static volatile int mic_count = 0;
 // "someting" in the Saturn XDMA case. These routines are called
 // periodically from  timer thread *and* asynchronously from everywhere else,
 // therefore we need to implement a critical section for each of these functions.
-// The audio buffer needs a mutex since both RX and TX threads may write to
-// this one (CW side tone).
-//
-// TODO: possibly, this mutex need only be applied before/after the actual "send"
-//       and not while preparing the packets.
 //
 
 static pthread_mutex_t rx_spec_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -300,13 +301,22 @@ void schedule_transmit_specific(void) {
 static void update_action_table(void) {
   ASSERT_SERVER();
   //
-  // Depending on the values of mox, puresignal, and diversity,
-  // determine the actions to be taken when a DDC packet arrives
+  // Depending on the values of mox, duplex, puresignal, and diversity,
+  // determine the actions to be taken when a DDC packet arrives.
+  // Here we must distinguish whether we have an "old" (use DDC0/1 for everything)
+  // or "new" (use DDC0/1 pair for DIVERSITY/PURESIGNAL, DDC2/3 for RX) radio.
   //
+  // This is called either when sending a RX specific packet (DDC settings changed)
+  // or a HighPrio packet
+  // Prevent the action table rxcased[] to be messed up by calling this
+  // concurrently from two threads.
+  //
+  static pthread_mutex_t action_mutex = PTHREAD_MUTEX_INITIALIZER;
+  pthread_mutex_lock(&action_mutex);
   int flag = 0;
-  int xmit = radio_is_transmitting() | hpsdr_ptt; // store such that it cannot change while building the flag
+  int xmit = radio_is_transmitting() | hpsdr_ptt; // store locally such that it cannot change while building the flag
   //
-  // newdev means: Use DDC2/3 for normal receive, HERMES/HERMES2/G1 use DDC0/1
+  // newdev means: Use DDC2/3 for normal receive, otherwise (HERMES/HERMES2/G2E) use DDC0/1
   //
   int newdev = (device == NEW_DEVICE_ANGELIA  || device == NEW_DEVICE_ORION ||
                 device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN);
@@ -320,21 +330,20 @@ static void update_action_table(void) {
   // Note further, we do not use the diversity mixer upon transmitting.
   //
   // Therefore, the following 12 values for flag are possible:
-  // flag=     0   receive, olddev, no DIVERSITY:  use DDC0 for RX1, DDC1 for RX2
-  // flag=     1   receive , DIVERSITY, olddev:    does not occur, use DDC0/1 pair for DIVERSITY
-  // flag=   100   no DUPLEX, xmit, olddev:        skip samples
-  // flag=   110   no DUPLEX, PS, xmit, olddev:    use DDC0/1 pair for PS
-  // flag=  1000   receive, newdev, no DIVERSITY:  use DDC2 for RX1, DDC3 for RX2
-  // flag=  1001   receive, DIVERSITY, newdev:     use DDC0/1 pair for DIVERSITY
-  // flag=  1100   no DUPLEX, xmit, newdev:        skip samples
-  // flag=  1110   no DUPLEX, PS, xmit, newdev:    use DDC0/1 pair for PS
-  // flag= 10100   DUPLEX, xmit, olddev:           use DDC0 for RX1, DDC1 for RX2
-  // flag= 10110   DUPLEX, PS, xmit, olddev:       ignore DUPLEX and use DDC0/1 pair for PS
-  // flag= 11100   DUPLEX, xmit, newdev:           use DDC2 for RX1, DDC3 for RX2
-  // flag= 11110   DUPLEX, PS, xmit, newdev:       use DDC0/1 pair for PS, DDC2 for RX1, DDC3 for RX2
+  // flag=     0   OLD, receive, no DIVERSITY:      use DDC0 for RX1, DDC1 for RX2
+  // flag=     1   OLD, receive, DIVERSITY:         use DDC0/1 pair for DIVERSITY
+  // flag=   100   OLD, xmit, no DUPLEX:            skip samples
+  // flag=   110   OLD, xmit, DUPLEX:               use DDC0/1 pair for PS
+  // flag=  1000   NEW, receive, no DIVERSITY:      use DDC2 for RX1, DDC3 for RX2
+  // flag=  1001   NEW, receive, DIVERSITY:         use DDC0/1 pair for DIVERSITY
+  // flag=  1100   NEW, xmit, no DUPLEX:            skip samples
+  // flag=  1110   NEW, xmit, no DUPLEX, PS:        use DDC0/1 pair for PS
+  // flag= 10100   OLD, xmit, DUPLEX:               use DDC0 for RX1, DDC1 for RX2
+  // flag= 10110   OLD, xmit, DUPLEX, PS:           ignore DUPLEX and use DDC0/1 pair for PS
+  // flag= 11100   NEW, xmit, DUPLEX:               use DDC2 for RX1, DDC3 for RX2
+  // flag= 11110   NEW, xmit, DUPLEX, PS:           use DDC0/1 pair for PS, DDC2 for RX1, DDC3 for RX2
   //
-  // Set up rxcase and rxid for each of the 12 cases
-  // note that rxid[i] can be left unspecified if rxcase[i] == RXACTION_SKIP
+  // Set up rxcase for each of the 12 cases
   //
   rxcase[0] = RXACTION_SKIP;
   rxcase[1] = RXACTION_SKIP;
@@ -343,16 +352,13 @@ static void update_action_table(void) {
   switch (flag) {
   case       0:                                                       // HERMES, RX, no DIVERSITY
   case   10100:                                                       // HERMES, TX, no PureSignal, DUPLEX
-    rxid[0] = 0;
-    rxcase[0] = RXACTION_NORMAL;
+    rxcase[0] = RXACTION_RX1;
     if (receivers > 1) {
-      rxid[1] = 1;
-      rxcase[1] = RXACTION_NORMAL;
+      rxcase[1] = RXACTION_RX2;
     }
     break;
-  case     1:                                                         // never occurs since HERMES has only 1 ADC
+  case     1:                                                         // HERMES, RX, DIVERSITY
   case  1001:                                                         // ORION, RX, DIVERSITY
-    rxid[0] = 0;
     rxcase[0] = RXACTION_DIV;
     break;
   case  100:                                                          // HERMES, TX, no PureSignal, no DUPLEX
@@ -369,17 +375,16 @@ static void update_action_table(void) {
     __attribute__((fallthrough));
   case 1000:                                                          // ORION, RX, no DIVERSITY
   case 11100:                                                         // ORION, TX, no PureSignal, DUPLEX
-    rxid[2] = 0;
-    rxcase[2] = RXACTION_NORMAL;
+    rxcase[2] = RXACTION_RX1;
     if (receivers > 1) {
-      rxid[3] = 1;
-      rxcase[3] = RXACTION_NORMAL;
+      rxcase[3] = RXACTION_RX2;
     }
     break;
   default:
     t_print("ACTION TABLE: case not handled: %d\n", flag);
     break;
   }
+  pthread_mutex_unlock(&action_mutex);
 }
 
 void new_protocol_init(void) {
@@ -553,7 +558,6 @@ static void new_protocol_general(void) {
   ASSERT_SERVER();
   const BAND *band;
   unsigned char general_buffer[60];
-  pthread_mutex_lock(&general_mutex);
   int txvfo = vfo_get_tx_vfo();
   band = band_get_band(vfo[txvfo].band);
   memset(general_buffer, 0, sizeof(general_buffer));
@@ -565,10 +569,8 @@ static void new_protocol_general(void) {
   general_buffer[37] = 0x08; //  phase word (not frequency)
   general_buffer[38] = 0x01; //  enable hardware timer
   if (!pa_enabled || band->disablePA) {
-    local_pa_enable = 0;
     general_buffer[58] = 0x00;
   } else {
-    local_pa_enable = 1;
     general_buffer[58] = 0x01; // enable PA
   }
   // t_print("new_protocol_general: PA Enable=%02X\n",general_buffer[58]);
@@ -583,7 +585,9 @@ static void new_protocol_general(void) {
     }
   }
   if (have_saturn_xdma) {
+    pthread_mutex_lock(&general_mutex);
     saturn_handle_general_packet(general_buffer);
+    pthread_mutex_unlock(&general_mutex);
   } else {
     ssize_t rc = sendto(data_socket, general_buffer, sizeof(general_buffer), 0,
                         (struct sockaddr * )&base_addr, base_addr_length);
@@ -595,7 +599,6 @@ static void new_protocol_general(void) {
     }
   }
   general_sequence++;
-  pthread_mutex_unlock(&general_mutex);
 }
 
 static void new_protocol_high_priority(void) {
@@ -613,7 +616,6 @@ static void new_protocol_high_priority(void) {
   if (data_socket == -1 && !have_saturn_xdma) {
     return;
   }
-  pthread_mutex_lock(&hi_prio_mutex);
   memset(high_priority_buffer_to_radio, 0, sizeof(high_priority_buffer_to_radio));
   //
   // If piHPSDR is not (yet) transmitting, but a PTT signal came from the
@@ -877,9 +879,9 @@ static void new_protocol_high_priority(void) {
   //    (meanwhile it works: thanks to Rick N1GP)
   //    But we have to keep this "safety belt" for some time.
   //
-  local_pa_enable = 0;
+  int local_pa_enabled = 0;
   if (!txband->disablePA  && pa_enabled) {
-    local_pa_enable = 1;
+    local_pa_enabled = 1;
     if (xmit) { alex0 |= ALEX_TX_RELAY; }
     alex1 |= ALEX_TX_RELAY;
   }
@@ -1172,11 +1174,7 @@ static void new_protocol_high_priority(void) {
   // is actually switched. So in the "impossible" case of an
   // illegal value for transmitter->antenna, set it to ANT1.
   //
-  if (txant < 0 || txant > 2) {
-    t_print("WARNING: illegal TX antenna chosen, using ANT1\n");
-    transmitter->antenna = 0;
-    txant = 0;
-  }
+  if (txant < 0 || txant > 2) { txant = 0; }
   //
   // If *not* using ANT1,2,3 for RX: we can reduce "relay chatter"
   // and leave the ANT1/2/2 setting in the TX state. If transmitting,
@@ -1233,7 +1231,7 @@ static void new_protocol_high_priority(void) {
   //        during transmit (the code below is essentially duplicated there)
   //         BUT, there might be old firmware around that does not fully implement this.
   //
-  if (xmit && local_pa_enable) {
+  if (xmit && local_pa_enabled) {
     high_priority_buffer_to_radio[1442] = 31;
     high_priority_buffer_to_radio[1443] = 31;
   }
@@ -1244,7 +1242,9 @@ static void new_protocol_high_priority(void) {
   // Send the HighPrio buffer to the radio
   //
   if (have_saturn_xdma) {
+    pthread_mutex_lock(&hi_prio_mutex);
     saturn_handle_high_priority(high_priority_buffer_to_radio);
+    pthread_mutex_unlock(&hi_prio_mutex);
   } else {
     ssize_t rc = sendto(data_socket, high_priority_buffer_to_radio, sizeof(high_priority_buffer_to_radio), 0,
                         (struct sockaddr * )&high_priority_addr, high_priority_addr_length);
@@ -1257,14 +1257,14 @@ static void new_protocol_high_priority(void) {
   }
   highprio_sent_sequence++;
   update_action_table();
-  pthread_mutex_unlock(&hi_prio_mutex);
 }
 
 static void new_protocol_transmit_specific(void) {
   ASSERT_SERVER();
   unsigned char transmit_specific_buffer[60];
-  pthread_mutex_lock(&tx_spec_mutex);
-  int txmode = vfo_get_tx_mode();
+  int txvfo    = vfo_get_tx_vfo();    // VFO governing the TX frequency
+  int txmode   = vfo_get_tx_mode();
+  const BAND *txband = band_get_band(vfo[txvfo].band);
   memset(transmit_specific_buffer, 0, sizeof(transmit_specific_buffer));
   transmit_specific_buffer[0] = (tx_specific_sequence >> 24) & 0xFF;
   transmit_specific_buffer[1] = (tx_specific_sequence >> 16) & 0xFF;
@@ -1345,7 +1345,7 @@ static void new_protocol_transmit_specific(void) {
   //
   transmit_specific_buffer[59] = adc[0].attenuation;
   transmit_specific_buffer[58] = diversity_enabled ? adc[0].attenuation : adc[1].attenuation;
-  if (local_pa_enable) {
+  if (!txband->disablePA && pa_enabled) {
     transmit_specific_buffer[58] = 31;   // ADC1
     transmit_specific_buffer[59] = 31;   // ADC0
   }
@@ -1353,7 +1353,9 @@ static void new_protocol_transmit_specific(void) {
     transmit_specific_buffer[59] = transmitter->attenuation;
   }
   if (have_saturn_xdma) {
+    pthread_mutex_lock(&tx_spec_mutex);
     saturn_handle_duc_specific(transmit_specific_buffer);
+    pthread_mutex_unlock(&tx_spec_mutex);
   } else {
     ssize_t rc = sendto(data_socket, transmit_specific_buffer, sizeof(transmit_specific_buffer), 0,
                         (struct sockaddr * )&transmitter_addr, transmitter_addr_length);
@@ -1365,7 +1367,6 @@ static void new_protocol_transmit_specific(void) {
     }
   }
   tx_specific_sequence++;
-  pthread_mutex_unlock(&tx_spec_mutex);
 }
 
 static void new_protocol_receive_specific(void) {
@@ -1373,7 +1374,6 @@ static void new_protocol_receive_specific(void) {
   int i;
   int xmit;
   unsigned char receive_specific_buffer[1444];
-  pthread_mutex_lock(&rx_spec_mutex);
   memset(receive_specific_buffer, 0, sizeof(receive_specific_buffer));
   xmit = radio_is_transmitting() | hpsdr_ptt;
   receive_specific_buffer[0] = (rx_specific_sequence >> 24) & 0xFF;
@@ -1444,7 +1444,9 @@ static void new_protocol_receive_specific(void) {
   }
   //t_print("new_protocol_receive_specific: %s:%d enable=%02X\n",inet_ntoa(receiver_addr.sin_addr),ntohs(receiver_addr.sin_port),receive_specific_buffer[7]);
   if (have_saturn_xdma) {
+    pthread_mutex_lock(&rx_spec_mutex);
     saturn_handle_ddc_specific(receive_specific_buffer);
+    pthread_mutex_unlock(&rx_spec_mutex);
   } else {
     ssize_t rc = sendto(data_socket, receive_specific_buffer, sizeof(receive_specific_buffer), 0,
                         (struct sockaddr * )&receiver_addr, receiver_addr_length);
@@ -1457,7 +1459,6 @@ static void new_protocol_receive_specific(void) {
   }
   rx_specific_sequence++;
   update_action_table();
-  pthread_mutex_unlock(&rx_spec_mutex);
 }
 
 //
@@ -1556,7 +1557,6 @@ void new_protocol_menu_start(void) {
     ddc_sequence[i] = 0;
   }
   memset(rxcase, 0, sizeof(rxcase));
-  memset(rxid, 0, sizeof(rxid));
   update_action_table();
   if (have_saturn_xdma) {
     prealloc_satbuffers();
@@ -1602,13 +1602,6 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
   ASSERT_SERVER(NULL);
   int nptr;
   unsigned char audiobuffer[260];
-  //
-  // Ideally, a RX audio buffer with 64 samples is sent every 1333 usecs.
-  // We thus wait until we have 64 samples, and then send a packet
-  // (in network mode) or start DMA (in xdma mode).
-  // After sending a packet in network mode, wait a little bit before
-  // attempting to send the next one.
-  //
   while (P2running) {
 #ifdef __APPLE__
     sem_wait(rxaudio_sem);
@@ -1622,7 +1615,8 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
     // *after* the following statement so we miss it. As a consequence,
     // the data from outptr is shipped out while the producer is
     // writing into the same location. We need the lock only a short
-    // time, while copying out the data and updating the outptr
+    // time, while copying out the data and updating the outptr.
+    // Note: draining occurs on every RX/TX transition in CW.
     //
     pthread_mutex_lock(&send_rxaudio_mutex);
     //
@@ -1647,50 +1641,36 @@ static gpointer new_protocol_rxaudio_thread(gpointer data) {
     if (have_saturn_xdma) {
       saturn_handle_speaker_audio(audiobuffer);
     } else {
+      // Ideally, a RX audio buffer with 64 samples is sent every 1333 usecs.
+      // We thus wait until we have 64 samples, and then send a packet
+      // (in network mode) or start DMA (in xdma mode).
+      // A packet in network mode is not sent until at least 600 usec have
+      // elapsed after sending the previous one. During that time, at most
+      // less than half of the previous packet has been processed.
+      // This way the codec FIFO  does not fill too quickly, and packets have
+      // more chance to arrive in the correct sequence at the FPGA.
+      // If a "clock_nanosleep" takes a bit longer than programmed (such things
+      // happen because LINUX is no real-time OS), the next wait-time will be
+      // shorter or even skipped.
       //
-      // We used to have a fixed sleeping time of 1000 usec, and
-      // observed that there is no guarantee to wake up in time
-      // The idea is now to monitor how fast we actually send
-      // the packets, and FIFO is the coarse (!) estimation of the
-      // FPGA-FIFO filling level.
-      // If we lag behind and FIFO goes low, send packets with
-      // little or no delay. Never sleep longer than 1000 usec, the
-      // fixed time we had before.
+      static struct timespec last = { 0, 0 };
+      struct timespec now, wait;
+      clock_gettime(CLOCK_MONOTONIC, &now);
       //
-      struct timespec ts;
-      static double last = -9999.9;
-      static double FIFO = 0.0;
-      double now;
-      clock_gettime(CLOCK_MONOTONIC, &ts);
-      now = ts.tv_sec + 1.0E-9 * ts.tv_nsec;
-      FIFO -= (now - last) * 48000.0;
-      last = now;
-      if (FIFO < 0.0) {
-        FIFO = 0.0;
+      // Wait until last ship-out is at least 600 usec ago
+      //
+      wait.tv_nsec = last.tv_nsec + 600000;
+      wait.tv_sec  = last.tv_sec;
+      if (wait.tv_nsec > 999999999) {
+        wait.tv_sec++;
+        wait.tv_nsec -= 1000000000;
       }
+      last.tv_sec = now.tv_sec;
+      last.tv_nsec = now.tv_nsec;
       //
-      // Depending on how we estimate the FIFO filling, wait
-      // 1000usec, or 300 usec, or nothing, before sending
-      // out the next packet.
+      // This is a no-op if "wait" is in the past
       //
-      if (FIFO > 500.0) {
-        // Wait about 1000 usec before sending the next packet.
-        ts.tv_nsec += 1000000;
-        if (ts.tv_nsec > 999999999) {
-          ts.tv_sec++;
-          ts.tv_nsec -= 1000000000;
-        }
-        clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
-      } else if (FIFO > 250.0) {
-        // Wait about 300 usec before sending the next packet.
-        ts.tv_nsec += 300000;
-        if (ts.tv_nsec > 999999999) {
-          ts.tv_sec++;
-          ts.tv_nsec -= 1000000000;
-        }
-        clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
-      }
-      FIFO += 64.0;  // number of samples in THIS packet
+      clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &wait, NULL);
       ssize_t rc = sendto(data_socket, audiobuffer, sizeof(audiobuffer), 0,
                           (struct sockaddr*)&audio_addr, audio_addr_length);
       if (rc < 0) {
@@ -1712,6 +1692,12 @@ static gpointer new_protocol_txiq_thread(gpointer data) {
   // Ideally, a TX IQ buffer with 240 sample is sent every 1250 usecs.
   // We thus wait until we have 240 samples, and then send
   // a packet (in network mode) or start DMA (in xdma mode).
+  // A packet in network mode is not send until at least 500 usec
+  // have elapsed since the previous one. This way the TX IQ FIFO
+  // in the FPGA does not fill too quickly, and packets have more chance to arrive
+  // in the correct sequence. If a "clock_nanosleep" takes a bit
+  // longer than programmed (this happens), the next ones will be
+  // shorter or even skipped.
   //
   while (P2running) {
 #ifdef __APPLE__
@@ -1734,41 +1720,32 @@ static gpointer new_protocol_txiq_thread(gpointer data) {
       saturn_handle_duc_iq(iqbuffer);
     } else {
       //
-      // The idea is to monitor how fast we actually send
-      // the packets, since both usleep() and clock_nanosleep()
-      // may sleep longer than intended.
-      // FIFO is the coarse (!) estimation of the TX DUC FIFO filling.
-      // If we lag behind and FIFO goes low, send packet immediately.
-      // The rationale of all this effort is to avoid over-running the
-      // FPGA TX IQ FIFO if many IQ samples arrive here in a burst.
+      // Ideally, a TX IQ buffer with 240 sample is sent every 1250 usecs.
+      // A packet in network mode is not send until at least 550 usec
+      // have elapsed since the previous one. This way the TX IQ FIFO
+      // in the FPGA does not fill too quickly, and packets have more chance to arrive
+      // in the correct sequence. If a "clock_nanosleep" takes a bit
+      // longer than programmed (this happens), the next wait-time will be
+      // shorter or even skipped.
       //
-      struct timespec ts;
-      static double last = -9999.9;
-      static double FIFO = 0.0;
-      double now;
-      clock_gettime(CLOCK_MONOTONIC, &ts);
-      now = ts.tv_sec + 1.0E-9 * ts.tv_nsec;
-      FIFO -= (now - last) * 192000.0;
-      last = now;
-      if (FIFO < 0.0) {
-        //
-        // normally this occurs at the RX-TX transition
-        //
-        FIFO = 0.0;
+      static struct timespec last = { 0, 0 };
+      struct timespec now, wait;
+      clock_gettime(CLOCK_MONOTONIC, &now);
+      //
+      // Wait until last ship-out is at least 550 usec ago
+      //
+      wait.tv_nsec = last.tv_nsec + 550000;
+      wait.tv_sec  = last.tv_sec;
+      if (wait.tv_nsec > 999999999) {
+        wait.tv_sec++;
+        wait.tv_nsec -= 1000000000;
       }
-      if (FIFO > 1250.0)  {
-        //
-        // Wait about 1000 usec before sending the next packet.
-        // In reality, it takes a little longer before we resume work
-        //
-        ts.tv_nsec += 1000000;
-        if (ts.tv_nsec > 999999999) {
-          ts.tv_sec++;
-          ts.tv_nsec -= 1000000000;
-        }
-        clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
-      }
-      FIFO += 240.0;  // number of samples in THIS packet
+      last.tv_sec = now.tv_sec;
+      last.tv_nsec = now.tv_nsec;
+      //
+      // This is a no-op if "wait" is in the past
+      //
+      clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &wait, NULL);
       ssize_t rc = sendto(data_socket, iqbuffer, sizeof(iqbuffer), 0, (struct sockaddr * )&iq_addr, iq_addr_length);
       if (rc < 0) {
         g_idle_add(fatal_error, "FATAL: P2 TX IQ send failed (Network down?)");
@@ -2074,8 +2051,11 @@ static gpointer iq_thread(gpointer data) {
     switch (rxcase[ddc]) {
     case RXACTION_SKIP:
       break;
-    case RXACTION_NORMAL:
-      process_iq_data(buffer, receiver[rxid[ddc]]);
+    case RXACTION_RX1:
+      process_iq_data(buffer, receiver[0]);
+      break;
+    case RXACTION_RX2:
+      process_iq_data(buffer, receiver[1]);
       break;
     case RXACTION_PS:
       process_ps_iq_data(buffer);
@@ -2423,7 +2403,7 @@ static void process_mic_data(const unsigned char *buffer) {
   }
   micsamples_sequence = sequence + 1;
   b = 4;
-  for (i = 0; i < MIC_SAMPLES; i++) {
+  for (i = 0; i < 64; i++) {
     int16_t s = (buffer[b++] << 8);
     s |= (buffer[b++] & 0xFF);
     tx_add_mic_sample(transmitter, s * 0.00003051);
