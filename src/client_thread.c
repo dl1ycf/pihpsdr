@@ -855,10 +855,9 @@ static gpointer client_tcp_thread(gpointer arg) {
     memset(rx, 0, sizeof(RECEIVER));
     g_mutex_init(&rx->display_mutex);
     g_mutex_init(&rx->mutex);
-    g_mutex_init(&rx->audio_mutex);
     rx->id = i;
     rx->pixel_samples = NULL;
-    rx->audio_buffer = NULL;
+    rx->audio_handle = NULL;
     rx->display_panadapter = 1;
     rx->display_waterfall = 1;
     rx->panadapter_high = -40;
@@ -902,8 +901,7 @@ static gpointer client_tcp_thread(gpointer arg) {
   transmitter->dialog_y = -1;
   transmitter->dialog = NULL;
   transmitter->local_audio = 0;
-  transmitter->audio_flag = 0;
-  g_mutex_init(&transmitter->audio_mutex);
+  transmitter->audio_handle = NULL;
   snprintf(transmitter->audio_name, sizeof(transmitter->audio_name), "%s", "NO AUDIO");
   if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
     RECEIVER *rx = receiver[PS_RX_FEEDBACK] = g_new(RECEIVER, 1);

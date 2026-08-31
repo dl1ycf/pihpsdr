@@ -20,6 +20,10 @@
 #ifndef _AUDIO_H_
 #define _AUDIO_H_
 
+#ifdef ALSA
+  #include <alsa/asoundlib.h>
+#endif
+
 #include "receiver.h"
 #include "transmitter.h"
 
