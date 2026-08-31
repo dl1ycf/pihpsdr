@@ -525,7 +525,7 @@ int audio_open_output(RECEIVER *rx) {
     g_free(ad);
     return -1;
   }
-  err = Pa_StartStream(rx->audio_handle);
+  err = Pa_StartStream(ad->pastream);
   if (err != paNoError) {
     t_print("%s: error starting stream:%s\n", __func__, Pa_GetErrorText(err));
     Pa_CloseStream(ad->pastream);

@@ -208,7 +208,12 @@ int audio_open_input(TRANSMITTER *tx) {
   int err;
   int soft_resample;
   if (tx == NULL) { return -1; }
-  audio_data *ad = tx->audio_handle;
+  if (tx->audio_handle != NULL) {
+    // we should not arrive here
+    tx->audio_handle = NULL;
+    usleep(50000);
+  }
+  audio_data *ad = g_new(audio_data, 1);
   if (ad == NULL) { return -1; }
   //
   // Do not try top open if name has not been recorded during startup
@@ -245,6 +250,15 @@ int audio_open_input(TRANSMITTER *tx) {
   ad->audio_buffer_outpt = ad->audio_buffer_inpt = 0;
   if (ad->audio_buffer == NULL) {
     snd_pcm_close(ad->alsahandle);
+    g_free(ad);
+    return -1;
+  }
+
+  if ((err = snd_pcm_start (ad->alsahandle)) < 0) {
+    t_print("%s: cannot start audio interface for use (%s)\n", __func__,
+            snd_strerror (err));
+    snd_pcm_close(ad->alsahandle);
+    g_free(ad->audio_buffer);
     g_free(ad);
     return -1;
   }
@@ -632,26 +646,18 @@ static gpointer tx_audio_thread(gpointer arg) {
   TRANSMITTER *tx = (TRANSMITTER *)arg;
   if (tx == NULL) { return NULL; }
   int rc;
-  if ((rc = snd_pcm_start (tx->audio_handle)) < 0) {
-    t_print("%s: cannot start audio interface for use (%s)\n", __func__,
-            snd_strerror (rc));
-    return NULL;
-  }
   //
-  // Allocate buffer such that it fits for all
+  // Allocate buffer such that it fits for all types of data
   //
   void *buffer = g_new(float, inp_buffer_size);
-  if (!buffer) {
-    t_print("%s: unknown sound format or alloc error\n", __func__);
-    return NULL;
-  }
+  if (!buffer) { return NULL; }
   const int16_t *i16_buffer =  (int16_t *) buffer;
   const int32_t *i32_buffer =  (int32_t *) buffer;
   const float *float_buffer =  (float *) buffer;
   volatile audio_data *ad;
   while ((ad = tx->audio_handle)) {
     rc = snd_pcm_readi (ad->alsahandle, buffer, inp_buffer_size);
-    if (tx->audio_handle == NULL) { break; }
+    if ((ad = tx->audio_handle) == NULL) { break; }
     //
     // The ring buffer is now guaranteed to exist for 50 msec
     //

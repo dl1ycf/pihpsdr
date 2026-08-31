@@ -892,7 +892,9 @@ void *rx_thread(void *data) {
   int divptr;
   int decimation = 1;
   int dumpptr1 = 0;
+#if defined(LOGFIRST) && defined(RXIQPLAY)
   int dumpptr2 = 0;
+#endif
   unsigned int seed;
   double off, tonearg, tonedelta = 0.0;
   double off2, tonearg2, tonedelta2 = 0.0;
