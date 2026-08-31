@@ -481,7 +481,18 @@ static int roundtable(double hang, struct rt_result *r) {
       if (!rade_corr_locked) { r->drop = b + 1; }
     } else if (r->relock < 0) {
       if (rade_corr_locked) { r->relock = b + 1; }
-    } else if (b > r->relock + 80) {
+    } else if (b > r->relock + 160) {
+      //
+      // 160 blocks is 13.7 s, and it is that long because of the alias
+      // resolver. After a re-lock the loop can be sitting a whole modem
+      // frame rate off the station - which is what acquisition hands it
+      // about half the time - and the resolver needs RADE_ALIAS_MIN
+      // frames to see that, plus a couple of averaging times for the
+      // accumulators to follow it across. Measured at the 80 blocks this
+      // used to wait, the weight is still mid-correction: +4.87 dB
+      // against the +1.94 dB it settles to. See Finding 15 in
+      // docs/diversity-measurements.md.
+      //
       break;
     }
   }

@@ -392,6 +392,43 @@ static const double rade_acq_sigma[RADE_ACQ_CHECKS] = { 7.5, 6.75, RADE_LOCK_SIG
 #define RADE_FREQ_LIMIT     (0.5 * RADE_ACQ_FRANGE + 10.0)
 
 //
+// Alias resolution.
+//
+// The discriminator above is unambiguous over +/-4.17 Hz because it
+// measures phase advance over one 120 ms modem frame. A residual of
+// exactly one frame rate - 8.333 Hz - turns the correlation through 2*pi
+// and reads as *zero error*, so every offset lock_f + n/T is a stable
+// equilibrium and the loop sits at whichever one acquisition handed it.
+//
+// Acquisition cannot choose between them. It correlates one 20 ms pilot
+// symbol and accumulates the magnitude over passes, so its frequency
+// resolution is about 50 Hz however long it integrates: measured at the
+// moment of lock, its statistic is still at 97 % of its peak 10 Hz away
+// and 84 % of it 20 Hz away. Measured on
+// divcap-20260830-232842, four equilibria 8.33 Hz apart, the radio
+// tracking one and a cold replay of the same samples tracking another.
+// See docs/diversity-measurements.md, Finding 15.
+//
+// The way out is a *shorter* lag. Correlating the two halves of the
+// pilot separately and taking arg(c2 * conj(c1)) measures the residual
+// over M/2 = 80 samples, which is unambiguous over +/-Fs/M = +/-50 Hz -
+// the whole acquisition range, alias-free. It is a much noisier
+// discriminator than the frame-to-frame one and it does not track
+// anything: it is averaged for a few seconds and asked only *which*
+// equilibrium the frame-rate loop should be sitting in, an answer that
+// need only be good to half a step.
+//
+// Measured against the best equilibrium found by forcing lock_f, the
+// half-pilot estimate lands within 1.3 Hz on every capture tried, which
+// is why the margin below sits so far outside it.
+//
+#define RADE_ALIAS_LAG      (RADE_CORR_M / 2)
+#define RADE_ALIAS_RATE     (1.0 / RADE_FRAME_SECS)      // 8.333 Hz
+#define RADE_ALIAS_ALPHA    0.03    // ~4 s at 120 ms frames
+#define RADE_ALIAS_MIN      32      // frames before the estimate is used
+#define RADE_ALIAS_MARGIN   1.5     // Hz beyond half a step before moving
+
+//
 // Decimator: taps per polyphase branch, and the low-pass corner. The
 // filter only has to keep 750..2200 Hz and reject everything that would
 // alias into it after decimation to 8 kHz, which starts at 8000-2200 =
@@ -469,6 +506,8 @@ static int    probation = 0;         // frames of confirmation still owed
 static cplx   prev_d0;               // last frame's pilot correlation
 static int    prev_valid = 0;        // ... and whether it is usable
 static int    nudged = 0;            // timing moved this frame
+static cplx   alias_acc;             // smoothed half-pilot phase step
+static int    alias_n = 0;           // frames it has been averaged over
 static int64_t next_process = 0;     // ringtotal at which to look again
 
 #define RADE_ACQ_NCELL  (RADE_CORR_NMF / RADE_ACQ_TSTEP)
@@ -642,6 +681,8 @@ void rade_corr_reset(void) {
   probation = 0;
   prev_valid = 0;
   nudged = 0;
+  alias_acc = cset(0.0, 0.0);
+  alias_n = 0;
   lock_a = 0;
   lock_bank = 0;
   lock_f = 0.0;
@@ -712,6 +753,31 @@ static cplx rade_correlate(const float *r, int64_t a, const cplx *pw) {
   }
 
   return acc;
+}
+
+//
+// The same correlation, and the two half-length correlations it is made
+// of. Returns the full sum, so the caller pays nothing for the split.
+//
+// The halves are what RADE_ALIAS_LAG resolves the frequency alias with:
+// their phase difference measures the residual over 80 samples rather
+// than over a whole modem frame.
+//
+static cplx rade_correlate_split(const float *r, int64_t a, const cplx *pw,
+                                 cplx *lo, cplx *hi) {
+  cplx c1 = cset(0.0, 0.0), c2 = cset(0.0, 0.0);
+
+  for (int n = 0; n < RADE_ALIAS_LAG; n++) {
+    c1 = cadd(c1, cmul(ring_get(r, a + n), cconj(pw[n])));
+  }
+
+  for (int n = RADE_ALIAS_LAG; n < RADE_CORR_M; n++) {
+    c2 = cadd(c2, cmul(ring_get(r, a + n), cconj(pw[n])));
+  }
+
+  *lo = c1;
+  *hi = c2;
+  return cadd(c1, c2);
 }
 
 //
@@ -1045,7 +1111,8 @@ static int rade_track(double tau, double hang, double *wr, double *wi) {
 
   nudged = (best_a != lock_a);
   lock_a = best_a;
-  cplx d0 = rade_correlate(ring0, lock_a, pw);
+  cplx h_lo, h_hi;
+  cplx d0 = rade_correlate_split(ring0, lock_a, pw, &h_lo, &h_hi);
   cplx d1 = rade_correlate(ring1, lock_a, pw);
   double mag = sqrt(cabs2(d0));
   //
@@ -1200,6 +1267,59 @@ static int rade_track(double tau, double hang, double *wr, double *wi) {
   }
 
   drop_count = 0;
+  //
+  // Alias resolution. See the note at RADE_ALIAS_LAG.
+  //
+  // Accumulated coherently, because the residual is a fixed rotation
+  // between the two halves while the noise is not - which is what buys
+  // the several seconds of averaging a discriminator this short needs.
+  // Skipped on a nudged frame for the same reason the frame-rate loop
+  // skips one: a timing move re-aligns the pilot and turns both halves
+  // by different amounts. Placed after the freeze test rather than
+  // beside the frequency tracking above, so that a hold - where there is
+  // no pilot to measure - cannot walk the accumulator off the answer it
+  // had when the signal was last there.
+  //
+  if (!nudged) {
+    const cplx step = cmul(h_hi, cconj(h_lo));
+    alias_acc = cadd(cscale(alias_acc, 1.0 - RADE_ALIAS_ALPHA),
+                     cscale(step, RADE_ALIAS_ALPHA));
+
+    if (alias_n < RADE_ALIAS_MIN) { alias_n++; }
+  }
+
+  if (alias_n >= RADE_ALIAS_MIN && cabs2(alias_acc) > 0.0) {
+    const double lag_secs = (double)RADE_ALIAS_LAG / (double)RADE_CORR_FS;
+    const double resid = atan2(alias_acc.im, alias_acc.re)
+                         / (2.0 * M_PI * lag_secs);
+
+    if (fabs(resid) > 0.5 * RADE_ALIAS_RATE + RADE_ALIAS_MARGIN) {
+      const double steps = round(resid / RADE_ALIAS_RATE);
+      double want = lock_f + steps * RADE_ALIAS_RATE;
+
+      if (want >  RADE_FREQ_LIMIT) { want =  RADE_FREQ_LIMIT; }
+
+      if (want < -RADE_FREQ_LIMIT) { want = -RADE_FREQ_LIMIT; }
+
+      if (want != lock_f) {
+        t_print("%s: frequency alias, moving %+0.1f Hz to %+0.1f Hz "
+                "(half-pilot residual %+0.1f Hz)\n",
+                __func__, steps * RADE_ALIAS_RATE, want, resid);
+        lock_f = want;
+        rade_corr_freq_off = lock_f;
+        //
+        // The frame-rate discriminator's previous correlation was taken
+        // at the old frequency, so its next phase step would be measured
+        // against an offset that no longer applies. Re-arm it instead.
+        //
+        prev_valid = 0;
+      }
+
+      alias_acc = cset(0.0, 0.0);
+      alias_n = 0;
+    }
+  }
+
 
   if (frozen) {
     frozen = 0;

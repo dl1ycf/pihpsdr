@@ -26,14 +26,16 @@ the right default. Still open: the Digital I/Q occupancy test has no
 false-alarm control, and its per-arm SNR estimate is the weakest of the
 four (Finding 14).
 
-**Finding 15** is new, and open. The frequency loop has stable lock
-points spaced one modem frame rate apart - 8.3 Hz - and acquisition
-cannot resolve which of them is right. The radio and a cold replay of the
-same samples settled on two different ones on the same capture. It costs
-about a decibel of pilot SNR, a fifth of the quality reading, and
-**nothing measurable in decode**, because the diversity weight is
-indifferent to it. It is, though, the reason a lock can look poor on a
-signal that is not.
+**Finding 15** is found and fixed. The frequency loop had stable lock
+points spaced one modem frame rate apart - 8.3 Hz - and acquisition could
+not resolve which of them was right. The radio and a cold replay of the
+same samples settled on two different ones on the same capture, and **five
+of the eight RADE captures in this document were tracking one whole step
+off the station**. It cost 0.7 to 1.9 dB of pilot SNR and very little in
+decode, because the diversity weight is nearly indifferent to it. The fix
+correlates the two halves of the pilot separately, which measures the
+residual over a lag short enough to be alias-free, and steps the loop a
+whole number of frame rates onto the right one. See "What was changed".
 
 **Finding 16** is the first look below the HF bands: two mediumwave
 captures, one a 693 kHz broadcast with inter-arm coherence 0.982, the
@@ -1350,15 +1352,77 @@ depending purely on which one acquisition happened to choose - though
 that capture is marginal enough (quality 0.15, eight acquisitions in the
 minute) that some of that spread is the signal and not the alias.
 
-### The obvious remedy, not implemented
+### The obvious remedy does not work
 
-After a lock is confirmed, correlate at `lock_f`, `lock_f + 8.333` and
-`lock_f - 8.333` and keep the strongest. One pilot symbol resolves 50 Hz,
-which is six times the step, so the comparison is unambiguous even though
-the *tracking* discriminator is not. It is three extra correlations at
-lock, not per frame. Nothing here has been changed: this finding is
-measurement only, and the decode column above is the argument for taking
-the time to do it properly rather than quickly.
+The first thing tried was to correlate at `lock_f` and `lock_f +/- 8.333`
+and keep the strongest. It fails, and the reason is worth writing down
+because the arithmetic looks like it should go the other way.
+
+One pilot symbol is 20 ms, so its correlation resolves frequency to about
+50 Hz. That is *coarser* than the 8.33 Hz step, not finer: 8.33 Hz is
+well inside the main lobe, where `sinc(8.333 * 0.02)` = **-0.40 dB**. A
+neighbour one alias step away is only four tenths of a decibel down even
+when it is wrong, and measured on air the difference is smaller still and
+does not have a consistent sign:
+
+| capture | `lock_f` | neighbour above | neighbour below |
+|---|---|---|---|
+| `232842`, at +7.78 | correct | -0.54 dB | -0.27 dB |
+| `232842`, at +16.12 | one step high | -1.39 dB | **+0.52 dB** |
+| `110923` | one step high | -1.19 dB | +0.37 dB |
+| `111734` | one step high | -1.27 dB | +0.40 dB |
+| `213155` | one step low | +0.27 dB | -1.20 dB |
+| `233133` | one step low | +0.32 dB | -1.23 dB |
+
+The right neighbour does read higher, but by 0.3 to 0.5 dB - and on
+`232842` at the *correct* frequency a neighbour still reads only 0.27 dB
+down. A rule that keeps the strongest of three would step the loop on
+almost every capture, right or wrong.
+
+### What does work: half a pilot
+
+The alias exists because the discriminator's lag is one whole modem
+frame. Shorten the lag and it goes away. Correlating the first 80 samples
+of the pilot and the last 80 separately and taking `arg(c2 * conj(c1))`
+measures the residual over 10 ms, which is unambiguous over
+**+/-Fs/M = +/-50 Hz** - the entire acquisition range.
+
+It is a much noisier discriminator than the frame-to-frame one: 80
+samples is half the correlation gain over a fifteenth of the lever arm.
+That is fine, because it is not being asked to *track* anything. It is
+averaged coherently for a few seconds and used once, to decide which
+equilibrium the frame-rate loop should be sitting in - and the answer
+only has to be good to half a step.
+
+Measured against the best equilibrium found by forcing `lock_f`, it is
+good to 1.3 Hz:
+
+| capture | best equilibrium | half-pilot estimate | error |
+|---|---|---|---|
+| `232842` | +7.78 Hz | +6.50 Hz | -1.28 |
+| `110923` | -2.14 Hz | -1.71 Hz | +0.43 |
+| `111734` | -2.15 Hz | -2.02 Hz | +0.13 |
+| `213155` | -9.24 Hz | -7.96 Hz | +1.28 |
+
+and it is **independent of where the loop is sitting**, which is the
+whole point. Started at nine different offsets from -20 to +30 Hz on
+`232842`, it returned +6.30 to +6.70 Hz - the same answer from basins
+25 Hz apart.
+
+Forcing `lock_f` on the captures whose equilibria were swept above shows
+what the old loop was giving up. The best equilibrium against the one
+acquisition actually chose:
+
+| capture | acquisition chose | best is | quality | pilot SNR |
+|---|---|---|---|---|
+| `110923` | +6.19 Hz, q 0.824, +6.69 dB | **-2.14 Hz** | 0.880 | **+8.65 dB** |
+| `111734` | +6.18 Hz, q 0.799, +5.99 dB | **-2.15 Hz** | 0.850 | **+7.52 dB** |
+| `213155` | -17.36 Hz, q 0.463, -0.65 dB | **-9.24 Hz** | 0.692 | **+3.52 dB** |
+| `232842` | +7.78 Hz (right) | +7.78 Hz | 0.507 | +0.12 dB |
+
+So `232842`, the capture that started this, was the *lucky* one on
+replay. Three of the others were a step out and paying 1.5 to 4.2 dB for
+it. The fix and what it scored are under "What was changed".
 
 ## Finding 16: mediumwave, where the noise is the coherent thing
 
@@ -1530,10 +1594,49 @@ Non-monotonic and within a few points - that is scatter, not a trend. The
 only consistent effect is `233241`'s first lock moving from 19.8 s to
 13.7 s at 2.00 and below.
 
-**Conclusion: leave `RADE_USE_RATIO` at 2.50.** There is no measured
-benefit to lowering it on real signals, and a measured false-alarm cost
-below 2.00 - now below **2.50**, since `112151` locks at 2.25 and clears
-only at the shipping value. The margin is one grid step wide. This supersedes an earlier suggestion of 2.00 that was based
+### How much margin is left, and does `112151` force a change
+
+Swept finely, `112151` clears at **2.375** - the false lock survives 2.25
+and is gone by 2.375. The shipping 2.50 therefore sits **5 % above the
+false-alarm boundary**, where before this capture the worst case was
+`233615` at 1.50 and the margin was 67 %.
+
+The cost of raising it was measured over the eight RADE captures, on the
+fixed correlator, as locked fraction and mean pilot SNR:
+
+| `use_ratio` | 2.25 | 2.50 | 3.00 | 3.50 | 4.00 |
+|---|---|---|---|---|---|
+| `232842` | 94 % | 94 % | 94 % | 94 % | **88 %** |
+| `110923` | 66 % | 65 % | 64 % | 64 % | 64 % |
+| `111051` | 72 % | 68 % | 68 % | 68 % | 68 % |
+| `111734` | 70 % | 70 % | 70 % | 70 % | 66 % |
+| `213155` | 93 % | 93 % | 93 % | 91 % | 91 % |
+| `233133` | 57 % | 55 % | 52 % | 51 % | 53 % |
+| `233241` | 56 % | 56 % | 60 % | 60 % | 60 % |
+| `202743` | 70 % | 73 % | 72 % | 71 % | **54 %** |
+
+Nothing measurable happens between 2.25 and 3.50 - the same
+scatter-not-trend the earlier sweep found - and the cliff is between 3.50
+and 4.00, where the two weakest captures lose 6 and 19 points. `202743`
+matters most here: pilot SNR -5.9 dB, quality 0.15, eight acquisitions in
+a minute. It is the only genuinely marginal capture in the set, and 3.00
+costs it one point.
+
+**Assessment: a change to 3.00 is justified by the measurements, and is
+not being made yet.** It would put the threshold 26 % above the false
+alarm and 17 % below the cliff, roughly centred, at no measured cost. What
+holds it back is that the case rests on one capture, at 724 kHz, in `SAM`,
+in a configuration no operator would choose - the filter is symmetric, so
+`div_rade_side_expected()` returns 0 and *both* pilot banks are searched,
+which is the weakest setting the detector has. Against that, the whole
+argument for the present value rests on a set with one marginal capture in
+it. Two more dead-air captures - one more mediumwave, one on a quiet
+amateur band - would settle it either way, and are a minute each.
+
+**Conclusion: leave `RADE_USE_RATIO` at 2.50 for now**, and treat the
+margin as the thing to watch rather than the value. There is no measured
+benefit to lowering it on real signals, and a measured false-alarm cost at
+2.25. This supersedes an earlier suggestion of 2.00 that was based
 on synthetic AWGN - see Trap 2.
 
 It also qualifies the claim in
@@ -1593,18 +1696,25 @@ holds is the false-alarm line, and that part stands.
   RADE combiner needs re-reading once it is: the "after" figures under
   "What was changed, and what it scored" were taken with the solve
   returning zero on most frames.
-- **The frequency alias is measured and not fixed.** Finding 15. The
-  remedy is three extra correlations at lock and is described there; what
-  is missing before writing it is a capture where the alias actually
-  breaks a lock, so the fix has something to be scored against. Decode
-  says it costs 0.1 dB on a strong signal, which is not an argument for
-  rushing it.
+- **The alias resolver has never been watched acquiring cold on air.**
+  Finding 15 is fixed and scored on replay, where the resolver's 4 s of
+  averaging is invisible because every capture was armed on a signal that
+  was already there. What has not been seen is a station appearing while
+  the radio is listening, so the operator's view of it - a lock that
+  settles, then moves 8 Hz a few seconds later, with the menu's frequency
+  readout following - can be checked against what the loop should do.
+- **`202743` moved and cannot be checked.** It is the one capture where
+  the resolver's step is not corroborated by a quality improvement: mean
+  pilot SNR went from -5.92 to -5.85 dB, which is nothing. On a capture
+  that acquires eight times in a minute at quality 0.15, the step is
+  plausible and unproven. A marginal capture that stays locked would
+  settle it.
 - **Threshold policy needs more dead air, and `112151` narrowed the
-  margin.** Six quiet captures now say 2.50 is safe and 2.25 is not - the
-  boundary is one grid step below the shipping value rather than two, and
-  the capture that moved it is mediumwave band noise, a kind of spectrum
-  the set had never held before. Dead-air captures are cheap and need no
-  station; ones from outside the amateur bands are cheaper still.
+  margin to 5 %.** The boundary is at 2.375 against a shipping 2.50 -
+  see the assessment under "False alarms", which recommends 3.00 and
+  explains why it has not been taken. Two more quiet captures decide it.
+  Dead-air captures are cheap and need no station; ones from outside the
+  amateur bands are cheaper still.
 - **No capture yet has a wanted *modem* signal and strong common-mode
   noise.** `111852` closes half of this: a wanted signal with inter-arm
   coherence 0.982, where the nuller reaches its ceiling and Digital I/Q's
@@ -1785,6 +1895,78 @@ correctly on 9 of 10 captures from the wideband references, 5 of 6 from
 RADE V1 and 5 of 10 from Digital I/Q, and decode-scores 1.3 dB behind Sum
 on average. It is a fallback, not a default.
 
+### `src/rade_correlator.c` — the frequency alias is resolved
+
+Finding 15. `rade_correlate_split()` returns the pilot correlation and
+the two half-length correlations it is made of, at no extra cost; the
+phase between the halves is accumulated coherently at `RADE_ALIAS_ALPHA`
+and, once `RADE_ALIAS_MIN` frames have gone into it, read as a residual
+that is unambiguous over +/-50 Hz. If it exceeds half a frame rate by
+`RADE_ALIAS_MARGIN`, `lock_f` moves a whole number of frame rates and the
+frame-rate discriminator is re-armed. Nothing else is reset: the channel
+estimate is insensitive to the move, measured at 0.05 dB and 0.7 degrees.
+
+Where the loop settled, over the settled part of a cold replay:
+
+| capture | before | after | step |
+|---|---|---|---|
+| `110923` | +5.80 Hz | **-2.22 Hz** | -8.02 |
+| `111051` | +6.08 Hz | **-2.16 Hz** | -8.25 |
+| `111734` | +6.17 Hz | **-2.16 Hz** | -8.33 |
+| `213155` | -17.49 Hz | **-9.21 Hz** | +8.29 |
+| `233133` | -5.93 Hz | **+2.32 Hz** | +8.25 |
+| `202743` | +36.95 Hz | +45.22 Hz | +8.27 |
+| `232842` | +7.77 Hz | +7.77 Hz | none needed |
+| `233241` | +2.23 Hz | +2.23 Hz | none needed |
+
+**Six of eight.** The steps are 8.02 to 8.33 Hz, which is the frame rate
+to within what the loop's own tracking then absorbs.
+
+What it bought, over the whole replay:
+
+| capture | mean pilot SNR | mean quality | decode, vs the better arm |
+|---|---|---|---|
+| `110923` | 6.43 -> **7.85 dB** | 0.813 -> 0.856 | +1.7 -> **+1.9 dB** |
+| `111734` | 6.80 -> **7.47 dB** | 0.819 -> 0.842 | +1.8 -> +1.7 dB |
+| `213155` | 2.50 -> **3.18 dB** | 0.636 -> 0.669 | +0.5 -> **+0.8 dB** |
+| `111051` | 1.71 -> 1.75 dB | 0.596 -> 0.598 | +1.2 -> +1.2 dB |
+| `233133` | 1.40 -> 1.43 dB | 0.585 -> 0.587 | +0.6 -> +0.6 dB |
+| `202743` | -5.92 -> -5.85 dB | 0.230 -> 0.232 | -2.3 -> -2.3 dB |
+| `232842`, `233241` | unchanged | unchanged | unchanged |
+
+Lock uptime, time to first lock and acquisition count are unchanged on
+every capture, and **no synced frame changes anywhere**. The decode
+column moves by 0.1 to 0.3 dB and no further, exactly as Finding 15 said
+it would: this is a fix for the health of the lock, not for the audio.
+`111734`'s 0.1 dB the wrong way is inside the scatter of a measurement
+whose synced frame count did not move.
+
+Convergence was checked by forcing `lock_f` at acquisition. `232842`
+returns to +7.77 Hz from nine starting points spanning -20 to +30 Hz;
+`213155` returns to -9.24 Hz from six spanning -18 to +22.
+
+Both constants were swept. `alias_min` from 8 to 96 frames moves mean
+pilot SNR monotonically - 0.1 dB between 8 and 32, 0.4 dB between 32 and
+96 - because a shorter average acts sooner; **32 is kept**, matching the
+EWMA's own time constant, on the grounds that a wrong step is worse than
+a slow one and 0.1 dB is not worth the noise. `alias_margin` from 0 to
+3.0 Hz changes nothing at all on any capture: the measured residuals are
+either well inside half a step or well outside it, so 1.5 Hz is a
+guardrail rather than a tuned value. At 4.0 it starts to suppress real
+steps.
+
+All seven no-signal captures still produce **zero acquisitions** with the
+resolver in.
+
+The one visible cost is settling time. `test_rade`'s station-handover
+case now needs 13.7 s after a re-lock rather than 6.8 s to reach the new
+station's weight, because the resolver wants `RADE_ALIAS_MIN` frames plus
+a couple of averaging times. Measured at the old 6.8 s the weight is
+mid-correction, at +4.87 dB against the +1.94 dB it settles to. That test
+also says something the on-air captures cannot: with the loop on the
+right alias, MVDR recovers `conj(h)` to 0.6 dB and 2.7 degrees on the
+synthetic channel, where before the fix it was 4.0 dB and 17 degrees out.
+
 ### What was thrown away
 
 The Digital I/Q occupancy guard written for Finding 8. It moved the score
@@ -1808,6 +1990,11 @@ make DIVCAP=1                       # radio with the capture button
 make -C test/diversity/devtools     # replay_rade, run_ref, test_capture
 ```
 
+`RADE_ALIAS_ALPHA`, `RADE_ALIAS_MIN` and `RADE_ALIAS_MARGIN` are in the
+tunable manifest, so the sweeps under "What was changed" are
+`replay_rade --sweep alias_min=8:96:8` and the like, with
+`--set alias_margin=1e9` turning the resolver off for a before-and-after.
+
 `replay_rade` drives the correlator directly and sweeps its constants;
 `run_ref` drives the whole engine so the Digital I/Q solve can be run over
 a recording; `score_rade` decodes. See
@@ -1824,11 +2011,14 @@ already `#include`s - with four edits and nothing else:
 - a dump of `acc_r00, acc_r11, acc_r01, acc_x00, acc_x01` and the
   determinant `d2` immediately before the `rade_mvdr_weight()` call in
   `rade_track()`, extended for Finding 15 with `lock_f` before and after
-  the update, the discriminator's `df`, and the `nudged` flag;
+  the update, the discriminator's `df`, the `nudged` flag, and the
+  correlation magnitude at `lock_f` and at `lock_f +/- 8.333 Hz` - that
+  last is the neighbour-magnitude table, and it is the measurement that
+  killed the first remedy;
 - a `double instr_force_f` applied to `lock_f` immediately after
-  acquisition sets it, which is what the equilibrium table in Finding 15
-  sweeps - it is one assignment and it changes nothing else about the
-  run;
+  acquisition sets it, which is what the equilibrium tables in Finding 15
+  sweep and what the convergence check under "What was changed" starts
+  from - it is one assignment and it changes nothing else about the run;
 - a dump of the acquisition statistic `sf` for every (bank, frequency)
   cell as it is computed, which is the acquisition surface table.
 
