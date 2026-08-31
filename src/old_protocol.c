@@ -257,18 +257,6 @@ static gpointer old_protocol_txiq_thread(gpointer data) {
   ASSERT_SERVER(NULL);
   unsigned char ozy_buf1[P1_BUFSIZE];
   unsigned char ozy_buf2[P1_BUFSIZE];
-  //
-  // Ideally, an output METIS buffer with 126 samples is sent every 2625 usec.
-  // We thus wait until we have 126 samples, and then send a packet.
-  // Upon RX, the packets come from the RX thread and contain the receiver audio,
-  // and the rate in which packets fly in strongly depends on the receiver sample
-  // rate:
-  // Each WDSP "fexchange" event, with a fixed buffer size of 1024, produces
-  // between 128 (384k sample rate) and 1024 (48k sample rate) audio samples,
-  // which therefore arrive every 2.7 msec (384k) up to every 21.3 msec (48k).
-  //
-  // When TXing, a bunch of 1024 TX IQ samples is produced every 21.3 msec.
-  //
   for (;;) {
 #ifdef __APPLE__
     sem_wait(txring_sem);
@@ -295,59 +283,42 @@ static gpointer old_protocol_txiq_thread(gpointer data) {
     txring_outptr = nptr;
     pthread_mutex_unlock(&audio_mutex);
     //
-    // We used to have a fixed sleeping time of 2000 usec, and
-    // observed that the sleep was sometimes too long, especially
-    // at 48k sample rate.
-    // The idea is now to monitor how fast we actually send
-    // the packets, and FIFO is the coarse (!) estimation of the
-    // FPGA-FIFO filling level.
-    // If we lag behind and FIFO goes low, send packets with
-    // little or no delay. Never sleep longer than 2000 usec, the
-    // fixed time we had before.
+    // Ideally, a packet is sent every 2625 usec. In practice, TXIQ
+    // samples are produced in buckets of 1024 samples that arrive
+    // every 21.3 msec (during RX, audio data comes in smaller chunks
+    // for higher RX sample rates).
+    // So do not send a packet before at least 1200 usec have elapsed since
+    // sending the previous one. This way the codec and TXIQ FIFOs
+    // do not fill too quickly, and packets have more chance to arrive
+    // in the correct sequence. If a "clock_nanosleep" takes a bit
+    // longer than programmed (this happens), the next ones will be
+    // shorter or even skipped.
     //
-    struct timespec ts;
-    static double last = -9999.9;
-    static double FIFO = 0.0;
-    double now;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    now = ts.tv_sec + 1.0E-9 * ts.tv_nsec;
-    FIFO -= (now - last) * 48000.0;
-    last = now;
-    if (FIFO < 0.0) {
-      FIFO = 0.0;
+    static struct timespec last = { 0, 0 };
+    struct timespec now, wait;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    //
+    // Wait until last ship-out is at least 1200 usec ago
+    //
+    wait.tv_nsec = last.tv_nsec + 1200000;
+    wait.tv_sec  = last.tv_sec;
+    if (wait.tv_nsec > 999999999) {
+      wait.tv_sec++;
+      wait.tv_nsec -= 1000000000;
     }
+    last.tv_sec = now.tv_sec;
+    last.tv_nsec = now.tv_nsec;
     //
-    // Depending on how we estimate the FIFO filling, wait
-    // 2000usec, or 500 usec, or nothing before sending
-    // out the next packet.
+    // This is a no-op if "wait" is in the past
     //
-    // Note that in reality, the "sleep" is a little bit longer
-    // than specified by ts (we cannot rely on a wake-up in time).
-    //
-    if (FIFO > 1500.0) {
-      // Wait about 2000 usec before sending the next packet.
-      ts.tv_nsec += 2000000;
-      if (ts.tv_nsec > 999999999) {
-        ts.tv_sec++;
-        ts.tv_nsec -= 1000000000;
-      }
-      clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
-    } else if (FIFO > 300.0) {
-      // Wait about 500 usec before sending the next packet.
-      ts.tv_nsec += 500000;
-      if (ts.tv_nsec > 999999999) {
-        ts.tv_sec++;
-        ts.tv_nsec -= 1000000000;
-      }
-      clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
-    }
+    clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &wait, NULL);
+
     if (P1running && pthread_mutex_trylock(&send_mutex) == 0) {
       //
       // If we do not get a lock, this means a protocol restart is
       // attempted from "somewhere else", in this case do not
       // send out data
       //
-      FIFO += 126.0;  // number of samples in THIS packet
       ozy_send_buffer(ozy_buf1);
       ozy_send_buffer(ozy_buf2);
       pthread_mutex_unlock(&send_mutex);
