@@ -157,6 +157,15 @@ extern int    div_auto_running;
 extern int  div_rade_side_get(void);
 
 //
+// Where zero is for a hand-placed window, in the shifted frame that
+// div_auto_centre and the RX filter edges are both expressed in. Zero
+// everywhere but CW, where the sidetone is folded into the passband and
+// the zero-beat note therefore sits at +pitch (CWU) or -pitch (CWL).
+// The panadapter overlay places the drawn window with it.
+//
+extern double div_window_zero(int mode, int sidetone);
+
+//
 // Operator hold: the analysis keeps running and keeps updating
 // div_track_gain/div_track_phase, but stops writing the weight, so the
 // manual gain and phase controls have it. Releasing applies the tracked
@@ -256,6 +265,17 @@ extern void diversity_auto_apply_status(const DIV_STATUS *st);
 //
 extern gboolean diversity_client_set_settings(gpointer data);
 extern gboolean diversity_client_set_status(gpointer data);
+
+//
+// The operator changed mode on RX0.
+//
+// The loop's settings are modal - one block per group of modes, so that
+// the reference, window and objective set up for AM are still there when
+// the operator comes back to it from SSB - and this is where one block is
+// filed away and the next adopted. Called on the radio only; a client is
+// sent the outcome like any other settings change.
+//
+extern void diversity_auto_mode_changed(int mode);
 
 extern void diversity_auto_save_state(void);
 extern void diversity_auto_restore_state(void);

@@ -195,9 +195,10 @@ Every reference computes it. Whichever arm is ahead is used alone, with
 
 Selecting arm 1 is not directly expressible: the combiner forms
 `z0 + w·z1` with arm 0 pinned at unity gain, so "arm 1 only" exists only
-as the limit `w → ∞`. The nearest reachable point is `w` at the ±27 dB
-clamp with the co-phasing angle — arm 1 dominant with arm 0 co-phased in
-underneath it, 20 dB down. That residue is not a compromise: measured
+as the limit `w → ∞`. The nearest reachable point is `w` at the loop's own
+`DIV_MAX_WEIGHT` clamp with the co-phasing angle — +20 dB, inside the
+sliders' ±27 dB, so arm 1 is dominant with arm 0 co-phased in underneath
+it 20 dB down. That residue is not a compromise: measured
 against a decoder it beat the full MVDR solve by 0.6 dB on the capture
 where the two antennas disagreed about which was better, because arm 0 is
 still doing useful combining. Selecting arm 0 needs no such trick —
@@ -289,8 +290,10 @@ operator can see distinguishes a deaf antenna from a quiet one and the two
 want opposite weights. `measuring` means the estimate is not yet available
 — it needs a signal standing clear of the noise floor on *both* arms. The
 trailing `using ADCn` appears only under **Best**, and is what the
-selection has actually settled on. On a remote client the line reads
-`Antennas  radio side`, since the analysis runs on the server.
+selection has actually settled on. A remote client reads the same three
+lines as the radio: `div_auto_arm_db`, `_arm_valid` and `_arm_pick` all
+arrive in `INFO_DIVERSITY`, so `div_arm_status_set()` needs no
+remote-aware case of its own.
 
 In Digital I/Q the third field is the width of what was found occupied,
 which is checkable against the darker band on the panadapter, and
@@ -359,22 +362,85 @@ few kHz off the dial, run the Carrier reference, and see which way
 
 ### Starting again
 
-The analysis watches the tuned frequency, sample rate, mode, filter edges
-and window settings, and throws away its accumulated statistics whenever
-any of them change — rather than relying on call sites to notify it.
+`div_context_changed()` watches the tuned and CTUN frequencies, the CTUN
+offset, the CW sidetone, the sample rate, the mode, both filter edges, and
+every window setting — the reference, the follow tick, centre, width and
+weighting. Any change throws the accumulated statistics away, rather than
+relying on call sites to notify it.
+
+The three frequencies carry a tolerance. Below `DIV_RETUNE_HZ` (20 Hz,
+cumulative since the last reset, not per block) nothing is discarded: what
+the estimate describes is the pair of antennas and the path, and that does
+not change because the dial moved a few hertz, while a retune small enough
+to leave the same signal in the window is not a reason to start again. 20 Hz
+is under a tenth of the narrowest CW filter and inside the ±60 Hz the RADE
+correlator tracks, so a lock survives it; tuning across a band to another
+station moves kilohertz and still resets. See Finding 15's neighbourhood in
+[`diversity-measurements.md`](diversity-measurements.md).
+
+**A transmit gap is not a retune, and is handled separately.** Both
+protocols stop feeding `rx_add_div_iq_samples()` for the whole over — P2
+only sets `RXACTION_DIV` when not transmitting, duplex included, and P1
+guards the mixer the same way — so the analysis stream acquires a hole
+that nothing in the context comparison can see. `rxtx()` calls
+`diversity_auto_gap()`, the one funnel every TX/RX transition goes
+through, so MOX, VOX and Tune are all covered. It discards the partly
+filled block and marks the next complete one as following a gap, which is
+the flag the worker already uses to call `rade_corr_reset()`.
+
+That matters only to RADE V1, and it matters a lot: without it the first
+block after an over spliced pre-TX and post-TX samples into one transform
+while `lock_a` went on advancing by one modem frame against a ring that
+had skipped an arbitrary number of samples. The correlator tracked
+straight through into a dead lock, holding a frozen weight for the whole
+**Hang** time — 10 s by default, up to 30 — before it started searching
+again. It now re-acquires deliberately after every over, which costs the
+searching load in §7 for a second or two.
+
+**The weight and the transform accumulators are deliberately kept across
+the gap.** `div_cos`/`div_sin` are written only by `div_apply_weight()`,
+and every path with no answer to give sets `div_auto_holding` and returns
+without calling it, so the gain and phase from before the over stay
+applied until a new lock produces a better fit. `div_reset_stats()` is not
+called either: a cross spectrum is a time average rather than something
+locked to the sample clock, so once no single transform spans the hole it
+is unharmed. Window, Carrier and Digital I/Q therefore lose nothing at all
+across an over.
 
 ---
 
 ## 5. The four references
 
 What part of the spectrum the decision is taken from. Selected by
-**Measure on** in the Diversity menu.
+**Measure on** in the Diversity menu, which lists them as
+
+    Window (wideband)
+    FSK/Digital (occupancy MVDR)
+    Carrier (AM/SAM)
+    RADE V1 pilot (MVDR)
+
+— the two general-purpose references first and the two that need a
+particular signal to be present after them. That order is a display order
+only: the `DIV_REF_*` values are what land in the props file and go over
+the wire, so they are fixed and new ones go on the end. `ref_rows[]` in
+`src/diversity_menu.c` is the only place the two orders meet. The sections
+below are in the order the references were built, which is neither.
 
 ### Window (wideband)
 
 Every bin in the analysis window. The window either follows the RX filter
 or is placed by hand with **Window centre** and **Window width**, in Hz
-relative to the tuned frequency — the same reference the filter edges use.
+relative to the tuned signal — the same reference the filter edges use.
+
+"The tuned signal", not the dial frequency: `rx_set_filter()` folds the CW
+sidetone into `filter_low`/`filter_high`, so a CW passband sits at +pitch
+in CWU and -pitch in CWL, and the shifted frame's own zero is one pitch
+away from the only signal there is. `div_window_zero()` supplies that
+offset to the hand-placed window, so a centre of 0 is the zero-beat note
+in every mode and the hand-placed and filter-following windows agree.
+Following the filter never had the problem, because it takes the folded
+edges. The panadapter overlay places the drawn window with the same
+function, so what is drawn stays what is measured.
 
 **The window may be placed outside the passband.** That is often the better
 way to cancel noise: measuring the noise on its own, clear of the wanted
@@ -443,10 +509,12 @@ primary can be tracked — and therefore nulled. Park a 1 kHz window on
 panadapter shows the search region as a green band with a brighter line
 where the tracker has settled.
 
-**Window centre and width are modal.** The Window and Carrier references
-each keep their own pair, so aiming the carrier tracker at a station 5 kHz
-away does not destroy the window set up for wideband work; switching back
-restores it. Both pairs persist.
+**Window centre and width are modal twice over.** The Window, Carrier and
+Digital I/Q references each keep their own pair, so aiming the carrier
+tracker at a station 5 kHz away does not destroy the window set up for
+wideband work; switching back restores it. All three pairs persist, and
+all three are part of the per-mode block described in §6, so the pairs
+built up for AM are still there after an evening on SSB.
 
 Measured at 384 kHz, where a bin is 11.7 Hz wide: **0.03 Hz of error and
 0.002 Hz rms of jitter** at 11 s averaging, holding at −6 dB carrier SNR.
@@ -572,7 +640,7 @@ Both are occupied and both are correlated between the arms, so occupancy
 has nothing to tell them apart by - that is what the RADE V1 pilot is
 for. Here the operator separates them by placing the region, and **Null**
 cancels what the region is sitting on, exactly as in Window mode. Both
-objectives are meaningful, so unlike the RADE references this one does
+objectives are meaningful, so unlike the RADE V1 reference this one does
 not force Sum on selection.
 
 **A full region is not an empty one.** If the signal covers the whole
@@ -600,7 +668,7 @@ one block from `track` to `search` when the signal stops.
 | **Auto** | Off / Null / Sum / Best — the objective | always |
 | **Measure on** | Which reference (§5) | always |
 | **Window follows RX filter** | — | Window, Digital I/Q |
-| **Window centre / width** | The analysis window, the carrier search region in Carrier mode, or the occupancy search region in Digital I/Q. Kept separately per mode | Window (unticked), Carrier, Digital I/Q (unticked) |
+| **Window centre / width** | The analysis window, the carrier search region in Carrier mode, or the occupancy search region in Digital I/Q. Measured from the tuned signal, which in CW is the zero-beat note. Kept separately per reference | Window (unticked), Carrier, Digital I/Q (unticked) |
 | **Resolution** | 12 / 6 / 3 Hz bins. Finer lifts weak signals out of the noise but halves the update rate each step | all but RADE V1 |
 | **Weighting** | Flat or Coherence (see above) | Window |
 | **Averaging** | 0.2-30 s. Time constant for the estimate | always |
@@ -611,14 +679,59 @@ one block from `track` to `search` when the signal stops.
 | **Invert** | Swaps Null and Sum | always; inactive under Best |
 
 Rows that the selected reference cannot use are **hidden, not greyed
-out**. The RADE references place their own window, so four rows never
-applied to them; the pilot correlator uses no transform at all, so two
-more do not either. Greying them left a tall dialog of mostly dead
-controls.
+out**. The RADE V1 reference places its own window, so four rows never
+apply to it, and it uses no transform at all, so two more do not either.
+Greying them left a tall dialog of mostly dead controls.
 
 Digital I/Q hides Weighting for the same kind of reason: the occupancy
 split has already decided which bins carry signal, which is the job that
 control was doing.
+
+### One set of settings per group of modes
+
+The right reference, window and objective are a property of what is being
+received, and the mode is the operator's own statement of that: a carrier
+to track in AM and SAM, an FSK occupancy to find in DIGU and DIGL, a
+filter-wide window in SSB, and in CW a window narrow enough to sit on one
+note. A single set carried across a mode change therefore hands the loop
+settings chosen for a signal that is no longer there — the carrier tracker
+hunting a carrier SSB does not have, or the 100 Hz window left over from
+CW swallowing an SSB passband whole — and the operator has to notice and
+undo it every time.
+
+So the whole settings block is modal. The groups are
+
+| Group | Modes |
+|---|---|
+| SSB | LSB, USB |
+| CW | CWL, CWU |
+| FM | FMN |
+| AM | AM, SAM, DSB |
+| Digital | DIGU, DIGL |
+| Other | everything else, presently SPEC |
+
+DSB sits with AM and SAM because its passband is symmetric about the
+carrier, so a window and a carrier search mean the same thing there.
+Anything unnamed shares one block, which costs nothing and means a mode
+added later still lands somewhere sensible.
+
+`rx_mode_changed()` announces the change to `diversity_auto_mode_changed()`
+for RX0, which covers every route a mode can change by — the menu, CAT, a
+bandstack recall, a VFO swap, and a client asking for one. That files what
+is in force under the outgoing group, adopts the incoming one, and draws
+the same restart and reset conclusions `diversity_auto_apply_settings()`
+does. It deliberately does *not* invert the weight when the objective
+crosses between Null and Sum: there the operator asked for the weight in
+force to be turned over, here two unrelated blocks merely happen to
+differ.
+
+Hold is not modal. It is an operating state rather than a setting, and it
+is not persisted either — see below.
+
+The blocks live on the radio, with the analysis. A client is sent the
+outcome of a switch the same way it is sent any other settings change, so
+a panel running remotely follows a mode change on the radio with no
+remote-aware code of its own.
 
 ### Hold
 
@@ -668,12 +781,23 @@ the audio changed - and then the next block wrote the un-inverted answer
 back and slewed straight to it. Every reference now applies the sign the
 objective asks for.
 
-Settings persist in the props file as `diversity_auto_*`, with the modal
-window pairs as `diversity_band_*`, `diversity_carrier_*` and
-`diversity_digital_*`, and are range checked on restore. New reference
+Settings persist in the props file as `diversity_auto_*`, with the
+per-reference window pairs as `diversity_band_*`, `diversity_carrier_*`
+and `diversity_digital_*`, and every group's block as
+`diversity_group[n].*`. All of them are range checked on restore, by one
+`div_settings_validate()` rather than a clamp per global. New reference
 modes go on the end of the enum: the value is what is written to the
 file, so inserting one in the middle silently changes what an existing
 file means.
+
+The flat `diversity_auto_*` keys stay, and are the current group's values.
+They are also what seeds every group whose own keys are absent, so a file
+written before the blocks existed gives each group what the radio was last
+set to — the old single-block behaviour, until the operator moves a
+control in one mode and not another. The mode is not restored until after
+`diversity_auto_restore_state()` runs, so which group the flat keys belong
+to is not knowable there; the first mode change announced adopts that
+group's block, which for a file this version wrote is the same thing.
 
 **The DSP runs on the radio; the UI runs wherever the operator is.** The
 sample pair only exists on the radio side, so the analysis thread, the
@@ -839,12 +963,12 @@ quantisation and follows the few Hz per minute a station drifts.
 | `src/rade_correlator.c`, `.h` | RADE V1 pilot correlation; the MVDR solve itself is `div_mvdr2()`, shared with Digital I/Q |
 | `src/diversity_menu.c` | Controls and status |
 | `src/rx_panadapter.c` | The analysis-window overlay, and the RADE modem passband |
-| `src/receiver.c` | The combiner, and the tap into it |
-| `src/radio.c` | Start/stop, props, shutdown |
+| `src/receiver.c` | The combiner, the tap into it, and `rx_mode_changed()`, where a mode change reaches the modal settings |
+| `src/radio.c` | Start/stop, props, shutdown, and `rxtx()`, where a transmit gap is reported |
 | `src/new_protocol.c` | P2 DDC pairing and ADC configuration |
 | `src/client_server.c`, `.h` | `CMD_DIV_SETTINGS` and `INFO_DIVERSITY` on the wire |
 | `src/client_thread.c`, `src/server_thread.c` | Where those are sent and received |
-| `test/diversity/` | Mode coverage, window placement, weighting and keying, RADE acquisition, Digital I/Q occupancy and MVDR, props migration, CPU benchmark |
+| `test/diversity/` | Mode coverage, window placement including the CW zero, weighting and keying, RADE acquisition, Digital I/Q occupancy and MVDR, the modal per-mode blocks, props migration, CPU benchmark |
 
 ---
 

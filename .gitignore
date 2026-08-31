@@ -30,6 +30,7 @@ test/diversity/test_window
 test/diversity/test_rade
 test/diversity/test_digital
 test/diversity/test_props
+test/diversity/test_modal
 
 # development-only diversity I/Q captures (see test/diversity/devtools)
 *.divc

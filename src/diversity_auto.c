@@ -21,6 +21,7 @@
 #include <fftw3.h>
 
 #include "diversity_auto.h"
+#include "diversity_menu.h"
 #include "message.h"
 #include "mode.h"
 #include "property.h"
@@ -769,6 +770,39 @@ static double div_shift_to_bin(const struct div_context *ctx, double s) {
 }
 
 //
+// Where zero is for a hand-placed window, in the shifted frame.
+//
+// Everywhere but CW that is the shifted frame's own zero: the operator
+// tunes the signal to the dial frequency and the window controls read as
+// an offset from it. In CW it is not. rx_set_filter() folds the sidetone
+// into filter_low/filter_high, so a CW passband sits at +pitch in CWU and
+// -pitch in CWL, and the shifted-frame zero is one pitch away from the
+// only signal there is - a window centred on 0 measured a patch of empty
+// spectrum a pitch off the tone the operator was listening to.
+//
+// Following the RX filter never had the problem, because it takes the
+// folded edges; this puts the hand-placed window on the same reference,
+// so that centre 0 is the zero-beat note in every mode and the two agree
+// when the width matches the filter.
+//
+double div_window_zero(int mode, int sidetone) {
+  if (mode == modeCWU) { return  (double)sidetone; }
+
+  if (mode == modeCWL) { return -(double)sidetone; }
+
+  return 0.0;
+}
+
+//
+// The edges of a hand-placed window, in the shifted frame.
+//
+static void div_manual_window(const struct div_context *ctx, double *lo, double *hi) {
+  const double z = div_window_zero(ctx->mode, ctx->sidetone);
+  *lo = z + ctx->centre - 0.5 * ctx->width;
+  *hi = z + ctx->centre + 0.5 * ctx->width;
+}
+
+//
 // Which side of the tuned frequency the RADE modem is on, from the
 // operator's own passband: the midpoint of filter_low..filter_high in the
 // shifted frame. Returns 0 when the passband straddles zero (AM, SAM, FM,
@@ -876,8 +910,7 @@ static int div_bin_range(const struct div_context *ctx, int *klo, int *khi) {
       flo = ctx->filter_low;
       fhi = ctx->filter_high;
     } else {
-      flo = ctx->centre - 0.5 * ctx->width;
-      fhi = ctx->centre + 0.5 * ctx->width;
+      div_manual_window(ctx, &flo, &fhi);
     }
   } else if (ctx->follow) {
     //
@@ -890,8 +923,7 @@ static int div_bin_range(const struct div_context *ctx, int *klo, int *khi) {
     // Method A with a hand-placed window: park it on a known noise, or
     // size it to take in just the mark and space tones of an FSK signal.
     //
-    flo = ctx->centre - 0.5 * ctx->width;
-    fhi = ctx->centre + 0.5 * ctx->width;
+    div_manual_window(ctx, &flo, &fhi);
   }
 
   if (fhi <= flo) { return 0; }
@@ -1837,8 +1869,10 @@ static void div_process_block(void) {
     // is then outside the search entirely. The selection has no memory
     // between blocks, so restricting the region is the whole mechanism.
     //
-    const double a = div_shift_to_bin(&ctx, ctx.centre - 0.5 * ctx.width);
-    const double b = div_shift_to_bin(&ctx, ctx.centre + 0.5 * ctx.width);
+    double wlo, whi;
+    div_manual_window(&ctx, &wlo, &whi);
+    const double a = div_shift_to_bin(&ctx, wlo);
+    const double b = div_shift_to_bin(&ctx, whi);
     double slo = (a < b) ? a : b;
     double shi = (a < b) ? b : a;
     const double snyq = 0.5 * (double)ctx.sample_rate - binhz;
@@ -2475,6 +2509,31 @@ void diversity_auto_get_settings(DIV_SETTINGS *s) {
 }
 
 //
+// The globals a settings block names, and nothing else: no restarts, no
+// resets, no inversion. Hold is deliberately not among them - it is a
+// momentary operator control rather than a setting, and the two callers
+// below want opposite things done with it.
+//
+static void div_settings_load(const DIV_SETTINGS *s) {
+  div_auto_mode          = s->mode;
+  div_auto_ref           = s->ref;
+  div_auto_follow_filter = s->follow_filter;
+  div_auto_weighting     = s->weighting;
+  div_auto_centre        = s->centre;
+  div_auto_width         = s->width;
+  div_auto_tau           = s->tau;
+  div_auto_hang          = s->hang;
+  div_auto_coherence_min = s->coherence_min;
+  div_auto_resolution    = s->resolution;
+  div_band_centre        = s->band_centre;
+  div_band_width         = s->band_width;
+  div_carrier_centre     = s->carrier_centre;
+  div_carrier_width      = s->carrier_width;
+  div_digital_centre     = s->digital_centre;
+  div_digital_width      = s->digital_width;
+}
+
+//
 // Adopt a settings block, and do whatever the change of state calls for.
 //
 // This is the one description of what moving a control means. The menu
@@ -2495,22 +2554,7 @@ void diversity_auto_apply_settings(const DIV_SETTINGS *s, int action) {
   const double old_centre = div_auto_centre;
   const double old_width  = div_auto_width;
   const double old_res    = div_auto_resolution;
-  div_auto_mode          = s->mode;
-  div_auto_ref           = s->ref;
-  div_auto_follow_filter = s->follow_filter;
-  div_auto_weighting     = s->weighting;
-  div_auto_centre        = s->centre;
-  div_auto_width         = s->width;
-  div_auto_tau           = s->tau;
-  div_auto_hang          = s->hang;
-  div_auto_coherence_min = s->coherence_min;
-  div_auto_resolution    = s->resolution;
-  div_band_centre        = s->band_centre;
-  div_band_width         = s->band_width;
-  div_carrier_centre     = s->carrier_centre;
-  div_carrier_width      = s->carrier_width;
-  div_digital_centre     = s->digital_centre;
-  div_digital_width      = s->digital_width;
+  div_settings_load(s);
 
   //
   // A remote client adopts the values and stops there: the analysis, and
@@ -2621,6 +2665,265 @@ void diversity_auto_apply_status(const DIV_STATUS *st) {
   rade_corr_quality      = st->rade_quality;
 }
 
+//
+// ----------------------------------------------------------------------
+// Modal settings
+// ----------------------------------------------------------------------
+//
+// One block of settings per group of modes, rather than one for the radio.
+//
+// Which reference, which window and which objective are right is a
+// property of what is being received, and the mode is the operator's own
+// statement of that: a carrier to track in AM and SAM, an FSK occupancy
+// to find in DIGU and DIGL, a filter-wide window in SSB, and in CW a
+// window narrow enough to sit on one note. Carrying a single set across a
+// mode change therefore hands the loop settings chosen for a signal that
+// is no longer there - the carrier tracker hunting a carrier SSB does not
+// have, or the 100 Hz window left over from CW swallowing an SSB passband
+// whole - and the operator has to notice and undo it every time.
+//
+// So each group keeps its own block. Changing mode files what is in force
+// under the outgoing group and adopts the incoming one, and every block
+// is saved, so the settings an operator built up for RTTY are still there
+// after an evening on SSB.
+//
+// The groups are the coarsest division that never mixes two signals
+// wanting different answers. DSB sits with AM and SAM because its
+// passband is symmetric about the carrier, so a window and a carrier
+// search mean the same thing there. Anything not named - presently only
+// SPEC - shares one block, which costs nothing and means a mode added
+// later still lands somewhere sensible.
+//
+enum {
+  DIV_GROUP_SSB = 0,    // LSB, USB
+  DIV_GROUP_CW,         // CWL, CWU
+  DIV_GROUP_FM,         // FMN
+  DIV_GROUP_AM,         // AM, SAM, DSB
+  DIV_GROUP_DIGITAL,    // DIGU, DIGL
+  DIV_GROUP_OTHER,      // everything else
+  DIV_GROUPS
+};
+
+static int div_group_of_mode(int mode) {
+  switch (mode) {
+  case modeLSB:
+  case modeUSB:
+    return DIV_GROUP_SSB;
+
+  case modeCWL:
+  case modeCWU:
+    return DIV_GROUP_CW;
+
+  case modeFMN:
+    return DIV_GROUP_FM;
+
+  case modeAM:
+  case modeSAM:
+  case modeDSB:
+    return DIV_GROUP_AM;
+
+  case modeDIGU:
+  case modeDIGL:
+    return DIV_GROUP_DIGITAL;
+
+  default:
+    return DIV_GROUP_OTHER;
+  }
+}
+
+static DIV_SETTINGS div_group_set[DIV_GROUPS];
+
+//
+// The group whose block the div_auto_* globals currently hold. -1 until
+// the first mode change is announced, which says "nothing has been filed
+// away yet": the globals at that point are what the props file restored,
+// and the mode being announced is the mode they were saved under, so the
+// group's own block is the one to believe.
+//
+static int div_group_current = -1;
+
+//
+// The operator changed mode.
+//
+// Called on the radio for RX0 from rx_mode_changed(), which covers every
+// route a mode can change by - the menu, CAT, a bandstack recall, a VFO
+// swap, and a client asking for one.
+//
+void diversity_auto_mode_changed(int mode) {
+  //
+  // The blocks live with the analysis, on the radio. A client is told the
+  // outcome the way it is told about any other change to the settings.
+  //
+  if (radio_is_remote) { return; }
+
+  const int g = div_group_of_mode(mode);
+
+  if (g == div_group_current) { return; }
+
+  if (div_group_current >= 0) {
+    diversity_auto_get_settings(&div_group_set[div_group_current]);
+  }
+
+  div_group_current = g;
+  const int    was_off = (div_auto_mode == DIV_AUTO_OFF);
+  const int    old_ref = div_auto_ref;
+  const double old_res = div_auto_resolution;
+  div_settings_load(&div_group_set[g]);
+
+  //
+  // The same three conditions diversity_auto_apply_settings() draws: the
+  // thread comes up or goes down when the objective crosses Off, the
+  // transform is rebuilt when its length changes, and the pilot
+  // correlator's front end is built or torn down when a RADE reference is
+  // taken up or left.
+  //
+  if (was_off != (div_auto_mode == DIV_AUTO_OFF) ||
+      old_res != div_auto_resolution ||
+      (old_ref != div_auto_ref &&
+       (old_ref == DIV_REF_RADE_V1 || div_auto_ref == DIV_REF_RADE_V1))) {
+    diversity_auto_restart();
+  }
+
+  //
+  // Deliberately not diversity_auto_invert(), even when the objective
+  // crosses between Null and Sum. There the operator asked for the weight
+  // in force to be turned over; here two unrelated blocks merely happen
+  // to differ, and the retune has invalidated the statistics behind the
+  // old weight anyway.
+  //
+  diversity_auto_reset();
+  //
+  // Show it, and tell a client that is running the panel. A mode change
+  // can arrive on the server thread as well as on the GTK one, and both
+  // halves of that belong to GTK.
+  //
+  g_idle_add(diversity_menu_settings_changed, NULL);
+}
+
+//
+// Clamp everything in a settings block to what the controls can express.
+//
+// A props file can be hand-edited or written by a future version, and an
+// out-of-range value is hard to diagnose from the UI: a bad reference
+// shows a blank combo, and a coherence threshold above 1.0 wedges the
+// loop in permanent HOLD with nothing on screen to say why. Every block
+// goes through here, not just the live one.
+//
+static void div_settings_validate(DIV_SETTINGS *s) {
+  if (s->mode < DIV_AUTO_OFF || s->mode > DIV_AUTO_BEST) {
+    s->mode = DIV_AUTO_OFF;
+  }
+
+  if (s->ref < DIV_REF_BAND || s->ref > DIV_REF_DIGITAL_IQ) {
+    s->ref = DIV_REF_BAND;
+  }
+
+  s->follow_filter = s->follow_filter ? 1 : 0;
+
+  if (s->weighting < DIV_WEIGHT_FLAT || s->weighting > DIV_WEIGHT_COHERENCE) {
+    s->weighting = DIV_WEIGHT_COHERENCE;
+  }
+
+  //
+  // 0.2, not 0.1, to match the slider's minimum.
+  //
+  if (s->tau < 0.2)  { s->tau = 0.2; }
+
+  if (s->tau > 30.0) { s->tau = 30.0; }
+
+  //
+  // Both ends match the slider. Zero is deliberately not allowed: the
+  // hang has to outlast the gate that feeds it, which averages over
+  // about a second, or a single noisy frame would end a lock.
+  //
+  if (s->hang < 1.0)  { s->hang = 1.0; }
+
+  if (s->hang > 30.0) { s->hang = 30.0; }
+
+  if (s->coherence_min < 0.0)  { s->coherence_min = 0.0; }
+
+  if (s->coherence_min > 0.95) { s->coherence_min = 0.95; }
+
+  if (s->resolution < 3.0)  { s->resolution = 3.0; }
+
+  if (s->resolution > 12.0) { s->resolution = 12.0; }
+
+  //
+  // The widths: 20.0, not 10.0, because the spin button's minimum is 20
+  // and a restored value below it was silently snapped up the first time
+  // the menu was opened.
+  //
+  // The centres are deliberately generous: the window is allowed outside
+  // the passband, and how far is a function of the sample rate, so
+  // div_bin_range() does the real limiting against the Nyquist frequency
+  // at the rate in use.
+  //
+  double *widths[]  = { &s->width, &s->band_width, &s->carrier_width, &s->digital_width };
+  double *centres[] = { &s->centre, &s->band_centre, &s->carrier_centre, &s->digital_centre };
+
+  for (int i = 0; i < 4; i++) {
+    if (*widths[i] < 20.0)    { *widths[i] = 20.0; }
+
+    if (*widths[i] > 40000.0) { *widths[i] = 40000.0; }
+
+    if (*centres[i] < -400000.0) { *centres[i] = -400000.0; }
+
+    if (*centres[i] >  400000.0) { *centres[i] =  400000.0; }
+  }
+}
+
+//
+// One group's block, to and from the props file.
+//
+// Written under the current reference numbering only - these keys did not
+// exist under scheme 1 - so there is nothing here to migrate. See
+// DIV_REF_SCHEME.
+//
+static void div_group_save(int g, const DIV_SETTINGS *s) {
+  SetPropI1("diversity_group[%d].mode",           g, s->mode);
+  SetPropI1("diversity_group[%d].ref",            g, s->ref);
+  SetPropI1("diversity_group[%d].follow_filter",  g, s->follow_filter);
+  SetPropI1("diversity_group[%d].weighting",      g, s->weighting);
+  SetPropF1("diversity_group[%d].centre",         g, s->centre);
+  SetPropF1("diversity_group[%d].width",          g, s->width);
+  SetPropF1("diversity_group[%d].tau",            g, s->tau);
+  SetPropF1("diversity_group[%d].hang",           g, s->hang);
+  SetPropF1("diversity_group[%d].coherence_min",  g, s->coherence_min);
+  SetPropF1("diversity_group[%d].resolution",     g, s->resolution);
+  SetPropF1("diversity_group[%d].band_centre",    g, s->band_centre);
+  SetPropF1("diversity_group[%d].band_width",     g, s->band_width);
+  SetPropF1("diversity_group[%d].carrier_centre", g, s->carrier_centre);
+  SetPropF1("diversity_group[%d].carrier_width",  g, s->carrier_width);
+  SetPropF1("diversity_group[%d].digital_centre", g, s->digital_centre);
+  SetPropF1("diversity_group[%d].digital_width",  g, s->digital_width);
+}
+
+//
+// The block arrives seeded with the settings that were in force, and
+// GetProp leaves a field alone when its key is absent, so a props file
+// written before this existed gives every group what the radio was last
+// set to - which is exactly the old single-block behaviour, until the
+// operator moves a control in one mode and not another.
+//
+static void div_group_restore(int g, DIV_SETTINGS *s) {
+  GetPropI1("diversity_group[%d].mode",           g, s->mode);
+  GetPropI1("diversity_group[%d].ref",            g, s->ref);
+  GetPropI1("diversity_group[%d].follow_filter",  g, s->follow_filter);
+  GetPropI1("diversity_group[%d].weighting",      g, s->weighting);
+  GetPropF1("diversity_group[%d].centre",         g, s->centre);
+  GetPropF1("diversity_group[%d].width",          g, s->width);
+  GetPropF1("diversity_group[%d].tau",            g, s->tau);
+  GetPropF1("diversity_group[%d].hang",           g, s->hang);
+  GetPropF1("diversity_group[%d].coherence_min",  g, s->coherence_min);
+  GetPropF1("diversity_group[%d].resolution",     g, s->resolution);
+  GetPropF1("diversity_group[%d].band_centre",    g, s->band_centre);
+  GetPropF1("diversity_group[%d].band_width",     g, s->band_width);
+  GetPropF1("diversity_group[%d].carrier_centre", g, s->carrier_centre);
+  GetPropF1("diversity_group[%d].carrier_width",  g, s->carrier_width);
+  GetPropF1("diversity_group[%d].digital_centre", g, s->digital_centre);
+  GetPropF1("diversity_group[%d].digital_width",  g, s->digital_width);
+}
+
 void diversity_auto_save_state(void) {
   //
   // The radio owns these. A client adopts what it finds on connect, so
@@ -2628,6 +2931,14 @@ void diversity_auto_save_state(void) {
   // into its own next session as a standalone radio.
   //
   if (radio_is_remote) { return; }
+
+  //
+  // The live values are the current group's, and have not been filed
+  // away since the last mode change.
+  //
+  if (div_group_current >= 0) {
+    diversity_auto_get_settings(&div_group_set[div_group_current]);
+  }
 
   SetPropI0("diversity_auto_mode",           div_auto_mode);
   SetPropI0("diversity_auto_ref",            div_auto_ref);
@@ -2646,6 +2957,10 @@ void diversity_auto_save_state(void) {
   SetPropF0("diversity_carrier_width",       div_carrier_width);
   SetPropF0("diversity_digital_centre",      div_digital_centre);
   SetPropF0("diversity_digital_width",       div_digital_width);
+
+  for (int g = 0; g < DIV_GROUPS; g++) {
+    div_group_save(g, &div_group_set[g]);
+  }
 }
 
 void diversity_auto_restore_state(void) {
@@ -2667,20 +2982,11 @@ void diversity_auto_restore_state(void) {
   GetPropF0("diversity_digital_width",       div_digital_width);
 
   //
-  // Validate everything that came out of the file, not just the two that
-  // happened to get clamped first. A props file can be hand-edited or
-  // written by a future version, and an out-of-range value here is hard
-  // to diagnose from the UI: a bad reference shows a blank combo, and a
-  // coherence threshold above 1.0 wedges the loop in permanent HOLD with
-  // nothing on screen to say why.
-  //
-  if (div_auto_mode < DIV_AUTO_OFF || div_auto_mode > DIV_AUTO_BEST) {
-    div_auto_mode = DIV_AUTO_OFF;
-  }
-
-  //
   // Migrate a reference written under the old numbering. Absent key means
-  // scheme 1; see DIV_REF_SCHEME.
+  // scheme 1; see DIV_REF_SCHEME. Only the single flat key needs it - the
+  // per-group keys below are newer than the renumbering - and it has to
+  // happen before the block is seeded from these values, so that every
+  // group inherits the migrated reference rather than the raw one.
   //
   {
     //
@@ -2711,78 +3017,29 @@ void diversity_auto_restore_state(void) {
     }
   }
 
-  if (div_auto_ref < DIV_REF_BAND || div_auto_ref > DIV_REF_DIGITAL_IQ) {
-    div_auto_ref = DIV_REF_BAND;
+  //
+  // Validate what came out of the file, then use it to seed every group
+  // that the file has nothing of its own to say about.
+  //
+  DIV_SETTINGS base;
+  diversity_auto_get_settings(&base);
+  div_settings_validate(&base);
+  div_settings_load(&base);
+
+  for (int g = 0; g < DIV_GROUPS; g++) {
+    div_group_set[g] = base;
+    div_group_restore(g, &div_group_set[g]);
+    div_settings_validate(&div_group_set[g]);
   }
 
-  div_auto_follow_filter = div_auto_follow_filter ? 1 : 0;
-
   //
-  // 0.2, not 0.1, to match the slider's minimum.
+  // Back to "nothing filed away yet". The mode is not restored until
+  // after this runs, so which group the live values belong to is not
+  // knowable here; the first diversity_auto_mode_changed() adopts that
+  // group's block, which for a file written by this version is the same
+  // thing the flat keys just gave us. Without the reset, that first call
+  // would file the live values under whichever group was current before
+  // the restore and overwrite the block just read for it.
   //
-  if (div_auto_tau < 0.2) { div_auto_tau = 0.2; }
-
-  if (div_auto_tau > 30.0) { div_auto_tau = 30.0; }
-
-  //
-  // Both ends match the slider. Zero is deliberately not allowed: the
-  // hang has to outlast the gate that feeds it, which averages over
-  // about a second, or a single noisy frame would end a lock.
-  //
-  if (div_auto_hang < 1.0)  { div_auto_hang = 1.0; }
-
-  if (div_auto_hang > 30.0) { div_auto_hang = 30.0; }
-
-  if (div_auto_weighting < DIV_WEIGHT_FLAT || div_auto_weighting > DIV_WEIGHT_COHERENCE) {
-    div_auto_weighting = DIV_WEIGHT_COHERENCE;
-  }
-
-  if (div_auto_resolution < 3.0)  { div_auto_resolution = 3.0; }
-
-  if (div_auto_resolution > 12.0) { div_auto_resolution = 12.0; }
-
-  if (div_band_width < 20.0)       { div_band_width = 20.0; }
-
-  if (div_band_width > 40000.0)    { div_band_width = 40000.0; }
-
-  if (div_band_centre < -400000.0) { div_band_centre = -400000.0; }
-
-  if (div_band_centre >  400000.0) { div_band_centre =  400000.0; }
-
-  if (div_carrier_width < 20.0)    { div_carrier_width = 20.0; }
-
-  if (div_carrier_width > 40000.0) { div_carrier_width = 40000.0; }
-
-  if (div_carrier_centre < -400000.0) { div_carrier_centre = -400000.0; }
-
-  if (div_carrier_centre >  400000.0) { div_carrier_centre =  400000.0; }
-
-  if (div_digital_width < 20.0)    { div_digital_width = 20.0; }
-
-  if (div_digital_width > 40000.0) { div_digital_width = 40000.0; }
-
-  if (div_digital_centre < -400000.0) { div_digital_centre = -400000.0; }
-
-  if (div_digital_centre >  400000.0) { div_digital_centre =  400000.0; }
-
-  //
-  // 20.0, not 10.0: the spin button's minimum is 20, so a restored value
-  // below it was silently snapped up the first time the menu was opened.
-  //
-  if (div_auto_width < 20.0) { div_auto_width = 20.0; }
-
-  if (div_auto_width > 40000.0) { div_auto_width = 40000.0; }
-
-  //
-  // Deliberately generous: the window is allowed outside the passband, and
-  // how far is a function of the sample rate, so div_bin_range() does the
-  // real limiting against the Nyquist frequency at the rate in use.
-  //
-  if (div_auto_centre < -400000.0) { div_auto_centre = -400000.0; }
-
-  if (div_auto_centre >  400000.0) { div_auto_centre =  400000.0; }
-
-  if (div_auto_coherence_min < 0.0) { div_auto_coherence_min = 0.0; }
-
-  if (div_auto_coherence_min > 0.95) { div_auto_coherence_min = 0.95; }
+  div_group_current = -1;
 }

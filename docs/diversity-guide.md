@@ -112,6 +112,11 @@ Accumulates over every bin in an analysis window. With **Window follows RX
 filter** ticked, that is your passband. Untick it and you get **Window
 centre** and **Window width** to place it by hand.
 
+**Window centre is measured from the signal you are tuned to.** In CW that
+is the note at zero beat, which sits one CW pitch away from the dial
+frequency, so a centre of `0` is on what you are listening to in every
+mode and a hand-placed window agrees with the filter.
+
 Use it for:
 
 - **General work.** Follow the filter, Coherence weighting, and let it run.
@@ -122,29 +127,7 @@ Use it for:
 - **FSK and other two-tone signals.** Size the window to take in just the
   mark and space tones.
 
-### Carrier (AM/SAM)
-
-Accumulates over the carrier bin alone, with the carrier found from our
-own spectrum. Much more selective than a window, and the right choice for
-AM broadcast.
-
-The **Window centre** and **Window width** controls become the *search
-region*. That is what lets you track a carrier other than the primary one:
-park a 1 kHz window on +5 kHz and the primary is outside the search
-entirely, so you can null the station carrying that carrier while
-listening to the one on frequency.
-
-### RADE V1 pilot (MVDR)
-
-The most capable and the most specialised. It correlates against RADE V1's
-known pilot symbol, which separates the wanted signal from everything
-else, and that in turn allows the *interference* covariance to be
-estimated on its own. The result is a weight that steers a null onto the
-QRM rather than onto the signal you are trying to decode.
-
-It needs an actual RADE V1 signal and takes 1–5 s to acquire.
-
-### Digital I/Q (occupancy MVDR)
+### FSK/Digital (occupancy MVDR)
 
 For a narrow digital signal — FT8, RTTY, PSK31, VARA, JS8 — in a passband
 that is otherwise empty. Tick **Window follows RX filter** and it works
@@ -195,13 +178,36 @@ The status line shows the occupied width it found, and the panadapter
 shades those bins more strongly inside the search region — if the dark
 band is not on your signal, the region is in the wrong place.
 
+### Carrier (AM/SAM)
+
+Accumulates over the carrier bin alone, with the carrier found from our
+own spectrum. Much more selective than a window, and the right choice for
+AM broadcast.
+
+The **Window centre** and **Window width** controls become the *search
+region*. That is what lets you track a carrier other than the primary one:
+park a 1 kHz window on +5 kHz and the primary is outside the search
+entirely, so you can null the station carrying that carrier while
+listening to the one on frequency.
+
+### RADE V1 pilot (MVDR)
+
+The most capable and the most specialised. It correlates against RADE V1's
+known pilot symbol, which separates the wanted signal from everything
+else, and that in turn allows the *interference* covariance to be
+estimated on its own. The result is a weight that steers a null onto the
+QRM rather than onto the signal you are trying to decode.
+
+It needs an actual RADE V1 signal and takes 1–5 s to acquire.
+
+
 ---
 
 ## 4. The rest of the controls
 
 | Control | What it is for |
 |---|---|
-| **Window centre / width** | Where to look. Kept separately for Window, Carrier and Digital I/Q, so aiming the carrier tracker does not destroy your wideband window |
+| **Window centre / width** | Where to look, measured from the signal you are tuned to — the zero-beat note in CW. Kept separately for Window, Carrier and FSK/Digital, so aiming the carrier tracker does not destroy your wideband window |
 | **Resolution** | 12 / 6 / 3 Hz bins. Finer bins lift a weak signal out of the per-bin noise floor — a different thing from Averaging, which reduces the variance of an estimate rather than improving the SNR it is made from. Each step halves the update rate |
 | **Weighting** | `Coherence` weights each bin by how well the two antennas agree in it. On speech it roughly halves the gain error, because the noise-only parts of a wide window stop diluting the answer. `Flat` is the older behaviour, kept for comparison |
 | **Averaging** | 0.2–30 s time constant. Longer is steadier and follows fading more slowly. A weak AM carrier or an HF RADE path usually wants several seconds |
@@ -210,6 +216,19 @@ band is not on your signal, the region is in the wrong place.
 | **Restart averaging** | Throw away the statistics and start again |
 | **Hold** | Stop *applying* the answer without stopping the loop |
 | **Invert** | Swap Null and Sum. Greyed out under Best, which has no opposite |
+
+### Settings are remembered per mode
+
+Everything in this section, and **Measure on** and **Auto** with it, is
+kept separately for each group of modes: USB/LSB, CWL/CWU, FM, AM/SAM/DSB
+and DIGU/DIGL. Change mode and the settings you last used in the mode you
+are arriving at come back.
+
+This is what stops a mode change handing the loop settings chosen for a
+signal that is no longer there — the carrier tracker hunting a carrier
+SSB does not have, or the narrow window you set up for one CW note
+swallowing an SSB passband whole. Set each mode up once and it stays set
+up. All of them are saved with the rest of your configuration.
 
 ### When the signal stops
 
@@ -229,6 +248,21 @@ The signal is absent for most of a transmission, not just between them,
 so the loop was previously averaging key-down and key-up together and
 being pulled toward the noise on every gap. It now measures only while
 the key is down.
+
+### When you transmit
+
+Both protocols stop feeding the analysis for the whole over, so there is a
+hole in what it sees. The weight you had stays applied throughout, and
+Window, Carrier and FSK/Digital lose nothing at all — a cross spectrum is
+a time average, so once no single block spans the hole it is unaffected.
+
+**RADE V1 gives its lock up and re-acquires after every over.** That is
+deliberate. Its lock is a timing as well as a frequency, and a hole of
+unknown length in the sample stream moves the pilot underneath it; left to
+track through, it held a dead lock and a frozen weight for the whole
+**Hang** time — up to thirty seconds — before it noticed. Expect
+`search` → `confrm` → `LOCK` again a second or two into the other
+station's over. MOX, VOX and Tune are all covered.
 
 ### Hold
 
@@ -268,8 +302,8 @@ Dig 12Hz  track  occ  293Hz   -2.1 dB   +38°
 | Field | Meaning |
 |---|---|
 | First | The reference, and for the transform modes the bin width actually achieved. A `*` means the window ran past the Nyquist limit for this sample rate and was clamped |
-| Second | `track` adapting · `wait` holding, nothing coherent enough to measure · `HOLD` your Hold · `search` looking — in Digital I/Q that means the region is empty or the signal has stopped · `confrm` confirming a RADE candidate · `LOCK` RADE tracking · `fade` RADE locked but the pilot is too weak to measure from |
-| Third | Coherence, or the carrier frequency, or the RADE sideband and pilot percentage, or in Digital I/Q the occupied width found — `no signal` if the region is empty |
+| Second | `track` adapting · `wait` holding, nothing coherent enough to measure · `HOLD` your Hold · `search` looking — in FSK/Digital that means the region is empty or the signal has stopped · `confrm` confirming a RADE candidate · `LOCK` RADE tracking · `fade` RADE locked but the pilot is too weak to measure from |
+| Third | Coherence, or the carrier frequency, or the RADE sideband and pilot percentage, or in FSK/Digital the occupied width found — `no signal` if the region is empty |
 | Fourth | The weight. Under Hold this is the value the loop has **tracked to**, not the one being applied — the sliders show what is applied, and seeing the two apart is the point of the control |
 
 Under it is a second line comparing the two antennas:
@@ -282,16 +316,16 @@ Antennas  ADC0 better by 12.1 dB  using ADC0
 
 `measuring` means there is not yet a signal standing clear of the noise
 floor on both arms to compare. The trailing `using ADCn` appears only
-under **Best** and is the antenna it has settled on. On a remote client
-the line reads `Antennas  radio side`, because the measuring happens
-there.
+under **Best** and is the antenna it has settled on. A remote client shows
+the same line as the radio — the comparison is measured there and sent
+over with the rest of the status.
 
 On the RX panadapter the analysis window is drawn as a translucent green
 band under the trace. It is worth watching: it is otherwise an invisible
 setting that changes what the radio does, and it can legitimately sit
 outside the passband where there is nothing else to see. In Carrier mode a
 brighter line marks where the tracker has settled inside the search
-region, and in Digital I/Q the bins found occupied are shaded more
+region, and in FSK/Digital the bins found occupied are shaded more
 strongly inside it — if that darker band is not sitting on your signal,
 the search region is in the wrong place.
 
@@ -350,7 +384,7 @@ Release Hold to snap back to the loop's answer.
 
 ### FT8 or RTTY, ordinary conditions
 
-Measure on `Digital I/Q`, follow the filter, Auto `Sum`. Check the darker
+Measure on `FSK/Digital`, follow the filter, Auto `Sum`. Check the darker
 shaded band on the panadapter lands on the signal. Nothing else to set.
 
 If your aux antenna is much noisier than the main one — a whip or a small
@@ -388,14 +422,14 @@ watch there. Measured numbers are in
 
 ### Four references, built in stages
 
-Window and Carrier first, then the two RADE modes, then Digital I/Q —
+Window and Carrier first, then the two RADE modes, then FSK/Digital —
 which then replaced the wideband RADE passband mode, leaving four. The
 carrier tracker originally used WDSP's SAM PLL, which turned out to be
 about a hundred times wider than wanted for measuring a stable carrier —
 25 Hz of loop bandwidth gives roughly 7 Hz of jitter. Finding the peak in
 our own spectrum instead gives 0.002 Hz and works in plain AM as well.
 
-Digital I/Q came last and is the only one that measures the noise apart
+FSK/Digital came last and is the only one that measures the noise apart
 from the signal. That turned out to need a guard band around the occupied
 bins: without one, a strong signal's own skirts land in the noise
 estimate, MVDR reads the direction the signal arrives from as
@@ -443,6 +477,21 @@ Controls the selected reference cannot use are hidden rather than greyed
 out. The status line is held to a fixed width in fixed columns so it
 cannot dictate a wider window than the controls need. **Hold** and
 **Invert** were added.
+
+The whole panel then became modal, twice. The window centre and width are
+kept per reference, so aiming the carrier tracker at a station 5 kHz away
+does not destroy the window set up for wideband work; and the whole
+settings block is kept per group of modes, so a mode change stops handing
+the loop settings chosen for a signal that is no longer there.
+
+A hand-placed window is measured from the zero-beat note rather than from
+the dial. In CW those are one pitch apart, and a window centred on 0 used
+to land that far from the only signal in the passband — silently, since
+the window was somewhere real and the status line still said `track`.
+
+The menu also runs from a remote client, which it did not at first. The
+analysis stays on the radio, because that is the only place the two
+antenna signals exist; the control surface and the status travel.
 
 ---
 

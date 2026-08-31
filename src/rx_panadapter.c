@@ -317,6 +317,15 @@ void rx_panadapter_update(RECEIVER *rx) {
   if (diversity_enabled && div_auto_mode != DIV_AUTO_OFF && rx->id == 0) {
     double wlo = 0.0, whi = 0.0;
     int show = 1;
+    //
+    // A hand-placed window is measured from the zero-beat note, which is
+    // the shifted frame's zero everywhere but CW. div_window_zero() is
+    // the same one div_bin_range() places the window with, so what is
+    // drawn is what is measured.
+    //
+    const double wzero = div_window_zero(mode, cw_keyer_sidetone_frequency);
+    const double wman_lo = wzero + div_auto_centre - 0.5 * div_auto_width;
+    const double wman_hi = wzero + div_auto_centre + 0.5 * div_auto_width;
 
     switch (div_auto_ref) {
     case DIV_REF_BAND:
@@ -324,8 +333,8 @@ void rx_panadapter_update(RECEIVER *rx) {
         wlo = rx->filter_low;
         whi = rx->filter_high;
       } else {
-        wlo = div_auto_centre - 0.5 * div_auto_width;
-        whi = div_auto_centre + 0.5 * div_auto_width;
+        wlo = wman_lo;
+        whi = wman_hi;
       }
 
       break;
@@ -336,8 +345,8 @@ void rx_panadapter_update(RECEIVER *rx) {
       // the region the operator sets, and seeing it is how they aim at a
       // carrier other than the primary.
       //
-      wlo = div_auto_centre - 0.5 * div_auto_width;
-      whi = div_auto_centre + 0.5 * div_auto_width;
+      wlo = wman_lo;
+      whi = wman_hi;
       break;
 
     case DIV_REF_DIGITAL_IQ:
@@ -352,8 +361,8 @@ void rx_panadapter_update(RECEIVER *rx) {
         wlo = rx->filter_low;
         whi = rx->filter_high;
       } else {
-        wlo = div_auto_centre - 0.5 * div_auto_width;
-        whi = div_auto_centre + 0.5 * div_auto_width;
+        wlo = wman_lo;
+        whi = wman_hi;
       }
 
       break;

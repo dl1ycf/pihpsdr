@@ -70,6 +70,43 @@ static GtkWidget *weight_label = NULL;
 static GtkWidget *coh_label = NULL;
 static GtkWidget *hang_label = NULL;
 
+//
+// The "Measure on" list.
+//
+// The order the operator sees is not the order of the DIV_REF_* values.
+// Those are what land in the props file and go over the wire to a client,
+// so they are fixed and new ones go on the end; the list is ordered by
+// how often a reference is reached for, which puts the two general
+// purpose references first and the two that need a particular signal to
+// be present after them. The table below is the only place the two
+// orders meet - everything else works in DIV_REF_* - so adding a
+// reference means adding one line here.
+//
+static const struct {
+  int         ref;
+  const char *text;
+} ref_rows[] = {
+  { DIV_REF_BAND,       "Window (wideband)"            },
+  { DIV_REF_DIGITAL_IQ, "FSK/Digital (occupancy MVDR)" },
+  { DIV_REF_CARRIER,    "Carrier (AM/SAM)"             },
+  { DIV_REF_RADE_V1,    "RADE V1 pilot (MVDR)"         }
+};
+
+#define REF_ROWS ((int)(sizeof(ref_rows) / sizeof(ref_rows[0])))
+
+static int div_ref_to_row(int ref) {
+  for (int i = 0; i < REF_ROWS; i++) {
+    if (ref_rows[i].ref == ref) { return i; }
+  }
+
+  return 0;
+}
+
+static int div_row_to_ref(int row) {
+  if (row < 0 || row >= REF_ROWS) { return DIV_REF_BAND; }
+
+  return ref_rows[row].ref;
+}
 
 static double gain_coarse, gain_fine;
 static double phase_coarse, phase_fine;
@@ -359,8 +396,8 @@ static void update_manual_sensitivity(void) {
 // Show only what the selected measure mode can actually use.
 //
 // Greying out was the previous answer and it made a tall dialog of mostly
-// dead controls: the RADE references place their own window, so four of
-// the rows never applied to them, and the pilot correlator uses no
+// dead controls: the RADE V1 reference places its own window, so four of
+// the rows never applied to it, and the pilot correlator uses no
 // transform at all, so two more do not either.
 //
 // Hiding rather than disabling relies on a GtkGrid row collapsing when
@@ -378,9 +415,9 @@ static void update_visibility(void) {
   //
   // Window mode places the analysis window; Carrier mode uses the same two
   // controls to say where to look for a carrier, which is what allows one
-  // other than the primary to be tracked. The RADE references derive the
-  // window from the modem band and the operator's filter, so neither the
-  // follow tick nor the centre and width mean anything there.
+  // other than the primary to be tracked. The RADE V1 reference derives
+  // its window from the modem band and the operator's filter, so neither
+  // the follow tick nor the centre and width mean anything there.
   //
   const gboolean is_band    = (ref == DIV_REF_BAND);
   const gboolean is_carrier = (ref == DIV_REF_CARRIER);
@@ -822,7 +859,7 @@ static void div_populate_from_settings(void) {
 
   if (auto_combo)   { gtk_combo_box_set_active(GTK_COMBO_BOX(auto_combo), div_auto_mode); }
 
-  if (ref_combo)    { gtk_combo_box_set_active(GTK_COMBO_BOX(ref_combo), div_auto_ref); }
+  if (ref_combo)    { gtk_combo_box_set_active(GTK_COMBO_BOX(ref_combo), div_ref_to_row(div_auto_ref)); }
 
   if (follow_b)     { gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(follow_b), div_auto_follow_filter); }
 
@@ -861,6 +898,17 @@ static void div_populate_from_settings(void) {
 //
 void diversity_menu_refresh(void) {
   div_populate_from_settings();
+}
+
+//
+// The radio changed mode and diversity_auto_mode_changed() has swapped
+// one block of modal settings for another. See diversity_menu.h.
+//
+gboolean diversity_menu_settings_changed(gpointer data) {
+  (void)data;
+  div_populate_from_settings();
+  div_send_settings(DIV_ACTION_NONE);
+  return G_SOURCE_REMOVE;
 }
 
 //
@@ -979,7 +1027,7 @@ static void ref_changed_cb(GtkWidget *widget, gpointer data) {
   int previous = div_auto_ref;
   int was_off = (div_auto_mode == DIV_AUTO_OFF);
   div_window_store(previous);
-  div_auto_ref = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  div_auto_ref = div_row_to_ref(gtk_combo_box_get_active(GTK_COMBO_BOX(widget)));
   div_window_recall(div_auto_ref);
 
   //
@@ -1200,11 +1248,12 @@ void diversity_menu(GtkWidget *parent) {
   gtk_widget_set_halign(ref_label, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), ref_label, 0, 7, 1, 1);
   ref_combo = gtk_combo_box_text_new();
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "Window (wideband)");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "Carrier (AM/SAM)");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "RADE V1 pilot (MVDR)");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), "Digital I/Q (occupancy MVDR)");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(ref_combo), div_auto_ref);
+
+  for (int i = 0; i < REF_ROWS; i++) {
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(ref_combo), ref_rows[i].text);
+  }
+
+  gtk_combo_box_set_active(GTK_COMBO_BOX(ref_combo), div_ref_to_row(div_auto_ref));
   gtk_grid_attach(GTK_GRID(grid), ref_combo, 1, 7, 1, 1);
   g_signal_connect(ref_combo, "changed", G_CALLBACK(ref_changed_cb), NULL);
   follow_b = gtk_check_button_new_with_label("Window follows RX filter");
@@ -1223,6 +1272,11 @@ void diversity_menu(GtkWidget *parent) {
   // rates out of four.
   //
   centre_spin = gtk_spin_button_new_with_range(-400000.0, 400000.0, 10.0);
+  gtk_widget_set_tooltip_text(centre_spin,
+                              "Offset from the signal you are tuned to. In CW that is "
+                              "the zero-beat note, one CW pitch away from the dial "
+                              "frequency, so a centre of 0 sits on what you are "
+                              "listening to in every mode.");
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(centre_spin), div_auto_centre);
   gtk_grid_attach(GTK_GRID(grid), centre_spin, 1, 9, 1, 1);
   g_signal_connect(centre_spin, "value_changed", G_CALLBACK(centre_cb), NULL);

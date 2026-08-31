@@ -47,6 +47,12 @@ const char *getProperty(const char *n) { (void)n; return NULL; }
 void setProperty(const char *n, const char *v) { (void)n; (void)v; }
 double myatof(const char *s) { return atof(s); }
 
+/*
+ * The engine tells the menu when a mode change swapped one block of modal
+ * settings for another. There is no menu here.
+ */
+gboolean diversity_menu_settings_changed(gpointer data) { (void)data; return G_SOURCE_REMOVE; }
+
 static double frand(void) { return 2.0 * ((double)rand() / RAND_MAX) - 1.0; }
 
 static void settle(void) { g_usleep(15000); }
@@ -352,6 +358,108 @@ static int test_weighting(void) {
   return ok;
 }
 
+/* ------------------------------------------------------------------ */
+/* 4. where a hand-placed window's zero is, in CW                     */
+/* ------------------------------------------------------------------ */
+
+/*
+ * rx_set_filter() folds the CW sidetone into filter_low/filter_high, so a
+ * CW passband sits at +pitch in CWU and -pitch in CWL and the shifted
+ * frame's own zero is one pitch away from the only signal there is.
+ * Following the filter never had a problem with that, because it takes
+ * the folded edges; a hand-placed window measured from the shifted zero
+ * and so landed a whole CW pitch - 800 Hz here - off the note the
+ * operator was listening to. That is a silent failure: the window is
+ * somewhere real, the status line says "track", and what it converged on
+ * is noise.
+ *
+ * The window now starts from the zero-beat note, so one centre works in
+ * every mode. The check is the same signal and the same centre in CWL,
+ * CWU and USB: all three must converge on the channel, and under the old
+ * behaviour the two CW cases would have been looking 800 Hz away in
+ * opposite directions.
+ */
+static int cw_zero_case(int mode, const char *name) {
+  const int rate = 48000, nfft = 4096;
+  const double hr = 0.62, hi = -0.48;
+  /*
+   * A carrier 100 Hz above the dial, which is where a CW note the
+   * operator has tuned correctly sits: div_frame_off() takes the sidetone
+   * back out, so it appears at bin frequency +100 whatever the pitch is.
+   * A window centre of -100 is what maps onto it - see div_shift_to_bin().
+   */
+  const double tone = 100.0;
+  rx0.sample_rate = rate;
+  /* a 500 Hz CW filter, folded as rx_set_filter() folds it */
+  rx0.filter_low  = (mode == modeCWL) ? -1050 : 550;
+  rx0.filter_high = (mode == modeCWL) ?  -550 : 1050;
+
+  if (mode == modeUSB) {
+    rx0.filter_low  = 200;
+    rx0.filter_high = 2800;
+  }
+
+  vfo[0].mode = mode;
+  vfo[0].frequency = 7010000;
+  vfo[0].ctun_frequency = 7010000;
+  vfo[0].offset = 0;
+  div_auto_ref = DIV_REF_BAND;
+  div_auto_mode = DIV_AUTO_SUM;
+  div_auto_follow_filter = 0;
+  div_auto_centre = -tone;
+  div_auto_width = 300.0;
+  div_auto_tau = 1.0;
+  div_auto_coherence_min = 0.30;
+  div_auto_weighting = DIV_WEIGHT_FLAT;
+  div_auto_resolution = 12.0;
+  div_cos = 1.0;
+  div_sin = 0.0;
+  div_gain = 0.0;
+  div_phase = 0.0;
+  srand(29);
+  diversity_auto_start();
+  double ph = 0.0;
+
+  for (int b = 0; b < 60; b++) {
+    for (int n = 0; n < nfft; n++) {
+      ph += 2.0 * M_PI * tone / rate;
+      const double s = cos(ph), t = sin(ph);
+      diversity_auto_sample(s + 0.03 * frand(), t + 0.03 * frand(),
+                            hr * s - hi * t + 0.03 * frand(),
+                            hr * t + hi * s + 0.03 * frand());
+    }
+
+    settle();
+  }
+
+  g_usleep(300000);
+  const double g = div_gain, p = div_phase;
+  const int holding = div_auto_holding;
+  diversity_auto_stop();
+  const double want_g = 20.0 * log10(hypot(hr, hi));
+  const double want_p = atan2(-hi, hr) * 180.0 / M_PI;
+  double dp = p - want_p;
+
+  while (dp >  180.0) { dp -= 360.0; }
+
+  while (dp < -180.0) { dp += 360.0; }
+
+  const int ok = !holding && fabs(g - want_g) < 0.5 && fabs(dp) < 5.0;
+  printf("  %-4s centre %+.0f Hz -> %+0.2f dB %+0.1f deg  %s\n",
+         name, div_auto_centre, g, p, ok ? "OK" : "FAIL");
+  return ok;
+}
+
+static int test_cw_zero(void) {
+  printf("  hand-placed window, signal 100 Hz above the dial\n");
+  printf("  target conj(h) = -2.11 dB, +37.75 deg  (CW pitch 800 Hz)\n");
+  int ok = 1;
+  ok &= cw_zero_case(modeCWL, "CWL");
+  ok &= cw_zero_case(modeCWU, "CWU");
+  ok &= cw_zero_case(modeUSB, "USB");
+  return ok;
+}
+
 int main(int argc, char **argv) {
   if (argc > 1) { verbose = 1; }
 
@@ -367,6 +475,8 @@ int main(int argc, char **argv) {
   int b = test_weighting();
   printf("\n");
   int c = test_keyed();
-  printf("\n%s\n", (a && b && c) ? "PASS" : "FAIL");
-  return (a && b && c) ? 0 : 1;
+  printf("\n");
+  int d = test_cw_zero();
+  printf("\n%s\n", (a && b && c && d) ? "PASS" : "FAIL");
+  return (a && b && c && d) ? 0 : 1;
 }

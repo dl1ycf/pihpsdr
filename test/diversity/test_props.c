@@ -32,6 +32,12 @@ struct _vfo vfo[MAX_VFOS];
 void t_print(const char *f, ...) { (void)f; }
 double myatof(const char *s) { return atof(s); }
 
+/*
+ * The engine tells the menu when a mode change swapped one block of modal
+ * settings for another. There is no menu here.
+ */
+gboolean diversity_menu_settings_changed(gpointer data) { (void)data; return G_SOURCE_REMOVE; }
+
 /* a tiny two-key property store the test drives directly */
 static char refval[32];
 static int  have_scheme;

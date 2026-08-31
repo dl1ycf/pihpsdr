@@ -213,6 +213,15 @@ trivially safe.
 to analyse. The auto controls are greyed out; manual gain and phase still
 work and are sent over the wire as before.
 
+> **Superseded.** The first half still holds - the analysis, the
+> correlator and the weight all live on the radio, because the sample pair
+> only exists there. The conclusion drawn from it did not. Greying the
+> auto controls made the whole feature unreachable from a client, and once
+> the manual sliders were also greyed while the loop owned the weight
+> there was nothing left to touch at all. The control surface and the
+> status now travel instead, and every control works from either end. See
+> [`diversity.md`](diversity.md) §6.
+
 ## Tests
 
 `test/diversity` holds a standalone check that drives the real engine with

@@ -36,6 +36,12 @@ const char *getProperty(const char *n){ (void)n; return NULL; }
 void setProperty(const char *n, const char *v){ (void)n; (void)v; }
 double myatof(const char *s){ return atof(s); }
 
+/*
+ * The engine tells the menu when a mode change swapped one block of modal
+ * settings for another. There is no menu here.
+ */
+gboolean diversity_menu_settings_changed(gpointer data) { (void)data; return G_SOURCE_REMOVE; }
+
 int main(void) {
   memset(&rx0, 0, sizeof(rx0));
   rx0.id = 0; rx0.sample_rate = 192000;

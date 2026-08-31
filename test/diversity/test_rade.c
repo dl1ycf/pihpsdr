@@ -60,6 +60,12 @@ const char *getProperty(const char *n) { (void)n; return NULL; }
 void setProperty(const char *n, const char *v) { (void)n; (void)v; }
 double myatof(const char *s) { return atof(s); }
 
+/*
+ * The engine tells the menu when a mode change swapped one block of modal
+ * settings for another. There is no menu here.
+ */
+gboolean diversity_menu_settings_changed(gpointer data) { (void)data; return G_SOURCE_REMOVE; }
+
 static double frand(void) { return 2.0 * ((double)rand() / RAND_MAX) - 1.0; }
 
 #define RATE   48000

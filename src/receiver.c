@@ -1076,6 +1076,15 @@ void rx_mode_changed(RECEIVER *rx) {
   rx_set_mode(rx);
   rx_filter_changed(rx);
   rx_set_offset(rx);         // CW BFO offset
+
+  //
+  // The auto-phasing loop keeps its settings per group of modes, and this
+  // is every route a mode can change by. RX0 only: that is the receiver
+  // diversity combines into.
+  //
+  if (rx->id == 0) {
+    diversity_auto_mode_changed(vfo[rx->id].mode);
+  }
 }
 
 void rx_vfo_changed(RECEIVER *rx) {

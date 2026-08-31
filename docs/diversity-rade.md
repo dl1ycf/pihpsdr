@@ -481,6 +481,42 @@ Measured: weight drift while frozen on a signal that stops fell from
 0.152 to 0.0046, a factor of 33, on a weight of magnitude 0.86. What
 remains is the gate's engagement transient, not ongoing wander.
 
+## Transmit gaps
+
+The lock is given up and re-acquired after every over, deliberately.
+
+Both protocols stop feeding `rx_add_div_iq_samples()` while transmitting -
+P2 only sets `RXACTION_DIV` when not transmitting, duplex included, and P1
+guards the mixer on `!radio_is_transmitting()` - so the analysis stream
+acquires a hole that nothing reports. `q_pending_drop` counts only blocks
+lost to a full queue, and `div_context_changed()` does not watch PTT, so
+the correlator used to track straight through: the first block after the
+over spliced pre-TX and post-TX samples into one transform, and `lock_a`
+kept advancing by `RADE_CORR_NMF` against a ring total that had skipped an
+arbitrary number of samples. That is exactly the failure the gap mechanism
+exists to prevent, arriving by a route that did not use it.
+
+On a RADE QSO it happened after every over: a dead lock, a frozen weight,
+and the full **Hang** - 10 s by default and up to 30 - before the
+correlator started searching again.
+
+`diversity_auto_gap()` routes the transmit gap into that mechanism
+instead. It is called from `rxtx()`, the one funnel every TX/RX transition
+goes through, so MOX, VOX and Tune are all covered. It discards the partly
+filled block and bumps `q_pending_drop`, so the first complete block after
+the over carries the flag and the worker calls `rade_corr_reset()` before
+processing it.
+
+The weight in force is kept. `div_cos`/`div_sin` are written only by
+`div_apply_weight()`, and every path with no answer to give sets
+`div_auto_holding` and returns without calling it, so the gain and phase
+from before the over stay applied until a new lock produces a better fit.
+
+The cost is that the engine re-enters searching after every over, which on
+RADE V1 is the 4.7-7.8 % of a core the CPU section of
+[`diversity.md`](diversity.md) documents. That is the trade: the
+alternative is the dead lock it replaces.
+
 ## Hang
 
 `RADE V1 pilot` is the only reference that holds a *lock* - a timing, a
@@ -653,9 +689,9 @@ without CTUN acquire in **2.2 s** (`test/diversity/test_rade.c`), against
 **Frequency is tracked once locked.** Acquisition leaves it quantised to
 the 5 Hz search grid, and a station drifts. The pilot correlation turns by
 `2*pi*df*T` from one modem frame to the next, `T` being 120 ms, so its
-phase advance measures the residual, unambiguously over +/-4.17 Hz about
-the tracked offset - which covers both the half-step quantisation and any
-drift a station on frequency will show.
+phase advance measures the residual - but only unambiguously over
++/-4.17 Hz about the tracked offset, which is half the modem frame rate.
+That is not enough on its own; see "stable lock points" below.
 
 The advance `lock_f` already accounts for has to be subtracted first, and
 for a long time it was not. The reference is rebuilt from `n = 0` every
@@ -670,6 +706,57 @@ removed it settles in a second or two and stays there (+22.6 Hz and
 seconds, since a few Hz per minute is 0.01 Hz in that time. It is skipped
 on any frame where the timing was nudged, because a one-sample shift
 rotates the correlation by more than any frequency error would.
+
+**The frame-rate loop has stable lock points 8.333 Hz apart, and a second
+discriminator resolves them.** A residual of exactly one frame rate turns
+the frame-to-frame correlation through `2*pi` and reads as *zero error*,
+so every offset `lock_f + n/T` is an equilibrium the loop will sit in
+happily. Acquisition cannot choose between them either: it correlates one
+20 ms pilot symbol and accumulates magnitude over passes, so its frequency
+resolution is about 50 Hz however long it integrates - at the moment of
+lock its statistic is still at 97 % of peak 10 Hz away. Five of the eight
+RADE captures in [`diversity-measurements.md`](diversity-measurements.md)
+were tracking a whole step off the station. Forcing `lock_f` onto the best
+equilibrium showed three of them paying 1.5 to 4.2 dB of pilot SNR for it.
+That is Finding 15 there.
+
+Correlating at `lock_f` and `lock_f +/- 8.333` and keeping the strongest
+does not work: 8.33 Hz is inside the pilot's main lobe, so a wrong
+neighbour is only 0.4 dB down and the sign of the difference is not
+consistent. What works is a *shorter* lag. `rade_correlate_split()`
+returns the pilot correlation and the two half-length correlations it is
+made of, at no extra cost, and `arg(c2 * conj(c1))` measures the residual
+over `RADE_ALIAS_LAG` = M/2 = 80 samples - unambiguous over +/-Fs/M =
++/-50 Hz, the whole acquisition range.
+
+It is a much noisier discriminator and it tracks nothing. It is
+accumulated *coherently* - the residual is a fixed rotation between the
+two halves while the noise is not - for about four seconds
+(`RADE_ALIAS_ALPHA` 0.03, `RADE_ALIAS_MIN` 32 frames), and asked only
+*which* equilibrium the frame-rate loop should be sitting in, an answer
+that need only be good to half a step. `lock_f` is moved by whole steps
+when the residual exceeds half a step plus `RADE_ALIAS_MARGIN` (1.5 Hz);
+measured against the best equilibrium found by forcing `lock_f`, the
+half-pilot estimate lands within 1.3 Hz on every capture tried, which is
+why the margin sits so far outside it. The frame-rate loop's previous
+correlation is discarded on a move, since it was taken at the old offset.
+
+It is skipped on a nudged frame, for the reason the frame-rate loop skips
+one - a timing move turns the two halves by different amounts - and it is
+evaluated after the freeze test, so a hold, where there is no pilot to
+measure, cannot walk the accumulator off the answer it had when the signal
+was last there.
+
+Measured on cold replay, the resolver recovers 0.7 to 1.4 dB of that:
+mean pilot SNR 6.43 -> 7.85 dB on capture 110923, 6.80 -> 7.47 on 111734,
+2.50 -> 3.18 on 213155, three others unchanged. It does not reach the
+forced-`lock_f` figures above, because it has to find the equilibrium from
+a cold start and the accumulators then have to follow it across. Decode
+moves +0.2 and +0.3 dB on two of those and nowhere else
+- the diversity weight is nearly immune to a frequency error common to
+both arms, so this is a fix for the health of the lock rather than for the
+audio. Lock uptime, time to first lock and acquisition count are unchanged
+everywhere, and the no-signal captures still produce zero acquisitions.
 
 **The frequency search covers +/-50 Hz**, matching RADE's own
 acquisition. An earlier +/-25 Hz was another way to find nothing if the

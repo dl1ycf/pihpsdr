@@ -8,7 +8,10 @@
 > recorded in [`diversity-auto-phasing.md`](diversity-auto-phasing.md).
 >
 > The reference description is §5 of [`diversity.md`](diversity.md), and
-> how to use it is §3 of [`diversity-guide.md`](diversity-guide.md).
+> how to use it is §3 of [`diversity-guide.md`](diversity-guide.md). The
+> menu lists it as **FSK/Digital (occupancy MVDR)**; this document calls
+> it Digital I/Q throughout, which is the `DIV_REF_DIGITAL_IQ` the code
+> and the props file use.
 
 ## What it is for
 
@@ -128,7 +131,7 @@ rather than on `vfo[].mode`.
 both are correlated between the arms, so occupancy has nothing to tell
 them apart by. That is what the RADE V1 pilot is for. Here the operator
 separates them by placing the region, and **Null** cancels what the
-region is sitting on — so unlike the RADE references, this one does not
+region is sitting on — so unlike the RADE V1 reference, this one does not
 force Sum on selection. Both objectives mean something.
 
 ## Measured
