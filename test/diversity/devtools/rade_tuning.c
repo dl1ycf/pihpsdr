@@ -28,7 +28,10 @@
     .floor_df    = 300.0,            \
     .floor_guard = 12,               \
     .freq_alpha  = 0.05,             \
-    .freq_limit  = 0.5 * 100.0 + 10.0   /* 0.5*RADE_ACQ_FRANGE + 10 */ \
+    .freq_limit  = 0.5 * 100.0 + 10.0,  /* 0.5*RADE_ACQ_FRANGE + 10 */ \
+    .alias_alpha = 0.03,             \
+    .alias_min   = 32,               \
+    .alias_margin = 1.5              \
   }
 
 static const rade_tuning_t rade_tuning_shipped = RADE_TUNING_INIT;
@@ -60,6 +63,9 @@ static const struct {
   { "floor_guard", T_INT, offsetof(rade_tuning_t, floor_guard)  },
   { "freq_alpha",  T_DBL, offsetof(rade_tuning_t, freq_alpha)   },
   { "freq_limit",  T_DBL, offsetof(rade_tuning_t, freq_limit)   },
+  { "alias_alpha", T_DBL, offsetof(rade_tuning_t, alias_alpha)  },
+  { "alias_min",   T_INT, offsetof(rade_tuning_t, alias_min)    },
+  { "alias_margin", T_DBL, offsetof(rade_tuning_t, alias_margin) },
   { NULL, 0, 0 }
 };
 

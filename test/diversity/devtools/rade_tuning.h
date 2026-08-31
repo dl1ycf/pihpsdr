@@ -54,6 +54,14 @@ typedef struct {
   //
   double freq_alpha;
   double freq_limit;
+  //
+  // Alias resolution: how long the half-pilot discriminator is averaged
+  // before it is believed, and how far outside half a frame rate it has
+  // to read before the loop moves a whole step.
+  //
+  double alias_alpha;
+  int    alias_min;
+  double alias_margin;
 } rade_tuning_t;
 
 extern rade_tuning_t rade_tuning;
@@ -90,6 +98,9 @@ extern double      rade_tuning_get(const char *name);
 #define RADE_FLOOR_GUARD  (rade_tuning.floor_guard)
 #define RADE_FREQ_ALPHA   (rade_tuning.freq_alpha)
 #define RADE_FREQ_LIMIT   (rade_tuning.freq_limit)
+#define RADE_ALIAS_ALPHA  (rade_tuning.alias_alpha)
+#define RADE_ALIAS_MIN    (rade_tuning.alias_min)
+#define RADE_ALIAS_MARGIN (rade_tuning.alias_margin)
 #define rade_acq_at       (rade_tuning.acq_at)
 #define rade_acq_sigma    (rade_tuning.acq_sigma)
 

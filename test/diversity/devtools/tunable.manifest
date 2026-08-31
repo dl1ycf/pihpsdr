@@ -18,6 +18,10 @@
 #   RADE_FLOOR_PROBES
 #       sizes the df[] array beside it.
 #
+#   RADE_ALIAS_LAG, RADE_ALIAS_RATE
+#       geometry, not policy: the lag is half a pilot and the rate is the
+#       modem frame rate. Neither is a knob.
+#
 #   RADE_LOCK_SIGMA, RADE_ACQ_PASSES
 #       only ever reached through rade_acq_sigma[] and rade_acq_at[],
 #       which are here.
@@ -32,3 +36,6 @@ define RADE_FLOOR_DF
 define RADE_FLOOR_GUARD
 define RADE_FREQ_ALPHA
 define RADE_FREQ_LIMIT
+define RADE_ALIAS_ALPHA
+define RADE_ALIAS_MIN
+define RADE_ALIAS_MARGIN
