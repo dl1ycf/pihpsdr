@@ -1531,16 +1531,34 @@ static gpointer client_tcp_thread(gpointer arg) {
       receiver[id]->agc = agc_cmd.agc;
     }
     break;
-    case CMD_DIV_AUTO: {
+    case CMD_DIV_SETTINGS: {
       //
-      // Sent by the server whenever its automatic phasing loop starts,
-      // stops, changes objective or is put on Hold. b1 is the objective,
-      // b2 is whether the loop owns the weight - while it does, a gain or
-      // phase sent from here is discarded on the far side, so the sliders
-      // are greyed rather than left showing a value the radio is not using.
+      // The radio owns the diversity settings. This arrives on connect,
+      // and again whenever the radio's own panel changes one, so the menu
+      // here shows what the radio is really set to.
       //
-      g_idle_add(diversity_client_set_auto,
-                 GINT_TO_POINTER((header.b1 << 8) | (header.b2 & 0xFF)));
+      DIV_SETTINGS_COMMAND *command = g_new(DIV_SETTINGS_COMMAND, 1);
+      command->header = header;
+      if (recv_tcp(cl_sock_tcp, (char *)command + sizeof(HEADER),
+                   sizeof(DIV_SETTINGS_COMMAND) - sizeof(HEADER)) > 0) {
+        g_idle_add(diversity_client_set_settings, command);
+      } else {
+        g_free(command);
+      }
+    }
+    break;
+    case INFO_DIVERSITY: {
+      //
+      // What the loop is measuring, on the server's periodic timer.
+      //
+      DIV_STATUS_DATA *info = g_new(DIV_STATUS_DATA, 1);
+      info->header = header;
+      if (recv_tcp(cl_sock_tcp, (char *)info + sizeof(HEADER),
+                   sizeof(DIV_STATUS_DATA) - sizeof(HEADER)) > 0) {
+        g_idle_add(diversity_client_set_status, info);
+      } else {
+        g_free(info);
+      }
     }
     break;
     case CMD_MOX: {

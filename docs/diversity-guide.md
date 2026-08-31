@@ -469,15 +469,26 @@ does not notice an antenna or attenuator change, which also shifts the
 relationship between the arms; the estimate re-converges over a few time
 constants instead. **Restart averaging** if you do not want to wait.
 
-**The automatic loop runs on the radio side only.** On a remote client the
-samples are combined on the server, so the loop's own controls are inert.
-Manual gain and phase are sent over the wire, but the radio takes them
-only when its loop is not driving the weight — Auto off, or under Hold. If
-Auto is running on the radio, the client's gain and phase sliders grey out
-the same way the radio's own do, and the status line reads `Auto radio`
-with the objective in use. So the sliders on the client always show what
-the radio is really applying; they never accept a change that would be
-quietly thrown away.
+**The measuring happens on the radio; the controls work from anywhere.**
+The two antenna signals only exist on the radio, so that is where the
+analysis and the combining are done. The Diversity menu itself works the
+same from a remote client as it does at the radio: every control on it —
+the objective, the reference, the window, resolution, weighting,
+averaging, hang, min coherence, Hold, Invert, Restart, and the manual gain
+and phase — does what it says, and the status line, the antenna line and
+the green window on the panadapter all show what the radio is really
+doing, updated several times a second.
+
+The radio owns the settings. Connect a client and it picks up whatever the
+radio is set to rather than pushing its own saved values at it, so the
+radio behaves the same however you are driving it, and a second client
+sees what the first one did. Change something on the radio's own panel
+while a client is watching and the client follows.
+
+Manual gain and phase grey out while the loop is driving the weight, on
+the client exactly as they do at the radio — use **Hold** to take the
+weight over. The one thing that does not travel is the developer capture
+button, which writes a file where the analysis is running.
 
 Client and server must be built from the same tree — they check a protocol
 version on connect and refuse a mismatch.

@@ -409,14 +409,6 @@ double div_auto_binhz          = 0.0;
 
 double div_auto_coherence      = 0.0;
 int    div_auto_holding        = 1;
-//
-// Remote client only: what the server last said about its own loop. The
-// client never runs an analysis thread, so div_auto_running is always 0
-// here and cannot answer the question. Kept separate rather than
-// borrowing div_auto_running, which several things on this side read.
-//
-int    div_auto_remote_owns    = 0;
-int    div_auto_remote_mode    = DIV_AUTO_OFF;
 double div_auto_carrier        = 0.0;
 int    div_auto_carrier_valid  = 0;
 
@@ -617,6 +609,8 @@ static double div_carrier_hz = 0.0;
 // only thing being applied then, and is exactly what is wanted.
 //
 void diversity_auto_invert(void) {
+  if (radio_is_remote) { return; }
+
   div_cos = -div_cos;
   div_sin = -div_sin;
   div_phase += 180.0;
@@ -651,7 +645,6 @@ void diversity_auto_set_hold(int on) {
   // Hold hands the weight back to the operator, so it changes whether the
   // loop owns it - a remote client's sliders go live and dead with this.
   //
-  radio_div_auto_notify_client();
 }
 
 int div_rade_side_get(void) {
@@ -691,8 +684,10 @@ static void div_reset_stats(void) {
 }
 
 void diversity_auto_reset(void) {
+  if (radio_is_remote) { return; }
+
   //
-  // Called from the GTK thread. Zeroing the transform accumulators from
+  // Called from a UI thread or from rxtx(). Zeroing the transform accumulators from
   // here is harmless - the worker only ever adds to them, so the worst
   // case is one block's contribution lost.
   //
@@ -2259,7 +2254,13 @@ void diversity_auto_sample(double i0, double q0, double i1, double q1) {
 // q_pending_drop is taken under the mutex, as it is on the sample path.
 //
 void diversity_auto_gap(void) {
-  if (!div_auto_running) { return; }
+  //
+  // div_auto_running is now also set on a remote client, from the status
+  // the radio sends, so that its menu reads the same as the radio's. The
+  // engine is not running here though, and there is no sample path to
+  // have a gap in.
+  //
+  if (!div_auto_running || radio_is_remote) { return; }
 
   fillptr = 0;
   g_mutex_lock(&mbox_mutex);
@@ -2362,7 +2363,6 @@ void diversity_auto_start(void) {
   // Set last: the sample path tests this without any lock.
   //
   div_auto_running = 1;
-  radio_div_auto_notify_client();
 }
 
 #ifdef DIVERSITY_CAPTURE
@@ -2381,6 +2381,14 @@ int diversity_auto_capture_start(void) {
 #endif
 
 void diversity_auto_stop(void) {
+  //
+  // div_auto_running is kept current on a client too, from the radio's
+  // status, so it can no longer stand alone as "there is an engine here".
+  // There never is one on a client - diversity_auto_start() refuses - so
+  // there is nothing to tear down and a worker of NULL to not join.
+  //
+  if (radio_is_remote) { return; }
+
   if (!div_auto_running) { return; }
 
 #ifdef DIVERSITY_CAPTURE
@@ -2420,7 +2428,6 @@ void diversity_auto_stop(void) {
   //
   div_auto_coherence = 0.0;
   div_auto_holding = 1;
-  radio_div_auto_notify_client();
 }
 
 void diversity_auto_restart(void) {
@@ -2447,7 +2454,181 @@ void diversity_auto_restart(void) {
 //
 #define DIV_REF_SCHEME 2
 
+void diversity_auto_get_settings(DIV_SETTINGS *s) {
+  s->mode           = div_auto_mode;
+  s->ref            = div_auto_ref;
+  s->follow_filter  = div_auto_follow_filter;
+  s->weighting      = div_auto_weighting;
+  s->hold           = div_auto_hold;
+  s->centre         = div_auto_centre;
+  s->width          = div_auto_width;
+  s->tau            = div_auto_tau;
+  s->hang           = div_auto_hang;
+  s->coherence_min  = div_auto_coherence_min;
+  s->resolution     = div_auto_resolution;
+  s->band_centre    = div_band_centre;
+  s->band_width     = div_band_width;
+  s->carrier_centre = div_carrier_centre;
+  s->carrier_width  = div_carrier_width;
+  s->digital_centre = div_digital_centre;
+  s->digital_width  = div_digital_width;
+}
+
+//
+// Adopt a settings block, and do whatever the change of state calls for.
+//
+// This is the one description of what moving a control means. The menu
+// callbacks used to hold it, which was fine while the only operator was
+// sitting at the radio; with the UI able to run on a client, the server
+// has to draw the same conclusions from a settings block that the menu
+// used to draw from a widget, and two copies of these rules would drift.
+//
+// The conclusions are drawn by comparing against what is in force rather
+// than being sent, so a client need only ship its control state and never
+// has to reason about restarts.
+//
+void diversity_auto_apply_settings(const DIV_SETTINGS *s, int action) {
+  const int    old_mode   = div_auto_mode;
+  const int    old_ref    = div_auto_ref;
+  const int    old_follow = div_auto_follow_filter;
+  const int    old_weight = div_auto_weighting;
+  const double old_centre = div_auto_centre;
+  const double old_width  = div_auto_width;
+  const double old_res    = div_auto_resolution;
+  div_auto_mode          = s->mode;
+  div_auto_ref           = s->ref;
+  div_auto_follow_filter = s->follow_filter;
+  div_auto_weighting     = s->weighting;
+  div_auto_centre        = s->centre;
+  div_auto_width         = s->width;
+  div_auto_tau           = s->tau;
+  div_auto_hang          = s->hang;
+  div_auto_coherence_min = s->coherence_min;
+  div_auto_resolution    = s->resolution;
+  div_band_centre        = s->band_centre;
+  div_band_width         = s->band_width;
+  div_carrier_centre     = s->carrier_centre;
+  div_carrier_width      = s->carrier_width;
+  div_digital_centre     = s->digital_centre;
+  div_digital_width      = s->digital_width;
+
+  //
+  // A remote client adopts the values and stops there: the analysis, and
+  // every consequence of changing it, belongs to the radio. Its own menu
+  // reads these globals, so adopting them is the whole job here.
+  //
+  // Hold is taken directly rather than through diversity_auto_set_hold(),
+  // whose job is the weight handover on release - there is no weight to
+  // hand over here, and the button still has to show what the radio has.
+  //
+  if (radio_is_remote) {
+    div_auto_hold = s->hold;
+    return;
+  }
+
+  //
+  // Null and Sum are the same measurement 180 degrees apart, so crossing
+  // between them turns the weight in force over at once rather than
+  // waiting for a loop that may not be applying anything. This is also
+  // the path the Invert button takes - it moves the objective, and the
+  // objective is what carries the meaning.
+  //
+  if ((old_mode == DIV_AUTO_NULL && s->mode == DIV_AUTO_SUM) ||
+      (old_mode == DIV_AUTO_SUM  && s->mode == DIV_AUTO_NULL)) {
+    diversity_auto_invert();
+  }
+
+  //
+  // The thread has to come up or go down when the objective crosses Off;
+  // the transform has to be rebuilt when its length changes; and the
+  // pilot correlator's front end has to be built or torn down when a RADE
+  // reference is selected or left.
+  //
+  if ((old_mode == DIV_AUTO_OFF) != (s->mode == DIV_AUTO_OFF) ||
+      old_res != s->resolution ||
+      (old_ref != s->ref && (old_ref == DIV_REF_RADE_V1 || s->ref == DIV_REF_RADE_V1))) {
+    diversity_auto_restart();
+  }
+
+  //
+  // Anything that changes which bins are accumulated, or how, invalidates
+  // what has been accumulated so far.
+  //
+  if (action == DIV_ACTION_RESET || old_ref != s->ref || old_follow != s->follow_filter ||
+      old_weight != s->weighting || old_centre != s->centre || old_width != s->width) {
+    diversity_auto_reset();
+  }
+
+  diversity_auto_set_hold(s->hold);
+}
+
+void diversity_auto_get_status(DIV_STATUS *st) {
+  st->enabled         = diversity_enabled;
+  st->running         = div_auto_running;
+  st->holding         = div_auto_holding;
+  st->clamped         = div_auto_clamped;
+  st->arm_valid       = div_auto_arm_valid;
+  st->arm_pick        = div_auto_arm_pick;
+  st->carrier_valid   = div_auto_carrier_valid;
+  st->occ_valid       = div_auto_occ_valid;
+  st->rade_locked     = rade_corr_locked;
+  st->rade_confirming = rade_corr_confirming;
+  st->rade_side       = div_rade_side;
+  st->binhz           = div_auto_binhz;
+  st->coherence       = div_auto_coherence;
+  st->carrier         = div_auto_carrier;
+  st->arm_db          = div_auto_arm_db;
+  st->occ_lo          = div_auto_occ_lo;
+  st->occ_hi          = div_auto_occ_hi;
+  st->gain            = div_gain;
+  st->phase           = div_phase;
+  st->track_gain      = div_track_gain;
+  st->track_phase     = div_track_phase;
+  st->rade_quality    = rade_corr_quality;
+}
+
+//
+// Remote client: write the radio's status into the globals every consumer
+// already reads, so the status line, the antenna line and the panadapter
+// overlay need no remote-aware code of their own.
+//
+// div_gain/div_phase are the applied weight and are written here too: on
+// a client they are what the sliders show, and while the loop owns them
+// the radio is the only thing that knows what they are.
+//
+void diversity_auto_apply_status(const DIV_STATUS *st) {
+  diversity_enabled      = st->enabled;
+  div_auto_running       = st->running;
+  div_auto_holding       = st->holding;
+  div_auto_clamped       = st->clamped;
+  div_auto_arm_valid     = st->arm_valid;
+  div_auto_arm_pick      = st->arm_pick;
+  div_auto_carrier_valid = st->carrier_valid;
+  div_auto_occ_valid     = st->occ_valid;
+  rade_corr_locked       = st->rade_locked;
+  rade_corr_confirming   = st->rade_confirming;
+  div_rade_side          = st->rade_side;
+  div_auto_binhz         = st->binhz;
+  div_auto_coherence     = st->coherence;
+  div_auto_carrier       = st->carrier;
+  div_auto_arm_db        = st->arm_db;
+  div_auto_occ_lo        = st->occ_lo;
+  div_auto_occ_hi        = st->occ_hi;
+  div_gain               = st->gain;
+  div_phase              = st->phase;
+  div_track_gain         = st->track_gain;
+  div_track_phase        = st->track_phase;
+  rade_corr_quality      = st->rade_quality;
+}
+
 void diversity_auto_save_state(void) {
+  //
+  // The radio owns these. A client adopts what it finds on connect, so
+  // saving them here would leave it carrying the last radio's settings
+  // into its own next session as a standalone radio.
+  //
+  if (radio_is_remote) { return; }
+
   SetPropI0("diversity_auto_mode",           div_auto_mode);
   SetPropI0("diversity_auto_ref",            div_auto_ref);
   SetPropI0("diversity_auto_ref_scheme",     DIV_REF_SCHEME);

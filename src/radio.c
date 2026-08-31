@@ -2278,19 +2278,6 @@ static int radio_div_auto_owns_weight(void) {
   return div_auto_running && div_auto_mode != DIV_AUTO_OFF && !div_auto_hold;
 }
 
-//
-// Tell a connected client whether the loop owns the weight, so it can grey
-// its gain and phase sliders the way the local menu does. Called from
-// wherever any of the three terms above changes, and once when a client
-// connects. Cheap and rare - three state changes an operator can make,
-// not anything the analysis thread does.
-//
-void radio_div_auto_notify_client(void) {
-  if (remoteclient.running) {
-    send_div_auto(remoteclient.sock_tcp, div_auto_mode, radio_div_auto_owns_weight());
-  }
-}
-
 void radio_set_diversity_gain(double val) {
   if (radio_div_auto_owns_weight()) { return; }
 

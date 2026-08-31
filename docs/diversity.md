@@ -675,30 +675,81 @@ modes go on the end of the enum: the value is what is written to the
 file, so inserting one in the middle silently changes what an existing
 file means.
 
-The automatic loop runs on the radio side only. On a remote client the
-combining happens on the server, so the loop's own controls are greyed
-out. Manual gain and phase are sent over the wire, but the server accepts
-them only while its loop does **not** own the weight — that is, with Auto
-off, or under Hold. `radio_div_auto_owns_weight()` sits in front of every
-manual setter on the radio side, so an adjustment arriving from a client
-while the loop is running would otherwise be discarded silently, leaving
-the client's sliders showing a value the radio is not using.
+**The DSP runs on the radio; the UI runs wherever the operator is.** The
+sample pair only exists on the radio side, so the analysis thread, the
+correlator and the weight all live there and nothing about that changes
+for a remote operator. What travels is the control surface and what it
+displays, so a client drives every part of the feature — objective,
+reference, window, resolution, weighting, averaging, hang, min coherence,
+Hold, Invert, Restart and the manual weight — exactly as the radio's own
+panel does.
 
-The server therefore tells the client. `CMD_DIV_AUTO` carries the
-objective and one boolean — does the loop own the weight — and is sent
-when the loop starts or stops, when the objective changes, when Hold is
-toggled, and once when a client connects. The client greys its gain and
-phase sliders on it, exactly as the radio-side menu does, and its status
-line reads `Auto radio` with the objective the server is running rather
-than the `Auto off` it would otherwise report. The client stores that in
-`div_auto_remote_owns` / `div_auto_remote_mode` rather than in
-`div_auto_mode`, because a client is a radio in its own right when it is
-not connected and must not come back from a session with the server's
-objective saved into its own props.
+Three messages carry it:
 
-Adding the command renumbered the ones after it in the enum, so
-`CLIENT_SERVER_VERSION` went to `0x01300007`. Client and server check that
-on connect and refuse a mismatch, which is what makes renumbering safe.
+| Message | Direction | Contents |
+|---|---|---|
+| `CMD_DIVERSITY` | client → server | Enable, manual gain and phase (unchanged, predates this) |
+| `CMD_DIV_SETTINGS` | both | The whole auto-loop control block, plus an action byte |
+| `INFO_DIVERSITY` | server → client | What the loop is measuring, on the server's 150 ms timer |
+
+`CMD_DIV_SETTINGS` sends the **whole** control block whenever any one
+control moves, rather than one message per control. It is small, it is
+idempotent, and it lets the radio work out what a change means by
+comparing the block against what it has in force. That is why
+`diversity_auto_apply_settings()` exists: the rules for what moving a
+control implies — restart when the transform length changes or the
+objective crosses Off, rebuild when a RADE reference is selected or left,
+reset when the accumulated bins stop being the right bins, turn the weight
+over on Null ↔ Sum — used to live in the menu callbacks, which was fine
+while the only operator sat at the radio. With the UI able to run
+elsewhere the server has to draw the same conclusions from a settings
+block that the menu drew from a widget, and two copies of those rules
+would drift. There is now one copy, and a client never has to reason about
+restarts at all. **Restart averaging** is the single control that changes
+no setting, so it cannot be seen as a difference between two blocks and
+travels as the action byte instead.
+
+The settings block also carries the three per-reference window pairs. They
+are modal state the operator built up rather than derived values, so a
+client that sent only the live pair would silently flatten the other two
+on the radio.
+
+**The radio owns the settings.** A connecting client receives
+`CMD_DIV_SETTINGS` and adopts what it finds rather than imposing what it
+saved, so the radio behaves the same however it is being driven and a
+second client sees what the first one set. `diversity_auto_save_state()`
+returns early on a client for the same reason — a client is a radio in its
+own right when it is not connected, and must not carry the last radio's
+settings into its own next session. The block travels the other way too,
+so a control moved on the radio's own panel reaches a watching client, and
+`diversity_menu_refresh()` repaints whichever dialog did not originate the
+change.
+
+`INFO_DIVERSITY` is written straight into the `div_auto_*` globals by
+`diversity_auto_apply_status()`. Every consumer — the status line, the
+antenna line, the panadapter overlay — already reads those, so none of
+them needed remote-aware code, and `update_manual_sensitivity()` in
+particular needs no remote special case: `div_auto_running`,
+`div_auto_mode` and `div_auto_hold` are all current on both sides, so the
+same three terms grey the manual sliders in the same places. That is the
+check that the split is in the right place.
+
+Because `div_auto_running` is now true on a client as well,
+`diversity_auto_start()`, `_stop()`, `_reset()`, `_invert()` and
+`_gap()` all return early when `radio_is_remote`. The flag no longer means
+"there is an engine here" — there never is one on a client — and without
+those guards a client would try to tear down an engine it never built.
+`radio_is_remote` is only ever set true and never cleared, so the guard is
+a property of the process rather than something that can go stale.
+
+The one control that does not travel is the `DIVERSITY_CAPTURE`
+development button: it writes a file from inside the analysis thread, so
+it belongs where that thread is.
+
+`CLIENT_SERVER_VERSION` is `0x01300008`. Client and server check it on
+connect and refuse a mismatch, so both ends must be built from the same
+tree.
+
 
 ---
 
@@ -791,6 +842,8 @@ quantisation and follows the few Hz per minute a station drifts.
 | `src/receiver.c` | The combiner, and the tap into it |
 | `src/radio.c` | Start/stop, props, shutdown |
 | `src/new_protocol.c` | P2 DDC pairing and ADC configuration |
+| `src/client_server.c`, `.h` | `CMD_DIV_SETTINGS` and `INFO_DIVERSITY` on the wire |
+| `src/client_thread.c`, `src/server_thread.c` | Where those are sent and received |
 | `test/diversity/` | Mode coverage, window placement, weighting and keying, RADE acquisition, Digital I/Q occupancy and MVDR, props migration, CPU benchmark |
 
 ---

@@ -41,11 +41,6 @@ int cw_keyer_sidetone_frequency = 800;
 double div_cos = 1.0, div_sin = 0.0, div_gain = 0.0, div_phase = 0.0;
 struct _vfo vfo[MAX_VFOS];
 static int verbose = 0;
-//
-// The engine tells a connected client when the loop takes or releases the
-// weight; there is no client here.
-//
-void radio_div_auto_notify_client(void) { }
 void t_print(const char *fmt, ...) {
   if (!verbose) { return; }
 

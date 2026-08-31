@@ -36,6 +36,7 @@
 #include "vfo.h"
 
 static GtkWidget *dialog = NULL;
+static GtkWidget *diversity_b = NULL;
 static GtkWidget *gain_coarse_scale = NULL;
 static GtkWidget *gain_fine_scale = NULL;
 static GtkWidget *phase_fine_scale = NULL;
@@ -74,6 +75,39 @@ static double gain_coarse, gain_fine;
 static double phase_coarse, phase_fine;
 
 static guint status_timer = 0;
+
+//
+// Set while a settings block from the radio is being pushed into the
+// widgets, so the "changed" handlers do not bounce it straight back.
+//
+static int updating_from_server = 0;
+
+//
+// Ship the whole control state whenever any one control moves.
+//
+// One message rather than one per control: the block is small, it is
+// idempotent, and it lets the radio work out what the change means by
+// comparing against what it has - so the client never has to reason about
+// restarts, resets or which objectives are 180 degrees apart. The action
+// byte carries the one control that changes no setting.
+//
+static void div_send_settings(int action) {
+  if (updating_from_server) { return; }
+
+  DIV_SETTINGS set;
+  diversity_auto_get_settings(&set);
+
+  if (radio_is_remote) {
+    send_div_settings(cl_sock_tcp, &set, action);
+  } else if (remoteclient.running) {
+    //
+    // The other direction: someone moved a control on the radio's own
+    // panel and a client is watching. It adopts rather than acts, so the
+    // action byte is not passed on - the radio has already done it.
+    //
+    send_div_settings(remoteclient.sock_tcp, &set, DIV_ACTION_NONE);
+  }
+}
 
 //
 // Set while the status timer pushes automatically determined values into
@@ -140,6 +174,7 @@ static void cleanup(void) {
   if (dialog != NULL) {
     GtkWidget *tmp = dialog;
     dialog = NULL;
+    diversity_b = NULL;
     gain_coarse_scale = NULL;
     gain_fine_scale = NULL;
     phase_coarse_scale = NULL;
@@ -285,13 +320,10 @@ static void update_manual_sensitivity(void) {
                     || div_auto_hold;
 
   //
-  // On a remote client the loop runs on the radio, so div_auto_running is
-  // 0 here and the test above would call the sliders live when they are
-  // not: radio_set_diversity_gain()/_phase() discard a manual set while
-  // the server's loop owns the weight. Use what the server told us, so
-  // the client greys exactly what the radio-side menu would.
+  // No remote special case. On a client div_auto_running, div_auto_mode
+  // and div_auto_hold are all kept current from the radio, so the same
+  // three terms give the same answer on both sides.
   //
-  if (radio_is_remote) { manual = !div_auto_remote_owns; }
 
 
   if (gain_coarse_scale)  { gtk_widget_set_sensitive(gain_coarse_scale, manual); }
@@ -564,23 +596,6 @@ static int status_update_cb(gpointer data) {
 
   div_arm_status_set();
 
-  if (radio_is_remote) {
-    //
-    // Nothing is measured on this side. Report what the server last said
-    // its loop was doing, so "my sliders are dead" has a visible reason.
-    //
-    static const char *const objective[] = { "off", "Null", "Sum", "Best" };
-    const int m = (div_auto_remote_mode >= 0 && div_auto_remote_mode <= DIV_AUTO_BEST)
-                  ? div_auto_remote_mode : 0;
-    //
-    // "On radio" and not "Auto radio": DIV_STATUS_TAG is nine characters
-    // and the field truncates rather than widening the dialog.
-    //
-    div_status_set("On radio", div_auto_remote_owns ? objective[m] : "manual",
-                   "", div_gain, div_phase);
-    return G_SOURCE_CONTINUE;
-  }
-
   if (!div_auto_running) {
     div_status_set("Auto off", "", "", div_gain, div_phase);
     return G_SOURCE_CONTINUE;
@@ -744,21 +759,16 @@ static void auto_changed_cb(GtkWidget *widget, gpointer data) {
     // This is the same path the Invert button takes, deliberately, so the
     // button and the combo cannot behave differently.
     //
+    // On a client both calls are refused and the radio does this instead,
+    // drawing the same conclusion from the settings block below. The
+    // inverted weight arrives with the next status push.
+    //
     diversity_auto_invert();
-
-    if (radio_is_remote) {
-      send_diversity(cl_sock_tcp, diversity_enabled, div_gain, div_phase);
-    }
-
     update_sliders_from_weight();
   }
 
+  div_send_settings(DIV_ACTION_NONE);
   update_manual_sensitivity();
-  //
-  // Crossing into or out of Off changes whether the loop owns the weight,
-  // and the objective itself is worth reporting either way.
-  //
-  radio_div_auto_notify_client();
 }
 
 //
@@ -791,6 +801,7 @@ static void invert_cb(GtkWidget *widget, gpointer data) {
 // cppcheck-suppress constParameterCallback
 static void hold_cb(GtkWidget *widget, gpointer data) {
   diversity_auto_set_hold(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)));
+  div_send_settings(DIV_ACTION_NONE);
   update_manual_sensitivity();
 }
 
@@ -801,18 +812,133 @@ static void hold_cb(GtkWidget *widget, gpointer data) {
 // wideband work, and going back restores it.
 //
 //
-// Remote client: CMD_DIV_AUTO has arrived. Runs on the GTK thread, put
-// there by g_idle_add() from the client read loop, because it moves
-// widgets. The menu need not be open - the flags are read when it is
-// built, so a dialog opened later comes up correct.
+// Push the settings globals into the widgets, without the handlers
+// bouncing them straight back to the radio.
 //
-gboolean diversity_client_set_auto(gpointer data) {
-  const int packed = GPOINTER_TO_INT(data);
-  div_auto_remote_mode = (packed >> 8) & 0xFF;
-  div_auto_remote_owns = packed & 0xFF;
+static void div_populate_from_settings(void) {
+  if (dialog == NULL) { return; }
 
-  if (dialog != NULL) { update_manual_sensitivity(); }
+  updating_from_server = 1;
 
+  if (auto_combo)   { gtk_combo_box_set_active(GTK_COMBO_BOX(auto_combo), div_auto_mode); }
+
+  if (ref_combo)    { gtk_combo_box_set_active(GTK_COMBO_BOX(ref_combo), div_auto_ref); }
+
+  if (follow_b)     { gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(follow_b), div_auto_follow_filter); }
+
+  if (centre_spin)  { gtk_spin_button_set_value(GTK_SPIN_BUTTON(centre_spin), div_auto_centre); }
+
+  if (width_spin)   { gtk_spin_button_set_value(GTK_SPIN_BUTTON(width_spin), div_auto_width); }
+
+  if (weight_combo) { gtk_combo_box_set_active(GTK_COMBO_BOX(weight_combo), div_auto_weighting); }
+
+  if (tau_scale)    { gtk_range_set_value(GTK_RANGE(tau_scale), div_auto_tau); }
+
+  if (hang_scale)   { gtk_range_set_value(GTK_RANGE(hang_scale), div_auto_hang); }
+
+  if (coh_scale)    { gtk_range_set_value(GTK_RANGE(coh_scale), 100.0 * div_auto_coherence_min); }
+
+  if (hold_b)       { gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(hold_b), div_auto_hold); }
+
+  if (res_combo) {
+    //
+    // The combo is an index into { 12, 6, 3 } Hz; the setting is the bin
+    // width itself. Match on midpoints so a value that has been through a
+    // double round trip still lands on its own entry.
+    //
+    const int i = (div_auto_resolution < 4.5) ? 2 : (div_auto_resolution < 9.0) ? 1 : 0;
+    gtk_combo_box_set_active(GTK_COMBO_BOX(res_combo), i);
+  }
+
+  updating_from_server = 0;
+  update_visibility();
+  update_manual_sensitivity();
+}
+
+//
+// The other end changed something. Used on the radio when a client moves
+// a control, so a menu open on both stays in step.
+//
+void diversity_menu_refresh(void) {
+  div_populate_from_settings();
+}
+
+//
+// Remote client: the radio has sent its settings - on connect, or because
+// someone moved a control on the radio's own panel. Adopt them and show
+// them. Runs on the GTK thread, put there by the client read loop.
+//
+gboolean diversity_client_set_settings(gpointer data) {
+  const DIV_SETTINGS_COMMAND *c = (const DIV_SETTINGS_COMMAND *)data;
+  DIV_SETTINGS set;
+  set.mode           = c->mode;
+  set.ref            = c->ref;
+  set.follow_filter  = c->follow_filter;
+  set.weighting      = c->weighting;
+  set.hold           = c->hold;
+  set.centre         = from_double(c->centre);
+  set.width          = from_double(c->width);
+  set.tau            = from_double(c->tau);
+  set.hang           = from_double(c->hang);
+  set.coherence_min  = from_double(c->coherence_min);
+  set.resolution     = from_double(c->resolution);
+  set.band_centre    = from_double(c->band_centre);
+  set.band_width     = from_double(c->band_width);
+  set.carrier_centre = from_double(c->carrier_centre);
+  set.carrier_width  = from_double(c->carrier_width);
+  set.digital_centre = from_double(c->digital_centre);
+  set.digital_width  = from_double(c->digital_width);
+  diversity_auto_apply_settings(&set, DIV_ACTION_NONE);
+  div_populate_from_settings();
+  g_free(data);
+  return G_SOURCE_REMOVE;
+}
+
+//
+// Remote client: what the loop is measuring. Written straight into the
+// globals the status line, the antenna line and the panadapter overlay
+// already read, so none of them needs to know where it came from.
+//
+gboolean diversity_client_set_status(gpointer data) {
+  const DIV_STATUS_DATA *d = (const DIV_STATUS_DATA *)data;
+  DIV_STATUS st;
+  st.enabled         = d->enabled;
+  st.running         = d->running;
+  st.holding         = d->holding;
+  st.clamped         = d->clamped;
+  st.arm_valid       = d->arm_valid;
+  st.arm_pick        = d->arm_pick;
+  st.carrier_valid   = d->carrier_valid;
+  st.occ_valid       = d->occ_valid;
+  st.rade_locked     = d->rade_locked;
+  st.rade_confirming = d->rade_confirming;
+  st.rade_side       = d->rade_side;
+  st.binhz        = from_double(d->binhz);
+  st.coherence    = from_double(d->coherence);
+  st.carrier      = from_double(d->carrier);
+  st.arm_db       = from_double(d->arm_db);
+  st.occ_lo       = from_double(d->occ_lo);
+  st.occ_hi       = from_double(d->occ_hi);
+  st.gain         = from_double(d->gain);
+  st.phase        = from_double(d->phase);
+  st.track_gain   = from_double(d->track_gain);
+  st.track_phase  = from_double(d->track_phase);
+  st.rade_quality = from_double(d->rade_quality);
+  diversity_auto_apply_status(&st);
+
+  //
+  // The radio's own panel can turn the whole feature on or off while a
+  // client is looking at it.
+  //
+  if (dialog != NULL && diversity_b != NULL &&
+      gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(diversity_b)) != (diversity_enabled != 0)) {
+    updating_from_server = 1;
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(diversity_b), diversity_enabled);
+    updating_from_server = 0;
+    update_manual_sensitivity();
+  }
+
+  g_free(data);
   return G_SOURCE_REMOVE;
 }
 
@@ -882,6 +1008,7 @@ static void ref_changed_cb(GtkWidget *widget, gpointer data) {
   }
 
   diversity_auto_reset();
+  div_send_settings(DIV_ACTION_NONE);
   update_manual_sensitivity();
   update_visibility();
 }
@@ -889,6 +1016,7 @@ static void ref_changed_cb(GtkWidget *widget, gpointer data) {
 static void follow_cb(GtkWidget *widget, gpointer data) {
   div_auto_follow_filter = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   diversity_auto_reset();
+  div_send_settings(DIV_ACTION_NONE);
   update_manual_sensitivity();
   update_visibility();
 }
@@ -899,6 +1027,7 @@ static void centre_cb(GtkWidget *widget, gpointer data) {
   div_auto_centre = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
   div_window_store(div_auto_ref);
   diversity_auto_reset();
+  div_send_settings(DIV_ACTION_NONE);
 }
 
 static void width_cb(GtkWidget *widget, gpointer data) {
@@ -907,19 +1036,23 @@ static void width_cb(GtkWidget *widget, gpointer data) {
   div_auto_width = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
   div_window_store(div_auto_ref);
   diversity_auto_reset();
+  div_send_settings(DIV_ACTION_NONE);
 }
 
 static void hang_cb(GtkWidget *widget, gpointer data) {
   (void)data;
   div_auto_hang = gtk_range_get_value(GTK_RANGE(widget));
+  div_send_settings(DIV_ACTION_NONE);
 }
 
 static void tau_cb(GtkWidget *widget, gpointer data) {
   div_auto_tau = gtk_range_get_value(GTK_RANGE(widget));
+  div_send_settings(DIV_ACTION_NONE);
 }
 
 static void coh_cb(GtkWidget *widget, gpointer data) {
   div_auto_coherence_min = 0.01 * gtk_range_get_value(GTK_RANGE(widget));
+  div_send_settings(DIV_ACTION_NONE);
 }
 
 static void res_changed_cb(GtkWidget *widget, gpointer data) {
@@ -933,16 +1066,23 @@ static void res_changed_cb(GtkWidget *widget, gpointer data) {
   // The transform length changes, so the engine has to be rebuilt.
   //
   diversity_auto_restart();
+  div_send_settings(DIV_ACTION_NONE);
 }
 
 static void weight_changed_cb(GtkWidget *widget, gpointer data) {
   div_auto_weighting = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
   diversity_auto_reset();
+  div_send_settings(DIV_ACTION_NONE);
 }
 
 // cppcheck-suppress constParameterCallback
 static void reset_cb(GtkWidget *widget, gpointer data) {
+  //
+  // The one control that changes no setting, so it cannot be seen as a
+  // difference between two blocks and travels as an action instead.
+  //
   diversity_auto_reset();
+  div_send_settings(DIV_ACTION_RESET);
 }
 
 void diversity_menu(GtkWidget *parent) {
@@ -975,7 +1115,7 @@ void diversity_menu(GtkWidget *parent) {
   gtk_widget_set_name(close_b, "close_button");
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 1, 1);
-  GtkWidget *diversity_b = gtk_check_button_new_with_label("Diversity Enable");
+  diversity_b = gtk_check_button_new_with_label("Diversity Enable");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (diversity_b), diversity_enabled);
   gtk_widget_show(diversity_b);
   gtk_grid_attach(GTK_GRID(grid), diversity_b, 1, 0, 1, 1);
@@ -1281,40 +1421,25 @@ void diversity_menu(GtkWidget *parent) {
   gtk_widget_show_all(dialog);
   update_manual_sensitivity();
 
-  if (radio_is_remote) {
-    //
-    // The samples are combined on the server, so there is nothing here to
-    // analyse and none of the loop's own controls belong here. Manual
-    // gain/phase are sent over the wire, but the server discards them
-    // while its loop owns the weight - update_manual_sensitivity() greys
-    // them for exactly that case, from what CMD_DIV_AUTO reported.
-    //
-    gtk_widget_set_sensitive(auto_combo, FALSE);
-    gtk_widget_set_sensitive(ref_combo, FALSE);
-    gtk_widget_set_sensitive(follow_b, FALSE);
-    gtk_widget_set_sensitive(centre_spin, FALSE);
-    gtk_widget_set_sensitive(width_spin, FALSE);
-    gtk_widget_set_sensitive(res_combo, FALSE);
-    gtk_widget_set_sensitive(weight_combo, FALSE);
-    gtk_widget_set_sensitive(tau_scale, FALSE);
-    gtk_widget_set_sensitive(hang_scale, FALSE);
-    gtk_widget_set_sensitive(coh_scale, FALSE);
-    gtk_widget_set_sensitive(reset_b, FALSE);
-    gtk_widget_set_sensitive(hold_b, FALSE);
-    gtk_widget_set_sensitive(invert_b, FALSE);
 #ifdef DIVERSITY_CAPTURE
+
+  if (radio_is_remote) {
     //
     // DEVELOPMENT TOOL - remove with the rest of the capture instrument.
     //
-    // Nothing to record here: the samples are combined on the server and
-    // the analysis thread never runs on a remote client.
+    // The only control on this dialog that genuinely cannot travel: the
+    // capture is written from inside the analysis thread, which is on the
+    // radio, and it writes a file where that thread is running.
     //
     gtk_widget_set_sensitive(divcap_b, FALSE);
-#endif
-    div_status_set("Remote", "", "radio side", div_gain, div_phase);
-    gtk_label_set_text(GTK_LABEL(arm_label), "Antennas  radio side");
-    return;
   }
 
+#endif
+  //
+  // The same timer runs on both sides. On a client it redraws from the
+  // status the radio pushes, which diversity_client_set_status() has put
+  // into the globals it reads - so the status line, the antenna line and
+  // the weight all read as they do at the radio.
+  //
   status_timer = g_timeout_add(250, status_update_cb, NULL);
 }

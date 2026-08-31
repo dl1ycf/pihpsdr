@@ -150,20 +150,6 @@ extern int    div_auto_occ_valid;
 //
 extern int    div_auto_running;
 
-//
-// Remote client only: 1 while the radio's own loop owns the weight, so a
-// gain or phase sent from here would be discarded, and which objective it
-// is running. Set from CMD_DIV_AUTO; always the defaults on the radio
-// side, where div_auto_running and div_auto_mode answer the question.
-//
-// Deliberately not div_auto_mode itself. That one is written to the
-// client's own props, and a client is a radio in its own right when it is
-// not connected - it must not come back from a session with the server's
-// objective saved as its own.
-//
-extern int    div_auto_remote_owns;
-extern int    div_auto_remote_mode;
-extern gboolean diversity_client_set_auto(gpointer data);
 
 //
 // +1 if the RADE modem was found above the tuned carrier, -1 below.
@@ -208,6 +194,69 @@ extern void diversity_auto_restart(void);   // stop + start if it should be runn
 extern void diversity_auto_reset(void);     // forget the accumulated statistics
 extern void diversity_auto_sample(double i0, double q0, double i1, double q1);
 extern void diversity_auto_gap(void);       // transmit gap in the sample stream
+//
+// The loop's settings, and what it is currently measuring, as plain data.
+//
+// The analysis runs on the radio only, but the operator may be sitting at
+// a remote client, so both have to travel. Settings go client -> server
+// ("apply this"), and server -> client on connect and whenever the
+// radio's own panel changes something ("adopt this"). Status goes server
+// -> client on a timer.
+//
+// These are the transport form. The engine still works from the div_auto_*
+// globals - every consumer already reads those - so a client writes what
+// arrives straight into them and its status line and panadapter overlay
+// light up with no further plumbing.
+//
+typedef struct _div_settings {
+  int    mode;              // DIV_AUTO_*
+  int    ref;               // DIV_REF_*
+  int    follow_filter;
+  int    weighting;
+  int    hold;
+  double centre, width;
+  double tau, hang, coherence_min, resolution;
+  //
+  // The per-reference window pairs travel too. They are modal state the
+  // operator built up, not derived values, so a client that only sent the
+  // live pair would silently flatten them on the radio.
+  //
+  double band_centre, band_width;
+  double carrier_centre, carrier_width;
+  double digital_centre, digital_width;
+} DIV_SETTINGS;
+
+typedef struct _div_status {
+  int    enabled;           // the whole feature, as the radio has it
+  int    running, holding, clamped;
+  int    arm_valid, arm_pick, carrier_valid, occ_valid;
+  int    rade_locked, rade_confirming, rade_side;
+  double binhz, coherence, carrier, arm_db;
+  double occ_lo, occ_hi;
+  double gain, phase, track_gain, track_phase;
+  double rade_quality;
+} DIV_STATUS;
+
+//
+// No action, or the one control that changes no setting and so cannot be
+// expressed as a difference between two settings blocks.
+//
+#define DIV_ACTION_NONE   0
+#define DIV_ACTION_RESET  1
+
+extern void diversity_auto_get_settings(DIV_SETTINGS *s);
+extern void diversity_auto_apply_settings(const DIV_SETTINGS *s, int action);
+extern void diversity_auto_get_status(DIV_STATUS *st);
+extern void diversity_auto_apply_status(const DIV_STATUS *st);
+
+//
+// g_idle_add() targets for the client read loop: adopt a settings block
+// the radio sent, and adopt a status push. Both take ownership of the
+// message they are given.
+//
+extern gboolean diversity_client_set_settings(gpointer data);
+extern gboolean diversity_client_set_status(gpointer data);
+
 extern void diversity_auto_save_state(void);
 extern void diversity_auto_restore_state(void);
 

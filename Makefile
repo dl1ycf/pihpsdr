@@ -1174,6 +1174,7 @@ src/server_thread.o: src/main.h src/message.h src/new_protocol.h src/MacOS.h
 src/server_thread.o: src/buffer.h src/profiles.h src/radio.h src/adc.h
 src/server_thread.o: src/discovered.h src/soapy_protocol.h src/store.h
 src/server_thread.o: src/vfo.h
+src/server_thread.o: src/diversity_auto.h
 src/sliders.o: src/actions.h src/ext.h src/client_server.h src/mode.h
 src/sliders.o: src/receiver.h src/atomic.h src/transmitter.h src/main.h
 src/sliders.o: src/message.h src/property.h src/radio.h src/adc.h
@@ -1278,6 +1279,7 @@ src/audio.o: src/receiver.h src/atomic.h src/transmitter.h
 src/band.o: src/bandstack.h
 src/buffer.o: src/atomic.h
 src/client_server.o: src/mode.h src/receiver.h src/atomic.h src/transmitter.h
+src/client_server.o: src/diversity_auto.h
 src/dxcluster_db.o: src/dxcluster.h
 src/dxcluster_popup.o: src/dxcluster.h
 src/ext.o: src/client_server.h src/mode.h src/receiver.h src/atomic.h
