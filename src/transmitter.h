@@ -22,8 +22,6 @@
 
 #include <gtk/gtk.h>
 
-#include "atomic.h"
-
 #define CTCSS_FREQUENCIES 38
 extern double ctcss_frequencies[CTCSS_FREQUENCIES];
 
@@ -93,44 +91,10 @@ typedef struct _transmitter {
   int audiomonitor;     // put incoming mic samples to the "side tone" channel
   int audiomon_db;      // monitor level in dB
   double audiomon_vol;  // monitor level as a factor
-
-  //
-  // everything related to local (TX input) audio
-  //
-  int local_audio;                    // sound card input is active
-  //
-  // if add_hpsdr_mic_samples && local_audio && hpsdr_ptt, add the
-  // mic samples from the HPSDR radio to the local audio TX input stream
-  //
+  int local_audio;                    // local audio selected for TX
   int add_hpsdr_mic_samples;          // use both HPSDR and sound card
   char audio_name[128];               // Name of sound card device
-  GMutex audio_mutex;                 // Mutex to be used with sound card input
-  GThread * audio_thread_id;          // Microphone reading thread
-  int audio_flag;
-  volatile atomic_int audio_buffer_inpt;     // pointer for audio buffer
-  volatile atomic_int audio_buffer_outpt;    // pointer for audio buffer
-  volatile int audio_running;         // used in mic thread to see whether input is still running
-  double *audio_buffer;               // audio buffer for sound card input
-
-#if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA) && defined(PIPEWIRE)
-  // this is only possible for "cppcheck" runs
-  // declare all data without conflicts
-  void *audio_handle;
-  snd_pcm_format_t audio_format;
-#endif
-#if defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA) && !defined(PIPEWIRE)
-  PaStream *audio_handle;
-#endif
-#if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && defined(ALSA) && !defined(PIPEWIRE)
-  snd_pcm_t *audio_handle;
-  snd_pcm_format_t audio_format;
-#endif
-#if !defined(PORTAUDIO) && defined(PULSEAUDIO) && !defined(ALSA) && !defined(PIPEWIRE)
-  pa_simple *audio_handle;
-#endif
-#if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA) && defined(PIPEWIRE)
-  void *audio_handle;
-#endif
+  void *audio_handle;                 // Pointer used by local audio
 
   int out_of_band;
   guint out_of_band_timer_id;

@@ -1100,8 +1100,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->add_hpsdr_mic_samples = 0;
   tx->audiomonitor = 0;
   tx->audiomon_db = -12;
-  tx->audio_flag = 0;
-  g_mutex_init(&tx->audio_mutex);
+  tx->audio_handle = NULL;
   snprintf(tx->audio_name, sizeof(tx->audio_name), "%s", "NO AUDIO");
   tx->dialog_x = -1;
   tx->dialog_y = -1;
