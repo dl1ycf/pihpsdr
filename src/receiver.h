@@ -20,18 +20,6 @@
 #define _RECEIVER_H_
 
 #include <gtk/gtk.h>
-#ifdef PORTAUDIO
-  #include <portaudio.h>
-#endif
-#ifdef ALSA
-  #include <alsa/asoundlib.h>
-#endif
-#ifdef PULSEAUDIO
-  #include <pulse/pulseaudio.h>
-  #include <pulse/simple.h>
-#endif
-
-#include "atomic.h"
 
 enum _audio_channel_enum {
   STEREO = 0,
@@ -209,51 +197,10 @@ typedef struct _receiver {
   cairo_surface_t *panadapter_surface;
   GdkPixbuf *pixbuf;
   int mute_when_not_active;
-
-  //
-  // Everything related to audio. Not all of this data is used
-  // with all audio modules. This data will soon be moved to
-  // an opaque data structure referred to by audio_handle.
-  //
   int audio_channel;                      // STEREO or LEFT or RIGHT
-  int local_audio;                        // RX audio to sound card is active
-  int local_audio_channels;               // 1 or 2, indicates mono or stereo.
+  int local_audio;                        // local audio selected for RX
   char audio_name[128];                   // name of currently used audio output device
-  GMutex audio_mutex;                     // Mutex that can be used for buffer management
-  double *audio_buffer;                   // Buffer that can be used for Rx audio
-  double *st_buffer;                      // Buffer that can be used for side tone
-  int audio_buffer_offset;                // pointer for audio buffer
-  volatile atomic_int audio_buffer_inpt;  // pointer for audio buffer if used as ring buffer
-  volatile atomic_int audio_buffer_outpt; // pointer for audio_buffer if used as ring buffer
-  volatile atomic_int st_buffer_inpt;     // pointer for st_buffer if used as ring buffer
-  volatile atomic_int st_buffer_outpt;    // pointer for st_buffer if used as ring buffer
-  double audiodamp;                       // This can be used for fading out be the audio module
-  int cwaudio;                            // manage RX/TX transitions in CW
-  int cwcount;                            // for sample insertion and deletion
-  int skipcnt;                            // for latency management
-  int queued;                             // number of audio samples queued
-
-#if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA) && defined(PIPEWIRE)
-  // this is only possible for "cppcheck" runs
-  // declare all data without conflicts
   void *audio_handle;
-  snd_pcm_format_t audio_format;
-  int latency;
-#endif
-#if defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA) && !defined(PIPEWIRE)
-  PaStream *audio_handle;
-#endif
-#if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && defined(ALSA) && !defined(PIPEWIRE)
-  snd_pcm_t *audio_handle;
-  snd_pcm_format_t audio_format;
-#endif
-#if !defined(PORTAUDIO) && defined(PULSEAUDIO) && !defined(ALSA) && !defined(PIPEWIRE)
-  pa_simple *audio_handle;
-  pa_usec_t latency;
-#endif
-#if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA) && defined(PIPEWIRE)
-  void *audio_handle;
-#endif
 
   int squelch_enable;
   double squelch;

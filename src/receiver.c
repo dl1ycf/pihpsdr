@@ -846,8 +846,7 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->agc_gain = 80.0;
   rx->agc_hang_threshold = 0.0;
   rx->local_audio = 0;
-  g_mutex_init(&rx->audio_mutex);
-  rx->audio_buffer = NULL;
+  rx->audio_handle = NULL;
   snprintf(rx->audio_name, sizeof(rx->audio_name), "NO AUDIO");
   rx->mute_when_not_active = 0;
   rx->audio_channel = STEREO;
