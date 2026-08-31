@@ -26,8 +26,23 @@ the right default. Still open: the Digital I/Q occupancy test has no
 false-alarm control, and its per-arm SNR estimate is the weakest of the
 four (Finding 14).
 
+**Finding 15** is new, and open. The frequency loop has stable lock
+points spaced one modem frame rate apart - 8.3 Hz - and acquisition
+cannot resolve which of them is right. The radio and a cold replay of the
+same samples settled on two different ones on the same capture. It costs
+about a decibel of pilot SNR, a fifth of the quality reading, and
+**nothing measurable in decode**, because the diversity weight is
+indifferent to it. It is, though, the reason a lock can look poor on a
+signal that is not.
+
+**Finding 16** is the first look below the HF bands: two mediumwave
+captures, one a 693 kHz broadcast with inter-arm coherence 0.982, the
+other band noise at 0.52. Null reaches the ceiling on the first and the
+Best objective picks correctly on both.
+
 The USB pilot bank, previously the most valuable missing measurement, is
-now confirmed on air - see Finding 12.
+now confirmed on air - see Finding 12, and confirmed again on a second
+band in Finding 15's capture set.
 
 Read in order, the findings divide into two groups. The **Window**
 reference gains 1.6 to 1.8 dB over the better antenna on every voice
@@ -49,9 +64,13 @@ For how the modes work, see [`diversity.md`](diversity.md) and
 
 ## Capture set
 
-All Angelia, averaging 10.5 s, hang 5.2 s, objective Sum. The August 29
-captures are at a **48 kHz** DDC; the 60 m set of August 30 is the first
-at **192 kHz**, 351 blocks of nfft 32768 (170.7 ms each) = 60 s. The
+All Angelia. Everything up to and including the 60 m set is averaging
+10.5 s, hang 5.2 s, objective Sum; the four captures added on August 30
+and 31 are not - averaging runs 1.9, 5.6 and 4.8 s, and `111852` has the
+operator changing both the reference and the objective while it records.
+The August 29 captures are at a **48 kHz** DDC; the 60 m set of August 30
+is the first at **192 kHz**, 351 blocks of nfft 32768 (170.7 ms each) =
+60 s, and every capture after it is at that rate too. The
 40 m RADE captures are 703 blocks of nfft 4096 (85.3 ms each) = 60 s. The
 rest vary, because the operator's Resolution control sets the transform
 size: nfft 4096, 8192, 16384 and 32768 all appear, giving 85, 171, 341
@@ -85,6 +104,21 @@ recording.
 | `111051` | 5.3685 | USB | RADE V1 | two acquisitions, arm 1 the *better* antenna |
 | `111328` | 5.3685 | USB | RADE V1 | **none** - band noise, 192 kHz |
 | `111734` | 5.3715 | USB | RADE V1 | locked 70 % |
+| `202743` | 7.09203 | DIGL | RADE V1 | marginal - quality 0.15, averaging **1.9 s** |
+| `232842` | 1.987 | DIGU | RADE V1 | **bank 1 on a second band**, locked 94 %, averaging 5.6 s |
+| `111852` | 0.6929 | SAM | Window, then Carrier, then Digital I/Q | **mediumwave** - 693 kHz broadcast, objective changed mid-capture |
+| `112151` | 0.7244 | SAM | Digital I/Q | **mediumwave** band noise, partly coherent |
+
+`202743` begins on 7.177 MHz and retunes to 7.09203 MHz at block 9. The
+recorder did **not** set the context-changed bit for it: `rec_flags` is
+zero on all 351 blocks. That is a devtool defect, not a radio one, but it
+means the flag cannot be used to find retunes in this file - the
+`frequency` field has to be read directly.
+
+`111852` and `112151` are the first captures below 1.8 MHz, the first in
+`SAM`, and the first where the *second* antenna is the loud one by a wide
+margin: ADC1 runs 14.5 to 15.2 dB above ADC0 across the whole passband on
+both. See Finding 16.
 
 The five "none" captures are the most valuable ones in the set. A capture
 of nothing is what says whether a detector threshold is safe, and it costs
@@ -292,6 +326,16 @@ Every other capture contradicts it:
 | `111051` | 60 m | -13.1 dB | 0.72 |
 | `111328` | 60 m | -10.2 dB | **0.14** |
 | `111734` | 60 m | -11.6 dB | 0.86 |
+| `202743` | 40 m | -0.6 dB | 0.43 |
+| `232842` | 160 m | -7.7 dB | 0.29 |
+| `111852` | 693 kHz | +13.1 dB | **0.78** |
+| `112151` | 724 kHz | +14.5 dB | 0.52 |
+
+The two mediumwave rows are the extreme of the set in both columns: the
+second antenna 13 to 15 dB *hotter* rather than colder, and the noise
+between the arms 0.52 to 0.78 correlated rather than 0.1 to 0.4. Nothing
+about the covariance handling had to change to cope with them, and
+Finding 16 shows the nuller reaching its ceiling on `111852`.
 
 On `231724` the ideal MVDR weight and the ideal MRC weight are 51 degrees
 apart, so the cross term is doing real work there.
@@ -839,6 +883,36 @@ the mirror band at +800 to +2200:
 
 `111328`'s 1.8 dB is the control: no signal, no asymmetry.
 
+### Bank 1 again, on 160 m
+
+`232842` is a second, independent bank-1 confirmation, on a different
+band, at a different averaging time, three months of propagation away
+from anything the mapping was derived on. 1.987 MHz `DIGU`, filter +500
+to +2500, `expect_bank` 1, averaging 5.6 s.
+
+| | `232842` |
+|---|---|
+| acquisitions, replayed cold | 1 |
+| time to first lock | 3.58 s |
+| lock uptime, replayed cold | 94 % |
+| median quality | 0.51 |
+| median pilot SNR | +0.1 dB |
+| modem band against its mirror, ADC0 | **+11.3 dB** |
+| modem band against its mirror, ADC1 | +1.7 dB |
+
+94 % uptime from a single acquisition is the best in the set after
+`213155`. The frame inversion holds for a fourth time: with the modem on
+USB the carriers land at -2200 to -750 Hz in the tapped buffer, 11.3 dB
+above the mirror band on the antenna that can hear them, and 1.7 dB on
+the one that cannot - which doubles as a control inside a single capture.
+
+`202743` is the matching bank-0 case at 192 kHz - 7.09203 MHz `DIGL`,
+averaging 1.9 s - and is included for completeness rather than for
+weight. It is the most marginal RADE capture in the document: quality
+0.15, pilot SNR -7.5 dB, eight acquisition attempts in the minute, and
+5 dB *more* energy in the rejected sideband than in the modem's own. It
+is used below only where a second, weaker data point is worth having.
+
 ### 192 kHz changes nothing that was measured here
 
 The first captures in the set at a DDC rate other than 48 kHz. `decim`
@@ -886,6 +960,49 @@ it is the capture with a mean pilot SNR of 1.7 dB and two stations in it
 - the independent figure averages the whole minute over the whole modem
 band and cannot separate them either. Nothing here suggests the estimator
 is fooled by a weak second antenna.
+
+### Where the guard bins are not honest: `232842`
+
+The same comparison on 160 m, where the two arms are much further apart
+than on 60 m, finds one column that does not hold up.
+
+| | correlator | independent, from the raw blocks |
+|---|---|---|
+| `h1/h0` | -18.9 dB, +22.8 deg | -17.3 dB (noise-subtracted band), -17.8 dB (carrier comb) |
+| `r11/r00` | **-7.7 dB** | **-3.9 dB** |
+| `R` coherence | 0.285 | 0.273 |
+| arm 1 advantage | **-11.2 dB** | **-15.0 dB** |
+
+The channel and the noise *coherence* agree, as they did on 60 m. The
+noise **ratio** does not: the correlator reads arm 1's noise 3.8 dB lower
+than the same guard region measured directly, and that error passes
+straight into the per-arm figure the Best objective acts on, making arm 1
+look 3.8 dB better than it is.
+
+The cause is visible in the guard bins themselves. They are 50 Hz-wide
+rectangular DFT bins taken inside one 20 ms pilot symbol, at
+`lock_f + k*50 Hz` for k = 6..14 and 45..57, skipping the modem's own
+carriers at k = 15..44. Measured from the raw blocks, the two bins that
+sit immediately beside the modem span read hot on ADC0 and flat on ADC1:
+
+| guard bin | k=6 | k=10 | **k=14** | **k=45** | k=48 | k=57 |
+|---|---|---|---|---|---|---|
+| ADC0 | -23.4 dB | -23.1 | **-19.4** | **-20.2** | -22.9 | -23.4 |
+| ADC1 | -26.7 dB | -26.6 | -26.4 | -26.6 | -26.9 | -26.9 |
+
+That is modem leakage, and it can only bias the arm that can hear the
+modem. On `232842` ADC0's modem stands 11 dB above its own floor and
+ADC1's stands 1.9 dB above, so the leakage lands almost entirely on ADC0,
+inflates `acc_r00`, and pushes `r11/r00` down. On `202743`, where the
+modem is 5.8 dB above the floor and the two arms are within a decibel,
+the correlator's -0.59 dB and the independent -0.08 dB agree to half a
+decibel. Two captures is a direction, not a law: what would settle it is
+one capture with a strong modem and one deaf arm, and one with a strong
+modem on both.
+
+The pick was still right on `232842` - -11.2 dB and -15.0 dB both say
+ADC0, decisively - so this is an accuracy problem in a displayed number
+and a margin problem for Best, not a wrong answer here.
 
 **What it means for the antennas.** The doublet is 11 to 13 dB down on
 signal, which reads like the worse antenna and is not: its noise is 12 to
@@ -1045,11 +1162,28 @@ measures better in the passband (Findings 6 and 7):
 | `000012` | ADC1 | ADC1 | ADC1 | no lock | **ADC0** |
 | `000209` | ADC1 | ADC1 | ADC1 | no lock | ADC1 |
 | `000328` | ADC1 | ADC1 | ADC1 | no lock | **ADC0** |
-| **correct** | | **9/10** | **9/10** | **5/6** | **5/10** |
+| `232842` | ADC0 | ADC0 | **ADC1** | ADC0 | ADC0 |
+| `111852` | ADC1 | ADC1 | ADC1 | no lock | ADC1 |
+| `112151` | ADC0 | ADC0 | ADC0 | no lock | ADC0 |
+| **correct** | | **12/13** | **11/13** | **6/7** | **7/13** |
+
+`202743` is deliberately absent: decode makes ADC0 the better arm on
+synced frames (305 against 257) and ADC1 the better arm on mean SNR (+2.7
+against -0.3 dB), which is Trap 3 pointing both ways at once. Window and
+Carrier pick ADC1 there, RADE V1 and Digital I/Q pick ADC0, and there is
+no honest way to mark any of them.
+
+The two mediumwave captures are the easiest rows in the table and all
+three references that can run get them right, including the case that
+matters most for a selection mode: on `112151` the second antenna is
+14.5 dB **louder** and 1.6 dB **worse**, and every reference picks the
+quiet one. Loudness is not the statistic and the estimator knows it.
 
 The wideband floor tracker is the best of the four despite being the
 crudest, and it is right on `213155` where the RADE guard-bin statistic is
-wrong. Its one miss, `235853`, has the two antennas 0.53 dB apart - inside
+wrong - Finding 13 now has a mechanism for that, and `232842` shows the
+Carrier reference failing the same way in the other direction, reading
++5.5 dB for an arm that is 11 to 15 dB worse. Its one miss, `235853`, has the two antennas 0.53 dB apart - inside
 the selection hysteresis, so the "wrong" pick costs half a decibel.
 Digital I/Q is the weakest by a distance, which is consistent with the
 correction under Finding 8: its noise bins come from an occupancy split
@@ -1071,7 +1205,16 @@ Against the better arm, with the Finding 11 fix in place:
 | `213155` | +0.5 | **-2.5** | +0.9 |
 | `233133` | **+0.6** | -0.1 | +0.0 |
 | `233241` | -0.4 | -0.0 | -0.1 |
+| `232842` | **+0.7** | +0.0 | +0.0 |
+| `202743` | **-2.5** | -3.1 | - |
 | mean | **+0.90** | -0.43 | -0.03 |
+
+The mean row is over the original six and is left alone so the earlier
+comparison still reads. `232842` behaves like the rest: Sum +0.7 dB over
+the better arm, Best exactly level with it because it picked that arm.
+`202743` is the outlier and is the marginal capture - Sum is 2.5 dB below
+arm 1's mean SNR while being **16 synced frames ahead of it**, which is
+Trap 3 again and the reason that row is not counted anywhere.
 
 This is what selection is: it cannot beat the better antenna, and where
 the two antennas are close - `110923` and `111734`, half a decibel to a
@@ -1092,23 +1235,280 @@ establishing what the antennas are actually doing, which is why the
 per-arm figure is now on the menu whatever objective is running. It is
 not a general improvement and the numbers above say so.
 
+## Finding 15: the frequency loop has stable lock points 8.3 Hz apart
+
+`232842` was recorded to answer one question - how well does RADE V1
+track on 160 m - and the first thing it says is that the radio and a cold
+replay of the *same samples* do not agree about where the station is.
+
+| medians over t > 10 s | recorded by the radio | replayed cold from the same file |
+|---|---|---|
+| settled `lock_f` | **+16.11 Hz** | **+7.78 Hz** |
+| quality | 0.440 | 0.507 |
+| pilot SNR | -1.05 dB | +0.12 dB |
+
+The difference is 8.34 Hz. One modem frame is `RADE_CORR_NMF`/`RADE_CORR_FS`
+= 960/8000 = 120 ms, so the frame rate is **8.333 Hz**.
+
+### Why it is stable, not a transient
+
+The discriminator at `RADE_FREQ_ALPHA` measures the phase the pilot
+correlation turns through from one frame to the next, minus the turn
+`lock_f` already predicts. A residual of exactly one frame rate turns the
+correlation through exactly 2*pi and reads as **zero error**. The
+comment in `rade_correlator.c` says as much - "unambiguous over +/-4.17 Hz"
+- and 4.17 Hz is half of 8.33.
+
+So every offset `f_true + n*8.333 Hz` is an equilibrium, and the loop
+sits at whichever one acquisition handed it. Forcing `lock_f` at
+acquisition and letting the loop run confirms it directly. On `232842`,
+medians over t > 10 s:
+
+| forced start | settles at | quality | pilot SNR | frames tracked |
+|---|---|---|---|---|
+| +2 Hz | **-0.55** | 0.446 | -0.93 dB | 449 |
+| 0, +4, +6, +8, +10 Hz | **+7.78** | **0.507** | **+0.12 dB** | **456** |
+| +12, +14, +16, +18, +20 Hz | **+16.12** | 0.455 | -0.78 dB | 451 |
+| +24 Hz | **+24.46** | 0.350 | -2.70 dB | 381 |
+
+Four equilibria at -0.55, +7.78, +16.12 and +24.46 - spacings of 8.33,
+8.34 and 8.34 Hz - each with its own basin, and the discriminator reading
+-0.03 to -0.05 Hz of residual at all of them. The radio was sitting in
+the +16.11 basin; the replay acquired into the +7.77 one.
+
+The recorded series says the same thing more slowly: over the minute
+`live_freq_off` walks from +17.92 to +16.06, about 1.9 Hz a minute,
+converging on **its own** equilibrium rather than on the right one. At
+that rate it would need four and a half minutes to cross one alias step,
+and it never would, because there is no error signal pointing that way.
+
+### Why acquisition cannot tell them apart
+
+Acquisition correlates against one pilot symbol - `RADE_CORR_M` = 160
+samples, 20 ms - and accumulates the **magnitude** over
+`RADE_ACQ_PASSES` passes, so integrating longer sharpens the timing peak
+and does nothing for the frequency one. A 20 ms observation resolves
+frequency to about 50 Hz. The 5 Hz search grid is an order of magnitude
+finer than the thing it is measuring.
+
+Dumping the acquisition statistic against frequency at the moment of lock
+on `232842` shows exactly that - a peak 60 Hz wide on a 100 Hz search:
+
+| `acq_freq` | -25 | -15 | -5 | **+5** | +15 | +25 | +35 | +45 |
+|---|---|---|---|---|---|---|---|---|
+| sigma | 2.84 | 6.52 | 9.08 | **9.89** | 9.60 | 8.31 | 5.57 | 3.26 |
+
++15 Hz scores 97 % of the peak and +25 Hz scores 84 %. On a noisy minute
+either can win, and both are more than one alias step from the truth.
+`202743`, which is far weaker, is worse: its top five grid points sit
+within 5 % of each other and span 30 Hz.
+
+**The gap is structural.** Acquisition places the frequency to about
++/-25 Hz; tracking pulls in +/-4.17 Hz; the range between them is filled
+with stable wrong answers 8.33 Hz apart.
+
+### What it costs
+
+Less than it looks, and not where an operator would guess.
+
+| | at +7.78 Hz | at +16.12 Hz | difference |
+|---|---|---|---|
+| quality | 0.507 | 0.455 | -0.052 |
+| pilot SNR | +0.12 dB | -0.78 dB | **-0.90 dB** |
+| frames tracked | 456 | 451 | -5 |
+| `h1/h0` | -18.87 dB, +22.8 deg | -18.92 dB, +23.5 deg | 0.05 dB, 0.7 deg |
+| MVDR weight | reference | +0.05 dB, 2.3 deg | negligible |
+
+Every median in this finding is taken over t > 10 s, so the +7.78 row
+above and the "replayed cold" column at the top of the finding are the
+same measurement. The radio's own column sits 0.27 dB below the
++16.12 row, which is not explained here: the recorded state is the state
+*entering* each block and the radio had been locked for an unknown time
+before the capture was armed, so its accumulators started somewhere the
+replay's did not.
+
+Decode-scored, with the weight from each fed to a separate librade
+receiver over the same capture:
+
+| stream | rx frames | in sync | mean SNR |
+|---|---|---|---|
+| arm 0 | 492 | 492 | 5.8 dB |
+| arm 1 | 417 | 415 | 4.9 dB |
+| weight from the +7.77 Hz lock | 487 | 487 | **6.6 dB** |
+| weight from the +16.11 Hz lock | 487 | 487 | **6.5 dB** |
+
+**0.1 dB.** The diversity weight is a *ratio* of two arms carried through
+the same NCO and the same decimator, so a common frequency error cancels
+out of it almost exactly - which is why the channel estimate is unmoved
+and the audio is unaffected. What the alias actually costs is the
+displayed pilot SNR (0.9 dB), the quality reading (0.37 to 0.32), and
+margin against `RADE_USE_RATIO`: five frames out of 456 here, but on a
+weaker signal
+that margin is what a lock is made of. On `202743` the equilibria give
+pilot SNR from -3.8 to -7.9 dB and lock uptime from 28 % to 73 %,
+depending purely on which one acquisition happened to choose - though
+that capture is marginal enough (quality 0.15, eight acquisitions in the
+minute) that some of that spread is the signal and not the alias.
+
+### The obvious remedy, not implemented
+
+After a lock is confirmed, correlate at `lock_f`, `lock_f + 8.333` and
+`lock_f - 8.333` and keep the strongest. One pilot symbol resolves 50 Hz,
+which is six times the step, so the comparison is unambiguous even though
+the *tracking* discriminator is not. It is three extra correlations at
+lock, not per frame. Nothing here has been changed: this finding is
+measurement only, and the decode column above is the argument for taking
+the time to do it properly rather than quickly.
+
+## Finding 16: mediumwave, where the noise is the coherent thing
+
+Two captures below 1 MHz, `SAM` with a +/-4 kHz filter, both with ADC1 -
+the untuned doublet - running 14.5 to 15.2 dB above ADC0 across the whole
+passband. They are the first captures in the set where the inter-arm
+noise is *more* correlated than not.
+
+| | `111852`, 692.9 kHz | `112151`, 724.4 kHz |
+|---|---|---|
+| what is there | 693 kHz broadcast carrier, 43 dB over the in-band median | band noise, strongest features 19.5 dB over median |
+| ADC1 - ADC0, passband | +15.2 dB | +14.5 dB |
+| inter-arm coherence, passband | **0.982** | 0.524 |
+| inter-arm coherence, off-carrier | 0.782 | - |
+| noise `N1/N0` | +13.1 dB | +14.5 dB |
+
+### `111852`: a strong carrier, and no diversity gain to be had
+
+With a discrete carrier present, per-arm SNR is directly measurable -
+signal in the carrier bins, noise over the rest of the passband - with no
+model in the way:
+
+| | ADC0 | ADC1 |
+|---|---|---|
+| carrier SNR | +34.0 dB | **+36.2 dB** |
+
+ADC1 is 2.2 dB better, which is `h1/h0` = +15.3 dB against `N1/N0` =
++13.1 dB. The array, though, has almost nothing to add: the best fixed
+weight anywhere in the plane scores **+36.4 dB**, 0.17 dB above simply
+using ADC1. The reason is in the phases - the channel is at -55.7 degrees
+and the noise at -64.8, nine degrees apart, with the noise 78 %
+correlated. A two-element array cannot point at one and away from the
+other when they arrive from the same direction.
+
+Every objective finds that ceiling, which is the result worth having:
+
+| stream | carrier SNR | vs the better arm | weight |
+|---|---|---|---|
+| Sum / Window | +36.23 dB | -0.00 | +14.95 dB, +55.9 deg |
+| Sum / Carrier | +36.21 dB | -0.02 | +10.93 dB, +65.7 deg |
+| Sum / Digital I/Q | **+36.38 dB** | **+0.15** | -0.20 dB, -33.4 deg |
+| Best (all three) | +36.22 dB | -0.01 | +20.00 dB (the rail) |
+| best fixed weight | +36.40 dB | +0.17 | -2.75 dB, -48.0 deg |
+
+Digital I/Q's answer looks wrong and is not. It applies a weight of
+essentially unity where MRC would want +15 dB, because with the noise 78 %
+correlated MVDR is trading array gain for cancellation - and it comes out
+0.15 dB ahead of everything else. This is the first capture in the set
+where the passband-confined covariance is doing the job it exists for on
+a signal rather than on an argument.
+
+### Null reaches its ceiling on `111852`
+
+Measured as output power in the +/-4 kHz passband against ADC0 alone,
+over the settled part of the capture (t > 20 s, 234 blocks):
+
+| | depth |
+|---|---|
+| loop, Null / Window | **-14.38 dB** |
+| loop, Null / Digital I/Q | **-14.37 dB** |
+| loop, Null / Carrier | -10.77 dB |
+| best single weight over the whole minute | -14.36 dB |
+| best weight recomputed every block | -14.96 dB |
+
+Two of the three references are **at the ceiling** - indistinguishable
+from the best constant weight, and within 0.6 dB of a weight recomputed
+every 171 ms. The ideal weight barely moves (|w| sd 0.50 dB, phase sd
+3.4 degrees over the minute), so there is nothing for a faster loop to
+chase. Carrier gives up 3.6 dB because it co-phases on the carrier bin
+alone, and the carrier's spatial signature is 9 degrees off the band's.
+
+That is the answer to a question this document has been carrying since
+Finding 5: on a genuinely common-mode source the nuller works, and works
+as well as the geometry allows.
+
+### `112151`: partial coherence, and a much smaller prize
+
+| | depth |
+|---|---|
+| loop, Null / Window, Carrier, Digital I/Q | -0.76 to -0.79 dB |
+| best single weight over the whole minute | -1.00 dB |
+| best weight recomputed every block | -2.96 dB |
+
+Only 2.4 dB of the passband is coherent between the arms here, so 3 dB is
+all a nuller can ever take out. The loop gets to within 0.2 dB of the best
+constant weight and leaves the remaining 2 dB, which a per-block weight
+does collect: the ideal weight wanders far more than on `111852` (|w| sd
+1.21 dB, phase sd 22.8 degrees), so the 4.8 s averaging the operator had
+set is the limit, not the estimator. That is a real trade - shorter
+averaging would collect it and would also make every false-alarm number
+in this document worse.
+
+### Both mediumwave captures also test the arm statistic
+
+| | true arm 1 advantage | Window | Carrier | Digital I/Q |
+|---|---|---|---|---|
+| `111852` | +2.2 dB (carrier), +1.6 dB (coherent split) | +1.0 dB | +3.1 dB | +2.2 dB |
+| `112151` | -1.6 dB (coherent split) | -2.2 dB | -1.2 dB | -0.1 dB |
+
+Every reference is within 1.5 dB and every sign is right, on a pair where
+one antenna is 15 dB louder than the other. That is the strongest
+evidence so far that the per-arm figure Finding 14 added is measuring
+what it claims to. It comes with a caveat: `arm_valid` is asserted on
+only 4 to 32 % of blocks on the wideband references here, because a
+continuous carrier raises the minimum-statistics floor along with itself
+and the 6 dB clearance test rarely passes. The estimate is right when it
+is offered and it is not offered often.
+
+### What Best does with the +20 dB rail
+
+On `111852` Best correctly chooses ADC1 and, because "use arm 1 only" is
+only reachable as `w -> infinity`, applies the `DIV_MAX_WEIGHT` clamp:
+`w` = +20.00 dB. The output is then ADC1 scaled by ten - **20 dB louder
+than either antenna alone** - with ADC0 20 dB down inside it. The SNR is
+right, the AGC step is not. Finding 14 predicted this from the algebra;
+this is the first capture where an operator would actually hear it.
+
 ## False alarms
 
 Locks produced on captures with no RADE signal anywhere. Cells are
 `acquisitions / percent of the capture locked`.
 
-| `use_ratio` | `231532` 80 m quiet | `232750` 80 m quiet | `111328` 60 m quiet | `233423` 20 m noise+SSB | `233615` 160 m QRM |
-|---|---|---|---|---|---|
-| 1.00 | 0 | 0 | 0 | 1 / 27 % | 1 / 90 % |
-| 1.25 | 0 | 0 | 0 | 1 / 27 % | 2 / 66 % |
-| 1.50 | 0 | 0 | 0 | 0 | 1 / 33 % |
-| 1.75 | 0 | 0 | 0 | 0 | 0 |
-| 2.00 and above | 0 | 0 | 0 | 0 | 0 |
+| `use_ratio` | `231532` 80 m quiet | `232750` 80 m quiet | `111328` 60 m quiet | `233423` 20 m noise+SSB | `233615` 160 m QRM | `111852` 693 kHz | `112151` 724 kHz |
+|---|---|---|---|---|---|---|---|
+| 1.00 | 0 | 0 | 0 | 1 / 27 % | 1 / 90 % | 0 | **1 / 89 %** |
+| 1.25 | 0 | 0 | 0 | 1 / 27 % | 2 / 66 % | 0 | **2 / 51 %** |
+| 1.50 | 0 | 0 | 0 | 0 | 1 / 33 % | 0 | **3 / 42 %** |
+| 1.75 | 0 | 0 | 0 | 0 | 0 | 0 | **1 / 15 %** |
+| 2.00 | 0 | 0 | 0 | 0 | 0 | 0 | **1 / 15 %** |
+| 2.25 | 0 | 0 | 0 | 0 | 0 | 0 | **1 / 9 %** |
+| 2.50 and above | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
 `111328` is the first dead-air capture at 192 kHz and on 60 m, and it
 produces **no acquisition at any threshold from 1.00 upward** - the
 cleanest column in the table. The blind-search false-alarm rate does not
 change with the sample rate.
+
+`112151` is the worst column in the table and the reason the threshold
+policy below is now a *measured* margin rather than a comfortable one. It
+is mediumwave band noise with no RADE anywhere near it, `expect_bank` is
+-1 so both banks are searched, and it produces a lock at every threshold
+up to and including 2.25 - 89 % of the minute at 1.00, still 9 % at 2.25.
+It clears at 2.50 exactly. Quality on those false locks is 0.024 to
+0.166, against 0.51 for the genuine lock on `232842`, so the *lock* is
+false but the quality reading is honest about it.
+
+`111852`, ten metres of coax and 31 kHz away, produces nothing at any
+threshold. The difference is what the noise looks like, not where it is:
+a single dominant carrier gives the timing-domain floor one large,
+consistent peak to be measured against, and band noise does not.
 
 Separately, `232052` - dead air *following* a real over - produces a false
 lock at `use_ratio` 2.00 and below: 53.2 to 59.9 s, frequency pinned at
@@ -1132,7 +1532,8 @@ only consistent effect is `233241`'s first lock moving from 19.8 s to
 
 **Conclusion: leave `RADE_USE_RATIO` at 2.50.** There is no measured
 benefit to lowering it on real signals, and a measured false-alarm cost
-below 2.00. This supersedes an earlier suggestion of 2.00 that was based
+below 2.00 - now below **2.50**, since `112151` locks at 2.25 and clears
+only at the shipping value. The margin is one grid step wide. This supersedes an earlier suggestion of 2.00 that was based
 on synthetic AWGN - see Trap 2.
 
 It also qualifies the claim in
@@ -1148,20 +1549,28 @@ holds is the false-alarm line, and that part stands.
   `rade_correlator.c` is right.
 - **Bank 1 is the USB bank, and it correlates on air.** Three 60 m USB
   captures acquire, confirm, track and hold in bank 1, 65 to 70 % uptime,
-  quality 0.60 to 0.82 (Finding 12). Both banks are now measured on real
-  signals rather than one measured and one derived.
+  quality 0.60 to 0.82, and `232842` does the same on 160 m from a single
+  acquisition at 94 % uptime (Finding 12). Both banks are now measured on
+  real signals rather than one measured and one derived, and bank 1 on
+  two bands.
 - **The tapped buffer is inverted with respect to RF, on both sidebands.**
   An LSB filter of -2850..-150 puts the signal at +150..+2850 in the
   tapped frame; a USB filter of +150..+5150 puts it at -5150..-150
   (Finding 7), and a USB RADE signal puts its carriers at -2200..-800,
-  11.9 to 22.7 dB above the mirror band (Finding 12). Checked on voice
-  and on the modem, on both sidebands.
+  11.3 to 22.7 dB above the mirror band on four captures across 60 m and
+  160 m (Finding 12). Checked on voice and on the modem, on both
+  sidebands.
 - **The flat scalar channel model is right.** `h1/h0` measured per
   subcarrier varies by +/-0.3 to +/-0.63 dB in magnitude and +/-3 to
   +/-12 degrees in phase across 750-2200 Hz. Differential delay between
   the arms is under 6 us. A single complex weight is the correct model.
   This rests on the RADE captures; a voice passband cannot resolve it
   either way (Finding 6).
+- **The per-arm statistic gets the sign right.** Across thirteen captures
+  it picks the antenna that decodes or measures better 11 to 12 times out
+  of 13 on the wideband references, including the mediumwave pair where
+  the better antenna is 14.5 dB *quieter* than the other (Findings 14 and
+  16). Its accuracy is another matter - see Finding 13 on the guard bins.
 - **Every reference holds correctly when there is no signal.** On all five
   no-signal captures RADE V1 reported locked 0.00, holding 1.00,
   coherence 0.003-0.008 (0.00 recorded and 0 acquisitions replayed on
@@ -1184,16 +1593,25 @@ holds is the false-alarm line, and that part stands.
   RADE combiner needs re-reading once it is: the "after" figures under
   "What was changed, and what it scored" were taken with the solve
   returning zero on most frames.
-- **Threshold policy needs more dead air.** Five quiet captures is enough
-  to say 2.50 is safe and 1.50 is not; it is not enough to place the
-  boundary. Dead-air captures are cheap and need no station.
-- **No capture yet has a wanted signal *and* strong common-mode noise.**
-  `233615` has the interference but no signal. `235853` comes closest -
-  voice present with noise coherence 0.263 - but that is a wideband-mode
-  capture, so it says nothing about the RADE covariance. What is wanted is
-  a RADE station on a path with obvious common-mode noise: that is what
-  would prove the passband-confined covariance keeps the nulling the mode
-  is sold on.
+- **The frequency alias is measured and not fixed.** Finding 15. The
+  remedy is three extra correlations at lock and is described there; what
+  is missing before writing it is a capture where the alias actually
+  breaks a lock, so the fix has something to be scored against. Decode
+  says it costs 0.1 dB on a strong signal, which is not an argument for
+  rushing it.
+- **Threshold policy needs more dead air, and `112151` narrowed the
+  margin.** Six quiet captures now say 2.50 is safe and 2.25 is not - the
+  boundary is one grid step below the shipping value rather than two, and
+  the capture that moved it is mediumwave band noise, a kind of spectrum
+  the set had never held before. Dead-air captures are cheap and need no
+  station; ones from outside the amateur bands are cheaper still.
+- **No capture yet has a wanted *modem* signal and strong common-mode
+  noise.** `111852` closes half of this: a wanted signal with inter-arm
+  coherence 0.982, where the nuller reaches its ceiling and Digital I/Q's
+  passband-confined covariance comes out ahead of everything else
+  (Finding 16). But it is `SAM`, not RADE, so it still says nothing about
+  the *pilot-domain* covariance. What is wanted is a RADE station on a
+  path with obvious common-mode noise.
 
 - **Analog voice has been measured on one band, one path, two usable
   captures.** The +1.6 to +1.8 dB is worth confirming elsewhere, and the
@@ -1227,7 +1645,16 @@ holds is the false-alarm line, and that part stands.
   threshold or about the signals being weak.
 - **`--verify` has never passed on an on-air capture**, because every one
   was armed while the correlator was already locked. Arming before the
-  lock would let the replay be checked against the radio.
+  lock would let the replay be checked against the radio. `232842` shows
+  what that costs: 351 of 351 blocks differ, and the reason turned out to
+  be Finding 15 rather than the harness - the radio and the replay were
+  tracking two different equilibria. `--verify` cannot tell those apart
+  from a broken replay, which is precisely why it needs a capture armed
+  cold.
+- **The capture writer does not flag a retune.** `202743` moves 85 kHz at
+  block 9 and `rec_flags` stays zero for all 351 blocks. Devtool defect,
+  and only a nuisance while the devtools exist, but it means the flag
+  cannot be trusted to find context changes in an existing file.
 
 ## What was changed, and what it scored
 
@@ -1386,17 +1813,24 @@ make -C test/diversity/devtools     # replay_rade, run_ref, test_capture
 a recording; `score_rade` decodes. See
 [`test/diversity/devtools/README.md`](../test/diversity/devtools/README.md).
 
-Findings 11 and 13 need one thing the committed tools do not provide: the
-values `div_mvdr2()` is handed. They were taken from a throwaway copy of
+Findings 11, 13 and 15 need things the committed tools do not provide.
+They were taken from a throwaway copy of
 `build/rade_correlator_tunable.c` - the generated file `score_rade`
-already `#include`s - with two edits and nothing else:
+already `#include`s - with four edits and nothing else:
 
 - a `double instr_scale` applied to `arm0[]` and `arm1[]` where
   `rade_corr_process()` reads them, which is what the scale table in
   Finding 11 sweeps;
 - a dump of `acc_r00, acc_r11, acc_r01, acc_x00, acc_x01` and the
   determinant `d2` immediately before the `rade_mvdr_weight()` call in
-  `rade_track()`.
+  `rade_track()`, extended for Finding 15 with `lock_f` before and after
+  the update, the discriminator's `df`, and the `nudged` flag;
+- a `double instr_force_f` applied to `lock_f` immediately after
+  acquisition sets it, which is what the equilibrium table in Finding 15
+  sweeps - it is one assignment and it changes nothing else about the
+  run;
+- a dump of the acquisition statistic `sf` for every (bank, frequency)
+  cell as it is computed, which is the acquisition surface table.
 
 Driven by `divcap_replay()` with default options it reproduces the
 shipping path exactly; `--weights` writes the per-block weight in
@@ -1405,11 +1839,23 @@ takes for the "unguarded" column. `src/` is not touched, and the copy is
 not worth committing - two edits against a generated file are quicker to
 redo than to maintain.
 
-The independent channel and noise figures in Finding 13 need no tools at
-all: read the blocks out of the `.divc` with the layout in
+The independent channel and noise figures in Findings 13 and 16 need no
+tools at all: read the blocks out of the `.divc` with the layout in
 `src/diversity_capture.h`, FFT each arm, and take the cross-spectrum over
 the modem band for `h1/h0` and over the guard bins for `R`. Being a
 separate implementation is the whole point of them.
+
+Two cautions for anyone redoing the Finding 16 arithmetic. The block
+record is 208 bytes with the layout in `src/diversity_capture.h`; the
+`double centre` after `int32_t pad0` is padded to an 8-byte boundary, and
+mis-indexing there silently swaps `width` for `bank` and every field
+after it. And a two-eigenvector decomposition of the per-bin covariance
+is **not** a valid way to split signal from noise here - the smaller
+eigenvector is a direction, not a noise floor, so any weight can null it
+and arm-1-alone scores 27 dB better than it should. The coherent/
+incoherent split (`|R01|^2/R11` against the remainder) and the direct
+carrier measurement agree with each other; that route was tried, gave
+answers 25 to 35 dB out, and is recorded here so it is not tried again.
 
 The capture files themselves are not in the repository - they are 46 MB a
 minute. Keep them alongside this page for as long as the numbers here
