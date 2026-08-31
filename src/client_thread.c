@@ -52,6 +52,7 @@ extern int clock_nanosleep(clockid_t __clock_id, int __flags,
 #include "message.h"
 #include "meter.h"
 #include "profiles.h"
+#include "diversity_auto.h"
 #include "radio.h"
 #include "rx_panadapter.h"
 #include "sliders.h"
@@ -1528,6 +1529,18 @@ static gpointer client_tcp_thread(gpointer arg) {
       receiver[id]->agc_custom_slope  = from_16(agc_cmd.custom_slope);
       //
       receiver[id]->agc = agc_cmd.agc;
+    }
+    break;
+    case CMD_DIV_AUTO: {
+      //
+      // Sent by the server whenever its automatic phasing loop starts,
+      // stops, changes objective or is put on Hold. b1 is the objective,
+      // b2 is whether the loop owns the weight - while it does, a gain or
+      // phase sent from here is discarded on the far side, so the sliders
+      // are greyed rather than left showing a value the radio is not using.
+      //
+      g_idle_add(diversity_client_set_auto,
+                 GINT_TO_POINTER((header.b1 << 8) | (header.b2 & 0xFF)));
     }
     break;
     case CMD_MOX: {

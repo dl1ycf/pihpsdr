@@ -42,6 +42,11 @@ int radio_is_remote = 0;
 int cw_keyer_sidetone_frequency = 800;
 double div_cos = 1.0, div_sin = 0.0, div_gain = 0.0, div_phase = 0.0;
 struct _vfo vfo[MAX_VFOS];
+//
+// The engine tells a connected client when the loop takes or releases the
+// weight; there is no client here.
+//
+void radio_div_auto_notify_client(void) { }
 void t_print(const char *fmt, ...) { (void)fmt; }        /* quiet */
 const char *getProperty(const char *n) { (void)n; return NULL; }
 void setProperty(const char *n, const char *v) { (void)n; (void)v; }

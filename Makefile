@@ -911,6 +911,7 @@ src/client_thread.o: src/radio.h src/adc.h src/discovered.h
 src/client_thread.o: src/rx_panadapter.h src/sliders.h src/actions.h
 src/client_thread.o: src/store.h src/tci.h src/tci_audio.h
 src/client_thread.o: src/tx_panadapter.h src/vfo.h src/waterfall.h
+src/client_thread.o: src/diversity_auto.h
 src/css.o: src/css.h src/message.h
 src/cw_menu.o: src/client_server.h src/mode.h src/receiver.h src/atomic.h
 src/cw_menu.o: src/transmitter.h src/ext.h src/iambic.h src/message.h
@@ -1292,6 +1293,7 @@ src/radio.o: src/diversity_auto.h
 src/receiver.o: src/atomic.h
 src/receiver.o: src/diversity_auto.h
 src/rx_panadapter.o: src/receiver.h src/atomic.h
+src/rx_panadapter.o: src/diversity_auto.h src/rade_correlator.h
 src/saturndrivers.o: src/saturnregisters.h
 src/sliders.o: src/actions.h src/receiver.h src/atomic.h src/transmitter.h
 src/soapy_protocol.o: src/receiver.h src/atomic.h src/transmitter.h

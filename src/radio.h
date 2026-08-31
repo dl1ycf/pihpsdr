@@ -332,6 +332,7 @@ extern double radio_get_drive(void);
 extern void   radio_set_drive(double d);
 extern void   radio_set_diversity(int state);
 extern void   radio_set_diversity_gain(double g);
+extern void   radio_div_auto_notify_client(void);
 extern void   radio_set_diversity_phase(double p);
 extern void   radio_calc_drive_level(void);
 extern void   radio_calc_div_params(void);

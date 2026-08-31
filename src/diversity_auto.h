@@ -151,6 +151,21 @@ extern int    div_auto_occ_valid;
 extern int    div_auto_running;
 
 //
+// Remote client only: 1 while the radio's own loop owns the weight, so a
+// gain or phase sent from here would be discarded, and which objective it
+// is running. Set from CMD_DIV_AUTO; always the defaults on the radio
+// side, where div_auto_running and div_auto_mode answer the question.
+//
+// Deliberately not div_auto_mode itself. That one is written to the
+// client's own props, and a client is a radio in its own right when it is
+// not connected - it must not come back from a session with the server's
+// objective saved as its own.
+//
+extern int    div_auto_remote_owns;
+extern int    div_auto_remote_mode;
+extern gboolean diversity_client_set_auto(gpointer data);
+
+//
 // +1 if the RADE modem was found above the tuned carrier, -1 below.
 //
 extern int  div_rade_side_get(void);

@@ -284,6 +284,16 @@ static void update_manual_sensitivity(void) {
   gboolean manual = (div_auto_mode == DIV_AUTO_OFF) || !div_auto_running
                     || div_auto_hold;
 
+  //
+  // On a remote client the loop runs on the radio, so div_auto_running is
+  // 0 here and the test above would call the sliders live when they are
+  // not: radio_set_diversity_gain()/_phase() discard a manual set while
+  // the server's loop owns the weight. Use what the server told us, so
+  // the client greys exactly what the radio-side menu would.
+  //
+  if (radio_is_remote) { manual = !div_auto_remote_owns; }
+
+
   if (gain_coarse_scale)  { gtk_widget_set_sensitive(gain_coarse_scale, manual); }
 
   if (gain_fine_scale)    { gtk_widget_set_sensitive(gain_fine_scale, manual); }
@@ -554,6 +564,23 @@ static int status_update_cb(gpointer data) {
 
   div_arm_status_set();
 
+  if (radio_is_remote) {
+    //
+    // Nothing is measured on this side. Report what the server last said
+    // its loop was doing, so "my sliders are dead" has a visible reason.
+    //
+    static const char *const objective[] = { "off", "Null", "Sum", "Best" };
+    const int m = (div_auto_remote_mode >= 0 && div_auto_remote_mode <= DIV_AUTO_BEST)
+                  ? div_auto_remote_mode : 0;
+    //
+    // "On radio" and not "Auto radio": DIV_STATUS_TAG is nine characters
+    // and the field truncates rather than widening the dialog.
+    //
+    div_status_set("On radio", div_auto_remote_owns ? objective[m] : "manual",
+                   "", div_gain, div_phase);
+    return G_SOURCE_CONTINUE;
+  }
+
   if (!div_auto_running) {
     div_status_set("Auto off", "", "", div_gain, div_phase);
     return G_SOURCE_CONTINUE;
@@ -607,7 +634,7 @@ static int status_update_cb(gpointer data) {
       //
       // "fade": locked, but the pilot is not currently strong enough to
       // measure from, so the weight is frozen at its last good value.
-      // That is a fade, not a loss - the lock is kept for ten seconds.
+      // That is a fade, not a loss - the lock is kept for the Hang time.
       //
       state = div_auto_hold ? "HOLD" : (div_auto_holding ? "fade" : "LOCK");
       snprintf(detail, sizeof(detail), "%s %3.0f%%",
@@ -727,6 +754,11 @@ static void auto_changed_cb(GtkWidget *widget, gpointer data) {
   }
 
   update_manual_sensitivity();
+  //
+  // Crossing into or out of Off changes whether the loop owns the weight,
+  // and the objective itself is worth reporting either way.
+  //
+  radio_div_auto_notify_client();
 }
 
 //
@@ -768,6 +800,22 @@ static void hold_cb(GtkWidget *widget, gpointer data) {
 // tracker at a station 5 kHz away does not destroy the window set up for
 // wideband work, and going back restores it.
 //
+//
+// Remote client: CMD_DIV_AUTO has arrived. Runs on the GTK thread, put
+// there by g_idle_add() from the client read loop, because it moves
+// widgets. The menu need not be open - the flags are read when it is
+// built, so a dialog opened later comes up correct.
+//
+gboolean diversity_client_set_auto(gpointer data) {
+  const int packed = GPOINTER_TO_INT(data);
+  div_auto_remote_mode = (packed >> 8) & 0xFF;
+  div_auto_remote_owns = packed & 0xFF;
+
+  if (dialog != NULL) { update_manual_sensitivity(); }
+
+  return G_SOURCE_REMOVE;
+}
+
 static void div_window_store(int ref) {
   if (ref == DIV_REF_CARRIER) {
     div_carrier_centre = div_auto_centre;
@@ -1236,7 +1284,10 @@ void diversity_menu(GtkWidget *parent) {
   if (radio_is_remote) {
     //
     // The samples are combined on the server, so there is nothing here to
-    // analyse. Manual gain/phase still work, they are sent over the wire.
+    // analyse and none of the loop's own controls belong here. Manual
+    // gain/phase are sent over the wire, but the server discards them
+    // while its loop owns the weight - update_manual_sensitivity() greys
+    // them for exactly that case, from what CMD_DIV_AUTO reported.
     //
     gtk_widget_set_sensitive(auto_combo, FALSE);
     gtk_widget_set_sensitive(ref_combo, FALSE);

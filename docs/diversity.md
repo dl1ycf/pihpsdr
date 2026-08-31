@@ -169,7 +169,7 @@ pilot timing and it has to re-acquire rather than track a pilot that has
 silently moved. For the transform-based modes a dropped block costs
 nothing but one block's contribution.
 
-### Two objectives
+### Three objectives
 
 Over the bins selected by the reference (§5), the loop accumulates the
 cross spectrum and both auto spectra with exponential forgetting, then:
@@ -178,12 +178,35 @@ cross spectrum and both auto spectra with exponential forgetting, then:
 |---|---|---|
 | **Null** | `w = −Sxy/Syy` | minimises `E\|z0 + w·z1\|²` — cancels whatever the two antennas have in common. Noise cancelling. |
 | **Sum** | `w = +Sxy/Sxx` | equals `conj(h)` for `z1 = h·z0` — maximum ratio combining when both branches carry equal noise power. |
+| **Best** | `w = 0` or `w` at the clamp, co-phased | gives the output to whichever antenna is measuring better, rather than combining them. |
 
-They use **different denominators**, so they are not simply sign-flipped —
-though since `Sxx` and `Syy` are positive reals the two answers are
-exactly 180° apart, differing only in magnitude by `Sxx/Syy`. Both come
-from the same accumulators, so switching between them takes effect on the
-next block and is applied without slewing.
+Null and Sum use **different denominators**, so they are not simply
+sign-flipped — though since `Sxx` and `Syy` are positive reals the two
+answers are exactly 180° apart, differing only in magnitude by `Sxx/Syy`.
+Both come from the same accumulators, so switching between them takes
+effect on the next block and is applied without slewing.
+
+**Best** is a selection rather than a third formula. It acts on the
+per-antenna SNR estimate `div_auto_arm_db` — each arm's signal measured
+against its *own* noise floor, so an antenna that is 12 dB down because it
+is deaf is distinguished from one that is 12 dB down because it is quiet.
+Every reference computes it. Whichever arm is ahead is used alone, with
+1 dB of hysteresis so a marginal difference does not chatter.
+
+Selecting arm 1 is not directly expressible: the combiner forms
+`z0 + w·z1` with arm 0 pinned at unity gain, so "arm 1 only" exists only
+as the limit `w → ∞`. The nearest reachable point is `w` at the ±27 dB
+clamp with the co-phasing angle — arm 1 dominant with arm 0 co-phased in
+underneath it, 20 dB down. That residue is not a compromise: measured
+against a decoder it beat the full MVDR solve by 0.6 dB on the capture
+where the two antennas disagreed about which was better, because arm 0 is
+still doing useful combining. Selecting arm 0 needs no such trick —
+`w = 0` is exact.
+
+If the estimate is unavailable the loop **holds** rather than falling back
+to arm 0, which would silently turn the mode into "diversity off" whenever
+the floor could not be measured. Because Best selects rather than steers,
+**Invert** does not apply to it and the button is greyed out.
 
 Fit quality is the magnitude-squared coherence
 `γ² = |Sxy|²/(Sxx·Syy)`. Below the **Min coherence** setting the loop
@@ -251,6 +274,23 @@ RADE V1   LOCK   LSB 100%     -2.1 dB   +32°
 Dig 12Hz  track  occ  293Hz   -2.1 dB   +38°
 Dig 12Hz  search no signal    +0.0 dB    +0°
 ```
+
+Below it sits a second, single-field line reporting which antenna is
+measuring better and by how much, on the same fixed width:
+
+```
+Antennas  measuring
+Antennas  ADC1 better by  3.4 dB
+Antennas  ADC0 better by 12.1 dB  using ADC0
+```
+
+It is shown whatever objective is running, because nothing else an
+operator can see distinguishes a deaf antenna from a quiet one and the two
+want opposite weights. `measuring` means the estimate is not yet available
+— it needs a signal standing clear of the noise floor on *both* arms. The
+trailing `using ADCn` appears only under **Best**, and is what the
+selection has actually settled on. On a remote client the line reads
+`Antennas  radio side`, since the analysis runs on the server.
 
 In Digital I/Q the third field is the width of what was found occupied,
 which is checkable against the darker band on the panadapter, and
@@ -557,7 +597,7 @@ one block from `track` to `search` when the signal stops.
 |---|---|---|
 | **Diversity Enable** | The whole feature, including the DDC re-plumbing | always |
 | **Gain / Phase** (coarse, fine) | Manual weight; live when Auto is not driving, and under **Hold** | always |
-| **Auto** | Off / Null / Sum — the objective | always |
+| **Auto** | Off / Null / Sum / Best — the objective | always |
 | **Measure on** | Which reference (§5) | always |
 | **Window follows RX filter** | — | Window, Digital I/Q |
 | **Window centre / width** | The analysis window, the carrier search region in Carrier mode, or the occupancy search region in Digital I/Q. Kept separately per mode | Window (unticked), Carrier, Digital I/Q (unticked) |
@@ -568,7 +608,7 @@ one block from `track` to `search` when the signal stops.
 | **Min coherence** | Below this the loop holds rather than adapts | all but RADE V1 |
 | **Restart averaging** | Discards the accumulated statistics | always |
 | **Hold** | Stops applying the loop's answer without stopping the loop | always |
-| **Invert** | Swaps Null and Sum | always |
+| **Invert** | Swaps Null and Sum | always; inactive under Best |
 
 Rows that the selected reference cannot use are **hidden, not greyed
 out**. The RADE references place their own window, so four rows never
@@ -613,6 +653,11 @@ what was being computed while leaving the audio exactly as it was.
 Under Hold it acts on the operator's own manual weight, which is the only
 thing being applied then.
 
+It applies to Null and Sum only. **Best** is not one of that pair — it
+selects an antenna rather than steering a null, so there is no opposite
+answer to swap to — and the button is greyed out there. Left live, it
+would have moved the combo to Null and performed no inversion at all.
+
 The objective combo takes the same path, so the button and the combo
 cannot behave differently.
 
@@ -631,8 +676,29 @@ file, so inserting one in the middle silently changes what an existing
 file means.
 
 The automatic loop runs on the radio side only. On a remote client the
-combining happens on the server, so the auto controls are greyed out;
-manual gain and phase still work and are sent over the wire.
+combining happens on the server, so the loop's own controls are greyed
+out. Manual gain and phase are sent over the wire, but the server accepts
+them only while its loop does **not** own the weight — that is, with Auto
+off, or under Hold. `radio_div_auto_owns_weight()` sits in front of every
+manual setter on the radio side, so an adjustment arriving from a client
+while the loop is running would otherwise be discarded silently, leaving
+the client's sliders showing a value the radio is not using.
+
+The server therefore tells the client. `CMD_DIV_AUTO` carries the
+objective and one boolean — does the loop own the weight — and is sent
+when the loop starts or stops, when the objective changes, when Hold is
+toggled, and once when a client connects. The client greys its gain and
+phase sliders on it, exactly as the radio-side menu does, and its status
+line reads `Auto radio` with the objective the server is running rather
+than the `Auto off` it would otherwise report. The client stores that in
+`div_auto_remote_owns` / `div_auto_remote_mode` rather than in
+`div_auto_mode`, because a client is a radio in its own right when it is
+not connected and must not come back from a session with the server's
+objective saved into its own props.
+
+Adding the command renumbered the ones after it in the enum, so
+`CLIENT_SERVER_VERSION` went to `0x01300007`. Client and server check that
+on connect and refuse a mismatch, which is what makes renumbering safe.
 
 ---
 
@@ -721,6 +787,7 @@ quantisation and follows the few Hz per minute a station drifts.
 | `src/diversity_auto.c`, `.h` | The engine: tap, queue, worker, transform modes, occupancy split, weight |
 | `src/rade_correlator.c`, `.h` | RADE V1 pilot correlation; the MVDR solve itself is `div_mvdr2()`, shared with Digital I/Q |
 | `src/diversity_menu.c` | Controls and status |
+| `src/rx_panadapter.c` | The analysis-window overlay, and the RADE modem passband |
 | `src/receiver.c` | The combiner, and the tap into it |
 | `src/radio.c` | Start/stop, props, shutdown |
 | `src/new_protocol.c` | P2 DDC pairing and ADC configuration |

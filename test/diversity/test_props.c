@@ -30,6 +30,7 @@ int cw_keyer_sidetone_frequency = 800;
 double div_cos = 1.0, div_sin = 0.0, div_gain = 0.0, div_phase = 0.0;
 struct _vfo vfo[MAX_VFOS];
 void t_print(const char *f, ...) { (void)f; }
+void radio_div_auto_notify_client(void) { }
 double myatof(const char *s) { return atof(s); }
 
 /* a tiny two-key property store the test drives directly */

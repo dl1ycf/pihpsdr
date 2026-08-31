@@ -424,6 +424,11 @@ static void server_loop(void) {
   //
   send_radio_data(remoteclient.sock_tcp);
   //
+  // The client cannot see whether our loop owns the weight, and it must
+  // know before it builds its Diversity menu.
+  //
+  radio_div_auto_notify_client();
+  //
   // send ADC data structure
   //
   send_adc_data(remoteclient.sock_tcp, 0);

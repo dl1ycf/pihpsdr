@@ -49,8 +49,9 @@
 #define RADE_CORR_NMF     ((RADE_CORR_NS + 1) * (RADE_CORR_M + RADE_CORR_NCP))
 
 //
-// Lowest and highest audio frequency occupied by the modem, in Hz. Used
-// to place the analysis window in the wideband ("stage 1") RADE mode.
+// Lowest and highest audio frequency occupied by the modem, in Hz. They
+// bound the sideband test in div_rade_side_expected() and draw the modem
+// passband on the RX panadapter overlay (rx_panadapter.c).
 //
 #define RADE_CORR_FLO     750.0
 #define RADE_CORR_FHI     2200.0
@@ -91,7 +92,8 @@ extern double rade_corr_arm_cos;
 extern double rade_corr_arm_sin;
 
 //
-// ddc_rate must divide RADE_CORR_FS exactly (48k/96k/192k/384k all do).
+// ddc_rate must be a whole multiple of RADE_CORR_FS, since the correlator
+// decimates down to it (48k/96k/192k/384k all are).
 // Returns 0 if the correlator cannot run at this rate.
 //
 extern int  rade_corr_start(int ddc_rate);

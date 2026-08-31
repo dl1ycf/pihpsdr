@@ -31,6 +31,11 @@ int radio_is_remote = 0;
 int cw_keyer_sidetone_frequency = 800;
 double div_cos = 1.0, div_sin = 0.0, div_gain = 0.0, div_phase = 0.0;
 struct _vfo vfo[MAX_VFOS];
+//
+// The engine tells a connected client when the loop takes or releases the
+// weight; there is no client here.
+//
+void radio_div_auto_notify_client(void) { }
 void t_print(const char *fmt, ...){ va_list a; va_start(a,fmt); vprintf(fmt,a); va_end(a); }
 const char *getProperty(const char *n){ (void)n; return NULL; }
 void setProperty(const char *n, const char *v){ (void)n; (void)v; }
@@ -51,6 +56,16 @@ int main(void) {
     { "Carrier/Sum",  DIV_REF_CARRIER,   DIV_AUTO_SUM  },
     { "Digital/Sum",  DIV_REF_DIGITAL_IQ, DIV_AUTO_SUM  },
     { "Digital/Null", DIV_REF_DIGITAL_IQ, DIV_AUTO_NULL },
+    //
+    // Best does not share the Null/Sum path: div_apply_best() holds
+    // instead of producing a weight whenever div_auto_arm_valid is 0, and
+    // div_arm_from_floor() has two independent gates that can leave it
+    // there indefinitely. So "Best silently never starts" is exactly the
+    // failure this test exists to catch, on a reference that places its
+    // own window and on one that does not.
+    //
+    { "Window/Best",  DIV_REF_BAND,       DIV_AUTO_BEST },
+    { "Digital/Best", DIV_REF_DIGITAL_IQ, DIV_AUTO_BEST },
   };
   int fails = 0;
   for (unsigned c = 0; c < sizeof(cases)/sizeof(cases[0]); c++) {

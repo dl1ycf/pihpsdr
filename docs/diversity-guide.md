@@ -19,7 +19,7 @@ coherent and identically configured; no weighting happens in the FPGA.
 **Contents**
 
 1. [Quick start](#1-quick-start)
-2. [The two objectives: Null and Sum](#2-the-two-objectives-null-and-sum)
+2. [The objectives: Null, Sum and Best](#2-the-objectives-null-sum-and-best)
 3. [Choosing what to measure on](#3-choosing-what-to-measure-on)
 4. [The rest of the controls](#4-the-rest-of-the-controls)
 5. [Reading the status line and the overlay](#5-reading-the-status-line-and-the-overlay)
@@ -47,11 +47,11 @@ better than that on a particular signal.
 
 ---
 
-## 2. The two objectives: Null and Sum
+## 2. The objectives: Null, Sum and Best
 
-Both are computed from the same measurement — the cross spectrum of the
-two antennas over the analysis window — and they differ only in sign and
-in which power normalises them:
+Null and Sum are computed from the same measurement — the cross spectrum
+of the two antennas over the analysis window — and they differ only in
+sign and in which power normalises them:
 
 | | Weight | What it does |
 |---|---|---|
@@ -64,8 +64,33 @@ press **Invert** and listen. It swaps the objective *and* turns the weight
 in force through 180° immediately, so the answer is audible at once rather
 than after the loop reconverges.
 
+**Best** does something different in kind: instead of combining the two
+antennas it gives the output to whichever one is measuring better. Use it
+when the antennas are not complementary but simply unequal on this band or
+this signal — one hears the station and the other mostly does not, and
+combining them only mixes noise into the good one.
+
+The comparison is each arm's signal against its *own* noise floor, so it
+tells a deaf antenna from a merely quiet one, and it carries 1 dB of
+hysteresis so a marginal difference does not flap between the two. The
+second status line always shows the comparison, whatever objective is
+selected, and under Best it also shows which antenna won — so you can
+leave the radio on Null or Sum and still see at a glance whether one
+antenna is carrying the contact.
+
+Two things to expect. Selecting ADC0 is exact, and the gain reads at the
+bottom of its range. Selecting ADC1 cannot be exact — the combiner always
+carries ADC0 at unity — so it rails the gain and tucks ADC0 in 20 dB
+underneath, co-phased. That residue measurably helps rather than hurts.
+And if neither arm can be measured (nothing standing clear of the noise on
+both), Best **holds** rather than guessing, so a dead band leaves the
+weight where it was rather than silently reverting to one antenna.
+
+**Invert** does not apply to Best and is greyed out there; there is no
+opposite answer to swap to.
+
 The feature ships **off** — `Auto` starts at `Off (manual)` and the weight
-stays where you left it. Null is offered first of the two objectives,
+stays where you left it. Null is offered first of the three,
 cancelling a local noise source being the more common need. Selecting
 the RADE V1 reference switches to Sum, since the signal the pilot
 correlator is pointing at is the wanted one.
@@ -184,7 +209,7 @@ band is not on your signal, the region is in the wrong place.
 | **Hang** | 1–30 s, `RADE V1 pilot` only. How long a lock is held after the pilot goes before the correlator gives up and searches again. Long rides out a fade on one station; short is what a frequency several stations take turns on wants |
 | **Restart averaging** | Throw away the statistics and start again |
 | **Hold** | Stop *applying* the answer without stopping the loop |
-| **Invert** | Swap Null and Sum |
+| **Invert** | Swap Null and Sum. Greyed out under Best, which has no opposite |
 
 ### When the signal stops
 
@@ -246,6 +271,20 @@ Dig 12Hz  track  occ  293Hz   -2.1 dB   +38°
 | Second | `track` adapting · `wait` holding, nothing coherent enough to measure · `HOLD` your Hold · `search` looking — in Digital I/Q that means the region is empty or the signal has stopped · `confrm` confirming a RADE candidate · `LOCK` RADE tracking · `fade` RADE locked but the pilot is too weak to measure from |
 | Third | Coherence, or the carrier frequency, or the RADE sideband and pilot percentage, or in Digital I/Q the occupied width found — `no signal` if the region is empty |
 | Fourth | The weight. Under Hold this is the value the loop has **tracked to**, not the one being applied — the sliders show what is applied, and seeing the two apart is the point of the control |
+
+Under it is a second line comparing the two antennas:
+
+```
+Antennas  measuring
+Antennas  ADC1 better by  3.4 dB
+Antennas  ADC0 better by 12.1 dB  using ADC0
+```
+
+`measuring` means there is not yet a signal standing clear of the noise
+floor on both arms to compare. The trailing `using ADCn` appears only
+under **Best** and is the antenna it has settled on. On a remote client
+the line reads `Antennas  radio side`, because the measuring happens
+there.
 
 On the RX panadapter the analysis window is drawn as a translucent green
 band under the trace. It is worth watching: it is otherwise an invisible
@@ -431,8 +470,17 @@ relationship between the arms; the estimate re-converges over a few time
 constants instead. **Restart averaging** if you do not want to wait.
 
 **The automatic loop runs on the radio side only.** On a remote client the
-samples are combined on the server, so the auto controls are inert; manual
-gain and phase still work and are sent over the wire.
+samples are combined on the server, so the loop's own controls are inert.
+Manual gain and phase are sent over the wire, but the radio takes them
+only when its loop is not driving the weight — Auto off, or under Hold. If
+Auto is running on the radio, the client's gain and phase sliders grey out
+the same way the radio's own do, and the status line reads `Auto radio`
+with the objective in use. So the sliders on the client always show what
+the radio is really applying; they never accept a change that would be
+quietly thrown away.
+
+Client and server must be built from the same tree — they check a protocol
+version on connect and refuse a mismatch.
 
 **On pre-Orion2 boards the two chains are not symmetric.** Only ADC0's
 path is under software control. The relationship between the antennas is

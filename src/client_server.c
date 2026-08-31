@@ -818,6 +818,23 @@ void send_diversity(int s, int enabled, double gain, double phase) {
   send_tcp(s, (char *)&command, sizeof(command));
 }
 
+//
+// Server -> client. The automatic phasing loop only ever runs on the
+// radio side, so a remote client cannot work out for itself whether the
+// loop owns the weight - and if it does, a manual gain or phase sent from
+// there is discarded by radio_set_diversity_gain()/_phase(). Telling the
+// client lets it grey the sliders exactly as the local menu does, rather
+// than showing a value the radio is not using.
+//
+void send_div_auto(int s, int mode, int owns) {
+  HEADER header;
+  SYNC(header.sync);
+  header.data_type = to_16(CMD_DIV_AUTO);
+  header.b1 = mode;
+  header.b2 = owns;
+  send_tcp(s, (char *)&header, sizeof(header));
+}
+
 void send_agc(int s, const RECEIVER *rx) {
   AGC_COMMAND command;
   SYNC(command.header.sync);

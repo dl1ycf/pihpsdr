@@ -409,6 +409,14 @@ double div_auto_binhz          = 0.0;
 
 double div_auto_coherence      = 0.0;
 int    div_auto_holding        = 1;
+//
+// Remote client only: what the server last said about its own loop. The
+// client never runs an analysis thread, so div_auto_running is always 0
+// here and cannot answer the question. Kept separate rather than
+// borrowing div_auto_running, which several things on this side read.
+//
+int    div_auto_remote_owns    = 0;
+int    div_auto_remote_mode    = DIV_AUTO_OFF;
 double div_auto_carrier        = 0.0;
 int    div_auto_carrier_valid  = 0;
 
@@ -638,6 +646,12 @@ void diversity_auto_set_hold(int on) {
     //
     div_jump = 1;
   }
+
+  //
+  // Hold hands the weight back to the operator, so it changes whether the
+  // loop owns it - a remote client's sliders go live and dead with this.
+  //
+  radio_div_auto_notify_client();
 }
 
 int div_rade_side_get(void) {
@@ -2348,6 +2362,7 @@ void diversity_auto_start(void) {
   // Set last: the sample path tests this without any lock.
   //
   div_auto_running = 1;
+  radio_div_auto_notify_client();
 }
 
 #ifdef DIVERSITY_CAPTURE
@@ -2405,6 +2420,7 @@ void diversity_auto_stop(void) {
   //
   div_auto_coherence = 0.0;
   div_auto_holding = 1;
+  radio_div_auto_notify_client();
 }
 
 void diversity_auto_restart(void) {
