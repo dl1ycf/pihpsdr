@@ -2214,6 +2214,45 @@ void diversity_auto_sample(double i0, double q0, double i1, double q1) {
   g_mutex_unlock(&mbox_mutex);
 }
 
+//
+// Called from rxtx() when the radio is about to transmit.
+//
+// Both protocols stop feeding rx_add_div_iq_samples() for the whole over:
+// new_protocol only sets RXACTION_DIV when !xmit - duplex included, see
+// update_action_table() - and old_protocol guards the diversity mixer on
+// !radio_is_transmitting(). So the analysis stream acquires a hole that
+// nothing else reports. q_pending_drop counts only blocks lost to a full
+// queue, and no context has changed, so without this the correlator would
+// track straight through it: the first block after the over would splice
+// pre-TX and post-TX samples into one transform, and lock_a would keep
+// advancing by RADE_CORR_NMF against a ringtotal that has skipped an
+// arbitrary number of samples. That is exactly the failure the gap
+// mechanism exists to prevent, so route the transmit gap into it and let
+// the worker re-acquire off the first clean block.
+//
+// Nothing here touches the applied weight. div_cos/div_sin are written
+// only by div_apply_weight(), and every path that has no answer to give
+// sets div_auto_holding and returns without calling it - so the gain and
+// phase in force when the over started stay in force until a new lock
+// produces a better fit. That is deliberate: they may not be ideal for
+// the returning signal, but they are a great deal better than nothing.
+//
+// Racing the sample path is harmless, so this needs no lock of its own
+// for fillptr. Storing zero can only move the fill position backwards
+// within the buffer, never outside it, so the worst case is one mangled
+// block - and that is the very block being flagged as following a gap,
+// whose correlator state the worker discards before processing it.
+// q_pending_drop is taken under the mutex, as it is on the sample path.
+//
+void diversity_auto_gap(void) {
+  if (!div_auto_running) { return; }
+
+  fillptr = 0;
+  g_mutex_lock(&mbox_mutex);
+  q_pending_drop++;
+  g_mutex_unlock(&mbox_mutex);
+}
+
 void diversity_auto_start(void) {
   if (div_auto_running) { return; }
 

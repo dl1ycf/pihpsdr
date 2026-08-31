@@ -192,6 +192,7 @@ extern void diversity_auto_stop(void);
 extern void diversity_auto_restart(void);   // stop + start if it should be running
 extern void diversity_auto_reset(void);     // forget the accumulated statistics
 extern void diversity_auto_sample(double i0, double q0, double i1, double q1);
+extern void diversity_auto_gap(void);       // transmit gap in the sample stream
 extern void diversity_auto_save_state(void);
 extern void diversity_auto_restore_state(void);
 

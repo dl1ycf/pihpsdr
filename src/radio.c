@@ -1853,6 +1853,12 @@ static void rxtx(int state) {
     //
     // Perform RX->TX transition
     //
+    //
+    // The diversity sample stream stops for the whole over, in duplex as
+    // well, so tell the auto-phasing analysis that its input is about to
+    // acquire a hole. The weight in force is kept.
+    //
+    diversity_auto_gap();
     if (!radio_is_remote) {
       RECEIVER *rx_feedback = receiver[PS_RX_FEEDBACK];
       RECEIVER *tx_feedback = receiver[PS_TX_FEEDBACK];

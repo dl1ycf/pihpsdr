@@ -295,13 +295,22 @@ static void update_manual_sensitivity(void) {
   //
   // Hold and Invert act on the loop, so they need one to act on. This does
   // not depend on which reference is selected - every one of them has a
-  // weight to hold and an objective to invert.
+  // weight to hold.
   //
   gboolean has_loop = (div_auto_mode != DIV_AUTO_OFF) && div_auto_running;
 
   if (hold_b)   { gtk_widget_set_sensitive(hold_b, has_loop); }
 
-  if (invert_b) { gtk_widget_set_sensitive(invert_b, has_loop); }
+  //
+  // Invert is the exception. It swaps Null and Sum, which are one
+  // measurement read two ways and so are 180 degrees apart. Best is not
+  // one of that pair - it picks an antenna and rails the weight - so
+  // there is no opposite answer to swap to, and a button press there
+  // could only drop the operator out of Best. See invert_cb().
+  //
+  if (invert_b) {
+    gtk_widget_set_sensitive(invert_b, has_loop && div_auto_mode != DIV_AUTO_BEST);
+  }
 }
 
 //
@@ -732,9 +741,15 @@ static void auto_changed_cb(GtkWidget *widget, gpointer data) {
 // putting the new value in the sliders - happens in auto_changed_cb(), so
 // there is exactly one description of what changing the objective does.
 //
+// Null and Sum are the whole of it. Best has no opposite - it selects an
+// antenna rather than steering a null - and auto_changed_cb() has no
+// inversion to perform for a Best -> Null move, so the button would
+// change objective and nothing else. update_manual_sensitivity() greys it
+// out there; this is the belt to that pair of braces.
+//
 // cppcheck-suppress constParameterCallback
 static void invert_cb(GtkWidget *widget, gpointer data) {
-  if (div_auto_mode == DIV_AUTO_OFF) { return; }
+  if (div_auto_mode == DIV_AUTO_OFF || div_auto_mode == DIV_AUTO_BEST) { return; }
 
   gtk_combo_box_set_active(GTK_COMBO_BOX(auto_combo),
                            (div_auto_mode == DIV_AUTO_NULL) ? DIV_AUTO_SUM
@@ -1127,7 +1142,8 @@ void diversity_menu(GtkWidget *parent) {
                               "Swap Null and Sum. The two answers are 180 degrees "
                               "apart, so this is the quick way to tell whether the "
                               "array is pointed at the wanted signal or at the "
-                              "interference.");
+                              "interference. Does not apply to Best, which selects "
+                              "an antenna rather than steering a null.");
   g_signal_connect(invert_b, "clicked", G_CALLBACK(invert_cb), NULL);
   gtk_box_pack_start(GTK_BOX(buttons), invert_b, FALSE, FALSE, 0);
 #ifdef DIVERSITY_CAPTURE
