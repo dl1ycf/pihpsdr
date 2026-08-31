@@ -410,7 +410,7 @@ int audio_open_output(RECEIVER *rx) {
                                    "pihpsdr-playback",
                                    props,
                                    &stream_events,
-                                   ad);
+                                   rx);
   if (ad->stream == NULL) {
     pw_core_disconnect(ad->core);
     pw_thread_loop_unlock(ad->loop);
@@ -566,7 +566,7 @@ int audio_open_input(TRANSMITTER *tx) {
                                    "pihpsdr-capture-stream",
                                    props,
                                    &stream_events,
-                                   ad);
+                                   tx);
   if (ad->stream == NULL) {
     pw_core_disconnect(ad->core);
     pw_thread_loop_unlock(ad->loop);
@@ -609,6 +609,7 @@ int audio_open_input(TRANSMITTER *tx) {
   ad->audio_buffer_inpt = 0;
   ad->audio_buffer_outpt = 0;
   ad->audio_flag = 1;
+  tx->audio_handle = ad;
   return 0;
 }
 
