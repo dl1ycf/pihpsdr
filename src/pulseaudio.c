@@ -484,7 +484,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
   g_mutex_lock(&ad->audio_mutex);
   ad = rx->audio_handle;
   if (ad != NULL) {
-    if (ad->cwaudio == 0) {
+    if (ad->cwaudio == 0 || ad->cwaudio == 5) {
       ad->cwaudio = 1;
       ad->cwcount = 0;
       ad->skipcnt = 0;
