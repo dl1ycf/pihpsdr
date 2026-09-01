@@ -285,15 +285,8 @@ static int pa_out_cb(const void *inputBuffer, void *outputBuffer, unsigned long 
   if (ad == NULL) {
     //
     // This means an audio_close_output() is on the way.
-    // deliver zeroes with paContinue and let the stream
-    // be stopped elsewhere.
     //
-    if (ad->audio_channels == 1) {
-      memset(out, 0, framesPerBuffer * sizeof(float));
-    } else {
-      memset(out, 0, 2 * framesPerBuffer * sizeof(float));
-    }
-    return paContinue;
+    return paComplete;
   }
   //
   // Since the handle was non-NULL, the existence of all buffers/pointer
