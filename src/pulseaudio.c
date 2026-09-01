@@ -479,7 +479,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
   // While audio stream is being re-opened, return
   //
   audio_data *ad = (audio_data *) rx->audio_handle;
-  if (ad->cwaudio == 1 || ad->cwaudio == 4) { return; }
+  if (ad == NULL || ad->cwaudio == 1 || ad->cwaudio == 4) { return; }
   g_mutex_lock(&ad->audio_mutex);
   ad = rx->audio_handle;
   if (ad != NULL) {
