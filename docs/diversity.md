@@ -6,7 +6,7 @@ of it functions.
 This is the reference document. Four companions cover narrower ground:
 [`diversity-rade.md`](diversity-rade.md) for the FreeDV RADE V1 correlator,
 [`diversity-digital-iq-proposal.md`](diversity-digital-iq-proposal.md)
-for the Digital I/Q reference,
+for the FSK/DIgital reference,
 [`diversity-auto-phasing.md`](diversity-auto-phasing.md) for the design
 rationale and the ideas that were tried and discarded, and
 [`diversity-measurements.md`](diversity-measurements.md) for what all of
@@ -328,7 +328,7 @@ lines as the radio: `div_auto_arm_db`, `_arm_valid` and `_arm_pick` all
 arrive in `INFO_DIVERSITY`, so `div_arm_status_set()` needs no
 remote-aware case of its own.
 
-In Digital I/Q the third field is the width of what was found occupied,
+Ie FSK/DIgital the third field is the width of what was found occupied,
 which is checkable against the darker band on the panadapter, and
 `search` means the region is in the right place but empty - as against
 `wait`, which means something was found and then rejected as incoherent.
@@ -349,7 +349,7 @@ exactly on the filter shading, which is a convenient check that the
 frequency reference is right.
 
 In Carrier mode the band is the search region and a brighter vertical line
-marks where the tracker has settled within it. In Digital I/Q it is again
+marks where the tracker has settled within it. Ie FSK/DIgital it is again
 the search region, with the bins found occupied shaded more strongly over
 the top, so the operator's setting and the measurement are both visible -
 seeing them disagree is how a region placed on the wrong thing shows
@@ -437,7 +437,7 @@ without calling it, so the gain and phase from before the over stay
 applied until a new lock produces a better fit. `div_reset_stats()` is not
 called either: a cross spectrum is a time average rather than something
 locked to the sample clock, so once no single transform spans the hole it
-is unharmed. Window, Carrier and Digital I/Q therefore lose nothing at all
+is unharmed. Window, Carrier ane FSK/DIgital therefore lose nothing at all
 across an over.
 
 ---
@@ -542,8 +542,7 @@ primary can be tracked — and therefore nulled. Park a 1 kHz window on
 panadapter shows the search region as a green band with a brighter line
 where the tracker has settled.
 
-**Window centre and width are modal twice over.** The Window, Carrier and
-Digital I/Q references each keep their own pair, so aiming the carrier
+**Window centre and width are modal twice over.** The Window, Carrier ane FSK/DIgital references each keep their own pair, so aiming the carrier
 tracker at a station 5 kHz away does not destroy the window set up for
 wideband work; switching back restores it. All three pairs persist, and
 all three are part of the per-mode block described in §6, so the pairs
@@ -594,13 +593,13 @@ new one is being combined with the old one's answer. See
 The wideband **RADE passband** reference that used to sit alongside it has
 been retired. It placed a window on the 750-2200 Hz modem band, on the
 side of the tuned frequency the operator's passband implied, and clipped
-it to the filter. Digital I/Q does the same thing from the same passband
+it to the filtere FSK/DIgital does the same thing from the same passband
 and does it better: it finds where the modem's energy actually is rather
 than assuming the nominal band, and it measures the noise separately
 instead of assuming both branches carry the same amount. Its slot in the
-props file's `diversity_auto_ref` is migrated to Digital I/Q on restore.
+props file's `diversity_auto_ref` is migrated te FSK/DIgital on restore.
 
-### Digital I/Q (occupancy MVDR)
+##e FSK/DIgital (occupancy MVDR)
 
 For a narrow digital signal - FT8, RTTY, PSK31, VARA, JS8 - in a passband
 that is mostly empty. It is the only reference that measures the *noise*
@@ -702,8 +701,8 @@ one block from `track` to `search` when the signal stops.
 | **Gain / Phase** (coarse, fine) | Manual weight; live when Auto is not driving, and under **Hold** | always |
 | **Auto** | Off / Null / Sum / Best — the objective | always |
 | **Measure on** | Which reference (§5) | always |
-| **Window follows RX filter** | — | Window, Digital I/Q |
-| **Window centre / width** | The analysis window, the carrier search region in Carrier mode, or the occupancy search region in Digital I/Q. Measured from the tuned signal, which in CW is the zero-beat note. Kept separately per reference | Window (unticked), Carrier, Digital I/Q (unticked) |
+| **Window follows RX filter** | — | Windowe FSK/DIgital |
+| **Window centre / width** | The analysis window, the carrier search region in Carrier mode, or the occupancy search region ie FSK/DIgital. Measured from the tuned signal, which in CW is the zero-beat note. Kept separately per reference | Window (unticked), Carriere FSK/DIgital (unticked) |
 | **Resolution** | 12 / 6 / 3 Hz bins. Finer lifts weak signals out of the noise but halves the update rate each step | all but RADE V1 |
 | **Weighting** | Flat or Coherence (see above) | Window |
 | **Averaging** | 0.2-30 s. Time constant for the estimate | always |
@@ -716,9 +715,7 @@ one block from `track` to `search` when the signal stops.
 Rows that the selected reference cannot use are **hidden, not greyed
 out**. The RADE V1 reference places its own window, so four rows never
 apply to it, and it uses no transform at all, so two more do not either.
-Greying them left a tall dialog of mostly dead controls.
-
-Digital I/Q hides Weighting for the same kind of reason: the occupancy
+Greying them left a tall dialog of mostly dead controls.e FSK/DIgital hides Weighting for the same kind of reason: the occupancy
 split has already decided which bins carry signal, which is the job that
 control was doing.
 
@@ -923,7 +920,7 @@ kind of scalar double-precision work, so scale accordingly.**
 |---|---|---|---|---|
 | Window | 0.2 % | 0.4 % | 0.9 % | 1.7 % |
 | Carrier | 0.2 % | 0.4 % | 0.9 % | 1.3 % |
-| Digital I/Q | 0.3 % | 0.7 % | 1.0 % | 2.4 % |
+e FSK/DIgital | 0.3 % | 0.7 % | 1.0 % | 2.4 % |
 | RADE V1, **searching** | 4.7 % | 5.4 % | 4.9 % | 7.1 % |
 | RADE V1, searching, AM passband | 6.2 % | 6.5 % | 7.8 % | 7.2 % |
 | RADE V1, locked | 0.5 % | 1.0 % | 1.8 % | 3.6 % |
@@ -940,7 +937,7 @@ to unchanged.
 
 Reading these:
 
-- The transform modes scale with `nfft` and are cheap. Digital I/Q adds a
+- The transform modes scale with `nfft` and are cheape FSK/DIgital adds a
   partial sort for the median noise floor, capped at 4096 samples however
   wide the region is, which is why it stays with the rest of them.
 - **RADE V1 while searching is by far the peak load** and is nearly
@@ -995,7 +992,7 @@ quantisation and follows the few Hz per minute a station drifts.
 | File | Role |
 |---|---|
 | `src/diversity_auto.c`, `.h` | The engine: tap, queue, worker, transform modes, occupancy split, weight |
-| `src/rade_correlator.c`, `.h` | RADE V1 pilot correlation; the MVDR solve itself is `div_mvdr2()`, shared with Digital I/Q |
+| `src/rade_correlator.c`, `.h` | RADE V1 pilot correlation; the MVDR solve itself is `div_mvdr2()`, shared wite FSK/DIgital |
 | `src/diversity_menu.c` | Controls and status |
 | `src/rx_panadapter.c` | The analysis-window overlay, and the RADE modem passband |
 | `src/receiver.c` | The combiner, the tap into it, and `rx_mode_changed()`, where a mode change reaches the modal settings |
@@ -1003,7 +1000,7 @@ quantisation and follows the few Hz per minute a station drifts.
 | `src/new_protocol.c` | P2 DDC pairing and ADC configuration |
 | `src/client_server.c`, `.h` | `CMD_DIV_SETTINGS` and `INFO_DIVERSITY` on the wire |
 | `src/client_thread.c`, `src/server_thread.c` | Where those are sent and received |
-| `test/diversity/` | Mode coverage, window placement including the CW zero, weighting and keying, RADE acquisition, Digital I/Q occupancy and MVDR, the modal per-mode blocks, props migration, CPU benchmark |
+| `test/diversity/` | Mode coverage, window placement including the CW zero, weighting and keying, RADE acquisitione FSK/DIgital occupancy and MVDR, the modal per-mode blocks, props migration, CPU benchmark |
 
 ---
 
@@ -1016,7 +1013,8 @@ quantisation and follows the few Hz per minute a station drifts.
   combiners measurably do on recorded on-air captures, band by band.
   Ongoing; it is the record that decides what the constants should be
 - [`diversity-digital-iq-proposal.md`](diversity-digital-iq-proposal.md) —
-  the Digital I/Q reference in detail, and what the proposal it grew out
+  the FSK/DIgital
+ reference in detail, and what the proposal it grew out
   of got wrong
 - [`diversity-dither-fix.md`](diversity-dither-fix.md) — a P2 bug found
   along the way, where ADC1 never received the dither/random setting

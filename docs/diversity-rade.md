@@ -139,7 +139,7 @@ The first RADE mode placed an FFT window on the nominal 750-2200 Hz modem
 band, on the side of the tuned frequency the operator's passband implied,
 clipped it to the filter, and did maximum ratio combining across it.
 
-It has been removed. The **Digital I/Q** reference does the same job from
+It has been removed. The **FSK/Digital** reference does the same job from
 the same passband and does it better: it finds where the modem's energy
 actually is rather than assuming the nominal band, and it measures the
 noise on the empty part of the passband instead of assuming both branches
@@ -147,7 +147,7 @@ carry equal, uncorrelated noise. For a signal that lives near the noise
 floor, which is the point of RADE, that second difference is the one that
 counts. See §5 of [`diversity.md`](diversity.md).
 
-Its `diversity_auto_ref` value is migrated to Digital I/Q on restore, so
+Its `diversity_auto_ref` value is migrated to FSK/Digital on restore, so
 a props file that selected it comes back on its successor.
 
 What survives from it is the rule about which sideband to measure, which

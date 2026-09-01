@@ -484,7 +484,7 @@ static void update_visibility(void) {
   const gboolean is_band    = (ref == DIV_REF_BAND);
   const gboolean is_carrier = (ref == DIV_REF_CARRIER);
   //
-  // Digital I/Q places a search region the same way Window places a
+  // FSK/Digital places a search region the same way Window places a
   // window, and takes the follow tick for the same reason: following the
   // passband puts the region on the right side of the tuned frequency in
   // every mode without a sideband table, which is how this mode avoids
@@ -502,7 +502,7 @@ static void update_visibility(void) {
   // Per-bin weighting needs a window with bins to weight, and only the
   // wideband window has one. The carrier reference accumulates a handful
   // either side of one peak, where there is nothing to choose between;
-  // Digital I/Q decides which bins carry signal by occupancy, which is
+  // FSK/Digital decides which bins carry signal by occupancy, which is
   // the job Coherence weighting was doing.
   //
   const gboolean wide = is_band;
@@ -912,8 +912,7 @@ static void hold_cb(GtkWidget *widget, gpointer data) {
 }
 
 //
-// The window controls are modal: the Window, Carrier and Digital I/Q
-// references each keep their own centre and width, so aiming the carrier
+// The window controls are modal: the Window, Carrier and FSK/Digital // references each keep their own centre and width, so aiming the carrier
 // tracker at a station 5 kHz away does not destroy the window set up for
 // wideband work, and going back restores it.
 //
