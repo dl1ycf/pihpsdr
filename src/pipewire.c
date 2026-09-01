@@ -146,6 +146,7 @@ static void registry_event_global(void *data, uint32_t id, uint32_t permissions,
 }
 
 void audio_get_cards() {
+  t_print("%s: PipeWire\n", __func__);
   n_input_devices = 0;
   n_output_devices = 0;
   pw_init(NULL, NULL);

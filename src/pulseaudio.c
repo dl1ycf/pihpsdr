@@ -155,6 +155,7 @@ void audio_get_cards() {
   // should be enough time for the enumeration thread to complete before
   // the radio is started.
   //
+  t_print("%s: PulseAudio\n", __func__);
   n_input_devices = 0;
   n_output_devices = 0;
   pa_glib_mainloop *main_loop = pa_glib_mainloop_new(NULL);

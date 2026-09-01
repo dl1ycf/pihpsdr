@@ -717,6 +717,7 @@ double audio_get_next_mic_sample(TRANSMITTER *tx) {
 }
 
 void audio_get_cards() {
+  t_print("%s: ALSA\n", __func__);
   snd_ctl_card_info_t *info;
   snd_pcm_info_t *pcminfo;
   snd_ctl_card_info_alloca(&info);
