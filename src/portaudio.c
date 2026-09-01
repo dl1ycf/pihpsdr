@@ -122,6 +122,7 @@ typedef struct audio_data_ audio_data;
 // This inits PortAudio and looks for suitable input and output channels
 //
 void audio_get_cards(void) {
+  t_print("%s: PortAudio\n", __func__);
   int numDevices;
   PaStreamParameters inputParameters, outputParameters;
   PaError err;
