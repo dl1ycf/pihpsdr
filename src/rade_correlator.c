@@ -1063,7 +1063,7 @@ static void rade_pilot_at(double f, cplx *out) {
 // expressed as the weight the combiner applies to arm 1.
 //
 // The solve itself is div_mvdr2() in diversity_auto.c, shared with the
-// Digital I/Q reference, which reaches the same covariance and channel
+// FSK/Digital reference, which reaches the same covariance and channel
 // from spectral occupancy instead of from pilot correlations. Only the
 // route to R and h differs, so there is one copy of the algebra.
 //
@@ -1452,7 +1452,7 @@ static int rade_track(double tau, double hang, double *wr, double *wi) {
   //
   //   |acc_x01/acc_x00|^2 * (acc_r00/acc_r11)
   //
-  // which is the same expression the wideband and Digital I/Q references
+  // which is the same expression the wideband and FSK/Digital references
   // arrive at from their own statistics. Nothing new is measured for it.
   //
   if (acc_x00 > 0.0 && acc_r00 > 0.0 && acc_r11 > 0.0 && cabs2(acc_x01) > 0.0) {

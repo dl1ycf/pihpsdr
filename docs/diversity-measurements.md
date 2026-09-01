@@ -22,7 +22,7 @@ the frames of every RADE capture in this document bar one - has been
 found and fixed. RADE V1 now beats the better antenna on five of the six
 captures it can be scored on. **Finding 14** adds an antenna-selection
 objective and measures it; it is a floor, not a ceiling, and Sum remains
-the right default. Still open: the Digital I/Q occupancy test has no
+the right default. Still open: the FSK/Digital occupancy test has no
 false-alarm control, and its per-arm SNR estimate is the weakest of the
 four (Finding 14).
 
@@ -49,10 +49,10 @@ band in Finding 15's capture set.
 Read in order, the findings divide into two groups. The **Window**
 reference gains 1.6 to 1.8 dB over the better antenna on every voice
 capture, on two bands and both sidebands. Everything else - RADE V1 on
-four captures, Digital I/Q on CW - lands *below* the better antenna, and
+four captures, FSK/Digital on CW - lands *below* the better antenna, and
 in each case for a reason that has been isolated and measured. RADE V1 has
 since been repaired and now matches or beats the better antenna on all
-three captures it was scored against; Digital I/Q on CW has not.
+three captures it was scored against; FSK/Digital on CW has not.
 
 Read Finding 3 and the repair scored under it with Finding 11 beside
 them. Those numbers were honest about what the shipping code delivered at
@@ -86,12 +86,12 @@ recording.
 | capture | freq | mode | reference running | RADE present |
 |---|---|---|---|---|
 | `213155` | 7.047 | DIGL | RADE V1 | 0-21 s and 26.6-60 s, **two stations** |
-| `213018`, `213128` | 7.047 | DIGL | Digital I/Q | not analysed |
+| `213018`, `213128` | 7.047 | DIGL | FSK/Digital | not analysed |
 | `233133` | 7.047 | DIGL | RADE V1 | 0-36 s and 48-60 s |
 | `233241` | 7.047 | DIGL | RADE V1 | throughout |
-| `231724` | 3.588 | DIGL | Digital I/Q | 0-6 s and 30-60 s |
+| `231724` | 3.588 | DIGL | FSK/Digital | 0-6 s and 30-60 s |
 | `232052` | 3.588 | DIGL | RADE V1 | 0-5.8 s only, then dead air |
-| `231532` | 3.588 | DIGL | Digital I/Q | **none** |
+| `231532` | 3.588 | DIGL | FSK/Digital | **none** |
 | `232750` | 3.588 | DIGL | RADE V1 | **none** |
 | `233423` | 14.240 | DIGU | RADE V1 | **none** - band noise, occasional weak SSB |
 | `233615` | 1.985 | LSB | RADE V1 | **none** - strong local interferer on ADC0 |
@@ -100,16 +100,16 @@ recording.
 | `235837` | 3.663 | LSB | Window, coherence | analog voice, **3.2 s - too short to use** |
 | `000209` | 14.262 | USB | Window, coherence | analog voice, 43 s, nfft 8192 |
 | `000328` | 14.262 | USB | Window, coherence | analog voice, 60 s, 5 filter changes |
-| `001054` | 14.0522 | CWL | Digital I/Q | CW, 60 s, nfft 16384 |
-| `001157` | 14.0522 | CWL | Digital I/Q | CW, 60 s, **operator tuning: 23 context changes** |
+| `001054` | 14.0522 | CWL | FSK/Digital | CW, 60 s, nfft 16384 |
+| `001157` | 14.0522 | CWL | FSK/Digital | CW, 60 s, **operator tuning: 23 context changes** |
 | `110923` | 5.3685 | USB | RADE V1 | **first bank-1 capture**, locked 65 % |
 | `111051` | 5.3685 | USB | RADE V1 | two acquisitions, arm 1 the *better* antenna |
 | `111328` | 5.3685 | USB | RADE V1 | **none** - band noise, 192 kHz |
 | `111734` | 5.3715 | USB | RADE V1 | locked 70 % |
 | `202743` | 7.09203 | DIGL | RADE V1 | marginal - quality 0.15, averaging **1.9 s** |
 | `232842` | 1.987 | DIGU | RADE V1 | **bank 1 on a second band**, locked 94 %, averaging 5.6 s |
-| `111852` | 0.6929 | SAM | Window, then Carrier, then Digital I/Q | **mediumwave** - 693 kHz broadcast, objective changed mid-capture |
-| `112151` | 0.7244 | SAM | Digital I/Q | **mediumwave** band noise, partly coherent |
+| `111852` | 0.6929 | SAM | Window, then Carrier, then FSK/Digital | **mediumwave** - 693 kHz broadcast, objective changed mid-capture |
+| `112151` | 0.7244 | SAM | FSK/Digital | **mediumwave** band noise, partly coherent |
 
 `202743` begins on 7.177 MHz and retunes to 7.09203 MHz at block 9. The
 recorder did **not** set the context-changed bit for it: `rec_flags` is
@@ -244,7 +244,7 @@ inter-frame rotation, which the reference's own rotation does not cancel.
 
 The rotation-invariant form - accumulate `d1*conj(d0)` and `|d0|^2`
 instead of `d0` and `d1` - removes the problem entirely and is the same
-cross-spectrum the Digital I/Q reference already uses in `bin_xy`,
+cross-spectrum the FSK/Digital reference already uses in `bin_xy`,
 `bin_xx`.
 
 ## Finding 3: what the combiners deliver
@@ -253,7 +253,7 @@ Decode-scored, mean `rade_snrdB_3k_est()` in dB. "available" is the ideal
 two-branch combiner built from the measured channel and the dead-air
 noise.
 
-| capture | arm 0 | arm 1 | RADE V1 | Digital I/Q | ideal |
+| capture | arm 0 | arm 1 | RADE V1 | FSK/Digital | ideal |
 |---|---|---|---|---|---|
 | `213155` 40 m | 7.2 | **9.6** | 6.2 | 8.7 | 11.1 |
 | `233133` 40 m | **9.4** | 1.5 | 8.9 | 8.3 | 10.2 |
@@ -262,18 +262,18 @@ noise.
 
 Against the better arm:
 
-| capture | RADE V1 | Digital I/Q | ideal |
+| capture | RADE V1 | FSK/Digital | ideal |
 |---|---|---|---|
 | `213155` | **-3.4** | -0.9 | +1.5 |
 | `233133` | **-0.5** | -1.1 | +0.8 |
 | `233241` | **-1.8** | -0.4 | -0.3 |
 | `231724` | **-0.3** | +0.7 | +0.8 |
 
-**RADE V1 is below the better antenna on all four captures.** Digital I/Q
+**RADE V1 is below the better antenna on all four captures.** FSK/Digital
 is better than RADE on three of four, and reaches the ideal on `231724`.
 Neither reliably beats simply selecting the better antenna.
 
-Two honest caveats. On `233133` Digital I/Q is 0.6 dB *worse* than RADE,
+Two honest caveats. On `233133` FSK/Digital is 0.6 dB *worse* than RADE,
 so "the simpler mode always wins" is not supported. And on `233241` the
 "ideal" column is itself 0.3 dB below arm 0, which means the dead air used
 for that capture's noise estimate was not representative of the over -
@@ -414,7 +414,7 @@ strongly bimodal in both captures.
 | **as it ran on air** | **20.52 (+0.41)** | **21.66 (+1.11)** |
 | replayed Window / coherence | 21.92 (+1.81) | 22.11 (+1.56) |
 | replayed Window / flat | 21.34 (+1.23) | 22.11 (+1.56) |
-| replayed Digital I/Q | 21.34 (+1.23) | 20.63 (+0.08) |
+| replayed FSK/Digital | 21.34 (+1.23) | 20.63 (+0.08) |
 | best single fixed weight | 20.73 | 21.95 |
 
 Bracketed figures are against the *better* arm, which is arm 1 in both.
@@ -435,7 +435,7 @@ does from cold.
 
 ### Why this corroborates Finding 1
 
-Window and Digital I/Q both build their channel *and* their covariance
+Window and FSK/Digital both build their channel *and* their covariance
 from FFT bins **inside the operator's window**. Neither can see the
 rejected sideband. RADE V1 is the only reference that works on the whole
 +/-3 kHz decimator output, and it is the only one that loses. Two modes
@@ -451,7 +451,7 @@ all - the fraction of blocks that produced a weight rather than holding:
 |---|---|---|
 | Window / coherence | 43 % | 30 % |
 | Window / flat | 17 % | 18 % |
-| Digital I/Q | 41 % | 37 % |
+| FSK/Digital | 41 % | 37 % |
 
 Flat weighting spends most of the voice *holding*, because the coherence
 it reports is diluted by the noise-only bins in the window and falls below
@@ -461,7 +461,7 @@ now measured. On SNR the two are 0.58 dB apart on the narrow passband and
 identical on the wide one - so on these two captures coherence weighting
 never hurt and sometimes helped.
 
-### Digital I/Q is the wrong tool for voice
+### FSK/Digital is the wrong tool for voice
 
 0.6 dB behind Window on the narrow capture and 1.5 dB behind on the wide
 one, converging to `|w|` of 0.32 and 0.16 where the useful weights are
@@ -534,7 +534,7 @@ legitimate reset. See Finding 9 for when they are not.
 
 ## Finding 8: CW - the occupancy split has no room in a narrow filter
 
-Two captures on 14.0522 MHz CWL, Digital I/Q reference, 600 Hz filter
+Two captures on 14.0522 MHz CWL, FSK/Digital reference, 600 Hz filter
 (-850 to -250, so +250 to +850 in the tapped frame), sidetone 550 Hz -
 which is also the first exercise of the CW branch of `div_frame_off()`
 on recorded data.
@@ -565,7 +565,7 @@ describes. On a 600 Hz CW filter holding weak signals the region is not
 full of signal, it is full of *noise*, and the resulting weight is aimed
 at whatever the two antennas hear in common.
 
-**Digital I/Q is the wrong reference for a narrow CW passband.** That much
+**FSK/Digital is the wrong reference for a narrow CW passband.** That much
 stands. The mechanism above does not - see the correction below.
 
 ### Correction: the fallback is not the path responsible
@@ -603,7 +603,7 @@ whatever weight is in force, because arm 1 is 1.7 to 2.0 dB worse and
 anything that keeps it at unity gain lands there.
 
 **What is actually wrong is upstream of the split.** On `231532` - 80 m,
-Digital I/Q, and *no signal at all* - the mode produces a weight on 30 %
+FSK/Digital, and *no signal at all* - the mode produces a weight on 30 %
 of blocks. It reaches that through the normal path, not the fallback:
 enough noise bins clear a threshold set 6 dB above the region's own median
 to satisfy `DIV_OCC_MIN_BINS` = 3, and the coherence gate passes some of
@@ -616,7 +616,7 @@ number.
 
 That is the open question, and it wants its own measurements rather than a
 guess. Until then the advice stands on the numbers above: use **Window**
-on a narrow CW passband, not Digital I/Q.
+on a narrow CW passband, not FSK/Digital.
 
 ## Finding 9: a 1 Hz VFO step throws the whole estimate away
 
@@ -1109,7 +1109,7 @@ accumulators:
 | reference | signal | noise | new measurement needed |
 |---|---|---|---|
 | RADE V1 | `acc_x00`, `acc_x01` | `acc_r00`, `acc_r11` (guard bins) | none |
-| Digital I/Q | `sig_xx`, `sig_xy` | `r00`, `r11` (occupancy split) | none |
+| FSK/Digital | `sig_xx`, `sig_xy` | `r00`, `r11` (occupancy split) | none |
 | Window | window power per arm | tracked floor | a minimum-statistics floor |
 | Carrier | as Window | as Window | as Window |
 
@@ -1152,7 +1152,7 @@ after the other.
 Selection against the arm that decodes better (Findings 3 and 11) or
 measures better in the passband (Findings 6 and 7):
 
-| capture | better arm | Window | Carrier | RADE V1 | Digital I/Q |
+| capture | better arm | Window | Carrier | RADE V1 | FSK/Digital |
 |---|---|---|---|---|---|
 | `110923` | ADC0 | ADC0 | ADC0 | ADC0 | ADC0 |
 | `111051` | ADC1 | ADC1 | ADC1 | ADC1 | **ADC0** |
@@ -1172,7 +1172,7 @@ measures better in the passband (Findings 6 and 7):
 `202743` is deliberately absent: decode makes ADC0 the better arm on
 synced frames (305 against 257) and ADC1 the better arm on mean SNR (+2.7
 against -0.3 dB), which is Trap 3 pointing both ways at once. Window and
-Carrier pick ADC1 there, RADE V1 and Digital I/Q pick ADC0, and there is
+Carrier pick ADC1 there, RADE V1 and FSK/Digital pick ADC0, and there is
 no honest way to mark any of them.
 
 The two mediumwave captures are the easiest rows in the table and all
@@ -1187,7 +1187,7 @@ wrong - Finding 13 now has a mechanism for that, and `232842` shows the
 Carrier reference failing the same way in the other direction, reading
 +5.5 dB for an arm that is 11 to 15 dB worse. Its one miss, `235853`, has the two antennas 0.53 dB apart - inside
 the selection hysteresis, so the "wrong" pick costs half a decibel.
-Digital I/Q is the weakest by a distance, which is consistent with the
+FSK/Digital is the weakest by a distance, which is consistent with the
 correction under Finding 8: its noise bins come from an occupancy split
 with no false-alarm control.
 
@@ -1463,11 +1463,11 @@ Every objective finds that ceiling, which is the result worth having:
 |---|---|---|---|
 | Sum / Window | +36.23 dB | -0.00 | +14.95 dB, +55.9 deg |
 | Sum / Carrier | +36.21 dB | -0.02 | +10.93 dB, +65.7 deg |
-| Sum / Digital I/Q | **+36.38 dB** | **+0.15** | -0.20 dB, -33.4 deg |
+| Sum / FSK/Digital | **+36.38 dB** | **+0.15** | -0.20 dB, -33.4 deg |
 | Best (all three) | +36.22 dB | -0.01 | +20.00 dB (the rail) |
 | best fixed weight | +36.40 dB | +0.17 | -2.75 dB, -48.0 deg |
 
-Digital I/Q's answer looks wrong and is not. It applies a weight of
+FSK/Digital's answer looks wrong and is not. It applies a weight of
 essentially unity where MRC would want +15 dB, because with the noise 78 %
 correlated MVDR is trading array gain for cancellation - and it comes out
 0.15 dB ahead of everything else. This is the first capture in the set
@@ -1482,7 +1482,7 @@ over the settled part of the capture (t > 20 s, 234 blocks):
 | | depth |
 |---|---|
 | loop, Null / Window | **-14.38 dB** |
-| loop, Null / Digital I/Q | **-14.37 dB** |
+| loop, Null / FSK/Digital | **-14.37 dB** |
 | loop, Null / Carrier | -10.77 dB |
 | best single weight over the whole minute | -14.36 dB |
 | best weight recomputed every block | -14.96 dB |
@@ -1502,7 +1502,7 @@ as well as the geometry allows.
 
 | | depth |
 |---|---|
-| loop, Null / Window, Carrier, Digital I/Q | -0.76 to -0.79 dB |
+| loop, Null / Window, Carrier, FSK/Digital | -0.76 to -0.79 dB |
 | best single weight over the whole minute | -1.00 dB |
 | best weight recomputed every block | -2.96 dB |
 
@@ -1517,7 +1517,7 @@ in this document worse.
 
 ### Both mediumwave captures also test the arm statistic
 
-| | true arm 1 advantage | Window | Carrier | Digital I/Q |
+| | true arm 1 advantage | Window | Carrier | FSK/Digital |
 |---|---|---|---|---|
 | `111852` | +2.2 dB (carrier), +1.6 dB (coherent split) | +1.0 dB | +3.1 dB | +2.2 dB |
 | `112151` | -1.6 dB (coherent split) | -2.2 dB | -1.2 dB | -0.1 dB |
@@ -1677,7 +1677,7 @@ holds is the false-alarm line, and that part stands.
 - **Every reference holds correctly when there is no signal.** On all five
   no-signal captures RADE V1 reported locked 0.00, holding 1.00,
   coherence 0.003-0.008 (0.00 recorded and 0 acquisitions replayed on
-  `111328`), and Digital I/Q never produced a weight. On the
+  `111328`), and FSK/Digital never produced a weight. On the
   voice captures all three references hold through the gaps between overs.
   None of them invents an answer from noise, including with the 160 m
   interferer at full strength on ADC0.
@@ -1693,7 +1693,7 @@ holds is the false-alarm line, and that part stands.
   captures for zero frames and weight jitter, but only six carry a decode
   column. `231724`, where the guard fired on 91 % of frames, and
   `232052`, where it fired on 49 %, are not among them - `232052` has
-  5.8 s of modem and `231724` runs the Digital I/Q reference, so both
+  5.8 s of modem and `231724` runs the FSK/Digital reference, so both
   want a deliberate re-score rather than a rerun of the standard harness.
   Neither is expected to move much; the point is that "RADE V1 beats the
   better antenna" rests on six.
@@ -1718,7 +1718,7 @@ holds is the false-alarm line, and that part stands.
   amateur bands are cheaper still.
 - **No capture yet has a wanted *modem* signal and strong common-mode
   noise.** `111852` closes half of this: a wanted signal with inter-arm
-  coherence 0.982, where the nuller reaches its ceiling and Digital I/Q's
+  coherence 0.982, where the nuller reaches its ceiling and FSK/Digital's
   passband-confined covariance comes out ahead of everything else
   (Finding 16). But it is `SAM`, not RADE, so it still says nothing about
   the *pilot-domain* covariance. What is wanted is a RADE station on a
@@ -1741,13 +1741,13 @@ holds is the false-alarm line, and that part stands.
   weight can be watched as the frequency walks away from where it was
   measured.
 
-- **Digital I/Q occupancy has no false-alarm control.** On `231532`, with
+- **FSK/Digital occupancy has no false-alarm control.** On `231532`, with
   no signal anywhere, the mode produces a weight on 30 % of blocks,
   through the normal path. Three bins clearing a 6 dB-over-median
   threshold is not evidence when the region holds two hundred of them, and
   `DIV_OCC_MIN_BINS` does not scale with region width. What is wanted is
   a threshold whose false-alarm rate is known: dead-air captures with
-  Digital I/Q selected at several filter widths would give it directly.
+  FSK/Digital selected at several filter widths would give it directly.
   See the correction under Finding 8.
 
 - **CW has been measured once, on weak signals.** `001054` and `001157`
@@ -1893,7 +1893,7 @@ Finding 14. A fourth objective, `DIV_AUTO_BEST`, and the per-arm SNR it
 acts on, published by all four references and shown on a second status
 line whatever objective is running. Measured in Finding 14: it picks
 correctly on 9 of 10 captures from the wideband references, 5 of 6 from
-RADE V1 and 5 of 10 from Digital I/Q, and decode-scores 1.3 dB behind Sum
+RADE V1 and 5 of 10 from FSK/Digital, and decode-scores 1.3 dB behind Sum
 on average. It is a fallback, not a default.
 
 ### `src/rade_correlator.c` — the frequency alias is resolved
@@ -1970,7 +1970,7 @@ synthetic channel, where before the fix it was 4.0 dB and 17 degrees out.
 
 ### What was thrown away
 
-The Digital I/Q occupancy guard written for Finding 8. It moved the score
+The FSK/Digital occupancy guard written for Finding 8. It moved the score
 by 0.01 to 0.02 dB across eight captures because it guards a branch that
 is barely reached, and the diagnosis it was built on turned out to be
 wrong. Both the guard and the corrected diagnosis are described under
@@ -1997,7 +1997,7 @@ tunable manifest, so the sweeps under "What was changed" are
 `--set alias_margin=1e9` turning the resolver off for a before-and-after.
 
 `replay_rade` drives the correlator directly and sweeps its constants;
-`run_ref` drives the whole engine so the Digital I/Q solve can be run over
+`run_ref` drives the whole engine so the FSK/Digital solve can be run over
 a recording; `score_rade` decodes. See
 [`test/diversity/devtools/README.md`](../test/diversity/devtools/README.md).
 

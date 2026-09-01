@@ -82,7 +82,7 @@ extern int    div_auto_weighting;       // DIV_WEIGHT_FLAT / _COHERENCE
 extern double div_auto_resolution;      // requested bin width, Hz
 
 //
-// The window controls are modal: the Window, Carrier and Digital I/Q
+// The window controls are modal: the Window, Carrier and FSK/Digital
 // references each keep their own pair. div_auto_centre/width are the
 // active pair.
 //
@@ -134,7 +134,7 @@ extern int    div_auto_arm_pick;
 extern int    div_auto_carrier_valid;   // 1 once the tracker has an estimate
 
 //
-// Digital I/Q: the span of the bins found occupied inside the search
+// FSK/Digital: the span of the bins found occupied inside the search
 // region, in the shifted frame, for the overlay and the status line.
 // Not the accumulation set - that is a per-bin mask, and the quiet gap
 // between an FSK mark and space lies inside this span while counting as

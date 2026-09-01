@@ -244,7 +244,7 @@
 #define DIV_CARRIER_BINS    2
 
 //
-// Digital I/Q occupancy detection.
+// FSK/Digital occupancy detection.
 //
 // How far a bin has to stand above the noise floor of the search region
 // to count as occupied. 6 dB is deliberately low: the split only has to
@@ -278,7 +278,7 @@
 // This is what notices a transmission ending, and without it nothing
 // does. The accumulators forget exponentially, so Sxy, Sxx and Syy decay
 // together and the coherence gate sees gamma^2 stay near 1 the whole way
-// down; the Digital I/Q occupancy test is a ratio against the median
+// down; the FSK/Digital occupancy test is a ratio against the median
 // floor and is scale invariant, so it does not see the level collapse at
 // all. Left to the forgetting factor alone a 30 dB signal at tau = 2 s
 // keeps the loop "tracking" for 5.8 tau - about twelve seconds of walking
@@ -526,7 +526,7 @@ static double         *bin_xx = NULL, *bin_yy = NULL;
 static int             acc_valid = 0;
 
 //
-// Scratch for the Digital I/Q noise-floor median. Sized at
+// Scratch for the FSK/Digital noise-floor median. Sized at
 // DIV_OCC_MAX_SAMPLES rather than DIV_MAX_NFFT because the estimate is
 // strided down to that many bins however wide the region is.
 //
@@ -1145,7 +1145,7 @@ void div_mvdr2(double r00, double r11, double r01re, double r01im,
 // ratio rather than the two signal powers - which all of them do - that
 // is |h1/h0|^2 * (N0/N1).
 //
-// The RADE V1 and Digital I/Q references already have both halves: their
+// The RADE V1 and FSK/Digital references already have both halves: their
 // MVDR covariance is a measurement of N0 and N1 taken off the signal. The
 // wideband Window and Carrier references have no such thing, so they get
 // a noise floor tracked over time instead - see div_arm_floor_update().
@@ -1356,7 +1356,7 @@ static int div_occ_cmp(const void *a, const void *b) {
 }
 
 //
-// Digital I/Q: split the search region into signal and noise by spectral
+// FSK/Digital: split the search region into signal and noise by spectral
 // occupancy, then solve.
 //
 // The wideband references treat every bin in the window the same way, or
@@ -2076,7 +2076,7 @@ static void div_process_block(void) {
   }
 
   //
-  // Digital I/Q takes it from here. The region has been accumulated;
+  // FSK/Digital takes it from here. The region has been accumulated;
   // which of its bins are signal is decided from the spectrum, which is
   // why this cannot happen in div_bin_range() with the rest.
   //
@@ -2446,7 +2446,7 @@ void diversity_auto_start(void) {
       //
       // The correlator needs a DDC rate that is a whole multiple of the
       // 8 kHz modem rate. Every rate piHPSDR offers satisfies that, but
-      // fall back to Digital I/Q rather than silently doing nothing if
+      // fall back to FSK/Digital rather than silently doing nothing if
       // that ever stops being true - it places itself on the operator's
       // passband and finds the modem's occupied bins there, which is the
       // job the retired RADE passband reference used to do.
@@ -2540,7 +2540,7 @@ void diversity_auto_restart(void) {
 // Numbering scheme for diversity_auto_ref.
 //
 // Scheme 1 was BAND, CARRIER, RADE_BAND, RADE_V1, DIGITAL_IQ. The RADE
-// passband reference has since been retired - Digital I/Q does the same
+// passband reference has since been retired - FSK/Digital does the same
 // job from the operator's passband and does it better - so scheme 2 is
 // BAND, CARRIER, RADE_V1, DIGITAL_IQ, and every value from 2 upwards
 // means something different from what it used to.
@@ -3075,7 +3075,7 @@ void diversity_auto_restore_state(void) {
       switch (div_auto_ref) {
       case 2:
         //
-        // The RADE passband reference. Digital I/Q replaces it: it places
+        // The RADE passband reference. FSK/Digital replaces it: it places
         // itself on the operator's passband in the same way and finds the
         // modem's occupied bins inside it, so an operator who was using
         // that lands on its successor rather than on something unrelated.
@@ -3084,7 +3084,7 @@ void diversity_auto_restore_state(void) {
         break;
 
       case 3: div_auto_ref = DIV_REF_RADE_V1;    break;   // was RADE V1
-      case 4: div_auto_ref = DIV_REF_DIGITAL_IQ; break;   // was Digital I/Q
+      case 4: div_auto_ref = DIV_REF_DIGITAL_IQ; break;   // was FSK/Digital
 
       default: break;                                     // 0 and 1 unmoved
       }

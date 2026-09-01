@@ -912,7 +912,8 @@ static void hold_cb(GtkWidget *widget, gpointer data) {
 }
 
 //
-// The window controls are modal: the Window, Carrier and FSK/Digital // references each keep their own centre and width, so aiming the carrier
+// The window controls are modal: the Window, Carrier and FSK/Digital
+// references each keep their own centre and width, so aiming the carrier
 // tracker at a station 5 kHz away does not destroy the window set up for
 // wideband work, and going back restores it.
 //
