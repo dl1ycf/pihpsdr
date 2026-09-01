@@ -1688,14 +1688,15 @@ holds is the false-alarm line, and that part stands.
 
 ## What is still open
 
-- **The zero-weight guard is measured but not fixed.** Finding 11. What
-  is missing before it can be is the corrected weight scored across the
-  whole capture set rather than the six it was scored on here, and an
-  answer to what `111051` does when the corrected weight sits on the
-  `DIV_MAX_WEIGHT` rail. Everything else in this document that scores the
-  RADE combiner needs re-reading once it is: the "after" figures under
-  "What was changed, and what it scored" were taken with the solve
-  returning zero on most frames.
+- **Two captures where the zero-weight guard fired have no decode score
+  after the fix.** Finding 11 is fixed and the change is scored on eight
+  captures for zero frames and weight jitter, but only six carry a decode
+  column. `231724`, where the guard fired on 91 % of frames, and
+  `232052`, where it fired on 49 %, are not among them - `232052` has
+  5.8 s of modem and `231724` runs the Digital I/Q reference, so both
+  want a deliberate re-score rather than a rerun of the standard harness.
+  Neither is expected to move much; the point is that "RADE V1 beats the
+  better antenna" rests on six.
 - **The alias resolver has never been watched acquiring cold on air.**
   Finding 15 is fixed and scored on replay, where the resolver's 4 s of
   averaging is invisible because every capture was armed on a signal that
