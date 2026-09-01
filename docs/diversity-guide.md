@@ -32,7 +32,7 @@ coherent and identically configured; no weighting happens in the FPGA.
 
 ## 1. Quick start
 
-1. **Diversity Enable** in the Diversity menu. This re-plumbs the DDCs, so
+1. **Diversity** in the Diversity menu. This re-plumbs the DDCs, so
    expect a moment's interruption.
 2. Set **Auto** to `Sum` to combine both antennas for the best signal, or
    `Null` to cancel the strongest thing the two have in common.
@@ -317,12 +317,12 @@ Antennas  ADC0 better by 12.1 dB  using ADC0
 `measuring` means there is not yet a signal standing clear of the noise
 floor on both arms to compare. The trailing `using ADCn` appears only
 under **Best** and is the antenna it has settled on. A remote client shows
-the same line as the radio — the comparison is measured there and sent
+the same line as the server — the comparison is measured there and sent
 over with the rest of the status.
 
 On the RX panadapter the analysis window is drawn as a translucent green
 band under the trace. It is worth watching: it is otherwise an invisible
-setting that changes what the radio does, and it can legitimately sit
+setting that changes what the server does, and it can legitimately sit
 outside the passband where there is nothing else to see. In Carrier mode a
 brighter line marks where the tracker has settled inside the search
 region, and in FSK/Digital the bins found occupied are shaded more
@@ -490,7 +490,7 @@ to land that far from the only signal in the passband — silently, since
 the window was somewhere real and the status line still said `track`.
 
 The menu also runs from a remote client, which it did not at first. The
-analysis stays on the radio, because that is the only place the two
+analysis stays on the Server, because that is the only place the two
 antenna signals exist; the control surface and the status travel.
 
 ---
@@ -512,30 +512,49 @@ With 30 m of feedline difference a 10 kHz offset costs 0.55°, against the
 5.7° that 20 dB of cancellation needs. Only a very large feedline
 difference combined with a 30 kHz offset starts to matter.
 
-**Antenna and attenuator changes are not watched.** The analysis restarts
-on a change of frequency, sample rate, mode, filter or window setting. It
-does not notice an antenna or attenuator change, which also shifts the
-relationship between the arms; the estimate re-converges over a few time
-constants instead. **Restart averaging** if you do not want to wait.
+**Antenna changes are not watched.** The analysis restarts on a change of
+frequency, sample rate, mode, filter, window setting or either ADC's step
+attenuator. It does not notice an antenna change, which also shifts the
+relationship between the arms; there the estimate re-converges over a few
+time constants instead. **Restart averaging** if you do not want to wait.
+
+**ADC attenuators**, the tick box beside **Diversity** at the top of the
+menu, lets you attenuate one antenna without the other. Normally both
+ADCs run on ADC0's step attenuator while diversity is on, so that changing
+it cannot move the weight. The reason to split them is headroom on one
+antenna alone — a local source strong enough to overload the main antenna
+that the second one cannot hear. Attenuate it where it is, and the quiet
+antenna keeps the sensitivity it did not need to give up.
+
+Ticking it puts an **Attenuator (dB)** row underneath, with a value for
+each ADC; untick it and the row goes away again, because tied they are one
+number the ATT slider already shows. Those two spin buttons are the way to
+reach ADC1, because the loop makes RX1 the active receiver and the
+ordinary ATT slider follows that.
+
+Splitting costs nothing in smoothness. A change of *d* dB on one arm has a
+known effect on the weight, and that correction is applied at the moment
+the attenuator moves, so the audio does not step and a manual gain and
+phase stay valid; only the measurement restarts.
 
 **The measuring happens on the radio; the controls work from anywhere.**
 The two antenna signals only exist on the radio, so that is where the
 analysis and the combining are done. The Diversity menu itself works the
-same from a remote client as it does at the radio: every control on it —
+same from a remote client as it does at the server: every control on it —
 the objective, the reference, the window, resolution, weighting,
 averaging, hang, min coherence, Hold, Invert, Restart, and the manual gain
 and phase — does what it says, and the status line, the antenna line and
-the green window on the panadapter all show what the radio is really
+the green window on the panadapter all show what the server is really
 doing, updated several times a second.
 
-The radio owns the settings. Connect a client and it picks up whatever the
-radio is set to rather than pushing its own saved values at it, so the
-radio behaves the same however you are driving it, and a second client
-sees what the first one did. Change something on the radio's own panel
+The server owns the settings. Connect a client and it picks up whatever the
+server is set to rather than pushing its own saved values at it, so the
+server behaves the same however you are driving it, and a second client
+sees what the first one did. Change something on the server's own panel
 while a client is watching and the client follows.
 
 Manual gain and phase grey out while the loop is driving the weight, on
-the client exactly as they do at the radio — use **Hold** to take the
+the client exactly as they do at the server — use **Hold** to take the
 weight over. The one thing that does not travel is the developer capture
 button, which writes a file where the analysis is running.
 

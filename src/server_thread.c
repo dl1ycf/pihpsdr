@@ -750,6 +750,7 @@ static void server_loop(void) {
     // submit that copy  to server_command().
     //
     case CMD_ADC:
+    case CMD_ADC_ATTENUATION:
     case CMD_ANAN10E:
     case CMD_ATTENUATION:
     case CMD_BANDSTACK:
@@ -1542,6 +1543,19 @@ static int server_command(gpointer data) {
     suppress_popup_sliders--;
   }
   break;
+  case CMD_ADC_ATTENUATION: {
+    int a = header->b1;
+    int att = from_16(header->s1);
+    suppress_popup_sliders++;
+    radio_set_adc_attenuation(a, att);
+    suppress_popup_sliders--;
+    //
+    // Send the ADC back, so the client's menu shows what the radio ended
+    // up with rather than what it asked for.
+    //
+    send_adc_data(remoteclient.sock_tcp, a);
+  }
+  break;
   case CMD_SQUELCH: {
     const DOUBLE_COMMAND *command = (DOUBLE_COMMAND *)data;
     int id = command->header.b1;
@@ -2118,6 +2132,14 @@ static int server_command(gpointer data) {
   case CMD_DIVERSITY: {
     const DIVERSITY_COMMAND *command = (DIVERSITY_COMMAND *)data;
     suppress_popup_sliders++;
+    //
+    // Before radio_set_diversity(), so that whatever it schedules already
+    // carries the attenuator policy the client is asking for.
+    //
+    if (div_indep_att != command->indep_att) {
+      div_indep_att = command->indep_att;
+      schedule_high_priority();
+    }
     radio_set_diversity(command->diversity_enabled);
     radio_set_diversity_gain(from_double(command->div_gain));
     radio_set_diversity_phase(from_double(command->div_phase));

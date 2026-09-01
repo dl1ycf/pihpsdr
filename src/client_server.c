@@ -335,6 +335,7 @@ void send_radio_data(int sock) {
   data.rx_stack_horizontal = rx_stack_horizontal;
   data.n_adc = n_adc;
   data.diversity_enabled = diversity_enabled;
+  data.div_indep_att = div_indep_att;
   data.soapy_iqswap = soapy_iqswap;
   data.soapy_rx1_antennas = radio->soapy.rx[0].antennas;
   data.soapy_rx2_antennas = radio->soapy.rx[1].antennas;
@@ -813,6 +814,7 @@ void send_diversity(int s, int enabled, double gain, double phase) {
   SYNC(command.header.sync);
   command.header.data_type = to_16(CMD_DIVERSITY);
   command.diversity_enabled = enabled;
+  command.indep_att = div_indep_att;
   command.div_gain = to_double(gain);
   command.div_phase =  to_double(phase);
   send_tcp(s, (char *)&command, sizeof(command));
@@ -865,6 +867,9 @@ void send_div_status(int s, const DIV_STATUS *st) {
   data.rade_locked     = st->rade_locked;
   data.rade_confirming = st->rade_confirming;
   data.rade_side       = st->rade_side;
+  data.indep_att       = st->indep_att;
+  data.att0            = st->att0;
+  data.att1            = st->att1;
   data.pad = 0;
   data.binhz        = to_double(st->binhz);
   data.coherence    = to_double(st->coherence);
@@ -913,6 +918,20 @@ void send_attenuation(int s, int id, int attenuation) {
   SYNC(header.sync);
   header.data_type = to_16(CMD_ATTENUATION);
   header.b1 = id;
+  header.s1 = to_16(attenuation);
+  send_tcp(s, (char *)&header, sizeof(HEADER));
+}
+
+//
+// The same thing addressed by ADC rather than by receiver. This is how a
+// client reaches ADC1 while DIVERSITY is running, where every
+// receiver-indexed path resolves to ADC0.
+//
+void send_adc_attenuation(int s, int a, int attenuation) {
+  HEADER header;
+  SYNC(header.sync);
+  header.data_type = to_16(CMD_ADC_ATTENUATION);
+  header.b1 = a;
   header.s1 = to_16(attenuation);
   send_tcp(s, (char *)&header, sizeof(HEADER));
 }

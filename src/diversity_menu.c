@@ -57,6 +57,10 @@ static GtkWidget *arm_label = NULL;
 static GtkWidget *hold_b = NULL;
 static GtkWidget *invert_b = NULL;
 static GtkWidget *reset_b = NULL;
+static GtkWidget *indep_att_b = NULL;
+static GtkWidget *att_label = NULL;
+static GtkWidget *att_box = NULL;
+static GtkWidget *att_spin[2] = { NULL, NULL };
 
 //
 // The labels of the rows that come and go with the measure mode. A row
@@ -231,6 +235,11 @@ static void cleanup(void) {
     hold_b = NULL;
     invert_b = NULL;
     reset_b = NULL;
+    indep_att_b = NULL;
+    att_label = NULL;
+    att_box = NULL;
+    att_spin[0] = NULL;
+    att_spin[1] = NULL;
 #ifdef DIVERSITY_CAPTURE
     //
     // DEVELOPMENT TOOL - remove with the rest of the capture instrument.
@@ -266,6 +275,8 @@ static gboolean close_cb(void) {
 }
 
 static void update_manual_sensitivity(void);
+static void update_att_controls(void);
+static void update_visibility(void);
 
 static void diversity_cb(GtkWidget *widget, gpointer data) {
   int state = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
@@ -275,6 +286,57 @@ static void diversity_cb(GtkWidget *widget, gpointer data) {
   //
   radio_set_diversity(state);
   update_manual_sensitivity();
+}
+
+//
+// Bring the tick box and the two spin buttons up to date with what the
+// radio has. Called from the status timer, so it covers an attenuator
+// moved from the ATT slider or an encoder here, one moved by the operator
+// at the other end of a client connection, and the tick box itself being
+// toggled there.
+//
+// Everything is guarded on having actually changed. The values because
+// this runs four times a second and writing the same number back every
+// tick would fight an operator holding down a spin button's arrow; the
+// tick box because update_visibility() resizes the dialog.
+//
+static void update_att_controls(void) {
+  if (att_spin[0] == NULL) { return; }
+
+  updating_from_auto = 1;
+
+  for (int a = 0; a < 2; a++) {
+    if (gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(att_spin[a])) != adc[a].attenuation) {
+      gtk_spin_button_set_value(GTK_SPIN_BUTTON(att_spin[a]), (double)adc[a].attenuation);
+    }
+  }
+
+  if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(indep_att_b)) != (div_indep_att != 0)) {
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(indep_att_b), div_indep_att);
+    updating_from_auto = 0;
+    update_visibility();
+    return;
+  }
+
+  updating_from_auto = 0;
+}
+
+static void indep_att_cb(GtkWidget *widget, gpointer data) {
+  if (updating_from_auto || updating_from_server) { return; }
+
+  radio_set_indep_att(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)));
+  update_att_controls();
+  //
+  // The row below appears or goes, and the dialog is resized to suit.
+  //
+  update_visibility();
+}
+
+static void att_cb(GtkWidget *widget, gpointer data) {
+  if (updating_from_auto) { return; }
+
+  radio_set_adc_attenuation(GPOINTER_TO_INT(data),
+                            gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget)));
 }
 
 static void gain_coarse_changed_cb(GtkWidget *widget, gpointer data) {
@@ -461,6 +523,12 @@ static void update_visibility(void) {
   div_show_row(coh_label,    coh_scale,   uses_fft);
   div_show_row(hang_label,   hang_scale,  has_lock);
   //
+  // Not a function of the reference like the rows above, but the same
+  // treatment for the same reason: two numbers that mean nothing while
+  // the attenuators are tied should not take up a row saying so.
+  //
+  div_show_row(att_label,    att_box,     div_indep_att);
+  //
   // A window keeps whatever size it has been given: the rows collapse but
   // the dialog does not follow them up, so what was a row becomes blank
   // space below the status line. Asking for 1x1 is the GTK idiom for
@@ -619,6 +687,7 @@ static int status_update_cb(gpointer data) {
   // unchanged, so this is six comparisons four times a second.
   //
   update_manual_sensitivity();
+  update_att_controls();
   //
   // Track the automatically determined values in the manual sliders so
   // the operator can see where the loop has settled, and so the sliders
@@ -961,6 +1030,9 @@ gboolean diversity_client_set_status(gpointer data) {
   st.rade_locked     = d->rade_locked;
   st.rade_confirming = d->rade_confirming;
   st.rade_side       = d->rade_side;
+  st.indep_att       = d->indep_att;
+  st.att0            = d->att0;
+  st.att1            = d->att1;
   st.binhz        = from_double(d->binhz);
   st.coherence    = from_double(d->coherence);
   st.carrier      = from_double(d->carrier);
@@ -1163,58 +1235,118 @@ void diversity_menu(GtkWidget *parent) {
   gtk_widget_set_name(close_b, "close_button");
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 1, 1);
-  diversity_b = gtk_check_button_new_with_label("Diversity Enable");
+  //
+  // The feature itself, and beside it the one thing about the hardware
+  // this dialog controls: whether the two ADCs share a step attenuator.
+  //
+  GtkWidget *topbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+  diversity_b = gtk_check_button_new_with_label("Diversity");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (diversity_b), diversity_enabled);
-  gtk_widget_show(diversity_b);
-  gtk_grid_attach(GTK_GRID(grid), diversity_b, 1, 0, 1, 1);
+  gtk_box_pack_start(GTK_BOX(topbox), diversity_b, FALSE, FALSE, 0);
   g_signal_connect(diversity_b, "toggled", G_CALLBACK(diversity_cb), NULL);
+
+  if (have_rx_att && n_adc > 1) {
+    indep_att_b = gtk_check_button_new_with_label("ADC attenuators");
+    gtk_widget_set_tooltip_text(indep_att_b,
+                                "Split the two ADC step attenuators. Normally both run "
+                                "on ADC0's while diversity is on, so that changing it "
+                                "cannot move the weight. Split them to attenuate one "
+                                "antenna alone - the reason to want that is a local "
+                                "source strong enough to overload the main antenna "
+                                "which the second one cannot hear. The step is fed "
+                                "forward into the weight, so the audio does not jump, "
+                                "and the measurement restarts.");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(indep_att_b), div_indep_att);
+    gtk_box_pack_start(GTK_BOX(topbox), indep_att_b, FALSE, FALSE, 0);
+    g_signal_connect(indep_att_b, "toggled", G_CALLBACK(indep_att_cb), NULL);
+  }
+
+  gtk_grid_attach(GTK_GRID(grid), topbox, 1, 0, 1, 1);
+
+  //
+  // The two attenuators themselves, on the line below, and only there
+  // when they are split - untied they are two numbers that mean something
+  // different from each other, tied they are one number the ATT slider
+  // already shows.
+  //
+  if (indep_att_b != NULL) {
+    att_label = gtk_label_new("Attenuator (dB)");
+    gtk_widget_set_name(att_label, "boldlabel");
+    gtk_widget_set_halign(att_label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), att_label, 0, 1, 1, 1);
+    att_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+
+    for (int a = 0; a < 2; a++) {
+      char lbl[8];
+      snprintf(lbl, sizeof(lbl), "ADC%d", a);
+      GtkWidget *l = gtk_label_new(lbl);
+      gtk_widget_set_name(l, "boldlabel");
+      gtk_box_pack_start(GTK_BOX(att_box), l, FALSE, FALSE, 0);
+      att_spin[a] = gtk_spin_button_new_with_range(0.0, 31.0, 1.0);
+      gtk_spin_button_set_value(GTK_SPIN_BUTTON(att_spin[a]), (double)adc[a].attenuation);
+      gtk_box_pack_start(GTK_BOX(att_box), att_spin[a], FALSE, FALSE, 0);
+      g_signal_connect(att_spin[a], "value_changed", G_CALLBACK(att_cb), GINT_TO_POINTER(a));
+    }
+
+    gtk_grid_attach(GTK_GRID(grid), att_box, 1, 1, 1, 1);
+    //
+    // Every other row that comes and goes is a single widget, where
+    // set_no_show_all() below and gtk_widget_set_visible() in
+    // update_visibility() are between them enough. This one is a box with
+    // four children, and no_show_all stops gtk_widget_show_all(dialog)
+    // recursing into it - so the children would never be shown at all,
+    // and making the box visible would reveal an empty row. Show them
+    // here, once, and leave the box's own visibility to do the work.
+    //
+    gtk_widget_show_all(att_box);
+  }
   GtkWidget *gain_coarse_label = gtk_label_new("Gain (dB, coarse)");
   gtk_widget_set_name(gain_coarse_label, "boldlabel");
   gtk_widget_set_halign(gain_coarse_label, GTK_ALIGN_END);
   gtk_misc_set_alignment (GTK_MISC(gain_coarse_label), 0, 0);
   gtk_widget_show(gain_coarse_label);
-  gtk_grid_attach(GTK_GRID(grid), gain_coarse_label, 0, 1, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), gain_coarse_label, 0, 2, 1, 1);
   gain_coarse_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, -25.0, +25.0, 0.5);
   gtk_widget_set_size_request (gain_coarse_scale, 300, 25);
   gtk_range_set_value(GTK_RANGE(gain_coarse_scale), gain_coarse);
   gtk_widget_show(gain_coarse_scale);
-  gtk_grid_attach(GTK_GRID(grid), gain_coarse_scale, 1, 1, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), gain_coarse_scale, 1, 2, 1, 1);
   g_signal_connect(G_OBJECT(gain_coarse_scale), "value_changed", G_CALLBACK(gain_coarse_changed_cb), NULL);
   GtkWidget *gain_fine_label = gtk_label_new("Gain (dB, fine)");
   gtk_widget_set_name(gain_fine_label, "boldlabel");
   gtk_widget_set_halign(gain_fine_label, GTK_ALIGN_END);
   gtk_misc_set_alignment (GTK_MISC(gain_fine_label), 0, 0);
   gtk_widget_show(gain_fine_label);
-  gtk_grid_attach(GTK_GRID(grid), gain_fine_label, 0, 2, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), gain_fine_label, 0, 3, 1, 1);
   gain_fine_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, -2.0, +2.0, 0.05);
   gtk_widget_set_size_request (gain_fine_scale, 300, 25);
   gtk_range_set_value(GTK_RANGE(gain_fine_scale), gain_fine);
   gtk_widget_show(gain_fine_scale);
-  gtk_grid_attach(GTK_GRID(grid), gain_fine_scale, 1, 2, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), gain_fine_scale, 1, 3, 1, 1);
   g_signal_connect(G_OBJECT(gain_fine_scale), "value_changed", G_CALLBACK(gain_fine_changed_cb), NULL);
   GtkWidget *phase_coarse_label = gtk_label_new("Phase (coarse)");
   gtk_widget_set_name(phase_coarse_label, "boldlabel");
   gtk_widget_set_halign(phase_coarse_label, GTK_ALIGN_END);
   gtk_misc_set_alignment (GTK_MISC(phase_coarse_label), 0, 0);
   gtk_widget_show(phase_coarse_label);
-  gtk_grid_attach(GTK_GRID(grid), phase_coarse_label, 0, 3, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), phase_coarse_label, 0, 4, 1, 1);
   phase_coarse_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, -180.0, 180.0, 2.0);
   gtk_widget_set_size_request (phase_coarse_scale, 300, 25);
   gtk_range_set_value(GTK_RANGE(phase_coarse_scale), phase_coarse);
   gtk_widget_show(phase_coarse_scale);
-  gtk_grid_attach(GTK_GRID(grid), phase_coarse_scale, 1, 3, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), phase_coarse_scale, 1, 4, 1, 1);
   g_signal_connect(G_OBJECT(phase_coarse_scale), "value_changed", G_CALLBACK(phase_coarse_changed_cb), NULL);
   GtkWidget *phase_fine_label = gtk_label_new("Phase (fine)");
   gtk_widget_set_name(phase_fine_label, "boldlabel");
   gtk_widget_set_halign(phase_fine_label, GTK_ALIGN_END);
   gtk_misc_set_alignment (GTK_MISC(phase_fine_label), 0, 0);
   gtk_widget_show(phase_fine_label);
-  gtk_grid_attach(GTK_GRID(grid), phase_fine_label, 0, 4, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), phase_fine_label, 0, 5, 1, 1);
   phase_fine_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, -5.0, 5.0, 0.1);
   gtk_widget_set_size_request (phase_fine_scale, 300, 25);
   gtk_range_set_value(GTK_RANGE(phase_fine_scale), phase_fine);
   gtk_widget_show(phase_fine_scale);
-  gtk_grid_attach(GTK_GRID(grid), phase_fine_scale, 1, 4, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), phase_fine_scale, 1, 5, 1, 1);
   g_signal_connect(G_OBJECT(phase_fine_scale), "value_changed", G_CALLBACK(phase_fine_changed_cb), NULL);
   //
   // ------------------------------------------------------------------
@@ -1222,11 +1354,11 @@ void diversity_menu(GtkWidget *parent) {
   // ------------------------------------------------------------------
   //
   GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-  gtk_grid_attach(GTK_GRID(grid), sep, 0, 5, 2, 1);
+  gtk_grid_attach(GTK_GRID(grid), sep, 0, 6, 2, 1);
   GtkWidget *auto_label = gtk_label_new("Auto");
   gtk_widget_set_name(auto_label, "boldlabel");
   gtk_widget_set_halign(auto_label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), auto_label, 0, 6, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), auto_label, 0, 7, 1, 1);
   auto_combo = gtk_combo_box_text_new();
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_combo), "Off (manual)");
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_combo), "Null (cancel common signal)");
@@ -1241,12 +1373,12 @@ void diversity_menu(GtkWidget *parent) {
                               "1.7 dB more. Null is the diagnostic: it cancels "
                               "what the two antennas hear in common.");
   gtk_combo_box_set_active(GTK_COMBO_BOX(auto_combo), div_auto_mode);
-  gtk_grid_attach(GTK_GRID(grid), auto_combo, 1, 6, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), auto_combo, 1, 7, 1, 1);
   g_signal_connect(auto_combo, "changed", G_CALLBACK(auto_changed_cb), NULL);
   GtkWidget *ref_label = gtk_label_new("Measure on");
   gtk_widget_set_name(ref_label, "boldlabel");
   gtk_widget_set_halign(ref_label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), ref_label, 0, 7, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), ref_label, 0, 8, 1, 1);
   ref_combo = gtk_combo_box_text_new();
 
   for (int i = 0; i < REF_ROWS; i++) {
@@ -1254,16 +1386,16 @@ void diversity_menu(GtkWidget *parent) {
   }
 
   gtk_combo_box_set_active(GTK_COMBO_BOX(ref_combo), div_ref_to_row(div_auto_ref));
-  gtk_grid_attach(GTK_GRID(grid), ref_combo, 1, 7, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), ref_combo, 1, 8, 1, 1);
   g_signal_connect(ref_combo, "changed", G_CALLBACK(ref_changed_cb), NULL);
   follow_b = gtk_check_button_new_with_label("Window follows RX filter");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(follow_b), div_auto_follow_filter);
-  gtk_grid_attach(GTK_GRID(grid), follow_b, 1, 8, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), follow_b, 1, 9, 1, 1);
   g_signal_connect(follow_b, "toggled", G_CALLBACK(follow_cb), NULL);
   centre_label = gtk_label_new("Window centre (Hz)");
   gtk_widget_set_name(centre_label, "boldlabel");
   gtk_widget_set_halign(centre_label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), centre_label, 0, 9, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), centre_label, 0, 10, 1, 1);
   //
   // Deliberately wide: the window is allowed outside the passband, and how
   // far is a function of the sample rate. div_bin_range() clamps to the
@@ -1278,20 +1410,20 @@ void diversity_menu(GtkWidget *parent) {
                               "frequency, so a centre of 0 sits on what you are "
                               "listening to in every mode.");
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(centre_spin), div_auto_centre);
-  gtk_grid_attach(GTK_GRID(grid), centre_spin, 1, 9, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), centre_spin, 1, 10, 1, 1);
   g_signal_connect(centre_spin, "value_changed", G_CALLBACK(centre_cb), NULL);
   width_label = gtk_label_new("Window width (Hz)");
   gtk_widget_set_name(width_label, "boldlabel");
   gtk_widget_set_halign(width_label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), width_label, 0, 10, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), width_label, 0, 11, 1, 1);
   width_spin = gtk_spin_button_new_with_range(20.0, 40000.0, 10.0);
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(width_spin), div_auto_width);
-  gtk_grid_attach(GTK_GRID(grid), width_spin, 1, 10, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), width_spin, 1, 11, 1, 1);
   g_signal_connect(width_spin, "value_changed", G_CALLBACK(width_cb), NULL);
   res_label = gtk_label_new("Resolution");
   gtk_widget_set_name(res_label, "boldlabel");
   gtk_widget_set_halign(res_label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), res_label, 0, 11, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), res_label, 0, 12, 1, 1);
   res_combo = gtk_combo_box_text_new();
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(res_combo), "12 Hz bins (fast)");
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(res_combo), "6 Hz bins");
@@ -1303,12 +1435,12 @@ void diversity_menu(GtkWidget *parent) {
                               "but each step doubles the block period and so halves the "
                               "update rate. The bin width actually achieved is shown in "
                               "the status line.");
-  gtk_grid_attach(GTK_GRID(grid), res_combo, 1, 11, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), res_combo, 1, 12, 1, 1);
   g_signal_connect(res_combo, "changed", G_CALLBACK(res_changed_cb), NULL);
   weight_label = gtk_label_new("Weighting");
   gtk_widget_set_name(weight_label, "boldlabel");
   gtk_widget_set_halign(weight_label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), weight_label, 0, 12, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), weight_label, 0, 13, 1, 1);
   weight_combo = gtk_combo_box_text_new();
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(weight_combo), "Flat");
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(weight_combo), "Coherence");
@@ -1318,7 +1450,7 @@ void diversity_menu(GtkWidget *parent) {
                               "antennas agree in it, so a wide window can be used on "
                               "speech without the noise-only parts of it diluting the "
                               "answer. Flat is the older behaviour.");
-  gtk_grid_attach(GTK_GRID(grid), weight_combo, 1, 12, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), weight_combo, 1, 13, 1, 1);
   g_signal_connect(weight_combo, "changed", G_CALLBACK(weight_changed_cb), NULL);
   GtkWidget *tau_label = gtk_label_new("Averaging (s)");
   gtk_widget_set_tooltip_text(tau_label,
@@ -1327,20 +1459,20 @@ void diversity_menu(GtkWidget *parent) {
                               "RADE over an HF path usually wants several seconds.");
   gtk_widget_set_name(tau_label, "boldlabel");
   gtk_widget_set_halign(tau_label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), tau_label, 0, 13, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), tau_label, 0, 14, 1, 1);
   tau_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.2, 30.0, 0.1);
   gtk_widget_set_size_request(tau_scale, 300, 25);
   gtk_range_set_value(GTK_RANGE(tau_scale), div_auto_tau);
-  gtk_grid_attach(GTK_GRID(grid), tau_scale, 1, 13, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), tau_scale, 1, 14, 1, 1);
   g_signal_connect(G_OBJECT(tau_scale), "value_changed", G_CALLBACK(tau_cb), NULL);
   coh_label = gtk_label_new("Min coherence (%)");
   gtk_widget_set_name(coh_label, "boldlabel");
   gtk_widget_set_halign(coh_label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), coh_label, 0, 14, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), coh_label, 0, 15, 1, 1);
   coh_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 95.0, 5.0);
   gtk_widget_set_size_request(coh_scale, 300, 25);
   gtk_range_set_value(GTK_RANGE(coh_scale), 100.0 * div_auto_coherence_min);
-  gtk_grid_attach(GTK_GRID(grid), coh_scale, 1, 14, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), coh_scale, 1, 15, 1, 1);
   g_signal_connect(G_OBJECT(coh_scale), "value_changed", G_CALLBACK(coh_cb), NULL);
   hang_label = gtk_label_new("Hang (s)");
   gtk_widget_set_tooltip_text(hang_label,
@@ -1353,11 +1485,11 @@ void diversity_menu(GtkWidget *parent) {
                               "still being applied.");
   gtk_widget_set_name(hang_label, "boldlabel");
   gtk_widget_set_halign(hang_label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), hang_label, 0, 15, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), hang_label, 0, 16, 1, 1);
   hang_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 1.0, 30.0, 0.5);
   gtk_widget_set_size_request(hang_scale, 300, 25);
   gtk_range_set_value(GTK_RANGE(hang_scale), div_auto_hang);
-  gtk_grid_attach(GTK_GRID(grid), hang_scale, 1, 15, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), hang_scale, 1, 16, 1, 1);
   g_signal_connect(G_OBJECT(hang_scale), "value_changed", G_CALLBACK(hang_cb), NULL);
   //
   // The three things done while listening rather than while setting up,
@@ -1408,7 +1540,7 @@ void diversity_menu(GtkWidget *parent) {
   g_signal_connect(divcap_b, "toggled", G_CALLBACK(divcap_cb), NULL);
   gtk_box_pack_start(GTK_BOX(buttons), divcap_b, FALSE, FALSE, 0);
 #endif
-  gtk_grid_attach(GTK_GRID(grid), buttons, 0, 16, 2, 1);
+  gtk_grid_attach(GTK_GRID(grid), buttons, 0, 17, 2, 1);
   //
   // The status line spans both columns and is held to exactly
   // DIV_STATUS_CHARS characters, so it fits inside the width the controls
@@ -1427,7 +1559,7 @@ void diversity_menu(GtkWidget *parent) {
     gtk_label_set_attributes(GTK_LABEL(status_label), attrs);
     pango_attr_list_unref(attrs);
   }
-  gtk_grid_attach(GTK_GRID(grid), status_label, 0, 17, 2, 1);
+  gtk_grid_attach(GTK_GRID(grid), status_label, 0, 18, 2, 1);
   //
   // Second line, same treatment: monospace, the same fixed width, so the
   // two line up and neither can widen the dialog.
@@ -1445,7 +1577,8 @@ void diversity_menu(GtkWidget *parent) {
     gtk_label_set_attributes(GTK_LABEL(arm_label), attrs);
     pango_attr_list_unref(attrs);
   }
-  gtk_grid_attach(GTK_GRID(grid), arm_label, 0, 18, 2, 1);
+  gtk_grid_attach(GTK_GRID(grid), arm_label, 0, 19, 2, 1);
+
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   //
@@ -1464,11 +1597,17 @@ void diversity_menu(GtkWidget *parent) {
       res_label,    res_combo,
       weight_label, weight_combo,
       coh_label,    coh_scale,
-      hang_label,   hang_scale
+      hang_label,   hang_scale,
+      att_label,    att_box
     };
 
+    //
+    // att_label and att_box are NULL on a radio with one ADC or no step
+    // attenuator, where they were never built.
+    //
+
     for (unsigned int i = 0; i < G_N_ELEMENTS(optional); i++) {
-      gtk_widget_set_no_show_all(optional[i], TRUE);
+      if (optional[i] != NULL) { gtk_widget_set_no_show_all(optional[i], TRUE); }
     }
   }
   update_visibility();

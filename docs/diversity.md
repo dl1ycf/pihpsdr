@@ -37,7 +37,9 @@ bits each) rather than 238 consecutive samples.
 
 Both DDCs are given the same NCO frequency — the high-priority packet
 copies bytes 9-12 into 13-16 — the same sample rate, the same band-pass
-filter, the same step attenuator and the same dither/random setting.
+filter and the same dither/random setting. The step attenuator is shared
+too, unless the operator has asked for separate ones; see "Separate
+attenuators" below.
 
 The consequence is the one everything else rests on: **the two streams
 have no relative sample delay and no relative drift**, so the channel
@@ -46,8 +48,8 @@ between them is a memoryless complex gain rather than a filter.
 ### Protocol 1
 
 Equivalent: `how_many_receivers()` forces two HPSDR receivers, ADC0 is
-wired to RX1 and ADC1 to RX2, the attenuators are tied together, and the
-sample pairs arrive interleaved in the same frame.
+wired to RX1 and ADC1 to RX2, the attenuators are tied together by
+default, and the sample pairs arrive interleaved in the same frame.
 
 ### Front-end asymmetry
 
@@ -58,11 +60,42 @@ So the relative gain and phase between the two antennas are stable within
 a band and **jump** when the band, antenna or attenuator changes.
 
 The analysis discards its statistics and starts again on a change of
-frequency, sample rate, mode, filter edges or any window setting (§4) —
-but **not** on an antenna or attenuator change, which it does not watch.
-There the estimate simply re-converges over a few time constants, which is
-slower than a restart but arrives at the same place. **Restart averaging**
-is the button for it if the wait is unwelcome.
+frequency, sample rate, mode, filter edges, any window setting (§4) or
+either ADC's step attenuator — but **not** on an antenna change, which it
+does not watch. There the estimate simply re-converges over a few time
+constants, which is slower than a restart but arrives at the same place.
+**Restart averaging** is the button for it if the wait is unwelcome.
+
+### Separate attenuators
+
+The two step attenuators are tied together while diversity runs, both
+protocols sending ADC0's value to ADC1 as well. That is the safe default,
+because an attenuator change moves the relative gain between the arms and
+so invalidates whatever weight is in force — including a manual one the
+operator set by hand.
+
+**ADC attenuators**, the tick box beside **Diversity** at the top of the
+menu, unties them, and puts an **Attenuator (dB)** row with a value for
+each ADC underneath — a row that is there only while they are split. The
+reason to want it is headroom on one antenna alone: a local source strong
+enough to overload ADC0 that the second antenna cannot hear at all
+(measured at 10.5 dB above the floor on ADC0 only — Finding 5 of
+[`diversity-measurements.md`](diversity-measurements.md)) can then be
+attenuated where it is, instead of costing the quiet antenna the same
+10 dB of sensitivity it did not need to lose.
+
+Untied, the step is not simply allowed through. The weight is a ratio, so
+a known change of *d* dB on one arm has a known effect on it: ADC1 moving
+by *d* raises the correct weight by *d*, ADC0 moving by *d* lowers it by
+the same. That correction is applied to `div_cos`/`div_sin` at the instant
+the attenuator moves, so the combined audio does not step, and a manual
+gain and phase stay valid across the change. The measurement itself
+restarts, since both attenuations are part of the analysis context.
+
+This applies to any path that moves an attenuator — the ATT slider, an
+encoder, CAT, or the two spin buttons in the Diversity menu, which are
+the only way to reach ADC1 while the loop is running and has made RX1 the
+active receiver.
 
 ---
 
@@ -663,7 +696,9 @@ one block from `track` to `search` when the signal stops.
 
 | Control | Effect | Shown for |
 |---|---|---|
-| **Diversity Enable** | The whole feature, including the DDC re-plumbing | always |
+| **Diversity** | The whole feature, including the DDC re-plumbing | always |
+| **ADC attenuators** | Split ADC0's and ADC1's step attenuators (§1) | two ADCs with a step attenuator |
+| **Attenuator (dB)** | ADC0 and ADC1, 0-31 dB each | only while split |
 | **Gain / Phase** (coarse, fine) | Manual weight; live when Auto is not driving, and under **Hold** | always |
 | **Auto** | Off / Null / Sum / Best — the objective | always |
 | **Measure on** | Which reference (§5) | always |

@@ -241,6 +241,7 @@ extern int cw_key_hit;
 extern int n_adc;
 
 extern int diversity_enabled;
+extern int div_indep_att;              // ADC1 keeps its own step attenuator in DIVERSITY
 extern double div_cos, div_sin;
 extern double div_gain, div_phase;
 
@@ -340,6 +341,8 @@ extern void   radio_set_panhigh(int id, int value);
 extern void   radio_set_panlow(int id, int value);
 extern void   radio_set_panstep(int id, int value);
 extern void   radio_set_attenuation(int id, int value);
+extern void   radio_set_adc_attenuation(int a, int value);
+extern void   radio_set_indep_att(int state);
 extern void   radio_set_random(int id, int value);
 extern void   radio_set_dither(int id, int value);
 extern void   radio_set_preamp(int id, int value);

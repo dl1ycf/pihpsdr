@@ -1067,6 +1067,7 @@ static gpointer client_tcp_thread(gpointer arg) {
       rx_stack_horizontal = data.rx_stack_horizontal;
       n_adc = data.n_adc;
       diversity_enabled = data.diversity_enabled;
+      div_indep_att = data.div_indep_att;
       soapy_iqswap = data.soapy_iqswap;
       radio->soapy.rx[0].antennas = data.soapy_rx1_antennas;
       radio->soapy.rx[1].antennas = data.soapy_rx2_antennas;

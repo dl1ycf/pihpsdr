@@ -34,6 +34,7 @@
 
 enum _header_type_enum {
   CMD_ADC,
+  CMD_ADC_ATTENUATION,
   CMD_AGC,
   CMD_AMCARRIER,
   CMD_ANAN10E,
@@ -152,7 +153,7 @@ enum _header_type_enum {
   CLIENT_SERVER_COMMANDS,
 };
 
-#define CLIENT_SERVER_VERSION 0x01300008 // 32-bit version number
+#define CLIENT_SERVER_VERSION 0x01300009 // 32-bit version number
 #define SPECTRUM_DATA_SIZE 4096          // Maximum width of a panadapter
 #define AUDIO_DATA_SIZE 512              // 512 (mono) samples
 
@@ -415,6 +416,7 @@ typedef struct __attribute__((__packed__)) _radio_data {
   uint8_t  rx_stack_horizontal;
   uint8_t  n_adc;
   uint8_t  diversity_enabled;
+  uint8_t  div_indep_att;
   uint8_t  soapy_iqswap;
   uint8_t  soapy_rx1_antennas;
   uint8_t  soapy_rx2_antennas;
@@ -834,6 +836,7 @@ typedef struct __attribute__((__packed__)) _diversity_command {
   mydouble div_phase;
   //
   uint8_t diversity_enabled;
+  uint8_t indep_att;
 } DIVERSITY_COMMAND;
 
 //
@@ -876,6 +879,8 @@ typedef struct __attribute__((__packed__)) _div_status_data {
   uint8_t  arm_pick, carrier_valid, occ_valid, rade_locked;
   uint8_t  rade_confirming;
   int8_t   rade_side;
+  uint8_t  indep_att;
+  uint8_t  att0, att1;
   uint8_t  pad;
   //
   mydouble binhz, coherence, carrier, arm_db;
@@ -1023,6 +1028,7 @@ extern void send_agc(int s, const RECEIVER *rx);
 extern void send_am_carrier(int s);
 extern void send_anan10E(int s, int new);
 extern void send_attenuation(int s, int rx, int attenuation);
+extern void send_adc_attenuation(int s, int adc, int attenuation);
 extern void send_band(int s, int rx, int band);
 extern void send_band_data(int s, int band);
 extern void send_bandstack(int s, int old, int new);

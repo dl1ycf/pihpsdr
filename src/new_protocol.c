@@ -1217,7 +1217,7 @@ static void new_protocol_high_priority(void) {
   // ADC step attenuator of ADC0 and ADC1
   //
   high_priority_buffer_to_radio[1443] = adc[0].attenuation;
-  if (diversity_enabled) {
+  if (diversity_enabled && !div_indep_att) {
     high_priority_buffer_to_radio[1442] = adc[0].attenuation; // DIVERSITY: ADC0 att value for ADC1 as well
   } else {
     high_priority_buffer_to_radio[1442] = adc[1].attenuation;
@@ -1344,7 +1344,7 @@ static void new_protocol_transmit_specific(void) {
   // Setting of the ADC0/ADC1 step attenuators while transmitting
   //
   transmit_specific_buffer[59] = adc[0].attenuation;
-  transmit_specific_buffer[58] = diversity_enabled ? adc[0].attenuation : adc[1].attenuation;
+  transmit_specific_buffer[58] = (diversity_enabled && !div_indep_att) ? adc[0].attenuation : adc[1].attenuation;
   if (!txband->disablePA && pa_enabled) {
     transmit_specific_buffer[58] = 31;   // ADC1
     transmit_specific_buffer[59] = 31;   // ADC0

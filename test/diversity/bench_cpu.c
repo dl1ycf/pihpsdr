@@ -31,6 +31,7 @@
 #include "mode.h"
 #include "receiver.h"
 #include "vfo.h"
+#include "adc.h"
 #include "diversity_auto.h"
 #include "rade_correlator.h"
 
@@ -41,6 +42,12 @@ int diversity_enabled = 1;
 int radio_is_remote = 0;
 int cw_keyer_sidetone_frequency = 800;
 double div_cos = 1.0, div_sin = 0.0, div_gain = 0.0, div_phase = 0.0;
+//
+// The engine reads the two step attenuators as part of its analysis
+// context, so a change of either restarts the statistics.
+//
+ADC adc[3];
+int div_indep_att = 0;
 struct _vfo vfo[MAX_VFOS];
 void t_print(const char *fmt, ...) { (void)fmt; }        /* quiet */
 const char *getProperty(const char *n) { (void)n; return NULL; }

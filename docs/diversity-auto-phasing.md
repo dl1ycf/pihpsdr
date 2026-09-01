@@ -19,9 +19,9 @@ Diversity combining in piHPSDR is entirely a host-side operation. The radio
 only guarantees that the two receive chains are coherent and identically
 configured: for Protocol 2, `new_protocol.c` ties DDC1 to DDC0
 (`receive_specific_buffer[1363] = 0x02`), gives both DDCs the same
-frequency and sample rate, and forces ADC1 to take ADC0's step attenuator,
-band-pass filter and dither/random settings. No weighting happens in the
-FPGA.
+frequency and sample rate, and forces ADC1 to take ADC0's band-pass filter
+and dither/random settings — and its step attenuator too, unless the
+operator has asked for separate ones. No weighting happens in the FPGA.
 
 The combination itself is three lines in `rx_add_div_iq_samples()`
 (`src/receiver.c`):

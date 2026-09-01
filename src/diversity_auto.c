@@ -558,6 +558,8 @@ struct div_context {
   double    centre;
   double    width;
   int       weighting;
+  int       att0;
+  int       att1;
 };
 
 static struct div_context lastctx;
@@ -682,6 +684,64 @@ static void div_reset_stats(void) {
   //
   div_track_gain = div_gain;
   div_track_phase = div_phase;
+}
+
+//
+// One of the two step attenuators moved by delta_db, and the new value is
+// not in place yet. Everything the loop has accumulated was measured with
+// the old front ends, so it is discarded by div_context_changed() on the
+// next block; what cannot wait for the next block is the weight in force,
+// because the operator would hear the step.
+//
+// div_gain is the arm-1 gain in dB relative to arm 0. Attenuating arm 0
+// by delta makes arm 0 smaller, so the correct ratio falls by delta;
+// attenuating arm 1 raises it by delta. Applying that here keeps the
+// combined audio continuous across the change - and, under Hold or with
+// the loop off, keeps the operator's own manual weight valid, which is
+// the thing tying the two attenuators together used to protect.
+//
+void diversity_auto_att_changed(int a, int delta_db) {
+  if (radio_is_remote) { return; }
+
+  const double shift = (a == 1) ? (double)delta_db : -(double)delta_db;
+  //
+  // Scale what is being applied, then back-compute the readout, which is
+  // the same order div_apply_weight() uses. Doing it the other way about
+  // would step the audio: div_cos/div_sin are the slewed values actually
+  // in force and div_gain/div_phase merely describe them.
+  //
+  const double k = pow(10.0, 0.05 * shift);
+  div_cos *= k;
+  div_sin *= k;
+  double mag = sqrt(div_cos * div_cos + div_sin * div_sin);
+
+  if (mag > DIV_MAX_WEIGHT) {
+    div_cos *= DIV_MAX_WEIGHT / mag;
+    div_sin *= DIV_MAX_WEIGHT / mag;
+    mag = DIV_MAX_WEIGHT;
+  }
+
+  if (mag > 1.0e-9) {
+    div_gain = 20.0 * log10(mag);
+  } else {
+    div_gain = -27.0;
+  }
+
+  if (div_gain >  27.0) { div_gain =  27.0; }
+
+  if (div_gain < -27.0) { div_gain = -27.0; }
+
+  //
+  // The phase is untouched - k is real and positive - so div_phase needs
+  // no recomputing. The tracked readout moves with the applied one, since
+  // the loop's answer for the old front ends is now the wrong one by
+  // exactly this much.
+  //
+  div_track_gain += shift;
+
+  if (div_track_gain >  27.0) { div_track_gain =  27.0; }
+
+  if (div_track_gain < -27.0) { div_track_gain = -27.0; }
 }
 
 void diversity_auto_reset(void) {
@@ -841,6 +901,8 @@ static void div_get_context(struct div_context *ctx) {
   ctx->centre         = div_auto_centre;
   ctx->width          = div_auto_width;
   ctx->weighting      = div_auto_weighting;
+  ctx->att0           = adc[0].attenuation;
+  ctx->att1           = adc[1].attenuation;
 }
 
 //
@@ -862,7 +924,9 @@ static int div_context_changed(const struct div_context *a, const struct div_con
          a->follow         != b->follow         ||
          a->centre         != b->centre         ||
          a->width          != b->width          ||
-         a->weighting      != b->weighting;
+         a->weighting      != b->weighting      ||
+         a->att0           != b->att0           ||
+         a->att1           != b->att1;
 }
 
 //
@@ -2608,6 +2672,9 @@ void diversity_auto_apply_settings(const DIV_SETTINGS *s, int action) {
 
 void diversity_auto_get_status(DIV_STATUS *st) {
   st->enabled         = diversity_enabled;
+  st->indep_att       = div_indep_att;
+  st->att0            = adc[0].attenuation;
+  st->att1            = adc[1].attenuation;
   st->running         = div_auto_running;
   st->holding         = div_auto_holding;
   st->clamped         = div_auto_clamped;
@@ -2642,6 +2709,13 @@ void diversity_auto_get_status(DIV_STATUS *st) {
 //
 void diversity_auto_apply_status(const DIV_STATUS *st) {
   diversity_enabled      = st->enabled;
+  //
+  // The attenuators travel with the status rather than waiting for the
+  // next INFO_ADC, so a client's menu follows one moved at the radio.
+  //
+  div_indep_att          = st->indep_att;
+  adc[0].attenuation     = st->att0;
+  adc[1].attenuation     = st->att1;
   div_auto_running       = st->running;
   div_auto_holding       = st->holding;
   div_auto_clamped       = st->clamped;

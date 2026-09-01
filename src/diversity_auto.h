@@ -237,6 +237,8 @@ typedef struct _div_settings {
 
 typedef struct _div_status {
   int    enabled;           // the whole feature, as the radio has it
+  int    indep_att;         // ADC1 keeps its own step attenuator
+  int    att0, att1;        // the two step attenuators, as the radio has them
   int    running, holding, clamped;
   int    arm_valid, arm_pick, carrier_valid, occ_valid;
   int    rade_locked, rade_confirming, rade_side;
@@ -276,6 +278,14 @@ extern gboolean diversity_client_set_status(gpointer data);
 // sent the outcome like any other settings change.
 //
 extern void diversity_auto_mode_changed(int mode);
+
+//
+// One of the two ADC step attenuators is about to move by delta_db. Feeds
+// the known step forward into the weight so the combined audio does not
+// jump; the statistics restart by themselves on the next block, since the
+// attenuations are part of the analysis context.
+//
+extern void diversity_auto_att_changed(int a, int delta_db);
 
 extern void diversity_auto_save_state(void);
 extern void diversity_auto_restore_state(void);

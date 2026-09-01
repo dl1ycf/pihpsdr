@@ -2085,10 +2085,11 @@ static void ozy_send_buffer(unsigned char *buffer) {
       if (n_adc == 2) {
         //
         // Setting of the ADC1 step attenuator
-        // If diversity is enabled, use RX1 att value for RX2
+        // If diversity is enabled, use RX1 att value for RX2 - unless the
+        // operator has asked for independent attenuators.
         // Note bit5 must *always be set, otherwise the attenuation is zero.
         //
-        if (diversity_enabled) {
+        if (diversity_enabled && !div_indep_att) {
           buffer[C1] = 0x20 | (adc[0].attenuation & 0x1F);
         } else {
           buffer[C1] = 0x20 | (adc[1].attenuation & 0x1F);
