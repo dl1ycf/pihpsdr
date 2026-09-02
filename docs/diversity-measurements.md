@@ -97,6 +97,21 @@ a scalar weight nulls 8.1 dB where a weight per 94 Hz bin nulls 16.5
 (Finding 28). **Finding 30** asks what window and tracking method suit it
 and finds that only the objective matters.
 
+**Finding 31** is 50 baud FSK on 20 m that stops, idles on its mark tone,
+fades out, and lets a second signal show through. The two are told apart
+by their inter-arm channels - **+4.4 dB at -161 deg against -0.6 dB at
++160 deg**, both measured at coherence above 0.98 - which is a conclusion
+a single receiver cannot reach. To *hear* it, every window is within
+0.6 dB on SNR and **FSK/Digital wins on level**, landing the same SNR with
+5.4 dB less level rise because it is the one reference that measures the
+branch noise. To *null* it, the window goes on the tones and the averaging
+short - not because short deepens the null, which moves half a decibel
+across the whole slider, but because it keeps the loop out of hold, 8 %
+against 78 %. The null reaches 11 dB of a reachable 13.7, and the gap to
+the 20.8 dB the coherence allows is **the one-block lag**: this path moves
+enough in 171 ms to cost seven decibels. Nulling the FSK leaves the other
+source 5.9 dB *up*, which is what a two-branch array is for.
+
 **Finding 30** asks what window and tracking method suit DRM, and finds
 that the answer is neither: window width from five bins to the whole
 passband, both weightings and averaging from 0.2 to 10 s all land within
@@ -270,6 +285,7 @@ recording.
 | `003309` | 10.13611 | USB | FSK/Digital, then Window | **30 m FT8**, nfft 16384, many stations, averaging 0.2-2.7 s |
 | `142026` | 11.65999 | AM | Window, **flat** | **DRM mode B, 10 kHz** - received in `AM` with a +/-6 kHz filter. ADC1 at **23 dB of attenuation**; operator cycles objective, reference and weighting |
 | `142333` | 21.04004 | CWL | Window, coherence | **15 m CW**, nfft 65536, **both attenuators swept 0-4 dB** |
+| `154822` | 14.11781 | USB | Window, coherence | **50 baud FSK, 205 Hz shift**, stops and idles on mark, then a **second source** appears out of band. No operator changes |
 
 `202743` begins on 7.177 MHz and retunes to 7.09203 MHz at block 9. The
 recorder did **not** set the context-changed bit for it: `rec_flags` is
@@ -291,6 +307,10 @@ Averaging control while recording. See Findings 17, 18 and 20.
 `115357` is a second 40 m RADE capture at a different dial frequency from
 the 7.047 MHz set, recorded to catch a deliberate slow QSY. See
 Finding 19.
+
+`154822` is the first capture with **two identified sources in it**, told
+apart by their inter-arm signatures rather than by their frequencies, and
+the first test of the FSK/Digital reference on actual FSK. See Finding 31.
 
 `142026` and `142333` are the first captures in **format version 2**, so
 they are the first that record what the step attenuators were set to.
@@ -3190,6 +3210,129 @@ one may span more channel variation than a scalar can follow. That capture
 has not been taken. The same is true of the notch worry: it needs a path
 whose inter-arm channel varies far more across 10 kHz than this one's.
 
+## Finding 31: FSK — settings to hear it, settings to null it, and a second source proved by its signature
+
+`154822` is 14.117805 MHz `USB`, a 150-2550 Hz filter, Window with
+coherence weighting, Sum, averaging 3.41 s, both attenuators at zero, and
+not a single operator change in the minute. It carries an FSK signal that
+stops part way through, and the operator's note is that what is left
+afterwards may be a different source. It is, and the diversity data is
+what proves it.
+
+### What is actually there
+
+Measured at 5.86 Hz resolution and by mixing each tone to zero:
+
+| | |
+|---|---|
+| tones | **+1096 Hz** and **+1301 Hz** in the operator's shifted frame |
+| shift | **205 Hz** |
+| keying | run lengths cluster at 20 and 40 ms -> unit element 20 ms, **50 baud** |
+| inter-arm channel `h1/h0` | **+4.4 dB at -161 deg**, coherence **0.996** |
+
+Fifty baud on a 200 Hz shift is a utility FSK format, not the amateur
+45.45 baud on 170 Hz - worth stating, because the tone spacing is what a
+hand-placed window has to cover.
+
+The minute has four parts:
+
+| t | what |
+|---|---|
+| 0 - 6 s | FSK keying between both tones |
+| 6 - 30 s | **the mark tone alone**, idling, same signature to within 1 dB and 5 deg |
+| 30 - 42 s | the carrier fades out; coherence falls to 0.6 and the tone is gone |
+| 42 - 60 s | it returns, `h1/h0` **+1.8 to +5.4 dB at -161 to -171 deg** |
+
+So the carrier that comes back is the *same* source. What appears while it
+is away is somewhere else entirely.
+
+### The second source, and how the signature settles it
+
+During the gap a signal switches on **4.5 to 5.0 kHz above the dial** -
+outside the operator's 2550 Hz filter, so audible only if he retunes,
+though the panadapter shows it. It is present at t = 34-41 s and again at
+47-51 s, and absent otherwise: 25 to 37 dB over the floor with an inter-arm
+coherence up to **0.98**.
+
+| | `h1/h0` |
+|---|---|
+| the FSK station and its idling carrier | **+4.4 dB at -161 deg** |
+| the signal revealed in the gap | **-0.6 dB at +160 deg** |
+
+Five decibels apart in magnitude and thirty-nine degrees apart in phase,
+each measured at coherence above 0.98, which is far outside what either
+estimate could wander by. **They arrive by different paths, so they are
+different sources** - and that is a conclusion a single receiver cannot
+reach, because from one antenna the two look like the same kind of carrier
+appearing and disappearing on a busy band.
+
+### To hear it: any window works, but the reference decides the level
+
+Scored over t = 0-30 s while the signal is on, as tone SNR - the two tone
+bands against in-band noise taken from 1600-2400 Hz, where the inter-arm
+noise coherence is only 0.088 so there is a full three decibels of
+diversity gain on the table:
+
+| setting | tone SNR | tones | noise | output level | `\|w\|` |
+|---|---|---|---|---|---|
+| arm 0 alone | +39.52 | 0.00 | 0.00 | — | — |
+| arm 1 alone | +40.14 | +4.56 | +3.94 | — | — |
+| **FSK/Digital, follow** | **+42.10** | +5.28 | +2.70 | **+5.3 dB** | 0.66 |
+| Window, follow the filter | +41.98 | +10.73 | +8.26 | +10.7 dB | 1.05 |
+| Window, hand-placed on both tones | +41.92 | +10.73 | +8.32 | +10.7 dB | 1.10 |
+| Window, on the mark tone only | +41.48 | +10.53 | +8.57 | +10.5 dB | 1.17 |
+| Carrier, on the mark tone | +41.48 | +10.53 | +8.57 | +10.5 dB | 1.21 |
+
+**Every setting is within 0.6 dB on SNR** - the signal is 40 dB out of the
+noise and a coherence of 0.996 makes the channel trivial to estimate from
+any of these windows. What separates them is the **output level**:
+FSK/Digital lands the same SNR with 5.4 dB less level rise, because it is
+the one reference that measures the branch noise and so applies `|w|` 0.66
+where the others apply 1.05 to 1.21 (Finding 22). On a signal like this
+that is the whole difference an operator would notice.
+
+**So: FSK/Digital, follow the filter.** It is the reference this mode was
+written for, the occupancy split finds the two tones without being told
+where they are, and it is the only one that does not make the audio jump.
+
+### To null it: the one-block lag is the limit, not the averaging
+
+| | tone suppression |
+|---|---|
+| ceiling from the coherence, `10 log(1-γ²)` at γ = 0.9959 | **-20.83 dB** |
+| ideal weight, computed and applied on the same block | -31.77 dB |
+| **ideal weight, applied one block late** - what the architecture allows | **-13.71 dB** |
+| shipping loop, window on both tones, tau 3.41 s | **-11.05 dB** |
+
+The loop collects 11 dB of a reachable 13.7, and **the averaging time is
+almost irrelevant**: -11.41 dB at tau 0.2 s against -10.94 at 10 s, half a
+decibel across the whole slider. What tau changes is how often the loop is
+live at all - **holding runs 8 % at 0.2 s and 78 % at the 3.41 s the
+operator had**.
+
+The gap between 13.7 and 20.8 dB is the one-block lag. The weight is
+computed from block n and applied to block n+1, 171 ms later, and this
+path moves enough in 171 ms to cost seven decibels of null depth. That is
+not something a menu setting can recover; it is the block period, which
+the Resolution control sets.
+
+**So: to null this, window on the tones, averaging short.** Short does not
+deepen the null - it keeps the loop out of hold, which is what matters
+when the interferer is keying and the path is moving. A finer Resolution
+would shorten the block and is the only thing here that could take the
+null past 14 dB, at the cost of a noisier per-block estimate; that has not
+been tested.
+
+### Nulling one source does not null the other
+
+The weight that nulls the FSK leaves the second source alone - it comes
+out **5.9 dB up** relative to arm 0, not down, because the null is aimed
+39 degrees and 5 dB away from where that signal sits. Two sources with
+different spatial signatures, one cancelled by 11 dB and the other
+untouched, is exactly what a two-branch array is for, and it is the first
+time this document has been able to show it on two identified signals
+rather than on a signal against its own noise.
+
 ## False alarms
 
 Locks produced on captures with no RADE signal anywhere. Cells are
@@ -3404,6 +3547,16 @@ holds is the false-alarm line, and that part stands.
   explains why it has not been taken. Two more quiet captures decide it.
   Dead-air captures are cheap and need no station; ones from outside the
   amateur bands are cheaper still.
+- **A null is limited by the block period, and nothing on the menu says
+  so.** Finding 31 measures an FSK interferer at inter-arm coherence 0.996
+  - a 20.8 dB null by that alone - reaching 13.7 dB for a weight applied
+  one block late and 11.0 dB for the shipping loop. Seven of the nine
+  decibels lost are the 171 ms between measuring the channel and applying
+  the weight. The Resolution control sets that period and the operator has
+  no way to know it is the binding constraint; a finer setting is the only
+  thing that could take the null deeper, at the cost of a noisier per-block
+  estimate, and it has not been tried. That sweep is one capture and an
+  afternoon.
 - **The window and averaging questions are untested where they matter.**
   Finding 30 measures them on DRM at 40 dB SNR and finds every setting
   within 0.04 dB, which is the right answer there and says nothing about a
