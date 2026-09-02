@@ -457,6 +457,104 @@ static int cw_zero_case(int mode, const char *name) {
   return ok;
 }
 
+/* ------------------------------------------------------------------ */
+/* 5. the CW passband when the window follows the filter              */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Where a CW filter lands in the tapped frame, which is not the plain
+ * inversion of filter_low..filter_high.
+ *
+ * rx_set_filter() folds the sidetone into the filter, so a CW passband
+ * sits at -pitch in CWL and +pitch in CWU. div_shift_to_bin() takes it
+ * back out again - it returns -(s + div_frame_off(ctx)) and
+ * div_frame_off() adds the pitch in CWL and subtracts it in CWU - so a
+ * 500 Hz filter lands symmetrically about zero in both, which is where a
+ * correctly tuned CW note actually is. Plain inversion would put the
+ * window a whole pitch away from the signal, on the wrong side of it in
+ * CWL and the wrong side again in CWU.
+ *
+ * docs/diversity-measurements.md asserted the plain inversion for two
+ * findings' worth of measurements and scored a CW capture in a band that
+ * held nothing but noise. The code was right and the note was wrong; this
+ * is here so that the next person to reconcile them has something that
+ * fails.
+ *
+ * Two signals are used and they check opposite things. A note 100 Hz off
+ * the dial is inside the true window and outside the plain-inversion one:
+ * it must be tracked. A note at +900 Hz is inside the plain-inversion
+ * window and outside the true one: it must be ignored.
+ */
+static int cw_follow_case(int mode, const char *name, double tone, int want_track) {
+  const int rate = 48000, nfft = 4096;
+  const double hr = 0.62, hi = -0.48;
+  rx0.sample_rate = rate;
+  /* a 500 Hz CW filter at the 800 Hz sidetone, folded as rx_set_filter() folds it */
+  rx0.filter_low  = (mode == modeCWL) ? -1050 :  550;
+  rx0.filter_high = (mode == modeCWL) ?  -550 : 1050;
+  vfo[0].mode = mode;
+  vfo[0].frequency = 7010000;
+  vfo[0].ctun_frequency = 7010000;
+  vfo[0].offset = 0;
+  div_auto_ref = DIV_REF_BAND;
+  div_auto_mode = DIV_AUTO_SUM;
+  div_auto_follow_filter = 1;          /* the case under test */
+  div_auto_tau = 1.0;
+  div_auto_coherence_min = 0.30;
+  div_auto_weighting = DIV_WEIGHT_FLAT;
+  div_auto_resolution = 12.0;
+  div_cos = 1.0;
+  div_sin = 0.0;
+  div_gain = 0.0;
+  div_phase = 0.0;
+  srand(31);
+  diversity_auto_start();
+  double ph = 0.0;
+
+  for (int b = 0; b < 60; b++) {
+    for (int n = 0; n < nfft; n++) {
+      ph += 2.0 * M_PI * tone / rate;
+      const double s = cos(ph), t = sin(ph);
+      diversity_auto_sample(s + 0.03 * frand(), t + 0.03 * frand(),
+                            hr * s - hi * t + 0.03 * frand(),
+                            hr * t + hi * s + 0.03 * frand());
+    }
+
+    settle();
+  }
+
+  g_usleep(300000);
+  const double g = div_gain, p = div_phase;
+  const int holding = div_auto_holding;
+  diversity_auto_stop();
+  const double want_g = 20.0 * log10(hypot(hr, hi));
+  const double want_p = atan2(-hi, hr) * 180.0 / M_PI;
+  double dp = p - want_p;
+
+  while (dp >  180.0) { dp -= 360.0; }
+
+  while (dp < -180.0) { dp += 360.0; }
+
+  const int tracked = !holding && fabs(g - want_g) < 0.5 && fabs(dp) < 5.0;
+  const int ok = want_track ? tracked : !tracked;
+  printf("  %-4s filter %+5d..%+5d, tone %+.0f Hz -> %s (%+0.2f dB %+0.1f deg, holding=%d)  %s\n",
+         name, rx0.filter_low, rx0.filter_high, tone,
+         tracked ? "tracked" : "ignored", g, p, holding, ok ? "OK" : "FAIL");
+  return ok;
+}
+
+static int test_cw_follow(void) {
+  printf("  window following the filter; sidetone %d Hz\n", cw_keyer_sidetone_frequency);
+  printf("  the passband must land about the zero beat, not a pitch away from it\n");
+  int ok = 1;
+  ok &= cw_follow_case(modeCWL, "CWL", 100.0, 1);
+  ok &= cw_follow_case(modeCWU, "CWU", 100.0, 1);
+  /* inside the plain-inversion window, outside the real one */
+  ok &= cw_follow_case(modeCWL, "CWL", 900.0, 0);
+  ok &= cw_follow_case(modeCWU, "CWU", 900.0, 0);
+  return ok;
+}
+
 static int test_cw_zero(void) {
   printf("  hand-placed window, signal 100 Hz above the dial\n");
   printf("  target conj(h) = -2.11 dB, +37.75 deg  (CW pitch 800 Hz)\n");
@@ -484,6 +582,8 @@ int main(int argc, char **argv) {
   int c = test_keyed();
   printf("\n");
   int d = test_cw_zero();
-  printf("\n%s\n", (a && b && c && d) ? "PASS" : "FAIL");
-  return (a && b && c && d) ? 0 : 1;
+  printf("\n");
+  int e = test_cw_follow();
+  printf("\n%s\n", (a && b && c && d && e) ? "PASS" : "FAIL");
+  return (a && b && c && d && e) ? 0 : 1;
 }
