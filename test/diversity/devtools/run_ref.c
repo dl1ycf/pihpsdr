@@ -113,6 +113,8 @@ static void set_context(const struct divcap_block *m) {
 int main(int argc, char **argv) {
   const char *path = NULL, *outp = NULL, *refname = "rade";
   double noise = 0.0, tau = 0.0, hang = 0.0, cohmin = -1.0;
+  double centre = 0.0, width = 0.0;
+  int    follow = -1;
   unsigned seed = 0;
   int usleep_us = 12000;
   int weighting = -1;
@@ -127,6 +129,15 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[i], "--tau")   && i + 1 < argc) { tau     = atof(argv[++i]); }
     /* the coherence gate, which is per reference now - see div_band_cohmin */
     else if (!strcmp(argv[i], "--cohmin") && i + 1 < argc) { cohmin  = atof(argv[++i]); }
+    /*
+     * Hand-placing the analysis window. --centre/--width imply follow=0,
+     * because a window that follows the filter ignores both; --follow puts
+     * it back. All three are in the shifted frame the operator's controls
+     * use, so they read the same as the menu.
+     */
+    else if (!strcmp(argv[i], "--centre") && i + 1 < argc) { centre  = atof(argv[++i]); follow = 0; }
+    else if (!strcmp(argv[i], "--width")  && i + 1 < argc) { width   = atof(argv[++i]); follow = 0; }
+    else if (!strcmp(argv[i], "--follow") && i + 1 < argc) { follow  = atoi(argv[++i]); }
     else if (!strcmp(argv[i], "--hang")  && i + 1 < argc) { hang    = atof(argv[++i]); }
     else if (!strcmp(argv[i], "--pace")  && i + 1 < argc) { usleep_us = atoi(argv[++i]); }
     else if (!strcmp(argv[i], "--mode") && i + 1 < argc) {
@@ -155,7 +166,7 @@ int main(int argc, char **argv) {
     else if (argv[i][0] == '-') {
       fprintf(stderr, "usage: %s FILE.divc --ref band|carrier|rade|digital --out W.csv\n"
               "       [--mode null|sum|best] [--weighting flat|coherence]\n"
-              "       [--cohmin F]\n"
+              "       [--cohmin F] [--centre HZ --width HZ] [--follow 0|1]\n"
               "       [--noise RMS] [--seed N]\n"
               "       [--tau S] [--hang S] [--pace US] [-v]\n", argv[0]);
       return 2;
@@ -216,10 +227,10 @@ int main(int argc, char **argv) {
    */
   if (cohmin >= 0.0) { div_auto_coherence_min = cohmin; }
   div_auto_mode = (mode >= 0) ? mode : m.auto_mode;
-  div_auto_follow_filter = m.follow;
+  div_auto_follow_filter = (follow >= 0) ? follow : m.follow;
   div_auto_weighting     = (weighting >= 0) ? weighting : m.weighting;
-  div_auto_centre = m.centre;
-  div_auto_width  = m.width;
+  div_auto_centre = (width > 0.0) ? centre : m.centre;
+  div_auto_width  = (width > 0.0) ? width  : m.width;
   div_auto_tau  = (tau  > 0.0) ? tau  : m.tau;
   div_auto_hang = (hang > 0.0) ? hang : m.hang;
   rade_tuning_defaults();
