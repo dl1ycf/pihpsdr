@@ -48,7 +48,14 @@
 // rather than pretending to be portable.
 //
 #define DIVCAP_MAGIC        "PIHPDIVC"
-#define DIVCAP_VERSION      1u
+#define DIVCAP_VERSION      2u
+//
+// Version 1 had no attenuator fields: att0/att1 occupied the pad after
+// weighting and read as zero. A v1 file is still replayable - the block
+// record is the same 208 bytes - but its attenuator values are unknown
+// rather than zero, and the tools say so.
+//
+#define DIVCAP_VERSION_MIN  1u
 #define DIVCAP_REC_MAGIC    0x214B4C42u   /* "BLK!" */
 #define DIVCAP_END_MAGIC    0x21444E45u   /* "END!" */
 
@@ -99,7 +106,18 @@ struct divcap_block {
   int32_t  ref;
   int32_t  follow;
   int32_t  weighting;
-  int32_t  pad0;
+  //
+  // The two step attenuators. div_context_changed() compares them, so a
+  // change of either resets the statistics, and a capture that cannot
+  // show them cannot be replayed through that reset - which is exactly
+  // what happened on the capture where the operator stepped ADC1 twice
+  // while recording. They sit in what was pad0 plus the padding the
+  // compiler was already inserting before the double below, so the block
+  // record is the same 208 bytes it always was and only the version
+  // distinguishes them from a v1 file's zeros.
+  //
+  int32_t  att0;
+  int32_t  att1;
   double   centre;
   double   width;
 

@@ -1919,6 +1919,8 @@ static void div_process_block(void) {
     m.ref             = ctx.ref;
     m.follow          = ctx.follow;
     m.weighting       = ctx.weighting;
+    m.att0            = ctx.att0;
+    m.att1            = ctx.att1;
     m.centre          = ctx.centre;
     m.width           = ctx.width;
     //

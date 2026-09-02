@@ -72,6 +72,17 @@ combining, with the context that produced it and the state the correlator
 was in. The tap is in `div_process_block()`, which is the only place all
 of that exists together.
 
+The context includes **both step attenuators**, from format version 2.
+`div_context_changed()` compares them, so moving either resets the
+statistics, and a capture that could not show them could not be replayed
+through that reset - which is what happened on the capture where the
+operator stepped ADC1 twice while recording, and the two settings had to
+be inferred afterwards from arm 1's own noise floor. `att0` and `att1` sit
+in what was `pad0` plus the padding already there, so the block record is
+the same 208 bytes and a **v1 file still replays**; the tools say once
+that its attenuators are unknown rather than letting two zeros be read as
+two settings. `run_ref` follows them block by block on a v2 file.
+
 **Take a capture of nothing, too.** Same antennas, same band, no signal.
 That is the companion run for any threshold sweep: it is what says how far
 a threshold can come down before it starts finding pilots that are not

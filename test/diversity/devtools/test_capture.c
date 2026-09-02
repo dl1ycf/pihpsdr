@@ -45,7 +45,14 @@ double div_cos = 1.0, div_sin = 0.0, div_gain = 0.0, div_phase = 0.0;
 // context, so a change of either restarts the statistics.
 //
 ADC adc[3];
-int div_indep_att = 0;
+int div_indep_att = 1;
+/*
+ * Distinctive, and different from each other, so a block that carries
+ * them by accident is not mistaken for one that carries them because the
+ * writer put them there.
+ */
+#define ATT0 7
+#define ATT1 23
 //
 // The engine tells the menu when a mode change swapped one block of
 // modal settings for another. There is no menu here.
@@ -208,6 +215,8 @@ int main(int argc, char **argv) {
   float *buf = NULL;
   const long nd = gen(&buf, 0.01, 0.62, -0.48);
   long pos = 0;
+  adc[0].attenuation = ATT0;
+  adc[1].attenuation = ATT1;
   diversity_auto_start();
 
   if (!diversity_auto_capture_start()) {
@@ -295,6 +304,34 @@ int main(int argc, char **argv) {
    * the replay has to start from a stopped correlator - divcap_replay()
    * calls rade_corr_start() itself.
    */
+  /*
+   * The attenuator fields, round-tripped. They are the one part of the
+   * context that is not derived from the samples, and the capture that
+   * needed them was taken before they existed - see DIVCAP_VERSION.
+   */
+  if (h.version != DIVCAP_VERSION) {
+    printf("  FAIL: header version %u, expected %u\n", h.version, DIVCAP_VERSION);
+    fails++;
+  }
+
+  {
+    fseek(f, data_start, SEEK_SET);
+    struct divcap_block m;
+    int bad = 0, checked = 0;
+
+    while (fread(&m, sizeof(m), 1, f) == 1 && m.rec_magic == DIVCAP_REC_MAGIC) {
+      if (m.att0 != ATT0 || m.att1 != ATT1) { bad++; }
+
+      checked++;
+
+      if (fseek(f, (long)h.block_bytes, SEEK_CUR) != 0) { break; }
+    }
+
+    printf("att:     %d block(s) carry att0=%d att1=%d, %d wrong", checked, ATT0, ATT1, bad);
+
+    if (bad != 0 || checked == 0) { printf("  FAIL\n"); fails++; } else { printf("  ok\n"); }
+  }
+
   struct divcap_result r;
   struct divcap_opts opts;
   memset(&opts, 0, sizeof(opts));

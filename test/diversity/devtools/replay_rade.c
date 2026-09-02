@@ -215,6 +215,23 @@ int main(int argc, char **argv) {
   printf("# rate       %u Hz, nfft %u (%.1f ms/block)\n",
          h.sample_rate, h.nfft, 1000.0 * (double)h.nfft / (double)h.sample_rate);
 
+  //
+  // The attenuators, from the first block. A change of either resets the
+  // statistics, so it is worth knowing at a glance whether the file
+  // records them and where they started.
+  //
+  if (h.version >= 2u) {
+    struct divcap_block m0;
+
+    if (fread(&m0, sizeof(m0), 1, f) == 1 && m0.rec_magic == DIVCAP_REC_MAGIC) {
+      printf("# att        adc0 %d dB, adc1 %d dB (at block 0)\n", m0.att0, m0.att1);
+    }
+
+    fseek(f, data_start, SEEK_SET);
+  } else {
+    printf("# att        not recorded (v%u capture)\n", h.version);
+  }
+
   FILE *out = stdout;
 
   if (csv != NULL) {

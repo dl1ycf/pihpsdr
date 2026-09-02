@@ -85,6 +85,8 @@ double myatof(const char *s) { return atof(s); }
  * changes inside a capture, and writing it here would only invite a
  * mid-run reallocation that the radio never performs.
  */
+static int have_att = 0;
+
 static void set_context(const struct divcap_block *m) {
   rx0.filter_low  = m->filter_low;
   rx0.filter_high = m->filter_high;
@@ -93,6 +95,19 @@ static void set_context(const struct divcap_block *m) {
   vfo[0].ctun_frequency = m->ctun_frequency;
   vfo[0].offset         = m->offset;
   cw_keyer_sidetone_frequency = m->sidetone;
+
+  /*
+   * The step attenuators, on a capture that recorded them.
+   * div_context_changed() compares both, so following them is what makes
+   * an attenuator change during a capture reset the statistics in the
+   * replay as it did on the radio. A v1 file has no values to follow and
+   * both are left at zero for the whole run, which is what the replay
+   * did before they were recorded.
+   */
+  if (have_att) {
+    adc[0].attenuation = m->att0;
+    adc[1].attenuation = m->att1;
+  }
 }
 
 int main(int argc, char **argv) {
@@ -179,6 +194,7 @@ int main(int argc, char **argv) {
   }
 
   rx0.sample_rate = m.ctx_sample_rate;
+  have_att = (h.version >= 2u);
   set_context(&m);
   div_auto_ref  = ref;
   div_auto_mode = (mode >= 0) ? mode : m.auto_mode;

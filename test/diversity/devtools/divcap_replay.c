@@ -301,11 +301,22 @@ FILE *divcap_open(const char *path, struct divcap_header *h, long *data_start) {
     return NULL;
   }
 
-  if (h->version != DIVCAP_VERSION) {
-    fprintf(stderr, "%s: format version %u, this tool speaks %u\n",
-            path, h->version, DIVCAP_VERSION);
+  if (h->version < DIVCAP_VERSION_MIN || h->version > DIVCAP_VERSION) {
+    fprintf(stderr, "%s: format version %u, this tool speaks %u..%u\n",
+            path, h->version, DIVCAP_VERSION_MIN, DIVCAP_VERSION);
     fclose(f);
     return NULL;
+  }
+
+  //
+  // The block record has been the same size since v1, so an older file
+  // replays unchanged; what it cannot supply is att0/att1, which read as
+  // zero from the pad they now occupy. Say so once rather than let a
+  // reader take two zeros for two settings.
+  //
+  if (h->version < 2u) {
+    fprintf(stderr, "%s: v%u capture - attenuator settings not recorded, "
+            "treating both as unknown\n", path, h->version);
   }
 
   *data_start = ftell(f);
