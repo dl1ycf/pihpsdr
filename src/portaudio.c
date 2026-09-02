@@ -96,9 +96,9 @@ AUDIO_DEVICE output_devices[MAX_AUDIO_DEVICES];
 #define AUDIO_LAT_LOW           512
 #define AUDIO_LAT_TARGET       8192
 #define AUDIO_LAT_HIGH        15872
-#define CW_LAT_LOW              256
-#define CW_LAT_TARGET           320
-#define CW_LAT_HIGH             384
+#define CW_LAT_LOW              320
+#define CW_LAT_TARGET           384
+#define CW_LAT_HIGH             448
 
 struct audio_data_ {
   double *audio_buffer;                    // ring buffer for main audio
@@ -122,6 +122,7 @@ typedef struct audio_data_ audio_data;
 // This inits PortAudio and looks for suitable input and output channels
 //
 void audio_get_cards(void) {
+  t_print("%s: PortAudio\n", __func__);
   int numDevices;
   PaStreamParameters inputParameters, outputParameters;
   PaError err;
@@ -285,15 +286,8 @@ static int pa_out_cb(const void *inputBuffer, void *outputBuffer, unsigned long 
   if (ad == NULL) {
     //
     // This means an audio_close_output() is on the way.
-    // deliver zeroes with paContinue and let the stream
-    // be stopped elsewhere.
     //
-    if (ad->audio_channels == 1) {
-      memset(out, 0, framesPerBuffer * sizeof(float));
-    } else {
-      memset(out, 0, 2 * framesPerBuffer * sizeof(float));
-    }
-    return paContinue;
+    return paComplete;
   }
   //
   // Since the handle was non-NULL, the existence of all buffers/pointer

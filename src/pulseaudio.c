@@ -155,6 +155,7 @@ void audio_get_cards() {
   // should be enough time for the enumeration thread to complete before
   // the radio is started.
   //
+  t_print("%s: PulseAudio\n", __func__);
   n_input_devices = 0;
   n_output_devices = 0;
   pa_glib_mainloop *main_loop = pa_glib_mainloop_new(NULL);
@@ -479,11 +480,11 @@ void tx_audio_write(RECEIVER *rx, double sample) {
   // While audio stream is being re-opened, return
   //
   audio_data *ad = (audio_data *) rx->audio_handle;
-  if (ad->cwaudio == 1 || ad->cwaudio == 4) { return; }
+  if (ad == NULL || ad->cwaudio == 1 || ad->cwaudio == 4) { return; }
   g_mutex_lock(&ad->audio_mutex);
   ad = rx->audio_handle;
   if (ad != NULL) {
-    if (ad->cwaudio == 0) {
+    if (ad->cwaudio == 0 || ad->cwaudio == 5) {
       ad->cwaudio = 1;
       ad->cwcount = 0;
       ad->skipcnt = 0;

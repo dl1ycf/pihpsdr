@@ -424,19 +424,16 @@ int run_curl(const char *url, char*buf, size_t buflen, int time) {
   curlbuf.pos = 0;
   *buf = 0;
   if (!curl_handle) { return -1; }
-  ret = -1;
-  do {
-    curl_easy_setopt(curl_handle, CURLOPT_URL, url);
-    curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, (long) time);
-    curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, &curlbuf);
-    curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, curl_cb);
-    CURLcode cerr = curl_easy_perform(curl_handle);
-    if (cerr  != CURLE_OK) {
-      t_print("%s: %s\n", __func__, curl_easy_strerror(ret));
-      break;
-    }
-    ret = 0;
-  } while (0);
+  ret = 0;
+  curl_easy_setopt(curl_handle, CURLOPT_URL, url);
+  curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, (long) time);
+  curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, &curlbuf);
+  curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, curl_cb);
+  CURLcode cerr = curl_easy_perform(curl_handle);
+  if (cerr  != CURLE_OK) {
+    t_print("%s: %s\n", __func__, curl_easy_strerror(cerr));
+    ret = -1;
+  }
   curl_easy_cleanup(curl_handle);
   return ret;
 }

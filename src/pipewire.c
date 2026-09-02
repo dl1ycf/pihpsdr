@@ -146,6 +146,7 @@ static void registry_event_global(void *data, uint32_t id, uint32_t permissions,
 }
 
 void audio_get_cards() {
+  t_print("%s: PipeWire\n", __func__);
   n_input_devices = 0;
   n_output_devices = 0;
   pw_init(NULL, NULL);
@@ -198,6 +199,11 @@ static void pw_out_cb(void *data) {
   float *samples;
   unsigned int n_frames;
   audio_data *ad = rx->audio_handle;
+  //
+  // If the handle is NULL, there is no possibility to do anything
+  // with the stream, so we just return
+  //
+  if (ad == NULL) { return; }
   if ((b = pw_stream_dequeue_buffer(ad->stream)) == NULL) {
     return;
   }
@@ -210,44 +216,38 @@ static void pw_out_cb(void *data) {
   }
   //
   // This is paranoia. We do not know how long the buffer dequeue took.
+  // If the audio handle is gone, we should not do *anything* with the stream
   //
   ad = rx->audio_handle;
-  if (ad == NULL) {
-    //
-    // audio_close_output() is happening.
-    // As long as callbacks happen, return silence
-    //
-    memset(samples, 0,  2 *n_frames * sizeof(float));
-  } else {
-    //
-    // The existence of buffers is guaranteed for 50 msec
-    //
-    for (unsigned i = 0; i < n_frames; i++) {
-      double rx_left = 0.0;
-      double rx_right = 0.0;
-      double st_sample = 0.0;
-      int oldpt;
-      oldpt = ad->audio_buffer_outpt;
-      if (oldpt != ad->audio_buffer_inpt) {
-        rx_left = ad->audio_buffer[oldpt * 2];
-        rx_right = ad->audio_buffer[oldpt * 2 + 1];
-        if (ad->cwaudio == 3) {
-          rx_left *= ad->audiodamp;
-          rx_right *= ad->audiodamp;
-          ad->audiodamp *= 0.999;
-        }
-        MEMORY_BARRIER;
-        ad->audio_buffer_outpt = (oldpt + 1) & RING_BUFFER_MASK;
+  if (ad == NULL) { return; }
+  //
+  // The existence of buffers is now guaranteed for 50 msec
+  //
+  for (unsigned i = 0; i < n_frames; i++) {
+    double rx_left = 0.0;
+    double rx_right = 0.0;
+    double st_sample = 0.0;
+    int oldpt;
+    oldpt = ad->audio_buffer_outpt;
+    if (oldpt != ad->audio_buffer_inpt) {
+      rx_left = ad->audio_buffer[oldpt * 2];
+      rx_right = ad->audio_buffer[oldpt * 2 + 1];
+      if (ad->cwaudio == 3) {
+        rx_left *= ad->audiodamp;
+        rx_right *= ad->audiodamp;
+        ad->audiodamp *= 0.999;
       }
-      oldpt = ad->st_buffer_outpt;
-      if (oldpt != ad->st_buffer_inpt) {
-        st_sample = ad->st_buffer[oldpt];
-        MEMORY_BARRIER;
-        ad->st_buffer_outpt = (oldpt + 1) & ST_BUFFER_MASK;
-      }
-      samples[i * 2] = (float)(rx_left + st_sample);
-      samples[i * 2 + 1] = (float)(rx_right + st_sample);
+      MEMORY_BARRIER;
+      ad->audio_buffer_outpt = (oldpt + 1) & RING_BUFFER_MASK;
     }
+    oldpt = ad->st_buffer_outpt;
+    if (oldpt != ad->st_buffer_inpt) {
+      st_sample = ad->st_buffer[oldpt];
+      MEMORY_BARRIER;
+      ad->st_buffer_outpt = (oldpt + 1) & ST_BUFFER_MASK;
+    }
+    samples[i * 2] = (float)(rx_left + st_sample);
+    samples[i * 2 + 1] = (float)(rx_right + st_sample);
   }
   buf->datas[0].chunk->offset = 0;
   buf->datas[0].chunk->size = n_frames * 2 * sizeof(float);
@@ -269,7 +269,8 @@ static void pw_in_cb(void *data) {
   buf = b->buffer;
   samples = buf->datas[0].data;
   ad = tx->audio_handle; // query again, if queue_buffer took "long"
-  if (samples == NULL || ad == NULL ) {
+  if (ad == NULL) { return; }
+  if (samples == NULL) {
     pw_stream_queue_buffer(ad->stream, b);
     return;
   }

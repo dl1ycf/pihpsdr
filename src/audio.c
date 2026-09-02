@@ -645,7 +645,6 @@ void audio_write(RECEIVER *rx, double left, double right) {
 static gpointer tx_audio_thread(gpointer arg) {
   TRANSMITTER *tx = (TRANSMITTER *)arg;
   if (tx == NULL) { return NULL; }
-  int rc;
   //
   // Allocate buffer such that it fits for all types of data
   //
@@ -656,7 +655,7 @@ static gpointer tx_audio_thread(gpointer arg) {
   const float *float_buffer =  (float *) buffer;
   volatile audio_data *ad;
   while ((ad = tx->audio_handle)) {
-    rc = snd_pcm_readi (ad->alsahandle, buffer, inp_buffer_size);
+    int rc = snd_pcm_readi (ad->alsahandle, buffer, inp_buffer_size);
     if ((ad = tx->audio_handle) == NULL) { break; }
     //
     // The ring buffer is now guaranteed to exist for 50 msec
@@ -718,6 +717,7 @@ double audio_get_next_mic_sample(TRANSMITTER *tx) {
 }
 
 void audio_get_cards() {
+  t_print("%s: ALSA\n", __func__);
   snd_ctl_card_info_t *info;
   snd_pcm_info_t *pcminfo;
   snd_ctl_card_info_alloca(&info);
