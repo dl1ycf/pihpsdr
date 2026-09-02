@@ -87,11 +87,26 @@ nothing is compressing the step, the receiver's own noise is more than
 21 dB below the band's on 15 m at midday, and the first few decibels of
 attenuation on a hot arm really are free. The available two-branch gain
 holds at +1.0 to +2.2 dB at every setting, on both arms this time.
-`142026` is a shortwave broadcast whose *noise* is 0.74 correlated between
-the antennas - the wanted-signal-plus-common-mode-noise case this document
-has wanted since Finding 5 - and it carries the largest per-bin advantage
-in the set: a scalar weight nulls 8.1 dB where a weight per 94 Hz bin
-nulls 16.5 (Finding 28).
+`142026` is a **DRM mode B** broadcast - received in `AM` mode, which is
+how DRM is fed to a decoder, and identified from its 9.7 kHz occupied
+width, its absent carrier and a cyclic-prefix autocorrelation peaking at
+21.30 ms. Its *noise* is 0.74 correlated between the antennas, which is
+the wanted-signal-plus-common-mode-noise case this document has wanted
+since Finding 5, and it carries the largest per-bin advantage in the set:
+a scalar weight nulls 8.1 dB where a weight per 94 Hz bin nulls 16.5
+(Finding 28). **Finding 30** asks what window and tracking method suit it
+and finds that only the objective matters.
+
+**Finding 30** asks what window and tracking method suit DRM, and finds
+that the answer is neither: window width from five bins to the whole
+passband, both weightings and averaging from 0.2 to 10 s all land within
+0.04 dB of each other, because with the arms 0.4 dB apart and their noise
+0.76 correlated the whole prize is +0.56 dB. **The objective is what
+matters.** Null costs 5.4 to 6.4 dB and pushes a fifth of all subcarriers
+below 30 dB against 1.4 % on one antenna alone - the capture has the
+operator running it for half the minute - and FSK/Digital is the wrong
+reference for a band-filling OFDM signal, 0.71 dB below the better antenna
+because occupancy can find no unoccupied bins to measure noise in.
 
 **Finding 29 chooses the threshold and the weighting together**, which
 Finding 27 could not. Two results: the gate is not free - every increment
@@ -253,7 +268,7 @@ recording.
 | `002534` | 14.19500 | USB | Window, coherence | **20 m analog voice**, several operators, averaging **0.2 s**, ADC1 12.3 dB hot |
 | `002710` | 14.01194 | CWL | Window, coherence | **20 m CW**, nfft 65536, **operator steps the ADC1 attenuator twice** |
 | `003309` | 10.13611 | USB | FSK/Digital, then Window | **30 m FT8**, nfft 16384, many stations, averaging 0.2-2.7 s |
-| `142026` | 11.65999 | AM | Window, **flat** | **shortwave broadcast**, +/-6 kHz, ADC1 at **23 dB of attenuation**, operator cycles objective, reference and weighting |
+| `142026` | 11.65999 | AM | Window, **flat** | **DRM mode B, 10 kHz** - received in `AM` with a +/-6 kHz filter. ADC1 at **23 dB of attenuation**; operator cycles objective, reference and weighting |
 | `142333` | 21.04004 | CWL | Window, coherence | **15 m CW**, nfft 65536, **both attenuators swept 0-4 dB** |
 
 `202743` begins on 7.177 MHz and retunes to 7.09203 MHz at block 9. The
@@ -281,9 +296,12 @@ Finding 19.
 they are the first that record what the step attenuators were set to.
 `142333` sweeps both of them and `142026` was taken with ADC1 already 23 dB
 down; between them they answer the question Finding 24 had to leave open.
-`142026` is also the first capture in the **AM** mode group and the first
-with a wanted signal sitting on noise the two antennas largely share. See
-Finding 28.
+`142026` is also the first capture in the **AM** mode group, the first with
+a wanted signal sitting on noise the two antennas largely share, and the
+first carrying a **digital broadcast**: it is Digital Radio Mondiale, not
+conventional AM, received in `AM` mode with the filter opened out. The
+mode column says what the radio was set to; the signal is OFDM. See
+Findings 28 and 30.
 
 `002534`, `002710` and `003309` were taken in one session with **ADC1
 running 9.8 to 13.2 dB hotter than ADC0** - the first captures where the
@@ -2860,7 +2878,7 @@ since Finding 5.
 
 | | `142026` | `142333` |
 |---|---|---|
-| band, mode | 11.65999 MHz **AM** | 21.04004 MHz **CWL** |
+| band, mode | 11.65999 MHz, **DRM** in `AM` | 21.04004 MHz **CWL** |
 | filter, engine window | +/-6000 Hz | -1050..-50, window **-500..+500** |
 | reference, weighting | Window, **flat** | Window, coherence |
 | averaging | 0.20 s | 2.90 s |
@@ -2917,12 +2935,28 @@ above ADC0 on noise and 3.4 dB worse on SNR, coherence time about 1.5 s,
 and only 0.53 dB available to a per-bin weight - a single narrow signal in
 a 1 kHz window has no frequency structure to exploit.
 
-### `142026`: a wanted signal with strongly common-mode noise
+### `142026`: a digital broadcast under strongly common-mode noise
 
 This is the case listed as open since Finding 5 and again after Finding 16:
 a signal worth listening to, sitting on noise the two antennas largely
-share. It is AM rather than a modem, so it still says nothing about the
-pilot-domain covariance, but the array problem is the one that was wanted.
+share.
+
+**It is not AM.** The radio was in `AM` with the filter opened to
++/-6 kHz, which is how DRM is fed to a decoder, but the signal is Digital
+Radio Mondiale - and reading it as a broadcast carrier would have made
+nonsense of everything below. Three measurements identify it. The occupied
+band is **9703 Hz** wide with sharp skirts; there is **no carrier**, the
+strongest bin standing only 7.3 dB over the in-band median and wandering
+about rather than sitting at zero; and the cyclic-prefix autocorrelation
+peaks at a lag of **21.30 ms**, against the 21.33 ms useful symbol
+duration of DRM **mode B**, two and a half times higher than any other
+lag. Scored on a 46.875 Hz grid - mode B's subcarrier spacing - 209
+subcarriers stand within 12 dB of the strongest, spanning +/-4875 Hz,
+against the 206 that mode B's 10 kHz configuration carries.
+
+So it is an OFDM broadcast, not a modem with a pilot, and it still says
+nothing about the pilot-domain covariance. What window and tracking method
+suit it is Finding 30.
 
 | | value |
 |---|---|
@@ -3048,6 +3082,113 @@ The other three references are untouched by any of this: the weighting
 control only ever reached `DIV_REF_BAND`, FSK/Digital hard-codes coherence
 weighting of its own, and Carrier's gate does not discriminate at any
 threshold (Finding 26).
+
+## Finding 30: DRM — the objective is the only setting that matters
+
+`142026` is a DRM mode B broadcast (Finding 28), and the question it was
+recorded to answer is which window and which tracking method suit it. The
+answer is that **none of them make a measurable difference and the
+objective makes a six-decibel one.**
+
+### Scoring an OFDM signal properly
+
+A band-aggregate SNR is the wrong yardstick here. DRM equalises every
+subcarrier separately from its own scattered pilots, so frequency-selective
+*distortion* is the decoder's problem and it solves it; what it cannot fix
+is a subcarrier pushed into the noise, and coded OFDM fails when too many
+of them are. A scalar diversity weight across a 10 kHz band whose
+inter-arm channel is not flat could do exactly that - co-phase the middle
+and subtract at the edges - and an aggregate power ratio would not show it.
+
+So everything below is scored **per subcarrier and per block**: 351
+analysis blocks times 209 subcarriers on the 46.875 Hz mode B grid, noise
+taken from a guard region clear of the signal. The columns are the mean
+over those 73 000 cells, their 10th percentile, and the fraction falling
+below 30 dB - the tail that a decoder actually notices.
+
+### The shipping engine, every reference and both objectives
+
+| | mean | p10 | % < 30 dB | mean `\|w\|` |
+|---|---|---|---|---|
+| arm 1 alone (the better arm) | +40.48 | +36.11 | 1.39 % | — |
+| **Window / Sum** | **+40.76** | **+36.65** | **0.93 %** | 0.86 |
+| Carrier / Sum | +40.66 | +36.47 | 1.02 % | 1.07 |
+| FSK/Digital / Sum | **+39.76** | +34.42 | 2.52 % | 0.69 |
+| Window / Null | **+34.12** | +26.63 | **21.1 %** | 0.95 |
+| Carrier / Null | +35.05 | +26.83 | 19.4 % | 1.05 |
+| FSK/Digital / Null | +34.16 | +26.54 | 21.2 % | 1.04 |
+
+**Null costs 5.4 to 6.4 dB and puts a fifth of all subcarriers below
+30 dB, against 1.4 % on one antenna alone.** On a wanted OFDM signal the
+minimum-power weight is a signal-cancelling weight, and the capture
+contains the operator running it for the first twenty-one seconds and
+again from t = 31.7 s. That is the one setting on this menu that can ruin
+a DRM decode, and it does not look wrong from outside - the loop reports a
+healthy coherence throughout.
+
+**FSK/Digital is the wrong reference for DRM**, by 0.71 dB below the
+better antenna and 2.52 % of cells in the tail. Its noise pair comes from
+the *unoccupied* bins of the window, and a band-filling OFDM block has
+none - this is the "the region is full" fallback of Finding 8, reached on
+a real signal and measured for the first time.
+
+**Window and Carrier both work**, which is worth saying because there is
+no carrier in a DRM signal at all: at 40 dB SNR any five bins estimate the
+channel well enough, so the Carrier reference tracking a wandering OFDM
+peak still lands within 0.1 dB of Window.
+
+### Window width, weighting and averaging do not matter
+
+Emulated over the same capture so that the window can be placed anywhere,
+Sum in every case:
+
+| window and setting | mean | p10 | % < 30 dB |
+|---|---|---|---|
+| follow the filter, +/-6000 Hz, flat, tau 0.2 | +40.84 | +36.76 | 0.85 % |
+| the same, coherence weighting | +40.84 | +36.76 | 0.84 % |
+| narrow, +/-500 Hz on the band centre, tau 1 | +40.86 | +36.89 | 0.78 % |
+| narrow, +/-500 Hz at **-4000 Hz** | +40.87 | +36.83 | 0.82 % |
+| narrow, +/-500 Hz at **+4000 Hz** | +40.84 | +36.77 | 0.88 % |
+| five bins only | +40.88 | +36.93 | 0.77 % |
+| a window placed **off the signal**, +5000..+6000 | +40.70 | +36.51 | 1.06 % |
+
+Everything from five bins to the whole passband lands within **0.04 dB**,
+and a weight estimated at one edge of the block does no harm at the other.
+Averaging from 0.2 to 10 s moves nothing by more than 0.05 dB either. Even
+a window sitting entirely *off* the signal still delivers +0.23 dB, because
+what it measures there is the common-mode noise and co-phasing on that is
+most of the answer.
+
+The reason none of it matters is the last row of the sum: with the two
+arms within 0.4 dB of each other and their noise **0.76 correlated**, the
+most that maximum ratio combining can give is
+
+`10 log10( 2 / (1 + r) )` = **+0.56 dB**
+
+and the shipping loop collects +0.28 to +0.40 of it. There is no
+estimation problem to solve at 40 dB SNR - the prize is small because the
+noise is shared, and every reasonable estimator finds it.
+
+### What the scalar weight does *not* do
+
+It does not notch the band. The fraction of cells below 30 dB falls from
+1.39 % on the better antenna to 0.93 % with Window / Sum, and the spread
+of per-subcarrier SNR across the block is 0.70 dB against 0.73 dB for one
+antenna alone. The worry that a single complex weight would co-phase the
+middle of a 10 kHz OFDM block and subtract at its edges is not borne out
+here - though this capture cannot test it hard, because the inter-arm
+channel would have to be far more selective than it is before 0.4 dB of
+array gain could turn into a notch.
+
+### What is still missing
+
+All of this is measured at 40 dB SNR, where the estimate is free. The
+window and averaging questions have teeth only where the estimate is hard,
+and that means a **weak** DRM signal - one near the decoder's threshold,
+where a narrow window may not have enough signal to work from and a wide
+one may span more channel variation than a scalar can follow. That capture
+has not been taken. The same is true of the notch worry: it needs a path
+whose inter-arm channel varies far more across 10 kHz than this one's.
 
 ## False alarms
 
@@ -3263,10 +3404,17 @@ holds is the false-alarm line, and that part stands.
   explains why it has not been taken. Two more quiet captures decide it.
   Dead-air captures are cheap and need no station; ones from outside the
   amateur bands are cheaper still.
+- **The window and averaging questions are untested where they matter.**
+  Finding 30 measures them on DRM at 40 dB SNR and finds every setting
+  within 0.04 dB, which is the right answer there and says nothing about a
+  signal near its decoding threshold - where a narrow window may not have
+  enough to work from and a wide one may span more channel variation than
+  a scalar can follow. A weak DRM capture, or any wideband digital signal
+  a few dB above threshold, is what would separate them.
 - **No capture yet has a wanted *modem* signal and strong common-mode
   noise.** `111852` closed half of it - a wanted signal at inter-arm
   coherence 0.982, where the nuller reaches its ceiling (Finding 16) - and
-  `142026` closes more: a broadcast 41 dB over a floor whose *noise* is
+  `142026` closes more: a DRM broadcast 41 dB over a floor whose *noise* is
   0.74 correlated between the arms, measured in four separate guard
   regions, where a scalar weight nulls 8 dB and a per-bin weight 16
   (Finding 28). Both are AM, so neither says anything about the
