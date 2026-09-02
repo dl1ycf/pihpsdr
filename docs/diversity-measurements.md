@@ -78,6 +78,34 @@ branch noise ratio by minimum statistics and carries it, which is worth
 1.8 dB on the FT8 one for a reason Finding 23 explains. See "What was
 changed" (Findings 20 and 22).
 
+**Findings 24 to 27** answer four more operator questions and overturn one
+of this document's own conclusions.
+
+**A hot antenna costs headroom and nothing else.** Seven to fourteen
+decibels of extra output on ADC1 buys an SNR that runs from 5.1 dB *worse*
+to 2.2 dB better, so the level says nothing about which antenna to use.
+Attenuating it is nearly free - 12 dB cost arm 1 a quarter of a decibel
+and cost the array nothing - and since Finding 22 put the noise ratio into
+the Sum weight, dynamic range is now the *only* reason to equalise the
+chains. How far one can go beyond 12 dB is **not** established: the fit
+needs the attenuator settings the capture did not record, and swings from
+-30 to -14 dB of margin across plausible step sizes (Finding 24).
+
+**The Min coherence slider was one number compared against four different
+quantities** - and against nothing at all in RADE V1, where it was inert.
+At 30 % it demands +0.8 dB per arm under Window and -3.7 dB under RADE.
+It is now stored per reference. The sweep behind it also found that the
+**Carrier reference's gate does not work at any setting**: on a signal it
+clears 0.30 on 34.7 % of blocks and on pure noise on 36.0 %, because five
+bins put the estimator's own bias where the threshold is (Finding 26).
+
+**Coherence weighting is a gate bias, not a better estimate**, which
+reverses Finding 6. It does not improve the estimate on any capture, and
+at a *matched false-alarm rate* it is 1.4 to 5.6 points worse than flat on
+the gate too. It looked better only because it was compared at a fixed
+threshold while inflating the statistic on signal and on noise alike
+(Finding 27). Nothing has been removed; the finding is recorded.
+
 **Findings 21, 22 and 23** answer an operator's question and turn up a
 larger defect than the one they were asked about. Three captures on
 2 September - 20 m voice and CW near the MUF, and 30 m FT8 - all with
@@ -2453,6 +2481,344 @@ weights.** For a band like this the case for a narrow, hand-placed window
 - or the Carrier reference - is that it measures one signal instead of
 averaging two dozen, not that it is bound to score better.
 
+## Finding 24: a hot antenna costs dynamic range, and attenuating it is nearly free
+
+Finding 22 answered the operator's question about *SNR* - the available
+gain does not depend on the branch gains, and the Sum weight now carries
+the noise ratio that made it look as though it did. This is the other
+half: below 30 MHz a receiver is rarely limited by its own noise, because
+the RF noise floor sits well above thermal, so gain on an already hot
+antenna does not buy sensitivity. What it spends is **headroom**.
+
+### How hot, and how little it means
+
+Whole-band rms in the tapped stream, and the guard-region noise floor
+beside it:
+
+| capture | arm 1 - arm 0, rms | arm 1 - arm 0, noise floor | arm 1 - arm 0, SNR |
+|---|---|---|---|
+| `002534` 20 m voice | +7.7 dB | +12.3 dB | **-5.1 dB** |
+| `002710` 20 m CW | +7.1 dB | +13.2 dB | **-4.2 dB** |
+| `003309` 30 m FT8 | +10.0 dB | +9.8 dB | **+0.1 dB** |
+| `111852` 693 kHz | +13.2 dB | +13.1 dB | **+2.2 dB** |
+| `112151` 724 kHz | +14.3 dB | +14.5 dB | **-1.6 dB** |
+| `000332` 5.4 MHz | **-10.0 dB** | -6.3 dB | **+3.5 dB** |
+
+Seven to fourteen decibels of extra output on the five hot-arm captures,
+and the SNR that comes with it runs from -5.1 to +2.2 dB. `000332` is the
+control and it runs the other way: there arm 1 is 10 dB *quieter* and
+3.5 dB better. **Level and sensitivity are unrelated, and every decibel of
+the difference is spent on headroom rather than on hearing.**
+
+### What attenuating it costs: measured
+
+`002710` is the experiment, and it is worth being precise about what it
+does and does not establish.
+
+**Established, with no model in the way.** Across two steps of the ADC1
+attenuator, arm 1's own SNR was +9.72, +9.44 and +9.47 dB - flat to a
+quarter of a decibel - while ADC0, untouched, fell 4.7 dB over the same
+minute as the path faded. The available two-branch gain was +1.68, +1.59
+and +1.89 dB over the better arm at the three settings. So the
+attenuation cost that arm **0.25 dB in total** and cost the array nothing,
+and the control says the band really was moving while it happened.
+
+**Not established: how much further one could go.** The obvious next step
+is to fit `P(a) = E/a + I` - external noise attenuated, the receiver's own
+not - and read off the headroom. It does not survive contact with the
+data, because *the capture does not record what the attenuator was set
+to*. The observed floor steps are 6.06 and 5.67 dB, which bracket the true
+steps without pinning them, and the fit is violently sensitive to the
+difference:
+
+| assumed true step | implied `I/E` | implied cost of 20 dB | of 30 dB |
+|---|---|---|---|
+| 6 dB | -30 dB | 0.4 dB | 2.9 dB |
+| 7 dB | -13.7 dB | 7.0 dB | 16.2 dB |
+
+and the same fit run against the measured SNR rather than the floor gives
+-24 dB from the 12 dB step and -16 dB from the 6 dB one, which do not
+agree either. **One capture with unrecorded attenuator settings cannot
+answer this**, and saying it could would be the third time in this
+document that a tidy model was fitted to a number that would not hold it.
+
+That is now fixable rather than merely regrettable: the capture format
+records `att0` and `att1` from version 2, so the same minute recorded
+again would settle it. Until then the honest statement is that **at least
+12 dB is nearly free** and the curve beyond that is unmeasured.
+
+### So: is there a case for attenuating the hotter antenna?
+
+Yes, and it is now a *dynamic range* case only, which is a change from
+what Finding 22 could say.
+
+Before the Sum weight carried the noise ratio there were two reasons to
+equalise the chains, and the SNR one dominated: an unequalised pair cost
+3.6 dB on `002534` because the solve assumed the branches were equally
+noisy. That reason is gone. What remains is that ten to fourteen decibels
+of gain on an arm whose SNR is no better - and on these captures usually
+worse - consumes converter and analogue headroom to no purpose, and
+headroom below 30 MHz is what a receiver runs out of first.
+
+The measured cost of taking it back is 0.25 dB over 12 dB. The measured
+benefit to the array is zero, because the array never needed the gain. The
+benefit to everything upstream of the tap is real and is not something
+this instrument can see.
+
+### What this instrument cannot see
+
+The capture is taken after the DDC, so its levels are the tap's scaling
+and not the converter's: the tapped rms runs -53 to -93 dBFS across these
+captures, which says nothing about how close either ADC came to clipping.
+**No headroom figure in this document is a headroom figure at the
+converter.** The case above rests on the measured SNR cost of attenuating
+and on the invariance of the available gain, both of which the tap does
+see. Confirming the other half - that the hot arm was actually eating
+headroom - needs the radio's own ADC overload indication, and would make a
+good companion measurement to a capture taken with the attenuator swept.
+
+## Finding 25: what each reference measures, and which signals defeat it
+
+Twenty-three findings in, the document has never said in one place what
+the four references actually measure and where each stops working. This is
+that summary. Nothing here is new measurement; every row points at the
+finding that produced it.
+
+### The four, and what each is looking at
+
+| reference | channel `h` from | noise / interference from | gate statistic |
+|---|---|---|---|
+| **Window** | cross-spectrum over the whole analysis window | **nothing** until Finding 22 - now a windowed minimum | `γ²` over the window |
+| **Carrier** | the same over `2·DIV_CARRIER_BINS+1` = 5 bins | as Window | `γ²` over those 5 bins |
+| **FSK/Digital** | cross-spectrum over the *occupied* bins | the **unoccupied** bins of the same window | `γ²` over the occupied bins |
+| **RADE V1** | pilot correlation, `d1·conj(d0)` | off-carrier bins of the pilot span | `rade_corr_quality`, a signal fraction |
+
+Only two of the four have ever had a real noise measurement, and that is
+the single fact that explains most of the differences between them.
+FSK/Digital's occupancy split is why it was the only reference that got
+Sum right on a badly matched pair before Finding 22 (`+0.74` against
+Window's `-1.20` dB on `002710`); RADE V1's guard bins are why it can run
+a genuine MVDR and null an interferer the pilot is not pointed at.
+
+### Where each fails, and why
+
+| reference | fails when | evidence |
+|---|---|---|
+| Window | the window is mostly noise - voice, which fills it only intermittently | flat weighting holds 83 % of the time on speech (Finding 6) |
+| Window | the passband holds several signals wanting different weights | FT8: per-bin coherence 0.946, aggregate 0.413 (Finding 23) |
+| Carrier | the carrier's spatial signature differs from the band's | 3.6 dB given up on `111852`, 9 degrees of difference (Finding 16) |
+| Carrier | few bins, so `γ̂²` is biased high and the gate is nearly a formality | see the `1/N` floor below |
+| FSK/Digital | no false-alarm control on occupancy | a weight on 30 % of blocks with **no signal at all** on `231532` (Finding 8) |
+| FSK/Digital | the passband is full, so there are no noise bins | the "region is full" fallback, plain MRC (Finding 8) |
+| RADE V1 | no pilot | reports nothing on the four voice captures, correctly (Finding 14) |
+| all four | one complex weight, several propagation modes | 188 Hz coherence bandwidth on `000747`; 2.2 dB left to a per-bin weight (Finding 17) |
+
+### Against signal type, which is the axis that actually predicts it
+
+| signal | what it does to the estimator |
+|---|---|
+| continuous band-filling digital | the easy case: coherence 0.90, scalar model holds, every reference works (`000332`) |
+| multi-mode low-band path | coherence bandwidth 188 Hz across a 3.8 kHz filter - twenty independent cells, and a scalar weight is one of them (`000747`) |
+| many independent stations | per-signal coherence up to 0.95, aggregate 0.41, and the weight serves none of them; the largest per-bin gap in the set, 5.4 dB (`003309`) |
+| analog voice | fills the window only in bursts, so the gate statistic is diluted and the weighting control exists to compensate (Finding 6) |
+| CW | a window of a few bins, where the estimator's own bias is comparable with the thing being measured (Findings 8 and 21) |
+| a single strong carrier | the array has nothing to add if the noise arrives from the same direction - 0.17 dB available on `111852` (Finding 16) |
+| dead air | every reference holds, correctly, on all seven no-signal captures except FSK/Digital's occupancy (Finding 8) |
+
+The pattern worth carrying away is that **band predicts very little and
+signal structure predicts almost everything**. The same two antennas on
+the same afternoon gave coherence 0.90 and a flat channel on one frequency
+and 0.50 with twenty frequency cells on another 140 kHz away.
+
+## Finding 26: one slider, four statistics, and one mode where it did nothing
+
+`div_auto_coherence_min` is a single number compared in three places, and
+each place compares it with something different:
+
+| where | what is compared | reference |
+|---|---|---|
+| `diversity_auto.c:2425` | `γ²` over the whole analysis window | Window, Carrier |
+| `diversity_auto.c:1845` | `γ²` over the **occupied** bins | FSK/Digital |
+| `diversity_auto.c:1663` | a **single bin's** `γ²`, deciding which bins are occupied | FSK/Digital |
+| — | nothing | **RADE V1** |
+
+Three consequences, in increasing order of how much they cost.
+
+**The control was inert in RADE V1.** `div_auto_coherence` is set to
+`rade_corr_quality` there and then never compared with anything. The menu
+row was hidden in that mode, which is at least consistent, but it means
+the one reference where an operator most often watches a marginal signal
+had no way to say "do not act on that".
+
+**It did two jobs at once in FSK/Digital.** Moving the slider changed
+which bins the estimate is *made from* as well as whether the estimate was
+acted on. Those want different numbers: the per-bin test is a false-alarm
+test on one bin, where `γ̂²` is biased upward and a noise-only bin is small
+rather than silent.
+
+**And the numbers are not comparable.** For equal arms and uncorrelated
+noise a `γ²` gate at `g` demands a per-arm SNR of `√g/(1−√g)`; a quality
+gate at `q` demands `q/(1−q)`, because `rade_corr_quality` is
+`acc_sig/(acc_sig + acc_r00)` - a signal fraction, not a coherence:
+
+| slider | Window / FSK, `γ²` | RADE V1, quality |
+|---|---|---|
+| 5 % | −5.4 dB per arm | −12.8 dB pilot |
+| 30 % | **+0.8 dB per arm** | **−3.7 dB pilot** |
+| 60 % | +5.4 dB | +1.8 dB |
+| 90 % | +12.7 dB | +9.5 dB |
+
+### What each reference actually reports
+
+`run_ref` over all thirty-two captures, every reference, at each
+capture's own averaging time. The signal rows exclude the five no-signal
+captures; the RADE rows count locked blocks only.
+
+| reference | blocks | median | p10 | p90 | ≥ 0.30 |
+|---|---|---|---|---|---|
+| Window | 11313 | 0.503 | 0.112 | 0.814 | 75.5 % |
+| Carrier | 11313 | 0.165 | 0.015 | 0.622 | 34.7 % |
+| FSK/Digital | 11313 | 0.556 | 0.118 | 0.881 | 79.5 % |
+| RADE V1 | 4432 | 0.681 | 0.358 | 0.850 | 93.3 % |
+
+And on the five captures with no signal in them - what a threshold exists
+to reject:
+
+| reference | median | p90 | p99 | ≥ 0.30 |
+|---|---|---|---|---|
+| Window | 0.048 | 0.181 | 0.505 | **5.7 %** |
+| Carrier | **0.197** | **0.563** | **0.951** | **36.0 %** |
+| FSK/Digital | 0.048 | 0.213 | 0.614 | 9.2 % |
+| RADE V1 | — | — | — | never locks |
+
+### The Carrier reference's gate does not work at all
+
+Read those two tables together for Carrier. On a signal it clears 0.30 on
+34.7 % of blocks; on **pure noise** it clears 0.30 on 36.0 %. The
+threshold is very slightly more likely to pass when there is nothing there
+than when there is.
+
+The cause is arithmetic rather than a fault. `γ̂²` over `N` independent
+averages sits at about `1/N` on uncorrelated arms, and Carrier accumulates
+`2·DIV_CARRIER_BINS+1` = **five** bins where Window accumulates a couple
+of hundred. Choosing the threshold from the data rather than by hand makes
+it plain — the value that lets only 5 % of no-signal blocks through, and
+what each reference then keeps of the signal:
+
+| reference | threshold for 5 % false alarm | signal blocks kept | today at 0.30 |
+|---|---|---|---|
+| Window | 0.34 | **71.3 %** | 5.7 % false / 75.5 % kept |
+| Carrier | 0.71 | **5.6 %** | 36.0 % / 34.7 % |
+| FSK/Digital | 0.48 | **60.4 %** | 9.2 % / 79.5 % |
+
+Window and FSK/Digital separate signal from noise properly. **Carrier does
+not separate them at any threshold** - its ROC is nearly the diagonal, and
+no value of this control can fix that. What would is more bins or a longer
+average, which is a change to `DIV_CARRIER_BINS`, not to a threshold, and
+is not made here.
+
+### What was changed, and why the defaults did not move
+
+The threshold is now stored **per reference** rather than per mode group,
+which is the axis that fixes its meaning, and RADE V1 has one of its own.
+The FSK/Digital per-bin test has been split out as `DIV_OCC_COH`.
+
+The defaults stay where they were, and the sweep is the reason: for
+Window, 0.30 gives 5.7 % false alarms against an optimum of 0.34 at 5.0 %
+- the same point to within the measurement. For FSK/Digital the band gate
+at 0.30 costs 9.2 %, and raising it to 0.48 would halve that at a cost of
+19 points of uptime; the false-alarm problem in that mode is the *per-bin*
+occupancy test (Finding 8), which is now a separate constant and is where
+that work belongs. RADE V1 defaults to **zero**, which is the behaviour it
+replaces exactly - and there is no no-signal data to set it from, because
+the correlator's own acquisition never locks on any of the five, so
+`RADE_USE_RATIO` is already doing that job.
+
+So the change buys the operator four controls that mean four things
+instead of one that meant four, and buys the code a per-bin threshold that
+can be swept without moving a gate. It does not, by itself, change what
+the radio does.
+
+## Finding 27: coherence weighting is a gate bias, not a better estimate
+
+Finding 6 measured flat against coherence weighting on two voice captures
+and concluded that coherence weighting "earns its place, mostly by passing
+the gate" - it lifted the fraction of blocks that produced a weight from
+17 % to 43 % and from 18 % to 30 %. That is correct and it is not the
+whole comparison.
+
+### It does not improve the estimate
+
+Scored offline with the branch noise ratio supplied and no gate in the
+way, so that only the estimator is being measured. Output SNR against the
+better arm:
+
+| capture | flat | `γ²` | `γ²/(1−γ²)` | debiased `γ²` | ideal |
+|---|---|---|---|---|---|
+| `000332` | **+1.65** | +1.61 | +1.59 | +1.60 | +1.61 |
+| `000747` | **+2.86** | +2.83 | +2.72 | +2.83 | +2.80 |
+| `002534` | **+1.33** | +1.26 | +1.26 | +1.20 | +1.37 |
+| `002710` | **+1.55** | +0.89 | +0.48 | +0.59 | +1.60 |
+| `003309` | +2.06 | +1.98 | **+2.09** | +1.93 | +2.04 |
+
+Flat is as good or better on four of five and 0.66 dB better on `002710`.
+`γ²/(1−γ²)` - the minimum-variance weight for combining per-bin channel
+estimates, and the obvious principled candidate - is no better, and
+debiasing `γ̂²` first is no better either. **None of the weightings beats
+simply summing the cross-spectrum.**
+
+### And it does not improve the gate either, once the comparison is fair
+
+Coherence weighting raises the reported `γ²` on **all thirty-two
+captures**. It raises it on the ones with no signal in them too: `231532`,
+which holds nothing, goes from 0.019 to 0.047 and its holding fraction
+falls from 91 % to 77 %. Selecting the most coherent bins and then
+measuring the coherence of what you selected is a biased estimator, and
+the bias does not know whether there is a signal underneath it.
+
+Comparing the two at a **fixed threshold** therefore compares them at
+different false-alarm rates, which is what Finding 6 did:
+
+| at the shipped 0.30 | signal blocks passed | no-signal blocks passed |
+|---|---|---|
+| flat | 67.5 % | 2.1 % |
+| coherence | 75.5 % | 5.7 % |
+
+Coherence weighting looks better because it is operating further up the
+same curve. Holding the false-alarm rate constant instead, over all
+thirty-two captures:
+
+| false alarm | flat: threshold, signal kept | coherence: threshold, signal kept | difference |
+|---|---|---|---|
+| 2 % | 0.310 → **66.0 %** | 0.435 → 60.5 % | **−5.6 points** |
+| 5 % | 0.220 → **74.5 %** | 0.335 → 71.8 % | **−2.7 points** |
+| 10 % | 0.110 → **86.2 %** | 0.185 → 84.8 % | **−1.4 points** |
+
+**Flat is better at every operating point.** The gain Finding 6 measured
+was the threshold being effectively lowered, and the threshold control
+does that on its own, transparently, and without also biasing the number
+the operator is shown.
+
+### What follows
+
+On this evidence the control that has no remaining purpose is **coherence
+weighting**, not flat - which is the opposite of the question that
+prompted the measurement. Three qualifications before anything is removed:
+
+- the estimate column is scored on five captures with a passband SNR
+  metric that Finding 23 shows is unreliable where a scalar weight cannot
+  serve the passband, and `003309` is exactly that case;
+- the ROC comparison rests on five no-signal captures, and `231532` is the
+  only one of them that is not already holding 100 % of the time, so the
+  false-alarm sample is thinner than the block counts suggest;
+- coherence weighting is the shipping **default**, so retiring it moves
+  every operator's operating point unless the thresholds move with it.
+  Those two decisions are coupled and want making together.
+
+Nothing has been removed. The finding is recorded and the control is left
+alone; what it changes today is that `diversity.md` should stop describing
+coherence weighting as the better estimator, because it is not one.
+
 ## False alarms
 
 Locks produced on captures with no RADE signal anywhere. Cells are
@@ -2717,6 +3083,14 @@ holds is the false-alarm line, and that part stands.
   real; it says nothing about whether it is affordable. A second
   frequency-selective capture would say whether 2.2 dB is typical or is
   one path.
+- **The threshold defaults are reproductions, not choices.** Finding 26
+  measures the optimum for Window at 0.34 against the shipped 0.30 and for
+  FSK/Digital's band gate at 0.48 against 0.30, and keeps 0.30 in both
+  because the first difference is inside the measurement and the second
+  belongs with `DIV_OCC_COH`, which is the false-alarm lever in that mode
+  and has not been swept. Sweeping it against the five no-signal captures
+  is the next piece of work, and it is what Finding 8's open item has been
+  waiting for.
 - **The Sum weight now carries the branch noise ratio; what is left is
   the estimator behind it.** The term itself is in (see "What was
   changed"), and it recovers most of the 3.6 to 5.0 dB Findings 20 and 22
@@ -2744,12 +3118,31 @@ holds is the false-alarm line, and that part stands.
   while the channel moves would have a stale `g` - so it wants measuring
   before it is written.
 - **How far a hot antenna can be attenuated before it costs SNR is not
-  known.** On `002710` arm 1's SNR moved 0.25 dB across 12 dB of step
-  attenuator, so nothing had begun; its own noise floor fell 5.97 and
-  5.74 dB across two nominal 6 dB steps, and the shortfall in the second
-  is the first hint of the receiver's own floor appearing. A capture
-  sweeping the attenuator to 30 dB in 6 dB steps on a steady signal would
-  give the whole curve and takes one minute.
+  known, and Finding 24 says why it cannot be got from `002710`.** Twelve
+  decibels cost that arm 0.25 dB, so nothing had begun - but fitting the
+  curve beyond that needs the attenuator settings, which that capture
+  predates, and the answer swings from -30 to -14 dB of margin across
+  plausible step sizes. The capture format now records `att0`/`att1`, so
+  the same minute recorded again would settle it: sweep the attenuator to
+  30 dB in known steps on a steady signal, and take the radio's own ADC
+  overload indication alongside, because the tap is downstream of the DDC
+  and cannot see headroom at the converter.
+- **The Carrier reference's coherence gate has no discriminating power.**
+  Measured over thirty-two captures it clears 0.30 on 34.7 % of blocks
+  that hold a signal and 36.0 % of blocks that hold none, and no threshold
+  separates them (Finding 26). Five bins put `γ̂²`'s own `1/N` bias where
+  the threshold is. The fix is more bins or a longer average -
+  `DIV_CARRIER_BINS`, or letting the carrier tracker's own smoothing feed
+  the gate - and neither has been tried. Until then the mode is usable
+  because the *estimate* is fine on a real carrier; it is the gate that
+  cannot tell whether there is one.
+- **Coherence weighting should probably go, and cannot go alone.**
+  Finding 27 measures it as no better on the estimate and 1.4 to 5.6
+  points worse on the gate at matched false alarm. It is also the shipping
+  default, so removing it moves every operator's operating point unless
+  the per-reference thresholds move with it. The two decisions are coupled;
+  what would settle them is one sweep of thresholds and weightings
+  together, choosing the pair rather than each in turn.
 - **FSK/Digital occupancy has no false-alarm control.** On `231532`, with
   no signal anywhere, the mode produces a weight on 30 % of blocks,
   through the normal path. Three bins clearing a 6 dB-over-median
@@ -3127,6 +3520,47 @@ as 2.0046. Nothing else changes: `div_auto_tau` is still seconds
 everywhere, including over the client/server link and in the properties
 file.
 
+### `src/diversity_auto.c`, `src/diversity_menu.c` — the coherence threshold is per reference
+
+Finding 26. One slider was compared against four different quantities and
+against nothing at all in RADE V1. It is now stored per reference, beside
+the per-reference window pairs it sits next to:
+
+- `div_band_cohmin`, `div_carrier_cohmin`, `div_digital_cohmin` and
+  `div_rade_cohmin`, mirrored into `DIV_SETTINGS`, saved and restored by
+  the modal blocks and by the flat property keys;
+- `diversity_auto_ref_store()` / `diversity_auto_ref_recall()` move the
+  live value with the reference. The window pair was swapped in the menu;
+  both now swap in the engine, so a client, a modal block and a properties
+  restore all get it and not only the one path the menu takes;
+- `div_settings_load()` and the properties restore end by taking the live
+  threshold from the selected reference's slot. Without that a radio
+  starting up in RADE V1 would have gated on whatever the previous
+  reference was set to - 0.30, against a mode that had no gate at all;
+- **RADE V1 is gated**, on `rade_corr_quality`, defaulting to zero, which
+  is the behaviour it replaces exactly;
+- FSK/Digital's per-bin occupancy test is now `DIV_OCC_COH`, its own
+  constant, so that moving the gate no longer changes which bins the
+  estimate is made from;
+- the menu row is shown in every reference, relabelled **Min quality (%)**
+  in RADE V1, and each reference's tooltip says what its number is
+  measured over.
+
+Defaults are unchanged, and the sweep in Finding 26 is why: for Window
+0.30 gives 5.7 % false alarms against an optimum of 0.34 at 5.0 %, which
+is the same point to within the measurement. Nothing the radio does moves.
+
+An operator's existing `.props` upgrades silently. `GetProp` leaves an
+absent key alone, so the three wideband references inherit the single
+`diversity_auto_coherence_min` the file carries, which is the behaviour it
+was written under; `div_rade_cohmin` is deliberately left out of that
+migration, because zero is what "no gate" means. `test_modal` checks both.
+
+What the sweep also found and this does **not** fix: the Carrier
+reference's gate has no discriminating power at any threshold, because it
+averages five bins and `γ̂²` sits near `1/N` on noise. That wants
+`DIV_CARRIER_BINS` or a longer average, and is left alone.
+
 ### What was thrown away
 
 The FSK/Digital occupancy guard written for Finding 8. It moved the score
@@ -3219,6 +3653,17 @@ carries at +6.75 to +7.4 kHz. Anything that *fits* a weight sees only the
 first; anything that *scores* one sees only the second. That split is not
 fastidiousness - scoring on the fitting region gave `000332` a Sum figure
 4.9 dB over the better antenna, which is Trap 1 and is impossible.
+
+**`run_ref` is not bit-deterministic on every capture.** It paces the
+worker thread with `g_usleep()`, so a capture heavy enough per block can
+have the queue drain differently between runs. Two runs of the *same*
+binary over `002710` - nfft 65536, the largest transform in the set -
+produce weight series differing by up to 0.12, which is larger than most
+of the differences this document attributes to code changes elsewhere.
+`002534` and `003309` repeat bit-identically. Before reading a small
+difference on a heavy capture as a result, run it twice and see what the
+instrument does on its own; the regression check for Finding 26 was made
+useless by exactly this until it was.
 
 The tau sweep in Finding 18 is `run_ref` as committed, one run per point:
 

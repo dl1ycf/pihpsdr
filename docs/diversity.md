@@ -243,7 +243,7 @@ the floor could not be measured. Because Best selects rather than steers,
 **Invert** does not apply to it and the button is greyed out.
 
 Fit quality is the magnitude-squared coherence
-`γ² = |Sxy|²/(Sxx·Syy)`. Below the **Min coherence** setting the loop
+`γ² = |Sxy|²/(Sxx·Syy)`. Below that reference's **Min coherence** the loop
 holds rather than chasing noise, and the status line says `HOLD`.
 
 ### Noticing that the signal has stopped
@@ -513,6 +513,17 @@ window to the whole passband and the estimator picks the bins worth using,
 following the voice as it moves, instead of the operator hand-placing a
 narrow window on the loudest point.
 
+**On recorded signals it is not the better estimator, and the case for it
+is weaker than this section reads.** Measured across the whole capture
+set, coherence weighting is no better than flat at recovering the channel,
+and at a *matched false-alarm rate* it is 1.4 to 5.6 points worse at the
+gate as well — it raises the reported coherence on signal and on noise
+alike, which is a biased statistic rather than a better one, and comparing
+the two at a fixed threshold compares them at different false-alarm rates.
+See Finding 27 in [`diversity-measurements.md`](diversity-measurements.md).
+It remains the default and nothing has been changed, because retiring it
+moves every operator's operating point unless the thresholds move with it.
+
 Measured on synthetic speech — one narrow formant wandering across the
 passband, so only part of the window carries signal at any instant —
 against the true channel:
@@ -708,7 +719,7 @@ one block from `track` to `search` when the signal stops.
 | **Weighting** | Flat or Coherence (see above) | Window |
 | **Averaging** | 0.2-30 s, on a geometric scale so that 64 % of the travel is below 5 s. Time constant for the estimate | always |
 | **Hang** | 1-30 s. How long a lock outlives the pilot before the correlator searches again | RADE V1 |
-| **Min coherence** | Below this the loop holds rather than adapts | all but RADE V1 |
+| **Min coherence** | Below this the loop holds rather than adapts. **Stored per reference**, because the four do not compare the same quantity: `γ²` over the window in Window and Carrier, `γ²` over the occupied bins in FSK/Digital, and the pilot signal fraction `rade_corr_quality` in RADE V1, where the row is labelled *Min quality*. At 30 % a `γ²` gate asks for +0.8 dB per arm and a quality gate for −3.7 dB — see Finding 26 in [`diversity-measurements.md`](diversity-measurements.md) | all four |
 | **Restart averaging** | Discards the accumulated statistics | always |
 | **Hold** | Stops applying the loop's answer without stopping the loop | always |
 | **Invert** | Swaps Null and Sum | always; inactive under Best |
