@@ -206,6 +206,14 @@
 // the voice captures before this was separated out.
 //
 #define DIV_FLOOR_TAU       0.5     // seconds
+//
+// The window the branch noise ratio's own minimum is taken over, in
+// seconds. Long enough to contain a gap between overs or between CW
+// characters, short enough that a signal which never stops cannot hide
+// behind a stale minimum from a minute ago. The effective window is
+// between this and twice it - see div_arm_nratio_update().
+//
+#define DIV_NRATIO_WIN      5.0
 
 //
 // How far the window power must stand above the tracked floor, on both
@@ -424,6 +432,19 @@ int    div_auto_arm_pick       = 0;
 static double arm_floor0 = 0.0, arm_floor1 = 0.0;
 static int    arm_floor_valid = 0;
 static double arm_pw0 = 0.0, arm_pw1 = 0.0;
+//
+// The branch noise ratio N0/N1. The Sum weight needs it and the two
+// wideband references have no other source for it - see
+// div_arm_nratio_update().
+//
+static double nr_f0 = 0.0, nr_f1 = 0.0;        // its own smoother, seeded
+static int    nr_f_valid = 0;
+static double nr_cur0 = 0.0, nr_cur1 = 0.0;    // minimum over the slot in progress
+static double nr_prev0 = 0.0, nr_prev1 = 0.0;  // over the slot before it
+static int    nr_slot_left = 0, nr_have_prev = 0;
+static double arm_nratio = 1.0;
+static int    arm_nratio_valid = 0;
+
 static double arm_fast0 = 0.0, arm_fast1 = 0.0;
 
 double div_auto_occ_lo         = 0.0;
@@ -668,6 +689,13 @@ static void div_reset_stats(void) {
   arm_floor_valid = 0;
   arm_floor0 = arm_floor1 = 0.0;
   arm_pw0 = arm_pw1 = 0.0;
+  nr_f0 = nr_f1 = 0.0;
+  nr_f_valid = 0;
+  nr_cur0 = nr_cur1 = nr_prev0 = nr_prev1 = 0.0;
+  nr_slot_left = 0;
+  nr_have_prev = 0;
+  arm_nratio = 1.0;
+  arm_nratio_valid = 0;
   arm_fast0 = arm_fast1 = 0.0;
   div_auto_arm_valid = 0;
   div_auto_arm_db = 0.0;
@@ -1212,6 +1240,133 @@ static int div_arm_from_floor(double p0, double p1, double *db) {
 
   *db = 10.0 * log10((s1 / arm_floor1) / (s0 / arm_floor0));
   return 1;
+}
+
+//
+// The branch noise ratio, by minimum statistics over a bounded window.
+//
+// Deliberately not arm_floor0/arm_floor1, though those are minima too and
+// were tried first. That pair is an all-time minimum with a slow
+// exponential rise, and what it holds depends on how the run started: the
+// fast smoother it watches begins at zero, so the first blocks after a
+// reset are quieter than the band will ever be again, and the rise -
+// DIV_FLOOR_RISE_DB, a fifth of a decibel a second - takes a minute to
+// climb out of that. On a signal with gaps the gaps pull it back to the
+// truth and nobody notices. On a signal with none it simply sits far
+// below, the clearance test passes anyway, and the ratio of two signals
+// gets used as a ratio of two noises - which on the synthetic continuous
+// carrier in test_window inverts the Sum weight outright, +2.09 dB where
+// -2.11 dB is right.
+//
+// A minimum over a bounded window has no such memory. Two slots are kept,
+// the one in progress and the one before it, and the estimate is the
+// lesser: an effective window of between DIV_NRATIO_WIN and twice it,
+// with no ring buffer. A gap anywhere in it sets the pair; a signal that
+// never stops leaves the minimum sitting on the signal, the
+// DIV_ARM_MIN_DB clearance below then fails, and no ratio is published -
+// which is the right answer, because a carrier that never stops carries
+// no evidence about the noise underneath it. The weight is then exactly
+// what it was before any of this existed.
+//
+// Both arms are taken from the same slot, so the pair is contemporaneous:
+// two independent minima drifting apart on a fading path would give a
+// ratio of two different instants rather than of two front ends.
+//
+static void div_arm_nratio_update(double x0, double x1, double p0, double p1) {
+  if (!(x0 > 0.0) || !(x1 > 0.0)) { return; }
+
+  //
+  // Its own smoother, seeded from the first block rather than started at
+  // zero. arm_fast0/arm_fast1 cannot be used here: they start at zero, so
+  // their first blocks are lower than anything that follows and a minimum
+  // taken over them is the startup transient rather than the band. The
+  // floor tracker downstream of them survives that because a gap pulls it
+  // back; a bounded minimum does not, because the transient sits inside
+  // its window. Seeding costs one branch and removes the whole class of
+  // fault - which cost three wrong answers before it was found.
+  //
+  if (!nr_f_valid) {
+    nr_f0 = x0;
+    nr_f1 = x1;
+    nr_f_valid = 1;
+  } else {
+    const double fa = 1.0 - exp(-blocktime / DIV_FLOOR_TAU);
+    nr_f0 += fa * (x0 - nr_f0);
+    nr_f1 += fa * (x1 - nr_f1);
+  }
+
+  const double f0 = nr_f0, f1 = nr_f1;
+
+  if (nr_slot_left <= 0) {
+    if (nr_cur0 > 0.0) {
+      nr_prev0 = nr_cur0;
+      nr_prev1 = nr_cur1;
+      nr_have_prev = 1;
+    }
+
+    nr_cur0 = nr_cur1 = 0.0;
+    nr_slot_left = (int)(DIV_NRATIO_WIN / blocktime) + 1;
+  }
+
+  nr_slot_left--;
+
+  if (nr_cur0 <= 0.0 || f0 + f1 < nr_cur0 + nr_cur1) {
+    nr_cur0 = f0;
+    nr_cur1 = f1;
+  }
+
+  if (!nr_have_prev) { return; }
+
+  if (!(nr_cur0 > 0.0) || !(nr_cur1 > 0.0)
+      || !(nr_prev0 > 0.0) || !(nr_prev1 > 0.0)) { return; }
+
+  //
+  // The quieter of the two, taken as a pair so that both arms come from
+  // the same moment.
+  //
+  const double m0 = (nr_cur0 + nr_cur1 < nr_prev0 + nr_prev1) ? nr_cur0 : nr_prev0;
+  const double m1 = (nr_cur0 + nr_cur1 < nr_prev0 + nr_prev1) ? nr_cur1 : nr_prev1;
+  const double need = pow(10.0, 0.1 * DIV_ARM_MIN_DB);
+
+  if (p0 >= need * m0 && p1 >= need * m1) {
+    arm_nratio = m0 / m1;
+    arm_nratio_valid = 1;
+  }
+}
+
+//
+// The factor the wideband Sum weight is missing.
+//
+// The Window and Carrier references form Sum as acc_xy/acc_xx, which is
+// conj(h1/h0) and nothing else: maximum ratio combining under the
+// assumption that the two branches carry equal noise. Maximum ratio
+// combining actually wants conj(h1/h0) * (N0/N1), and on a pair of
+// antennas whose front ends are far apart that missing factor is the
+// whole answer. Measured on `002534` - ADC1 12.3 dB hotter and 5.1 dB
+// worse - the loop applied |w| = 1.17 where 0.072 was right, made the
+// audio 14.8 dB louder with a noise floor 18.3 dB higher, and landed
+// 3.6 dB *below* simply listening to ADC0 where +1.4 dB was available.
+// The two forms differ by exactly the noise ratio and the measurement
+// says so: 16.2 against a measured 16.8. See Findings 20 and 22 in
+// docs/diversity-measurements.md.
+//
+// Null is deliberately not scaled. Its weight minimises output power,
+// which is the right answer whatever the branch noises are; only the
+// SNR-maximising objective needs to know them. Best is not scaled either
+// because it uses the co-phasing direction and throws the magnitude away,
+// and a positive real factor does not move a direction.
+//
+// The ratio is latched rather than used live. It is a property of the two
+// receive chains, not of the path, so it changes when the operator moves
+// a step attenuator - which resets the statistics through
+// div_context_changed() - and hardly otherwise. Latching it means the
+// weight does not switch formula every time arm_valid toggles, which on a
+// continuous carrier it does constantly (Finding 16: asserted on 4 to
+// 32 % of blocks). Until it has been measured once the behaviour is
+// exactly what it was before.
+//
+static double div_wideband_sum_scale(void) {
+  return arm_nratio_valid ? arm_nratio : 1.0;
 }
 
 //
@@ -2164,6 +2319,15 @@ static void div_process_block(void) {
     // A second, much shorter smoothing, for the floor only. See
     // DIV_FLOOR_TAU.
     //
+    // Both smoothers deliberately start at zero rather than at their
+    // first sample. Seeding them looks tidier and is worse: the floor
+    // tracker takes its minimum from the fast smoother, so a seeded start
+    // sets the floor to the first block's power - signal included - and
+    // on a signal with no gaps nothing ever pulls it back down. Starting
+    // low and letting DIV_FLOOR_RISE_DB carry it up into place is what
+    // makes the floor a floor. Measured: seeding costs 0.3 to 2.0 dB on
+    // every capture in Finding 22's table.
+    //
     const double fa = 1.0 - exp(-blocktime / DIV_FLOOR_TAU);
     arm_fast0 += fa * (cur_xx - arm_fast0);
     arm_fast1 += fa * (cur_yy - arm_fast1);
@@ -2180,6 +2344,7 @@ static void div_process_block(void) {
     const int ok = div_arm_from_floor(arm_pw0, arm_pw1, &db);
     div_arm_publish(ok, db);
   }
+  div_arm_nratio_update(cur_xx, cur_yy, arm_pw0, arm_pw1);
 
   if (acc_xx <= 0.0 || acc_yy <= 0.0 || wsum <= 0.0) {
     div_auto_coherence = 0.0;
@@ -2223,6 +2388,13 @@ static void div_process_block(void) {
 
   double den = (div_auto_mode == DIV_AUTO_SUM) ? acc_xx : acc_yy;
   double sign = (div_auto_mode == DIV_AUTO_SUM) ? 1.0 : -1.0;
+
+  //
+  // Sum is maximum ratio combining and wants the branch noise ratio in
+  // it; Null minimises power and does not. See div_wideband_sum_scale().
+  //
+  if (div_auto_mode == DIV_AUTO_SUM) { sign *= div_wideband_sum_scale(); }
+
   div_apply_weight(sign * acc_xy_re / den, sign * acc_xy_im / den);
 }
 
