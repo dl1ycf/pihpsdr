@@ -1429,8 +1429,8 @@ static void new_protocol_receive_specific(void) {
     //    The sample rate of both DDCs is that of receiver[0].
     //    Boths ADCs take the dither/random setting from ADC0
     //
-    receive_specific_buffer[5] = adc[0].dither | (adc[0].dither >> 1);
-    receive_specific_buffer[6] = adc[0].random | (adc[0].random >> 1);
+    receive_specific_buffer[5] = adc[0].dither | (adc[0].dither << 1);
+    receive_specific_buffer[6] = adc[0].random | (adc[0].random << 1);
     receive_specific_buffer[17] = 0;                                               // ADC0 associated with DDC0
     receive_specific_buffer[18] = ((receiver[0]->sample_rate / 1000) >> 8) & 0xFF; // sample rate MSB
     receive_specific_buffer[19] = ((receiver[0]->sample_rate / 1000)     ) & 0xFF; // sample rate LSB
