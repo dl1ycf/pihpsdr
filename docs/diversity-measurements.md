@@ -78,6 +78,29 @@ branch noise ratio by minimum statistics and carries it, which is worth
 1.8 dB on the FT8 one for a reason Finding 23 explains. See "What was
 changed" (Findings 20 and 22).
 
+**Findings 28 and 29** are the first captures that record the step
+attenuators, and the sweep that Finding 27 asked for.
+
+`142333` sweeps both attenuators over 0 to 4 dB with the settings in the
+file, and **both arms track them one for one to within 0.03 dB** - so
+nothing is compressing the step, the receiver's own noise is more than
+21 dB below the band's on 15 m at midday, and the first few decibels of
+attenuation on a hot arm really are free. The available two-branch gain
+holds at +1.0 to +2.2 dB at every setting, on both arms this time.
+`142026` is a shortwave broadcast whose *noise* is 0.74 correlated between
+the antennas - the wanted-signal-plus-common-mode-noise case this document
+has wanted since Finding 5 - and it carries the largest per-bin advantage
+in the set: a scalar weight nulls 8.1 dB where a weight per 94 Hz bin
+nulls 16.5 (Finding 28).
+
+**Finding 29 chooses the threshold and the weighting together**, which
+Finding 27 could not. Two results: the gate is not free - every increment
+of threshold costs mean SNR, half a decibel across the range - and **flat
+weighting at 0.20 dominates the shipping coherence at 0.30**, with
+slightly fewer false alarms and 0.18 dB more signal, ahead or level on
+seven captures of seven. That change is justified and **is not being made
+here**; what would settle it is the same sweep scored against a decoder.
+
 **Findings 24 to 27** answer four more operator questions and overturn one
 of this document's own conclusions.
 
@@ -230,6 +253,8 @@ recording.
 | `002534` | 14.19500 | USB | Window, coherence | **20 m analog voice**, several operators, averaging **0.2 s**, ADC1 12.3 dB hot |
 | `002710` | 14.01194 | CWL | Window, coherence | **20 m CW**, nfft 65536, **operator steps the ADC1 attenuator twice** |
 | `003309` | 10.13611 | USB | FSK/Digital, then Window | **30 m FT8**, nfft 16384, many stations, averaging 0.2-2.7 s |
+| `142026` | 11.65999 | AM | Window, **flat** | **shortwave broadcast**, +/-6 kHz, ADC1 at **23 dB of attenuation**, operator cycles objective, reference and weighting |
+| `142333` | 21.04004 | CWL | Window, coherence | **15 m CW**, nfft 65536, **both attenuators swept 0-4 dB** |
 
 `202743` begins on 7.177 MHz and retunes to 7.09203 MHz at block 9. The
 recorder did **not** set the context-changed bit for it: `rec_flags` is
@@ -251,6 +276,14 @@ Averaging control while recording. See Findings 17, 18 and 20.
 `115357` is a second 40 m RADE capture at a different dial frequency from
 the 7.047 MHz set, recorded to catch a deliberate slow QSY. See
 Finding 19.
+
+`142026` and `142333` are the first captures in **format version 2**, so
+they are the first that record what the step attenuators were set to.
+`142333` sweeps both of them and `142026` was taken with ADC1 already 23 dB
+down; between them they answer the question Finding 24 had to leave open.
+`142026` is also the first capture in the **AM** mode group and the first
+with a wanted signal sitting on noise the two antennas largely share. See
+Finding 28.
 
 `002534`, `002710` and `003309` were taken in one session with **ADC1
 running 9.8 to 13.2 dB hotter than ADC0** - the first captures where the
@@ -279,8 +312,7 @@ them comes from the operator afterwards: ADC0 is the main antenna,
 sometimes tuned and sometimes not, ADC1 an untuned doublet. That
 asymmetry is the subject of Finding 13, and the missing note is the
 reason it had to be established by measurement rather than read off the
-file. `115357`, `000332`, `000747`, `002534`, `002710` and `003309` have
-no note either. Findings 20 and 22 turn on which antenna was on which ADC
+file. Every capture from `115357` onwards has no note either. Findings 20 and 22 turn on which antenna was on which ADC
 and on what the attenuators were set to, and neither is recorded, so the
 omission has now cost something in three findings. The attenuator is the
 worse gap of the two: `struct divcap_block` mirrors no `att0`/`att1`
@@ -2819,6 +2851,204 @@ Nothing has been removed. The finding is recorded and the control is left
 alone; what it changes today is that `diversity.md` should stop describing
 coherence weighting as the better estimator, because it is not one.
 
+## Finding 28: the attenuator question, answered — and a wanted signal under common-mode noise
+
+Two captures on 2 September, and the first taken with the capture format
+that records the step attenuators. They answer the question Finding 24
+had to leave open and they add the case the document has been asking for
+since Finding 5.
+
+| | `142026` | `142333` |
+|---|---|---|
+| band, mode | 11.65999 MHz **AM** | 21.04004 MHz **CWL** |
+| filter, engine window | +/-6000 Hz | -1050..-50, window **-500..+500** |
+| reference, weighting | Window, **flat** | Window, coherence |
+| averaging | 0.20 s | 2.90 s |
+| attenuators | ADC1 at **23 dB**, stepped to 21 | **both swept**, 0 to 4 dB |
+| what the operator did | cycled objective, reference and weighting | swept ADC1 up and back, then ADC0 |
+
+### `142333`: the attenuator behaves exactly as the premise says
+
+Finding 24 could not fit a receiver-noise contribution to `002710`,
+because the attenuator settings were not recorded and the answer swung
+from -30 to -14 dB across plausible step sizes. Here they are recorded,
+and the fit is not needed - the numbers can simply be read:
+
+| | guard-region floor | change |
+|---|---|---|
+| ADC1 at 0 dB | -48.67 dB | — |
+| ADC1 at 1 dB | -49.70 | **-1.03** |
+| ADC1 at 4 dB | -52.67 | **-4.00** |
+| ADC0 at 0 dB | -59.86 | — |
+| ADC0 at 2 dB | -61.84 | **-1.98** |
+| ADC0 at 4 dB | -63.88 | **-4.01** |
+
+**Both arms track the attenuator one for one, to within 0.03 dB over
+4 dB.** Nothing is compressing the step, which is what a receiver noise
+floor near the band's would do. Reading the precision as a bound: a step
+short by 0.05 dB would put the receiver's own noise 21 dB below the
+band's, and one short by 0.02 dB would put it 25 dB below. It is at least
+that far down on both arms, on 15 m at midday, and the measurement cannot
+say how much further.
+
+So the operator's premise holds where it was tested, and the practical
+form of it is that **the first 4 dB of attenuation on either arm is free
+to within the measurement**, with the cost curve only starting where the
+band noise stops dominating - more than 20 dB away here.
+
+The available two-branch gain does not move with the attenuator either,
+which is the other half of Finding 22's invariance seen on a second
+capture and this time on *both* arms:
+
+| att0 / att1 | arm 0 SNR | arm 1 SNR | ideal, vs the better arm |
+|---|---|---|---|
+| 0 / 0 dB | +10.19 | +7.25 | **+1.96** |
+| 0 / 4 dB | +10.54 | +9.62 | **+2.24** |
+| 2 / 0 dB | +8.45 | +4.15 | +1.02 |
+| 4 / 0 dB | +16.04 | +11.42 | +1.12 |
+
+The per-arm SNR wanders by 12 dB across the minute because the signal is
+keyed CW on a fading path, so those columns are not comparable between
+rows; the last column is, and it stays between +1.0 and +2.2 dB with no
+trend against either attenuator.
+
+`142333` is otherwise a hot-arm capture of the usual kind: ADC1 11.2 dB
+above ADC0 on noise and 3.4 dB worse on SNR, coherence time about 1.5 s,
+and only 0.53 dB available to a per-bin weight - a single narrow signal in
+a 1 kHz window has no frequency structure to exploit.
+
+### `142026`: a wanted signal with strongly common-mode noise
+
+This is the case listed as open since Finding 5 and again after Finding 16:
+a signal worth listening to, sitting on noise the two antennas largely
+share. It is AM rather than a modem, so it still says nothing about the
+pilot-domain covariance, but the array problem is the one that was wanted.
+
+| | value |
+|---|---|
+| passband coherence | 0.877 |
+| **guard-region noise coherence** | **0.74 to 0.75** |
+| arm 1 - arm 0, passband / noise | -0.61 / -0.99 dB |
+| arm 1 advantage, SNR | +0.38 dB |
+| signal over the floor | about 41 dB |
+
+The noise coherence was checked in four separate guard regions either side
+of the passband - 0.735, 0.741, 0.751, 0.753 - because a broadcast 41 dB
+above the floor is exactly the signal that could put splatter in a guard
+band and fake the number. It did not: the four agree to 0.02.
+
+Two things follow.
+
+**The operator had already equalised the chains, with 23 dB.** The two
+arms arrive within a decibel of each other on both signal and noise, which
+is what Finding 24 recommends and is the first capture in the set taken
+that way deliberately. It is also why this capture says nothing about the
+Sum weight's noise ratio: with the branches matched there is nothing for
+that term to correct.
+
+**And the scalar weight is at its worst here.** Weight fitted on block n
+and applied to n+1:
+
+| | `142026` |
+|---|---|
+| null, one complex weight for the whole band | -8.08 dB |
+| null, an independent weight per 93.75 Hz bin | **-16.46 dB** |
+| difference | **8.38 dB** |
+
+That is the largest per-bin advantage in this document - against 5.4 dB on
+30 m FT8 (Finding 23) and 2.2 dB on the multi-mode 5 MHz path
+(Finding 17). The cause is a 12 kHz window, four times wider than anything
+measured before, over which `|rho(h)|` falls to 0.78 at 750 Hz and 0.70 at
+1.5 kHz: about four independent frequency cells, each wanting its own
+weight, and a scalar getting one answer for all of them.
+
+The scalar still nulls 8 dB, which is a good deal more than the 0.8 to
+3 dB the fast-fading captures allowed, because here the thing being
+nulled is 0.75 coherent and sitting still. **Common-mode noise is what a
+two-branch array is for, and this is the first capture in the set where a
+wanted signal and that kind of noise appear together.**
+
+## Finding 29: the threshold and the weighting, chosen together
+
+Finding 27 left this open: coherence weighting measures no better than
+flat and worse at matched false alarm, but it is the shipping default, so
+retiring it moves every operator's operating point unless the threshold
+moves with it. The two decisions are coupled and wanted settling together.
+
+This is that sweep. `run_ref` gained a `--cohmin` option; the Window
+reference was run over seven captures that have an independent noise
+reference, at six thresholds and both weightings, each at the averaging
+time the operator actually had. The false-alarm column is the fraction of
+blocks on the five no-signal captures that would have produced a weight -
+which needs no extra runs, because the gate sits downstream of the
+accumulators and the statistic it compares does not depend on it.
+
+| threshold | flat: FA | flat: SNR | flat: hold | coherence: FA | coherence: SNR | coherence: hold |
+|---|---|---|---|---|---|---|
+| 0.00 | 100 % | **−0.75** | 9 % | 100 % | −0.98 | 13 % |
+| 0.10 | 11.3 % | −0.89 | 21 % | 20.7 % | −1.11 | 23 % |
+| 0.20 | **5.2 %** | **−1.02** | 28 % | 8.8 % | −1.17 | 27 % |
+| 0.30 | 2.1 % | −1.14 | 35 % | **5.7 %** | **−1.20** | 34 % |
+| 0.45 | 0.6 % | −0.99 | 51 % | 1.4 % | −1.18 | 48 % |
+| 0.60 | 0.0 % | −1.26 | 64 % | 0.5 % | −1.23 | 60 % |
+
+SNR is the mean over the seven captures against the better antenna. The
+absolute level is unflattering and should not be read as a verdict on the
+loop: the runs use each capture's *recorded* averaging time, which on
+`002534` is the 0.2 s that Finding 21 measured as its worst setting, and
+two of the seven are cases the scalar weight is known to lose on. What is
+being compared here is the columns against each other, and for that every
+row is a like-for-like pair.
+
+### Three things fall out
+
+**The gate is not free.** Reading down either SNR column, every increment
+of threshold costs mean SNR: 0.5 dB from "act on everything" to "act on
+almost nothing". That is the gate blocking legitimate updates as well as
+illegitimate ones, and it is the trade the control exists to let an
+operator make. It has not been stated in this document before.
+
+**Flat wins at every matched operating point, end to end.** Comparing at
+equal false alarm rather than at equal threshold:
+
+| false alarm | flat | coherence | flat ahead by |
+|---|---|---|---|
+| ~11 % | 0.10 → **−0.89 dB** | 0.20 → −1.17 dB | **0.29 dB** |
+| ~5 % | 0.20 → **−1.02 dB** | 0.30 → −1.20 dB | **0.18 dB** |
+| ~2 % | 0.30 → **−1.14 dB** | 0.45 → −1.18 dB | 0.03 dB |
+
+which confirms Finding 27's ROC result in decibels rather than in
+detection points, and adds that the margin closes as the threshold rises -
+the two weightings converge where almost everything is being held anyway.
+Per capture at the 5 % point, flat is ahead or level on **seven of seven**,
+by 0.00 to 0.63 dB.
+
+**Flat wants a threshold about 0.10 lower** for the same false-alarm rate,
+which is the practical form of the bias Finding 27 identified: coherence
+weighting inflates the statistic, so the same number is a laxer test.
+
+### What the pair should be
+
+The shipping pair is **coherence at 0.30**: 5.7 % false alarm, −1.20 dB.
+**Flat at 0.20** gives 5.2 % false alarm and −1.02 dB - very slightly
+*fewer* false alarms and 0.18 dB more signal. It dominates the current
+default on both axes, and there is no operating point at which coherence
+weighting is the better half of the pair.
+
+**That change is justified by these measurements and is not being made
+here.** What holds it back is the same thing that made the earlier
+single-axis comparisons misleading: seven captures, one reference, and a
+metric whose absolute values are poor enough that a 0.18 dB mean is a
+small signal to move a default on. What would settle it is the same sweep
+against a decoder on the RADE captures, where the yardstick is synced
+frames rather than a passband ratio - and that is the one measurement this
+document trusts most and has never applied to the weighting question.
+
+The other three references are untouched by any of this: the weighting
+control only ever reached `DIV_REF_BAND`, FSK/Digital hard-codes coherence
+weighting of its own, and Carrier's gate does not discriminate at any
+threshold (Finding 26).
+
 ## False alarms
 
 Locks produced on captures with no RADE signal anywhere. Cells are
@@ -3034,12 +3264,14 @@ holds is the false-alarm line, and that part stands.
   Dead-air captures are cheap and need no station; ones from outside the
   amateur bands are cheaper still.
 - **No capture yet has a wanted *modem* signal and strong common-mode
-  noise.** `111852` closes half of this: a wanted signal with inter-arm
-  coherence 0.982, where the nuller reaches its ceiling and FSK/Digital's
-  passband-confined covariance comes out ahead of everything else
-  (Finding 16). But it is `SAM`, not RADE, so it still says nothing about
-  the *pilot-domain* covariance. What is wanted is a RADE station on a
-  path with obvious common-mode noise.
+  noise.** `111852` closed half of it - a wanted signal at inter-arm
+  coherence 0.982, where the nuller reaches its ceiling (Finding 16) - and
+  `142026` closes more: a broadcast 41 dB over a floor whose *noise* is
+  0.74 correlated between the arms, measured in four separate guard
+  regions, where a scalar weight nulls 8 dB and a per-bin weight 16
+  (Finding 28). Both are AM, so neither says anything about the
+  **pilot-domain** covariance. A RADE station on a path with obvious
+  common-mode noise is still the missing capture.
 
 - **Analog voice has been measured on one band, one path, two usable
   captures.** The +1.6 to +1.8 dB is worth confirming elsewhere, and the
@@ -3117,16 +3349,15 @@ holds is the false-alarm line, and that part stands.
   with the slew, with Hold, and with the AGC - a weight that is holding
   while the channel moves would have a stale `g` - so it wants measuring
   before it is written.
-- **How far a hot antenna can be attenuated before it costs SNR is not
-  known, and Finding 24 says why it cannot be got from `002710`.** Twelve
-  decibels cost that arm 0.25 dB, so nothing had begun - but fitting the
-  curve beyond that needs the attenuator settings, which that capture
-  predates, and the answer swings from -30 to -14 dB of margin across
-  plausible step sizes. The capture format now records `att0`/`att1`, so
-  the same minute recorded again would settle it: sweep the attenuator to
-  30 dB in known steps on a steady signal, and take the radio's own ADC
-  overload indication alongside, because the tap is downstream of the DDC
-  and cannot see headroom at the converter.
+- **The attenuation budget is measured over 4 dB and open beyond it.**
+  Finding 28 has the first capture with the settings recorded, and both
+  arms track the attenuator one for one to within 0.03 dB over 4 dB, which
+  puts the receiver's own noise more than 21 dB below the band's on 15 m
+  at midday. `002710` adds that 12 dB cost 0.25 dB. What is still missing
+  is the far end: a sweep to 20 or 30 dB in known steps, which would show
+  where the curve actually bends, and the radio's own ADC overload
+  indication alongside it, because the tap is downstream of the DDC and
+  cannot see headroom at the converter. Neither costs more than a minute.
 - **The Carrier reference's coherence gate has no discriminating power.**
   Measured over thirty-two captures it clears 0.30 on 34.7 % of blocks
   that hold a signal and 36.0 % of blocks that hold none, and no threshold
@@ -3136,13 +3367,16 @@ holds is the false-alarm line, and that part stands.
   the gate - and neither has been tried. Until then the mode is usable
   because the *estimate* is fine on a real carrier; it is the gate that
   cannot tell whether there is one.
-- **Coherence weighting should probably go, and cannot go alone.**
-  Finding 27 measures it as no better on the estimate and 1.4 to 5.6
-  points worse on the gate at matched false alarm. It is also the shipping
-  default, so removing it moves every operator's operating point unless
-  the per-reference thresholds move with it. The two decisions are coupled;
-  what would settle them is one sweep of thresholds and weightings
-  together, choosing the pair rather than each in turn.
+- **The weighting and threshold pair is measured; the change is not made.**
+  Finding 29 ran the sweep the previous version of this item asked for,
+  and it says **flat at 0.20 dominates the shipping coherence at 0.30** -
+  slightly fewer false alarms and 0.18 dB more signal, with flat ahead or
+  level on seven captures of seven. What holds the change back is that
+  0.18 dB is a small margin on one reference and a passband metric. The
+  measurement that would settle it is the same sweep scored **against
+  librade on the RADE captures**, where the yardstick is synced frames;
+  that is the document's most trusted metric and has never been pointed at
+  the weighting question.
 - **FSK/Digital occupancy has no false-alarm control.** On `231532`, with
   no signal anywhere, the mode produces a weight on 30 % of blocks,
   through the normal path. Three bins clearing a 6 dB-over-median
@@ -3591,7 +3825,16 @@ tunable manifest, so the sweeps under "What was changed" are
 
 `replay_rade` drives the correlator directly and sweeps its constants;
 `run_ref` drives the whole engine so the FSK/Digital solve can be run over
-a recording; `score_rade` decodes. See
+a recording; `score_rade` decodes.
+
+Finding 29's grid is `run_ref --ref band --mode sum --weighting flat|coherence
+--cohmin T`, one run per cell. The false-alarm column needs no runs of its
+own: the coherence gate sits downstream of the accumulators, so the
+statistic it compares does not depend on the threshold, and a single run
+per weighting gives the whole curve by counting its `quality` column
+against each candidate. That was not true before the FSK/Digital per-bin
+test was split out into `DIV_OCC_COH` - until then, moving the gate moved
+which bins the estimate was made from, and every point needed its own run. See
 [`test/diversity/devtools/README.md`](../test/diversity/devtools/README.md).
 
 Findings 11, 13 and 15 need things the committed tools do not provide.
