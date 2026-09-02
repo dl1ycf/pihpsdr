@@ -279,6 +279,23 @@
 #define DIV_OCC_MIN_BINS    3
 
 //
+// How coherent a single bin has to be to count as occupied.
+//
+// This used to be div_auto_coherence_min, which put two unrelated jobs on
+// one control: moving the slider changed *which bins the estimate is made
+// from* as well as whether the estimate was acted on. They want different
+// numbers and they answer different questions - this one is a false-alarm
+// test on a single bin, where gamma^2-hat is biased upward by about 1/N
+// for N averages and a noise-only bin is not silent but merely small.
+//
+// 0.30 is what the shared control shipped at, so nothing moves until it
+// is swept. What it should be is measured against the no-signal captures:
+// `231532` has no signal anywhere and still produced a weight on 30 % of
+// blocks. See Finding 26 in docs/diversity-measurements.md.
+//
+#define DIV_OCC_COH         0.30
+
+//
 // How far this block's power in the bins being measured may fall below
 // the smoothed power accumulated over them before the statistics are
 // declared stale and the loop holds.
@@ -403,6 +420,39 @@ double div_carrier_width       = 1000.0;
 //
 double div_digital_centre      = 0.0;
 double div_digital_width       = 2600.0;
+
+//
+// So is the coherence threshold, and for a stronger reason than the
+// windows: the four references do not compare the same quantity, so one
+// number cannot mean one thing.
+//
+//   Window, Carrier    gamma^2 over the analysis window
+//   FSK/Digital        gamma^2 over the *occupied* bins only
+//   RADE V1            rade_corr_quality, which is acc_sig/(acc_sig+r00) -
+//                      a signal fraction, not a coherence at all
+//
+// For equal arms and uncorrelated noise a gamma^2 gate at g demands a
+// per-arm SNR of sqrt(g)/(1-sqrt(g)), and a quality gate at q demands
+// q/(1-q). At 30 % that is +0.8 dB per arm against -3.7 dB on the pilot:
+// the same slider position asking for four and a half decibels more
+// signal in one mode than in the other. And gamma^2-hat is biased - a
+// window of pure noise still reports about 1/N for N averages - so the
+// same threshold is a different false-alarm risk in a five-bin carrier
+// window and a two-hundred-bin passband, and moves again with Averaging
+// and Resolution.
+//
+// The parameter was already modal, but on the mode group, which is the
+// wrong axis: what fixes the meaning is the reference. See Finding 26 in
+// docs/diversity-measurements.md.
+//
+// Defaults reproduce the single 0.30 that shipped before, except on RADE
+// V1, where the gate was never applied at all and 0.0 is what "as it was"
+// means.
+//
+double div_band_cohmin         = 0.30;
+double div_carrier_cohmin      = 0.30;
+double div_digital_cohmin      = 0.30;
+double div_rade_cohmin         = 0.0;
 
 //
 // Set when the requested window had to be pulled inside the Nyquist
@@ -1610,7 +1660,7 @@ static void div_digital_solve(const struct div_context *ctx, int klo, int khi) {
 
       if (g2 > 1.0) { g2 = 1.0; }
 
-      if (g2 < div_auto_coherence_min) { continue; }
+      if (g2 < DIV_OCC_COH) { continue; }
 
       if (nsig == 0) { kmin = kmax = k; }
 
@@ -1997,6 +2047,27 @@ static void div_process_block(void) {
     // not it produced a weight this block.
     //
     div_arm_publish(rade_corr_arm_valid, rade_corr_arm_db);
+
+    //
+    // The coherence gate reaches this mode too.
+    //
+    // It did not before: div_auto_coherence was set to rade_corr_quality
+    // and then never compared with anything, so the Min coherence control
+    // was inert in RADE V1 - the one reference where the operator is most
+    // likely to be watching a marginal signal and wondering why the loop
+    // is acting on it. The quantity is not a coherence but a signal
+    // fraction, acc_sig/(acc_sig + acc_r00), which is why it has its own
+    // threshold: at the same slider position a gamma^2 gate and a quality
+    // gate ask for per-arm SNRs four and a half decibels apart. See
+    // div_band_cohmin.
+    //
+    // Default zero, which is the behaviour this replaces exactly.
+    //
+    if (ok && rade_corr_quality < div_auto_coherence_min) {
+      div_auto_coherence = rade_corr_quality;
+      div_auto_holding = 1;
+      return;
+    }
 
     if (ok) {
       div_auto_coherence = rade_corr_quality;
@@ -2726,6 +2797,67 @@ void diversity_auto_restart(void) {
 //
 #define DIV_REF_SCHEME 2
 
+//
+// Move the per-reference settings between their own slots and the live
+// pair the engine reads. The window centre/width has worked this way
+// since the references became modal; the coherence threshold now joins it,
+// for the reason in the note beside div_band_cohmin.
+//
+// Data only - the menu wraps these and updates its widgets afterwards.
+// They are not called from diversity_auto_apply_settings(): a settings
+// block carries the live values and the per-reference slots together and
+// is self-consistent by construction, so swapping again there would
+// overwrite what the sender chose.
+//
+static double div_cohmin_for_ref(int ref) {
+  switch (ref) {
+  case DIV_REF_CARRIER:    return div_carrier_cohmin;
+
+  case DIV_REF_DIGITAL_IQ: return div_digital_cohmin;
+
+  case DIV_REF_RADE_V1:    return div_rade_cohmin;
+
+  default:                 return div_band_cohmin;
+  }
+}
+
+void diversity_auto_ref_store(int ref) {
+  if (ref == DIV_REF_CARRIER) {
+    div_carrier_centre = div_auto_centre;
+    div_carrier_width  = div_auto_width;
+    div_carrier_cohmin = div_auto_coherence_min;
+  } else if (ref == DIV_REF_BAND) {
+    div_band_centre = div_auto_centre;
+    div_band_width  = div_auto_width;
+    div_band_cohmin = div_auto_coherence_min;
+  } else if (ref == DIV_REF_DIGITAL_IQ) {
+    div_digital_centre = div_auto_centre;
+    div_digital_width  = div_auto_width;
+    div_digital_cohmin = div_auto_coherence_min;
+  } else if (ref == DIV_REF_RADE_V1) {
+    //
+    // No window of its own - the correlator decides what it looks at -
+    // but it does have a threshold now.
+    //
+    div_rade_cohmin = div_auto_coherence_min;
+  }
+}
+
+void diversity_auto_ref_recall(int ref) {
+  if (ref == DIV_REF_CARRIER) {
+    div_auto_centre = div_carrier_centre;
+    div_auto_width  = div_carrier_width;
+  } else if (ref == DIV_REF_BAND) {
+    div_auto_centre = div_band_centre;
+    div_auto_width  = div_band_width;
+  } else if (ref == DIV_REF_DIGITAL_IQ) {
+    div_auto_centre = div_digital_centre;
+    div_auto_width  = div_digital_width;
+  }
+
+  div_auto_coherence_min = div_cohmin_for_ref(ref);
+}
+
 void diversity_auto_get_settings(DIV_SETTINGS *s) {
   s->mode           = div_auto_mode;
   s->ref            = div_auto_ref;
@@ -2738,6 +2870,10 @@ void diversity_auto_get_settings(DIV_SETTINGS *s) {
   s->hang           = div_auto_hang;
   s->coherence_min  = div_auto_coherence_min;
   s->resolution     = div_auto_resolution;
+  s->band_cohmin    = div_band_cohmin;
+  s->carrier_cohmin = div_carrier_cohmin;
+  s->digital_cohmin = div_digital_cohmin;
+  s->rade_cohmin    = div_rade_cohmin;
   s->band_centre    = div_band_centre;
   s->band_width     = div_band_width;
   s->carrier_centre = div_carrier_centre;
@@ -2763,6 +2899,20 @@ static void div_settings_load(const DIV_SETTINGS *s) {
   div_auto_hang          = s->hang;
   div_auto_coherence_min = s->coherence_min;
   div_auto_resolution    = s->resolution;
+  div_band_cohmin        = s->band_cohmin;
+  div_carrier_cohmin     = s->carrier_cohmin;
+  div_digital_cohmin     = s->digital_cohmin;
+  div_rade_cohmin        = s->rade_cohmin;
+  //
+  // The live threshold always belongs to the selected reference. Taking
+  // it from the slot rather than from s->coherence_min is what makes that
+  // true on every path into here - a modal block, a client, a properties
+  // restore - rather than only on the one the menu takes. Without it a
+  // radio starting up in RADE V1 would gate on whatever the *previous*
+  // reference was set to, which for a file written before this existed is
+  // 0.30 against a mode that had no gate at all.
+  //
+  div_auto_coherence_min = div_cohmin_for_ref(div_auto_ref);
   div_band_centre        = s->band_centre;
   div_band_width         = s->band_width;
   div_carrier_centre     = s->carrier_centre;
@@ -3073,6 +3223,23 @@ static void div_settings_validate(DIV_SETTINGS *s) {
   }
 
   //
+  // Each reference's own threshold, and the live one. All five share the
+  // slider's range; RADE V1's default of zero is deliberate and legal -
+  // it is the gate never having been applied in that mode before.
+  //
+  {
+    double *c[] = { &s->coherence_min, &s->band_cohmin, &s->carrier_cohmin,
+                    &s->digital_cohmin, &s->rade_cohmin
+                  };
+
+    for (unsigned i = 0; i < sizeof(c) / sizeof(c[0]); i++) {
+      if (!(*c[i] >= 0.0)) { *c[i] = 0.0; }
+
+      if (*c[i] > 0.95)    { *c[i] = 0.95; }
+    }
+  }
+
+  //
   // 0.2, not 0.1, to match the slider's minimum.
   //
   if (s->tau < 0.2)  { s->tau = 0.2; }
@@ -3087,10 +3254,6 @@ static void div_settings_validate(DIV_SETTINGS *s) {
   if (s->hang < 1.0)  { s->hang = 1.0; }
 
   if (s->hang > 30.0) { s->hang = 30.0; }
-
-  if (s->coherence_min < 0.0)  { s->coherence_min = 0.0; }
-
-  if (s->coherence_min > 0.95) { s->coherence_min = 0.95; }
 
   if (s->resolution < 3.0)  { s->resolution = 3.0; }
 
@@ -3138,6 +3301,10 @@ static void div_group_save(int g, const DIV_SETTINGS *s) {
   SetPropF1("diversity_group[%d].hang",           g, s->hang);
   SetPropF1("diversity_group[%d].coherence_min",  g, s->coherence_min);
   SetPropF1("diversity_group[%d].resolution",     g, s->resolution);
+  SetPropF1("diversity_group[%d].band_cohmin",    g, s->band_cohmin);
+  SetPropF1("diversity_group[%d].carrier_cohmin", g, s->carrier_cohmin);
+  SetPropF1("diversity_group[%d].digital_cohmin", g, s->digital_cohmin);
+  SetPropF1("diversity_group[%d].rade_cohmin",    g, s->rade_cohmin);
   SetPropF1("diversity_group[%d].band_centre",    g, s->band_centre);
   SetPropF1("diversity_group[%d].band_width",     g, s->band_width);
   SetPropF1("diversity_group[%d].carrier_centre", g, s->carrier_centre);
@@ -3164,6 +3331,10 @@ static void div_group_restore(int g, DIV_SETTINGS *s) {
   GetPropF1("diversity_group[%d].hang",           g, s->hang);
   GetPropF1("diversity_group[%d].coherence_min",  g, s->coherence_min);
   GetPropF1("diversity_group[%d].resolution",     g, s->resolution);
+  GetPropF1("diversity_group[%d].band_cohmin",    g, s->band_cohmin);
+  GetPropF1("diversity_group[%d].carrier_cohmin", g, s->carrier_cohmin);
+  GetPropF1("diversity_group[%d].digital_cohmin", g, s->digital_cohmin);
+  GetPropF1("diversity_group[%d].rade_cohmin",    g, s->rade_cohmin);
   GetPropF1("diversity_group[%d].band_centre",    g, s->band_centre);
   GetPropF1("diversity_group[%d].band_width",     g, s->band_width);
   GetPropF1("diversity_group[%d].carrier_centre", g, s->carrier_centre);
@@ -3199,6 +3370,10 @@ void diversity_auto_save_state(void) {
   SetPropF0("diversity_auto_coherence_min",  div_auto_coherence_min);
   SetPropI0("diversity_auto_weighting",      div_auto_weighting);
   SetPropF0("diversity_auto_resolution",     div_auto_resolution);
+  SetPropF0("diversity_band_cohmin",         div_band_cohmin);
+  SetPropF0("diversity_carrier_cohmin",      div_carrier_cohmin);
+  SetPropF0("diversity_digital_cohmin",      div_digital_cohmin);
+  SetPropF0("diversity_rade_cohmin",         div_rade_cohmin);
   SetPropF0("diversity_band_centre",         div_band_centre);
   SetPropF0("diversity_band_width",          div_band_width);
   SetPropF0("diversity_carrier_centre",      div_carrier_centre);
@@ -3222,6 +3397,17 @@ void diversity_auto_restore_state(void) {
   GetPropF0("diversity_auto_coherence_min",  div_auto_coherence_min);
   GetPropI0("diversity_auto_weighting",      div_auto_weighting);
   GetPropF0("diversity_auto_resolution",     div_auto_resolution);
+  //
+  // A file written before these existed carries none of them, and GetProp
+  // leaves a field alone when its key is absent - so each reference
+  // inherits the single diversity_auto_coherence_min just read, which is
+  // exactly the behaviour that file was written under.
+  //
+  div_band_cohmin = div_carrier_cohmin = div_digital_cohmin = div_auto_coherence_min;
+  GetPropF0("diversity_band_cohmin",         div_band_cohmin);
+  GetPropF0("diversity_carrier_cohmin",      div_carrier_cohmin);
+  GetPropF0("diversity_digital_cohmin",      div_digital_cohmin);
+  GetPropF0("diversity_rade_cohmin",         div_rade_cohmin);
   GetPropF0("diversity_band_centre",         div_band_centre);
   GetPropF0("diversity_band_width",          div_band_width);
   GetPropF0("diversity_carrier_centre",      div_carrier_centre);
@@ -3264,6 +3450,15 @@ void diversity_auto_restore_state(void) {
       }
     }
   }
+
+  //
+  // Same rule as div_settings_load(): whatever the file said, the live
+  // threshold belongs to the selected reference. After the migration
+  // above, so that a file carrying the old numbering picks up the
+  // threshold for the reference it ends up on rather than the one it was
+  // written as.
+  //
+  div_auto_coherence_min = div_cohmin_for_ref(div_auto_ref);
 
   //
   // Validate what came out of the file, then use it to seed every group

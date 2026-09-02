@@ -92,6 +92,16 @@ extern double div_carrier_centre;
 extern double div_carrier_width;
 extern double div_digital_centre;
 extern double div_digital_width;
+//
+// The coherence threshold is modal on the *reference*, not the mode: the
+// four references do not compare the same quantity. div_auto_coherence_min
+// always holds the value for whichever reference is selected; these hold
+// the rest. See the note in diversity_auto.c.
+//
+extern double div_band_cohmin;
+extern double div_carrier_cohmin;
+extern double div_digital_cohmin;
+extern double div_rade_cohmin;
 
 //
 // Status: the window had to be clamped to the Nyquist limit, and the bin
@@ -230,6 +240,12 @@ typedef struct _div_settings {
   // operator built up, not derived values, so a client that only sent the
   // live pair would silently flatten them on the radio.
   //
+  //
+  // The coherence threshold is per reference, not per mode - see the note
+  // beside div_band_cohmin in diversity_auto.c. coherence_min above is
+  // the live one, for whichever reference is selected.
+  //
+  double band_cohmin, carrier_cohmin, digital_cohmin, rade_cohmin;
   double band_centre, band_width;
   double carrier_centre, carrier_width;
   double digital_centre, digital_width;
@@ -254,6 +270,14 @@ typedef struct _div_status {
 //
 #define DIV_ACTION_NONE   0
 #define DIV_ACTION_RESET  1
+
+//
+// Move the per-reference settings - window pair and coherence threshold -
+// between their own slots and the live values the engine reads. Called
+// when the operator changes reference.
+//
+extern void diversity_auto_ref_store(int ref);
+extern void diversity_auto_ref_recall(int ref);
 
 extern void diversity_auto_get_settings(DIV_SETTINGS *s);
 extern void diversity_auto_apply_settings(const DIV_SETTINGS *s, int action);

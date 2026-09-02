@@ -528,7 +528,7 @@ static void update_visibility(void) {
   const gboolean placeable  = is_carrier || (follows && !div_auto_follow_filter);
   //
   // Everything except the pilot correlator works from the transform, so
-  // only it has no use for a bin resolution or a coherence threshold.
+  // only it has no use for a bin resolution.
   //
   const gboolean uses_fft = (ref != DIV_REF_RADE_V1);
   //
@@ -553,7 +553,34 @@ static void update_visibility(void) {
   div_show_row(width_label,  width_spin,  placeable);
   div_show_row(res_label,    res_combo,   uses_fft);
   div_show_row(weight_label, weight_combo, wide);
-  div_show_row(coh_label,    coh_scale,   uses_fft);
+  //
+  // Every reference has a threshold now, RADE V1 included - it gates on
+  // rade_corr_quality where the others gate on a coherence, which is why
+  // the row is relabelled rather than hidden. The threshold is stored per
+  // reference for the same reason: the quantities are not comparable, so
+  // one number cannot serve four of them. See div_band_cohmin.
+  //
+  if (coh_label) {
+    gtk_label_set_text(GTK_LABEL(coh_label),
+                       (ref == DIV_REF_RADE_V1) ? "Min quality (%)" : "Min coherence (%)");
+    gtk_widget_set_tooltip_text(coh_label,
+                                (ref == DIV_REF_RADE_V1)
+                                ? "Hold below this pilot quality. RADE V1 measures "
+                                "acc_sig/(acc_sig+noise) - a signal fraction, not a "
+                                "coherence - so the same percentage asks for less "
+                                "signal here than it does in the other references. "
+                                "Zero, the default, is the behaviour before this "
+                                "reference had a threshold at all."
+                                : "Hold below this coherence. Each reference keeps its "
+                                "own value, because each measures the coherence over "
+                                "different bins: the whole window in Window and "
+                                "Carrier, only the occupied ones in FSK/Digital. A "
+                                "window of pure noise still reports roughly 1/N for N "
+                                "averages, so a narrow window needs a higher setting "
+                                "than a wide one.");
+  }
+
+  div_show_row(coh_label,    coh_scale,   TRUE);
   div_show_row(hang_label,   hang_scale,  has_lock);
   //
   // Not a function of the reference like the rows above, but the same
@@ -1095,29 +1122,22 @@ gboolean diversity_client_set_status(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
+//
+// The engine owns the swap itself - window pair and coherence threshold
+// together - because the threshold has to follow the reference on every
+// path, not only this one. These wrap it and move the widgets afterwards.
+//
 static void div_window_store(int ref) {
-  if (ref == DIV_REF_CARRIER) {
-    div_carrier_centre = div_auto_centre;
-    div_carrier_width  = div_auto_width;
-  } else if (ref == DIV_REF_BAND) {
-    div_band_centre = div_auto_centre;
-    div_band_width  = div_auto_width;
-  } else if (ref == DIV_REF_DIGITAL_IQ) {
-    div_digital_centre = div_auto_centre;
-    div_digital_width  = div_auto_width;
-  }
+  diversity_auto_ref_store(ref);
 }
 
 static void div_window_recall(int ref) {
-  if (ref == DIV_REF_CARRIER) {
-    div_auto_centre = div_carrier_centre;
-    div_auto_width  = div_carrier_width;
-  } else if (ref == DIV_REF_BAND) {
-    div_auto_centre = div_band_centre;
-    div_auto_width  = div_band_width;
-  } else if (ref == DIV_REF_DIGITAL_IQ) {
-    div_auto_centre = div_digital_centre;
-    div_auto_width  = div_digital_width;
+  diversity_auto_ref_recall(ref);
+
+  if (coh_scale) {
+    updating_from_auto = 1;
+    gtk_range_set_value(GTK_RANGE(coh_scale), 100.0 * div_auto_coherence_min);
+    updating_from_auto = 0;
   }
 
   if (centre_spin) {
@@ -1217,7 +1237,22 @@ static void tau_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void coh_cb(GtkWidget *widget, gpointer data) {
+  (void)data;
+
+  //
+  // div_window_recall() moves this slider when the reference changes, and
+  // the slider's 5 % step would quantise the recalled value on the way
+  // back in.
+  //
+  if (updating_from_auto) { return; }
+
   div_auto_coherence_min = 0.01 * gtk_range_get_value(GTK_RANGE(widget));
+  //
+  // Straight into the selected reference's own slot as well, so that a
+  // settings block sent from here carries the new value rather than
+  // whatever was stored at the last reference change.
+  //
+  diversity_auto_ref_store(div_auto_ref);
   div_send_settings(DIV_ACTION_NONE);
 }
 

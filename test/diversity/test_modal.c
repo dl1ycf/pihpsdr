@@ -202,6 +202,75 @@ int main(void) {
     if (div_auto_centre != -700.0 || div_auto_width != 200.0) { fails++; }
   }
 
+  /* ---------------------------------------------------------------- */
+  printf("\n4. the coherence threshold follows the reference, not the mode\n");
+  /*
+   * The four references do not compare the same quantity - gamma^2 over
+   * the window, gamma^2 over the occupied bins, or a pilot signal
+   * fraction - so one threshold cannot serve all four, and it is stored
+   * per reference rather than per mode group. This is the check that it
+   * moves with the reference and stays put across a mode change.
+   */
+  props_clear();
+  diversity_auto_restore_state();
+  diversity_auto_mode_changed(modeUSB);
+  {
+    static const struct { int ref; double coh; const char *name; } want[] = {
+      { DIV_REF_BAND,       0.30, "Window"      },
+      { DIV_REF_CARRIER,    0.55, "Carrier"     },
+      { DIV_REF_DIGITAL_IQ, 0.20, "FSK/Digital" },
+      { DIV_REF_RADE_V1,    0.00, "RADE V1"     },
+    };
+    const int n = (int)(sizeof(want) / sizeof(want[0]));
+
+    /* set one per reference, the way the menu does on a reference change */
+    for (int i = 0; i < n; i++) {
+      diversity_auto_ref_recall(want[i].ref);
+      div_auto_ref = want[i].ref;
+      div_auto_coherence_min = want[i].coh;
+      diversity_auto_ref_store(want[i].ref);
+    }
+
+    /* each must come back on its own */
+    for (int i = 0; i < n; i++) {
+      diversity_auto_ref_recall(want[i].ref);
+      printf("    %-11s -> %.2f\n", want[i].name, div_auto_coherence_min);
+      check(want[i].name, div_auto_coherence_min, want[i].coh);
+    }
+
+    /* and survive a mode change, a save and a restore */
+    diversity_auto_mode_changed(modeCWL);
+    diversity_auto_mode_changed(modeUSB);
+    diversity_auto_save_state();
+    diversity_auto_restore_state();
+    diversity_auto_mode_changed(modeUSB);
+
+    for (int i = 0; i < n; i++) {
+      diversity_auto_ref_recall(want[i].ref);
+      check(want[i].name, div_auto_coherence_min, want[i].coh);
+    }
+  }
+  /* ---------------------------------------------------------------- */
+  printf("\n5. a props file without the per-reference keys seeds all four\n");
+  /*
+   * The upgrade case again. A file written before the threshold became
+   * modal has one diversity_auto_coherence_min and nothing else, and
+   * every reference has to come up carrying it - which is exactly the
+   * behaviour that file was written under.
+   */
+  {
+    props_clear();
+    setProperty("diversity_auto_coherence_min", "0.42");
+    diversity_auto_restore_state();
+    static const int refs[] = { DIV_REF_BAND, DIV_REF_CARRIER, DIV_REF_DIGITAL_IQ };
+    static const char *names2[] = { "Window", "Carrier", "FSK/Digital" };
+
+    for (int i = 0; i < 3; i++) {
+      diversity_auto_ref_recall(refs[i]);
+      printf("    %-11s -> %.2f\n", names2[i], div_auto_coherence_min);
+      check(names2[i], div_auto_coherence_min, 0.42);
+    }
+  }
   printf("\n%s\n", fails ? "FAIL" : "PASS");
   return fails ? 1 : 0;
 }
