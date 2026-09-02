@@ -210,7 +210,7 @@ cross spectrum and both auto spectra with exponential forgetting, then:
 | Objective | Weight | Behaviour |
 |---|---|---|
 | **Null** | `w = −Sxy/Syy` | minimises `E\|z0 + w·z1\|²` — cancels whatever the two antennas have in common. Noise cancelling. |
-| **Sum** | `w = +Sxy/Sxx` | equals `conj(h)` for `z1 = h·z0` — maximum ratio combining when both branches carry equal noise power. |
+| **Sum** | `w = +(N0/N1)·Sxy/Sxx` | `Sxy/Sxx` equals `conj(h)` for `z1 = h·z0`; the branch noise ratio `N0/N1` is what makes it maximum ratio combining rather than MRC under the assumption that the two branches are equally noisy. On a pair 12 dB apart that assumption cost 3.6 dB and put the audio 14.8 dB louder — see Finding 22 in [`diversity-measurements.md`](diversity-measurements.md). |
 | **Best** | `w = 0` or `w` at the clamp, co-phased | gives the output to whichever antenna is measuring better, rather than combining them. |
 
 Null and Sum use **different denominators**, so they are not simply
@@ -706,7 +706,7 @@ one block from `track` to `search` when the signal stops.
 | **Window centre / width** | The analysis window, the carrier search region in Carrier mode, or the occupancy search region in FSK/Digital. Measured from the tuned signal, which in CW is the zero-beat note. Kept separately per reference | Window (unticked), Carrier, FSK/Digital (unticked) |
 | **Resolution** | 12 / 6 / 3 Hz bins. Finer lifts weak signals out of the noise but halves the update rate each step | all but RADE V1 |
 | **Weighting** | Flat or Coherence (see above) | Window |
-| **Averaging** | 0.2-30 s. Time constant for the estimate | always |
+| **Averaging** | 0.2-30 s, on a geometric scale so that 64 % of the travel is below 5 s. Time constant for the estimate | always |
 | **Hang** | 1-30 s. How long a lock outlives the pilot before the correlator searches again | RADE V1 |
 | **Min coherence** | Below this the loop holds rather than adapts | all but RADE V1 |
 | **Restart averaging** | Discards the accumulated statistics | always |
@@ -964,7 +964,7 @@ Run it yourself with `make -C test/diversity bench`.
 | Event | Time |
 |---|---|
 | Weight slew | ~0.5 s |
-| Estimate settling | the Averaging control, 0.2-30 s |
+| Estimate settling | the Averaging control, 0.2-30 s (geometric) |
 | **RADE V1 acquisition** | **1-5 s** of continuous signal |
 | RADE V1 confirmation ("probation") | ~1 s of that |
 | RADE V1 freeze when the pilot goes | ~1 s |

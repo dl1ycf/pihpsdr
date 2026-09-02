@@ -56,7 +56,7 @@ sign and in which power normalises them:
 | | Weight | What it does |
 |---|---|---|
 | **Null** | `w = −Sxy / Syy` | Cancels whatever the two antennas have most in common |
-| **Sum** | `w = +Sxy / Sxx` | Co-phases the antennas on it (maximum ratio combining) |
+| **Sum** | `w = +(N0/N1)·Sxy / Sxx` | Co-phases the antennas on it and weights each by its own noise (maximum ratio combining) |
 
 They are 180° apart. That is the useful property: if you are not sure
 whether the array is pointed at the wanted signal or at the interference,
@@ -210,7 +210,7 @@ It needs an actual RADE V1 signal and takes 1–5 s to acquire.
 | **Window centre / width** | Where to look, measured from the signal you are tuned to — the zero-beat note in CW. Kept separately for Window, Carrier and FSK/Digital, so aiming the carrier tracker does not destroy your wideband window |
 | **Resolution** | 12 / 6 / 3 Hz bins. Finer bins lift a weak signal out of the per-bin noise floor — a different thing from Averaging, which reduces the variance of an estimate rather than improving the SNR it is made from. Each step halves the update rate |
 | **Weighting** | `Coherence` weights each bin by how well the two antennas agree in it. On speech it roughly halves the gain error, because the noise-only parts of a wide window stop diluting the answer. `Flat` is the older behaviour, kept for comparison |
-| **Averaging** | 0.2–30 s time constant. Longer is steadier and follows fading more slowly. A weak AM carrier or an HF RADE path usually wants several seconds |
+| **Averaging** | 0.2–30 s time constant, on a **geometric** scale — most of the travel is below 5 s, because that is where the setting matters. Longer is steadier and follows fading more slowly. A weak AM carrier or an HF RADE path usually wants several seconds; a fast path (20 m near the MUF, or the low bands) wants a fraction of one, and Null wants the shortest setting that still holds a lock |
 | **Min coherence** | Below this the loop holds rather than adapts, so it does not chase noise when there is nothing worth combining. Genuinely a per-path control, not a set-and-forget one: measured across recorded captures the *noise* on its own is 0.07 to 0.58 coherent between the arms, so on a path near the top of that range the default 0.30 cannot tell a signal both antennas hear from noise both antennas hear. If the loop adapts when there is plainly nothing there, raise it |
 | **Hang** | 1–30 s, `RADE V1 pilot` only. How long a lock is held after the pilot goes before the correlator gives up and searches again. Long rides out a fade on one station; short is what a frequency several stations take turns on wants |
 | **Restart averaging** | Throw away the statistics and start again |

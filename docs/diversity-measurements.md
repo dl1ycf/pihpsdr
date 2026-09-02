@@ -14,7 +14,11 @@ again from the raw `.divc` files alone.
 changed; see "What was changed, and what it scored" at the end, which is
 where the after figures live. Finding 8's *mechanism* did not survive the
 attempt to fix it and has been corrected in place. The threshold policy is
-settled for now.
+settled for now. **Findings 20 and 22 have been acted on**: the wideband
+Sum weight now carries the branch noise ratio, and the CW passband error
+under Finding 8, the missing attenuator fields and the linear Averaging
+scale are fixed with it - see "What was changed, and what it scored".
+Findings 17, 21 and 23 remain measurements only.
 
 **Finding 11** - the MVDR solve returning a weight of exactly zero, the
 second antenna muted, the menu showing -27 dB, on between half and all of
@@ -42,6 +46,85 @@ captures, one a 693 kHz broadcast with inter-arm coherence 0.982, the
 other band noise at 0.52. Null reaches the ceiling on the first and the
 Best objective picks correctly on both.
 
+**Findings 17, 18 and 20** are the first look at *fast* propagation: two
+wideband digital signals on 5 MHz with the frequency-selective fading of a
+low-band path. Three results come out of them, none of which needed a
+tool that did not already exist.
+
+The **flat scalar channel model has a boundary and this is it.** On
+`000747` the differential channel `h1/h0` has a coherence bandwidth of
+188 Hz across a 3.8 kHz filter - twenty independent frequency cells - and
+a weight per bin nulls 2.2 dB deeper than the single complex weight
+`receiver.c` can apply. On `000332`, four minutes earlier and 140 kHz
+away, the same measurement gives 0.4 dB. What separates them is whether
+the path is one mode or several (Finding 17).
+
+**A fast loop is better, and how much better depends on the objective.**
+Swept through the shipping engine over the whole 0.2-30 s slider, Null
+deepens as the average shortens - 2.22 dB on `000332`, monotonically, and
+1.11 dB on `000747` - while Sum moves 0.33 and 0.57 dB. `000332` has the
+operator dragging the slider on air, and the estimator's own coherence
+reading rises from 0.85 to 0.89 as they do it. The shipping default is
+2.0 s; **no change is being made**, and what would justify one is written
+under "What is still open" (Finding 18).
+
+**The wideband Sum weight assumes the two antennas have equal noise.** On
+`000332` they are 6.3 dB apart, the quiet antenna is the better one by
+3.5 dB, and Sum lands 0.55 dB *below* it where 1.56 dB was available.
+Putting the noise ratio back recovers 2.13 dB and reproduces the ideal
+weight to 0.02 dB. **This is now fixed** - the Sum weight measures the
+branch noise ratio by minimum statistics and carries it, which is worth
++0.8 to +2.5 dB on the two captures whose arms are far apart and costs
+1.8 dB on the FT8 one for a reason Finding 23 explains. See "What was
+changed" (Findings 20 and 22).
+
+**Findings 21, 22 and 23** answer an operator's question and turn up a
+larger defect than the one they were asked about. Three captures on
+2 September - 20 m voice and CW near the MUF, and 30 m FT8 - all with
+**ADC1 running 9.8 to 13.2 dB hotter than ADC0**.
+
+**A hot second antenna costs 3.6 dB and it is not the attenuator's
+fault.** On `002534` the loop made the audio 14.8 dB louder with a noise
+floor 18.3 dB higher and an SNR 3.6 dB *below* ADC0 alone, where +1.4 dB
+was there to be had. The cause is Finding 20 again: Window and Carrier
+give Sum the channel ratio with no noise term, so they assume the two
+branches are equally noisy, and here they are 12 dB apart. `002710` has
+the operator stepping the ADC1 attenuator twice while recording, which is
+the experiment that settles it - the *available* gain is unchanged at
++1.6 to +1.9 dB at all three settings, while what the loop *achieved* goes
+-3.4, -3.5, **+1.8 dB**. Equalising the chains does not improve the
+estimate; it makes the estimator's assumption true. And on all three
+captures FSK/Digital, the one reference that measures branch noise, beats
+Window's Sum by 0.7 to 4.2 dB with an output 10 to 14 dB quieter
+(Finding 22).
+
+**The optimum averaging time is not set by the fading rate.** `002534`
+fades in half a second and wants a 30 s average on Sum; `003309` fades
+eight times slower and wants 0.2 s. What sets it is whichever quantity in
+the solve is hardest to measure - here, an occupancy split hunting for
+noise bins inside a voice passband. Null still wants the shortest average
+that passes the gate, as Finding 18 found (Finding 21).
+
+**On a band full of stations the displayed coherence is not any signal's
+coherence.** On 30 m FT8 individual bins reach 0.946 while the passband
+aggregate is 0.413, because two dozen stations spread `arg(h1/h0)` around
+the whole circle. 0.413 still passes the 0.30 gate, and the weight that
+results serves none of them: a per-bin weight nulls **5.4 dB** deeper than
+the scalar, the largest such gap in this document (Finding 23).
+
+Setting those up found a documentation error. **Finding 8's CW passband is
+wrong** - the engine's window in CW includes the sidetone, so it is
+-300..+300 Hz and not the +250..+850 the finding names, and both of that
+finding's scored tables were computed in empty band noise. Corrected in
+place under Finding 8; the conclusion survives and three of the premises
+do not.
+
+**Finding 19** closes an open item. `115357` catches the operator walking
+the dial down 18 Hz in nineteen one-hertz steps: `DIV_RETUNE_HZ` = 20
+holds the estimate through all of it where the old exact comparison would
+have reset nineteen times, and the path's own fading moved `h1/h0` three
+times further over the same nine seconds than the dial did.
+
 The USB pilot bank, previously the most valuable missing measurement, is
 now confirmed on air - see Finding 12, and confirmed again on a second
 band in Finding 15's capture set.
@@ -67,9 +150,12 @@ For how the modes work, see [`diversity.md`](diversity.md) and
 ## Capture set
 
 All Angelia. Everything up to and including the 60 m set is averaging
-10.5 s, hang 5.2 s, objective Sum; the four captures added on August 30
-and 31 are not - averaging runs 1.9, 5.6 and 4.8 s, and `111852` has the
-operator changing both the reference and the objective while it records.
+10.5 s, hang 5.2 s, objective Sum; the captures added from August 30
+onwards are not - averaging runs 1.9, 4.0, 5.6 and 4.8 s, `111852` has the
+operator changing both the reference and the objective while it records,
+and in `000332` and `000747` the operator moves the Averaging slider
+itself, from 10.4 s down to 0.2 s in the first and around 0.2 to 3.4 s in
+the second. Those two are the subject of Finding 18.
 The August 29 captures are at a **48 kHz** DDC; the 60 m set of August 30
 is the first at **192 kHz**, 351 blocks of nfft 32768 (170.7 ms each) =
 60 s, and every capture after it is at that rate too. The
@@ -110,6 +196,12 @@ recording.
 | `232842` | 1.987 | DIGU | RADE V1 | **bank 1 on a second band**, locked 94 %, averaging 5.6 s |
 | `111852` | 0.6929 | SAM | Window, then Carrier, then FSK/Digital | **mediumwave** - 693 kHz broadcast, objective changed mid-capture |
 | `112151` | 0.7244 | SAM | FSK/Digital | **mediumwave** band noise, partly coherent |
+| `115357` | 7.19702 | DIGL | RADE V1 | locked 93 %, averaging 4.0 s, **operator walks the dial down 18 Hz** |
+| `000332` | 5.42810 | USB | Window, coherence | **wideband digital**, continuous, **operator sweeps Averaging 10.4 -> 0.2 s on air** |
+| `000747` | 5.28750 | USB | FSK/Digital, Window, then Carrier | **wideband digital**, 18 dB over the floor, fast selective fading, averaging 0.2-3.4 s |
+| `002534` | 14.19500 | USB | Window, coherence | **20 m analog voice**, several operators, averaging **0.2 s**, ADC1 12.3 dB hot |
+| `002710` | 14.01194 | CWL | Window, coherence | **20 m CW**, nfft 65536, **operator steps the ADC1 attenuator twice** |
+| `003309` | 10.13611 | USB | FSK/Digital, then Window | **30 m FT8**, nfft 16384, many stations, averaging 0.2-2.7 s |
 
 `202743` begins on 7.177 MHz and retunes to 7.09203 MHz at block 9. The
 recorder did **not** set the context-changed bit for it: `rec_flags` is
@@ -122,6 +214,33 @@ means the flag cannot be used to find retunes in this file - the
 margin: ADC1 runs 14.5 to 15.2 dB above ADC0 across the whole passband on
 both. See Finding 16.
 
+`000332` and `000747` are the first captures of **wideband digital signals
+on a fast low-band path** - continuous, band-filling, and with the
+frequency-selective fading that makes a scalar weight an approximation
+rather than a model. They are also the first where the operator moved the
+Averaging control while recording. See Findings 17, 18 and 20.
+
+`115357` is a second 40 m RADE capture at a different dial frequency from
+the 7.047 MHz set, recorded to catch a deliberate slow QSY. See
+Finding 19.
+
+`002534`, `002710` and `003309` were taken in one session with **ADC1
+running 9.8 to 13.2 dB hotter than ADC0** - the first captures where the
+imbalance between the two receive chains is the subject rather than a
+detail, and the first where the operator moved a step attenuator while
+recording. The two 20 m captures were taken with the band close to its
+maximum usable frequency and carry the fastest fading in the set. See
+Findings 21, 22 and 23. `002710` is also the capture that found the CW
+window error corrected under Finding 8.
+
+One field in the capture is not what it looks like. `ctun_frequency`
+reads 7047000 on **every capture after `213155`** - it is a stale copy
+left over from the first session, CTUN not being in use, and it has
+nothing to do with what the radio was tuned to. The dial frequency is the
+`frequency` field, which is what the table above lists. It matters only
+because `div_context_changed()` compares all three frequency fields, and a
+stale one that never moves simply never fires.
+
 The five "none" captures are the most valuable ones in the set. A capture
 of nothing is what says whether a detector threshold is safe, and it costs
 nothing but a minute of a quiet band.
@@ -132,13 +251,19 @@ them comes from the operator afterwards: ADC0 is the main antenna,
 sometimes tuned and sometimes not, ADC1 an untuned doublet. That
 asymmetry is the subject of Finding 13, and the missing note is the
 reason it had to be established by measurement rather than read off the
-file.
+file. `115357`, `000332`, `000747`, `002534`, `002710` and `003309` have
+no note either. Findings 20 and 22 turn on which antenna was on which ADC
+and on what the attenuators were set to, and neither is recorded, so the
+omission has now cost something in three findings. The attenuator is the
+worse gap of the two: `struct divcap_block` mirrors no `att0`/`att1`
+field, so on `002710` the two settings the operator chose have to be
+inferred from arm 1's own noise floor.
 
 `231724` and `232052` are a matched pair: same band, same path, five
 minutes apart, one running each reference. That comparison did more work
 than any single capture.
 
-## Method, and three traps worth knowing about
+## Method, and four traps worth knowing about
 
 Three yardsticks are used, in increasing order of trust.
 
@@ -186,6 +311,26 @@ set against recorded silence.
 that holds sync through the bad parts of a capture is *penalised* for it,
 because it reports SNR on frames the others skipped. Where sync is not
 essentially 100 %, compare **synced frame counts**, not mean SNR.
+
+### Trap 4: a level-ratio metric is invalid for a weight that moves with the level
+
+Finding 6's yardstick for analog voice - passband power over the blocks
+that contain speech against the same over the blocks that do not - is
+sound for a weight that is the same in both sets of blocks, which is what
+the shipping loop produces because it holds through the gaps.
+
+It is not sound for a *hypothetical* weight recomputed every block. On
+`002534` the equal-noise MRC weight scores +28.18 dB by that metric and
++18.32 dB when scored against a guard region - a 9.9 dB disagreement,
+because the weight itself is large on speech blocks and derived from noise
+on quiet ones, so it modulates the very ratio being measured. The arm-0,
+arm-1 and as-it-ran rows agree between the two metrics to a tenth of a
+decibel; only the recomputed weights diverge.
+
+Use a level ratio only for weights that do not know which set of blocks
+they are in. For anything else, score against noise measured separately -
+and see "Two guard regions, not one" under Finding 18 for how to do that
+without scoring a weight against the noise it just cancelled.
 
 ## Finding 1: the RADE V1 covariance is not noise
 
@@ -535,9 +680,17 @@ legitimate reset. See Finding 9 for when they are not.
 ## Finding 8: CW - the occupancy split has no room in a narrow filter
 
 Two captures on 14.0522 MHz CWL, FSK/Digital reference, 600 Hz filter
-(-850 to -250, so +250 to +850 in the tapped frame), sidetone 550 Hz -
-which is also the first exercise of the CW branch of `div_frame_off()`
-on recorded data.
+(-850 to -250), sidetone 550 Hz - which is also the first exercise of the
+CW branch of `div_frame_off()` on recorded data.
+
+**The tapped-frame window this finding was scored in is wrong.** It is
+given below as +250 to +850, the plain inversion of the filter. The engine
+does not use the plain inversion in CW: `div_shift_to_bin()` returns
+`-(s + div_frame_off(ctx))` and `div_frame_off()` adds the sidetone in
+CWL, so the window is **-300 to +300 Hz**. Everything under "Correction:
+the fallback is not the path responsible" was measured in a band with no
+signal in it. See "Second correction" at the end of this finding, which
+supersedes both tables.
 
 The band segment is busy but weak: no single dominant carrier, and the
 strongest bin averages only 3.6 to 4.5 dB above the window median over
@@ -615,8 +768,60 @@ nothing on any capture, because on these paths the two are the same
 number.
 
 That is the open question, and it wants its own measurements rather than a
-guess. Until then the advice stands on the numbers above: use **Window**
-on a narrow CW passband, not FSK/Digital.
+guess.
+
+### Second correction: the window itself was wrong
+
+`002710` is a third CW capture (Finding 21) and setting it up meant
+working out where the engine's window actually lands in CW. It is not
+where this finding says.
+
+`div_bin_range()` maps the operator's filter through
+`div_shift_to_bin(ctx, s) = -(s + div_frame_off(ctx))`, and
+`div_frame_off()` adds the sidetone in CWL. For a -850..-250 filter at a
+550 Hz sidetone that gives **-300..+300 Hz**, not +250..+850. Measured on
+the spectrum averaged over each capture, with the band median over
++/-4 kHz as the reference:
+
+| | `001054` | `001157` |
+|---|---|---|
+| energy in -300..+300 (the engine's window) | **+3.0 dB over the band median** | **+14.8 dB** |
+| energy in +250..+850 (what this finding used) | +0.3 dB | -0.1 dB |
+
+The region the tables above were scored in is empty band noise. Rerunning
+this finding's own metric - the ten strongest bins of the window against
+the weakest 120, Blackman-Harris, averaged over the capture - in the
+engine's real window:
+
+| | `001054` | `001157` |
+|---|---|---|
+| arm 0 | **+12.91 dB** | **+24.86 dB** |
+| arm 1 | +12.27 (-0.64) | +24.17 (-0.69) |
+| as it ran on air | 10.39 (**-2.52**) | 22.84 (**-2.02**) |
+| replayed from cold | 10.61 (-2.30) | 24.47 (-0.39) |
+
+Three of this finding's premises do not survive. The signals were **not**
+weak - the window stands 12.9 and 24.9 dB above its own floor, not the
+"3.6 to 4.5 dB above the window median" reported above. The two antennas
+are **not** 1.7 to 2.0 dB apart - they are 0.64 and 0.69 dB apart, so
+there was real diversity gain on the table rather than almost none. And
+"no combination gets near arm 0 alone ... because arm 1 is 1.7 to 2.0 dB
+worse" is not the mechanism, because arm 1 is not worse.
+
+What survives is the conclusion. The combiner still lands 0.4 to 2.5 dB
+below the better antenna on both captures, with two nearly equal arms and
+something to gain, which is a worse result than the original tables
+suggested rather than a better one.
+
+The old figures are left in place above rather than deleted: they are
+reproducible to the second decimal from the wrong window, which is how the
+error was identified, and a reader who finds the same numbers should know
+why.
+
+Until the open question above is settled, the advice stands: use **Window**
+on a narrow CW passband, not FSK/Digital - though note that Finding 22
+measures the opposite preference on a pair of antennas far apart in noise,
+and both CW captures here have nearly equal arms.
 
 ## Finding 9: a 1 Hz VFO step throws the whole estimate away
 
@@ -1540,6 +1745,714 @@ than either antenna alone** - with ADC0 20 dB down inside it. The SNR is
 right, the AGC step is not. Finding 14 predicted this from the algebra;
 this is the first capture where an operator would actually hear it.
 
+## Finding 17: fast frequency-selective multipath, and the limit of one complex weight
+
+Two captures on 5 MHz, both continuous wideband digital signals filling
+the operator's filter, both with the fast multipath of a low-band
+ionospheric path. They are the first captures in this document taken on
+that kind of propagation, and between them they bracket it: `000332` is a
+path a single complex weight describes and `000747` is one it does not.
+
+Everything in this finding is measured directly from the `.divc` files -
+2048-sample transforms, 93.75 Hz bins, 10.7 ms sub-blocks, the passband
+taken inverted per the sideband rule - with no engine in the loop. The
+guard region for noise is +3500 to +6000 Hz in the tapped frame, which is
+clear of the passband on both and clear of the interferer `000332` carries
+at +6.75 to +7.4 kHz.
+
+| | `000332` | `000747` |
+|---|---|---|
+| arm 0 passband over the guard floor | 28.1 dB median (p10 21.4, p90 30.7) | 17.9 dB median (p10 13.4, p90 21.9) |
+| passband | -2850..-150 (2.7 kHz filter) | -3950..-150 (3.8 kHz filter) |
+| arm1 - arm0, passband | -2.78 dB | +3.17 dB |
+| guard `N1/N0`, noise coherence | **-6.31 dB**, 0.084 | +2.90 dB, 0.083 |
+| inter-arm coherence, passband | **0.901** | 0.501 |
+| the same per bin, averaged over the minute | 0.896 | **0.363** |
+| the same per 10.7 ms sub-block, over bins | 0.913 | **0.657** (p90 0.896) |
+
+The last two rows are the whole finding in miniature. On `000747` the two
+antennas agree 0.66 at any given instant and 0.36 once the minute is
+averaged. **The decoherence is temporal, not spatial** - and a loop with a
+long averaging time manufactures it.
+
+### The differential channel across the passband
+
+`h1/h0` per 171 ms block, per 93.75 Hz bin, power-weighted across blocks:
+
+| | `000332` | `000747` |
+|---|---|---|
+| `\|h1/h0\|` ripple across the band | 1.04 dB sd (p90 2.00) | **7.04 dB sd** (p90 8.93) |
+| phase residual after a straight line | 6.8 deg sd (p90 11.2) | **82.8 deg sd** (p90 131) |
+| differential delay from that line | -3.7 us median, -20..+17 p10..p90 | -60 us median, -445..+297 p10..p90 |
+| `\|rho(h)\|` across 94 / 188 / 375 / 750 Hz | 0.976 / 0.957 / 0.935 / 0.898 | **0.724 / 0.411 / 0.216 / 0.134** |
+| **coherence bandwidth**, `\|rho\|` = 0.5 | **> 1.8 kHz** (the whole passband) | **188 Hz** |
+| `\|rho(h)\|` over 0.17 / 0.51 / 1.0 / 2.0 s | 0.983 / 0.976 / 0.963 / 0.939 | 0.930 / 0.755 / **0.462** / 0.282 |
+| **coherence time**, `\|rho\|` = 0.5 | > 10 s | **~1.0 s** |
+
+Read the delay row with care. On `000332` a straight line through the
+phase leaves 6.8 degrees, so the slope means something and the answer is
+a differential delay of a few tens of microseconds. On `000747` it leaves
+**83 degrees**, which is as large as the thing being fitted: there is no
+single differential delay to quote, and the honest description of that
+channel is its coherence bandwidth. 188 Hz across a 3.8 kHz filter is
+**twenty independent frequency cells in the operator's passband**, and a
+scalar weight is one cell.
+
+### What that costs, measured
+
+Weight fitted on block n and applied to block n+1 - a genuine hold-out,
+and the same one-block lag the radio has. Output passband power against
+arm 0 alone:
+
+| | `000332` | `000747` |
+|---|---|---|
+| one complex weight for the whole band | -9.57 dB | -3.06 dB |
+| an independent weight per 93.75 Hz bin | -9.95 dB | **-5.23 dB** |
+| difference | 0.37 dB | **2.17 dB** |
+
+On the flat path a wideband combiner is worth four tenths of a decibel and
+is not worth having. On the frequency-selective one it is worth **2.2 dB**,
+and that is exactly the group-delay distortion the present architecture
+cannot touch: `src/receiver.c` forms
+
+```c
+i_sample = i0 + (div_cos * i1 - div_sin * q1);
+```
+
+one complex scalar across the whole passband. Nothing in the estimator
+is at fault - the scalar is the correct MVDR answer *given* that a scalar
+is what will be applied.
+
+Two things this does **not** say. It does not say the array can equalise
+either arm: correcting the group delay *within* one antenna's signal is an
+equaliser's job and two antennas cannot do it. What a per-bin combiner
+does is choose, at each frequency, the spatial combination that is best at
+that frequency, which flattens the *composite* channel because the two
+arms fade in different places. And it does not say 2.2 dB is available
+cheaply - twenty weights need twenty times the estimation, on a signal
+that decorrelates in a second.
+
+### The scalar model, restated
+
+The RADE captures put `h1/h0` inside +/-0.63 dB and
++/-12 degrees across the passband, and this document has been carrying
+"a single complex weight is the correct model" on the strength of it.
+That holds on `000332`, on `115357`, and on every capture measured before
+these. It does not hold on `000747`, and the difference is not the band or
+the antennas - it is whether the path is one mode or several.
+
+## Finding 18: on a fast path the averaging time is the binding constraint, and the answer depends on the objective
+
+`000332` contains the experiment written into it: at t = 4.1 to 6.3 s the
+operator drags the **Averaging** slider from 10.4 s to 0.2 s and leaves it
+there for the rest of the minute. This finding is that sweep, done
+properly - `run_ref` driving the whole shipping engine over both captures
+at thirteen averaging times, from 0.2 s to the 30 s top of the slider.
+
+The weight series `run_ref` writes is applied to the capture one block
+late and scored two ways. **Null** is output passband power against arm 0
+alone: no fitting, nothing to overfit. **Sum** is an SNR, and needs the
+care Trap 1 demands - see "Two guard regions, not one" below.
+
+### Null: faster is better, on both captures, over the whole slider
+
+| tau | `000332` null | ideal | `000747` null | ideal | `000747` holding |
+|---|---|---|---|---|---|
+| 0.2 s | **-9.16 dB** | -9.50 | **-1.70 dB** | -2.92 | 23 % |
+| 0.5 s | -9.01 | -9.39 | -1.37 | -2.64 | 23 % |
+| 1.2 s | -8.74 | -9.13 | -1.15 | -2.17 | 23 % |
+| 2.5 s | -8.35 | -8.76 | -1.06 | -1.80 | 26 % |
+| 5.1 s | -7.83 | -8.21 | -0.92 | -1.52 | 39 % |
+| 10.4 s | -7.36 | -7.71 | -0.98 | -1.36 | 45 % |
+| 30 s | -6.94 | -7.35 | -0.59 | -1.27 | 7 % |
+
+"ideal" is the best causal two-branch weight from the same EWMA, applied
+the same block late - the ceiling the estimator is being measured against,
+not a different objective.
+
+**2.22 dB on `000332` and 1.11 dB on `000747`, bought by nothing but
+shortening the average.** The curve has not flattened at 0.2 s on either,
+and the shipping loop tracks its own ceiling to within 0.3 to 0.4 dB on
+`000332` at every point - so on that capture the loop is not the
+limitation, the averaging time is.
+
+`000332` is monotone at every one of the thirteen points swept. `000747`
+is not quite: it reverses by 0.09 dB between 5.1 and 7.0 s and by 0.11 dB
+between 10.4 and 17 s, in the region where the holding fraction is
+swinging between 26 and 45 %. The trend across the slider is 1.11 dB and
+the reversals are a tenth of that, so they are scatter rather than a
+turning point - but the column is quoted here as measured rather than
+smoothed.
+
+`000747` sits about 1.2 dB below its ceiling at every setting, and the
+whole of that gap is the coherence gate - which turns out to be doing the
+right thing, not the wrong one. At tau 0.2 s it holds 23 % of blocks,
+whose reported coherence averages 0.128 against 0.618 for the ones it
+passes. Scored on the two sets separately, the ideal weight reaches
+**-3.93 dB on the blocks the gate passed and -0.23 dB on the blocks it
+held**. The gate is declining to act where there was nothing to collect,
+and the "shortfall" is the ceiling being computed over blocks a sane loop
+should sit out.
+
+### Sum: only where the channel actually moves
+
+| tau | `000332` Sum | ideal | `000747` Sum | ideal |
+|---|---|---|---|---|
+| arm 0 alone | 27.43 dB | | 18.10 dB | |
+| arm 1 alone | **30.95 dB** | | **18.37 dB** | |
+| 0.2 s | 30.40 (**-0.55**) | 32.48 (+1.53) | **20.84 (+2.47)** | 21.22 (+2.85) |
+| 1.2 s | 30.38 | 32.58 | 20.42 | 20.85 |
+| 5.1 s | 30.29 | 32.68 | 20.04 | 20.25 |
+| 30 s | 30.07 (-0.88) | 32.58 (+1.63) | 20.27 (+1.90) | 20.06 (+1.69) |
+
+Bracketed figures are against the better arm.
+
+Shortening the average is worth **0.57 dB on `000747` and 0.33 dB on
+`000332`** - a quarter of what it is worth to Null. That difference is
+not noise, it is the two objectives wanting different things. Null has to
+put a null exactly on the interferer and a null is exquisitely sensitive
+to a stale estimate; Sum only has to get the co-phasing direction roughly
+right, and on a path whose channel is still 0.94 correlated after two
+seconds a longer average buys variance reduction that nearly pays for the
+lag. The ideal column on `000332` says so directly: its best point is
+tau 5.1 s, not 0.2 s.
+
+So "a fast loop is better" is true, and it is a statement about **Null**
+much more than about Sum.
+
+`000332`'s Sum sits 0.55 dB *below* the better antenna while 1.56 dB was
+available. That is not the averaging time - see Finding 20.
+
+### The on-air sweep says the same thing
+
+The operator's own slider drag, scored from the recorded `div_cos`,
+`div_sin` over the blocks each setting was in force. Segment-local, so
+each row is compared with the two arms over the same blocks:
+
+| `000332`, as it ran | tau | output | arm 0 | arm 1 | reported coherence |
+|---|---|---|---|---|---|
+| Sum, blocks 0-23 | 10.4 s | +23.63 dB | +21.34 | +25.21 | 0.849 |
+| Sum, blocks 24-37 | 10.4 -> 0.2 | +22.74 | +19.55 | +27.11 | 0.743 |
+| Sum, blocks 38-130 | 0.2 s | +31.04 | +27.81 | +32.00 | **0.892** |
+| Null, blocks 131-229 | 0.2-1.3 s | null **-7.81 dB** | - | - | 0.883 |
+| Sum, blocks 230-350 | 0.2 s | +30.21 | +26.48 | +31.24 | 0.890 |
+
+The absolute levels move because the signal did, which is why the arm
+columns are there. What is stable across the change is the **reported
+coherence**: 0.85 at 10.4 s, 0.74 through the drag, 0.89 for the rest of
+the minute at 0.2 s. The estimator's own quality figure improves when the
+average is shortened, on a signal that has not changed, which is the
+on-air face of the 0.36-against-0.66 pair at the top of Finding 17.
+
+The 0.2 s Null segment reaches -7.81 dB on air against **-9.05 dB** for a
+cold replay at the same setting over the same blocks. The replay starts
+with empty accumulators and the radio did not, and the operator was also
+nudging the slider between 0.2 and 1.3 s through that stretch; the same
+on-air-against-replayed gap is in Finding 6, and it is unexplained there
+too.
+
+The cold replay at 10.4 s reproduces the recorded on-air weight over the
+blocks the operator had at that setting to `|w|` 0.54 against 0.61 and
+62 against 73 degrees - close, and not identical, for the same reason.
+
+### Block length is not the knob
+
+The Resolution control sets the transform size and so the block period,
+and 170.7 ms at nfft 32768 is a sixth of `000747`'s coherence time. It is
+tempting to blame that. It is not the limit:
+
+| best weight per | `000332` | `000747` |
+|---|---|---|
+| 171 ms analysis block | -9.64 dB | -3.31 dB |
+| 10.7 ms sub-block | -9.92 dB | -3.37 dB |
+
+0.3 dB and 0.06 dB. Both rows are fitted in sample - which is why the
+block row reads a little better here than the -9.57 / -3.06 hold-out in
+Finding 17 - and the bias is far larger on the sub-block row, which is
+fitted on a sixteenth of the data, so the true gap is smaller than the
+table shows rather than larger. What limits the estimate is the variance
+of the statistics, not how often they are refreshed. **Averaging is the
+right control and Resolution is not.**
+
+### Two guard regions, not one
+
+The Sum column needs a noise measurement and neither capture has any dead
+air - both signals are continuous - so Finding 6's voice-against-quiet
+split cannot be used, and there is no decoder for either signal, so the
+document's most trusted yardstick is unavailable too.
+
+What is left is guard bins, and they have to be used carefully. An SNR
+built from the *same* bins the solve fitted its covariance on scores the
+weight against the noise realisation it just cancelled. Done that way,
+`000332` scored **+4.9 dB over the better antenna** at tau 0.2 s - more
+than a two-branch array can deliver, and Trap 1 wearing a different hat.
+
+Every Sum figure above therefore uses a **split guard**: the loop and the
+ideal weight see +1000 to +3000 Hz, and the score is taken on +3500 to
++6000 Hz, never the reverse. With the split in place `000332` reads
+-0.55 dB and the ideal +1.56 dB, which are numbers a two-branch array can
+actually produce.
+
+## Finding 19: a slow QSY, and the 20 Hz retune tolerance measured at last
+
+Finding 9 added `DIV_RETUNE_HZ` = 20 and this document has recorded ever
+since that it "is a first number, not a measured one ... justified by what
+it must not break rather than by how far the dial can move before `h1/h0`
+really has changed", and that settling it wanted "a capture of a
+deliberate slow QSY across a band with a steady signal in view".
+
+`115357` is that capture. 7.197018 MHz `DIGL`, RADE V1, averaging 4.0 s,
+locked 93 % of the minute from two acquisitions with a mean pilot SNR of
+7.4 dB - and at t = 13.0 to 21.8 s the operator walks the dial **down 18
+hertz in nineteen one-hertz steps**.
+
+| | `115357` |
+|---|---|
+| steps | 19, over blocks 76-128 |
+| total movement | 18 Hz in 8.8 s |
+| resets, exact comparison | **19** |
+| resets, `DIV_RETUNE_HZ` = 20 Hz | **0** |
+
+### What the dial move can actually affect
+
+Only the reset. `ctx->frequency`, `ctx->ctun_frequency` and `ctx->offset`
+are read in exactly one place in `src/diversity_auto.c` - the three
+comparisons in `div_context_changed()`. The analysis window comes from the
+filter, the pilot bank from the mode, and `div_frame_off()` from the
+offset and the sidetone. So an 18 Hz dial move changes nothing the
+estimator computes, and the only question is whether throwing the estimate
+away was right.
+
+### Discarding the estimate would have been wrong, and the control says so
+
+`h1/h0` measured independently from the raw blocks over the passband
+(+560 to +2440 Hz in the tapped frame), first third of the walk against
+last third, beside a settled stretch of the same length taken later in the
+same capture:
+
+| | change in `h1/h0` |
+|---|---|
+| across the 18 Hz walk (blocks 76-128) | **-2.10 dB, +7.9 deg** |
+| control: settled, same length (blocks 180-232) | **+7.10 dB, +16.3 deg** |
+
+**The path moved more by itself, in nine seconds, than the dial move moved
+it.** An estimate that survives ordinary fading has no business being
+discarded for eighteen hertz, and the exact comparison would have
+discarded it nineteen times.
+
+### One thing that is not what it looks like
+
+Everything in this section is the radio's own recorded state, block by
+block, rather than a replay. The applied weight does move violently in
+that window - a mean
+block-to-block step of 0.44 against 0.04 over the settled stretch - and
+it would be easy to write that up as the retune damaging the loop. It is
+not. The RADE lock dropped at **block 68**, eight blocks *before* the
+first dial step, spent blocks 76 to 80 confirming, and re-locked at block
+81; what follows is the weight slewing from `|w|` 1.09 to about 5 as a
+fresh estimate builds. Locked runs 91 % across the walk against 100 %
+settled, and holding 9 % against 0 %, for the same reason.
+
+The two events overlap in time and are unrelated. This is the second time
+in this document that a plausible mechanism read off a recorded series
+turned out to be a coincidence - see the correction under Finding 8 - and
+it is worth the same warning: check the timeline before believing the
+story.
+
+**The 20 Hz tolerance is now measured rather than argued.** What it does
+not yet establish is where the tolerance stops being right; 18 Hz is
+inside it by two hertz, and a walk of several hundred hertz would say
+whether the number is generous or mean.
+
+## Finding 20: the wideband Sum weight assumes the two antennas have equal noise
+
+`000332` is the first capture where a wideband reference runs Sum on a
+pair of antennas whose noise floors are far apart, and it costs 2.1 dB.
+
+The Window and Carrier references end in one line:
+
+```c
+double den  = (div_auto_mode == DIV_AUTO_SUM) ? acc_xx : acc_yy;
+double sign = (div_auto_mode == DIV_AUTO_SUM) ? 1.0 : -1.0;
+div_apply_weight(sign * acc_xy_re / den, sign * acc_xy_im / den);
+```
+
+For Sum that is the window's own channel ratio and nothing else:
+**maximum ratio combining under the assumption that the two branches carry
+equal noise.** It is the right answer when they do, and there is no noise
+measurement in that reference to tell it otherwise - Finding 14 says as
+much, and adds a minimum-statistics floor tracker to publish the per-arm
+figure, which the Sum path does not use.
+
+On `000332` the arms are not equal. ADC1 is 2.78 dB down on signal and
+**6.31 dB down on noise**, so it is the better antenna by 3.5 dB - the
+same "quiet is not deaf" pattern Finding 13 found on 60 m, seen here by a
+wideband reference rather than by the correlator. Which antenna that was
+is not recorded: this capture has no note either.
+
+Scored with the split guard of Finding 18, over the whole minute:
+
+| | `000332` | `000747` |
+|---|---|---|
+| arm 0 alone | 27.43 dB | 18.10 dB |
+| arm 1 alone | **30.95** | **18.37** |
+| shipping Window / Sum, tau 0.2 s | 30.40 (**-0.55**) | 20.84 (+2.47) |
+| the channel ratio, per block - what the solve computes | **30.40** | 21.39 |
+| the same, scaled by the noise ratio `N0/N1` | **32.53 (+1.58)** | 21.30 |
+| ideal causal MVDR | 32.51 (+1.56) | 21.16 |
+| best single fixed weight, exhaustive search | 32.37 (+1.42), `\|w\|` +10.3 dB at +62 deg | 20.41 |
+
+The "channel ratio, per block" row reproduces the shipping figure to the
+second decimal on `000332`, which is what identifies the mechanism rather
+than merely suggesting it. Putting the noise ratio back recovers **2.13 dB** and lands
+within 0.02 dB of the ideal weight. The weight it wants is `|w|` = +10 dB
+where the loop applies -3 dB: not a small correction, a factor of twenty
+in power, and in the direction of the antenna the operator would assume
+was the worse one.
+
+`000747` is the control. There the arms are 2.9 dB apart in noise and the
+channel ratio dominates, so the two forms agree to 0.09 dB and the
+shipping loop is already within 0.4 dB of ideal - and 0.43 dB *ahead* of
+the best single fixed weight, which is tracking earning its keep again on
+the capture where the channel actually moves.
+
+### Why this has not shown up before
+
+It needs two things at once, and no earlier capture had both. The voice
+captures ran Window / Sum but their arms are only 2.4 to 2.5 dB apart on
+noise (Finding 4), where the correction is worth a few tenths. The
+mediumwave pair is 13 to 15 dB apart, which is far worse - but there the
+noise is 78 % correlated and arrives nine degrees from the signal, so
+Finding 16 measures the *entire* array gain available at 0.17 dB over the
+better antenna, and Window / Sum collected all of it by applying `w` =
++14.95 dB, which is the channel ratio and happened to be right. The 60 m
+pair, where the difference is largest, was recorded on RADE V1.
+
+`000332` is the first capture with a wideband reference, a Sum objective,
+arms far apart on noise, and a real prize on the table.
+
+Finding 14 already built the missing number. What it did not do is feed it
+to the Sum weight, and this is the first measurement that says what that
+is worth. **This has since been acted on**, though not by reading Finding
+14's figure - the floor tracker behind it turned out to have a fault of
+its own, described under "What was changed, and what it scored".
+
+## Finding 21: 20 m near the MUF, and where the optimum averaging time really comes from
+
+Three captures taken in one session on 2 September: analog voice and CW
+on 20 m, with the band close to its maximum usable frequency, and FT8 on
+30 m. They were recorded to answer a timing question, and they answer it -
+but not the way Finding 18 would predict.
+
+| | `002534` voice | `002710` CW | `003309` FT8 |
+|---|---|---|---|
+| band, mode | 14.195 MHz USB | 14.01194 MHz CWL | 10.136107 MHz USB |
+| engine window | -2850..-150 Hz | **-400..+400 Hz** | -3450..-150 Hz |
+| block | 170.7 ms (nfft 32768) | 341.3 ms (nfft 65536) | 85.3 ms (nfft 16384) |
+| operator's averaging | **0.2 s** | 3.4 s | 0.2 -> 2.7 -> 1.9 -> 0.2 s |
+| inter-arm coherence, passband | 0.783 | 0.636 | 0.413 |
+| **coherence time** of `h1/h0` | **~0.5 s** | ~1.0 s | ~4.1 s |
+| coherence bandwidth (`\|rho\|` = 0.5) | 188-375 Hz | - | 94-188 Hz |
+| arm 0 SNR / arm 1 SNR | +19.02 / +13.93 dB | +12.39 / +9.58 dB | +20.81 / +20.90 dB |
+
+`002534` has the fastest fading in this document: `|rho(h1/h0)|` falls to
+0.649 in one 171 ms block and 0.523 in two. `000747`, the previous
+fastest, took a whole second to reach 0.46. That is what 20 m near the MUF
+does, and it is the regime the operator asked about.
+
+The CW window is **-400..+400 Hz**, not the plain inversion of the filter:
+`div_shift_to_bin()` subtracts `div_frame_off()`, which in CW is the
+sidetone. See the correction under Finding 8, which this capture is the
+reason for.
+
+### The sweep, and the surprise
+
+`run_ref` over the whole 0.2-30 s slider, both wideband references, both
+objectives. SNR is guard-referred (split guard, per Finding 18), against
+the better arm:
+
+| tau | voice, Window Sum | voice, FSK/Digital Sum | FT8, Window Sum | FT8, FSK/Digital Sum |
+|---|---|---|---|---|
+| 0.2 s | -3.74 | -1.23 | **+0.75** | **+1.48** |
+| 0.5 s | -3.77 | -2.23 | +0.63 | +1.40 |
+| 1.2 s | -3.78 | -1.25 | +0.44 | +0.87 |
+| 3.4 s | -3.50 | -0.04 | +0.17 | +0.60 |
+| 10.4 s | **-3.45** | +0.68 | +0.18 | +0.74 |
+| 30 s | -3.49 | **+0.79** | +0.15 | +0.49 |
+| ideal causal | +1.37 | +1.37 | +2.04 | +2.04 |
+
+Two things fall out, and only one of them was expected.
+
+**On the fastest-fading capture in the set, the Sum objective wants a
+*long* average, not a short one.** `002534` fades in half a second and its
+best FSK/Digital Sum is at 30 s, two dB better than at 0.2 s. On the FT8
+capture, whose channel is eight times slower, the same reference wants
+0.2 s. The fading rate and the optimum averaging time run in opposite
+directions on these two.
+
+**And on Window Sum the averaging time does not matter at all** - 0.33 dB
+across a slider that spans two and a half orders of magnitude, on every
+capture. That mode is 3.5 dB adrift on `002534` for a reason that has
+nothing to do with timing. See Finding 22.
+
+### The rule that fits all five captures
+
+Finding 18 found Null improving monotonically as the average shortened on
+`000332` and `000747`, and read it as the loop chasing the channel. That
+is right as far as it goes, and Null behaves the same way here - `002534`
+nulls deepest at 0.2 s (-3.81 dB against -3.14 at 30 s). But the Sum
+results above do not fit "faster is better on a fast path", and the reason
+is that **the averaging time is set by whichever quantity in the solve is
+hardest to measure, not by how fast the channel moves.**
+
+- Where the estimate is easy - a strong, continuous, band-filling signal,
+  as in Findings 17 and 18 - shortening the average costs nothing and
+  collects the fading. Faster is better.
+- Where the estimate is fragile, lengthening it buys more than the fading
+  costs. On `002534` the fragile quantity is FSK/Digital's occupancy
+  split, which has to find noise-only bins inside a voice passband -
+  precisely the failure Finding 6 describes, where "SSB voice
+  intermittently fills the passband, so the median rides up with the
+  speech". Averaging thirty seconds of it produces a usable noise ratio;
+  averaging two tenths of a second does not.
+- On `003309` the same split has clean gaps between FT8 signals to work
+  in, so it is reliable at any averaging time and short wins again.
+
+The practical form of that: **Null wants the shortest average that still
+passes the coherence gate. Sum wants whatever the noise estimate needs**,
+which is short on a signal with quiet bins in the window and long on one
+without.
+
+### Holding, and why the slider has a floor in practice
+
+The coherence gate holds 37 to 68 % of blocks on these three captures at
+most settings, far more than the 23 % of `000747`. On `003309` it reaches **84 % at
+tau 30 s** - the accumulators average across FT8 signals that are not
+there at the same time, the reported coherence falls below 0.30, and the
+loop stops updating. That is the mechanism that eventually punishes a long
+average, and it appears in the numbers before the fading does.
+
+## Finding 22: a hot second antenna, and whether system gain has to be corrected before summing
+
+The operator's report had four parts: the second antenna has much more
+output; it raises the noise floor of the audio; it does not degrade the
+SNR; and setting the ADC1 step attenuator helps. Three of those are
+confirmed below. The third is true on two of the three captures and badly
+false on the voice one, where the loop gave away 3.6 dB. The capture that
+settles the attenuator question is `002710`, where it was moved twice
+while recording.
+
+### The imbalance, measured
+
+Guard-region noise floor, arm 1 against arm 0, on the three captures of
+2 September:
+
+| | `002534` | `002710` (before any ATT) | `003309` |
+|---|---|---|---|
+| arm 1 - arm 0, noise floor | **+12.26 dB** | **+13.20 dB** | **+9.78 dB** |
+| arm 1 - arm 0, passband | +7.29 dB | +9.28 dB | +9.93 dB |
+| **arm 1 - arm 0, SNR** | **-5.09 dB** | **-4.18 dB** | **+0.10 dB** |
+
+So the extra output is not extra signal. On `002534` arm 1 is 12.3 dB
+louder and 5.1 dB *worse*; on `003309` it is 9.8 dB louder and exactly as
+good. **A level difference says nothing about which antenna to prefer** -
+which is the same lesson as Finding 13's quiet doublet, arriving from the
+opposite direction.
+
+### What the operator was hearing
+
+`002534`, whole minute, weight applied one block late, everything referred
+to arm 0 alone:
+
+| weight | `\|w\|` | output level | output noise floor | SNR | vs arm 0 |
+|---|---|---|---|---|---|
+| arm 0 alone | 0 | +0.00 dB | +0.00 dB | +19.02 | 0.00 |
+| **as it ran on air** | 1.97 | **+14.78 dB** | **+18.31 dB** | +15.41 | **-3.60** |
+| equal-noise MRC = what the solve computes | 1.17 | +15.05 | +15.73 | +18.32 | -0.69 |
+| noise-aware MRC | 0.072 | +1.92 | +0.56 | +20.39 | **+1.37** |
+| ideal causal MVDR | 0.074 | +1.87 | +0.52 | +20.39 | +1.37 |
+
+The audio was **14.8 dB louder with a noise floor 18.3 dB higher**, and
+the SNR was **3.6 dB worse than simply listening to ADC0**. The level and
+the noise floor are exactly as reported. The SNR is not: on this capture
+it was degraded, and the 18.3 dB of extra noise is not a cosmetic
+consequence of a louder output but 3.6 dB of real loss hidden inside it.
+On `003309` the same loop cost only 0.61 dB and on `002710` plateau C it
+gained, which is why the effect can be heard for a long time before it is
+believed.
+
+### The mechanism is Finding 20, on a second band and a second mode
+
+`div_apply_weight(sign * acc_xy_re / den, ...)` gives Sum the channel
+ratio and nothing else, so the Window and Carrier references assume the
+two branches carry equal noise. Here they are 12.3 dB apart. The two MRC
+forms differ by exactly that factor and the measurement says so: the
+equal-noise weight is `|w|` 1.165, the noise-aware weight is 0.072, and
+the ratio is **16.2 against a measured noise ratio of 16.8**.
+
+The cleanest confirmation is that a reference which *does* measure the
+branch noise gets it right on the same blocks. `div_digital_solve()` calls
+`div_mvdr2(r00, r11, ...)` with `r00` and `r11` accumulated over the
+**unoccupied** bins of the window, so FSK/Digital has a genuine per-arm
+noise term where Window has none:
+
+| best Sum over the whole tau sweep | Window | FSK/Digital | ideal |
+|---|---|---|---|
+| `002534` voice | -3.45 dB, level +14.1 | **+0.79 dB, level +2.2** | +1.37, level +1.9 |
+| `002710` CW | -1.20 dB, level +13.0 | **+0.74 dB, level +3.0** | +1.60, level +3.2 |
+| `003309` FT8 | +0.76 dB, level +17.1 | **+1.48 dB, level +3.3** | +2.04, level +3.5 |
+
+**On all three, FSK/Digital's Sum beats Window's Sum by 0.7 to 4.2 dB and
+produces an output 10 to 14 dB quieter.** The two references share
+`div_mvdr2()` and differ in one input. This reverses, for badly matched
+arms, the advice under Findings 6 and 14 - which were measured on pairs
+2.4 to 2.5 dB apart, where the correction is worth a few tenths and
+FSK/Digital's other weaknesses dominate.
+
+### The attenuator experiment
+
+`002710` contains the operator's own test. ADC1's noise floor steps down
+twice while ADC0's stays at -67.1 dB throughout:
+
+| plateau | blocks | t | arm 1 - arm 0, floor | arm 1 SNR | arm 0 SNR |
+|---|---|---|---|---|---|
+| A, as found | 2-74 | 0-25 s | **+13.20 dB** | +9.72 dB | +13.90 dB |
+| B, ~6 dB in | 78-134 | 26-46 s | **+7.23 dB** | +9.44 dB | +11.88 dB |
+| C, ~12 dB in | 138-174 | 46-59 s | **+1.49 dB** | +9.47 dB | +9.16 dB |
+
+Two results, and they are the answer to the question.
+
+**The attenuation cost arm 1 nothing.** Its SNR is +9.72, +9.44, +9.47 dB
+across 12 dB of attenuation - flat to a quarter of a decibel. The control
+that the band was not simply quiet is arm 0, untouched by the attenuator,
+whose SNR fell 4.7 dB over the same minute as the path faded.
+
+**And the optimum did not move either:**
+
+| plateau | ideal `\|w\|` | ideal SNR | vs better arm | as it ran, vs better arm |
+|---|---|---|---|---|
+| A | 0.107 | +15.59 | **+1.68** | **-3.35** |
+| B | 0.255 | +13.47 | **+1.59** | **-3.50** |
+| C | 0.624 | +11.36 | **+1.89** | **+1.78** |
+
+The ideal weight simply rescales - `|w|` rises with each 6 dB step, which
+is what a weight referred to a quieter arm 1 must do - and the gain it
+delivers is 1.6 to 1.9 dB at every setting. **The available SNR is
+invariant to system gain.** That is not a surprise: scaling arm 1 by
+`alpha` scales `h1` by `alpha` and `R11` by `|alpha|^2`, the MVDR weight
+scales by `1/alpha`, and the combination is identical. Finding 11 measured
+the same invariance from the other side, where a x10 input scaling left
+the answer bit-identical.
+
+What is *not* invariant is what the shipping loop achieved: **-3.35, -3.50
+and +1.78 dB**. At plateau C the operator's Window / Sum weight is within
+0.11 dB of ideal; at plateau A it is 5.0 dB adrift. Equalising the two
+chains did not improve the estimate - it made the estimator's assumption
+true.
+
+### So: does system gain have to be corrected before summing?
+
+**For SNR, no in principle and yes in practice - and the practice has now
+been fixed.** The optimum weight and the SNR it delivers do not depend on
+the branch gains. The Window and Carrier Sum weight was not scale-
+invariant, because it assumed the branch noise was equal, and matching the
+chains was what made that assumption hold: an effective workaround, worth
+5.1 dB here, for a missing term in the solve. That term is now in the
+solve - see "What was changed, and what it scored" - so on a path where
+the noise ratio can be measured at all, the attenuator setting no longer
+decides whether Sum helps or hurts. Where it cannot be measured, because
+the signal never stops, the old behaviour is what remains and equalising
+the chains is still worth doing.
+
+**For level, yes, and no attenuator setting fixes it.** `src/receiver.c`
+forms `i0 + (div_cos * i1 - div_sin * q1)`: arm 0 is pinned at unity and
+nothing normalises the result, so the array's gain to the wanted signal is
+`g = 1 + w * (h1/h0)` and the output level follows it. Even the *ideal*
+weight raises the level - measured median `20 log|g|` of +0.21, +1.50 and
++2.38 dB on the three captures, with a p90 of +2.5 to +6.0 dB - so an
+operator switching diversity on hears a step and a higher absolute noise
+floor even when the SNR improves. Dividing the combined output by `g`
+would hold the wanted signal at exactly its arm-0 level and let the noise
+floor fall by the SNR gain instead, which is what diversity is supposed to
+sound like. **That is not implemented and is not being implemented here**;
+it is one complex divide per block by a quantity the solve already has.
+
+### Two cautions
+
+A digital scale factor is not a step attenuator. Attenuating a hot antenna
+reduces what the antenna hears but not what the receiver adds, so far
+enough down the arm becomes receiver-noise limited and its SNR really does
+degrade. On `002710` that had not begun: arm 1's own floor fell 5.97 and
+5.74 dB across two nominal 6 dB steps, and its SNR moved 0.25 dB. The
+headroom is not unlimited and this capture does not say where it ends.
+
+And the capture cannot show the attenuator directly. `div_context_changed()`
+compares `att0` and `att1`, so each step reset the statistics on the
+radio - but `struct divcap_block` mirrors no attenuator field and
+`m.rec_flags` is hardcoded to zero, so neither the values nor the resets
+are in the file. The plateaus above are inferred from arm 1's own noise
+floor, and a `run_ref` replay does not reproduce the two resets. Both are
+devtool gaps; see "What is still open".
+
+## Finding 23: a band full of stations, and one weight to serve them all
+
+`003309` is 30 m FT8 - the operator's note is that there are many stations
+and they should not correlate. Per signal they correlate extremely well.
+It is the passband that does not.
+
+Per 93.75 Hz bin, averaged over the minute, over the operator's 3.3 kHz
+filter:
+
+| | value |
+|---|---|
+| inter-arm coherence, whole passband | **0.413** |
+| best individual bins | **0.946, 0.904, 0.862, 0.819, 0.814** |
+| `\|h1/h0\|` across the bins carrying signal | -25 to +11 dB |
+| `arg(h1/h0)` across the same bins | **-170 to +174 deg, circular sd 68 deg** |
+| `\|rho(h)\|` across 94 / 188 / 375 Hz | 0.658 / 0.214 / 0.036 |
+
+Each FT8 signal is 50 Hz wide and arrives from its own direction, so each
+has its own differential phase, and twenty-four bins carrying signal spread
+that phase around the whole circle. The aggregate coherence is what is
+left after averaging them, and 0.413 is **not** the coherence of any
+signal in the passband - it is the resultant of two dozen of them.
+
+That matters operationally, because 0.413 is comfortably above
+`div_auto_coherence_min` = 0.30. **The gate passes, and the weight the
+loop then produces is a compromise aimed at no station in particular.**
+
+### What it costs, and what it does not
+
+The scalar limit here is the sharpest in the document. Weight fitted on
+block n, applied to block n+1:
+
+| | `003309` |
+|---|---|
+| null, one complex weight for the whole band | -2.07 dB |
+| null, an independent weight per 93.75 Hz bin | **-7.46 dB** |
+| difference | **5.39 dB** |
+
+Against 2.17 dB on `000747` and 0.37 dB on `000332` (Finding 17), this is
+the largest per-bin advantage measured - as it should be, since the cause
+here is not one path with several modes but two dozen paths with one
+direction each.
+
+And yet a scalar weight is still worth **+2.04 dB** on Sum, because the
+two antennas happen to have equal SNR on this capture (+20.81 against
++20.90 dB) and the phase spread has a preferred direction rather than
+being uniform - a circular sd of 68 degrees leaves a mean resultant of
+about 0.49. Narrowing the window onto individual signals does not reliably
+improve on that: the three strongest coherent groups give +1.37, +3.03 and
++2.68 dB against the whole passband's +2.04, and the single strongest bin
+gives +0.36 because it is already at 30 dB SNR and has nothing to gain.
+
+So the honest summary is not "there is no correlation to find". It is that
+**the displayed coherence understates the per-signal coherence by a factor
+of two, and the weight is an average over stations that want different
+weights.** For a band like this the case for a narrow, hand-placed window
+- or the Carrier reference - is that it measures one signal instead of
+averaging two dozen, not that it is bound to score better.
+
 ## False alarms
 
 Locks produced on captures with no RADE signal anywhere. Cells are
@@ -1663,12 +2576,20 @@ holds is the false-alarm line, and that part stands.
   11.3 to 22.7 dB above the mirror band on four captures across 60 m and
   160 m (Finding 12). Checked on voice and on the modem, on both
   sidebands.
-- **The flat scalar channel model is right.** `h1/h0` measured per
-  subcarrier varies by +/-0.3 to +/-0.63 dB in magnitude and +/-3 to
-  +/-12 degrees in phase across 750-2200 Hz. Differential delay between
-  the arms is under 6 us. A single complex weight is the correct model.
-  This rests on the RADE captures; a voice passband cannot resolve it
-  either way (Finding 6).
+- **The flat scalar channel model is right on a one-mode path, and only
+  there.** `h1/h0` measured per subcarrier varies by +/-0.3 to +/-0.63 dB
+  in magnitude and +/-3 to +/-12 degrees in phase across 750-2200 Hz on
+  the RADE captures, with differential delay under 6 us; `000332` and
+  `115357` agree, at 1.0 to 1.7 dB of ripple, 7 to 12 degrees of residual
+  and a differential coherence bandwidth wider than the whole passband.
+  **`000747` breaks it**: 7 dB of ripple, 83 degrees of residual and a
+  coherence bandwidth of 188 Hz, which is twenty independent frequency
+  cells inside one filter (Finding 17). A single complex weight remains
+  the right *architecture* - it is what `receiver.c` applies, and the
+  estimator's answer is the correct one given that constraint - but on a
+  multi-mode low-band path it is an approximation costing a measured
+  2.2 dB, not a model. A voice passband cannot resolve the question either
+  way (Finding 6).
 - **The per-arm statistic gets the sign right.** Across thirteen captures
   it picks the antenna that decodes or measures better 11 to 12 times out
   of 13 on the wideband references, including the mediumwave pair where
@@ -1681,6 +2602,36 @@ holds is the false-alarm line, and that part stands.
   voice captures all three references hold through the gaps between overs.
   None of them invents an answer from noise, including with the 160 m
   interferer at full strength on ADC0.
+- **Level says nothing about which antenna is better.** ADC1 has been
+  measured 13 to 15 dB *louder* and better (Finding 16), 9.8 dB louder and
+  exactly equal (`003309`), and 12.3 dB louder and 5.1 dB worse
+  (`002534`). Only the ratio of signal to noise decides, which is what
+  MVDR computes and what a listener cannot hear.
+- **The available SNR does not depend on the branch gains; what the
+  shipping Sum weight achieves does.** Scaling one arm rescales `h` and
+  `R` together and the optimum weight rescales inversely, so the
+  combination is unchanged - measured directly across 12 dB of step
+  attenuator in Finding 22, where the ideal gain held at +1.6 to +1.9 dB
+  at every setting, and from the other side in Finding 11, where a x10
+  input scaling left the answer bit-identical. The Window and Carrier Sum
+  weight is the exception, because it assumes the branch noise is equal
+  (Finding 20).
+- **Shortening the average helps Null; what it does to Sum depends on the
+  estimate, not on the fading.** The null deepens across the whole
+  0.2-30 s slider on every fast-path capture - 1.1 and 2.2 dB on `000332`
+  and `000747` (Finding 18), and again on `002534`. Sum is different: it
+  moves 0.33 and 0.57 dB on the two September captures, wants **30 s** on
+  `002534` whose channel fades in half a second, and wants 0.2 s on
+  `003309` whose channel is eight times slower. The averaging time is set
+  by whichever quantity in the solve is hardest to measure - on `002534`
+  that is FSK/Digital's occupancy split inside a voice passband
+  (Finding 21).
+- **The coherence gate declines the right blocks.** On `000747` at
+  tau 0.2 s it holds 23 % of blocks, and an ideal weight reaches -3.93 dB
+  on the ones it passed against -0.23 dB on the ones it held (Finding 18).
+  Finding 10's limit still stands - the gate cannot separate a signal both
+  antennas hear from noise both antennas hear - but on this path it is
+  giving up nothing.
 - **Reception is often close to anti-phase, but not always.**
   `arg(h1/h0)` measured -177, -161, -162, -105, -7 and -4 degrees across
   the 40/80 m overs, and +82, -36 and +24 on 60 m. It is just the path;
@@ -1733,14 +2684,72 @@ holds is the false-alarm line, and that part stands.
   either antenna alone. The case where diversity actually matters is the
   one that is hard to catch and easy not to bother recording.
 
-- **The 20 Hz retune tolerance is a first number, not a measured one.**
-  It is justified by what it must not break (the correlator's tracking
-  range, the narrowest filter) rather than by how far the dial can move
-  before `h1/h0` really has changed. That still wants a capture of a
-  deliberate slow QSY across a band with a steady signal in view, so the
-  weight can be watched as the frequency walks away from where it was
-  measured.
+- **The 20 Hz retune tolerance is measured at its lower end only.**
+  Finding 19 closes the original item: on `115357` an 18 Hz walk moved
+  `h1/h0` by 2.10 dB where ordinary fading moved it 7.10 dB over the same
+  nine seconds, so holding the estimate was right and the exact comparison
+  would have thrown it away nineteen times. What is not settled is where
+  the tolerance *should* stop. 18 Hz is inside 20 by two hertz, so the
+  capture says the number is not too large and says nothing about whether
+  it is too small. A walk of several hundred hertz on a steady signal
+  would give the other end of the curve.
 
+- **The default averaging time may be wrong for a fast path, and one
+  band is not enough to move it.** Finding 18 measures the whole
+  0.2-30 s slider on two captures and finds Null monotonically better as
+  the average shortens - 2.22 dB on `000332`, 1.11 dB on `000747` -
+  against a shipping `div_auto_tau` of 2.0 s. That is not sufficient to
+  change a default. Both captures are on one band, on one path, on one
+  afternoon; every other capture in this document was taken on a path that
+  barely moves, where a short average mostly adds variance; and Finding 6
+  measured coherence weighting earning its place chiefly by keeping the
+  *gate* open, which a short average could undo. What would settle it is
+  the same `run_ref --tau` sweep across the existing capture set, so that
+  the cost on a slow path is measured rather than assumed. It is an
+  afternoon's work with the tools already committed.
+- **Per-bin combining is the only route to the remaining 2.2 dB, and
+  nothing has been designed.** Finding 17 measures a scalar weight at
+  -3.06 dB and an independent weight per 93.75 Hz bin at -5.23 dB on
+  `000747`, out of sample. Collecting that means a weight per bin or an
+  FIR in `receiver.c` where there is now one complex multiply, twenty
+  times the estimation on a channel that decorrelates in a second, and a
+  CPU budget nobody has looked at. The measurement says the headroom is
+  real; it says nothing about whether it is affordable. A second
+  frequency-selective capture would say whether 2.2 dB is typical or is
+  one path.
+- **The Sum weight now carries the branch noise ratio; what is left is
+  the estimator behind it.** The term itself is in (see "What was
+  changed"), and it recovers most of the 3.6 to 5.0 dB Findings 20 and 22
+  measured. Two limits are known and neither is closed. On a signal that
+  never stops the windowed minimum sits on faded signal rather than noise
+  - `000332` reads +1.3 dB against a true +6.3 dB - and the 6 dB
+  clearance test cannot tell a 14 dB fade from a gap. On `003309` the
+  correct magnitude scores 1.8 dB *worse* than the old wrong one, because
+  the phase it multiplies is an average over two dozen stations that want
+  different phases (Finding 23). Both want more captures rather than more
+  tuning: six variants of the estimator were tried against seventeen
+  scored points and the mean moved between -0.20 and +1.97 dB, which is a
+  set too small to choose on.
+- **The combined output has no gain normalisation.** `receiver.c` pins
+  arm 0 at unity, so the array's gain to the wanted signal,
+  `g = 1 + w * h1/h0`, lands directly on the audio: measured median
+  +0.21, +1.50 and +2.38 dB with the *ideal* weight on the three
+  September captures, and +14.8 dB with the shipping one on `002534`
+  (Finding 22). Dividing the output by `g` would hold the signal at its
+  arm-0 level and let the noise floor fall by the SNR gain instead, which
+  is both what an operator expects and what makes an A/B against
+  diversity-off meaningful. It is one complex divide per block by a
+  quantity the solve already has. What is not known is how it interacts
+  with the slew, with Hold, and with the AGC - a weight that is holding
+  while the channel moves would have a stale `g` - so it wants measuring
+  before it is written.
+- **How far a hot antenna can be attenuated before it costs SNR is not
+  known.** On `002710` arm 1's SNR moved 0.25 dB across 12 dB of step
+  attenuator, so nothing had begun; its own noise floor fell 5.97 and
+  5.74 dB across two nominal 6 dB steps, and the shortfall in the second
+  is the first hint of the receiver's own floor appearing. A capture
+  sweeping the attenuator to 30 dB in 6 dB steps on a steady signal would
+  give the whole curve and takes one minute.
 - **FSK/Digital occupancy has no false-alarm control.** On `231532`, with
   no signal anywhere, the mode produces a weight on 30 % of blocks,
   through the normal path. Three bins clearing a 6 dB-over-median
@@ -1762,6 +2771,15 @@ holds is the false-alarm line, and that part stands.
   tracking two different equilibria. `--verify` cannot tell those apart
   from a broken replay, which is precisely why it needs a capture armed
   cold.
+- **The attenuator experiment cannot be replayed on the capture that
+  contains it.** The capture writer now records `att0` and `att1` (format
+  version 2) and `run_ref` follows them, so the reset an attenuator change
+  causes is reproducible from here on. `002710` was taken before that and
+  is a v1 file: its two steps are still only visible as a step in arm 1's
+  own noise floor, and a replay of it runs both attenuators at zero
+  throughout. Anything in Finding 22 that depends on the resets - the
+  tau 10.4 and 30 s rows in particular - wants a fresh capture of the same
+  experiment to be checked against.
 - **The capture writer does not flag a retune.** `202743` moves 85 kHz at
   block 9 and `rec_flags` stays zero for all 351 blocks. Devtool defect,
   and only a nuisance while the devtools exist, but it means the flag
@@ -1968,6 +2986,147 @@ also says something the on-air captures cannot: with the loop on the
 right alias, MVDR recovers `conj(h)` to 0.6 dB and 2.7 degrees on the
 synthetic channel, where before the fix it was 4.0 dB and 17 degrees out.
 
+### `src/diversity_auto.c` — the Sum weight carries the branch noise ratio
+
+Findings 20 and 22. The Window and Carrier references formed Sum as
+`acc_xy/acc_xx`, which is `conj(h1/h0)` and nothing else - maximum ratio
+combining under the assumption that the two branches carry equal noise.
+They now multiply it by `N0/N1`, which is what makes it maximum ratio
+combining.
+
+The ratio is the hard part, because these two references have no noise
+bins to measure one in. `div_arm_nratio_update()` takes it by minimum
+statistics over a bounded window: a 0.5 s smoothing of the unweighted
+window power on each arm, the minimum of the pair over the current
+`DIV_NRATIO_WIN` = 5 s slot and the one before it, published only when the
+smoothed power stands `DIV_ARM_MIN_DB` above that minimum on both arms.
+Both arms are taken from the same slot so the pair is contemporaneous. On
+a signal with no gaps the clearance test never passes, no ratio is
+published, and the weight is exactly what it was before.
+
+Measured against the guard-region truth, offline, on the captures with
+real gaps in them:
+
+| | estimator | measured truth |
+|---|---|---|
+| `002534` | **-11.90 dB** | -12.26 dB |
+| `003309` | **-9.35 dB** | -9.83 dB |
+| `000332` (no gaps, 14.6 dB of fading) | +1.33 dB | +6.31 dB |
+
+Scored through `run_ref` at five averaging times on four captures,
+against the better antenna, with the split guard of Finding 18:
+
+| capture | tau | before | after | ideal |
+|---|---|---|---|---|
+| `002534` voice | 30 s | -3.49 | **-1.02** | +1.37 |
+| `002534` voice | 3.4 s | -3.50 | **-1.27** | +1.37 |
+| `002534` voice | 0.2 s | -3.74 | -2.98 | +1.37 |
+| `002710` CW | 0.2 s | -1.78 | **+0.59** | +1.60 |
+| `002710` CW | 10.4 s | -2.04 | **-0.17** | +1.60 |
+| `003309` FT8 | 0.2 s | +0.75 | **-1.05** | +2.04 |
+| `000332` | 10.4 s | -0.88 | -0.75 | +1.56 |
+| `000332` | 0.2 s | -0.55 | **-1.15** | +1.56 |
+
+Seventeen points in all: **twelve improve, five do not, and the mean is
++0.49 dB.** The gains are where the change exists to help - `002534` and
+`002710`, whose arms are 12 to 13 dB apart on noise - at +0.8 to +2.5 dB,
+and the audio level comes down with them, from +14.8 dB over arm 0 to
++6.4 dB on `002534`.
+
+Three things this does **not** do, all of them measured rather than
+supposed.
+
+It does not reach the ideal weight. On `002534` it lands 2.4 dB short:
+the estimator reads -11.9 dB where the truth is -12.3, which is close, but
+the loop's channel estimate and the coherence gate account for the rest.
+The mode went from 3.6 dB *below* the better antenna to 1.0 dB below it,
+which is most of the defect and not all of it.
+
+It regresses on `003309`, by 1.6 to 1.9 dB at every averaging time, and
+the estimator is not at fault there: it reads -9.35 dB against a truth of
+-9.83. What happens is Finding 23. That passband holds two dozen stations
+whose `arg(h1/h0)` covers the whole circle, so the loop's *phase* is an
+average over signals that want different phases; a large `|w|` approximates
+"use arm 1 alone" and is safe, while the correct magnitude with a
+meaningless phase partially cancels. The old behaviour scored well there
+by accident. This is the cost of being right about the magnitude on a band
+where a scalar weight cannot be right about anything else, and it is an
+argument for narrowing the window on such a band, not against the noise
+ratio.
+
+And it under-corrects on a continuous signal. `000332` never stops, so the
+windowed minimum sits on faded signal rather than noise and reads +1.3 dB
+against a true +6.3 dB. The clearance test passes because the fading is
+14.6 dB deep, which is more than the 6 dB the test asks for. Cost: 0.6 dB
+at tau 0.2 s, 0.1 dB gained at 10.4 s. A test that separated a deep fade
+from a gap would fix it and is not obvious; requiring two consecutive
+windows to agree within 3 dB was tried, and it refused the CW capture as
+well and gave up 1.5 dB there.
+
+### `src/diversity_auto.c` — one fault the fix turned up
+
+The floor tracker's minimum can be the startup transient rather than the
+band. `arm_fast0`/`arm_fast1` begin at zero, so the first blocks after a
+reset are quieter than anything that follows, and a minimum seeded from
+one of them sits far below the signal for as long as
+`DIV_FLOOR_RISE_DB` - a fifth of a decibel a second - takes to climb out.
+On a signal with gaps the gaps pull it back and nothing shows. On one
+without, the clearance test passes anyway and a ratio of two *signals* is
+read as a ratio of two noises: on the synthetic continuous carrier in
+`test_window` that inverted the Sum weight outright, +2.09 dB where
+-2.11 dB is right.
+
+`div_arm_nratio_update()` therefore keeps its own smoother, seeded from
+its first block. The shared `arm_floor0`/`arm_floor1` are left exactly as
+they were, because the per-arm figure of Finding 14 is measured on them
+and seeding them is *worse* - it sets the floor to the first block's power,
+signal included, and on a signal with no gaps nothing ever pulls it down
+again. That was tried and cost 0.3 to 2.0 dB on every capture.
+
+### `test/diversity/test_window.c` — the CW passband, in both CW modes
+
+Finding 8's second correction. A CW filter does not land at the plain
+inversion of `filter_low..filter_high`: `rx_set_filter()` folds the
+sidetone in, `div_shift_to_bin()` takes it back out, and the window lands
+symmetrically about the zero beat in CWL and CWU alike. The code was
+always right and the document was wrong for two findings.
+
+`test_cw_follow` pins it with the window following the filter, which is
+what an operator actually runs and what the old `test_cw_zero` did not
+cover. Four cases: a note 100 Hz off the dial, which is inside the true
+window and outside the plain-inversion one, must be **tracked** in CWL and
+in CWU; a note at +900 Hz, which is inside the plain-inversion window and
+outside the true one, must be **ignored** in both. A regression that drops
+the sidetone from `div_shift_to_bin()` fails all four.
+
+### `src/diversity_capture.h` — the capture records both attenuators
+
+A devtool change, and the one open item it closes. `div_context_changed()`
+compares `att0` and `att1`, so moving either resets the statistics; the
+capture recorded neither, so on `002710` - where the operator stepped ADC1
+twice while recording - the settings had to be inferred from arm 1's own
+noise floor and a replay could not reproduce the resets.
+
+`att0` and `att1` occupy what was `pad0` plus the padding the compiler was
+already inserting before `centre`, so the block record is the same 208
+bytes and **a v1 capture still replays**; `DIVCAP_VERSION` goes to 2 and
+the tools say once that a v1 file's attenuators are unknown rather than
+letting two zeros be read as two settings. `run_ref` follows them block by
+block, `replay_rade` prints them, and `test_capture` round-trips them.
+
+### `src/diversity_menu.c` — the Averaging slider is geometric
+
+Findings 18 and 21 both turn on settings below a second, and on a linear
+0.2-30 s scale everything below five seconds sits in the first sixth of
+the travel. The widget now carries a position and converts: equal ratio
+per pixel, which is the natural spacing for a time constant, putting
+**0.2 to 5 s in 64 % of the travel**. A thousand steps over a 150:1 range
+is half a percent a step, so a round trip through the widget moves the
+value by less than a quarter of a percent - the default 2.0 s comes back
+as 2.0046. Nothing else changes: `div_auto_tau` is still seconds
+everywhere, including over the client/server link and in the properties
+file.
+
 ### What was thrown away
 
 The FSK/Digital occupancy guard written for Finding 8. It moved the score
@@ -2030,11 +3189,49 @@ takes for the "unguarded" column. `src/` is not touched, and the copy is
 not worth committing - two edits against a generated file are quicker to
 redo than to maintain.
 
-The independent channel and noise figures in Findings 13 and 16 need no
-tools at all: read the blocks out of the `.divc` with the layout in
-`src/diversity_capture.h`, FFT each arm, and take the cross-spectrum over
-the modem band for `h1/h0` and over the guard bins for `R`. Being a
-separate implementation is the whole point of them.
+The independent channel and noise figures in Findings 13, 16, 17, 19 and
+20 need no tools at all: read the blocks out of the `.divc` with the
+layout in `src/diversity_capture.h`, FFT each arm, and take the
+cross-spectrum over the modem band for `h1/h0` and over the guard bins for
+`R`. Being a separate implementation is the whole point of them.
+
+Findings 21 to 23 use the same arrangement as 17, 18 and 20, with the
+guard regions moved to suit each capture: +1000..+3000 Hz fit and
++3500..+6000 Hz score on `002534`, -4000..-2000 and -7000..-5000 on
+`002710`, +1000..+3000 and +4000..+6000 on `003309`. The CW capture is cut
+at 8192 samples rather than 2048, because its window is 800 Hz wide and
+93.75 Hz bins do not resolve it.
+
+**The CW window is `-(filter + sidetone)`, not `-filter`.** Finding 8 got
+this wrong and nothing caught it until a third CW capture was set up. Take it from
+`div_shift_to_bin()` and `div_frame_off()` rather than from the inversion
+rule, or check it the way it was checked here: average the spectrum over
+the capture and see which candidate band stands above the band median.
+
+Findings 17, 18 and 20 use one arrangement consistently, and repeating
+them means repeating it. Each 32768-sample block is cut into sixteen
+2048-sample sub-blocks, Hann windowed, giving 93.75 Hz bins and 10.7 ms of
+time resolution; the passband is the operator's filter reflected about
+zero, per the sideband rule. Two guard regions are taken, **+1000 to
++3000 Hz** and **+3500 to +6000 Hz** in the tapped frame, both clear of
+the passband on these captures and both clear of the interferer `000332`
+carries at +6.75 to +7.4 kHz. Anything that *fits* a weight sees only the
+first; anything that *scores* one sees only the second. That split is not
+fastidiousness - scoring on the fitting region gave `000332` a Sum figure
+4.9 dB over the better antenna, which is Trap 1 and is impossible.
+
+The tau sweep in Finding 18 is `run_ref` as committed, one run per point:
+
+```
+./run_ref cap.divc --ref band --mode null --tau 0.2 --out w.csv
+```
+
+with the weight series applied to the capture one block after the samples
+that produced it - `run_ref` writes the weight the engine had *after*
+block n, and the radio applies it to block n+1. The "ideal" columns are
+the best causal two-branch weight from the same EWMA at the same lag, so
+the estimator is compared with its own ceiling rather than with a
+different objective.
 
 Two cautions for anyone redoing the Finding 16 arithmetic. The block
 record is 208 bytes with the layout in `src/diversity_capture.h`; the
