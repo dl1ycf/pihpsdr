@@ -47,6 +47,39 @@ static GtkWidget *ref_combo = NULL;
 static GtkWidget *follow_b = NULL;
 static GtkWidget *centre_spin = NULL;
 static GtkWidget *width_spin = NULL;
+//
+// The Averaging slider is geometric, not linear.
+//
+// The control spans 0.2 to 30 s and the interesting part of it is the
+// short end: Null wants the shortest average that still passes the
+// coherence gate, and the difference between 0.2 and 0.5 s is worth more
+// than the difference between 20 and 30 s. Laid out linearly, everything
+// below five seconds sits in the first sixth of the travel and cannot be
+// set accurately; laid out geometrically - equal ratio per pixel, which
+// is the natural spacing for a time constant - 0.2 to 5 s occupies 64 %
+// of it. See Findings 18 and 21 in docs/diversity-measurements.md.
+//
+// The widget therefore carries a position, 0 to DIV_TAU_STEPS, and the
+// two functions below convert. A thousand steps over a 150:1 range is
+// half a percent a step, so a round trip through the widget moves tau by
+// less than a quarter of a percent.
+//
+#define DIV_TAU_MIN     0.2
+#define DIV_TAU_MAX    30.0
+#define DIV_TAU_STEPS  1000.0
+
+static double div_tau_from_pos(double pos) {
+  return DIV_TAU_MIN * pow(DIV_TAU_MAX / DIV_TAU_MIN, pos / DIV_TAU_STEPS);
+}
+
+static double div_tau_to_pos(double tau) {
+  if (tau < DIV_TAU_MIN) { tau = DIV_TAU_MIN; }
+
+  if (tau > DIV_TAU_MAX) { tau = DIV_TAU_MAX; }
+
+  return DIV_TAU_STEPS * log(tau / DIV_TAU_MIN) / log(DIV_TAU_MAX / DIV_TAU_MIN);
+}
+
 static GtkWidget *tau_scale = NULL;
 static GtkWidget *hang_scale = NULL;
 static GtkWidget *coh_scale = NULL;
@@ -938,7 +971,7 @@ static void div_populate_from_settings(void) {
 
   if (weight_combo) { gtk_combo_box_set_active(GTK_COMBO_BOX(weight_combo), div_auto_weighting); }
 
-  if (tau_scale)    { gtk_range_set_value(GTK_RANGE(tau_scale), div_auto_tau); }
+  if (tau_scale)    { gtk_range_set_value(GTK_RANGE(tau_scale), div_tau_to_pos(div_auto_tau)); }
 
   if (hang_scale)   { gtk_range_set_value(GTK_RANGE(hang_scale), div_auto_hang); }
 
@@ -1165,8 +1198,21 @@ static void hang_cb(GtkWidget *widget, gpointer data) {
   div_send_settings(DIV_ACTION_NONE);
 }
 
+//
+// The widget's own value is a position, so it has to be told what to
+// print. Two decimals below a second, where the steps are 5 ms and the
+// operator is choosing between 0.20 and 0.25; one above it, where they
+// are not.
+//
+static gchar *tau_format_cb(GtkScale *scale, gdouble value, gpointer data) {
+  (void)scale;
+  (void)data;
+  const double tau = div_tau_from_pos(value);
+  return g_strdup_printf(tau < 1.0 ? "%.2f" : "%.1f", tau);
+}
+
 static void tau_cb(GtkWidget *widget, gpointer data) {
-  div_auto_tau = gtk_range_get_value(GTK_RANGE(widget));
+  div_auto_tau = div_tau_from_pos(gtk_range_get_value(GTK_RANGE(widget)));
   div_send_settings(DIV_ACTION_NONE);
 }
 
@@ -1456,13 +1502,20 @@ void diversity_menu(GtkWidget *parent) {
   gtk_widget_set_tooltip_text(tau_label,
                               "Time constant for the gain/phase estimate. "
                               "Longer is steadier but follows fading more slowly. "
-                              "RADE over an HF path usually wants several seconds.");
+                              "RADE over an HF path usually wants several seconds; "
+                              "a fast path - 20 m near the MUF, or the low bands - "
+                              "wants a fraction of one, and Null wants the shortest "
+                              "setting that still holds a lock. The scale is "
+                              "geometric, so most of its travel is below five "
+                              "seconds.");
   gtk_widget_set_name(tau_label, "boldlabel");
   gtk_widget_set_halign(tau_label, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), tau_label, 0, 14, 1, 1);
-  tau_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.2, 30.0, 0.1);
+  tau_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, DIV_TAU_STEPS, 1.0);
+  gtk_scale_set_digits(GTK_SCALE(tau_scale), 2);
+  g_signal_connect(G_OBJECT(tau_scale), "format-value", G_CALLBACK(tau_format_cb), NULL);
   gtk_widget_set_size_request(tau_scale, 300, 25);
-  gtk_range_set_value(GTK_RANGE(tau_scale), div_auto_tau);
+  gtk_range_set_value(GTK_RANGE(tau_scale), div_tau_to_pos(div_auto_tau));
   gtk_grid_attach(GTK_GRID(grid), tau_scale, 1, 14, 1, 1);
   g_signal_connect(G_OBJECT(tau_scale), "value_changed", G_CALLBACK(tau_cb), NULL);
   coh_label = gtk_label_new("Min coherence (%)");
