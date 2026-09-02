@@ -197,6 +197,14 @@ int main(int argc, char **argv) {
   have_att = (h.version >= 2u);
   set_context(&m);
   div_auto_ref  = ref;
+  /*
+   * The threshold is stored per reference, and the radio takes it from
+   * the selected one's slot whenever the reference changes or the
+   * settings are loaded. Nothing here goes through either path, so do it
+   * explicitly - otherwise a replay gates on whatever the compiled
+   * default happened to be rather than on this reference's own value.
+   */
+  diversity_auto_ref_recall(ref);
   div_auto_mode = (mode >= 0) ? mode : m.auto_mode;
   div_auto_follow_filter = m.follow;
   div_auto_weighting     = (weighting >= 0) ? weighting : m.weighting;
