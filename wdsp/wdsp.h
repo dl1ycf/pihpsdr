@@ -328,6 +328,7 @@ extern void SetDSPSamplerate (int channel, int dsp_rate);
 extern void SetOutputSamplerate (int channel, int out_rate);
 extern void SetAllRates (int channel, int in_rate, int dsp_rate, int out_rate);
 extern int SetChannelState (int channel, int state, int dmode);
+extern int WaitChannelFlush (int channel, int timeout_ms);
 extern void SetChannelTDelayUp (int channel, double time);
 extern void SetChannelTSlewUp (int channel, double time);
 extern void SetChannelTDelayDown (int channel, double time);

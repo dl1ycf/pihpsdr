@@ -257,12 +257,54 @@ void SetAllRates (int channel, int in_rate, int dsp_rate, int out_rate)
 	}
 }
 
+// Wait for a channel that has been asked to stop to finish flushing.
+//
+// Shutting a channel down is not instantaneous and is not self-driving.
+// SetChannelState(channel, 0, ...) only raises slew.downflag and flushflag;
+// the ramp itself runs inside fexchange0(), and only when it completes does
+// that code reset "exchange" and release Sem_Flush, waking this channel's
+// flushChannel() thread to do the flush and clear flushflag. So a channel
+// finishes stopping only while it is still being fed, and this is what waits
+// for that to happen.
+//
+// Split out of SetChannelState() so that a caller stopping several channels
+// can raise the flags on all of them first and wait afterwards, rather than
+// waiting for each in turn: the channels ramp down concurrently - each has
+// its own flushChannel() thread, its own Sem_Flush and its own critical
+// sections - so the cost becomes the longest ramp rather than the sum.
+//
+// A second SetChannelState(channel, 0, 1) cannot serve as that wait: the
+// "state != state" test below makes it a silent no-op once the channel is
+// already stopped.
+//
+// Safe to call when nothing is pending; returns at once. Returns 1 if the
+// channel flushed, 0 if it timed out - in which case the flags are forced
+// down, exactly as before.
+PORT
+int WaitChannelFlush (int channel, int timeout_ms)
+{
+	IOB a = ch[channel].iob.pc;
+	int count = 0;
+	while (_InterlockedAnd (&ch[channel].flushflag, 1) && count < timeout_ms)
+	{
+		Sleep(1);
+		count++;
+	}
+	if (count >= timeout_ms)
+	{
+		InterlockedBitTestAndReset (&ch[channel].exchange, 0);
+		InterlockedBitTestAndReset (&ch[channel].flushflag, 0);
+		InterlockedBitTestAndReset (&a->slew.downflag, 0);
+		return 0;
+	}
+	return 1;
+}
+
 PORT
 int SetChannelState (int channel, int state, int dmode)
 {
 	IOB a = ch[channel].iob.pc;
 	int prior_state = ch[channel].state;
-	int count = 0;
 	const int timeout = 100;
 	if (ch[channel].state != state)
 	{
@@ -272,20 +314,7 @@ int SetChannelState (int channel, int state, int dmode)
 		case 0:
 			InterlockedBitTestAndSet (&a->slew.downflag, 0);
 			InterlockedBitTestAndSet (&ch[channel].flushflag, 0);
-			if (dmode)
-			{
-				while (_InterlockedAnd (&ch[channel].flushflag, 1) && count < timeout)
-				{
-					Sleep(1);
-					count++;
-				}
-			}
-			if (count >= timeout)
-			{
-				InterlockedBitTestAndReset (&ch[channel].exchange, 0);
-				InterlockedBitTestAndReset (&ch[channel].flushflag, 0);
-				InterlockedBitTestAndReset (&a->slew.downflag, 0);
-			}
+			if (dmode) WaitChannelFlush (channel, timeout);
 			break;
 		case 1:
 			InterlockedBitTestAndSet (&a->slew.upflag, 0);

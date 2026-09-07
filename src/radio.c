@@ -76,6 +76,18 @@
 #endif
 #include "store.h"
 #include "vfo.h"
+
+//
+// Set to 1 to time the RX->TX receiver shutdown and print the result on
+// every transition. Experimental measurement code, off in normal builds -
+// the same shape as the audio "punch" block in receiver.c.
+//
+// Deliberately a #define here rather than a -D on the command line:
+// CFLAGS is "?=" in this Makefile AND in rnnoise/Makefile, and a
+// command-line CFLAGS overrides both and propagates into every sub-make,
+// so rnnoise loses its own -Iinclude -Isrc and fails to find common.h.
+//
+#define RXTX_TIMING 1
 #include "waterfall.h"
 
 #define min(x,y) (x<y?x:y)
@@ -1811,6 +1823,23 @@ static void rxtx(int state) {
   // If running duplex, RXTX is faster since there is not
   // receiver slew-down.
   //
+  // That cost used to be per receiver, because each one was shut down and
+  // waited for in turn. The receivers are now asked to stop together and
+  // waited for afterwards - see rx_begin_off() - so it is the longest
+  // slew-down rather than the sum of them.
+  //
+  // Measured with RXTX_TIMING below, medians of three transitions:
+  //
+  //     one receiver          16.9 ms      the control
+  //     two receivers         16.8 ms      x1.00
+  //     one panel, ear split  15.8 ms      x0.94
+  //
+  // Two receivers now cost what one costs. Serialised, the two-receiver
+  // figure was two slew-downs, so this takes about 17 ms off every RX/TX
+  // turnaround with a second receiver running - which in CW is time
+  // between the key going down and the first element, iambic.c busy-waits
+  // on mox and radio_set_mox() only sets it once rxtx() has returned.
+  //
   if (transmitter == NULL) {
     t_print("%s: WARNING: rxtx called but no transmitter!", __func__);
     return;
@@ -1846,14 +1875,38 @@ static void rxtx(int state) {
       alex_forward_max = 0;
     }
     if (!duplex) {
+      //
+      // Ask every receiver to stop before waiting for any of them. The
+      // channels ramp down concurrently, so this costs the longest ramp
+      // rather than the sum - which on 2 RX is most of what the RX/TX
+      // turnaround costs, and in CW sits between the key going down and
+      // the first element. See rx_begin_off().
+      //
+      if (!radio_is_remote) {
+#if RXTX_TIMING
+        //
+        // Set RXTX_TIMING to 1 at the top of this file to measure the
+        // block the RX/TX turnaround is dominated by, and which the
+        // two-phase shutdown above is meant to shorten. Comparing 1 RX
+        // (the control), 2 RX, and one panel with the ear split engaged
+        // is what says whether it did.
+        //
+        gint64 t0 = g_get_monotonic_time();
+#endif
+
+        for (i = 0; i < receivers; i++) { rx_begin_off(receiver[i]); }
+
+        for (i = 0; i < receivers; i++) { rx_wait_off(receiver[i]); }
+
+#if RXTX_TIMING
+        t_print("%s: RX->TX shutdown, %d receiver(s): %lld us\n", __func__,
+                receivers, (long long)(g_get_monotonic_time() - t0));
+#endif
+      }
+
       for (i = 0; i < receivers; i++) {
         receiver[i]->displaying = 0;
         if (!radio_is_remote) {
-          //
-          // wait for slew-down only if this is the last receiver
-          // to be switched off
-          //
-          rx_off(receiver[i], SET(i == (receivers - 1)));
           rx_set_displaying(receiver[i]);
         } else {
           send_startstop_rxspectrum(cl_sock_tcp, i, 0);
@@ -2441,11 +2494,14 @@ void radio_set_tune(int state) {
     schedule_high_priority();
     if (state) {
       if (!duplex) {
+        //
+        // Both phases before anything else, for the reason in rxtx().
+        //
+        for (int i = 0; i < receivers; i++) { rx_begin_off(receiver[i]); }
+
+        for (int i = 0; i < receivers; i++) { rx_wait_off(receiver[i]); }
+
         for (int i = 0; i < receivers; i++) {
-          //
-          // wait for slew-down only if this is the last receiver
-          //
-          rx_off(receiver[i], SET(i == (receivers - 1)));
           receiver[i]->displaying = 0;
           rx_set_displaying(receiver[i]);
           schedule_high_priority();

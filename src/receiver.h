@@ -290,7 +290,13 @@ extern void   rx_get_pixels(RECEIVER *rx);
 extern void   rx_get_meter(RECEIVER *rx);
 extern void   rx_frequency_changed(const RECEIVER *rx);
 extern void   rx_mode_changed(RECEIVER *rx);
-extern void   rx_off(const RECEIVER *rx, int wait);
+//
+// Stopping a receiver in two phases, so that several can ramp down at once
+// rather than one after another. See rx_begin_off() for the ordering rule.
+//
+extern void   rx_begin_off(const RECEIVER *rx);
+extern void   rx_wait_off(const RECEIVER *rx);
+extern void   rx_off(const RECEIVER *rx);
 extern void   rx_on(const RECEIVER *rx);
 extern void   rx_reconfigure(RECEIVER *rx, int height);
 extern void   rx_restore_state(RECEIVER *rx);

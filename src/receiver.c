@@ -1473,7 +1473,7 @@ void rx_change_sample_rate(RECEIVER *rx, int sample_rate) {
       g_free(rx->audio_output_buffer);
     }
     rx->audio_output_buffer = g_new(double, 2 * rx->output_samples);
-    rx_off(rx, 1);
+    rx_off(rx);
     rx_set_analyzer(rx);
     SetInputSamplerate(rx->id, sample_rate);
     SetEXTANBSamplerate (rx->id, sample_rate);
@@ -1645,19 +1645,42 @@ void rx_set_analyzer(RECEIVER *rx) {
   rx->analyzer_initializing = 1;
 }
 
-void rx_off(const RECEIVER *rx, int wait) {
+//
+// Switching a receiver off is two things, and they are worth issuing apart.
+//
+// SetChannelState(id, 0, ...) only asks: it raises the down-slew and flush
+// flags. The ramp itself runs inside fexchange0(), so the channel finishes
+// stopping only while it is still being fed, and WaitChannelFlush() is what
+// waits for that. Two receivers stopped one at a time therefore wait out
+// two ramps in sequence, although the channels are independent and would
+// ramp down perfectly well together.
+//
+// So: rx_begin_off() on every receiver, then rx_wait_off() on every
+// receiver, and the cost is the longest ramp rather than the sum. rx_off()
+// is both, for the callers that only have one receiver to stop.
+//
+// THE INVARIANT, which is not obvious and which a previous attempt at this
+// broke: no channel may be restarted with a flush still pending. Shut one
+// down without waiting and then stop its IQ, and it is left half-down; the
+// pending flush fires after the restart, resets "exchange", and fexchange0()
+// stops exchanging for good with the DSP thread waiting on Sem_BuffReady.
+// That is the hang that the unconditional wait here was guarding against.
+// Waiting for every channel before any of them is restarted keeps the same
+// guarantee - it is the serialisation that was never needed, not the wait.
+//
+void rx_begin_off(const RECEIVER *rx) {
   ASSERT_SERVER();
-  //
-  // switch receiver OFF.
-  // if (wait)  wait until slew-down completed; else return immediately
-  // ATTENTION:
-  // when using 2 RX, it regularly happened that after RX1 being shut down
-  // with wait==0 and RX2 with wait==1, upon restart of the receivers
-  // the WDSP RX1 thread was hanging in wdspmain (waiting for Sem_BuffReady).
-  // Therefore we do the wait in any case until we know what is going on.
-  // This slightly slows down the RX/TX transition when using 2RX.
-  //
-  SetChannelState(rx->id, 0, 1);
+  SetChannelState(rx->id, 0, 0);
+}
+
+void rx_wait_off(const RECEIVER *rx) {
+  ASSERT_SERVER();
+  WaitChannelFlush(rx->id, 100);
+}
+
+void rx_off(const RECEIVER *rx) {
+  rx_begin_off(rx);
+  rx_wait_off(rx);
 }
 
 void rx_on(const RECEIVER *rx) {
