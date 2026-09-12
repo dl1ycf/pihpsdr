@@ -928,7 +928,15 @@ static void new_protocol_high_priority(void) {
     //
     // ADC0 band pass
     //
-    BPFfreq = 0LL;
+    //
+    // Default to the active receiver's frequency, not zero: zero is also
+    // the "bypass" sentinel tested below, so an ADC that no receiver is
+    // assigned to would have its band-pass filter opened across the whole
+    // spectrum rather than tracking the band in use. Only an explicit
+    // adc[].filter_bypass may ask for the bypass. The G2E case above
+    // already defaults this way.
+    //
+    BPFfreq = DDCfrequency[rxvfo];
     if (receivers > 1) {
       if (receiver[othervfo]->adc == 0) {
         BPFfreq = DDCfrequency[othervfo];   // Take frequency of non-active receiver
@@ -961,7 +969,14 @@ static void new_protocol_high_priority(void) {
     //
     // ADC1 band pass
     //
-    BPFfreq = 0LL;
+    //
+    // Default to the active receiver's frequency - see the ADC0 case
+    // above. This is the one that bites in practice: with a single
+    // receiver on ADC0 and DIVERSITY off, nothing below selects a
+    // frequency for ADC1, so its band-pass filter was bypassed and the
+    // ADC saw the whole spectrum.
+    //
+    BPFfreq = DDCfrequency[rxvfo];
     if (receivers > 1) {
       if (receiver[othervfo]->adc == 1) {
         BPFfreq = DDCfrequency[othervfo];   // Take frequency of non-active receiver
