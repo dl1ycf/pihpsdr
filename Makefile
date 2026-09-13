@@ -460,6 +460,7 @@ src/g2panel_menu.c \
 src/gpio.c \
 src/i2c.c \
 src/iambic.c \
+src/json.c \
 src/led.c \
 src/main.c \
 src/message.c \
@@ -562,6 +563,7 @@ src/g2panel_menu.o \
 src/gpio.o \
 src/iambic.o \
 src/i2c.o \
+src/json.o \
 src/led.o \
 src/main.o \
 src/message.o \
