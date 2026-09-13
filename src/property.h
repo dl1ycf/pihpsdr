@@ -38,6 +38,15 @@ extern void saveProperties(const char* filename);
 extern double myatof(const char* string);
 
 //
+// Set (non-zero) when a configuration file written by a different
+// PROPERTY_VERSION was loaded. The settings are kept (migrated forward) and a
+// timestamped backup of the original file is written to property_backup_path.
+//
+extern int property_version_mismatch;
+extern double property_old_version;
+extern char property_backup_path[512];
+
+//
 // Some macros to get/set properties.
 // The macros are define such that replacing "Set" by "Get" at the beginning
 // transforms a macro that sets a property by a macro that reads the same

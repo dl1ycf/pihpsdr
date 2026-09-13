@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "main.h"
 #include "message.h"
@@ -29,6 +30,83 @@
 #include "radio.h"
 
 PROPERTY* properties = NULL;
+
+//
+// Set when a configuration file written by a different PROPERTY_VERSION was
+// loaded. In that case the settings are NOT discarded (they are migrated
+// forward) but a timestamped backup of the original file is written and the
+// operator is notified.
+//
+int property_version_mismatch = 0;
+double property_old_version = 0.0;
+char property_backup_path[512] = "";
+
+//
+// Write a timestamped, verbatim backup copy of a property file. This is used
+// before we accept a configuration file that was written by a different
+// PROPERTY_VERSION, so the operator can always recover the original settings.
+//
+static void backup_property_file(const char* filename, double oldversion) {
+  char backup[512];
+  time_t now = time(NULL);
+  struct tm *tm = localtime(&now);
+  char stamp[32];
+
+  if (tm != NULL) {
+    strftime(stamp, sizeof(stamp), "%Y%m%d-%H%M%S", tm);
+  } else {
+    snprintf(stamp, sizeof(stamp), "%ld", (long) now);
+  }
+
+  snprintf(backup, sizeof(backup), "%s.v%0.2f.%s.bak", filename, oldversion, stamp);
+  FILE* in = fopen(filename, "rb");
+
+  if (in == NULL) { return; }
+
+  FILE* out = fopen(backup, "wb");
+
+  if (out == NULL) {
+    fclose(in);
+    return;
+  }
+
+  char buf[4096];
+  size_t n;
+
+  while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
+    if (fwrite(buf, 1, n, out) != n) { break; }
+  }
+
+  fclose(in);
+  fclose(out);
+  snprintf(property_backup_path, sizeof(property_backup_path), "%s", backup);
+}
+
+//
+// Deferred GTK notification (runs in the GTK main loop). It informs the
+// operator that the configuration version changed, that the settings were
+// kept, and where the backup was written.
+//
+static gboolean property_version_warning_cb(gpointer data) {
+  GtkWidget *msg = gtk_message_dialog_new(NULL,
+                   GTK_DIALOG_MODAL,
+                   GTK_MESSAGE_WARNING,
+                   GTK_BUTTONS_OK,
+                   "piHPSDR: configuration version changed");
+  gtk_message_dialog_format_secondary_text(GTK_MESSAGE_DIALOG(msg),
+      "One or more configuration files were written by a different version of "
+      "piHPSDR (property version %0.2f, this program expects %0.2f).\n\n"
+      "Your settings have NOT been discarded: they were kept and a timestamped "
+      "backup of the previous configuration was saved next to the original "
+      "file:\n%s\n\n"
+      "If some settings behave unexpectedly you can restore the backup or "
+      "adjust them in the menus.",
+      property_old_version, (double) PROPERTY_VERSION,
+      property_backup_path[0] ? property_backup_path : "(backup could not be written)");
+  gtk_dialog_run(GTK_DIALOG(msg));
+  gtk_widget_destroy(msg);
+  return G_SOURCE_REMOVE;
+}
 
 void clearProperties(void) {
   if (properties != NULL) {
@@ -116,8 +194,24 @@ void loadProperties(const char* filename) {
     }
 
     if (version >= 0.0 && version != PROPERTY_VERSION) {
-      properties = NULL;
-      t_print("loadProperties: version=%f expected version=%f ignoring\n", version, PROPERTY_VERSION);
+      //
+      // The configuration file was written by a different PROPERTY_VERSION.
+      // Do NOT discard the user's settings: keep the loaded properties so they
+      // are migrated forward, but first write a timestamped backup of the
+      // original file and remember the mismatch so the operator can be told.
+      //
+      static gboolean warning_scheduled = FALSE;
+      backup_property_file(filename, version);
+      property_version_mismatch = 1;
+      property_old_version = version;
+      t_print("loadProperties: %s version=%f expected=%f: settings KEPT, backup saved to %s\n",
+              filename, version, PROPERTY_VERSION,
+              property_backup_path[0] ? property_backup_path : "(none)");
+
+      if (!warning_scheduled) {
+        warning_scheduled = TRUE;
+        g_idle_add(property_version_warning_cb, NULL);
+      }
     }
 
     fclose(f);
