@@ -2000,7 +2000,10 @@ int process_action(gpointer data) {
 
   case XIT_MINUS:
     if (a->mode == PRESSED) {
-      vfo_xit_incr(-10 * vfo[vfo_get_tx_vfo()].rit_step);
+      //
+      // XIT step size follows the RIT step size (same as RIT_MINUS/RIT_PLUS)
+      //
+      vfo_xit_incr(-vfo[vfo_get_tx_vfo()].rit_step);
 
       if (repeat_timer == 0) {
         repeat_action = *a;
@@ -2015,7 +2018,10 @@ int process_action(gpointer data) {
 
   case XIT_PLUS:
     if (a->mode == PRESSED) {
-      vfo_xit_incr(10 * vfo[vfo_get_tx_vfo()].rit_step);
+      //
+      // XIT step size follows the RIT step size (same as RIT_MINUS/RIT_PLUS)
+      //
+      vfo_xit_incr(vfo[vfo_get_tx_vfo()].rit_step);
 
       if (repeat_timer == 0) {
         repeat_action = *a;
