@@ -80,6 +80,17 @@ static void cleanup(void) {
 static void mn_enable_cb(GtkWidget *widget, gpointer data) {
   int n = GPOINTER_TO_INT(data);
   int v = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  //
+  // When a notch is (freshly) switched on and it has not yet been positioned
+  // (its centre is still at the default 0 Hz, i.e. at the carrier and thus
+  // normally outside the current RX pass-band), move it to the centre of the
+  // current pass-band. Setting the spin button value triggers mn_center_cb
+  // which stores the value and updates the running receiver.
+  //
+  if (v && myrx->multi_notch_center[n] == 0.0) {
+    double c = 0.5 * (myrx->filter_low + myrx->filter_high) + vfo[myrx->id].offset;
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(mn_center[n]), c);
+  }
   myrx->multi_notch_enable[n] = v;
   rx_set_notch(myrx);
 }
@@ -656,7 +667,7 @@ void filter_menu(GtkWidget *parent, int id) {
     gtk_grid_attach(GTK_GRID(grid), w, 5, row, 3, 1);
     g_signal_connect(w, "value-changed", G_CALLBACK(mn_width_cb), GINT_TO_POINTER(i));
     mn_width[i] = w;
-    w = gtk_button_new_with_label("Default");
+    w = gtk_button_new_with_label("Centre");
     gtk_widget_set_name(w, "small_button");
     g_signal_connect (w, "button-press-event", G_CALLBACK(mn_default_cb), GINT_TO_POINTER(i));
     gtk_grid_attach(GTK_GRID(grid), w, 8, row, 2, 1);
