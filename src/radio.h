@@ -202,6 +202,12 @@ extern int TxInhibit;
 extern int vfo_encoder_divisor;
 extern int vfo_snap;
 
+//
+// When non-zero, dragging the panadapter up/down with the mouse adjusts the
+// panadapter low (noise floor) level. When zero, vertical drags are ignored.
+//
+extern int pan_updown_drag;
+
 extern int protocol;
 extern int device;
 extern int new_pa_board;

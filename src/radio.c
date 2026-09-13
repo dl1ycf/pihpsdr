@@ -217,6 +217,7 @@ int TxInhibit = 0;
 
 int vfo_encoder_divisor = 1;
 int vfo_snap = 0;
+int pan_updown_drag = 1;
 
 int protocol;
 int device;
@@ -3427,6 +3428,7 @@ static void radio_restore_state(void) {
   GetPropI0("which_css_font",                                which_css_font);
   GetPropI0("vfo_encoder_divisor",                           vfo_encoder_divisor);
   GetPropI0("vfo_snap",                                      vfo_snap);
+  GetPropI0("pan_updown_drag",                               pan_updown_drag);
   GetPropI0("mute_rx_while_transmitting",                    mute_rx_while_transmitting);
   GetPropI0("meter_type",                                    meter_type);
   GetPropI0("extended_meter",                                extended_meter);
@@ -3662,6 +3664,7 @@ void radio_save_state(void) {
   SetPropI0("which_css_font",                                which_css_font);
   SetPropI0("vfo_encoder_divisor",                           vfo_encoder_divisor);
   SetPropI0("vfo_snap",                                      vfo_snap);
+  SetPropI0("pan_updown_drag",                               pan_updown_drag);
   SetPropI0("mute_rx_while_transmitting",                    mute_rx_while_transmitting);
   SetPropI0("meter_type",                                    meter_type);
   SetPropI0("extended_meter",                                extended_meter);

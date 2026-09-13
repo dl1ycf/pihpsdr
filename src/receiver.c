@@ -160,7 +160,7 @@ gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpoin
           vfo_id_move_to(id, f, vfo_snap);
         }
 
-        if (has_movedy && from == 0 && dy) {
+        if (has_movedy && from == 0 && dy && pan_updown_drag) {
           rx->panadapter_low += dy;
 
           //
@@ -236,7 +236,7 @@ gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpoint
       }
     }
 
-    if (dy != 0 && from == 0) {
+    if (dy != 0 && from == 0 && pan_updown_drag) {
       if (has_movedy || dy < -1 || dy > 1) {
         rx->panadapter_low += dy;
         last_y = y;

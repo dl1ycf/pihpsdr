@@ -321,6 +321,10 @@ static void display_warnings_cb(GtkWidget *widget, gpointer data) {
   display_warnings = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
 }
 
+static void pan_updown_drag_cb(GtkWidget *widget, gpointer data) {
+  pan_updown_drag = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+}
+
 static void tx_display_pacurr_cb(GtkWidget *widget, gpointer data) {
   display_pacurr = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
 }
@@ -487,6 +491,11 @@ void display_menu(GtkWidget *parent) {
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), display_warnings);
       gtk_grid_attach(GTK_GRID(mygrid), btn, col, row, 2, 1);
       g_signal_connect(btn, "toggled", G_CALLBACK(display_warnings_cb), NULL);
+      row++;
+      btn = gtk_check_button_new_with_label("Panadapter Up/Down Drag");
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), pan_updown_drag);
+      gtk_grid_attach(GTK_GRID(mygrid), btn, col, row, 2, 1);
+      g_signal_connect(btn, "toggled", G_CALLBACK(pan_updown_drag_cb), NULL);
     }
 
     col = 2;
