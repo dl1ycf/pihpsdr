@@ -3309,9 +3309,20 @@ void radio_apply_band_settings(int flag, int id) {
     } else {
       radio_set_attenuation(id, rxband->attenuation);
       radio_set_rf_gain(id, rxband->gain);
-      radio_set_panhigh(id, rxband->panhigh);
-      radio_set_panlow(id, rxband->panlow);
-      radio_set_panstep(id, rxband->panstep);
+      //
+      // Panadapter high/low/step are stored "by the band", but only RX1
+      // (id == 0) writes those values back into the BAND data structure (see
+      // radio_set_panhigh/panlow/panstep). Applying the band values to RX2 here
+      // would therefore overwrite the RX2 display settings with RX1's per-band
+      // values and discard whatever the operator set for RX2, both on a band
+      // change and at startup. So only RX1 follows the per-band panadapter
+      // levels; RX2 keeps its own settings, which are persisted per receiver.
+      //
+      if (id == 0) {
+        radio_set_panhigh(id, rxband->panhigh);
+        radio_set_panlow(id, rxband->panlow);
+        radio_set_panstep(id, rxband->panstep);
+      }
     }
   }
 
