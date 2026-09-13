@@ -308,6 +308,7 @@ extern void   radio_set_mox(int state);
 extern void   radio_toggle_mox(void);
 extern void   radio_toggle_tune(void);
 extern void   radio_save_state(void);
+extern void   radio_reload_json_configs(void);
 extern void   radio_shutdown(void);
 extern void   radio_reboot(void);
 extern void   radio_exit_program(void);

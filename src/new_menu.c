@@ -107,6 +107,18 @@ static gboolean close_cb(void) {
 }
 
 //
+// The "Reload" button re-reads the runtime JSON configuration files
+// (colour themes, and later the VFO panel layout and band plan) and applies
+// them immediately. The menu is deliberately left open so the effect can be
+// seen and the operator can reload again after further edits.
+//
+// cppcheck-suppress constParameterCallback
+static gboolean reload_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
+  radio_reload_json_configs();
+  return TRUE;
+}
+
+//
 // The "Restart" button restarts the protocol
 // This may help to recover from certain error conditions
 // Hitting this button automatically closes the menu window via cleanup()
@@ -822,7 +834,18 @@ void new_menu(void) {
       btn = gtk_button_new_with_label("G2 Panel");
       g_signal_connect (btn, "button-press-event", G_CALLBACK(g2panel_cb), NULL);
       gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
+      row++;
     }
+
+    //
+    // "Reload" runtime JSON configuration files (colour themes, and later the
+    // VFO panel layout and band plan). Attached at the running (col,row) so it
+    // lands in the next free cell of the last column, whatever the build.
+    //
+    btn = gtk_button_new_with_label("Reload");
+    g_signal_connect (btn, "button-press-event", G_CALLBACK(reload_cb), NULL);
+    gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
+    row++;
 
     gtk_container_add(GTK_CONTAINER(content), grid);
     gtk_widget_show_all(main_menu);

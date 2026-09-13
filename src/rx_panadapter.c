@@ -202,9 +202,49 @@ void rx_panadapter_update(RECEIVER *rx) {
       if (x2 > rx->width) { x2 = rx->width; }
 
       if (x2 - x1 > 1.0) {
-        cairo_set_source_rgba(cr, COLOUR_PAN_60M);
+        //
+        // Use the per-segment colour from the band plan when it defines one
+        // (alpha > 0), otherwise fall back to the theme's pan_60m colour.
+        //
+        const float *sc = band_channels_60m[i].colour;
+
+        if (sc[3] > 0.0f) {
+          cairo_set_source_rgba(cr, sc[0], sc[1], sc[2], sc[3]);
+        } else {
+          cairo_set_source_rgba(cr, COLOUR_PAN_60M);
+        }
+
         cairo_rectangle(cr, x1, 0.0, x2 - x1, myheight);
         cairo_fill(cr);
+
+        //
+        // Draw the optional segment label, centred, along the top edge.
+        //
+        if (band_channels_60m[i].label[0] != '\0') {
+          cairo_text_extents_t ext;
+          const float *lc = band_channels_60m[i].label_colour;
+
+          if (lc[3] > 0.0f) {
+            cairo_set_source_rgba(cr, lc[0], lc[1], lc[2], lc[3]);
+          } else {
+            cairo_set_source_rgba(cr, COLOUR_PAN_TEXT);
+          }
+
+          cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+          cairo_set_font_size(cr, 8.0 * scalfac);
+          cairo_text_extents(cr, band_channels_60m[i].label, &ext);
+          double tx = x1 + ((x2 - x1) - ext.width) / 2.0;
+
+          if (tx < x1) { tx = x1; }
+
+          //
+          // Sit the label just below the frequency scale numbers that run
+          // along the very top of the panadapter (drawn later at a ~10*scalfac
+          // baseline), so the two do not overlap.
+          //
+          cairo_move_to(cr, tx, ext.height + 15.0 * scalfac);
+          cairo_show_text(cr, band_channels_60m[i].label);
+        }
       }
     }
   }
@@ -228,7 +268,7 @@ void rx_panadapter_update(RECEIVER *rx) {
   double dbm_per_line = (double)myheight / ((double)(panhi - panlo));
   cairo_set_line_width(cr, PAN_LINE_THIN);
   cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-  cairo_set_font_size(cr, 12.0 * scalfac);
+  cairo_set_font_size(cr, 6.0 * scalfac);
   char v[32];
 
   for (int i = panhi; i >= panlo; i--) {
@@ -272,10 +312,7 @@ void rx_panadapter_update(RECEIVER *rx) {
   int marker_distance = (rx->pixels * divisor) / rx->sample_rate;
   f = (((frequency + (int)(rx->cA + 0.5)) / divisor) * divisor);
   cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-  //
-  // If space is available, increase font size of freq. labels a bit
-  //
-  int marker_extra = (marker_distance > 100) ? 2 : 0;
+  int marker_extra = (marker_distance > 100) ? -2 : 0;
   cairo_set_font_size(cr, (12 + marker_extra) * scalfac);
 
   for (;;) {

@@ -101,6 +101,9 @@ typedef struct _BAND BAND;
 struct _CHANNEL {
   long long frequency;
   long long width;
+  char label[32];         // optional segment label drawn on the panadapter
+  float colour[4];        // optional RGBA fill; alpha <= 0 means "use the theme's pan_60m colour"
+  float label_colour[4];  // optional RGBA label colour; alpha <= 0 means "use the theme's pan_text colour"
 };
 
 typedef struct _CHANNEL CHANNEL;
@@ -111,6 +114,14 @@ typedef struct _CHANNEL CHANNEL;
 
 extern int channel_entries;
 extern CHANNEL *band_channels_60m;
+
+//
+// Runtime 60m band-plan (Issue 6): loaded from "bandplan.json" if present,
+// otherwise generated from the compiled-in defaults. bandplan_init() must run
+// before the first radio_change_region() so the region pointers are valid.
+//
+extern void bandplan_init(void);     // load bandplan.json (or write a default) at startup
+extern void bandplan_reload(void);   // re-read bandplan.json (Reload action)
 
 //extern CHANNEL band_channels_60m_UK[UK_CHANNEL_ENTRIES];
 //extern CHANNEL band_channels_60m_OTHER[OTHER_CHANNEL_ENTRIES];

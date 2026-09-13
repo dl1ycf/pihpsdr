@@ -81,7 +81,18 @@ struct _VFO_BAR_LAYOUT {
 };
 
 typedef struct _VFO_BAR_LAYOUT VFO_BAR_LAYOUT;
-extern const VFO_BAR_LAYOUT vfo_layout_list[];
+//
+// "vfo_layout_list" is the runtime layout table (sentinel-terminated by a
+// negative width). It is filled from the compiled-in defaults and then, if
+// present, from the runtime "vfo_layouts.json" file.
+//
+extern VFO_BAR_LAYOUT vfo_layout_list[];
 extern const VFO_BAR_LAYOUT *current_vfo_layout;
+extern int num_vfo_layouts;
+extern char forced_vfo_layout[64];   // optional user-pinned layout (by description)
+
+void vfo_layout_init(void);          // load vfo_layouts.json (or write a default) at startup
+void vfo_layout_reload(void);        // re-read vfo_layouts.json (Reload action)
+void vfo_layout_ensure(void);        // guarantee the runtime table is populated
 
 #endif

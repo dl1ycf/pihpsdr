@@ -553,10 +553,27 @@ static void choose_vfo_layout(void) {
   //
   // choose largest possible VFO layout that fits
   //
+  vfo_layout_ensure();
   const VFO_BAR_LAYOUT *vfl = vfo_layout_list;
   int avail = display_width[display_size] - MENU_WIDTH - MIN_METER_WIDTH;
 
   if (extended_meter) { avail -= MIN_ADD_METER_WIDTH; }
+
+  //
+  // If the user has pinned a specific layout (by description) and it fits the
+  // available width, use it. Otherwise fall through to the automatic choice.
+  //
+  if (forced_vfo_layout[0] != '\0') {
+    for (int i = 0; i < num_vfo_layouts; i++) {
+      if (vfo_layout_list[i].description != NULL &&
+          strcmp(vfo_layout_list[i].description, forced_vfo_layout) == 0 &&
+          vfo_layout_list[i].width <= avail) {
+        current_vfo_layout = &vfo_layout_list[i];
+        vfl = current_vfo_layout;
+        goto layout_chosen;
+      }
+    }
+  }
 
   for (;;) {
     if (vfl->width < 0) {
@@ -571,6 +588,7 @@ static void choose_vfo_layout(void) {
 
   current_vfo_layout = vfl;
 
+layout_chosen:
   VFO_HEIGHT = current_vfo_layout->height;
   int spare = display_width[display_size] - MENU_WIDTH - MIN_METER_WIDTH - current_vfo_layout->width;
   METER_WIDTH = MIN_METER_WIDTH;
@@ -3404,6 +3422,23 @@ static void radio_restore_state(void) {
   g_mutex_lock(&property_mutex);
   loadProperties(property_path);
   //
+  // Load the runtime colour themes (themes.json) or write a default one.
+  // Done here so the active theme can be resolved by name below.
+  //
+  theme_init();
+  //
+  // Load the runtime VFO-bar layouts (vfo_layouts.json) or write a default
+  // one. Done here, before the screen is built, so choose_vfo_layout() sees
+  // the runtime table.
+  //
+  vfo_layout_init();
+  //
+  // Load the runtime 60m band plan (bandplan.json) or write a default one.
+  // Done here, before radio_change_region() runs below, so the region pointers
+  // reference the runtime arrays.
+  //
+  bandplan_init();
+  //
   // For consistency, all variables should get default values HERE,
   // but this is too much for the moment.
   //
@@ -3423,6 +3458,8 @@ static void radio_restore_state(void) {
   GetPropI0("optimize_touchscreen",                          optimize_for_touchscreen);
   GetPropI0("smeter3dB",                                     smeter3dB);
   GetPropI0("active_theme_index",                            active_theme_index);
+  GetPropS0("active_theme_name",                             active_theme_name);
+  GetPropS0("vfo_layout",                                    forced_vfo_layout);
   GetPropI0("gtk_dark_theme",                                gtk_dark_theme);
   GetPropI0("which_css_font",                                which_css_font);
   GetPropI0("vfo_encoder_divisor",                           vfo_encoder_divisor);
@@ -3616,9 +3653,27 @@ static void radio_restore_state(void) {
   }
 
   // Activate font/theme
+  //
+  // Resolve the active theme by name (robust if themes.json was re-ordered);
+  // falls back to active_theme_index when no name was stored.
+  //
+  theme_apply_name(active_theme_name);
   theme_set();
   load_font(which_css_font);
   g_mutex_unlock(&property_mutex);
+}
+
+void radio_reload_json_configs(void) {
+  //
+  // Re-read all runtime JSON configuration files and apply them immediately.
+  // This reloads the colour themes (Issue 3), the VFO panel layouts (Issue 4)
+  // and the 60m band plan (Issue 6).
+  //
+  theme_reload();
+  vfo_layout_reload();
+  bandplan_reload();             // re-read the 60m band plan (bandplan.json)
+  radio_change_region(region);   // re-apply the (possibly reloaded) band plan
+  radio_reconfigure_screen();    // re-run choose_vfo_layout() and rebuild the screen
 }
 
 void radio_save_state(void) {
@@ -3658,6 +3713,8 @@ void radio_save_state(void) {
   SetPropI0("optimize_touchscreen",                          optimize_for_touchscreen);
   SetPropI0("smeter3dB",                                     smeter3dB);
   SetPropI0("active_theme_index",                            active_theme_index);
+  SetPropS0("active_theme_name",                             active_theme_name);
+  SetPropS0("vfo_layout",                                    forced_vfo_layout);
   SetPropI0("gtk_dark_theme",                                gtk_dark_theme);
   SetPropI0("which_css_font",                                which_css_font);
   SetPropI0("vfo_encoder_divisor",                           vfo_encoder_divisor);

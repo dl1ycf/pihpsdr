@@ -63,13 +63,22 @@ typedef struct {
   float dxspot[4]; // how to mark DX cluster spots on the panadapter
 } THEME;
 
-extern const THEME themes[];
-extern const int   num_themes;
+//
+// "themes" and "num_themes" describe the currently active theme table. At
+// startup this is populated from the built-in themes and then, if present,
+// overridden by the runtime "themes.json" file (see theme_init/theme_reload).
+//
+extern THEME       themes[];
+extern int         num_themes;
 extern int         active_theme_index;
 extern int         gtk_dark_theme;
+extern char        active_theme_name[64];  // name of the selected theme (persisted in props)
 
 const THEME *theme_get_active(void);
 void theme_set(void);
+void theme_init(void);                      // load themes.json (or write a default) at startup
+void theme_reload(void);                    // re-read themes.json and re-apply (Reload action)
+void theme_apply_name(const char *name);    // select the active theme by name
 
 //
 // COLOUR defines that used to be in appearance.h

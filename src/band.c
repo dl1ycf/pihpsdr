@@ -24,6 +24,7 @@
 #include "band.h"
 #include "bandstack.h"
 #include "filter.h"
+#include "json.h"
 #include "message.h"
 #include "mode.h"
 #include "property.h"
@@ -318,9 +319,9 @@ static BAND bands[BANDS + XVTRS] = {
   {"136kHz", &bandstack136,     0, 0, 0, 0, 0, 53.0,     135700LL,     137800LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20},
   {"472kHz", &bandstack472,     0, 0, 0, 0, 0, 53.0,     472000LL,     479000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20},
   {"160",    &bandstack160,     0, 0, 0, 0, 0, 53.0,    1800000LL,    2000000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20},
-  {"80",     &bandstack80,      0, 0, 0, 0, 0, 53.0,    3500000LL,    4000000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20},
+  {"80",     &bandstack80,      0, 0, 0, 0, 0, 53.0,    3500000LL,    3800000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20},
   {"60",     &bandstack60,      0, 0, 0, 0, 0, 53.0,    5250000LL,    5450000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20},
-  {"40",     &bandstack40,      0, 0, 0, 0, 0, 53.0,    7000000LL,    7300000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20},
+  {"40",     &bandstack40,      0, 0, 0, 0, 0, 53.0,    7000000LL,    7200000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20},
   {"30",     &bandstack30,      0, 0, 0, 0, 0, 53.0,   10100000LL,   10150000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20},
   {"20",     &bandstack20,      0, 0, 0, 0, 0, 53.0,   14000000LL,   14350000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20},
   {"17",     &bandstack17,      0, 0, 0, 0, 0, 53.0,   18068000LL,   18168000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20},
@@ -390,6 +391,222 @@ static CHANNEL band_channels_60m_OTHER[OTHER_CHANNEL_ENTRIES] = {
 int channel_entries;
 CHANNEL *band_channels_60m;
 
+//
+// ---------------------------------------------------------------------------
+// Issue 6: runtime 60m band plan.
+//
+// The compiled-in arrays above are the fallback defaults. At startup they are
+// copied into the runtime arrays below, which are then optionally overridden
+// from "bandplan.json". Each segment may carry a text label and an RGBA fill
+// colour; a colour with alpha <= 0 means "use the theme's pan_60m colour".
+// radio_change_region() points channel_entries/band_channels_60m at the
+// runtime array for the selected region.
+// ---------------------------------------------------------------------------
+//
+#define BANDPLAN_FILE     "bandplan.json"
+#define MAX_60M_SEGMENTS  64
+
+static CHANNEL rt_60m_uk[MAX_60M_SEGMENTS];      static int rt_60m_uk_n = 0;
+static CHANNEL rt_60m_other[MAX_60M_SEGMENTS];   static int rt_60m_other_n = 0;
+static CHANNEL rt_60m_wrc15[MAX_60M_SEGMENTS];   static int rt_60m_wrc15_n = 0;
+
+//
+// Copy a compiled-in region into its runtime array.
+//
+static void copy_builtin_region(CHANNEL *dst, int *dstn, const CHANNEL *src, int n) {
+  int c = 0;
+
+  for (int i = 0; i < n && i < MAX_60M_SEGMENTS; i++) {
+    dst[c++] = src[i];
+  }
+
+  *dstn = c;
+}
+
+//
+// Reset all runtime regions to the compiled-in defaults.
+//
+static void load_builtin_bandplan(void) {
+  copy_builtin_region(rt_60m_uk,    &rt_60m_uk_n,    band_channels_60m_UK,    UK_CHANNEL_ENTRIES);
+  copy_builtin_region(rt_60m_other, &rt_60m_other_n, band_channels_60m_OTHER, OTHER_CHANNEL_ENTRIES);
+  copy_builtin_region(rt_60m_wrc15, &rt_60m_wrc15_n, band_channels_60m_WRC15, WRC15_CHANNEL_ENTRIES);
+}
+
+//
+// Read one segment array ("UK"/"OTHER"/"WRC15") from a JSON "regions" object
+// into the given runtime array. Leaves the array untouched (returns 0) when
+// the region key is missing, so unspecified regions keep their defaults.
+//
+static int load_region_from_json(const JsonValue *regions, const char *name,
+                                  CHANNEL *dst, int *dstn) {
+  const JsonValue *arr = json_object_get(regions, name);
+
+  if (arr == NULL || arr->type != JSON_ARRAY) { return 0; }
+
+  int c = 0;
+  const JsonValue *e;
+
+  JSON_FOREACH(e, arr) {
+    if (c >= MAX_60M_SEGMENTS) { break; }
+
+    if (e->type != JSON_OBJECT) { continue; }
+
+    CHANNEL ch;
+    memset(&ch, 0, sizeof(ch));
+    ch.frequency = (long long) json_as_number(json_object_get(e, "frequency"), 0.0);
+    ch.width     = (long long) json_as_number(json_object_get(e, "width"),     0.0);
+    snprintf(ch.label, sizeof(ch.label), "%s",
+             json_as_string(json_object_get(e, "label"), ""));
+
+    const JsonValue *col = json_object_get(e, "colour");
+
+    if (col != NULL && col->type == JSON_ARRAY) {
+      const JsonValue *cc;
+      int i = 0;
+
+      JSON_FOREACH(cc, col) {
+        if (i < 4) { ch.colour[i] = (float) json_as_number(cc, ch.colour[i]); }
+
+        i++;
+      }
+    }
+
+    const JsonValue *lcol = json_object_get(e, "label_colour");
+
+    if (lcol != NULL && lcol->type == JSON_ARRAY) {
+      const JsonValue *cc;
+      int i = 0;
+
+      JSON_FOREACH(cc, lcol) {
+        if (i < 4) { ch.label_colour[i] = (float) json_as_number(cc, ch.label_colour[i]); }
+
+        i++;
+      }
+    }
+
+    dst[c++] = ch;
+  }
+
+  *dstn = c;
+  return 1;
+}
+
+//
+// Parse "bandplan.json" over the (already loaded) built-in defaults. Accepts
+// either a top-level object of regions, or { "regions": { ... } }.
+// Returns 1 if at least one region was read, 0 otherwise.
+//
+static int load_bandplan_from_json(const char *path) {
+  JsonValue *root = json_parse_file(path);
+
+  if (root == NULL) { return 0; }
+
+  const JsonValue *regions = root;
+
+  if (root->type == JSON_OBJECT) {
+    const JsonValue *r = json_object_get(root, "regions");
+
+    if (r != NULL) { regions = r; }
+  }
+
+  if (regions == NULL || regions->type != JSON_OBJECT) {
+    json_free(root);
+    return 0;
+  }
+
+  int any = 0;
+  any |= load_region_from_json(regions, "UK",    rt_60m_uk,    &rt_60m_uk_n);
+  any |= load_region_from_json(regions, "OTHER", rt_60m_other, &rt_60m_other_n);
+  any |= load_region_from_json(regions, "WRC15", rt_60m_wrc15, &rt_60m_wrc15_n);
+  json_free(root);
+  return any;
+}
+
+//
+// Write one region array into the default JSON file.
+//
+static void write_region_json(FILE *f, const char *name, const CHANNEL *ch, int n, int last) {
+  fprintf(f, "    \"%s\": [\n", name);
+
+  for (int i = 0; i < n; i++) {
+    fprintf(f,
+            "      {\"frequency\": %lld, \"width\": %lld, \"label\": \"%s\", \"colour\": [%.3f, %.3f, %.3f, %.3f], \"label_colour\": [%.3f, %.3f, %.3f, %.3f]}%s\n",
+            ch[i].frequency, ch[i].width, ch[i].label,
+            ch[i].colour[0], ch[i].colour[1], ch[i].colour[2], ch[i].colour[3],
+            ch[i].label_colour[0], ch[i].label_colour[1], ch[i].label_colour[2], ch[i].label_colour[3],
+            (i == n - 1) ? "" : ",");
+  }
+
+  fprintf(f, "    ]%s\n", last ? "" : ",");
+}
+
+//
+// Create a default "bandplan.json" from the compiled-in 60m channels so the
+// operator has a ready-to-edit template.
+//
+static void write_default_bandplan_file(const char *path) {
+  FILE *f = fopen(path, "w");
+
+  if (f == NULL) {
+    t_print("bandplan: could not write default %s\n", path);
+    return;
+  }
+
+  fprintf(f, "{\n");
+  fprintf(f, "  \"_comment\": \"piHPSDR 60m band plan. frequency/width are in Hz. 'label' is drawn on each segment; 'colour' is the [red, green, blue, alpha] fill in 0.0-1.0 (alpha 0 means use the theme's pan_60m colour); 'label_colour' is the [red, green, blue, alpha] label text colour in 0.0-1.0 (alpha 0 means use the theme's pan_text colour). Edit and use the Reload menu button to apply.\",\n");
+  fprintf(f, "  \"regions\": {\n");
+  write_region_json(f, "UK",    rt_60m_uk,    rt_60m_uk_n,    0);
+  write_region_json(f, "OTHER", rt_60m_other, rt_60m_other_n, 0);
+  write_region_json(f, "WRC15", rt_60m_wrc15, rt_60m_wrc15_n, 1);
+  fprintf(f, "  }\n}\n");
+  fclose(f);
+}
+
+//
+// One-time startup initialisation: load bandplan.json if present, otherwise
+// write a default one generated from the built-in 60m channels.
+//
+void bandplan_init(void) {
+  load_builtin_bandplan();
+
+  FILE *test = fopen(BANDPLAN_FILE, "r");
+
+  if (test != NULL) {
+    fclose(test);
+
+    if (!load_bandplan_from_json(BANDPLAN_FILE)) {
+      load_builtin_bandplan();
+      t_print("bandplan_init: %s could not be parsed, using built-in 60m channels\n", BANDPLAN_FILE);
+    } else {
+      t_print("bandplan_init: loaded 60m band plan from %s\n", BANDPLAN_FILE);
+    }
+  } else {
+    write_default_bandplan_file(BANDPLAN_FILE);
+    t_print("bandplan_init: wrote default %s\n", BANDPLAN_FILE);
+  }
+}
+
+//
+// Re-read bandplan.json. The caller (radio_reload_json_configs) then invokes
+// radio_change_region() to re-point channel_entries/band_channels_60m.
+//
+void bandplan_reload(void) {
+  load_builtin_bandplan();
+
+  FILE *test = fopen(BANDPLAN_FILE, "r");
+
+  if (test != NULL) {
+    fclose(test);
+
+    if (!load_bandplan_from_json(BANDPLAN_FILE)) {
+      load_builtin_bandplan();
+      t_print("bandplan_reload: %s could not be parsed, using built-in 60m channels\n", BANDPLAN_FILE);
+    } else {
+      t_print("bandplan_reload: loaded 60m band plan from %s\n", BANDPLAN_FILE);
+    }
+  }
+}
+
 BANDSTACK *bandstack_get_bandstack(int band) {
   return bands[band].bandstack;
 }
@@ -405,24 +622,24 @@ void radio_change_region(int r) {
 
   switch (region) {
   case REGION_UK:
-    channel_entries = UK_CHANNEL_ENTRIES;
-    band_channels_60m = &band_channels_60m_UK[0];
+    channel_entries = rt_60m_uk_n;
+    band_channels_60m = &rt_60m_uk[0];
     bandstack60.entries = UK_CHANNEL_ENTRIES;
     bandstack60.current_entry = 0;
     bandstack60.entry = bandstack_entries60_UK;
     break;
 
   case REGION_OTHER:
-    channel_entries = OTHER_CHANNEL_ENTRIES;
-    band_channels_60m = &band_channels_60m_OTHER[0];
+    channel_entries = rt_60m_other_n;
+    band_channels_60m = &rt_60m_other[0];
     bandstack60.entries = OTHER_CHANNEL_ENTRIES;
     bandstack60.current_entry = 0;
     bandstack60.entry = bandstack_entries60_OTHER;
     break;
 
   case REGION_WRC15:
-    channel_entries = WRC15_CHANNEL_ENTRIES;
-    band_channels_60m = &band_channels_60m_WRC15[0];
+    channel_entries = rt_60m_wrc15_n;
+    band_channels_60m = &rt_60m_wrc15[0];
     bandstack60.entries = WRC15_CHANNEL_ENTRIES;
     bandstack60.current_entry = 0;
     bandstack60.entry = bandstack_entries60_WRC15;

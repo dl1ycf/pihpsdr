@@ -16,13 +16,35 @@
 *
 */
 
+#include <stddef.h>
+#include <string.h>
+#include <stdio.h>
+
 #include "ext.h"
+#include "message.h"
 #include "theme.h"
+#include "json.h"
+
+#define MAX_THEMES   64
+#define THEME_FILE   "themes.json"
 
 int active_theme_index = 0;
 int gtk_dark_theme = 0;
 
-const THEME themes[] = {
+//
+// Runtime, currently-active theme table (see theme_init/theme_reload). It is
+// filled from "builtin_themes" below and then, if a valid "themes.json" is
+// found in the working directory, replaced by the file contents.
+//
+THEME themes[MAX_THEMES];
+int   num_themes = 0;
+char  active_theme_name[64] = "";
+
+//
+// The compiled-in default themes. These are always available as a fallback
+// and are used to generate the default "themes.json".
+//
+static const THEME builtin_themes[] = {
 
   // ── piHPSDR ──
   // This is the "legacy" color scheme
@@ -586,9 +608,252 @@ const THEME themes[] = {
 
 };
 
-const int num_themes = (int)(sizeof(themes) / sizeof(themes[0]));
+static const int builtin_num_themes = (int)(sizeof(builtin_themes) / sizeof(builtin_themes[0]));
+
+//
+// The set of float[4] colour fields in the THEME structure, described once so
+// that reading (from JSON) and writing (the default JSON) never fall out of
+// sync. "name" is handled separately.
+//
+typedef struct {
+  const char *key;
+  size_t offset;
+} ThemeField;
+
+#define TF(field) { #field, offsetof(THEME, field) }
+
+static const ThemeField theme_fields[] = {
+  TF(pan_backgnd), TF(vfo_backgnd), TF(pan_line1), TF(pan_line2),
+  TF(pan_fill1),   TF(pan_fill2),   TF(pan_filter), TF(pan_line),
+  TF(pan_linew),   TF(pan_text),    TF(pan_notch),  TF(pan_60m),
+  TF(shade),       TF(meter),       TF(ok),         TF(okw),
+  TF(attn),        TF(attnw),       TF(alarm),      TF(alarmw),
+  TF(grad1),       TF(grad2),       TF(grad3),      TF(grad4),
+  TF(grad1w),      TF(grad2w),      TF(grad3w),     TF(grad4w),
+  TF(dxspot)
+};
+
+static const int num_theme_fields = (int)(sizeof(theme_fields) / sizeof(theme_fields[0]));
+
+//
+// Release the heap-allocated theme names and mark the runtime table empty.
+//
+static void free_runtime_themes(void) {
+  for (int i = 0; i < num_themes; i++) {
+    g_free((char *) themes[i].name);
+    themes[i].name = NULL;
+  }
+
+  num_themes = 0;
+}
+
+//
+// Populate the runtime table from the compiled-in defaults.
+//
+static void load_builtin_themes(void) {
+  free_runtime_themes();
+
+  for (int i = 0; i < builtin_num_themes && i < MAX_THEMES; i++) {
+    themes[num_themes] = builtin_themes[i];
+    themes[num_themes].name = g_strdup(builtin_themes[i].name);
+    num_themes++;
+  }
+}
+
+//
+// Make sure the runtime table is never empty (colours are needed very early,
+// possibly before theme_init() has run).
+//
+static void ensure_runtime(void) {
+  if (num_themes == 0) { load_builtin_themes(); }
+}
+
+//
+// Read a "key": [r, g, b, a] colour array from a JSON object into "dst".
+// Any component that is missing keeps its current (default) value.
+//
+static void read_rgba(const JsonValue *obj, const char *key, float dst[4]) {
+  const JsonValue *arr = json_object_get(obj, key);
+
+  if (arr == NULL || arr->type != JSON_ARRAY) { return; }
+
+  const JsonValue *e;
+  int i = 0;
+
+  JSON_FOREACH(e, arr) {
+    if (i < 4) { dst[i] = (float) json_as_number(e, dst[i]); }
+
+    i++;
+  }
+}
+
+//
+// Parse "themes.json" into the runtime table. Accepts either a top-level array
+// of theme objects, or an object of the form { "themes": [ ... ] }.
+// Returns 1 on success (at least one theme loaded), 0 otherwise.
+//
+static int load_themes_from_json(const char *path) {
+  JsonValue *root = json_parse_file(path);
+
+  if (root == NULL) { return 0; }
+
+  const JsonValue *arr = root;
+
+  if (root->type == JSON_OBJECT) {
+    arr = json_object_get(root, "themes");
+  }
+
+  if (arr == NULL || arr->type != JSON_ARRAY) {
+    json_free(root);
+    return 0;
+  }
+
+  free_runtime_themes();
+  const JsonValue *e;
+
+  JSON_FOREACH(e, arr) {
+    if (num_themes >= MAX_THEMES) { break; }
+
+    if (e->type != JSON_OBJECT) { continue; }
+
+    //
+    // Start from the first built-in theme so any colour omitted from the file
+    // gets a sane default instead of black.
+    //
+    THEME t = builtin_themes[0];
+    t.name = NULL;
+
+    for (int f = 0; f < num_theme_fields; f++) {
+      float *slot = (float *)((char *) &t + theme_fields[f].offset);
+      read_rgba(e, theme_fields[f].key, slot);
+    }
+
+    const char *nm = json_as_string(json_object_get(e, "name"), NULL);
+    themes[num_themes] = t;
+    themes[num_themes].name = g_strdup(nm != NULL ? nm : "Unnamed");
+    num_themes++;
+  }
+
+  json_free(root);
+  return (num_themes > 0) ? 1 : 0;
+}
+
+//
+// Write one theme object into the default JSON file.
+//
+static void write_theme_json(FILE *f, const THEME *th, int last) {
+  fprintf(f, "    {\n");
+  fprintf(f, "      \"name\": \"%s\",\n", th->name != NULL ? th->name : "Unnamed");
+
+  for (int i = 0; i < num_theme_fields; i++) {
+    const float *v = (const float *)((const char *) th + theme_fields[i].offset);
+    fprintf(f, "      \"%s\": [%.3f, %.3f, %.3f, %.3f]%s\n",
+            theme_fields[i].key, v[0], v[1], v[2], v[3],
+            (i == num_theme_fields - 1) ? "" : ",");
+  }
+
+  fprintf(f, "    }%s\n", last ? "" : ",");
+}
+
+//
+// Create a default "themes.json" from the compiled-in themes so the operator
+// has a ready-to-edit template.
+//
+static void write_default_theme_file(const char *path) {
+  FILE *f = fopen(path, "w");
+
+  if (f == NULL) {
+    t_print("theme: could not write default %s\n", path);
+    return;
+  }
+
+  fprintf(f, "{\n");
+  fprintf(f, "  \"_comment\": \"piHPSDR colour themes. Each colour is [red, green, blue, alpha] in the range 0.0-1.0. Edit and use the Reload menu button to apply.\",\n");
+  fprintf(f, "  \"themes\": [\n");
+
+  for (int i = 0; i < builtin_num_themes; i++) {
+    write_theme_json(f, &builtin_themes[i], i == builtin_num_themes - 1);
+  }
+
+  fprintf(f, "  ]\n}\n");
+  fclose(f);
+}
+
+//
+// Select the active theme by name. Falls back to the current index (clamped)
+// when the name is empty or not found, and keeps active_theme_name in sync.
+//
+void theme_apply_name(const char *name) {
+  if (name != NULL && name[0] != '\0') {
+    for (int i = 0; i < num_themes; i++) {
+      if (themes[i].name != NULL && strcmp(themes[i].name, name) == 0) {
+        active_theme_index = i;
+        snprintf(active_theme_name, sizeof(active_theme_name), "%s", themes[i].name);
+        return;
+      }
+    }
+  }
+
+  if (active_theme_index < 0 || active_theme_index >= num_themes) { active_theme_index = 0; }
+
+  if (num_themes > 0) {
+    snprintf(active_theme_name, sizeof(active_theme_name), "%s", themes[active_theme_index].name);
+  }
+}
+
+//
+// One-time startup initialisation: load themes.json if present, otherwise
+// write a default one generated from the built-in themes.
+//
+void theme_init(void) {
+  load_builtin_themes();
+
+  FILE *test = fopen(THEME_FILE, "r");
+
+  if (test != NULL) {
+    fclose(test);
+
+    if (!load_themes_from_json(THEME_FILE)) {
+      load_builtin_themes();
+      t_print("theme_init: %s could not be parsed, using built-in themes\n", THEME_FILE);
+    } else {
+      t_print("theme_init: loaded %d theme(s) from %s\n", num_themes, THEME_FILE);
+    }
+  } else {
+    write_default_theme_file(THEME_FILE);
+    t_print("theme_init: wrote default %s\n", THEME_FILE);
+  }
+}
+
+//
+// Re-read themes.json and re-apply, preserving the active theme by name.
+// Invoked by the "Reload" menu button.
+//
+void theme_reload(void) {
+  char saved[64];
+  snprintf(saved, sizeof(saved), "%s", theme_get_active()->name);
+  load_builtin_themes();
+
+  FILE *test = fopen(THEME_FILE, "r");
+
+  if (test != NULL) {
+    fclose(test);
+
+    if (!load_themes_from_json(THEME_FILE)) {
+      load_builtin_themes();
+      t_print("theme_reload: %s could not be parsed, using built-in themes\n", THEME_FILE);
+    } else {
+      t_print("theme_reload: loaded %d theme(s) from %s\n", num_themes, THEME_FILE);
+    }
+  }
+
+  theme_apply_name(saved);
+  theme_set();
+}
 
 const THEME *theme_get_active(void) {
+  ensure_runtime();
+
   if (active_theme_index < 0 || active_theme_index >= num_themes) {
     active_theme_index = 0;
   }
@@ -597,7 +862,13 @@ const THEME *theme_get_active(void) {
 }
 
 void theme_set() {
+  ensure_runtime();
+
   if (active_theme_index < 0 || active_theme_index >= num_themes) { active_theme_index = 0; }
+
+  if (num_themes > 0) {
+    snprintf(active_theme_name, sizeof(active_theme_name), "%s", themes[active_theme_index].name);
+  }
 
   GtkSettings *settings = gtk_settings_get_default();
   g_object_set(settings, "gtk-application-prefer-dark-theme", gtk_dark_theme, NULL);

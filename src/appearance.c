@@ -31,8 +31,34 @@
  */
 
 #include <stdlib.h>
+#include <stddef.h>
+#include <string.h>
+#include <stdio.h>
+#include <glib.h>
 
 #include "appearance.h"
+#include "message.h"
+#include "json.h"
+
+#define MAX_VFO_LAYOUTS  32
+#define VFO_LAYOUT_FILE  "vfo_layouts.json"
+
+//
+// The runtime VFO-bar layout table. At startup this is filled from the
+// compiled-in defaults (builtin_vfo_layout_list[] below) and then, if present,
+// overridden by the runtime "vfo_layouts.json" file (see vfo_layout_init /
+// vfo_layout_reload). The list is terminated by a sentinel whose width is
+// negative, exactly like the original compiled-in table, so that the search in
+// radio.c/choose_vfo_layout() keeps working unchanged.
+//
+VFO_BAR_LAYOUT vfo_layout_list[MAX_VFO_LAYOUTS + 1];
+int num_vfo_layouts = 0;
+//
+// Optional user override: when non-empty and it names a layout that fits the
+// available width, that layout is pinned instead of the automatic
+// (largest-that-fits) choice. Persisted in the props file.
+//
+char forced_vfo_layout[64] = "";
 
 const VFO_BAR_LAYOUT *current_vfo_layout = vfo_layout_list;
 //
@@ -40,7 +66,7 @@ const VFO_BAR_LAYOUT *current_vfo_layout = vfo_layout_list;
 // first mathing layout is taken,
 // so the largest one come first and the smallest one last.
 //
-const VFO_BAR_LAYOUT vfo_layout_list[] = {
+static const VFO_BAR_LAYOUT builtin_vfo_layout_list[] = {
   //
   // Our largest layout. Hopefully suitable for those
   // with impaired vision using a 1920px Screen
@@ -49,18 +75,19 @@ const VFO_BAR_LAYOUT vfo_layout_list[] = {
     .description = "VFO for LARGE Screens",
     .width = 1420,
     .height = 170,
-    .size1 = 28,
-    .size2 = 54,
-    .size3 = 72,
+    .size1 = 20,
+    .size2 = 34,
+    .size3 = 45,
 
-    .vfo_a_l = 5,
-    .vfo_a_r = 600,
-    .vfo_a_y = 125,
-    .vfo_b_l = 880,
+    .vfo_a_l = 1090,
+    .vfo_a_r = 1410,
+    .vfo_a_y = 80,
+
+    .vfo_b_l = 1090,
     .vfo_b_r = 1410,
-    .vfo_b_y = 125,
+    .vfo_b_y = 130,
 
-    .mode_x = 5,
+    .mode_x = 1090,
     .mode_y = 43,
     .agc_x = 450,
     .agc_y = 43,
@@ -74,14 +101,14 @@ const VFO_BAR_LAYOUT vfo_layout_list[] = {
     .snb_y = 43,
     .div_x = 950,
     .div_y = 43,
-    .eq_x = 1030,
-    .eq_y = 43,
-    .cat_x = 1100,
-    .cat_y = 43,
+    .eq_x = 450,
+    .eq_y = 85,
+    .cat_x = 630,
+    .cat_y = 85,
 
-    .cmpr_x = 630,
-    .cmpr_y = 85,
-    .ps_x = 880,
+    .cmpr_x = 450,
+    .cmpr_y = 125,
+    .ps_x = 450,
     .ps_y = 160,
     .dexp_x = 790,
     .dexp_y = 85,
@@ -91,24 +118,24 @@ const VFO_BAR_LAYOUT vfo_layout_list[] = {
     .dup_x = 790,
     .dup_y = 125,
 
-    .lock_x = 5,
+    .lock_x = 880,
     .lock_y = 160,
     .zoom_x = 160,
     .zoom_y = 160,
-    .ctun_x = 320,
-    .ctun_y = 160,
-    .step_x = 450,
-    .step_y = 160,
+    .ctun_x = 880,
+    .ctun_y = 125,
+    .step_x = 880,
+    .step_y = 85,
     .split_x = 630,
     .split_y = 160,
     .sat_x = 790,
     .sat_y = 160,
-    .rit_x = 950,
+    .rit_x = 1235,
     .rit_y = 160,
-    .xit_x = 1110,
+    .xit_x = 1335,
     .xit_y = 160,
-    .filter_x = 1240,
-    .filter_y = 43,
+    .filter_x = 1100,
+    .filter_y = 160,
     .multifn_x = 1260,
     .multifn_y = 160,
 
@@ -482,3 +509,245 @@ const VFO_BAR_LAYOUT vfo_layout_list[] = {
     .width = -1
   }
 };
+
+//
+// Descriptor table for the integer fields of VFO_BAR_LAYOUT, listed once so
+// that reading (from JSON) and writing (the default JSON) can never fall out
+// of sync. The "description" string is handled separately.
+//
+typedef struct {
+  const char *key;
+  size_t offset;
+} VfoField;
+
+#define VF(field) { #field, offsetof(VFO_BAR_LAYOUT, field) }
+
+static const VfoField vfo_fields[] = {
+  VF(width),    VF(height),   VF(size1),    VF(size2),    VF(size3),
+  VF(vfo_a_l),  VF(vfo_a_r),  VF(vfo_a_y),
+  VF(vfo_b_l),  VF(vfo_b_r),  VF(vfo_b_y),
+  VF(mode_x),   VF(mode_y),   VF(zoom_x),   VF(zoom_y),
+  VF(ps_x),     VF(ps_y),     VF(rit_x),    VF(rit_y),    VF(xit_x),   VF(xit_y),
+  VF(nb_x),     VF(nb_y),     VF(nr_x),     VF(nr_y),     VF(anf_x),   VF(anf_y),
+  VF(snb_x),    VF(snb_y),    VF(agc_x),    VF(agc_y),
+  VF(cmpr_x),   VF(cmpr_y),   VF(eq_x),     VF(eq_y),     VF(div_x),   VF(div_y),
+  VF(step_x),   VF(step_y),   VF(ctun_x),   VF(ctun_y),
+  VF(cat_x),    VF(cat_y),    VF(dexp_x),   VF(dexp_y),
+  VF(vox_x),    VF(vox_y),    VF(lock_x),   VF(lock_y),
+  VF(split_x),  VF(split_y),  VF(sat_x),    VF(sat_y),
+  VF(dup_x),    VF(dup_y),    VF(filter_x), VF(filter_y),
+  VF(multifn_x), VF(multifn_y), VF(lat_x),  VF(lat_y)
+};
+
+static const int num_vfo_fields = (int)(sizeof(vfo_fields) / sizeof(vfo_fields[0]));
+
+//
+// Number of compiled-in layouts (excluding the negative-width sentinel).
+//
+static int count_builtin_vfo_layouts(void) {
+  int n = 0;
+
+  while (builtin_vfo_layout_list[n].width >= 0) { n++; }
+
+  return n;
+}
+
+//
+// Release the heap-allocated layout descriptions and mark the table empty.
+//
+static void free_runtime_vfo_layouts(void) {
+  for (int i = 0; i < num_vfo_layouts; i++) {
+    g_free((char *) vfo_layout_list[i].description);
+    vfo_layout_list[i].description = NULL;
+  }
+
+  num_vfo_layouts = 0;
+}
+
+//
+// Append the negative-width sentinel that terminates the list.
+//
+static void terminate_vfo_layouts(void) {
+  memset(&vfo_layout_list[num_vfo_layouts], 0, sizeof(vfo_layout_list[0]));
+  vfo_layout_list[num_vfo_layouts].width = -1;
+  vfo_layout_list[num_vfo_layouts].description = NULL;
+}
+
+//
+// Populate the runtime table from the compiled-in defaults.
+//
+static void load_builtin_vfo_layouts(void) {
+  free_runtime_vfo_layouts();
+  int n = count_builtin_vfo_layouts();
+
+  for (int i = 0; i < n && num_vfo_layouts < MAX_VFO_LAYOUTS; i++) {
+    vfo_layout_list[num_vfo_layouts] = builtin_vfo_layout_list[i];
+    vfo_layout_list[num_vfo_layouts].description =
+      g_strdup(builtin_vfo_layout_list[i].description != NULL
+               ? builtin_vfo_layout_list[i].description : "");
+    num_vfo_layouts++;
+  }
+
+  terminate_vfo_layouts();
+}
+
+//
+// Make sure the runtime table is never empty (a valid layout is needed before
+// vfo_layout_init() runs).
+//
+void vfo_layout_ensure(void) {
+  if (num_vfo_layouts == 0) {
+    load_builtin_vfo_layouts();
+    current_vfo_layout = vfo_layout_list;
+  }
+}
+
+//
+// Parse "vfo_layouts.json" into the runtime table. Accepts either a top-level
+// array of layout objects, or an object of the form { "layouts": [ ... ] }.
+// Returns 1 on success (at least one layout loaded), 0 otherwise.
+//
+static int load_vfo_layouts_from_json(const char *path) {
+  JsonValue *root = json_parse_file(path);
+
+  if (root == NULL) { return 0; }
+
+  const JsonValue *arr = root;
+
+  if (root->type == JSON_OBJECT) {
+    arr = json_object_get(root, "layouts");
+  }
+
+  if (arr == NULL || arr->type != JSON_ARRAY) {
+    json_free(root);
+    return 0;
+  }
+
+  free_runtime_vfo_layouts();
+  const JsonValue *e;
+
+  JSON_FOREACH(e, arr) {
+    if (num_vfo_layouts >= MAX_VFO_LAYOUTS) { break; }
+
+    if (e->type != JSON_OBJECT) { continue; }
+
+    //
+    // Start from the first built-in layout so any field omitted from the file
+    // gets a sane default instead of zero.
+    //
+    VFO_BAR_LAYOUT lay = builtin_vfo_layout_list[0];
+    lay.description = NULL;
+
+    for (int f = 0; f < num_vfo_fields; f++) {
+      int *slot = (int *)((char *) &lay + vfo_fields[f].offset);
+      *slot = (int) json_as_number(json_object_get(e, vfo_fields[f].key), *slot);
+    }
+
+    const char *desc = json_as_string(json_object_get(e, "description"), NULL);
+    vfo_layout_list[num_vfo_layouts] = lay;
+    vfo_layout_list[num_vfo_layouts].description =
+      g_strdup(desc != NULL ? desc : "Unnamed layout");
+    num_vfo_layouts++;
+  }
+
+  json_free(root);
+
+  if (num_vfo_layouts == 0) { return 0; }
+
+  terminate_vfo_layouts();
+  return 1;
+}
+
+//
+// Write one layout object into the default JSON file.
+//
+static void write_vfo_layout_json(FILE *f, const VFO_BAR_LAYOUT *lay, int last) {
+  fprintf(f, "    {\n");
+  fprintf(f, "      \"description\": \"%s\",\n",
+          lay->description != NULL ? lay->description : "Unnamed layout");
+
+  for (int i = 0; i < num_vfo_fields; i++) {
+    const int *v = (const int *)((const char *) lay + vfo_fields[i].offset);
+    fprintf(f, "      \"%s\": %d%s\n",
+            vfo_fields[i].key, *v,
+            (i == num_vfo_fields - 1) ? "" : ",");
+  }
+
+  fprintf(f, "    }%s\n", last ? "" : ",");
+}
+
+//
+// Create a default "vfo_layouts.json" from the compiled-in layouts so the
+// operator has a ready-to-edit template.
+//
+static void write_default_vfo_layout_file(const char *path) {
+  FILE *f = fopen(path, "w");
+
+  if (f == NULL) {
+    t_print("vfo_layout: could not write default %s\n", path);
+    return;
+  }
+
+  int n = count_builtin_vfo_layouts();
+  fprintf(f, "{\n");
+  fprintf(f, "  \"_comment\": \"piHPSDR VFO-bar layouts. All coordinates are pixels. At startup the largest layout whose 'width' fits the available space is used; you may pin one with the 'vfo_layout' property. Edit and use the Reload menu button to apply.\",\n");
+  fprintf(f, "  \"layouts\": [\n");
+
+  for (int i = 0; i < n; i++) {
+    write_vfo_layout_json(f, &builtin_vfo_layout_list[i], i == n - 1);
+  }
+
+  fprintf(f, "  ]\n}\n");
+  fclose(f);
+}
+
+//
+// One-time startup initialisation: load vfo_layouts.json if present, otherwise
+// write a default one generated from the built-in layouts.
+//
+void vfo_layout_init(void) {
+  load_builtin_vfo_layouts();
+
+  FILE *test = fopen(VFO_LAYOUT_FILE, "r");
+
+  if (test != NULL) {
+    fclose(test);
+
+    if (!load_vfo_layouts_from_json(VFO_LAYOUT_FILE)) {
+      load_builtin_vfo_layouts();
+      t_print("vfo_layout_init: %s could not be parsed, using built-in layouts\n", VFO_LAYOUT_FILE);
+    } else {
+      t_print("vfo_layout_init: loaded %d layout(s) from %s\n", num_vfo_layouts, VFO_LAYOUT_FILE);
+    }
+  } else {
+    write_default_vfo_layout_file(VFO_LAYOUT_FILE);
+    t_print("vfo_layout_init: wrote default %s\n", VFO_LAYOUT_FILE);
+  }
+
+  current_vfo_layout = vfo_layout_list;
+}
+
+//
+// Re-read vfo_layouts.json. The actual re-selection and screen rebuild is done
+// by the caller (radio_reload_json_configs -> radio_reconfigure_screen), which
+// re-runs choose_vfo_layout() over the refreshed table.
+//
+void vfo_layout_reload(void) {
+  load_builtin_vfo_layouts();
+
+  FILE *test = fopen(VFO_LAYOUT_FILE, "r");
+
+  if (test != NULL) {
+    fclose(test);
+
+    if (!load_vfo_layouts_from_json(VFO_LAYOUT_FILE)) {
+      load_builtin_vfo_layouts();
+      t_print("vfo_layout_reload: %s could not be parsed, using built-in layouts\n", VFO_LAYOUT_FILE);
+    } else {
+      t_print("vfo_layout_reload: loaded %d layout(s) from %s\n", num_vfo_layouts, VFO_LAYOUT_FILE);
+    }
+  }
+
+  current_vfo_layout = vfo_layout_list;
+}
+
