@@ -660,7 +660,17 @@ void notch_width_changed(int id, int pos, int val) {
 void notch_enable_toggled(int id, int pos) {
   if (id >= 0 && id < receivers) {
     RECEIVER *rx = receiver[id];
-    rx->multi_notch_enable[pos] = NOT(rx->multi_notch_enable[pos]);
+    int newstate = NOT(rx->multi_notch_enable[pos]);
+    //
+    // When a notch is (freshly) switched on and it has not yet been positioned
+    // (its centre is still at the default 0 Hz, i.e. at the carrier and thus
+    // normally outside the current RX pass-band), move it to the centre of the
+    // current pass-band so it is created where the operator can see and use it.
+    //
+    if (newstate && rx->multi_notch_center[pos] == 0.0) {
+      rx->multi_notch_center[pos] = 0.5 * (rx->filter_low + rx->filter_high) + vfo[rx->id].offset;
+    }
+    rx->multi_notch_enable[pos] = newstate;
     rx_set_notch(rx);
   }
 }

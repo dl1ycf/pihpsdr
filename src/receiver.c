@@ -840,7 +840,7 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->nr4_noise_scaling_type = 0;
   for (int i = 0; i < 3; i++ ) {
     rx->multi_notch_enable[i] = 0;
-    rx->multi_notch_center[0] = 0.0;
+    rx->multi_notch_center[i] = 0.0;
   }
   rx->agc = AGC_MEDIUM;
   rx->agc_gain = 80.0;
