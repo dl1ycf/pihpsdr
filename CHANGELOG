@@ -1,5 +1,16 @@
 LIST OF RECENT PIHPSDR CHANGES
 ==============================
+September 2026:
+---------------
+
+- upgraded WDSP to version 2.10, including the new NNR noise reduction
+- removed NR3 (RNNnoise)
+- new TXNOISE command for "feeding" the transmitter with broadband noise
+- PAN+/PAN- buttons now auto-repeating
+- New and fast determination of panadapter noise floor
+- Automatic binding of AGC gain and/or RX panadapter low value to the
+  noise floor
+
 August 2026:
 ------------
 

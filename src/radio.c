@@ -2645,6 +2645,7 @@ void radio_set_af_gain(int id, double value) {
 
 void radio_set_agc_gain(int id, double value) {
   if (id >= receivers) { return; }
+  if (receiver[id]->agc_automatic_gain) { return; }
   receiver[id]->agc_gain = value;
   rx_set_agc(receiver[id]);
   g_idle_add(sliders_agc_gain, GINT_TO_POINTER(100 * suppress_popup_sliders + id));

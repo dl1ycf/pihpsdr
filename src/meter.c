@@ -254,21 +254,6 @@ static void rxmeter_edgewise(cairo_t *cr, double smtr, int sval, int sval2,
   const double max_angle = 270.0 + half;
   const double bydb = (max_angle - min_angle) / 114.0;
   const double frac = smtr / 114.0;
-#if 0
-  //
-  // Brushed-dark face for a little depth (over the VFO background)
-  // deactivated -- colours must be calculated from COLOUR_VFO_BACKGROUND
-  //
-  {
-    cairo_pattern_t *face = cairo_pattern_create_linear(cx, 0, cx, VFO_HEIGHT);
-    cairo_pattern_add_color_stop_rgba(face, 0.0, 0.09, 0.11, 0.14, 0.55);
-    cairo_pattern_add_color_stop_rgba(face, 1.0, 0.02, 0.03, 0.04, 0.0);
-    cairo_set_source(cr, face);
-    cairo_rectangle(cr, ADD_METER_WIDTH, 0, w, VFO_HEIGHT);
-    cairo_fill(cr);
-    cairo_pattern_destroy(face);
-  }
-#endif
   //
   // Dim full-scale track
   //
@@ -399,7 +384,7 @@ static void txmeter_edgewise(cairo_t *cr, double frac, double pk, const char *pw
                              double alc, int cwmode) {
   char sf[32];
   cairo_text_extents_t extents;
-  double r, g, b, x, y, angle, radians;
+  double r, g, b, angle, radians;
   const double w   = (double)(METER_WIDTH - ADD_METER_WIDTH);
   const double scalfac = w * 0.00625;
   const double cx  = (w / 2.0) + (double) ADD_METER_WIDTH;
@@ -409,21 +394,6 @@ static void txmeter_edgewise(cairo_t *cr, double frac, double pk, const char *pw
   if (half > 30.0) { half = 30.0; }
   const double min_angle = 270.0 - half;
   const double max_angle = 270.0 + half;
-#if 0
-  //
-  // Brushed-dark face
-  // deactivated -- colours must be calculated from COLOUR_VFO_BACKGROUND
-  //
-  {
-    cairo_pattern_t *face = cairo_pattern_create_linear(cx, 0, cx, VFO_HEIGHT);
-    cairo_pattern_add_color_stop_rgba(face, 0.0, 0.09, 0.11, 0.14, 0.55);
-    cairo_pattern_add_color_stop_rgba(face, 1.0, 0.02, 0.03, 0.04, 0.0);
-    cairo_set_source(cr, face);
-    cairo_rectangle(cr, ADD_METER_WIDTH, 0, w, VFO_HEIGHT);
-    cairo_fill(cr);
-    cairo_pattern_destroy(face);
-  }
-#endif
   //
   // Dim track
   //
@@ -475,8 +445,8 @@ static void txmeter_edgewise(cairo_t *cr, double frac, double pk, const char *pw
         else           { snprintf(sf, sizeof(sf), "%d", p); }
       }
       cairo_text_extents(cr, sf, &extents);
-      x = cx + (ro + 7.0 * scalfac) * cos(radians);
-      y = pivot_y + (ro + 7.0 * scalfac) * sin(radians);
+      double x = cx + (ro + 7.0 * scalfac) * cos(radians);
+      double y = pivot_y + (ro + 7.0 * scalfac) * sin(radians);
       cairo_move_to(cr, x - 0.5 * extents.width, y + 0.35 * extents.height);
       cairo_show_text(cr, sf);
     }
@@ -826,19 +796,6 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
       max_angle = 320.0;
     }
     bydb = (max_angle - min_angle) / 114.0;
-#if 0
-    // ── Radial face gradient (dark glass look) ──────────────────────────────
-    // deactivated -- colours must be calculated from COLOUR_VFO_BACKGROUND
-    {
-      cairo_pattern_t *face = cairo_pattern_create_radial(cx, cy - 10, 5, cx, cy, radius + 30);
-      cairo_pattern_add_color_stop_rgba(face, 0.0, 0.11, 0.13, 0.16, 0.90);
-      cairo_pattern_add_color_stop_rgba(face, 0.6, 0.05, 0.07, 0.09, 0.70);
-      cairo_pattern_add_color_stop_rgba(face, 1.0, 0.03, 0.04, 0.05, 0.00);
-      cairo_set_source(cr, face);
-      cairo_paint(cr);
-      cairo_pattern_destroy(face);
-    }
-#endif
     // ── Dim arc track (full scale background) ──────────────────────────────
     //cairo_set_line_width(cr, 10.0);
     cairo_set_line_width(cr, 10.0 * scalfac);
@@ -1191,19 +1148,6 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
         min_angle = 220.0;
         max_angle = 320.0;
       }
-#if 0
-      // ── Radial face gradient ──────────────────────────────────────────────
-      // deactivated -- colours must be calculated from COLOUR_VFO_BACKGROUND
-      {
-        cairo_pattern_t *face = cairo_pattern_create_radial(cx, cy - 10, 5, cx, cy, radius + 30);
-        cairo_pattern_add_color_stop_rgba(face, 0.0, 0.11, 0.13, 0.16, 0.90);
-        cairo_pattern_add_color_stop_rgba(face, 0.6, 0.05, 0.07, 0.09, 0.70);
-        cairo_pattern_add_color_stop_rgba(face, 1.0, 0.03, 0.04, 0.05, 0.00);
-        cairo_set_source(cr, face);
-        cairo_paint(cr);
-        cairo_pattern_destroy(face);
-      }
-#endif
       // ── Dim arc track ─────────────────────────────────────────────────────
       cairo_set_line_width(cr, 10.0 * scalfac);
       cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.06);

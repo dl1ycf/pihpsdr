@@ -382,7 +382,6 @@ void tx_panadapter_update(TRANSMITTER *tx) {
     int num_peaks = tx->panadapter_num_peaks;
     gboolean peaks_in_passband = SET(tx->panadapter_peaks_in_passband_filled);
     gboolean hide_noise = SET(tx->panadapter_hide_noise_filled);
-    double noise_percentile = (double)tx->panadapter_ignore_noise_percentile;
     int ignore_range_divider = tx->panadapter_ignore_range_divider;
     int ignore_range = (mywidth + ignore_range_divider - 1) / ignore_range_divider; // Round up
     double peaks[num_peaks];
@@ -391,21 +390,6 @@ void tx_panadapter_update(TRANSMITTER *tx) {
       peaks[a] = -200;
       peak_positions[a] = 0;
     }
-    // Calculate the noise level if needed
-    double noise_level = 0.0;
-    if (hide_noise) {
-      // Dynamically allocate a copy of samples for sorting
-      double *sorted_samples = g_new(double, mywidth);
-      if (sorted_samples != NULL) {
-        for (int i = 0; i < mywidth; i++) {
-          sorted_samples[i] = (double)samples[i + offset];
-        }
-        qsort(sorted_samples, mywidth, sizeof(double), compare_doubles);
-        int index = (int)((noise_percentile / 100.0) * mywidth);
-        noise_level = sorted_samples[index] + 3.0;
-        g_free(sorted_samples);
-      }
-    }
     // Detect peaks
     double filter_left_bound = peaks_in_passband ? filter_left : 0;
     double filter_right_bound = peaks_in_passband ? filter_right : mywidth;
@@ -413,7 +397,7 @@ void tx_panadapter_update(TRANSMITTER *tx) {
       if (i >= filter_left_bound && i <= filter_right_bound) {
         double s = (double)samples[i + offset];
         // Check if the point is a peak
-        if ((!hide_noise || s >= noise_level) && s > samples[i - 1 + offset] && s > samples[i + 1 + offset]) {
+        if ((!hide_noise || s >= -60.0) && s > samples[i - 1 + offset] && s > samples[i + 1 + offset]) {
           int replace_index = -1;
           int start_range = i - ignore_range;
           int end_range = i + ignore_range;

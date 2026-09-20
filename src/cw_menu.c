@@ -140,15 +140,6 @@ static void cw_keyer_sidetone_frequency_value_changed_cb(GtkWidget *widget, gpoi
   }
 }
 
-#if 0
-static void cw_ramp_width_changed_cb(GtkWidget *widget, gpointer data) {
-  cw_ramp_width = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
-  tx_set_ramps(transmitter);
-  schedule_transmit_specific();
-}
-
-#endif
-
 void cw_menu(GtkWidget *parent) {
   dialog = gtk_dialog_new();
   int row;

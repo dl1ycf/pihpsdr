@@ -132,8 +132,12 @@ static void attenuation_value_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void agcgain_value_changed_cb(GtkWidget *widget, gpointer data) {
-  double value = gtk_range_get_value(GTK_RANGE(widget));
-  radio_set_agc_gain(active_receiver->id, value);
+  if (active_receiver->agc_automatic_gain) {
+    gtk_range_set_value (GTK_RANGE(widget), active_receiver->agc_gain);
+  } else {
+    double value = gtk_range_get_value(GTK_RANGE(widget));
+    radio_set_agc_gain(active_receiver->id, value);
+  }
 }
 
 static void linein_value_changed_cb(GtkWidget *widget, gpointer data) {

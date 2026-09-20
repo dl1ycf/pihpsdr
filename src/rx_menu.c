@@ -151,6 +151,10 @@ static void squelch_enable_cb(GtkWidget *widget, gpointer data) {
   radio_set_squelch_enable(myid, val);
 }
 
+static void agc_automatic_cb(GtkWidget *widget, gpointer data) {
+  myrx->agc_automatic_gain = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
+}
+
 static void mute_audio_cb(GtkWidget *widget, gpointer data) {
   myrx->mute_when_not_active = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
 }
@@ -329,10 +333,12 @@ void rx_menu(GtkWidget *parent) {
     if (have_dither) {
       // We assume  Dither/Random are either both available or both not available
       btn = gtk_check_button_new_with_label("Dither");
+      gtk_widget_set_name(btn, "boldlabel");
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), adc[myadc].dither);
       gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 1, 1);
       g_signal_connect(btn, "toggled", G_CALLBACK(dither_cb), NULL);
       btn = gtk_check_button_new_with_label("Random");
+      gtk_widget_set_name(btn, "boldlabel");
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), adc[myadc].random);
       gtk_grid_attach(GTK_GRID(grid), btn, 1, row, 1, 1);
       g_signal_connect(btn, "toggled", G_CALLBACK(random_cb), NULL);
@@ -340,6 +346,7 @@ void rx_menu(GtkWidget *parent) {
     }
     if (have_preamp) {
       btn = gtk_check_button_new_with_label("Preamp");
+      gtk_widget_set_name(btn, "boldlabel");
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), adc[myadc].preamp);
       gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 1, 1);
       g_signal_connect(btn, "toggled", G_CALLBACK(preamp_cb), NULL);
@@ -348,21 +355,25 @@ void rx_menu(GtkWidget *parent) {
   }
   if (row < 4) { row = 4;}
   btn = gtk_check_button_new_with_label("Mute when not active");
+  gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), myrx->mute_when_not_active);
   gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 2, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(mute_audio_cb), NULL);
   btn = gtk_check_button_new_with_label("Mute Receiver");
+  gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), myrx->mute_radio);
   gtk_grid_attach(GTK_GRID(grid), btn, 2, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(mute_radio_cb), NULL);
   row++;
   if (filter_board == ALEX) {
     btn = gtk_check_button_new_with_label("Bypass ADC1 RX filters");
+    gtk_widget_set_name(btn, "boldlabel");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), adc[0].filter_bypass);
     gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 2, 1);
     g_signal_connect(btn, "toggled", G_CALLBACK(adc_filter_bypass_cb), GINT_TO_POINTER(0));
     if (device == DEVICE_ORION2 || device == NEW_DEVICE_ORION2 || device == NEW_DEVICE_SATURN) {
       btn = gtk_check_button_new_with_label("Bypass ADC2 RX filters");
+      gtk_widget_set_name(btn, "boldlabel");
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), adc[1].filter_bypass);
       gtk_grid_attach(GTK_GRID(grid), btn, 2, row, 1, 1);
       g_signal_connect(btn, "toggled", G_CALLBACK(adc_filter_bypass_cb), GINT_TO_POINTER(1));
@@ -370,6 +381,7 @@ void rx_menu(GtkWidget *parent) {
     row++;
   }
   btn = gtk_check_button_new_with_label("Squelch");
+  gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), myrx->squelch_enable);
   gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(squelch_enable_cb), NULL);
@@ -379,6 +391,11 @@ void rx_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), btn, 1, row, 3, 1);
   g_signal_connect(G_OBJECT(btn), "value_changed", G_CALLBACK(squelch_value_cb), NULL);
   row++;
+  btn = gtk_check_button_new_with_label("AGC gain automatic");
+  gtk_widget_set_name(btn, "boldlabel");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), myrx->agc_automatic_gain);
+  gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 1, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(agc_automatic_cb), NULL);
   lbl = gtk_label_new("SAM Sideband:");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
@@ -392,12 +409,13 @@ void rx_menu(GtkWidget *parent) {
   g_signal_connect(btn, "changed", G_CALLBACK(sam_sb_cb), NULL);
   row++;
   btn = gtk_check_button_new_with_label("FM Volume Limiter");
+  gtk_widget_set_name(btn, "boldlabel");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), myrx->fm_limiter);
   gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(fm_limiter_cb), NULL);
   lbl = gtk_label_new("Limiter Gain (dB):");
-  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
   gtk_widget_set_name(lbl, "boldlabel");
+  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), lbl, 1, row, 1, 1);
   btn = gtk_spin_button_new_with_range(0.0, 30.0, 1.0);
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), myrx->fm_limiter_gain);

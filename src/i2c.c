@@ -126,17 +126,13 @@ int i2c_check_presence() {
   }
 }
 
-#if 0
-//NOTUSED
-static unsigned char read_byte_data(unsigned char reg) {
+static inline unsigned char read_byte_data(unsigned char reg) {
   __s32 data;
   data = i2c_smbus_read_byte_data(i2cfd, reg);
   return data & 0xFF;
 }
 
-#endif
-
-static unsigned int read_word_data(unsigned char reg) {
+static inline unsigned int read_word_data(unsigned char reg) {
   __s32 data;
   data = i2c_smbus_read_word_data(i2cfd, reg);
   return data & 0xFFFF;

@@ -284,12 +284,12 @@ void rx_save_state(const RECEIVER *rx) {
   SetPropI1("receiver.%d.mute_when_not_active", rx->id,         rx->mute_when_not_active);
   SetPropI1("receiver.%d.mute_radio", rx->id,                   rx->mute_radio);
   SetPropI1("receiver.%d.panadapter_low", rx->id,               rx->panadapter_low);
+  SetPropI1("receiver.%d.pan_low_automatic", rx->id,            rx->pan_low_automatic);
   SetPropI1("receiver.%d.panadapter_high", rx->id,              rx->panadapter_high);
   SetPropI1("receiver.%d.panadapter_step", rx->id,              rx->panadapter_step);
   SetPropI1("receiver.%d.panadapter_peaks_on", rx->id,          rx->panadapter_peaks_on);
   SetPropI1("receiver.%d.panadapter_num_peaks", rx->id,         rx->panadapter_num_peaks);
   SetPropI1("receiver.%d.panadapter_ignore_range_divider", rx->id, rx->panadapter_ignore_range_divider);
-  SetPropI1("receiver.%d.panadapter_ignore_noise_percentile", rx->id, rx->panadapter_ignore_noise_percentile);
   SetPropI1("receiver.%d.panadapter_hide_noise_filled", rx->id, rx->panadapter_hide_noise_filled);
   SetPropI1("receiver.%d.panadapter_peaks_in_passband_filled", rx->id, rx->panadapter_peaks_in_passband_filled);
   SetPropI1("receiver.%d.display_waterfall", rx->id,            rx->display_waterfall);
@@ -315,6 +315,7 @@ void rx_save_state(const RECEIVER *rx) {
     SetPropF1("receiver.%d.volume", rx->id,                     rx->volume);
     SetPropI1("receiver.%d.agc", rx->id,                        rx->agc);
     SetPropF1("receiver.%d.agc_gain", rx->id,                   rx->agc_gain);
+    SetPropI1("receiver.%d.agc_automatic_gain", rx->id,         rx->agc_automatic_gain);
     SetPropF1("receiver.%d.agc_hang_threshold", rx->id,         rx->agc_hang_threshold);
     SetPropI1("receiver.%d.nb", rx->id,                         rx->nb);
     SetPropI1("receiver.%d.nr", rx->id,                         rx->nr);
@@ -391,12 +392,12 @@ void rx_restore_state(RECEIVER *rx) {
   GetPropI1("receiver.%d.mute_when_not_active", rx->id,         rx->mute_when_not_active);
   GetPropI1("receiver.%d.mute_radio", rx->id,                   rx->mute_radio);
   GetPropI1("receiver.%d.panadapter_low", rx->id,               rx->panadapter_low);
+  GetPropI1("receiver.%d.pan_low_automatic", rx->id,            rx->pan_low_automatic);
   GetPropI1("receiver.%d.panadapter_high", rx->id,              rx->panadapter_high);
   GetPropI1("receiver.%d.panadapter_step", rx->id,              rx->panadapter_step);
   GetPropI1("receiver.%d.panadapter_peaks_on", rx->id,          rx->panadapter_peaks_on);
   GetPropI1("receiver.%d.panadapter_num_peaks", rx->id,         rx->panadapter_num_peaks);
   GetPropI1("receiver.%d.panadapter_ignore_range_divider", rx->id, rx->panadapter_ignore_range_divider);
-  GetPropI1("receiver.%d.panadapter_ignore_noise_percentile", rx->id, rx->panadapter_ignore_noise_percentile);
   GetPropI1("receiver.%d.panadapter_hide_noise_filled", rx->id, rx->panadapter_hide_noise_filled);
   GetPropI1("receiver.%d.panadapter_peaks_in_passband_filled", rx->id, rx->panadapter_peaks_in_passband_filled);
   GetPropI1("receiver.%d.display_waterfall", rx->id,            rx->display_waterfall);
@@ -427,6 +428,7 @@ void rx_restore_state(RECEIVER *rx) {
     GetPropF1("receiver.%d.display_average_time", rx->id,       rx->display_average_time);
     GetPropF1("receiver.%d.volume", rx->id,                     rx->volume);
     GetPropI1("receiver.%d.agc", rx->id,                        rx->agc);
+    GetPropI1("receiver.%d.agc_automatic_gain", rx->id,         rx->agc_automatic_gain);
     GetPropF1("receiver.%d.agc_gain", rx->id,                   rx->agc_gain);
     GetPropF1("receiver.%d.agc_hang_threshold", rx->id,         rx->agc_hang_threshold);
     GetPropI1("receiver.%d.nb", rx->id,                         rx->nb);
@@ -779,7 +781,6 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->panadapter_peaks_on = 0;
   rx->panadapter_num_peaks = 3;
   rx->panadapter_ignore_range_divider = 20;
-  rx->panadapter_ignore_noise_percentile = 80;
   rx->panadapter_hide_noise_filled = 1;
   rx->panadapter_peaks_in_passband_filled = 0;
   rx->waterfall_high = -40;
@@ -816,6 +817,8 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->nr2_trained_t2 = 0.2;         // t2 value for trained threshold
   // New feature defaults
   rx->nbp_window        = 0;      // 4-term BH window
+  rx->agc_automatic_gain = 0;
+  rx->noise_floor = -120.0;
   rx->agc_custom_attack = 1;
   rx->agc_custom_decay  = 250;
   rx->agc_custom_hang   = 250;

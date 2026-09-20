@@ -142,6 +142,11 @@ static void panadapter_peaks_on_cb(GtkWidget *widget, gpointer data) {
   myrx->panadapter_peaks_on = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
 }
 
+static void pan_low_automatic_cb(GtkWidget *widget, gpointer data) {
+  RECEIVER *myrx = (RECEIVER *)data;
+  myrx->pan_low_automatic = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+}
+
 static void time_value_changed_cb(GtkWidget *widget, gpointer data) {
   RECEIVER *myrx = (RECEIVER *)data;
   myrx->display_average_time = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
@@ -245,11 +250,6 @@ static void panadapter_ignore_range_divider_value_changed_cb(GtkWidget *widget, 
   myrx->panadapter_ignore_range_divider = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
 }
 
-static void panadapter_ignore_noise_percentile_value_changed_cb(GtkWidget *widget, gpointer data) {
-  RECEIVER *myrx = (RECEIVER *)data;
-  myrx->panadapter_ignore_noise_percentile = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
-}
-
 static void waterfall_high_value_changed_cb(GtkWidget *widget, gpointer data) {
   RECEIVER *myrx = (RECEIVER *)data;
   myrx->waterfall_high = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
@@ -296,10 +296,6 @@ static void tx_panadapter_num_peaks_value_changed_cb(GtkWidget *widget, gpointer
 
 static void tx_panadapter_ignore_range_divider_value_changed_cb(GtkWidget *widget, gpointer data) {
   transmitter->panadapter_ignore_range_divider = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
-}
-
-static void tx_panadapter_ignore_noise_percentile_value_changed_cb(GtkWidget *widget, gpointer data) {
-  transmitter->panadapter_ignore_noise_percentile = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
 }
 
 static void display_warnings_cb(GtkWidget *widget, gpointer data) {
@@ -532,6 +528,11 @@ void display_menu(GtkWidget *parent) {
     g_signal_connect(time_r, "value_changed", G_CALLBACK(time_value_changed_cb), myrx);
     row++;
     row++;
+    btn = gtk_check_button_new_with_label("PanLow Automatic");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), myrx->pan_low_automatic);
+    gtk_grid_attach(GTK_GRID(mygrid), btn, col, row, 2, 1);
+    g_signal_connect(btn, "toggled", G_CALLBACK(pan_low_automatic_cb), myrx);
+    row++;
     btn = gtk_check_button_new_with_label("Label Strongest Peaks");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), myrx->panadapter_peaks_on);
     gtk_grid_attach(GTK_GRID(mygrid), btn, col, row, 2, 1);
@@ -565,14 +566,6 @@ void display_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(mygrid), btn, col + 1, row, 1, 1);
     g_signal_connect(btn, "value_changed", G_CALLBACK(panadapter_ignore_range_divider_value_changed_cb), myrx);
     row++;
-    label = gtk_label_new("Floor Percentile");
-    gtk_widget_set_name(label, "boldlabel");
-    gtk_widget_set_halign(label, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(mygrid), label, col, row, 1, 1);
-    btn = gtk_spin_button_new_with_range(1.0, 100.0, 1.0);
-    gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), (double)myrx->panadapter_ignore_noise_percentile);
-    gtk_grid_attach(GTK_GRID(mygrid), btn, col + 1, row, 1, 1);
-    g_signal_connect(btn, "value_changed", G_CALLBACK(panadapter_ignore_noise_percentile_value_changed_cb), myrx);
   }
   //
   // Since the RECEIVER and TRANSMITTER data structures are different, we have to repeat code
@@ -667,14 +660,6 @@ void display_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(tx_grid), btn, col + 1, row, 1, 1);
     g_signal_connect(btn, "value_changed", G_CALLBACK(tx_panadapter_ignore_range_divider_value_changed_cb), NULL);
     row++;
-    label = gtk_label_new("Floor Percentile");
-    gtk_widget_set_name(label, "boldlabel");
-    gtk_widget_set_halign(label, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(tx_grid), label, col, row, 1, 1);
-    btn = gtk_spin_button_new_with_range(1.0, 100.0, 1.0);
-    gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), (double)transmitter->panadapter_ignore_noise_percentile);
-    gtk_grid_attach(GTK_GRID(tx_grid), btn, col + 1, row, 1, 1);
-    g_signal_connect(btn, "value_changed", G_CALLBACK(tx_panadapter_ignore_noise_percentile_value_changed_cb), NULL);
   }
   sub_menu = dialog;
   gtk_widget_show_all(dialog);

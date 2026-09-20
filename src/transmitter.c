@@ -331,7 +331,6 @@ void tx_save_state(const TRANSMITTER *tx) {
   SetPropI1("transmitter.%d.panadapter_peaks_on",                 tx->id,    tx->panadapter_peaks_on);
   SetPropI1("transmitter.%d.panadapter_num_peaks",                tx->id,    tx->panadapter_num_peaks);
   SetPropI1("transmitter.%d.panadapter_ignore_range_divider",     tx->id,    tx->panadapter_ignore_range_divider);
-  SetPropI1("transmitter.%d.panadapter_ignore_noise_percentile",  tx->id,    tx->panadapter_ignore_noise_percentile);
   SetPropI1("transmitter.%d.panadapter_hide_noise_filled",        tx->id,    tx->panadapter_hide_noise_filled);
   SetPropI1("transmitter.%d.panadapter_peaks_in_passband_filled", tx->id,    tx->panadapter_peaks_in_passband_filled);
   SetPropI1("transmitter.%d.audiomonitor",                        tx->id,    tx->audiomonitor);
@@ -422,7 +421,6 @@ void tx_restore_state(TRANSMITTER *tx) {
   GetPropI1("transmitter.%d.panadapter_peaks_on",                 tx->id,    tx->panadapter_peaks_on);
   GetPropI1("transmitter.%d.panadapter_num_peaks",                tx->id,    tx->panadapter_num_peaks);
   GetPropI1("transmitter.%d.panadapter_ignore_range_divider",     tx->id,    tx->panadapter_ignore_range_divider);
-  GetPropI1("transmitter.%d.panadapter_ignore_noise_percentile",  tx->id,    tx->panadapter_ignore_noise_percentile);
   GetPropI1("transmitter.%d.panadapter_hide_noise_filled",        tx->id,    tx->panadapter_hide_noise_filled);
   GetPropI1("transmitter.%d.panadapter_peaks_in_passband_filled", tx->id,    tx->panadapter_peaks_in_passband_filled);
   // BACKWARDS: next two lines
@@ -998,7 +996,6 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->panadapter_peaks_on = 0;
   tx->panadapter_num_peaks = 4;  // if the typical application is a two-tone test we need four
   tx->panadapter_ignore_range_divider = 24;
-  tx->panadapter_ignore_noise_percentile = 50;
   tx->panadapter_hide_noise_filled = 1;
   tx->panadapter_peaks_in_passband_filled = 0;
   tx->displaying = 0;

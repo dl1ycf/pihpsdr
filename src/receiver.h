@@ -43,6 +43,8 @@ typedef struct _receiver {
   int low_latency;
 
   int agc;
+  int agc_automatic_gain;
+  double noise_floor;
   double agc_gain;
   double agc_slope;
   double agc_hang_threshold;
@@ -188,10 +190,10 @@ typedef struct _receiver {
   int panadapter_low;
   int panadapter_high;
   int panadapter_step;
+  int pan_low_automatic;
   int panadapter_peaks_on;
   int panadapter_num_peaks;
   int panadapter_ignore_range_divider;
-  int panadapter_ignore_noise_percentile;
   int panadapter_hide_noise_filled;
   int panadapter_peaks_in_passband_filled;
 

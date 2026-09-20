@@ -75,15 +75,6 @@ int ext_radio_set_mox(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
-#if 0
-// cppcheck-suppress constParameterPointer
-int ext_radio_set_vox(gpointer data) {
-  int state = GPOINTER_TO_INT(data);
-  radio_set_vox(state);
-  return G_SOURCE_REMOVE;
-}
-#endif
-
 // cppcheck-suppress constParameterPointer
 int ext_start_band_menu(gpointer data) {
   int v = GPOINTER_TO_INT(data);

@@ -866,7 +866,6 @@ static gpointer client_tcp_thread(gpointer arg) {
     rx->panadapter_peaks_on = 0;
     rx->panadapter_num_peaks = 3;
     rx->panadapter_ignore_range_divider = 20;
-    rx->panadapter_ignore_noise_percentile = 80;
     rx->panadapter_hide_noise_filled = 1;
     rx->panadapter_peaks_in_passband_filled = 0;
     rx->waterfall_high = -40;
@@ -893,7 +892,6 @@ static gpointer client_tcp_thread(gpointer arg) {
   transmitter->panadapter_peaks_on = 0;
   transmitter->panadapter_num_peaks = 4;  // if the typical application is a two-tone test we need four
   transmitter->panadapter_ignore_range_divider = 24;
-  transmitter->panadapter_ignore_noise_percentile = 50;
   transmitter->panadapter_hide_noise_filled = 1;
   transmitter->panadapter_peaks_in_passband_filled = 0;
   transmitter->displaying = 0;
