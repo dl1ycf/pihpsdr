@@ -64,6 +64,8 @@ struct _rxprofile {
   int    nr2_post_rate;
   double nr2_trained_threshold;
   double nr2_trained_t2;
+  int    nnr_model;
+  double nnr_floor;
   double nr4_reduction_amount;      // NR4 parameters
   double nr4_smoothing_factor;
   double nr4_whitening_factor;

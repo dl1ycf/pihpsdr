@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -76,11 +76,11 @@ void decalc_varsamp (VARSAMP a)
 	_aligned_free (a->h);
 }
 
-VARSAMP create_varsamp ( int run, int size, double* in, double* out,
+VARSAMP create_varsamp ( int run, int size, double* in, double* out, 
 	int in_rate, int out_rate, double fc, double fc_low, int R, double gain, double var, int varmode)
 {
 	VARSAMP a = (VARSAMP) malloc0 (sizeof (varsamp));
-
+	
 	a->run = run;
 	a->size = size;
 	a->in = in;
@@ -132,7 +132,7 @@ int xvarsamp (VARSAMP a, double var)
 	a->old_inv_cvar = a->inv_cvar;
 	a->cvar = a->var * a->nom_ratio;
 	a->inv_cvar = 1.0 / a->cvar;
-	if (a->varmode)
+	if (a->varmode) 
 	{
 		a->dicvar = (a->inv_cvar - a->old_inv_cvar) / (double)a->size;
 		a->inv_cvar = a->old_inv_cvar;

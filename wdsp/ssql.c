@@ -69,7 +69,7 @@ void flush_ftov (FTOV a)
 
 void xftov (FTOV a)
 {
-	// 'ftov' does frequency to voltage conversion looking only at zero crossings of an
+	// 'ftov' does frequency to voltage conversion looking only at zero crossings of an 
 	//     AC (DC blocked) signal, i.e., ignoring signal amplitude.
 	if (a->run)
 	{
@@ -174,7 +174,7 @@ void decalc_ssql (SSQL a)
 	_aligned_free (a->cup);
 }
 
-SSQL create_ssql (int run, int size, double* in, double* out, int rate, double tup, double tdown,
+SSQL create_ssql (int run, int size, double* in, double* out, int rate, double tup, double tdown, 
 	double muted_gain, double tau_mute, double tau_unmute, double wthresh, double tr_thresh, int rsize, double fmax)
 {
 	SSQL a = (SSQL) malloc0 (sizeof (ssql));
@@ -207,7 +207,7 @@ void destroy_ssql (SSQL a)
 
 void flush_ssql (SSQL a)
 {
-
+	
 	memset (a->b1, 0, a->size * sizeof (complex));
 	flush_cbl (a->dcbl);
 	memset (a->ibuff, 0, a->size * sizeof (double));

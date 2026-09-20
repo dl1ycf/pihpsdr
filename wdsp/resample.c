@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -87,7 +87,7 @@ PORT
 RESAMPLE create_resample ( int run, int size, double* in, double* out, int in_rate, int out_rate, double fc, int ncoef, double gain)
 {
 	RESAMPLE a = (RESAMPLE) malloc0 (sizeof (resample));
-
+	
 	a->run = run;
 	a->size = size;
 	a->in = in;

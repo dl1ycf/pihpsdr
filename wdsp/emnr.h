@@ -2,7 +2,7 @@
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2015 Warren Pratt, NR0V
+Copyright (C) 2015, 2026 Warren Pratt, NR0V
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -144,7 +144,7 @@ typedef struct _emnr
 		int msize;
 		double* lambda_y;
 		double* lambda_d;
-
+		
 		double alpha_pow;
 		double alpha_Pbar;
 		double epsH1;
@@ -196,14 +196,12 @@ typedef struct _emnr
 		double tc_decay;
 		double rate_decay;
 		double* w;
-		int noise_frames;
-		int noise_frame_index;
-		double* noise_frame;
+		unsigned int rngstate;
 		double olddmag;
 	} post2;
 }emnr, *EMNR;
 
-extern EMNR create_emnr (int run, int position, int size, double* in, double* out, int fsize, int ovrlp,
+extern EMNR create_emnr (int run, int position, int size, double* in, double* out, int fsize, int ovrlp, 
 	int rate, int wintype, double gain, int gain_method, int npe_method, int ae_run);
 
 extern void destroy_emnr (EMNR a);

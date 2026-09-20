@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -43,7 +43,7 @@ typedef struct _fmsq
 	double F[4];
 	double G[4];
 	double avtau;						// time constant for averaging noise
-	double avm;
+	double avm;						
 	double onem_avm;
 	double avnoise;
 	double longtau;						// time constant for long averaging
@@ -73,8 +73,8 @@ typedef struct _fmsq
 	double* impulse;
 } fmsq, *FMSQ;
 
-extern FMSQ create_fmsq (int run, int size, double* insig, double* outsig, double* trigger, int rate, double fc,
-	double* pllpole, double tdelay, double avtau, double longtau, double tup, double tdown, double tail_thresh,
+extern FMSQ create_fmsq (int run, int size, double* insig, double* outsig, double* trigger, int rate, double fc, 
+	double* pllpole, double tdelay, double avtau, double longtau, double tup, double tdown, double tail_thresh, 
 	double unmute_thresh, double min_tail, double max_tail, int nc, int mp);
 
 extern void destroy_fmsq (FMSQ a);

@@ -347,6 +347,8 @@ void rx_save_state(const RECEIVER *rx) {
     SetPropF1("receiver.%d.nb_advtime", rx->id,                 rx->nb_advtime);
     SetPropF1("receiver.%d.nb_hang", rx->id,                    rx->nb_hang);
     SetPropF1("receiver.%d.nb_thresh", rx->id,                  rx->nb_thresh);
+    SetPropI1("receiver.%d.nnr_model", rx->id,                  rx->nnr_model);
+    SetPropF1("receiver.%d.nnr_floor", rx->id,                  rx->nnr_floor);
     SetPropF1("receiver.%d.nr4_reduction_amount", rx->id,       rx->nr4_reduction_amount);
     SetPropF1("receiver.%d.nr4_smoothing_factor", rx->id,       rx->nr4_smoothing_factor);
     SetPropF1("receiver.%d.nr4_whitening_factor", rx->id,       rx->nr4_whitening_factor);
@@ -458,6 +460,8 @@ void rx_restore_state(RECEIVER *rx) {
     GetPropF1("receiver.%d.nb_advtime", rx->id,                 rx->nb_advtime);
     GetPropF1("receiver.%d.nb_hang", rx->id,                    rx->nb_hang);
     GetPropF1("receiver.%d.nb_thresh", rx->id,                  rx->nb_thresh);
+    GetPropI1("receiver.%d.nnr_model", rx->id,                  rx->nnr_model);
+    GetPropF1("receiver.%d.nnr_floor", rx->id,                  rx->nnr_floor);
     GetPropF1("receiver.%d.nr4_reduction_amount", rx->id,       rx->nr4_reduction_amount);
     GetPropF1("receiver.%d.nr4_smoothing_factor", rx->id,       rx->nr4_smoothing_factor);
     GetPropF1("receiver.%d.nr4_whitening_factor", rx->id,       rx->nr4_whitening_factor);
@@ -832,6 +836,8 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->nb_hang =    0.00001;       // Lag=0.01     in the DSP menu
   rx->nb_thresh =  4.95;          // Threshold=30 in the DSP menu
   rx->nb2_mode = 0;               // Zero mode
+  rx->nnr_model = 0;              // Standard
+  rx->nnr_floor = -25.0;          // This is the default
   rx->nr4_reduction_amount = 10.0;
   rx->nr4_smoothing_factor = 20.0;
   rx->nr4_whitening_factor = 0.0;
@@ -1650,14 +1656,8 @@ void rx_off(const RECEIVER *rx, int wait) {
   //
   // switch receiver OFF.
   // if (wait)  wait until slew-down completed; else return immediately
-  // ATTENTION:
-  // when using 2 RX, it regularly happened that after RX1 being shut down
-  // with wait==0 and RX2 with wait==1, upon restart of the receivers
-  // the WDSP RX1 thread was hanging in wdspmain (waiting for Sem_BuffReady).
-  // Therefore we do the wait in any case until we know what is going on.
-  // This slightly slows down the RX/TX transition when using 2RX.
   //
-  SetChannelState(rx->id, 0, 1);
+  SetChannelState(rx->id, 0, wait);
 }
 
 void rx_on(const RECEIVER *rx) {
@@ -2080,6 +2080,8 @@ void rx_set_noise(const RECEIVER *rx) {
     RXTXprofile[mode].rx.nb_advtime = rx->nb_advtime;
     RXTXprofile[mode].rx.nb_hang = rx->nb_hang;
     RXTXprofile[mode].rx.nb_thresh = rx->nb_thresh;
+    RXTXprofile[mode].rx.nnr_model = rx->nnr_model;
+    RXTXprofile[mode].rx.nnr_floor = rx->nnr_floor;
     RXTXprofile[mode].rx.nr4_reduction_amount = rx->nr4_reduction_amount;
     RXTXprofile[mode].rx.nr4_smoothing_factor = rx->nr4_smoothing_factor;
     RXTXprofile[mode].rx.nr4_whitening_factor = rx->nr4_whitening_factor;
@@ -2113,7 +2115,7 @@ void rx_set_noise(const RECEIVER *rx) {
   //
   SetRXAANRRun(rx->id, 0);
   SetRXAEMNRRun(rx->id, 0);
-  SetRXARNNRRun(rx->id, 0);
+  SetRXANNRRun(rx->id, 0);
   SetRXASBNRRun(rx->id, 0);
   //
   // NR
@@ -2135,9 +2137,10 @@ void rx_set_noise(const RECEIVER *rx) {
   SetRXAEMNRaeRun(rx->id,               1); // ArtifactElminiation *always* ON
   SetRXAEMNRpost2Run(rx->id,            rx->nr2_post);
   //
-  // NR3
+  // NNR
   //
-  SetRXARNNRPosition(rx->id,            rx->nr_agc);
+  SetRXANNRMaskFloor(rx->id,            rx->nnr_floor);
+  (void) SetRXANNRModel(rx->id,         rx->nnr_model);
   //
   // NR4
   //
@@ -2159,7 +2162,7 @@ void rx_set_noise(const RECEIVER *rx) {
     SetRXAEMNRRun(rx->id, 1);
     break;
   case 3:
-    SetRXARNNRRun(rx->id, 1);
+    SetRXANNRRun(rx->id, 1);
     break;
   case 4:
     SetRXASBNRRun(rx->id, 1);

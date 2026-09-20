@@ -1040,7 +1040,8 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
   cairo_text_extents_t extents;
   int txvfo = vfo_get_tx_vfo();
   int txmode = vfo[txvfo].mode;
-  int cwmode = (txmode == modeCWU || txmode == modeCWL) && !transmitter->tune && !transmitter->twotone;
+  int cwmode = (txmode == modeCWU || txmode == modeCWL) && !transmitter->tune 
+                && !transmitter->twotone && !transmitter->txnoise;
   const BAND *band = band_get_band(vfo[txvfo].band);
   if (rxtxstate == 0) {
     max_pwrcount = 0;

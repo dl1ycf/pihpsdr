@@ -649,6 +649,7 @@ static void new_protocol_high_priority(void) {
           || MIDI_cw_is_active
           || !cw_keyer_internal
           || transmitter->twotone
+          || transmitter->txnoise
           || hpsdr_ptt) {
         high_priority_buffer_to_radio[4] |= 0x02;
       }

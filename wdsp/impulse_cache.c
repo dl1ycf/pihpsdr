@@ -95,12 +95,12 @@ void remove_impulse_cache_tail(size_t bucket)
 
 	cache_entry** pp = &_cache_heads[bucket];
 
-	while (*pp && (*pp)->next)
+	while (*pp && (*pp)->next) 
 	{
 		pp = &(*pp)->next;
 	}
 
-	if (*pp)
+	if (*pp) 
 	{
 		_aligned_free((*pp)->impulse);
 		_aligned_free(*pp);
@@ -139,9 +139,9 @@ double* get_impulse_cache_entry(size_t bucket, HASH_T hash, int N)
 	// old cache entries will move towards the tail and eventually be dumped
 	cache_entry* prev = NULL;
 	cache_entry* e = _cache_heads[bucket];
-
+	
 	while (e) {
-		if (e->hash == hash && e->N == N)
+		if (e->hash == hash && e->N == N) 
 		{
 			if (prev)
 			{
@@ -246,7 +246,7 @@ int read_impulse_cache(const char* path)
 			e->N = N;
 			e->impulse = data;
 			e->next = NULL;
-			if (tail)
+			if (tail)       
 				tail->next = e;
 			else
 				_cache_heads[b] = e;
@@ -259,7 +259,7 @@ int read_impulse_cache(const char* path)
 }
 
 PORT
-void use_impulse_cache(int use)
+void use_impulse_cache(int use) 
 {
 	EnterCriticalSection(&_cs_use_cache);
 	_use_cache = use;

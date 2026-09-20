@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -219,7 +219,7 @@ void multA1TA2(double* a1, double* a2, int m, int n, int q, double* c)
 {
 	int i, j, k;
     int p = q - m;
-	memset (c, 0, m * n * sizeof (double));
+	memset (c, 0, m * n * sizeof (double));              
     for (i = 0; i < m; i++)
     {
         for (j = 0; j < n; j++)
@@ -401,7 +401,7 @@ void det(SNBA d, int asize, double* v, int* detout)
     }
 }
 
-int scanFrame(int xsize, int pval, double pmultmin, int* det, int* bimp, int* limp,
+int scanFrame(int xsize, int pval, double pmultmin, int* det, int* bimp, int* limp, 
             int* befimp, int* aftimp, int* p_opt, int* next)
 {
     int inflag = 0;
@@ -446,7 +446,7 @@ int scanFrame(int xsize, int pval, double pmultmin, int* det, int* bimp, int* li
         if (p_opt[i] < (int)(pmultmin * limp[i]))
             p_opt[i] = -1;
     }
-
+            
     for (i = 0; i < nimp; i++)
     {
         merit[i] = (double)p_opt[i] / (double)limp[i];
@@ -501,7 +501,7 @@ void execFrame(SNBA d, double* x)
 	int p_opt[MAXIMP];
     int next = 0;
     int p;
-	memcpy (d->exec.savex, x, d->xsize * sizeof (double));
+	memcpy (d->exec.savex, x, d->xsize * sizeof (double));                    
 	asolve(d->xsize, d->exec.asize, x, d->exec.a, d->wrk.asolve_r, d->wrk.asolve_z);
     invf(d->xsize, d->exec.asize, d->exec.a, x, d->exec.v);
     det(d, d->exec.asize, d->exec.v, d->exec.detout);
@@ -520,10 +520,10 @@ void execFrame(SNBA d, double* x)
                 scanFrame(d->xsize, d->exec.asize, d->scan.pmultmin, d->exec.unfixed, bimp, limp, befimp, aftimp, p_opt, &next);
 
             if ((p = p_opt[next]) > 0)
-            {
+            {      
                 asolve(d->xsize, p, x, d->exec.a, d->wrk.asolve_r, d->wrk.asolve_z);
-                xHat(limp[next], p, &x[bimp[next] - p], d->exec.a, d->exec.xHout,
-					d->wrk.xHat_r, d->wrk.xHat_ATAI, d->wrk.xHat_A1, d->wrk.xHat_A2,
+                xHat(limp[next], p, &x[bimp[next] - p], d->exec.a, d->exec.xHout,  
+					d->wrk.xHat_r, d->wrk.xHat_ATAI, d->wrk.xHat_A1, d->wrk.xHat_A2, 
 					d->wrk.xHat_P1, d->wrk.xHat_P2, d->wrk.trI_y, d->wrk.trI_v, d->wrk.dR_z);
 				memcpy (&x[bimp[next]], d->exec.xHout, limp[next] * sizeof (double));
 				memset (&d->exec.unfixed[bimp[next]], 0, limp[next] * sizeof (int));
@@ -582,9 +582,9 @@ PORT void SetRXASNBARun (int channel, int run)
 	if (a->run != run)
 	{
 		RXAbpsnbaCheck (channel, rxa[channel].mode, rxa[channel].ndb.p->master_run);
-		RXAbp1Check (channel, rxa[channel].amd.p->run, run, rxa[channel].emnr.p->run,
-			rxa[channel].anf.p->run, rxa[channel].anr.p->run,
-            rxa[channel].rnnr.p->run, rxa[channel].sbnr.p->run); // NR3 + NR4 support
+		RXAbp1Check (channel, rxa[channel].amd.p->run, run, rxa[channel].emnr.p->run, 
+			getRun_nnr (rxa[channel].nnr.p), rxa[channel].anf.p->run, rxa[channel].anr.p->run,
+			rxa[channel].sbnr.p->run); // NR4
 		EnterCriticalSection (&ch[channel].csDSP);
 		a->run = run;
 		RXAbp1Set (channel);
@@ -706,7 +706,7 @@ PORT void SetRXASNBAOutputBandwidth (int channel, double flow, double fhigh)
 ********************************************************************************************************/
 
 // This is a thin wrapper for a notched-bandpass filter (nbp).  The basic difference is that it provides
-// for its input and output to happen at different points in the processing pipeline.  This means it must
+// for its input and output to happen at different points in the processing pipeline.  This means it must 
 // include a buffer, 'buff'.  Its input and output are done via functions xbpshbain() and xbpshbaout().
 
 void calc_bpsnba (BPSNBA a)
@@ -731,8 +731,8 @@ void calc_bpsnba (BPSNBA a)
 		a->ptraddr);				// addr of database pointer
 }
 
-BPSNBA create_bpsnba (int run, int run_notches, int position, int size, int nc, int mp, double* in, double* out, int rate,
-	double abs_low_freq, double abs_high_freq, double f_low, double f_high, int wintype, double gain, int autoincr,
+BPSNBA create_bpsnba (int run, int run_notches, int position, int size, int nc, int mp, double* in, double* out, int rate,  
+	double abs_low_freq, double abs_high_freq, double f_low, double f_high, int wintype, double gain, int autoincr, 
 	int maxpb, NOTCHDB* ptraddr)
 {
 	BPSNBA a = (BPSNBA) malloc0 (sizeof (bpsnba));

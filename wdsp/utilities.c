@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -58,7 +58,6 @@ DestroyCriticalSection (LPCRITICAL_SECTION cs_ptr)
 {	// used by VAC
 	free ((char *)cs_ptr);
 }
-
 #endif
 
 
@@ -419,7 +418,7 @@ void WriteScaledAudio (
 
 	static int count, complete;
 	int i;
-
+	
 	if (!ready)
 	{
 		dstruct = (DSTR) malloc0 (sizeof (dstr));
@@ -555,7 +554,7 @@ void getFilterCorners(int id, int* lower_index, int* upper_index)
 	*upper_index = a->i_upper_corner;
 }
 
-PORT
+PORT 
 void getFilterCurve(int id, int size, int w_type, int index_low, int index_high, double* segment)
 {
 	// size = filter_size
@@ -591,7 +590,7 @@ void test_bfcu()
 
 // Prints to the Visual Studio Debug Window; works like printf(...)
 #include <stdarg.h>
-void dprintf(const char* format, ...)
+void dprintf(const char* format, ...) 
 {
 	char buffer[512];
 	va_list args;
@@ -606,23 +605,23 @@ void dprintf(const char* format, ...)
 // Usage example:
 // dprintf("Error Code: %d at %s\n", 404, "main.cpp");
 
-// Converts a uint32_t to a binary string representation; buf must have space for
+// Converts a uint32_t to a binary string representation; buf must have space for 
 // at least 43 characters (3 for "0b ", 32 for bits, and 1 for null terminator, 7 for
 // spaces between groups of 4 bits).
 // The string can then be printed to the Visual Studio Debug Window using dprintf, e.g.:
-char* uint32_to_bitstr(uint32_t n, char* buf)
+char* uint32_to_bitstr(uint32_t n, char* buf) 
 {
 	int char_idx = 0;
 	buf[char_idx++] = '0';
 	buf[char_idx++] = 'b';
 	buf[char_idx++] = ' ';
 
-	for (int i = 31; i >= 0; i--)
+	for (int i = 31; i >= 0; i--) 
 	{
 		buf[char_idx++] = ((n >> i) & 1) ? '1' : '0';
 
 		// Optional: Add spaces every 4 bits for readability
-		if (i > 0 && i % 4 == 0)
+		if (i > 0 && i % 4 == 0) 
 		{
 			buf[char_idx++] = ' ';
 		}

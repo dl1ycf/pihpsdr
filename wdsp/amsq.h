@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -36,7 +36,7 @@ typedef struct _amsq
 	double* trigsig;					// buffer containing trigger signal
 	double rate;						// sample rate
 	double avtau;						// time constant for averaging noise
-	double avm;
+	double avm;						
 	double onem_avm;
 	double avsig;
 	int state;							// state machine control

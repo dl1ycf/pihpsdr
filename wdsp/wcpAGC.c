@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -136,7 +136,7 @@ void loadWcpAGC (WCPAGC a)
 	a->inv_max_input = 1.0 / a->max_input;
 
 	tmp = pow (10.0, (a->hang_thresh - 1.0) / 0.125);
-	a->hang_level = (a->max_input * tmp + (a->out_target /
+	a->hang_level = (a->max_input * tmp + (a->out_target / 
 		(a->var_gain * a->max_gain)) * (1.0 - tmp)) * 0.637;
 
 	a->hang_backmult = 1.0 - exp(-1.0 / (a->sample_rate * a->tau_hang_backmult));
@@ -173,14 +173,14 @@ void xwcpagc (WCPAGC a)
 			}
 			return;
 		}
-
+	
 		for (i = 0; i < a->io_buffsize; i++)
 		{
 			if (++a->out_index >= a->ring_buffsize)
 				a->out_index -= a->ring_buffsize;
 			if (++a->in_index >= a->ring_buffsize)
 				a->in_index -= a->ring_buffsize;
-
+	
 			a->out_sample[0] = a->ring[2 * a->out_index + 0];
 			a->out_sample[1] = a->ring[2 * a->out_index + 1];
 			a->abs_out_sample = a->abs_ring[a->out_index];
@@ -441,7 +441,7 @@ SetRXAAGCHang (int channel, int hang)
 	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
-PORT void
+PORT void				
 GetRXAAGCHangLevel(int channel, double *hangLevel)
 //for line on bandscope
 {
@@ -450,7 +450,7 @@ GetRXAAGCHangLevel(int channel, double *hangLevel)
 	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
-PORT void
+PORT void			
 SetRXAAGCHangLevel(int channel, double hangLevel)
 //for line on bandscope
 {
@@ -459,7 +459,7 @@ SetRXAAGCHangLevel(int channel, double hangLevel)
 	if (rxa[channel].agc.p->max_input > rxa[channel].agc.p->min_volts)
 	{
 		convert = pow (10.0, hangLevel / 20.0);
-		tmp = max(1e-8, (convert - rxa[channel].agc.p->min_volts) /
+		tmp = max(1e-8, (convert - rxa[channel].agc.p->min_volts) / 
 			(rxa[channel].agc.p->max_input - rxa[channel].agc.p->min_volts));
 		rxa[channel].agc.p->hang_thresh = 1.0 + 0.125 * log10 (tmp);
 	}
@@ -469,7 +469,7 @@ SetRXAAGCHangLevel(int channel, double hangLevel)
 	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
-PORT void
+PORT void				
 GetRXAAGCHangThreshold(int channel, int *hangthreshold)
 //for slider in setup
 {
@@ -488,33 +488,33 @@ SetRXAAGCHangThreshold (int channel, int hangthreshold)
 	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
-PORT void
+PORT void				
 GetRXAAGCThresh(int channel, double *thresh, double size, double rate)
 //for line on bandscope.
 {
 	double noise_offset;
 	EnterCriticalSection (&ch[channel].csDSP);
-	noise_offset = 10.0 * log10((rxa[channel].nbp0.p->fhigh - rxa[channel].nbp0.p->flow)
+	noise_offset = 10.0 * log10((rxa[channel].nbp0.p->fhigh - rxa[channel].nbp0.p->flow) 
 		* size / rate);
 	*thresh = 20.0 * log10( rxa[channel].agc.p->min_volts ) - noise_offset;
 	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
-PORT void
+PORT void				
 SetRXAAGCThresh(int channel, double thresh, double size, double rate)
 //for line on bandscope
 {
 	double noise_offset;
 	EnterCriticalSection (&ch[channel].csDSP);
-	noise_offset = 10.0 * log10((rxa[channel].nbp0.p->fhigh - rxa[channel].nbp0.p->flow)
+	noise_offset = 10.0 * log10((rxa[channel].nbp0.p->fhigh - rxa[channel].nbp0.p->flow) 
 		* size / rate);
-	rxa[channel].agc.p->max_gain = rxa[channel].agc.p->out_target /
+	rxa[channel].agc.p->max_gain = rxa[channel].agc.p->out_target / 
 		(rxa[channel].agc.p->var_gain * pow (10.0, (thresh + noise_offset) / 20.0));
 	loadWcpAGC ( rxa[channel].agc.p );
 	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
-PORT void
+PORT void			
 GetRXAAGCTop(int channel, double *max_agc)
 //for AGC Max Gain in setup
 {

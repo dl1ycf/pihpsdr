@@ -35,50 +35,50 @@ typedef struct {
 } NF_Point2;
 
 typedef struct {
-    int     degree;
-    int     n_ctrl;
-    double *knots;
-    double *ctrl_wx;
-    double *ctrl_wy;
-    double *weights;
+    int     degree;          
+    int     n_ctrl;          
+    double *knots;           
+    double *ctrl_wx;         
+    double *ctrl_wy;         
+    double *weights;         
 } NF_Curve;
 
-#define NF_FIT_OK            0
-#define NF_FIT_OUTLIERS      1
-#define NF_FIT_ADAPTED       2
-#define NF_FIT_REPARAM_SKIP  4
-#define NF_FIT_CV_MARGINAL   8
-#define NF_FIT_PRE_FILTERED  0x10000
-#define NF_FIT_DIRECT        0x20000
-#define NF_FIT_NONMONOTONE   0x40000
+#define NF_FIT_OK            0    
+#define NF_FIT_OUTLIERS      1    
+#define NF_FIT_ADAPTED       2    
+#define NF_FIT_REPARAM_SKIP  4    
+#define NF_FIT_CV_MARGINAL   8    
+#define NF_FIT_PRE_FILTERED  0x10000  
+#define NF_FIT_DIRECT        0x20000  
+#define NF_FIT_NONMONOTONE   0x40000  
+ 
+#define NF_FIT_BAD           0x3F0   
+#define NF_FIT_BAD_CONDNUM   0x10    
+#define NF_FIT_BAD_NOCONV    0x20    
+#define NF_FIT_BAD_RANGE     0x40    
+#define NF_FIT_BAD_TOOFEW    0x80    
+#define NF_FIT_BAD_OVERFIT   0x100  
 
-#define NF_FIT_BAD           0x3F0
-#define NF_FIT_BAD_CONDNUM   0x10
-#define NF_FIT_BAD_NOCONV    0x20
-#define NF_FIT_BAD_RANGE     0x40
-#define NF_FIT_BAD_TOOFEW    0x80
-#define NF_FIT_BAD_OVERFIT   0x100
-
-#define NF_FIT_BAD_BOUNDS    0x200
-
+#define NF_FIT_BAD_BOUNDS    0x200  
+ 
 typedef struct {
-    int    quality;
-    double rms;
-    double rms_outlier;
-    int    n_outliers;
-    int    n_ctrl_final;
-    int    n_ctrl_initial;
-    double condition_number;
-    double cv_score;
-    int    ordering_used;
-    double spearman_rho;
-    int    fold_detected;
-    double fold_x_end;
+    int    quality;           
+    double rms;               
+    double rms_outlier;       
+    int    n_outliers;        
+    int    n_ctrl_final;      
+    int    n_ctrl_initial;    
+    double condition_number; 
+    double cv_score;         
+    int    ordering_used;     
+    double spearman_rho;      
+    int    fold_detected;     
+    double fold_x_end;       
 } NF_FitResult;
 
-#define NF_ORDER_AUTO   0
-#define NF_ORDER_BY_X   1
-#define NF_ORDER_NN     2
+#define NF_ORDER_AUTO   0    
+#define NF_ORDER_BY_X   1    
+#define NF_ORDER_NN     2    
 
 typedef struct {
     int    degree;
@@ -116,40 +116,41 @@ typedef struct {
     double x_weight_x0;
     double x_weight_min;
     int    fold_detect;
+    int    uniform_knots;
     int    irls_iters;
     double irls_epsilon;
 } NF_Config;
 
 void nf_default_config(NF_Config *cfg);
 
-// This function no longer called.
+typedef struct _nf_ws* NF_WS;
+
+NF_WS build_nf_ws(int n_pts_max, int n_ctrl_max);
+void  teardown_nf_ws(NF_WS ws);
+
 NF_Curve *nf_fit_direct(const NF_Point2 *pts,
                          int              n_pts,
                          const NF_Config *cfg,
                          NF_FitResult    *result_out);
 
-NF_Curve *nf_fit(const NF_Point2 *pts, int n_pts,
+NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
                  const NF_Config *cfg,
                  NF_FitResult    *result);
 
 NF_Point2 nf_eval(const NF_Curve *c, double t);
 
 void nf_curve_free(NF_Curve *c);
+ 
+double nf_spearman(NF_WS ws, const NF_Point2 *pts, int n);
 
-double nf_spearman(const NF_Point2 *pts, int n);
-
-// This function not called.
 double nf_compute_rms(const NF_Curve *c,
                       const NF_Point2 *pts, int n_pts,
-                      const double *t_params);
+                      const double *t_params);   
 
-// This function not called.
 NF_Point2 *nf_sample(const NF_Curve *c, int n_samples);
 
-// This function not called.
 int nf_curve_write(const NF_Curve *c, const char *path);
 
-// This function not called.
 NF_Curve *nf_curve_read(const char *path);
 
-#endif
+#endif  

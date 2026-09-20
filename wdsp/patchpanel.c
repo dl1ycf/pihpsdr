@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -53,7 +53,7 @@ void flush_panel (PANEL a)
 }
 
 void xpanel (PANEL a)
-{
+{	
 	int i;
 	double I, Q;
 	double gainI = a->gain1 * a->gain2I;
@@ -228,7 +228,7 @@ PORT
 void SetTXAPanelSelect (int channel, int select)
 {
 	EnterCriticalSection (&ch[channel].csDSP);
-	if (select == 1)
+	if (select == 1) 
 		txa[channel].panel.p->copy = 3;
 	else
 		txa[channel].panel.p->copy = 0;

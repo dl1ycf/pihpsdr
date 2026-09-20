@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -96,7 +96,7 @@ void init_amd(AMD a)
     a->c0[4] = -0.994128272402075;
     a->c0[5] = -0.998458978159551;
     a->c0[6] = -0.999790306259206;
-
+   
     a->c1[0] = -0.0991227952747244;
     a->c1[1] = -0.565619728761389;
     a->c1[2] = -0.857467122550052;
@@ -267,9 +267,9 @@ SetRXAAMDRun(int channel, int run)
 	AMD a = rxa[channel].amd.p;
 	if (a->run != run)
 	{
-		RXAbp1Check (channel, run, rxa[channel].snba.p->run, rxa[channel].emnr.p->run,
-			rxa[channel].anf.p->run, rxa[channel].anr.p->run,
-            rxa[channel].rnnr.p->run, rxa[channel].sbnr.p->run); // NR3 + NR4 support
+		RXAbp1Check (channel, run, rxa[channel].snba.p->run, rxa[channel].emnr.p->run, 
+			getRun_nnr(rxa[channel].nnr.p), rxa[channel].anf.p->run, rxa[channel].anr.p->run,
+			rxa[channel].sbnr.p->run); // NR4
 		EnterCriticalSection (&ch[channel].csDSP);
 		a->run = run;
 		RXAbp1Set (channel);

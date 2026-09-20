@@ -45,7 +45,7 @@ typedef struct _hbres
     int size;
 } hbres, * HBRES;
 
-struct HBRESdata
+struct HBRESdata 
 {
     uint32_t run;
     complex_t* in;
@@ -63,7 +63,7 @@ struct HBRESdata
 
 typedef struct HBRESdata* HBResampler;
 
-extern HBResampler create_HBResampler(uint32_t inrate, uint32_t outrate, uint32_t insize,
+extern HBResampler create_HBResampler(uint32_t inrate, uint32_t outrate, uint32_t insize, 
     complex_t* in, complex_t* out);
 
 extern void xHBResampler(HBResampler h);

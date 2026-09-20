@@ -212,7 +212,9 @@ void fft_menu(GtkWidget *parent) {
         if (s == fsize) { gtk_combo_box_set_active(GTK_COMBO_BOX(w), j); }
         j++;
       }
-      if (s >= 32768) { break; }
+      // WDSP 2.10 "hangs" when switching to size=32768 
+      if (s >= 16384) { break; }
+      //if (s >= 32768) { break; }
     }
     my_combo_attach(GTK_GRID(grid), w, col, 3, 1, 1);
     g_signal_connect(w, "changed", G_CALLBACK(filter_size_cb), GINT_TO_POINTER(chan));

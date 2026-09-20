@@ -530,6 +530,7 @@ void send_rx_data(int sock, int id) {
   data.nr2_post_nlevel         = rx->nr2_post_nlevel;
   data.nr2_post_factor         = rx->nr2_post_factor;
   data.nr2_post_rate           = rx->nr2_post_rate;
+  data.nnr_model               = rx->nnr_model;
   data.nr4_noise_scaling_type  = rx->nr4_noise_scaling_type;
   data.anf                     = rx->anf;
   data.snb                     = rx->snb;
@@ -576,6 +577,7 @@ void send_rx_data(int sock, int id) {
   data.nb_hang                 = to_double(rx->nb_hang);
   data.nb_advtime              = to_double(rx->nb_advtime);
   data.nb_thresh               = to_double(rx->nb_thresh);
+  data.nnr_floor               = to_double(rx->nnr_floor);
   data.nr4_reduction_amount    = to_double(rx->nr4_reduction_amount);
   data.nr4_smoothing_factor    = to_double(rx->nr4_smoothing_factor);
   data.nr4_whitening_factor    = to_double(rx->nr4_whitening_factor);
@@ -932,6 +934,7 @@ void send_noise(int s, const RECEIVER *rx) {
   command.nr2_post_nlevel           = rx->nr2_post_nlevel;
   command.nr2_post_factor           = rx->nr2_post_factor;
   command.nr2_post_rate             = rx->nr2_post_rate;
+  command.nnr_model                 = rx->nnr_model;
   command.nr4_noise_scaling_type    = rx->nr4_noise_scaling_type;
   command.anf_taps                  = to_16(rx->anf_taps);
   command.anf_delay                 = to_16(rx->anf_delay);
@@ -943,6 +946,7 @@ void send_noise(int s, const RECEIVER *rx) {
   command.nb_thresh                 = to_double(rx->nb_thresh);
   command.nr2_trained_threshold     = to_double(rx->nr2_trained_threshold);
   command.nr2_trained_t2            = to_double(rx->nr2_trained_t2);
+  command.nnr_floor                 = to_double(rx->nnr_floor);
   command.nr4_reduction_amount      = to_double(rx->nr4_reduction_amount);
   command.nr4_smoothing_factor      = to_double(rx->nr4_smoothing_factor);
   command.nr4_whitening_factor      = to_double(rx->nr4_whitening_factor);
@@ -983,6 +987,14 @@ void send_band(int s, int v, int band) {
   send_tcp(s, (char *)&header, sizeof(header));
 }
 
+void send_txnoise(int s, int state) {
+  HEADER header;
+  SYNC(header.sync);
+  header.data_type = to_16(CMD_TXNOISE);
+  header.b1 = state;
+  send_tcp(s, (char *)&header, sizeof(header));
+}
+
 void send_twotone(int s, int state) {
   HEADER header;
   SYNC(header.sync);
@@ -998,14 +1010,6 @@ void send_tune(int s, int state) {
   header.b1 = state;
   header.s1 = to_16(full_tune);
   header.s2 = to_16(memory_tune);
-  send_tcp(s, (char *)&header, sizeof(header));
-}
-
-void send_vox(int s, int state) {
-  HEADER header;
-  SYNC(header.sync);
-  header.data_type = to_16(CMD_VOX);
-  header.b1 = state;
   send_tcp(s, (char *)&header, sizeof(header));
 }
 

@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -41,7 +41,7 @@ void calc_firmin (FIRMIN a)
 	a->idx = 0;
 }
 
-FIRMIN create_firmin (int run, int position, int size, double* in, double* out,
+FIRMIN create_firmin (int run, int position, int size, double* in, double* out, 
 	int nc, double f_low, double f_high, int samplerate, int wintype, double gain)
 {
 	FIRMIN a = (FIRMIN) malloc0 (sizeof (firmin));
@@ -88,7 +88,7 @@ void xfirmin (FIRMIN a, int pos)
 			for (j = 0; j < a->nc; j++)
 			{
 				a->out[2 * i + 0] += a->h[2 * j + 0] * a->ring[2 * k + 0] - a->h[2 * j + 1] * a->ring[2 * k + 1];
-				a->out[2 * i + 1] += a->h[2 * j + 0] * a->ring[2 * k + 1] + a->h[2 * j + 1] * a->ring[2 * k + 0];
+				a->out[2 * i + 1] += a->h[2 * j + 0] * a->ring[2 * k + 1] + a->h[2 * j + 1] * a->ring[2 * k + 0]; 
 				k = (k + a->mask) & a->mask;
 			}
 			a->idx = (a->idx + 1) & a->mask;
@@ -169,7 +169,7 @@ void calc_firopt (FIROPT a)
 	_aligned_free (impulse);
 }
 
-FIROPT create_firopt (int run, int position, int size, double* in, double* out,
+FIROPT create_firopt (int run, int position, int size, double* in, double* out, 
 	int nc, double f_low, double f_high, int samplerate, int wintype, double gain)
 {
 	FIROPT a = (FIROPT) malloc0 (sizeof (firopt));
@@ -217,7 +217,7 @@ void destroy_firopt (FIROPT a)
 
 void flush_firopt (FIROPT a)
 {
-	int i;
+	int i; 
 	memset (a->fftin, 0, 2 * a->size * sizeof (complex));
 	for (i = 0; i < a->nfor; i++)
 		memset (a->fftout[i], 0, 2 * a->size * sizeof (complex));
@@ -346,7 +346,7 @@ void calc_fircore (FIRCORE a, int flip)
 	}
 }
 
-FIRCORE create_fircore (int size, double* in, double* out, int nc,
+FIRCORE create_fircore (int size, double* in, double* out, int nc, 
 	int mp, int pfactor, double* impulse)
 {
 	FIRCORE a = (FIRCORE) malloc0 (sizeof (fircore));
@@ -402,7 +402,7 @@ void destroy_fircore (FIRCORE a)
 
 void flush_fircore (FIRCORE a)
 {
-	int i;
+	int i; 
 	memset (a->fftin, 0, 2 * a->size * sizeof (complex));
 	for (i = 0; i < a->nfor; i++)
 		memset (a->fftout[i], 0, 2 * a->size * sizeof (complex));

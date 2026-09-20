@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -97,7 +97,7 @@ double min_notch_width (NBP a)
 	return min_width;
 }
 
-int make_nbp (int nn, int* active, double* center, double* width, double* nlow, double* nhigh,
+int make_nbp (int nn, int* active, double* center, double* width, double* nlow, double* nhigh, 
 	double minwidth, int autoincr, double flow, double fhigh, double* bplow, double* bphigh, int* havnotch)
 {
 	int nbp;
@@ -143,13 +143,13 @@ int make_nbp (int nn, int* active, double* center, double* width, double* nlow, 
 					}
 					else if (nl > bplow[i] && nh < bphigh[i])
 					{
-
+						
 						bplow[nbp + adds] = nh;
 						bphigh[nbp + adds] = bphigh[i];
 						bphigh[i] = nl;
 						adds++;
 					}
-					else if (nl <= bplow[i] && nh > bplow[i])
+					else if (nl <= bplow[i] && nh > bplow[i])	
 					{
 						bplow[i] = nh;
 					}
@@ -192,7 +192,7 @@ void calc_nbp_lightweight (NBP a)
 		offset = b->tunefreq + b->shift;
 		fl = a->flow  + offset;
 		fh = a->fhigh + offset;
-		a->numpb = make_nbp (b->nn, b->active, b->fcenter, b->fwidth, b->nlow, b->nhigh,
+		a->numpb = make_nbp (b->nn, b->active, b->fcenter, b->fwidth, b->nlow, b->nhigh, 
 			min_notch_width (a), a->autoincr, fl, fh, a->bplow, a->bphigh, &a->havnotch);
 		// when tuning, no need to recalc filter if there were not and are not any notches in passband
 		if (a->hadnotch || a->havnotch)
@@ -225,7 +225,7 @@ void calc_nbp_impulse (NBP a)
 		offset = b->tunefreq + b->shift;
 		fl = a->flow  + offset;
 		fh = a->fhigh + offset;
-		a->numpb = make_nbp (b->nn, b->active, b->fcenter, b->fwidth, b->nlow, b->nhigh,
+		a->numpb = make_nbp (b->nn, b->active, b->fcenter, b->fwidth, b->nlow, b->nhigh, 
 			min_notch_width (a), a->autoincr, fl, fh, a->bplow, a->bphigh, &a->havnotch);
 		for (i = 0; i < a->numpb; i++)
 		{
@@ -241,7 +241,7 @@ void calc_nbp_impulse (NBP a)
 	}
 }
 
-NBP create_nbp(int run, int fnfrun, int position, int size, int nc, int mp, double* in, double* out,
+NBP create_nbp(int run, int fnfrun, int position, int size, int nc, int mp, double* in, double* out, 
 	double flow, double fhigh, int rate, int wintype, double gain, int autoincr, int maxpb, NOTCHDB* ptraddr)
 {
 	NBP a = (NBP) malloc0 (sizeof (nbp));
@@ -498,7 +498,7 @@ void RXANBPSetShiftFrequency (int channel, double shift)
 PORT
 void RXANBPSetNotchesRun (int channel, int run)
 {
-	NOTCHDB a = rxa[channel].ndb.p;
+	NOTCHDB a = rxa[channel].ndb.p; 
 	NBP b = rxa[channel].nbp0.p;
 	if ( run != a->master_run)
 	{

@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -73,7 +73,7 @@ void build_channel (int channel)
 }
 
 PORT
-void OpenChannel (int channel, int in_size, int dsp_size, int input_samplerate, int dsp_rate, int output_samplerate,
+void OpenChannel (int channel, int in_size, int dsp_size, int input_samplerate, int dsp_rate, int output_samplerate, 
 	int type, int state, double tdelayup, double tslewup, double tdelaydown, double tslewdown, int bfo)
 {
 	ch[channel].in_size = in_size;
@@ -98,7 +98,7 @@ void OpenChannel (int channel, int in_size, int dsp_size, int input_samplerate, 
 		InterlockedBitTestAndSet (&ch[channel].exchange, 0);
 	}
 #if !defined(linux) && !defined(__APPLE__)
-    _MM_SET_FLUSH_ZERO_MODE (_MM_FLUSH_ZERO_ON);
+	_MM_SET_FLUSH_ZERO_MODE (_MM_FLUSH_ZERO_ON);
 #endif
 }
 
@@ -257,12 +257,28 @@ void SetAllRates (int channel, int in_rate, int dsp_rate, int out_rate)
 	}
 }
 
+static void waitChannelFlush(int channel, int timeout_ms)
+{
+	IOB a = ch[channel].iob.pc;
+	int count = 0;
+	while (_InterlockedAnd(&ch[channel].flushflag, 1) && count < timeout_ms)
+	{
+    	Sleep(1);
+    	count++;
+	} 
+	if (count >= timeout_ms)
+	{
+    	InterlockedBitTestAndReset(&ch[channel].exchange, 0);
+    	InterlockedBitTestAndReset(&ch[channel].flushflag, 0);
+    	InterlockedBitTestAndReset(&a->slew.downflag, 0);
+	}
+}
+
 PORT
 int SetChannelState (int channel, int state, int dmode)
 {
 	IOB a = ch[channel].iob.pc;
 	int prior_state = ch[channel].state;
-	int count = 0;
 	const int timeout = 100;
 	if (ch[channel].state != state)
 	{
@@ -274,17 +290,7 @@ int SetChannelState (int channel, int state, int dmode)
 			InterlockedBitTestAndSet (&ch[channel].flushflag, 0);
 			if (dmode)
 			{
-				while (_InterlockedAnd (&ch[channel].flushflag, 1) && count < timeout)
-				{
-					Sleep(1);
-					count++;
-				}
-			}
-			if (count >= timeout)
-			{
-				InterlockedBitTestAndReset (&ch[channel].exchange, 0);
-				InterlockedBitTestAndReset (&ch[channel].flushflag, 0);
-				InterlockedBitTestAndReset (&a->slew.downflag, 0);
+				waitChannelFlush(channel, timeout);
 			}
 			break;
 		case 1:
@@ -294,6 +300,10 @@ int SetChannelState (int channel, int state, int dmode)
 			InterlockedBitTestAndSet (&ch[channel].exchange, 0);
 			break;
 		}
+	} else if (!state && dmode)
+	{
+		// Updated Semantics!
+		waitChannelFlush(channel, timeout);
 	}
 	return prior_state;
 }

@@ -1300,7 +1300,7 @@ void vfo_update(void) {
       break;
     case 3:
       cairo_set_source_rgba(cr, COLOUR_ATTN);
-      cairo_show_text(cr, "NR3");
+      cairo_show_text(cr, "NNR");
       break;
     case 4:
       cairo_set_source_rgba(cr, COLOUR_ATTN);

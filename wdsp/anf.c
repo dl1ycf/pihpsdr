@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -67,10 +67,10 @@ ANF create_anf	(
 	a->den_mult = den_mult;
 	a->lincr = lincr;
 	a->ldecr = ldecr;
-
+	
 	memset (a->d, 0, sizeof(double) * ANF_DLINE_SIZE);
 	memset (a->w, 0, sizeof(double) * ANF_DLINE_SIZE);
-
+	
 	return a;
 }
 
@@ -169,9 +169,9 @@ SetRXAANFRun (int channel, int run)
 	ANF a = rxa[channel].anf.p;
 	if (a->run != run)
 	{
-		RXAbp1Check (channel, rxa[channel].amd.p->run, rxa[channel].snba.p->run,
-			rxa[channel].emnr.p->run, run, rxa[channel].anr.p->run,
-            rxa[channel].rnnr.p->run, rxa[channel].sbnr.p->run); // NR3 + NR4 support
+		RXAbp1Check (channel, rxa[channel].amd.p->run, rxa[channel].snba.p->run, 
+			rxa[channel].emnr.p->run, getRun_nnr(rxa[channel].nnr.p), run, rxa[channel].anr.p->run,
+			rxa[channel].sbnr.p->run); // NR4
 		EnterCriticalSection (&ch[channel].csDSP);
 		a->run = run;
 		RXAbp1Set (channel);

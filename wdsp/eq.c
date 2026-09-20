@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -92,8 +92,8 @@ void setWintype_eqimp (EQIMP a, int wintype)
 #define M_LN2_10 3.32192809488736234787
 #endif
 
-void eq_impulse (EQIMP a, int N, int nfreqs, double* F, double* G,
-	double samplerate, double scale, int ctfmode, int wintype, int deg,
+void eq_impulse (EQIMP a, int N, int nfreqs, double* F, double* G, 
+	double samplerate, double scale, int ctfmode, int wintype, int deg, 
 	double* impulse)
 {
 	NURBS pnurbs = a->pnurbs;
@@ -166,7 +166,7 @@ void eq_impulse (EQIMP a, int N, int nfreqs, double* F, double* G,
 	else			// NEW NURBS curves (degrees 1 - 16)
 	{
 		if (pnurbs != NULL)
-		{
+		{	
 			pnurbs->n = nfreqs - 1;
 			pnurbs->p = deg;
 			pnurbs->fpts = high - low + 1;
@@ -252,7 +252,7 @@ void eq_impulse (EQIMP a, int N, int nfreqs, double* F, double* G,
 *																										*
 ********************************************************************************************************/
 
-EQP create_eqp (int run, int size, int nc, int mp, double *in, double *out,
+EQP create_eqp (int run, int size, int nc, int mp, double *in, double *out, 
 	int nfreqs, double* F, double* G, int ctfmode, int wintype, int samplerate)
 {
 	// NOTE:  'nc' must be >= 'size', both powers-of-two
@@ -276,8 +276,8 @@ EQP create_eqp (int run, int size, int nc, int mp, double *in, double *out,
 	InitializeCriticalSection (&a->csEQ);
 	a->peqimp = create_eqimp(a->nfreqs, a->nc, a->wintype, a->max_freqs);
 	a->impulse = (double*) malloc0 (a->nc * sizeof (complex));
-	eq_impulse (a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
-		1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg,
+	eq_impulse (a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate, 
+		1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, 
 		a->impulse);
 	a->p = create_fircore (a->size, a->in, a->out, a->nc, a->mp, 4, a->impulse);
 	return a;
@@ -321,7 +321,7 @@ void setSamplerate_eqp (EQP a, int rate)
 	EnterCriticalSection (&a->csEQ);
 	a->samplerate = rate;
 	eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
-		1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg,
+		1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, 
 		a->impulse);
 	setImpulse_fircore (a->p, a->impulse, 1);
 	LeaveCriticalSection (&a->csEQ);
@@ -333,7 +333,7 @@ void setSize_eqp (EQP a, int size)
 	a->size = size;
 	setSize_fircore (a->p, a->size);
 	eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
-		1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg,
+		1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, 
 		a->impulse);
 	setImpulse_fircore (a->p, a->impulse, 1);
 	LeaveCriticalSection (&a->csEQ);
@@ -370,7 +370,7 @@ void SetRXAEQNC (int channel, int nc)
 	//		destroy_fsamp (a->pfsamp);
 	//		a->pfsamp = create_fsamp(a->nc, a->wintype);
 	//		eq_impulse(a->peqimp, a->nc, a->nfreqs, a->F, a->G, a->samplerate,
-	//			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg,
+	//			1.0 / (2.0 * a->size), a->ctfmode, a->wintype, a->deg, 
 	//			a->pn, a->pfsamp, a->impulse);
 	//		setNc_fircore (a->p, a->nc, a->impulse);
 	//	}
@@ -776,7 +776,7 @@ void GetTXAEQDraw (int channel, double* X, double* Y)
 ********************************************************************************************************/
 
 
-double* eq_mults (EQIMP peqimp, int size, int nfreqs, double* F, double* G, double samplerate,
+double* eq_mults (EQIMP peqimp, int size, int nfreqs, double* F, double* G, double samplerate, 
 	double scale, int ctfmode, int wintype, int deg, double* impulse)
 {
 	eq_impulse (peqimp, size, nfreqs, F, G, samplerate, scale, ctfmode, wintype, deg, impulse);
@@ -804,7 +804,7 @@ void decalc_eq (EQ a)
 	_aligned_free (a->infilt);
 }
 
-EQ create_eq (int run, int size, double *in, double *out, int nfreqs,
+EQ create_eq (int run, int size, double *in, double *out, int nfreqs, 
 	double* F, double* G, int ctfmode, int wintype, int samplerate)
 {
 	EQ a = (EQ) malloc0 (sizeof (eq));

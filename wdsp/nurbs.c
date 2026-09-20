@@ -130,7 +130,7 @@ void NURBSpoint(int n, int p, int r,
 void Space (int inpoints, int outpoints, double* Xin, double* Yin, double* Xout, double* Yout)
 {
 	double Xrange = Xin[inpoints - 1] - Xin[0];
-	if (Xrange < 1e-300)
+	if (Xrange < 1e-300) 
 	{
 		for (int k = 0; k < outpoints; k++) { Xout[k] = Xin[0]; Yout[k] = Yin[0]; }
 		return;
@@ -159,7 +159,7 @@ void Space (int inpoints, int outpoints, double* Xin, double* Yin, double* Xout,
 			if (Xout_value > Xin[inpoints - 1]) Xout_value = Xin[inpoints - 1];
 			j++;
 		}
-		else
+		else 
 			i++;
 	}
 }
@@ -213,7 +213,7 @@ void Ucalc (int n, int p, int umethod, double* U, double* CP)
 	}
 }
 
-void BuildSpline (int n, int p, int r, int umethod, double* U, double* CP, double* W,
+void BuildSpline (int n, int p, int r, int umethod, double* U, double* CP, double* W, 
 	int upts, double* Xs, double* Ys, double* Uout, int fpts, double* Xf, double* Yf)
 {
 	// n - (n + 1) = number of control points
@@ -232,7 +232,7 @@ void BuildSpline (int n, int p, int r, int umethod, double* U, double* CP, doubl
 	// Yf - 'y' coordinates of returned equally-spaced points
 	int m = n + p + 1;
 	double u = 0.0;
-	if (n < p)
+	if (n < p) 
 	{
 		for (int i = 0; i < fpts; i++) { Xf[i] = 0.0; Yf[i] = 0.0; }
 		return;
@@ -273,7 +273,7 @@ NURBS create_nurbs (int n, int p, int r, int umethod, int upts,
 	int max_cp, int max_deg, int max_upts, int max_fpts)
 {
 	NURBS a = (NURBS)malloc0 (sizeof(nurbs));
-
+	
 	a->n = n;
 	a->p = p;
 	a->r = r;

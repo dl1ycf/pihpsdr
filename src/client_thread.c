@@ -373,7 +373,7 @@ static gpointer remote_txaudio_thread(gpointer data) {
     for (int i = 0; i < 96; i++) {
       double sample = 0.0;
       int txmode = vfo_get_tx_mode();
-      int cwmode = (txmode == modeCWL || txmode == modeCWU || tx->tune || tx->twotone);
+      int cwmode = (txmode == modeCWL || txmode == modeCWU || tx->tune || tx->twotone || tx->txnoise);
       if (tx->local_audio) {
         sample = audio_get_next_mic_sample(tx);
       }
@@ -403,7 +403,7 @@ static gpointer remote_txaudio_thread(gpointer data) {
       if (vox_enabled) {
         if (amplitude > vox_threshold) {
           if (!vox_triggered) {
-            g_idle_add(ext_radio_set_vox, GINT_TO_POINTER(1));
+            g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(1));
             vox_triggered = 1;
           }
           if (vox_hang > vox_min_hang) {
@@ -414,7 +414,7 @@ static gpointer remote_txaudio_thread(gpointer data) {
         } else if (vox_count > 0) {
           vox_count--;
           if (vox_count == 0) {
-            g_idle_add(ext_radio_set_vox, GINT_TO_POINTER(0));
+            g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(0));
             vox_triggered = 0;
           }
         }
@@ -1194,6 +1194,7 @@ static gpointer client_tcp_thread(gpointer arg) {
       rx->nr2_post_nlevel         = data.nr2_post_nlevel;
       rx->nr2_post_factor         = data.nr2_post_factor;
       rx->nr2_post_rate           = data.nr2_post_rate;
+      rx->nnr_model               = data.nnr_model;
       rx->nr4_noise_scaling_type  = data.nr4_noise_scaling_type;
       rx->anf                     = data.anf;
       rx->snb                     = data.snb;
@@ -1234,6 +1235,7 @@ static gpointer client_tcp_thread(gpointer arg) {
       rx->nb_hang                 = from_double(data.nb_hang);
       rx->nb_advtime              = from_double(data.nb_advtime);
       rx->nb_thresh               = from_double(data.nb_thresh);
+      rx->nnr_floor               = from_double(data.nnr_floor);
       rx->nr4_reduction_amount    = from_double(data.nr4_reduction_amount);
       rx->nr4_smoothing_factor    = from_double(data.nr4_smoothing_factor);
       rx->nr4_whitening_factor    = from_double(data.nr4_whitening_factor);
@@ -1537,13 +1539,6 @@ static gpointer client_tcp_thread(gpointer arg) {
       g_idle_add(radio_client_set_mox, GINT_TO_POINTER(header.b1));
     }
     break;
-    case CMD_VOX: {
-      //
-      // Sent by the server as a response to a CMD_VOX
-      //
-      g_idle_add(radio_client_set_vox, GINT_TO_POINTER(header.b1));
-    }
-    break;
     case CMD_TUNE: {
       //
       // Sent by the server as a response to a CMD_TOGGLE_TUNE, CMD_TUNE
@@ -1556,6 +1551,14 @@ static gpointer client_tcp_thread(gpointer arg) {
       // Sent by the server as a response to a CMD_TWOTONE
       //
       g_idle_add(radio_client_set_twotone, GINT_TO_POINTER(header.b1));
+      g_idle_add(radio_client_set_mox, GINT_TO_POINTER(header.b1));
+    }
+    break;
+    case CMD_TXNOISE: {
+      //
+      // Sent by the server as a response to a CMD_TXNOISE
+      //
+      g_idle_add(radio_client_set_txnoise, GINT_TO_POINTER(header.b1));
       g_idle_add(radio_client_set_mox, GINT_TO_POINTER(header.b1));
     }
     break;

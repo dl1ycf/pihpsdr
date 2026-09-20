@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -74,7 +74,7 @@ extern void eq_impulse(EQIMP a, int N, int nfreqs, double* F, double* G,
 	double samplerate, double scale, int ctfmode, int wintype, int deg,
 	double* impulse);
 
-extern EQP create_eqp (int run, int size, int nc, int mp, double *in, double *out,
+extern EQP create_eqp (int run, int size, int nc, int mp, double *in, double *out, 
 	int nfreqs, double* F, double* G, int ctfmode, int wintype, int samplerate);
 
 extern void destroy_eqp (EQP a);
@@ -112,7 +112,7 @@ __declspec (dllexport) void SetTXAEQMP (int channel, int mp);
 
 typedef struct _eq
 {
-	int run;
+	int run;				
 	int size;
 	double* in;
 	double* out;
@@ -136,7 +136,7 @@ typedef struct _eq
 extern double* eq_mults(EQIMP peqimp, int size, int nfreqs, double* F, double* G, double samplerate,
 	double scale, int ctfmode, int wintype, int deg, double* impulse);
 
-extern EQ create_eq (int run, int size, double *in, double *out, int nfreqs,
+extern EQ create_eq (int run, int size, double *in, double *out, int nfreqs, 
 	double* F, double* G, int ctfmode, int wintype, int samplerate);
 
 extern void destroy_eq (EQ a);

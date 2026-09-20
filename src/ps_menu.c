@@ -40,6 +40,8 @@ static GtkWidget *chk_info_b;
 static GtkWidget *cnt_info_b;
 static GtkWidget *get_pk_b;
 static GtkWidget *tx_att_spin;
+static GtkWidget *tt_btn;
+static GtkWidget *txnoise_btn;
 
 //
 // Todo: create buttons to change PS 2.0 values
@@ -65,9 +67,8 @@ static void cleanup(void) {
       info_timer = 0;
     }
     usleep(200000);
-    if (transmitter->twotone) {
-      radio_set_twotone(transmitter, 0);
-    }
+    radio_set_txnoise(transmitter, 0);
+    radio_set_twotone(transmitter, 0);
     gtk_widget_destroy(tmp);
     sub_menu = NULL;
     active_menu  = NO_MENU;
@@ -136,7 +137,7 @@ int ps_calibration_timer(gpointer arg) {
   static int state = -1;
   static int old4  = -1;
   static int count = 0;
-  if (!transmitter->twotone || !transmitter->puresignal) {
+  if (!(transmitter->twotone || transmitter->txnoise) || !transmitter->puresignal) {
     state = -1;
     *timer = 0;
     return G_SOURCE_REMOVE;
@@ -262,6 +263,16 @@ int ps_calibration_timer(gpointer arg) {
 static int info_thread(gpointer arg) {
   if (!running) {
     return G_SOURCE_REMOVE;
+  }
+  if (transmitter->twotone) {
+    gtk_widget_set_name(tt_btn, "redbutton");
+  } else {
+    gtk_widget_set_name(tt_btn, "boldlabel");
+  }
+  if (transmitter->txnoise) {
+    gtk_widget_set_name(txnoise_btn, "redbutton");
+  } else {
+    gtk_widget_set_name(txnoise_btn, "boldlabel");
   }
   if (transmitter->puresignal) {
     //
@@ -464,8 +475,13 @@ static gboolean reset_cb(GtkWidget *widget, GdkEventButton *event, gpointer data
 }
 
 static void twotone_cb(GtkWidget *widget, gpointer data) {
-  int state = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  int state = NOT(transmitter->twotone);
   radio_set_twotone(transmitter, state);
+}
+
+static void txnoise_cb(GtkWidget *widget, gpointer data) {
+  int state = NOT(transmitter->txnoise);
+  radio_set_txnoise(transmitter, state);
 }
 
 void ps_menu(GtkWidget *parent) {
@@ -488,11 +504,6 @@ void ps_menu(GtkWidget *parent) {
   gtk_widget_set_name(btn, "close_button");
   g_signal_connect (btn, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), btn, 0, 0, 1, 1);
-  btn = gtk_toggle_button_new_with_label("MON");
-  gtk_widget_set_name(btn, "small_toggle_button");
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), transmitter->feedback);
-  gtk_grid_attach(GTK_GRID(grid), btn, 3, 0, 1, 1);
-  g_signal_connect(btn, "toggled", G_CALLBACK(mon_cb), NULL);
   int row = 1;
   int col = 0;
   btn = gtk_check_button_new_with_label("Enable PS");
@@ -500,22 +511,41 @@ void ps_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(enable_cb), NULL);
   col++;
-  btn = gtk_toggle_button_new_with_label("Two Tone");
-  gtk_widget_set_name(btn, "small_toggle_button");
-  gtk_widget_show(btn);
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), transmitter->twotone);
-  gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
-  g_signal_connect(btn, "toggled", G_CALLBACK(twotone_cb), NULL);
+  tt_btn = gtk_button_new_with_label("Two Tone");
+  gtk_grid_attach(GTK_GRID(grid), tt_btn, col, row, 1, 1);
+  g_signal_connect(tt_btn, "pressed", G_CALLBACK(twotone_cb), NULL);
   col++;
   btn = gtk_button_new_with_label("Restart");
   gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
   g_signal_connect(btn, "button-press-event", G_CALLBACK(resume_cb), NULL);
+  col++;
+  btn = gtk_toggle_button_new_with_label("MON");
+  gtk_widget_set_name(btn, "small_toggle_button");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), transmitter->feedback);
+  gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(mon_cb), NULL); 
+  row++;
+  col = 0;
+  btn = gtk_check_button_new_with_label("Auto Att.");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), transmitter->auto_on);
+  gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(auto_cb), NULL);
+  col++;
+  txnoise_btn = gtk_button_new_with_label("TX noise");
+  gtk_grid_attach(GTK_GRID(grid), txnoise_btn, col, row, 1, 1);
+  g_signal_connect(txnoise_btn, "pressed", G_CALLBACK(txnoise_cb), NULL);
   col++;
   btn = gtk_button_new_with_label("Off");
   gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
   g_signal_connect(btn, "button-press-event", G_CALLBACK(reset_cb), NULL);
   row++;
   col = 0;
+  GtkWidget *oneshot_b = gtk_check_button_new_with_label("OneShot");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (oneshot_b), transmitter->ps_oneshot);
+  gtk_grid_attach(GTK_GRID(grid), oneshot_b, col, row, 1, 1);
+  g_signal_connect(oneshot_b, "toggled", G_CALLBACK(oneshot_cb), NULL);
+  col++;
+  col++;
   //
   // Selection of feedback path for PureSignal
   //
@@ -547,16 +577,6 @@ void ps_menu(GtkWidget *parent) {
   }
   my_combo_attach(GTK_GRID(grid), btn, col, row, 1, 1);
   g_signal_connect(btn, "changed", G_CALLBACK(ps_ant_cb), NULL);
-  col++;
-  GtkWidget *oneshot_b = gtk_check_button_new_with_label("OneShot");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (oneshot_b), transmitter->ps_oneshot);
-  gtk_grid_attach(GTK_GRID(grid), oneshot_b, col, row, 1, 1);
-  g_signal_connect(oneshot_b, "toggled", G_CALLBACK(oneshot_cb), NULL);
-  col++;
-  btn = gtk_check_button_new_with_label("Auto Att.");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), transmitter->auto_on);
-  gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
-  g_signal_connect(btn, "toggled", G_CALLBACK(auto_cb), NULL);
   row++;
   col = 0;
   lbl = gtk_label_new("FeedBack");

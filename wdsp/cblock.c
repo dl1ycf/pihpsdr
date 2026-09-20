@@ -18,13 +18,29 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
 */
 
 #include "comm.h"
+
+typedef struct _cbl
+{
+	int run;							//run
+	int buff_size;						//buffer size
+	double* in_buff;					//pointer to input buffer
+	double* out_buff;					//pointer to output buffer
+	int mode;
+	double sample_rate;					//sample rate
+	double prevIin;
+	double prevQin;
+	double prevIout;
+	double prevQout;
+	double tau;							//carrier removal time constant
+	double mtau;						//carrier removal multiplier
+} cbl, * CBL;
 
 void calc_cbl (CBL a)
 {

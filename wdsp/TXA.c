@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -55,7 +55,7 @@ void create_txa (int channel)
 		txa[channel].midbuff,						// output buffer
 		ch[channel].dsp_rate,						// sample rate
 		2);											// mode
-
+	
 	txa[channel].panel.p = create_panel (
 		channel,									// channel number
 		1,											// run
@@ -127,7 +127,7 @@ void create_txa (int channel)
 		ch[channel].dsp_rate);						// samplerate
 	}
 
-	txa[channel].eqmeter.p = create_meter (
+	txa[channel].eqmeter.p = create_meter (	
 		1,											// run
 		&(txa[channel].eqp.p->run),					// pointer to eqp 'run'
 		ch[channel].dsp_size,						// size
@@ -223,7 +223,7 @@ void create_txa (int channel)
 		0.50);										// display time constant
 	}
 
-	txa[channel].cfcmeter.p = create_meter (
+	txa[channel].cfcmeter.p = create_meter (	
 		1,											// run
 		&(txa[channel].cfcomp.p->run),				// pointer to eqp 'run'
 		ch[channel].dsp_size,						// size
@@ -245,7 +245,7 @@ void create_txa (int channel)
 		max(2048, ch[channel].dsp_size),			// number of coefficients
 		0,											// flag for minimum phase
 		txa[channel].midbuff,						// pointer to input buffer
-		txa[channel].midbuff,						// pointer to output buffer
+		txa[channel].midbuff,						// pointer to output buffer 
 		txa[channel].f_low,							// low freq cutoff
 		txa[channel].f_high,						// high freq cutoff
 		ch[channel].dsp_rate,						// samplerate
@@ -266,12 +266,12 @@ void create_txa (int channel)
 		max(2048, ch[channel].dsp_size),			// number of coefficients
 		0,											// flag for minimum phase
 		txa[channel].midbuff,						// pointer to input buffer
-		txa[channel].midbuff,						// pointer to output buffer
+		txa[channel].midbuff,						// pointer to output buffer 
 		txa[channel].f_low,							// low freq cutoff
 		txa[channel].f_high,						// high freq cutoff
 		ch[channel].dsp_rate,						// samplerate
 		1,											// wintype
-		2.0);										// gain
+		2.0);										// gain	
 
 	txa[channel].osctrl.p = create_osctrl (
 		0,											// run
@@ -288,7 +288,7 @@ void create_txa (int channel)
 		max(2048, ch[channel].dsp_size),			// number of coefficients
 		0,											// flag for minimum phase
 		txa[channel].midbuff,						// pointer to input buffer
-		txa[channel].midbuff,						// pointer to output buffer
+		txa[channel].midbuff,						// pointer to output buffer 
 		txa[channel].f_low,							// low freq cutoff
 		txa[channel].f_high,						// high freq cutoff
 		ch[channel].dsp_rate,						// samplerate
@@ -359,7 +359,7 @@ void create_txa (int channel)
 		1,											// run bandpass filter
 		max(2048, ch[channel].dsp_size),			// number coefficients for bandpass filter
 		0);											// minimum phase flag
-
+	
 	txa[channel].gen1.p = create_gen (
 		0,											// run
 		ch[channel].dsp_size,						// buffer size
@@ -562,6 +562,10 @@ void xtxa (int channel)
 	xmeter (txa[channel].lvlrmeter.p);				// Leveler Meter
 	xcfcomp (txa[channel].cfcomp.p, 0);				// Continuous Frequency Compressor with post-EQ
 	xmeter (txa[channel].cfcmeter.p);				// CFC+PostEQ Meter
+    //
+    // Input signal generator moved directly before the main bandpass
+    //
+	//xgen (txa[channel].gen0.p);						// input signal generator
 	xbandpass (txa[channel].bp0.p, 0);				// primary bandpass filter
 	xcompressor (txa[channel].compressor.p);		// COMP compressor
 	xbandpass (txa[channel].bp1.p, 0);				// aux bandpass (runs if COMP)
@@ -751,7 +755,7 @@ void SetTXAMode (int channel, int mode)
 		txa[channel].mode = mode;
 		txa[channel].ammod.p->run   = 0;
 		txa[channel].fmmod.p->run   = 0;
-		txa[channel].preemph.p->run = 0;
+		SetTXAFMPreEmphRun (channel, 0);
 		switch (mode)
 		{
 		case TXA_AM:
@@ -770,7 +774,7 @@ void SetTXAMode (int channel, int mode)
 			break;
 		case TXA_FM:
 			txa[channel].fmmod.p->run   = 1;
-			txa[channel].preemph.p->run = 1;
+			SetTXAFMPreEmphRun (channel, 1);
 			break;
 		default:
 

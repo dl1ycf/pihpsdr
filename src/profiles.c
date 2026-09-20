@@ -68,6 +68,8 @@ void profiles_save_state(void) {
       SetPropI1("modeset.%d.nr2_post_rate", i,          RXTXprofile[i].rx.nr2_post_rate);
       SetPropF1("modeset.%d.nr2_trained_threshold", i,  RXTXprofile[i].rx.nr2_trained_threshold);
       SetPropF1("modeset.%d.nr2_trained_t2", i,         RXTXprofile[i].rx.nr2_trained_t2);
+      SetPropI1("modeset.%d.nnr_model", i,              RXTXprofile[i].rx.nnr_model);
+      SetPropF1("modeset.%d.nnr_floor", i,              RXTXprofile[i].rx.nnr_floor);
       SetPropF1("modeset.%d.nr4_reduction_amount", i,   RXTXprofile[i].rx.nr4_reduction_amount);
       SetPropF1("modeset.%d.nr4_smoothing_factor", i,   RXTXprofile[i].rx.nr4_smoothing_factor);
       SetPropF1("modeset.%d.nr4_whitening_factor", i,   RXTXprofile[i].rx.nr4_whitening_factor);
@@ -175,6 +177,8 @@ void profiles_restore_state(void) {
       RXTXprofile[i].rx.nr2_post_rate = 5;
       RXTXprofile[i].rx.nr2_trained_threshold = -0.5;
       RXTXprofile[i].rx.nr2_trained_t2 = 0.2;
+      RXTXprofile[i].rx.nnr_model = 0;
+      RXTXprofile[i].rx.nnr_floor = -25.0;
       RXTXprofile[i].rx.nr4_reduction_amount = 10.0;
       RXTXprofile[i].rx.nr4_smoothing_factor = 20.0;
       RXTXprofile[i].rx.nr4_whitening_factor = 0.0;
@@ -361,6 +365,8 @@ void profiles_restore_state(void) {
       GetPropI1("modeset.%d.nr2_post_nlevel", i,        RXTXprofile[i].rx.nr2_post_nlevel);
       GetPropI1("modeset.%d.nr2_post_factor", i,        RXTXprofile[i].rx.nr2_post_factor);
       GetPropI1("modeset.%d.nr2_post_rate", i,          RXTXprofile[i].rx.nr2_post_rate);
+      GetPropI1("modeset.%d.nnr_model", i,              RXTXprofile[i].rx.nnr_model);
+      GetPropF1("modeset.%d.nnr_floor", i,              RXTXprofile[i].rx.nnr_floor);
       GetPropF1("modeset.%d.nr4_reduction_amount", i,   RXTXprofile[i].rx.nr4_reduction_amount);
       GetPropF1("modeset.%d.nr4_smoothing_factor", i,   RXTXprofile[i].rx.nr4_smoothing_factor);
       GetPropF1("modeset.%d.nr4_whitening_factor", i,   RXTXprofile[i].rx.nr4_whitening_factor);
@@ -491,6 +497,8 @@ void profiles_load_rx_profile(RECEIVER *rx, int m) {
     rx->nr2_post_rate             = RXTXprofile[m].rx.nr2_post_rate;
     rx->nr2_trained_threshold     = RXTXprofile[m].rx.nr2_trained_threshold;
     rx->nr2_trained_t2            = RXTXprofile[m].rx.nr2_trained_t2;
+    rx->nnr_model                 = RXTXprofile[m].rx.nnr_model;
+    rx->nnr_floor                 = RXTXprofile[m].rx.nnr_floor;
     rx->nr4_reduction_amount      = RXTXprofile[m].rx.nr4_reduction_amount;
     rx->nr4_smoothing_factor      = RXTXprofile[m].rx.nr4_smoothing_factor;
     rx->nr4_whitening_factor      = RXTXprofile[m].rx.nr4_whitening_factor;
@@ -664,6 +672,8 @@ void profiles_save_rx_profile(RECEIVER *rx, int m) {
     RXTXprofile[m].rx.nr2_post_rate          = rx->nr2_post_rate;
     RXTXprofile[m].rx.nr2_trained_threshold  = rx->nr2_trained_threshold;
     RXTXprofile[m].rx.nr2_trained_t2         = rx->nr2_trained_t2;
+    RXTXprofile[m].rx.nnr_model              = rx->nnr_model;
+    RXTXprofile[m].rx.nnr_floor              = rx->nnr_floor;
     RXTXprofile[m].rx.nr4_reduction_amount   = rx->nr4_reduction_amount;
     RXTXprofile[m].rx.nr4_smoothing_factor   = rx->nr4_smoothing_factor;
     RXTXprofile[m].rx.nr4_whitening_factor   = rx->nr4_whitening_factor;

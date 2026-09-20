@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -360,7 +360,7 @@ CFCOMP create_cfcomp(int run, int position, int peq_run, int size, double* in, d
 	double* Fg, double* G, double* Fe, double* E, double mtau, double dtau)
 {
 	CFCOMP a = (CFCOMP) malloc0 (sizeof (cfcomp));
-
+	
 	a->run = run;
 	a->position = position;
 	a->peq_run = peq_run;
@@ -448,7 +448,7 @@ void calc_mask (CFCOMP a)
 			double mag, test;
 			for (i = 0; i < a->msize; i++)
 			{
-				mag = sqrt (a->forfftout[2 * i + 0] * a->forfftout[2 * i + 0]
+				mag = sqrt (a->forfftout[2 * i + 0] * a->forfftout[2 * i + 0] 
 					      + a->forfftout[2 * i + 1] * a->forfftout[2 * i + 1]);
 				comp = a->cfc_gain[i];
 				test = comp * mag;
@@ -577,7 +577,7 @@ void SetTXACFCOMPRun (int channel, int run)
 
 // Both the compressor and post-equalizer must go the same place in the TX audio processing pipeline; hence
 //    there are NOT separate functions for them.
-PORT
+PORT 
 void SetTXACFCOMPPosition (int channel, int pos)
 {
 	CFCOMP a = txa[channel].cfcomp.p;

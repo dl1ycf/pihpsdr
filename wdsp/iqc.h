@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -45,7 +45,7 @@ typedef struct _iqc
 	int count;
 	int ntup;
 	int state;
-
+	
 } iqc, *IQC;
 
 extern IQC create_iqc(int run, int size, double* in, double* out, double rate, double tup);
@@ -64,17 +64,17 @@ extern void setSize_iqc (IQC a, int size);
 
 // TXA Properties
 
-extern void GetTXAiqcValues(int channel,
+extern void GetTXAiqcValues(int channel, 
 	NS_Spline** m_spline, CurveEMA* m_calavg, double* m_prev_y,
 	NS_Spline** c_spline, CurveEMA* c_calavg, double* c_prev_y,
 	NS_Spline** s_spline, CurveEMA* s_calavg, double* s_prev_y);
 
-extern void SetTXAiqcSwap(int channel,
+extern void SetTXAiqcSwap(int channel, 
 	NS_Spline* m_spline, CurveEMA* m_calavg, double m_prev_y,
 	NS_Spline* c_spline, CurveEMA* c_calavg, double c_prev_y,
 	NS_Spline* s_spline, CurveEMA* s_calavg, double s_prev_y);
 
-extern void SetTXAiqcStart(int channel,
+extern void SetTXAiqcStart(int channel, 
 	NS_Spline* m_spline, CurveEMA* m_calavg, double m_prev_y,
 	NS_Spline* c_spline, CurveEMA* c_calavg, double c_prev_y,
 	NS_Spline* s_spline, CurveEMA* s_calavg, double s_prev_y);

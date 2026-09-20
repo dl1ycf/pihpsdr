@@ -242,6 +242,7 @@ ACTION_TABLE ActionTable[] = {
   {TUNE_MEMORY,         "Tune\nMem",            "TUNM",         AT_BTN},
   {DRIVE,               "TX Drive",             "TXDRV",        AT_KNB | AT_ENC | AT_SLD},
   {TWO_TONE,            "Two-Tone",             "2TONE",        AT_BTN},
+  {TX_NOISE,            "TX Noise",             "TxNoise",      AT_BTN},
   {MENU_TX,             "TX\nMenu",             "TX",           AT_BTN},
   {VFO,                 "VFO",                  "VFO",          AT_ENC},
   {VFO_STEP_MINUS,      "VFO Step -",           "STEP-",        AT_BTN},
@@ -1218,11 +1219,25 @@ int process_action(gpointer data) {
   case PAN_MINUS:
     if (a->mode == PRESSED) {
       radio_set_pan(active_receiver->id,  active_receiver->pan - 5);
+      if (repeat_timer == 0) {
+        repeat_action = *a;
+        repeat_timer = g_timeout_add(250, repeat_cb, NULL);
+        repeat_timer_released = FALSE;
+      }
+    } else if (a->mode == RELEASED) {
+      repeat_timer_released = TRUE;
     }
     break;
   case PAN_PLUS:
     if (a->mode == PRESSED) {
       radio_set_pan(active_receiver->id,  active_receiver->pan + 5);
+      if (repeat_timer == 0) {
+        repeat_action = *a;
+        repeat_timer = g_timeout_add(250, repeat_cb, NULL);
+        repeat_timer_released = FALSE;
+      }
+    } else if (a->mode == RELEASED) {
+      repeat_timer_released = TRUE;
     }
     break;
   case PANADAPTER_HIGH:
@@ -1518,6 +1533,13 @@ int process_action(gpointer data) {
     if (a->mode == PRESSED) {
       if (transmitter != NULL) {
         radio_set_twotone(transmitter, NOT(transmitter->twotone));
+      }
+    }
+    break;
+  case TX_NOISE:
+    if (a->mode == PRESSED) {
+      if (transmitter != NULL) {
+        radio_set_txnoise(transmitter, NOT(transmitter->txnoise));
       }
     }
     break;

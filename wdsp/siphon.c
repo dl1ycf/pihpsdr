@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -50,7 +50,7 @@ void build_window (SIPHON a)
 		a->window[i] *= scale;
 }
 
-SIPHON create_siphon (int run, int position, int mode, int disp, int insize,
+SIPHON create_siphon (int run, int position, int mode, int disp, int insize, 
 	double* in, int sipsize, int fftsize, int specmode)
 {
 	SIPHON a = (SIPHON) malloc0 (sizeof (siphon));

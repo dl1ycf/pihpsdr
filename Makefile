@@ -111,7 +111,7 @@ CPP_INCLUDE= $(WDSP_INCLUDE)
 #
 ##############################################################################
 
-WDSP_LIBS=wdsp/libwdsp.a rnnoise/librnnoise.a libspecbleach/libspecbleach.a \
+WDSP_LIBS=wdsp/libwdsp.a libspecbleach/libspecbleach.a \
 	`$(PKG_CONFIG) --libs fftw3` `$(PKG_CONFIG) --libs fftw3f`
 
 ##############################################################################
@@ -657,7 +657,6 @@ $(PROGRAM):  $(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS) $(SOAPYSDR_OBJS) \
 		$(MIDI_OBJS) $(STEMLAB_OBJS) $(TTS_OBJS) $(TCI_OBJS)
 	$(COMPILE) -c -o src/version.o src/version.c
 	@+make -C libspecbleach
-	@+make -C rnnoise
 	@+make -C wdsp
 	$(LINK) -o $(PROGRAM) $(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS) $(SOAPYSDR_OBJS) \
 		$(MIDI_OBJS) $(STEMLAB_OBJS) $(TTS_OBJS) $(TCI_OBJS) \
@@ -712,7 +711,6 @@ clean:
 	rm -rf $(PROGRAM).app
 	yes | rm -rf LINUX/SoapySDR
 	@make -C libspecbleach clean
-	@make -C rnnoise clean
 	@make -C wdsp clean
 
 #############################################################################
@@ -797,7 +795,6 @@ DEPEND:
 app:	$(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS)  $(SOAPYSDR_OBJS) $(TCI_OBJS) \
 		$(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(TTS_OBJS)
 	@+make -C libspecbleach
-	@+make -C rnnoise
 	@+make -C wdsp
 	$(LINK) -headerpad_max_install_names -o $(PROGRAM) $(OBJS) $(AUDIO_OBJS) $(USBOZY_OBJS)  \
 		$(SOAPYSDR_OBJS) $(MIDI_OBJS) $(STEMLAB_OBJS) $(SERVER_OBJS) $(TTS_OBJS) \

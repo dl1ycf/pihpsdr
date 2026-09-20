@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -42,7 +42,7 @@ void calc_fmsq (FMSQ a)
 	a->G[3] = +20.0 * log10(20000.0 / *a->pllpole);
 	a->peqimp = create_eqimp (3, a->nc, 2, 16);
 	a->impulse = (double*) malloc0 (a->nc * sizeof (complex));
-	eq_impulse (a->peqimp, a->nc, 3, a->F, a->G, a->rate, 1.0 / (2.0 * a->size), 0, 0, 0,
+	eq_impulse (a->peqimp, a->nc, 3, a->F, a->G, a->rate, 1.0 / (2.0 * a->size), 0, 0, 0, 
 		a->impulse);
 	a->p = create_fircore (a->size, a->trigger, a->noise, a->nc, a->mp, 4, a->impulse);
 	// noise averaging
@@ -88,8 +88,8 @@ void decalc_fmsq (FMSQ a)
 	_aligned_free(a->noise);
 }
 
-FMSQ create_fmsq (int run, int size, double* insig, double* outsig, double* trigger, int rate, double fc,
-	double* pllpole, double tdelay, double avtau, double longtau, double tup, double tdown, double tail_thresh,
+FMSQ create_fmsq (int run, int size, double* insig, double* outsig, double* trigger, int rate, double fc, 
+	double* pllpole, double tdelay, double avtau, double longtau, double tup, double tdown, double tail_thresh, 
 	double unmute_thresh, double min_tail, double max_tail, int nc, int mp)
 {
 	FMSQ a = (FMSQ) malloc0 (sizeof (fmsq));
@@ -272,7 +272,7 @@ void SetRXAFMSQNC (int channel, int nc)
 	LeaveCriticalSection (&ch[channel].csDSP);
 }
 
-PORT
+PORT 
 void SetRXAFMSQMP (int channel, int mp)
 {
 	FMSQ a;

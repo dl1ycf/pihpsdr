@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -32,13 +32,13 @@ typedef struct _iobf
 	int   channel;
 	int   in_size;								// input number of complex samples in a fexchange call
 	int   out_size;								// output number of complex samples in a fexchange call
-	int   r1_outsize;							// number of complex samples taken out of the input-pseudo-ring for processing
+	int   r1_outsize;							// number of complex samples taken out of the input-pseudo-ring for processing 
 	int   r2_insize;							// number of processed complex samples returned into the output-pseudo-ring
 	int   r1_size;								// size of a single maximum sized transfer
 	int   r2_size;								// size of a single maximum sized transfer
 	int   r1_active_buffsize;					// size of input pseudo-ring (in complex samples)
 	int   r2_active_buffsize;					// size of output pseudo-ring (in complex samples)
-
+	
 	double* r1_baseptr;							// pointer to input pseudo-ring
 	int   r1_inidx;								// in 'double', actual index into the buffer is 2 times this
 	int   r1_outidx;							// in 'double', actual index into the buffer is 2 times this
@@ -87,7 +87,7 @@ extern void destroy_iobuffs (int channel);
 extern void flush_iobuffs (int channel);
 
 PORT	// double, interleaved I/Q
-void fexchange0 (int channel, double* in, double* out, int* error);
+void fexchange0 (int channel, double* in, double* out, int* error);	
 
 PORT	// separate I/Q buffers
 extern void fexchange2 (int channel, INREAL *Iin, INREAL *Qin, OUTREAL *Iout, OUTREAL *Qout, int* error);

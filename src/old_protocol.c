@@ -2147,6 +2147,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
       buffer[C0] = 0x1E;
       if ((txmode == modeCWU || txmode == modeCWL) && !transmitter->tune
           && !transmitter->twotone
+          && !transmitter->txnoise
           && cw_keyer_internal
           && !MIDI_cw_is_active
           && !CAT_cw_is_active) {
@@ -2473,6 +2474,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
           || MIDI_cw_is_active
           || !cw_keyer_internal
           || transmitter->twotone
+          || transmitter->txnoise
           || hpsdr_ptt) {
         buffer[C0] |= 0x01;
       }

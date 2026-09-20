@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -32,24 +32,10 @@ warren@wpratt.com
 
 #ifndef _emphp_h
 #define _emphp_h
-#include "firmin.h"
-typedef struct _emphp
-{
-	int run;
-	int position;
-	int size;
-	int nc;
-	int mp;
-	double* in;
-	double* out;
-	int ctype;
-	double f_low;
-	double f_high;
-	double rate;
-	FIRCORE p;
-} emphp, *EMPHP;
 
-extern EMPHP create_emphp (int run, int position, int size, int nc, int mp,
+typedef struct _emphp* EMPHP;
+
+extern EMPHP create_emphp (int run, int position, int size, int nc, int mp, 
 	double* in, double* out, int rate, int ctype, double f_low, double f_high);
 
 extern void destroy_emphp (EMPHP a);
@@ -69,6 +55,8 @@ __declspec (dllexport) void SetTXAFMEmphMP (int channel, int mp);
 __declspec (dllexport) void SetTXAFMEmphNC (int channel, int nc);
 
 __declspec (dllexport) void SetTXAFMPreEmphFreqs(int channel, double low, double high);
+
+extern void SetTXAFMPreEmphRun(int channel, int run);
 
 #endif
 

@@ -2,7 +2,7 @@
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2013, 2016, 2022, 2025 Warren Pratt, NR0V
+Copyright (C) 2013, 2016, 2022, 2025, 2026 Warren Pratt, NR0V
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 */
@@ -215,7 +215,7 @@ double* fir_fsamp (int N, double* A, int rtype, double scale, int wintype)
 double* fir_bandpass (int N, double f_low, double f_high, double samplerate, int wintype, int rtype, double scale)
 {
 	// check for previous in the cache
-	struct Params
+	struct Params 
 	{
 		int N;
 		int wintype;
@@ -337,7 +337,7 @@ double *fir_read (int N, const char *filename, int rtype, double scale)
 			{
 			case 0:
 				if (error == 0 && fscanf(file, "%le", &I) != 1) error = 1;
-				if (error == 0)
+				if (error == 0) 
 					c_impulse[i] = +scale * I;
 				break;
 			case 1:
@@ -385,7 +385,7 @@ void analytic (int N, double* in, double* out)
 void mp_imp (int N, double* fir, double* mpfir, int pfactor, int polarity)
 {
 	// check for previous in the cache
-	struct Params
+	struct Params 
 	{
 		int N;
 		int pfactor;
@@ -465,7 +465,7 @@ void mp_imp (int N, double* fir, double* mpfir, int pfactor, int polarity)
 	add_impulse_to_cache(MP_CACHE, h, N, mpfir);
 }
 
-// impulse response of a zero frequency filter comprising a cascade of two resonators,
+// impulse response of a zero frequency filter comprising a cascade of two resonators, 
 //    each followed by a detrending filter
 double* zff_impulse(int nc, double scale)
 {

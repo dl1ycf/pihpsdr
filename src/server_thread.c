@@ -772,13 +772,13 @@ static void server_loop(void) {
     case CMD_TOGGLE_TUNE:
     case CMD_TUNE:
     case CMD_TWOTONE:
+    case CMD_TXNOISE:
     case CMD_TXPROFILE:
     case CMD_TX_FPS:
     case CMD_TXFILTER:
     case CMD_VFO_A_TO_B:
     case CMD_VFO_B_TO_A:
     case CMD_VFO_SWAP:
-    case CMD_VOX:
     case CMD_XIT:
     case CMD_XVTR:
     case CMD_ZOOM: {
@@ -1250,7 +1250,7 @@ static int server_command(gpointer data) {
     // make some changes effective
     //
     radio_apply_band_settings(0, 0);
-    radio_calc_drive_level();
+    radio_calc_drive_level(0);
     schedule_high_priority();
   }
   break;
@@ -1447,13 +1447,6 @@ static int server_command(gpointer data) {
     radio_set_mox(header->b1);
     g_idle_add(ext_vfo_update, NULL);
     break;
-  case CMD_VOX:
-    //
-    // The client sends this to fire/remove VOX.
-    //
-    radio_set_vox(header->b1);
-    g_idle_add(ext_vfo_update, NULL);
-    break;
   case CMD_TUNE:
     if (transmitter != NULL) {
       full_tune = from_16(header->s1);
@@ -1470,6 +1463,13 @@ static int server_command(gpointer data) {
       radio_set_twotone(transmitter, header->b1);
       g_idle_add(ext_vfo_update, NULL);
       send_twotone(remoteclient.sock_tcp, transmitter->twotone);
+    }
+    break;
+  case CMD_TXNOISE:
+    if (transmitter != NULL) {
+      radio_set_txnoise(transmitter, header->b1);
+      g_idle_add(ext_vfo_update, NULL);
+      send_txnoise(remoteclient.sock_tcp, transmitter->txnoise);
     }
     break;
   case CMD_AGC: {
@@ -1555,6 +1555,7 @@ static int server_command(gpointer data) {
       rx->nr2_post_nlevel        = command->nr2_post_nlevel;
       rx->nr2_post_factor        = command->nr2_post_factor;
       rx->nr2_post_rate          = command->nr2_post_rate;
+      rx->nnr_model              = command->nnr_model;
       rx->nr4_noise_scaling_type = command->nr4_noise_scaling_type;
       rx->nb_tau                 = from_double(command->nb_tau);
       rx->nb_hang                = from_double(command->nb_hang);
@@ -1562,6 +1563,7 @@ static int server_command(gpointer data) {
       rx->nb_thresh              = from_double(command->nb_thresh);
       rx->nr2_trained_threshold  = from_double(command->nr2_trained_threshold);
       rx->nr2_trained_t2         = from_double(command->nr2_trained_t2);
+      rx->nnr_floor              = from_double(command->nnr_floor);
       rx->nr4_reduction_amount   = from_double(command->nr4_reduction_amount);
       rx->nr4_smoothing_factor   = from_double(command->nr4_smoothing_factor);
       rx->nr4_whitening_factor   = from_double(command->nr4_whitening_factor);

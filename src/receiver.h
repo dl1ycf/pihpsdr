@@ -146,6 +146,11 @@ typedef struct _receiver {
   // nb2_mode = 4:  interpolate
 
   //
+  // NNR parameters.
+  //
+  int nnr_model;
+  double nnr_floor; // in dB
+  //
   // NR4 parameters.
   //
   double nr4_reduction_amount;
