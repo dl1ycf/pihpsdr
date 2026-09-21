@@ -259,6 +259,7 @@ ACTION_TABLE ActionTable[] = {
   {XIT_ENABLE,          "XIT\nOn/Off",          "XITT",         AT_BTN},
   {XIT_MINUS,           "XIT -",                "XIT-",         AT_BTN},
   {XIT_PLUS,            "XIT +",                "XIT+",         AT_BTN},
+  {ZEROBEAT,            "ZBeat",                "ZBeat",        AT_BTN},
   {ZOOM,                "Zoom",                 "ZOOM",         AT_KNB | AT_ENC | AT_SLD},
   {ZOOM_MINUS,          "Zoom -",               "ZOOM-",        AT_BTN},
   {ZOOM_PLUS,           "Zoom +",               "ZOOM+",        AT_BTN},
@@ -1653,6 +1654,12 @@ int process_action(gpointer data) {
       }
     } else if (a->mode == RELEASED) {
       repeat_timer_released = TRUE;
+    }
+    break;
+  case ZEROBEAT:
+    if (a->mode == PRESSED) {
+      long long f = active_receiver->ZBfreq;
+      if (f > 0) { vfo_id_set_frequency(active_receiver->id, f); }
     }
     break;
   case ZOOM:

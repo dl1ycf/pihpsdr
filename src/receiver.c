@@ -765,6 +765,8 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->dsp_size = 2048;
   rx->fft_size = 2048;
   rx->low_latency = 0;
+  rx->ZBfreq = 0;
+  rx->ZBlevel = -200.0;
   rx->smetermode = SMETER_AVERAGE;
   rx->fps = 10;
   rx->update_timer_id = 0;
@@ -988,7 +990,7 @@ void rx_change_adc(const RECEIVER *rx) {
   schedule_receive_specific();
 }
 
-void rx_set_frequency(const RECEIVER *rx, long long f) {
+void rx_set_frequency(RECEIVER *rx, long long f) {
   ASSERT_SERVER();
   int id = rx->id;
   //
@@ -1002,7 +1004,7 @@ void rx_set_frequency(const RECEIVER *rx, long long f) {
   rx_frequency_changed(rx);
 }
 
-void rx_frequency_changed(const RECEIVER *rx) {
+void rx_frequency_changed(RECEIVER *rx) {
   ASSERT_SERVER();
   int id = rx->id;
   if (vfo[id].ctun) {
@@ -1056,6 +1058,7 @@ void rx_frequency_changed(const RECEIVER *rx) {
 #endif
     break;
   }
+  rx->ZBfreq = 0LL;
 }
 
 void rx_set_sam_mode(const RECEIVER *rx) {
@@ -1411,6 +1414,7 @@ void rx_set_filter(RECEIVER *rx) {
   rx_set_bandpass(rx);
   rx_set_cw_peak(rx, have_peak, (double) cw_keyer_sidetone_frequency);
   rx_set_agc(rx);
+  rx->ZBfreq = 0;
 }
 
 void rx_set_framerate(RECEIVER *rx) {

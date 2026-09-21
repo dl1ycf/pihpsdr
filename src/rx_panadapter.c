@@ -161,8 +161,8 @@ void rx_panadapter_update(RECEIVER *rx) {
   }
   xoffset = rx->cAp * vfo[rx->id].offset;
   double rxpos = rx->cBp + xoffset;
-  double filter_left  = rx->cAp * rx->filter_low  + xoffset + rx->cBp;
-  double filter_right = rx->cAp * rx->filter_high + xoffset + rx->cBp;
+  double filter_left  = rx->cAp * rx->filter_low  + rxpos;
+  double filter_right = rx->cAp * rx->filter_high + rxpos;
   if (mode == modeCWU) {
     filter_left  -= cw_keyer_sidetone_frequency * rx->cAp;
     filter_right -= cw_keyer_sidetone_frequency * rx->cAp;
@@ -405,12 +405,37 @@ void rx_panadapter_update(RECEIVER *rx) {
                / (double) (panhi - panlo));
     cairo_move_to(cr, 0.0, s1);
     //
-    // Determine noise floor "on the fly"
+    // Determine noise floor and strongest peak in the passband "on the fly"
     //
     int noisecount = 0;
+    int ifl = (int) (filter_left + 0.5);
+    int ifr = (int) (filter_right + 0.5);
+    if (ifl < 0) { ifl = 0; }
+    if (ifr >= mywidth) { ifr = mywidth - 1; }
+    int maxi = ifl;
+    double smax = samples[ifl];
+    for (int i = ifl + 1; i <= ifr; i++) {
+      double s2 = (double)samples[i] + soffset;
+      
+      if (s2 > smax) {
+        maxi = i;
+        smax = s2;
+      }
+    }
+    long long fmax = frequency + (maxi - rxpos) / rx->cAp;
+    //
+    // If smax is larger than ZBlevel, this marks a new frequency
+    // Else, lower the old max with 20 dB per second
+    //
+    if (smax > rx->ZBlevel) {
+      rx->ZBfreq = fmax;
+      rx->ZBlevel = smax;
+    } else {
+      rx->ZBlevel = rx->ZBlevel - 20.0 / rx->fps;
+    }
+    t_print("F=%lld S=%f\n", rx->ZBfreq, rx->ZBlevel);
     for (int i = 1; i < mywidth; i++) {
-      double s2;
-      s2 = (double)samples[i] + soffset;
+      double s2 = (double)samples[i] + soffset;
       //
       // Count number of pixels that exceed the noise floor
       // The target for this value is one fourth of all pixels
@@ -422,20 +447,22 @@ void rx_panadapter_update(RECEIVER *rx) {
       cairo_line_to(cr, i, s2);
     }
     double noisefrac = (double) noisecount / (double) mywidth;
+    double min5 = 50.0 / rx->fps;
+    double min1 = 10.0 / rx->fps;
     if (noisefrac > 0.8) {
       // nearly all pixels above the noise floor: it is much too low
-      rx->noise_floor += 5.0;
+      rx->noise_floor += min5;
     } else if (noisefrac > 0.3) {
       // too many pixels above the noise floor: it is too low
-      rx->noise_floor += 1.0;
+      rx->noise_floor += min1;
     } else if (noisefrac > 0.1) {
       // This is the target area
     } else if (noisefrac > 0.02) {
       //too few pixels above the noise floor: it is too high
-      rx->noise_floor -= 1.0;
+      rx->noise_floor -= min1;
     } else {
       //almost no pixels above the noise floor: it is much too high
-      rx->noise_floor -= 5.0;
+      rx->noise_floor -= min5;
     }
     if (rx->agc_automatic_gain) {
       //
@@ -444,11 +471,11 @@ void rx_panadapter_update(RECEIVER *rx) {
       //
       if (rx->agc_thresh + soffset > rx->noise_floor + 3.0) {
         // green line above noise floor: increase AGC gain
-        rx->agc_gain += 1.0;
+        rx->agc_gain += min1;
         rx_set_agc(rx);
       } else if (rx->agc_thresh + soffset < rx->noise_floor - 3.0) {
         // green line below noise floor: decrease AGC gain
-        rx->agc_gain -= 1.0;
+        rx->agc_gain -= min1;
         rx_set_agc(rx);
       }
     }

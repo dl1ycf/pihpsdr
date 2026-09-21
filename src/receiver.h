@@ -42,6 +42,8 @@ typedef struct _receiver {
   int fft_size;
   int low_latency;
 
+  long long ZBfreq;  // Zero-Beat Frequency
+  double    ZBlevel; // Zero-Beat Level
   int agc;
   int agc_automatic_gain;
   double noise_floor;
@@ -295,7 +297,7 @@ extern void   rx_create_analyzer(RECEIVER *rx);
 extern void   rx_filter_changed(RECEIVER *rx);
 extern void   rx_get_pixels(RECEIVER *rx);
 extern void   rx_get_meter(RECEIVER *rx);
-extern void   rx_frequency_changed(const RECEIVER *rx);
+extern void   rx_frequency_changed(RECEIVER *rx);
 extern void   rx_mode_changed(RECEIVER *rx);
 extern void   rx_off(const RECEIVER *rx, int wait);
 extern void   rx_on(const RECEIVER *rx);
@@ -322,7 +324,7 @@ extern void   rx_set_fm_limiter(const RECEIVER *rx);
 extern void   rx_set_fft_params(RECEIVER *rx);
 extern void   rx_set_filter(RECEIVER *rx);
 extern void   rx_set_framerate(RECEIVER *rx);
-extern void   rx_set_frequency(const RECEIVER *rx, long long frequency);
+extern void   rx_set_frequency(RECEIVER *rx, long long frequency);
 extern void   rx_set_mode(const RECEIVER* rx);
 extern void   rx_set_noise(const RECEIVER *rx);
 extern void   rx_set_notch(const RECEIVER *rx);
