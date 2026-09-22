@@ -153,6 +153,9 @@ static void squelch_enable_cb(GtkWidget *widget, gpointer data) {
 
 static void agc_automatic_cb(GtkWidget *widget, gpointer data) {
   myrx->agc_automatic_gain = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
+  if (radio_is_remote) {
+    send_agc(cl_sock_tcp, myrx);
+  }
 }
 
 static void mute_audio_cb(GtkWidget *widget, gpointer data) {

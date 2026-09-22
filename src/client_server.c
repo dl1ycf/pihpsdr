@@ -836,6 +836,7 @@ void send_agc(int s, const RECEIVER *rx) {
   command.custom_slope  = to_16(rx->agc_custom_slope);
   //
   command.agc = rx->agc;
+  command.agc_automatic_gain = rx->agc_automatic_gain;
   send_tcp(s, (char *)&command, sizeof(command));
 }
 

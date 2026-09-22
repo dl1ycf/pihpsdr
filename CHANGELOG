@@ -10,6 +10,7 @@ September 2026:
 - New and fast determination of panadapter noise floor
 - Automatic binding of AGC gain and/or RX panadapter low value to the
   noise floor
+- ZERO-Beat ("ZBeat") function
 
 August 2026:
 ------------

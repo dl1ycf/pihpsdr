@@ -850,6 +850,7 @@ typedef struct __attribute__((__packed__)) _agc_command {
   //
   uint8_t id;
   uint8_t agc;
+  uint8_t agc_automatic_gain;
 } AGC_COMMAND;
 
 //

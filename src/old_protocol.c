@@ -312,7 +312,6 @@ static gpointer old_protocol_txiq_thread(gpointer data) {
     // This is a no-op if "wait" is in the past
     //
     clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &wait, NULL);
-
     if (P1running && pthread_mutex_trylock(&send_mutex) == 0) {
       //
       // If we do not get a lock, this means a protocol restart is

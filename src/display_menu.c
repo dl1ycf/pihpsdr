@@ -625,7 +625,7 @@ void display_menu(GtkWidget *parent) {
       gtk_grid_attach(GTK_GRID(tx_grid), btn, col, row, 2, 1);
       g_signal_connect(btn, "toggled", G_CALLBACK(tx_display_pacurr_cb), NULL);
     }
-    row = 4;
+    row = 5;
     col = 2;
     btn = gtk_check_button_new_with_label("Label Strongest Peaks");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), transmitter->panadapter_peaks_on);

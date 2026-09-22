@@ -1129,7 +1129,7 @@ static void rx_process_buffer(RECEIVER *rx) {
   //
   double scale = 0.6 * pow(10.0, -0.05 * rx->volume);
 #ifdef TCI
-  double tciscale = pow(10.0, -0.05*(rx->volume - rx->tci_volume));
+  double tciscale = pow(10.0, -0.05 * (rx->volume - rx->tci_volume));
 #endif
   double unscale = 1.0 / scale;
   // Without DUPLEX; xmit will always be false.
@@ -1193,7 +1193,7 @@ static void rx_process_buffer(RECEIVER *rx) {
     // programs, we ship out before applying mute_rx or STEREO effects.
     //
     if (tci_audio_rx_active) {
-      tci_audio_rx_sample(rx->id, tciscale*left_sample, tciscale*right_sample);
+      tci_audio_rx_sample(rx->id, tciscale * left_sample, tciscale * right_sample);
     }
 #endif
     if (xmit && mute_rx_while_transmitting) {
@@ -1796,6 +1796,15 @@ void rx_set_agc(RECEIVER *rx) {
     RXTXprofile[mode].rx.agc_custom_hang   = rx->agc_custom_hang;
     RXTXprofile[mode].rx.agc_custom_slope  = rx->agc_custom_slope;
     profiles_copy_rxtxprofile(mode);
+  }
+  if (remoteclient.running) {
+    //
+    // Send AGC data to the client. This data includes updated "hang" and
+    // "thresh" levels.
+    // If "AGC automatic gain" is active, the client is informed about the
+    // new AGC gain value.
+    //
+    send_agc(remoteclient.sock_tcp,  rx);
   }
 }
 

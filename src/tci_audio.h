@@ -26,13 +26,12 @@
 
 #define TCI_RX_AUDIO_MAX_RECEIVERS 2
 #define TCI_AUDIO_SAMPLE_RATE 48000
-#define TCI_AUDIO_FORMAT_FLOAT32 3
+#define TCI_AUDIO_SAMPLES 1024
+#define TCI_AUDIO_SAMPLE_TYPE 3
 #define TCI_STREAM_RX_AUDIO 1
 #define TCI_STREAM_TX_AUDIO 2
 #define TCI_STREAM_TX_CHRONO 3
-#define TCI_RX_AUDIO_FRAME_FRAMES 512
-#define TCI_TX_AUDIO_FRAME_FRAMES 512
-#define TCI_TX_AUDIO_CHRONO_LENGTH (TCI_TX_AUDIO_FRAME_FRAMES * 2)
+#define TCI_TX_AUDIO_CHRONO_LENGTH (TCI_AUDIO_SAMPLES * 2)  // TX is stereo-only
 
 //
 // BigEndian NOTE: TCI has all binary data in little-endian,
@@ -52,15 +51,22 @@ typedef struct _tci_stream_header {
   uint32_t reserv[8];
 } TCI_STREAM_HEADER;
 
+//
+// maximum value for audio_samples: 2048
+// maximum value for audio_channels: 2
+// so there can be at most 4096 float values in the stream buffer
+// which corresponds to a uint8_t field with length 16384
+//
 typedef struct _tci_stream {
   TCI_STREAM_HEADER header;
-  float    audio[8192];        // given here as float not uint8_t
+  float    audio[4096];
 } TCI_STREAM;
 
 extern double tci_get_next_mic_sample();
 extern void tci_audio_rx_sample (int id, double left, double right);
 extern unsigned int tci_audio_get_write_count (int receiver_id);
-extern unsigned int tci_audio_get_frame (int receiver_id, TCI_STREAM *stream, size_t frame_size, size_t *frame_len);
+extern unsigned int tci_audio_get_frame (int receiver_id, TCI_STREAM *stream, size_t frame_size, size_t *frame_len,
+    int channels);
 extern void tci_audio_handle_tx_frame (const TCI_STREAM *stream, size_t len);
 extern void tci_audio_tx_reset (void);
 

@@ -220,9 +220,9 @@ char *css =
 // one instance of piHPSDR.
 //
 void load_font(int font) {
-  GtkCssProvider *provider;
-  GdkDisplay *display;
-  GdkScreen *screen;
+  static GtkCssProvider *font_provider = NULL;
+  GdkDisplay *display = gdk_display_get_default ();
+  GdkScreen *screen = gdk_display_get_default_screen (display);
   GError *error;
   char str[256];
   if (font < 0) { font = 0; }
@@ -230,7 +230,7 @@ void load_font(int font) {
   //
   // Typeset the sample string "CWU 500P 16 wpm 800 Hz" with 13.0 point font size,
   // and look whether it fits within 180.0 pixels (this is already generous).
-  // Reject fonts wider than that.
+  // Reject fonts wider than that and fall back to font 0.
   // The main reason to do so is to prevent that a broad fall-back font is used
   // in case one of the fonts in cssfonts[] is not available.
   // In case of failure, take the first font in the list.
@@ -251,20 +251,29 @@ void load_font(int font) {
   cairo_destroy(cr);
   cairo_surface_destroy(surface);
   which_css_font = font;
-  provider = gtk_css_provider_new ();
-  display = gdk_display_get_default ();
-  screen = gdk_display_get_default_screen (display);
-  gtk_style_context_add_provider_for_screen (screen,
-      GTK_STYLE_PROVIDER(provider),
-      GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-  error = NULL;
-  snprintf(str, sizeof(str), "  * { font-family: %s; }\n", cssfont[which_css_font]);
-  (void) gtk_css_provider_load_from_data(provider, str, -1, &error);
-  if (error != NULL) {
-    t_print("%s: %s\n", __func__, error->message);
-    g_clear_error(&error);
+  //
+  // Remove old font
+  //
+  if (font_provider != NULL) {
+    gtk_style_context_remove_provider_for_screen(screen,
+        GTK_STYLE_PROVIDER(font_provider));
+    g_object_unref(font_provider);
+    font_provider = NULL;
   }
-  g_object_unref (provider);
+  font_provider = gtk_css_provider_new ();
+  snprintf(str, sizeof(str), "  * { font-family: %s; }\n", cssfont[which_css_font]);
+  error = NULL;
+  (void) gtk_css_provider_load_from_data(font_provider, str, -1, &error);
+  if (!error) {
+    gtk_style_context_add_provider_for_screen (screen,
+        GTK_STYLE_PROVIDER(font_provider),
+        GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  } else {
+    t_print("%s: could not set font.\n");
+    g_error_free(error);
+    g_object_unref(font_provider);
+    font_provider = NULL;
+  }
 }
 
 //
@@ -274,35 +283,62 @@ void load_font(int font) {
 // but the argument "font" in any case applies to the VFO bar
 //
 void load_css(void) {
-  GtkCssProvider *provider;
-  GdkDisplay *display;
-  GdkScreen *screen;
+  GdkDisplay *display = gdk_display_get_default ();
+  GdkScreen *screen = gdk_display_get_default_screen(display);
   GError *error;
-  provider = gtk_css_provider_new ();
-  display = gdk_display_get_default ();
-  screen = gdk_display_get_default_screen (display);
-  gtk_style_context_add_provider_for_screen (screen,
-      GTK_STYLE_PROVIDER(provider),
-      GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  static GtkCssProvider *base_provider = NULL;
+  static GtkCssProvider *user_provider = NULL;
+  /* Remove old providers first. */
+  if (user_provider != NULL) {
+    gtk_style_context_remove_provider_for_screen(screen,
+        GTK_STYLE_PROVIDER(user_provider));
+    g_object_unref(user_provider);
+    user_provider = NULL;
+  }
+  if (base_provider != NULL) {
+    gtk_style_context_remove_provider_for_screen(screen,
+        GTK_STYLE_PROVIDER(base_provider));
+    g_object_unref(base_provider);
+    base_provider = NULL;
+  }
+  //
+  // Load CSS from internal data, such that any file given by
+  // the user need only specify settings the user wants to override
+  //
+  base_provider = gtk_css_provider_new ();
   error = NULL;
-  (void) gtk_css_provider_load_from_path (provider, "default.css", &error);
-  if (error != NULL) {
+  (void) gtk_css_provider_load_from_data(base_provider, css, -1, &error);
+  if (!error) {
+    t_print("%s: base CSS loaded\n", __func__);
+    gtk_style_context_add_provider_for_screen (screen,
+        GTK_STYLE_PROVIDER(base_provider),
+        GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  } else {
+    t_print("%s: base CSS could not be loaded\n", __func__);
+    g_error_free(error);
+    g_object_unref(base_provider);
+    base_provider = NULL;
+  }
+  //
+  // Load CSS from external file
+  //
+  user_provider = gtk_css_provider_new();
+  error = NULL;
+  (void) gtk_css_provider_load_from_path (user_provider, "default.css", &error);
+  if (!error) {
+    t_print("%s: default.css loaded\n");
+    gtk_style_context_add_provider_for_screen(screen,
+        GTK_STYLE_PROVIDER(user_provider),
+        GTK_STYLE_PROVIDER_PRIORITY_USER);
+  } else {
     //
     // The average user does not provide a default.css file, here
     // the following error message will always appear although this does
     // not indicate a problem.
     //
-    t_print("%s: No default.css file\n", __func__);
-    g_clear_error(&error);
-    (void) gtk_css_provider_load_from_data(provider, css, -1, &error);
-    if (error != NULL) {
-      //
-      // If this error message appears, this usually flags an error
-      // in the hard-wired CSS data.
-      //
-      t_print("%s: %s\n", __func__, error->message);
-      g_clear_error(&error);
-    }
+    t_print("%s: No default.css file could be loaded\n", __func__);
+    g_error_free(error);
+    g_object_unref(user_provider);
+    user_provider = NULL;
   }
-  g_object_unref (provider);
 }

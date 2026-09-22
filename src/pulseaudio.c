@@ -267,10 +267,10 @@ static gpointer tx_audio_thread(gpointer arg) {
       //
       int newpt = (ad->audio_buffer_inpt + 1) & MICRINGMASK;
       if (newpt != ad->audio_buffer_outpt) {
-          // buffer space available, do the write
-          ad->audio_buffer[ad->audio_buffer_inpt] = (double) buffer[i];
-          // atomic update of ad->audio_buffer_inpt
-          ad->audio_buffer_inpt = newpt;
+        // buffer space available, do the write
+        ad->audio_buffer[ad->audio_buffer_inpt] = (double) buffer[i];
+        // atomic update of ad->audio_buffer_inpt
+        ad->audio_buffer_inpt = newpt;
       }
     }
   }
@@ -319,7 +319,6 @@ int audio_open_input(TRANSMITTER *tx) {
     usleep(50000);
   }
   audio_data *ad = g_new(audio_data, 1);
-
   ad->pastream = pa_simple_new(NULL,      // Use the default server.
                                "piHPSDR",                   // Our application's name.
                                PA_STREAM_RECORD,
@@ -345,6 +344,7 @@ int audio_open_input(TRANSMITTER *tx) {
   ad->audio_thread_id = g_thread_try_new("TxAudioIn", tx_audio_thread, tx, &error);
   if (ad->audio_thread_id == NULL) {
     t_print("%s: g_thread_new failed on tx_audio_thread: %s\n", __func__, error->message);
+    g_error_free(error);
     pa_simple_free(ad->pastream);
     g_free(ad->audio_buffer);
     g_free(ad);

@@ -1481,6 +1481,7 @@ static int server_command(gpointer data) {
     if (id < receivers) {
       RECEIVER *rx = receiver[id];
       rx->agc = agc_command->agc;
+      rx->agc_automatic_gain = agc_command->agc_automatic_gain;
       rx->agc_hang_threshold = from_double(agc_command->hang_thresh);
       suppress_popup_sliders++;
       radio_set_agc_gain(id, from_double(agc_command->gain));
@@ -1490,10 +1491,6 @@ static int server_command(gpointer data) {
       rx->agc_custom_hang   = from_16(agc_command->custom_hang);
       rx->agc_custom_slope  = from_16(agc_command->custom_slope);
       rx_set_agc(rx);
-      //
-      // Now hang and thresh have been calculated and need be sent back
-      //
-      send_agc(remoteclient.sock_tcp, rx);
     }
   }
   break;
@@ -1737,7 +1734,6 @@ static int server_command(gpointer data) {
     //
     for (int id = 0; id < receivers; id++) {
       send_rx_filter_cut(remoteclient.sock_tcp, id);
-      send_agc(remoteclient.sock_tcp, receiver[id]);
     }
     if (transmitter != NULL) {
       send_tx_filter_cut(remoteclient.sock_tcp);
@@ -2068,8 +2064,6 @@ static int server_command(gpointer data) {
   break;
   case CMD_RXMENU: {
     //
-    // cannot use send_agc since we transfer bypass info
-    // from both ADCs
     // Data included here is what is changed in the RX menu
     //
     const RXMENU_DATA *command = (RXMENU_DATA *)data;
@@ -2267,7 +2261,6 @@ static int server_command(gpointer data) {
       rx->filter_high = from_16(header->s2);
       rx_set_bandpass(rx);
       rx_set_agc(rx);
-      send_agc(remoteclient.sock_tcp, rx);
       g_idle_add(ext_vfo_update, NULL);
     }
   }

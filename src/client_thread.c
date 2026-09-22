@@ -1509,10 +1509,9 @@ static gpointer client_tcp_thread(gpointer arg) {
     break;
     case CMD_AGC: {
       //
-      // Sent as a response to CMD_AGC_GAIN, CMD_FILTER_SEL, CMD_RX_FILTER_CUT.
-      // When this command comes back from the server,
-      // it has re-calculated "hant" and "thresh", while the other two
-      // entries should be exactly those the client has just sent.
+      // Server sends this at the end of rx_set_agc(). This way, new "hang" and "thresh" levels
+      // are reported if the client has changed the AGC gain.
+      // When using "AGC automatic gain", this can arrive unsolicited.
       //
       AGC_COMMAND agc_cmd;
       if (recv_tcp(cl_sock_tcp, (char *)&agc_cmd + sizeof(HEADER), sizeof(AGC_COMMAND) - sizeof(HEADER)) < 0) { goto ReadErr; }

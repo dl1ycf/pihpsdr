@@ -416,7 +416,6 @@ void rx_panadapter_update(RECEIVER *rx) {
     double smax = samples[ifl];
     for (int i = ifl + 1; i <= ifr; i++) {
       double s2 = (double)samples[i] + soffset;
-      
       if (s2 > smax) {
         maxi = i;
         smax = s2;
@@ -433,7 +432,6 @@ void rx_panadapter_update(RECEIVER *rx) {
     } else {
       rx->ZBlevel = rx->ZBlevel - 20.0 / rx->fps;
     }
-    t_print("F=%lld S=%f\n", rx->ZBfreq, rx->ZBlevel);
     for (int i = 1; i < mywidth; i++) {
       double s2 = (double)samples[i] + soffset;
       //
@@ -464,22 +462,35 @@ void rx_panadapter_update(RECEIVER *rx) {
       //almost no pixels above the noise floor: it is much too high
       rx->noise_floor -= min5;
     }
-    if (rx->agc_automatic_gain) {
+    if (rx->agc_automatic_gain && !radio_is_remote) {
       //
       // Bind "AGC green line" to the just determined noise floor,
       // but do not change AGC gain if there are slight oscillations
       //
+      if (rx->agc_thresh + soffset > rx->noise_floor + 10.0) {
+        // green line well above noise floor: increase AGC gain strongly
+        rx->agc_gain += min5;
+        rx_set_agc(rx);
+      }
       if (rx->agc_thresh + soffset > rx->noise_floor + 3.0) {
         // green line above noise floor: increase AGC gain
         rx->agc_gain += min1;
         rx_set_agc(rx);
-      } else if (rx->agc_thresh + soffset < rx->noise_floor - 3.0) {
+      } else if (rx->agc_thresh + soffset > rx->noise_floor - 3.0) {
+        // do nothing. This is the target area
+      } else if (rx->agc_thresh + soffset > rx->noise_floor - 10.0) {
         // green line below noise floor: decrease AGC gain
         rx->agc_gain -= min1;
+        rx_set_agc(rx);
+      } else {
+        // green line well below noise floor: decrease AGC gain strongly
+        rx->agc_gain -= min5;
         rx_set_agc(rx);
       }
     }
     if (rx->pan_low_automatic) {
+      //
+      // Note this works independently on the client
       //
       // We do not want to make the panadapter "nervous".
       // The panlow value is rounded to a multiple of 5, and

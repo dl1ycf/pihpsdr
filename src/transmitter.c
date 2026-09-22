@@ -1188,7 +1188,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   //
   // allocate buffers
   //
-  tx->audiomon_vol = pow(10.0, 0.05*tx->audiomon_db);
+  tx->audiomon_vol = pow(10.0, 0.05 * tx->audiomon_db);
   tx->mic_input_buffer = g_new(double, 2 * tx->buffer_size);
   tx->iq_output_buffer = g_new(double, 2 * tx->output_samples);
   tx->cw_sig_rf = g_new(double, tx->output_samples);

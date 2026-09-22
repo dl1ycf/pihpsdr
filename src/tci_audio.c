@@ -56,7 +56,7 @@ typedef struct _tci_tx_audio_ring {
   float samples[TCI_TX_AUDIO_RING_FRAMES];
   int inpt;
   int outpt;
-  float cache[TCI_TX_AUDIO_FRAME_FRAMES];
+  float cache[TCI_AUDIO_SAMPLES];
   atomic_int cache_len;
   int cache_pos;
 } TCI_TX_AUDIO_RING;
@@ -82,7 +82,7 @@ void tci_audio_rx_sample (int id, double left, double right) {
   // called from the RX thread, and may update inpt.
   //
   TCI_RX_AUDIO_RING *ring;
-  static int wakeup_count = TCI_RX_AUDIO_FRAME_FRAMES;
+  static int wakeup_count = TCI_AUDIO_SAMPLES;
   if (id < 0 || id >= TCI_RX_AUDIO_MAX_RECEIVERS) { return; }
   ring = &tci_rx_audio_ring[id];
   int newpt = (ring->inpt + 1) & TCI_RX_AUDIO_RING_MASK;
@@ -100,11 +100,12 @@ void tci_audio_rx_sample (int id, double left, double right) {
     // notifies LWS that there is "something to write".
     //
     tci_audio_wakeup();
-    wakeup_count = TCI_RX_AUDIO_FRAME_FRAMES;
+    wakeup_count = TCI_AUDIO_SAMPLES;
   }
 }
 
-unsigned int tci_audio_get_frame (int receiver_id, TCI_STREAM *stream, size_t frame_size, size_t *frame_len) {
+unsigned int tci_audio_get_frame (int receiver_id, TCI_STREAM *stream, size_t frame_size, size_t *frame_len,
+                                  int channels) {
   //
   // Retrieve up to TCI_RX_AUDIO_FRAME_FRAMES stereo samples from RX audio ring buffer, and form
   // a valid TCI_STREAM data structure therefrom
@@ -112,18 +113,25 @@ unsigned int tci_audio_get_frame (int receiver_id, TCI_STREAM *stream, size_t fr
   // Called from the LWS server, no mutex should be necessary
   // This is a consumer so outpt is updated only.
   //
+  // While we are handling stereo frames exclusively in the internal storage,
+  // we will only send the left audio channel if a single channel has been
+  // requested.
+  //
   if (frame_len != NULL) { *frame_len = 0; }
   if (stream == NULL || frame_len == NULL || receiver_id >= TCI_RX_AUDIO_MAX_RECEIVERS) { return 0; }
   //
   // Retrieve up to TCI_RX_AUDIO_FRAME_FRAMES from RX ring buffer and put into <out>
   //
   TCI_RX_AUDIO_RING *ring = &tci_rx_audio_ring[receiver_id];
-  g_mutex_lock(&ring->mutex);  // locks every 11 ms
+  //
+  // Since audio_samples is fixed at 1024, this locks every 21 ms
+  //
+  g_mutex_lock(&ring->mutex);
   int frames = (ring->inpt - ring->outpt) & TCI_RX_AUDIO_RING_MASK;
-  if (frames > TCI_RX_AUDIO_FRAME_FRAMES) {
-    frames = TCI_RX_AUDIO_FRAME_FRAMES;
+  if (frames > TCI_AUDIO_SAMPLES) {
+    frames = TCI_AUDIO_SAMPLES;
   }
-  size_t len = sizeof(TCI_STREAM_HEADER) + 2 * frames * sizeof(float);
+  size_t len = sizeof(TCI_STREAM_HEADER) + channels * frames * sizeof(float);
   if (len > frame_size || frames <= 0) {
     g_mutex_unlock(&ring->mutex);
     return 0;
@@ -132,16 +140,29 @@ unsigned int tci_audio_get_frame (int receiver_id, TCI_STREAM *stream, size_t fr
   memset (stream, 0, sizeof(TCI_STREAM_HEADER));
   stream->header.receiver = (uint32_t) receiver_id;
   stream->header.sample_rate = TCI_AUDIO_SAMPLE_RATE;
-  stream->header.format = TCI_AUDIO_FORMAT_FLOAT32;
+  stream->header.format = TCI_AUDIO_SAMPLE_TYPE;
   stream->header.length = (uint32_t) (2 * frames);
   stream->header.type = TCI_STREAM_RX_AUDIO;
-  stream->header.channels = 2;
+  stream->header.channels = channels;
   float *out = stream->audio;
   int newpt = ring->outpt;
-  for (int i = 0; i < frames; i++) {
-    *out++ = ring->samples[2 * newpt    ];
-    *out++ = ring->samples[2 * newpt + 1];
-    newpt = (newpt + 1) & TCI_RX_AUDIO_RING_MASK;
+  if (channels == 1) {
+    //
+    // If MONO has been explicitly requested, send only left channel
+    //
+    for (int i = 0; i < frames; i++) {
+      *out++ = ring->samples[2 * newpt    ];
+      newpt = (newpt + 1) & TCI_RX_AUDIO_RING_MASK;
+    }
+  } else {
+    //
+    // Default (2 channels)
+    //
+    for (int i = 0; i < frames; i++) {
+      *out++ = ring->samples[2 * newpt    ];
+      *out++ = ring->samples[2 * newpt + 1];
+      newpt = (newpt + 1) & TCI_RX_AUDIO_RING_MASK;
+    }
   }
   MEMORY_BARRIER;
   ring->outpt = newpt;
@@ -187,7 +208,7 @@ double tci_get_next_mic_sample() {
   //
   if (--tci_chrono_counter <= 0) {
     tci_send_chrono_frame();
-    tci_chrono_counter = TCI_TX_AUDIO_FRAME_FRAMES;
+    tci_chrono_counter = TCI_AUDIO_SAMPLES;
   }
   //
   // If samples are in cache, return without involving a mutex
@@ -209,11 +230,11 @@ double tci_get_next_mic_sample() {
   }
   if (!tci_tx_prebuffering) {
     //
-    // Copy up to TCI_TX_AUDIO_FRAME_FRAMES samples from ring buffer to cache
+    // Copy up to TCI_AUDIO_SAMPLES samples from ring buffer to cache
     // and return first sample from cache.
     //
     int newpt = ring->outpt;
-    while (ring->cache_len < TCI_TX_AUDIO_FRAME_FRAMES && newpt != ring->inpt) {
+    while (ring->cache_len < TCI_AUDIO_SAMPLES && newpt != ring->inpt) {
       ring->cache[ring->cache_len++] = ring->samples[newpt];
       newpt = (newpt + 1) & TCI_TX_AUDIO_RING_MASK;
     }

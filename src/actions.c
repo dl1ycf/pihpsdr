@@ -259,7 +259,7 @@ ACTION_TABLE ActionTable[] = {
   {XIT_ENABLE,          "XIT\nOn/Off",          "XITT",         AT_BTN},
   {XIT_MINUS,           "XIT -",                "XIT-",         AT_BTN},
   {XIT_PLUS,            "XIT +",                "XIT+",         AT_BTN},
-  {ZEROBEAT,            "ZBeat",                "ZBeat",        AT_BTN},
+  {ZEROBEAT,            "Zero Beat",            "ZBeat",        AT_BTN},
   {ZOOM,                "Zoom",                 "ZOOM",         AT_KNB | AT_ENC | AT_SLD},
   {ZOOM_MINUS,          "Zoom -",               "ZOOM-",        AT_BTN},
   {ZOOM_PLUS,           "Zoom +",               "ZOOM+",        AT_BTN},

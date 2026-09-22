@@ -51,7 +51,7 @@
 #include "hpsdrsim.h"
 
 #ifdef LOGFIRST
-  static unsigned char logfirst_buf[6*LOGNUM];
+  static unsigned char logfirst_buf[6 * LOGNUM];
   static int    logfirst_count = -1;
   static int    logfirst_dumped = 0;
   static int    logfirst_num = 1;
@@ -1049,7 +1049,8 @@ void *rx_thread(void *data) {
         *p++ = rxiqdump[dumpptr1++];
       }
 #if defined(LOGFIRST) && defined(RXIQPLAY)
-    } else if (myddc == 2 && sync == 0 && myrate == 192 && labs(28500000L - rxfreq[myddc]) < 100000 && logfirst_count > 100000) {
+    } else if (myddc == 2 && sync == 0 && myrate == 192 && labs(28500000L - rxfreq[myddc]) < 100000
+               && logfirst_count > 100000) {
       for (int i = 0; i < size; i++) {
         if (dumpptr2 >= 6 * (logfirst_count - 1)) { dumpptr2 = 0; }
         //
@@ -1268,9 +1269,9 @@ void *tx_thread(void * data) {
     for (i = 0; i < 240; i++) {
       // process 240 TX iq samples
 #ifdef LOGFIRST
-      if (logfirst_dumped == 0 && logfirst_count < 6*LOGNUM) {
+      if (logfirst_dumped == 0 && logfirst_count < 6 * LOGNUM) {
         unsigned char *src = p;
-        unsigned char *dst = &logfirst_buf[6*logfirst_count];
+        unsigned char *dst = &logfirst_buf[6 * logfirst_count];
         *dst++ = *src++;
         *dst++ = *src++;
         *dst++ = *src++;
@@ -1283,7 +1284,7 @@ void *tx_thread(void * data) {
           snprintf(fname, sizeof(fname), "FIRST.TX.IQ.%d", logfirst_num++);
           int fd = open(fname, O_CREAT | O_WRONLY, 0600);
           if (fd >= 0) {
-            write (fd, logfirst_buf, 6*logfirst_count);
+            write (fd, logfirst_buf, 6 * logfirst_count);
             close(fd);
           }
           logfirst_dumped = 1;

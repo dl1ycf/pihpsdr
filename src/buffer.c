@@ -262,7 +262,6 @@ p2buffer *get_satrxbuffer() {
   // Mark the first buffer in list as used and return that one.
   satrxbuflist[satrxbufcnt]->free = 0;
   return satrxbuflist[satrxbufcnt];
-
 }
 
 p2buffer *get_sathpbuffer() {
@@ -299,7 +298,6 @@ p2buffer *get_sathpbuffer() {
   // Mark the first buffer in list as used and return that one.
   sathpbuflist[sathpbufcnt]->free = 0;
   return sathpbuflist[sathpbufcnt];
-
 }
 
 p2buffer *get_satmicbuffer() {
@@ -365,7 +363,6 @@ void mark_satbuffers_free(void) {
   // This function does the job for all three buffer queues (RX, HP, MIC)
   //
   p2buffer *bp;
-
   for (unsigned int i = 0; i < 8; i++) {
     bp = satrxbuflist[i];
     while (bp) {
