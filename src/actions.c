@@ -634,6 +634,13 @@ int process_action(gpointer data) {
       int b = vfo[active_receiver->id].bandstack - 1;
       if (b < 0) { b = bandstack->entries - 1; };
       vfo_bandstack_changed(b);
+      if (repeat_timer == 0) {
+        repeat_action = *a;
+        repeat_timer = g_timeout_add(250, repeat_cb, NULL);
+        repeat_timer_released = FALSE;
+      }
+    } else if (a->mode == RELEASED) {
+      repeat_timer_released = TRUE;
     }
     break;
   case BANDSTACK_PLUS:
@@ -643,6 +650,13 @@ int process_action(gpointer data) {
       int b = vfo[active_receiver->id].bandstack + 1;
       if (b >= bandstack->entries) { b = 0; }
       vfo_bandstack_changed(b);
+      if (repeat_timer == 0) {
+        repeat_action = *a;
+        repeat_timer = g_timeout_add(250, repeat_cb, NULL);
+        repeat_timer_released = FALSE;
+      }
+    } else if (a->mode == RELEASED) {
+      repeat_timer_released = TRUE;
     }
     break;
   case REPLAY:
@@ -848,6 +862,13 @@ int process_action(gpointer data) {
       int f = vfo[active_receiver->id].filter + 1;
       if (f >= FILTERS) { f = 0; }
       vfo_filter_changed(f);
+      if (repeat_timer == 0) {
+        repeat_action = *a;
+        repeat_timer = g_timeout_add(250, repeat_cb, NULL);
+        repeat_timer_released = FALSE;
+      }
+    } else if (a->mode == RELEASED) {
+      repeat_timer_released = TRUE;
     }
     break;
   case FILTER_PLUS:
@@ -859,6 +880,13 @@ int process_action(gpointer data) {
       int f = vfo[active_receiver->id].filter - 1;
       if (f < 0) { f = FILTERS - 1; }
       vfo_filter_changed(f);
+      if (repeat_timer == 0) {
+        repeat_action = *a;
+        repeat_timer = g_timeout_add(250, repeat_cb, NULL);
+        repeat_timer_released = FALSE;
+      }
+    } else if (a->mode == RELEASED) {
+      repeat_timer_released = TRUE;
     }
     break;
   case FILTER_CUT_HIGH:
@@ -1028,6 +1056,13 @@ int process_action(gpointer data) {
       mode--;
       if (mode < 0) { mode = MODES - 1; }
       vfo_mode_changed(mode);
+      if (repeat_timer == 0) {
+        repeat_action = *a;
+        repeat_timer = g_timeout_add(250, repeat_cb, NULL);
+        repeat_timer_released = FALSE;
+      }
+    } else if (a->mode == RELEASED) {
+      repeat_timer_released = TRUE;
     }
     break;
   case MODE_PLUS:
@@ -1036,6 +1071,13 @@ int process_action(gpointer data) {
       mode++;
       if (mode >= MODES) { mode = 0; }
       vfo_mode_changed(mode);
+      if (repeat_timer == 0) {
+        repeat_action = *a;
+        repeat_timer = g_timeout_add(250, repeat_cb, NULL);
+        repeat_timer_released = FALSE;
+      }
+    } else if (a->mode == RELEASED) {
+      repeat_timer_released = TRUE;
     }
     break;
   case MOX:
@@ -1560,6 +1602,13 @@ int process_action(gpointer data) {
       i = vfo_id_get_stepindex(active_receiver->id);
       vfo_id_set_step_from_index(active_receiver->id, --i);
       g_idle_add(ext_vfo_update, NULL);
+      if (repeat_timer == 0) {
+        repeat_action = *a;
+        repeat_timer = g_timeout_add(250, repeat_cb, NULL);
+        repeat_timer_released = FALSE;
+      }
+    } else if (a->mode == RELEASED) {
+      repeat_timer_released = TRUE;
     }
     break;
   case VFO_STEP_PLUS:
@@ -1567,6 +1616,13 @@ int process_action(gpointer data) {
       i = vfo_id_get_stepindex(active_receiver->id);
       vfo_id_set_step_from_index(active_receiver->id, ++i);
       g_idle_add(ext_vfo_update, NULL);
+      if (repeat_timer == 0) {
+        repeat_action = *a;
+        repeat_timer = g_timeout_add(250, repeat_cb, NULL);
+        repeat_timer_released = FALSE;
+      }
+    } else if (a->mode == RELEASED) {
+      repeat_timer_released = TRUE;
     }
     break;
   case VFOA:
@@ -1671,11 +1727,25 @@ int process_action(gpointer data) {
   case ZOOM_MINUS:
     if (a->mode == PRESSED) {
       radio_set_zoom(active_receiver->id, active_receiver->zoom - 1);
+      if (repeat_timer == 0) {
+        repeat_action = *a;
+        repeat_timer = g_timeout_add(250, repeat_cb, NULL);
+        repeat_timer_released = FALSE;
+      }
+    } else if (a->mode == RELEASED) {
+      repeat_timer_released = TRUE;
     }
     break;
   case ZOOM_PLUS:
     if (a->mode == PRESSED) {
       radio_set_zoom(active_receiver->id, active_receiver->zoom + 1);
+      if (repeat_timer == 0) {
+        repeat_action = *a;
+        repeat_timer = g_timeout_add(250, repeat_cb, NULL);
+        repeat_timer_released = FALSE;
+      }
+    } else if (a->mode == RELEASED) {
+      repeat_timer_released = TRUE;
     }
     break;
   case CW_KEYER_PTT:
