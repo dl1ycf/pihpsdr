@@ -64,6 +64,8 @@
 #include "band.h"
 #include "client_server.h"
 #include "ext.h"
+#include "diversity_auto.h"
+#include "diversity_menu.h"
 #include "filter.h"
 #include "iambic.h"
 #include "main.h"
@@ -145,6 +147,17 @@ static int send_periodic_data(gpointer arg) {
   // here to inform the client when the server has moved the drive slider
   // to zero (SWR protection measure)
   //
+  //
+  // What the diversity loop is measuring. The client's menu, antenna line
+  // and panadapter overlay all read the div_auto_* globals, so sending
+  // these keeps a remote operator looking at the same thing the radio is.
+  //
+  {
+    DIV_STATUS div_status;
+    diversity_auto_get_status(&div_status);
+    send_div_status(remoteclient.sock_tcp, &div_status);
+  }
+
   DISPLAY_DATA disp_data;
   SYNC(disp_data.header.sync);
   disp_data.header.data_type = to_16(INFO_DISPLAY);
@@ -423,6 +436,15 @@ static void server_loop(void) {
   // Send global variables
   //
   send_radio_data(remoteclient.sock_tcp);
+  // 
+  // The radio owns the diversity settings; a connecting client adopts
+  // them rather than imposing what it happened to save. 
+  // 
+  {
+    DIV_SETTINGS set;
+    diversity_auto_get_settings(&set);
+    send_div_settings(remoteclient.sock_tcp, &set, DIV_ACTION_NONE);
+  }
   //
   // send ADC data structure
   //
@@ -627,6 +649,14 @@ static void server_loop(void) {
       }
     }
     break;
+    case CMD_DIV_SETTINGS: {
+      DIV_SETTINGS_COMMAND *command = g_new(DIV_SETTINGS_COMMAND, 1);
+      command->header = header;
+      if (recv_tcp(remoteclient.sock_tcp, (char *)command + sizeof(HEADER), sizeof(DIV_SETTINGS_COMMAND) - sizeof(HEADER)) > 0) {
+        g_idle_add(server_command, command);
+      }
+    }
+    break;
     case CMD_DEXP: {
       DEXP_DATA *command = g_new(DEXP_DATA, 1);
       command->header = header;
@@ -720,6 +750,7 @@ static void server_loop(void) {
     // submit that copy  to server_command().
     //
     case CMD_ADC:
+    case CMD_ADC_ATTENUATION:
     case CMD_ANAN10E:
     case CMD_ATTENUATION:
     case CMD_BANDSTACK:
@@ -1509,6 +1540,19 @@ static int server_command(gpointer data) {
     suppress_popup_sliders--;
   }
   break;
+  case CMD_ADC_ATTENUATION: {
+    int a = header->b1;
+    int att = from_16(header->s1);
+    suppress_popup_sliders++;
+    radio_set_adc_attenuation(a, att);
+    suppress_popup_sliders--;
+    //
+    // Send the ADC back, so the client's menu shows what the radio ended
+    // up with rather than what it asked for.
+    //
+    send_adc_data(remoteclient.sock_tcp, a);
+  } 
+  break; 
   case CMD_SQUELCH: {
     const DOUBLE_COMMAND *command = (DOUBLE_COMMAND *)data;
     int id = command->header.b1;
@@ -2084,10 +2128,52 @@ static int server_command(gpointer data) {
   case CMD_DIVERSITY: {
     const DIVERSITY_COMMAND *command = (DIVERSITY_COMMAND *)data;
     suppress_popup_sliders++;
+    //
+    // Before radio_set_diversity(), so that whatever it schedules already
+    // carries the attenuator policy the client is asking for.
+    // 
+    if (div_indep_att != command->indep_att) {
+      div_indep_att = command->indep_att;
+      schedule_high_priority();
+    }
     radio_set_diversity(command->diversity_enabled);
     radio_set_diversity_gain(from_double(command->div_gain));
     radio_set_diversity_phase(from_double(command->div_phase));
     suppress_popup_sliders--;
+  }
+  break;
+  case CMD_DIV_SETTINGS: {
+    //
+    // The operator moved a control on the client. Everything the change
+    // implies - restart, reset, inverting the weight in force - is worked
+    // out from the difference against what is in force, in the one place
+    // that knows those rules.
+    //
+    const DIV_SETTINGS_COMMAND *command = (DIV_SETTINGS_COMMAND *)data;
+    DIV_SETTINGS set;
+    set.mode           = command->mode;
+    set.ref            = command->ref;
+    set.follow_filter  = command->follow_filter;
+    set.weighting      = command->weighting;
+    set.hold           = command->hold;
+    set.centre         = from_double(command->centre);
+    set.width          = from_double(command->width);
+    set.tau            = from_double(command->tau);
+    set.hang           = from_double(command->hang);
+    set.coherence_min  = from_double(command->coherence_min);
+    set.resolution     = from_double(command->resolution);
+    set.band_centre    = from_double(command->band_centre);
+    set.band_width     = from_double(command->band_width);
+    set.carrier_centre = from_double(command->carrier_centre);
+    set.carrier_width  = from_double(command->carrier_width);
+    set.digital_centre = from_double(command->digital_centre);
+    set.digital_width  = from_double(command->digital_width);
+    diversity_auto_apply_settings(&set, command->header.b1);
+    //
+    // If the radio's own Diversity menu is open, it is now showing the
+    // state before the client's change.
+    //
+    diversity_menu_refresh();
   }
   break;
   case CMD_TXFILTER:

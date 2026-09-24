@@ -37,6 +37,7 @@
 #include "client_server.h"
 #include "css.h"
 #include "discovered.h"
+#include "diversity_auto.h"
 #include "dxcluster.h"
 #include "ext.h"
 #include "filter.h"
@@ -269,7 +270,6 @@ long long tune_timeout;
 int meter_type = 1;
 int extended_meter = 1;
 
-//int vox = 0;
 int CAT_cw_is_active = 0;
 int MIDI_cw_is_active = 0;
 int hpsdr_ptt = 0;  // PTT line *from* radio (only P1 and P2)
@@ -277,6 +277,16 @@ int cw_key_hit = 0;
 int n_adc = 1;
 
 int diversity_enabled = 0;
+//        
+// Normally the two ADCs share ADC0's step attenuator while DIVERSITY is
+// running, because an attenuator change moves the relative gain between
+// the arms and so invalidates the weight. With this set they are
+// independent, and the change is fed forward into the weight instead -
+// which is what makes ADC0 attenuation usable against a local interferer
+// the second antenna cannot hear.
+//
+int div_indep_att = 0;
+
 double div_cos = 1.0;      // I factor for diversity
 double div_sin = 1.0;      // Q factor for diversity
 double div_gain = 0.0;     // gain for diversity (in dB)
@@ -986,6 +996,14 @@ void radio_stop_program(void) {
   dxcluster_shutdown(); // save spots, close sqLITE
   t_print("%s: DX Cluster closed\n", __func__);
   if (!radio_is_remote) {
+    //
+    // Before the protocol goes away: the analysis thread is still writing
+    // div_cos/div_sin, and radio_save_state() below reads them. Stopping
+    // it here keeps the saved pair consistent rather than a cos from one
+    // update and a sin from the next.
+    //
+    diversity_auto_stop();
+    t_print("%s: diversity analysis stopped\n", __func__);
     radio_protocol_stop();
     t_print("%s: protocol stopped\n", __func__);
     radio_stop_radio();
@@ -1663,6 +1681,12 @@ void radio_start_radio(void) {
   g_idle_add(ext_vfo_update, NULL);
   schedule_high_priority();
   //
+  // DIVERSITY is restored from the props file without going through
+  // radio_set_diversity(), so the auto-phasing analysis has to be kicked
+  // off here for the case where both it and diversity were left enabled.
+  //
+  diversity_auto_restart();
+  //
   // Now the radio is up and running. Connect "Radio" keyboard interceptor
   //
   g_signal_handler_disconnect(top_window, keypress_signal_id);
@@ -1835,6 +1859,12 @@ static void rxtx(int state) {
     // Perform RX->TX transition
     //
     if (!radio_is_remote) {
+      //
+      // The diversity sample stream stops for the whole over, in duplex as
+      // well, so tell the auto-phasing analysis that its input is about to
+      // acquire a hole. The weight in force is kept.
+      //
+      diversity_auto_gap();
       RECEIVER *rx_feedback = receiver[PS_RX_FEEDBACK];
       RECEIVER *tx_feedback = receiver[PS_TX_FEEDBACK];
       if (rx_feedback) { rx_feedback->samples = 0; }
@@ -2008,7 +2038,6 @@ int radio_client_set_vox(gpointer data) {
     }
     mox = 0;
     transmitter->tune = 0;
-    //vox = state;
     g_idle_add(ext_vfo_update, NULL);
   }
   return G_SOURCE_REMOVE;
@@ -2251,7 +2280,23 @@ void radio_calc_div_params(void) {
   div_sin = amplitude * sin(arg);
 }
 
+//  
+// True while the automatic loop owns the weight, so a manual set from an
+// encoder, a popup slider or a remote client would be overwritten within
+// one analysis block - about 85 ms - after stepping the combined audio on
+// the way past.
+//    
+// The diversity menu greys out its own four sliders for this. The encoder
+// actions and the remote path have no such check of their own, so it lives
+// here where every manual setter goes through it. Hold is the way to take
+// the weight over while the loop is running, and it makes this false.
+//      
+static int radio_div_auto_owns_weight(void) {
+  return div_auto_running && div_auto_mode != DIV_AUTO_OFF && !div_auto_hold;
+}         
+
 void radio_set_diversity_gain(double val) {
+  if (radio_div_auto_owns_weight()) { return; }
   if (val < -27.0) { val = -27.0; }
   if (val >  27.0) { val =  27.0; }
   div_gain = val;
@@ -2266,6 +2311,7 @@ void radio_set_diversity_gain(double val) {
 }
 
 void radio_set_diversity_phase(double value) {
+  if (radio_div_auto_owns_weight()) { return; }
   while (value >  180.0) { value -= 360.0; }
   while (value < -180.0) { value += 360.0; }
   div_phase = value;
@@ -2317,6 +2363,17 @@ void radio_set_diversity(int state) {
     schedule_high_priority();
     schedule_receive_specific();
     radio_calc_div_params();
+
+    //
+    // diversity_enabled was already set to state at the top of this block,
+    // which is what diversity_auto_start() keys off.
+    //
+    if (state) {
+      diversity_auto_start();
+    } else {
+      diversity_auto_stop();
+    }
+
   }
   diversity_enabled = state;
   g_idle_add(ext_vfo_update, NULL);
@@ -2794,16 +2851,95 @@ void radio_set_panstep(int id, int value) {
   }
 }
 
+//
+// Tie the two step attenuators together, or let them go their own way.
+// The value only matters while DIVERSITY is enabled - the two protocols
+// send adc[1].attenuation unaltered the rest of the time.
+//
+void radio_set_indep_att(int state) {
+  if (div_indep_att == state) { return; }
+
+  div_indep_att = state;
+
+  if (radio_is_remote) {
+    send_diversity(cl_sock_tcp, diversity_enabled, div_gain, div_phase);
+    return;
+  }
+
+  schedule_high_priority();
+}
+
+//
+// The step attenuator of one ADC, addressed by ADC rather than by
+// receiver. This is the only way to reach ADC1 while DIVERSITY is
+// running, since the loop makes RX1 the active receiver and every other
+// path resolves the ADC through it.
+//
+// A change here moves the relative gain between the two arms, so it is
+// handed to the diversity loop, which feeds it forward into the weight
+// and restarts its statistics.
+//
+void radio_set_adc_attenuation(int a, int value) {
+  if (a < 0 || a >= n_adc || !have_rx_att) { return; }
+
+  if (value <  0) { value =  0; }
+  if (value > 31) { value = 31; }
+
+  const int delta = value - adc[a].attenuation;
+
+  if (delta != 0 && diversity_enabled) {
+    //
+    // Called before the new value is in place: the loop is told by how
+    // much the arm moved, not where it ended up.
+    //
+    diversity_auto_att_changed(a, delta);
+  }
+    
+  adc[a].attenuation = value;
+  adc[a].gain = 0.0;
+    
+  //
+  // Move the slider through whichever receiver is sitting on this ADC.
+  // One of them, not all: sliders_attenuation() pops up a transient
+  // slider when the receiver it is given is not on the active ADC, and
+  // two receivers sharing an ADC would then produce two popups. The
+  // active receiver is preferred, which is the case that moves the
+  // permanent slider rather than popping one up.
+  //
+  int sid = -1;
+
+  for (int id = 0; id < receivers; id++) {
+    if (receiver[id]->adc != a) { continue; }
+
+    if (id == active_receiver->id) { sid = id; break; }
+
+    if (sid < 0) { sid = id; }
+  }
+
+  if (sid >= 0) {
+    g_idle_add(sliders_attenuation, GINT_TO_POINTER(100 * suppress_popup_sliders + sid));
+  }
+
+  if (radio_is_remote) {
+    send_adc_attenuation(cl_sock_tcp, a, value);
+    return;
+  }
+
+  schedule_high_priority();
+}
+
 void radio_set_attenuation(int id, int value) {
   if (id >= receivers || !have_rx_att) { return; }
   int rxadc = receiver[id]->adc;
-  adc[rxadc].attenuation = value;
-  adc[rxadc].gain = 0.0;
-  g_idle_add(sliders_attenuation, GINT_TO_POINTER(100 * suppress_popup_sliders + id));
+
   if (radio_is_remote) {
+    adc[rxadc].attenuation = value;
+    adc[rxadc].gain = 0.0;
+    g_idle_add(sliders_attenuation, GINT_TO_POINTER(100 * suppress_popup_sliders + id));
     send_attenuation(cl_sock_tcp, id, value);
     return;
   }
+
   //
   // If this is RX1, store value "by the band"
   //
@@ -2811,7 +2947,13 @@ void radio_set_attenuation(int id, int value) {
     BAND *band = band_get_band(vfo[id].band);
     band->attenuation = value;
   }
-  schedule_high_priority();
+
+  //
+  // The ADC-indexed setter does the rest, so that an attenuator moved
+  // from the slider, an encoder or CAT is fed forward into the diversity
+  // weight exactly as one moved from the diversity menu is.
+  //
+  radio_set_adc_attenuation(rxadc, value);
 }
 
 void radio_set_drive(double value) {
@@ -3061,6 +3203,7 @@ static void radio_restore_state(void) {
     GetPropI0("enable_tx_inhibit",                           enable_tx_inhibit);
     GetPropI0("radio_sample_rate",                           soapy_radio_sample_rate);
     GetPropI0("diversity_enabled",                           diversity_enabled);
+    GetPropI0("diversity_indep_att",                         div_indep_att);
     GetPropF0("diversity_gain",                              div_gain);
     GetPropF0("diversity_phase",                             div_phase);
     GetPropF0("diversity_cos",                               div_cos);
@@ -3180,6 +3323,7 @@ static void radio_restore_state(void) {
   //
   if (RECEIVERS < 2 || n_adc < 2) {
     diversity_enabled = 0;
+    div_indep_att = 0;
   }
   //
   // If the N2ADR filter board is selected, this determines  most  OC settings
@@ -3283,6 +3427,7 @@ void radio_save_state(void) {
     SetPropI0("enable_tx_inhibit",                           enable_tx_inhibit);
     SetPropI0("radio_sample_rate",                           soapy_radio_sample_rate);
     SetPropI0("diversity_enabled",                           diversity_enabled);
+    SetPropI0("diversity_indep_att",                         div_indep_att);
     SetPropF0("diversity_gain",                              div_gain);
     SetPropF0("diversity_phase",                             div_phase);
     SetPropF0("diversity_cos",                               div_cos);
@@ -3339,6 +3484,7 @@ void radio_save_state(void) {
     band_save_state();
     mem_save_state();
     vfo_save_state();
+    diversity_auto_save_state();
   }
   //
   // Toolbar, Sliders, Mode settings (RX/TX local audio settings),

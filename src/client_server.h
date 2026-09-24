@@ -25,6 +25,7 @@
 #include <netinet/in.h>
 #include <opus/opus.h>
 
+#include "diversity_auto.h"
 #include "mode.h"
 #include "receiver.h"
 #include "transmitter.h"
@@ -33,6 +34,7 @@
 
 enum _header_type_enum {
   CMD_ADC,
+  CMD_ADC_ATTENUATION,
   CMD_AGC,
   CMD_AMCARRIER,
   CMD_ANAN10E,
@@ -50,6 +52,7 @@ enum _header_type_enum {
   CMD_DEXP,
   CMD_DIGIMAX,
   CMD_DIVERSITY,
+  CMD_DIV_SETTINGS,
   CMD_DRIVE,
   CMD_DUP,
   CMD_FILTER_BOARD,
@@ -134,6 +137,7 @@ enum _header_type_enum {
   INFO_BAND,
   INFO_BANDSTACK,
   INFO_DISPLAY,
+  INFO_DIVERSITY,
   INFO_MEMORY,
   INFO_PS,
   INFO_RADIO,
@@ -412,6 +416,7 @@ typedef struct __attribute__((__packed__)) _radio_data {
   uint8_t  rx_stack_horizontal;
   uint8_t  n_adc;
   uint8_t  diversity_enabled;
+  uint8_t  div_indep_att;
   uint8_t  soapy_iqswap;
   uint8_t  soapy_rx1_antennas;
   uint8_t  soapy_rx2_antennas;
@@ -833,7 +838,58 @@ typedef struct __attribute__((__packed__)) _diversity_command {
   mydouble div_phase;
   //
   uint8_t diversity_enabled;
+  uint8_t indep_att;
 } DIVERSITY_COMMAND;
+
+//
+// The automatic phasing loop's settings. Travels both ways: client to
+// server to apply a control the operator moved, server to client on
+// connect and whenever the radio's own panel changes something. The radio
+// is the owner - a connecting client adopts what it finds rather than
+// imposing what it saved.
+//
+// header.b1 carries the action byte (DIV_ACTION_*), for the one control
+// that changes no setting and so cannot be seen as a difference.
+//
+typedef struct __attribute__((__packed__)) _div_settings_command {
+  HEADER header;
+  //
+  uint8_t  mode;
+  uint8_t  ref;
+  uint8_t  follow_filter;
+  uint8_t  weighting;
+  uint8_t  hold;
+  uint8_t  pad[3];
+  //
+  mydouble centre, width;
+  mydouble tau, hang, coherence_min, resolution;
+  mydouble band_centre, band_width;
+  mydouble carrier_centre, carrier_width;
+  mydouble digital_centre, digital_width;
+} DIV_SETTINGS_COMMAND;
+
+//
+// What the loop is measuring. Server to client, on a timer, so the
+// client's status line, antenna line and panadapter overlay show what the
+// radio is actually doing.
+//
+typedef struct __attribute__((__packed__)) _div_status_data {
+  HEADER header;
+  //
+  uint8_t  enabled;
+  uint8_t  running, holding, clamped, arm_valid;
+  uint8_t  arm_pick, carrier_valid, occ_valid, rade_locked;
+  uint8_t  rade_confirming;
+  int8_t   rade_side;
+  uint8_t  indep_att;
+  uint8_t  att0, att1;
+  uint8_t  pad;
+  //
+  mydouble binhz, coherence, carrier, arm_db;
+  mydouble occ_lo, occ_hi;
+  mydouble gain, phase, track_gain, track_phase;
+  mydouble rade_quality;
+} DIV_STATUS_DATA;
 
 typedef struct __attribute__((__packed__)) _agc_command {
   HEADER header;
@@ -977,6 +1033,7 @@ extern void send_agc(int s, const RECEIVER *rx);
 extern void send_am_carrier(int s);
 extern void send_anan10E(int s, int new);
 extern void send_attenuation(int s, int rx, int attenuation);
+extern void send_adc_attenuation(int s, int adc, int attenuation);
 extern void send_band(int s, int rx, int band);
 extern void send_band_data(int s, int band);
 extern void send_bandstack(int s, int old, int new);
@@ -993,6 +1050,8 @@ extern void send_dexp(int s);
 extern void send_digidrivemax(int s);
 extern void send_display(int s, int id);
 extern void send_diversity(int s, int enabled, double gain, double phase);
+extern void send_div_settings(int s, const DIV_SETTINGS *set, int action);
+extern void send_div_status(int s, const DIV_STATUS *st);
 extern void send_drive(int s, double value);
 extern void send_duplex(int s, int state);
 extern void send_eq(int s, int id);

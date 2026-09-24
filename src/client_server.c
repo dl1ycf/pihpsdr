@@ -334,8 +334,9 @@ void send_radio_data(int sock) {
   data.have_saturn_xdma = have_saturn_xdma;
   data.rx_stack_horizontal = rx_stack_horizontal;
   data.n_adc = n_adc;
-  data.diversity_enabled = diversity_enabled;
   data.soapy_iqswap = soapy_iqswap;
+  data.diversity_enabled = diversity_enabled;
+  data.div_indep_att = div_indep_att;
   data.soapy_rx1_antennas = radio->soapy.rx[0].antennas;
   data.soapy_rx2_antennas = radio->soapy.rx[1].antennas;
   data.soapy_tx_antennas = radio->soapy.tx.antennas;
@@ -814,10 +815,76 @@ void send_diversity(int s, int enabled, double gain, double phase) {
   DIVERSITY_COMMAND command;
   SYNC(command.header.sync);
   command.header.data_type = to_16(CMD_DIVERSITY);
+  command.indep_att = div_indep_att;
   command.diversity_enabled = enabled;
   command.div_gain = to_double(gain);
   command.div_phase =  to_double(phase);
   send_tcp(s, (char *)&command, sizeof(command));
+}
+
+//
+// The loop's settings. Both directions - see DIV_SETTINGS_COMMAND.
+//
+void send_div_settings(int s, const DIV_SETTINGS *set, int action) {
+  DIV_SETTINGS_COMMAND command;
+  SYNC(command.header.sync);
+  command.header.data_type = to_16(CMD_DIV_SETTINGS);
+  command.header.b1 = action;
+  command.mode           = set->mode;
+  command.ref            = set->ref;
+  command.follow_filter  = set->follow_filter;
+  command.weighting      = set->weighting;
+  command.hold           = set->hold;
+  memset(command.pad, 0, sizeof(command.pad));
+  command.centre         = to_double(set->centre);
+  command.width          = to_double(set->width);
+  command.tau            = to_double(set->tau);
+  command.hang           = to_double(set->hang);
+  command.coherence_min  = to_double(set->coherence_min);
+  command.resolution     = to_double(set->resolution);
+  command.band_centre    = to_double(set->band_centre);
+  command.band_width     = to_double(set->band_width);
+  command.carrier_centre = to_double(set->carrier_centre);
+  command.carrier_width  = to_double(set->carrier_width);
+  command.digital_centre = to_double(set->digital_centre);
+  command.digital_width  = to_double(set->digital_width);
+  send_tcp(s, (char *)&command, sizeof(command));
+}
+
+//
+// Server -> client: what the loop is measuring.
+//
+void send_div_status(int s, const DIV_STATUS *st) {
+  DIV_STATUS_DATA data;
+  SYNC(data.header.sync);
+  data.header.data_type = to_16(INFO_DIVERSITY);
+  data.enabled         = st->enabled;
+  data.running         = st->running;
+  data.holding         = st->holding;
+  data.clamped         = st->clamped;
+  data.arm_valid       = st->arm_valid;
+  data.arm_pick        = st->arm_pick;
+  data.carrier_valid   = st->carrier_valid;
+  data.occ_valid       = st->occ_valid;
+  data.rade_locked     = st->rade_locked;
+  data.rade_confirming = st->rade_confirming;
+  data.rade_side       = st->rade_side;
+  data.indep_att       = st->indep_att;
+  data.att0            = st->att0;
+  data.att1            = st->att1;
+  data.pad = 0;
+  data.binhz        = to_double(st->binhz);
+  data.coherence    = to_double(st->coherence);
+  data.carrier      = to_double(st->carrier);
+  data.arm_db       = to_double(st->arm_db);
+  data.occ_lo       = to_double(st->occ_lo);
+  data.occ_hi       = to_double(st->occ_hi);
+  data.gain         = to_double(st->gain);
+  data.phase        = to_double(st->phase);
+  data.track_gain   = to_double(st->track_gain);
+  data.track_phase  = to_double(st->track_phase);
+  data.rade_quality = to_double(st->rade_quality);
+  send_tcp(s, (char *)&data, sizeof(data));
 }
 
 void send_agc(int s, const RECEIVER *rx) {
@@ -854,6 +921,20 @@ void send_attenuation(int s, int id, int attenuation) {
   SYNC(header.sync);
   header.data_type = to_16(CMD_ATTENUATION);
   header.b1 = id;
+  header.s1 = to_16(attenuation);
+  send_tcp(s, (char *)&header, sizeof(HEADER));
+}
+
+//
+// The same thing addressed by ADC rather than by receiver. This is how a
+// client reaches ADC1 while DIVERSITY is running, where every
+// receiver-indexed path resolves to ADC0.
+//
+void send_adc_attenuation(int s, int a, int attenuation) {
+  HEADER header;
+  SYNC(header.sync);
+  header.data_type = to_16(CMD_ADC_ATTENUATION);
+  header.b1 = a;
   header.s1 = to_16(attenuation);
   send_tcp(s, (char *)&header, sizeof(HEADER));
 }

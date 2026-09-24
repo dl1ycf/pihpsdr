@@ -46,6 +46,7 @@ extern int clock_nanosleep(clockid_t __clock_id, int __flags,
 #include "audio.h"
 #include "band.h"
 #include "client_server.h"
+#include "diversity_auto.h"
 #include "ext.h"
 #include "filter.h"
 #include "main.h"
@@ -1064,6 +1065,7 @@ static gpointer client_tcp_thread(gpointer arg) {
       rx_stack_horizontal = data.rx_stack_horizontal;
       n_adc = data.n_adc;
       diversity_enabled = data.diversity_enabled;
+      div_indep_att = data.div_indep_att;
       soapy_iqswap = data.soapy_iqswap;
       radio->soapy.rx[0].antennas = data.soapy_rx1_antennas;
       radio->soapy.rx[1].antennas = data.soapy_rx2_antennas;
@@ -1527,6 +1529,34 @@ static gpointer client_tcp_thread(gpointer arg) {
       receiver[id]->agc_custom_slope  = from_16(agc_cmd.custom_slope);
       //
       receiver[id]->agc = agc_cmd.agc;
+    }
+    break;
+    case CMD_DIV_SETTINGS: {
+      //
+      // The radio owns the diversity settings. This arrives on connect,
+      // and again whenever the radio's own panel changes one, so the menu
+      // here shows what the radio is really set to.
+      //
+      DIV_SETTINGS_COMMAND *command = g_new(DIV_SETTINGS_COMMAND, 1);
+      command->header = header; 
+      if (recv_tcp(cl_sock_tcp, (char *)command + sizeof(HEADER), sizeof(DIV_SETTINGS_COMMAND) - sizeof(HEADER)) > 0) {
+        g_idle_add(diversity_client_set_settings, command);
+      } else {
+        g_free(command);
+      }
+    }
+    break;
+    case INFO_DIVERSITY: {
+      //
+      // What the loop is measuring, on the server's periodic timer.
+      //
+      DIV_STATUS_DATA *info = g_new(DIV_STATUS_DATA, 1);
+      info->header = header;
+      if (recv_tcp(cl_sock_tcp, (char *)info + sizeof(HEADER), sizeof(DIV_STATUS_DATA) - sizeof(HEADER)) > 0) {
+        g_idle_add(diversity_client_set_status, info);
+      } else {
+        g_free(info);
+      }
     }
     break;
     case CMD_MOX: {

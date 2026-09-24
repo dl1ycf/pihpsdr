@@ -471,6 +471,7 @@ src/cw_menu.c \
 src/discovered.c \
 src/discovery.c \
 src/display_menu.c \
+src/diversity_auto.c \
 src/diversity_menu.c \
 src/dxcluster_menu.c \
 src/dxcluster.c \
@@ -509,6 +510,7 @@ src/profiles.c \
 src/property.c \
 src/protocols.c \
 src/ps_menu.c \
+src/rade_correlator.c \
 src/radio.c \
 src/radio_menu.c \
 src/receiver.c \
@@ -572,6 +574,7 @@ src/cw_menu.o \
 src/discovered.o \
 src/discovery.o \
 src/display_menu.o \
+src/diversity_auto.o \
 src/diversity_menu.o \
 src/dxcluster_menu.o \
 src/dxcluster.o \
@@ -610,6 +613,7 @@ src/profiles.o \
 src/property.o \
 src/protocols.o \
 src/ps_menu.o \
+src/rade_correlator.o \
 src/radio.o \
 src/radio_menu.o \
 src/receiver.o \
