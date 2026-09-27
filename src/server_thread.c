@@ -2128,17 +2128,10 @@ static int server_command(gpointer data) {
   case CMD_DIVERSITY: {
     const DIVERSITY_COMMAND *command = (DIVERSITY_COMMAND *)data;
     suppress_popup_sliders++;
-    //
-    // Before radio_set_diversity(), so that whatever it schedules already
-    // carries the attenuator policy the client is asking for.
-    // 
-    if (div_indep_att != command->indep_att) {
-      div_indep_att = command->indep_att;
-      schedule_high_priority();
-    }
+    div_auto_mode = command->div_auto_mode;
     radio_set_diversity(command->diversity_enabled);
-    radio_set_diversity_gain(from_double(command->div_gain));
-    radio_set_diversity_phase(from_double(command->div_phase));
+    radio_set_diversity_gain(from_double(command->man_div_gain));
+    radio_set_diversity_phase(from_double(command->man_div_phase));
     suppress_popup_sliders--;
   }
   break;

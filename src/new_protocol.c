@@ -1218,11 +1218,7 @@ static void new_protocol_high_priority(void) {
   // ADC step attenuator of ADC0 and ADC1
   //
   high_priority_buffer_to_radio[1443] = adc[0].attenuation;
-  if (diversity_enabled && !div_indep_att) {
-    high_priority_buffer_to_radio[1442] = adc[0].attenuation; // DIVERSITY: ADC0 att value for ADC1 as well
-  } else {
-    high_priority_buffer_to_radio[1442] = adc[1].attenuation;
-  }
+  high_priority_buffer_to_radio[1442] = adc[1].attenuation;
   //
   //  Upon transmitting with PA enabled, set the attenuators to maximum attenuation
   //  Exception: use value of transmitter->attenuation if transmitting with PURESIGNAL.

@@ -315,7 +315,7 @@ void rx_panadapter_update(RECEIVER *rx) {
   // filter_high. In follow-filter mode the band therefore lands exactly
   // on the filter shading, which is a free check that this is right.
   //
-  if (diversity_enabled && div_auto_mode != DIV_AUTO_OFF && rx->id == 0) {
+  if (diversity_enabled && div_auto_mode != DIV_MANUAL && rx->id == 0) {
     double wlo = 0.0, whi = 0.0;
     int show = 1;
     //

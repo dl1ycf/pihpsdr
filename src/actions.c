@@ -814,32 +814,32 @@ int process_action(gpointer data) {
     break;
   case DIV_GAIN:
     if (a->mode == RELATIVE) {
-      radio_set_diversity_gain(div_gain + (double)a->val * 0.05);
+      radio_set_diversity_gain(man_div_gain + (double)a->val * 0.05);
     }
     break;
   case DIV_GAIN_COARSE:
     if (a->mode == RELATIVE) {
-      radio_set_diversity_gain(div_gain + (double)a->val * 0.25);
+      radio_set_diversity_gain(man_div_gain + (double)a->val * 0.25);
     }
     break;
   case DIV_GAIN_FINE:
     if (a->mode == RELATIVE) {
-      radio_set_diversity_gain(div_gain + (double)a->val * 0.01);
+      radio_set_diversity_gain(man_div_gain + (double)a->val * 0.01);
     }
     break;
   case DIV_PHASE:
     if (a->mode == RELATIVE) {
-      radio_set_diversity_phase(div_phase + (double)a->val * 0.5);
+      radio_set_diversity_phase(man_div_phase + (double)a->val * 0.5);
     }
     break;
   case DIV_PHASE_COARSE:
     if (a->mode == RELATIVE) {
-      radio_set_diversity_phase(div_phase + (double)a->val * 2.5);
+      radio_set_diversity_phase(man_div_phase + (double)a->val * 2.5);
     }
     break;
   case DIV_PHASE_FINE:
     if (a->mode == RELATIVE) {
-      radio_set_diversity_phase(div_phase + (double)a->val * 0.1);
+      radio_set_diversity_phase(man_div_phase + (double)a->val * 0.1);
     }
     break;
   case DRIVE:

@@ -348,8 +348,8 @@ typedef struct __attribute__((__packed__)) _radio_data {
   mydouble drive_max;
   mydouble drive_digi_max;
   mydouble pa_trim[11];
-  mydouble div_gain;
-  mydouble div_phase;
+  mydouble man_div_gain;
+  mydouble man_div_phase;
   mydouble soapy_rx1_gain_step;
   mydouble soapy_rx1_gain_min;
   mydouble soapy_rx1_gain_max;
@@ -416,7 +416,7 @@ typedef struct __attribute__((__packed__)) _radio_data {
   uint8_t  rx_stack_horizontal;
   uint8_t  n_adc;
   uint8_t  diversity_enabled;
-  uint8_t  div_indep_att;
+  uint8_t  div_auto_mode;
   uint8_t  soapy_iqswap;
   uint8_t  soapy_rx1_antennas;
   uint8_t  soapy_rx2_antennas;
@@ -834,10 +834,11 @@ typedef struct __attribute__((__packed__)) _double_command {
 typedef struct __attribute__((__packed__)) _diversity_command {
   HEADER header;
   //
-  mydouble div_gain;
-  mydouble div_phase;
+  mydouble man_div_gain;
+  mydouble man_div_phase;
   //
   uint8_t diversity_enabled;
+  uint8_t div_auto_mode;
   uint8_t indep_att;
 } DIVERSITY_COMMAND;
 

@@ -388,9 +388,7 @@
 // what makes a wide window usable on SSB voice, where the energy moves
 // around constantly and there is no carrier to sit on.
 //
-// (the enum itself is in diversity_auto.h)
 
-int    div_auto_mode           = DIV_AUTO_OFF;
 int    div_auto_ref            = DIV_REF_BAND;
 int    div_auto_follow_filter  = 1;
 double div_auto_centre         = 0.0;
@@ -685,16 +683,16 @@ static double div_carrier_hz = 0.0;
 void diversity_auto_invert(void) {
   if (radio_is_remote) { return; }
 
-  div_cos = -div_cos;
-  div_sin = -div_sin;
-  div_phase += 180.0;
+  auto_div_cos = -auto_div_cos;
+  auto_div_sin = -auto_div_sin;
+  auto_div_phase += 180.0;
 
-  while (div_phase >  180.0) { div_phase -= 360.0; }
+  while (auto_div_phase >  180.0) { auto_div_phase -= 360.0; }
 
-  while (div_phase < -180.0) { div_phase += 360.0; }
+  while (auto_div_phase < -180.0) { auto_div_phase += 360.0; }
 
   //
-  // The magnitude is unchanged, so div_gain is left alone.
+  // The magnitude is unchanged, so auto_div_gain is left alone.
   //
   div_jump = 1;
 }
@@ -760,8 +758,8 @@ static void div_reset_stats(void) {
   // Start the tracked readout from what is actually applied, so it does
   // not claim 0 dB / 0 degrees before the loop has produced anything.
   //
-  div_track_gain = div_gain;
-  div_track_phase = div_phase;
+  div_track_gain = auto_div_gain;
+  div_track_phase = auto_div_phase;
 }
 
 //
@@ -771,7 +769,7 @@ static void div_reset_stats(void) {
 // next block; what cannot wait for the next block is the weight in force,
 // because the operator would hear the step.
 //
-// div_gain is the arm-1 gain in dB relative to arm 0. Attenuating arm 0
+// auto_div_gain is the arm-1 gain in dB relative to arm 0. Attenuating arm 0
 // by delta makes arm 0 smaller, so the correct ratio falls by delta;
 // attenuating arm 1 raises it by delta. Applying that here keeps the
 // combined audio continuous across the change - and, under Hold or with
@@ -785,32 +783,32 @@ void diversity_auto_att_changed(int a, int delta_db) {
   //
   // Scale what is being applied, then back-compute the readout, which is
   // the same order div_apply_weight() uses. Doing it the other way about
-  // would step the audio: div_cos/div_sin are the slewed values actually
-  // in force and div_gain/div_phase merely describe them.
+  // would step the audio: auto_div_cos/auto_div_sin are the slewed values actually
+  // in force and auto_div_gain/auto_div_phase merely describe them.
   //
   const double k = pow(10.0, 0.05 * shift);
-  div_cos *= k;
-  div_sin *= k;
-  double mag = sqrt(div_cos * div_cos + div_sin * div_sin);
+  auto_div_cos *= k;
+  auto_div_sin *= k;
+  double mag = sqrt(auto_div_cos * auto_div_cos + auto_div_sin * auto_div_sin);
 
   if (mag > DIV_MAX_WEIGHT) {
-    div_cos *= DIV_MAX_WEIGHT / mag;
-    div_sin *= DIV_MAX_WEIGHT / mag;
+    auto_div_cos *= DIV_MAX_WEIGHT / mag;
+    auto_div_sin *= DIV_MAX_WEIGHT / mag;
     mag = DIV_MAX_WEIGHT;
   }
 
   if (mag > 1.0e-9) {
-    div_gain = 20.0 * log10(mag);
+    auto_div_gain = 20.0 * log10(mag);
   } else {
-    div_gain = -27.0;
+    auto_div_gain = -27.0;
   }
 
-  if (div_gain >  27.0) { div_gain =  27.0; }
+  if (auto_div_gain >  27.0) { auto_div_gain =  27.0; }
 
-  if (div_gain < -27.0) { div_gain = -27.0; }
+  if (auto_div_gain < -27.0) { auto_div_gain = -27.0; }
 
   //
-  // The phase is untouched - k is real and positive - so div_phase needs
+  // The phase is untouched - k is real and positive - so auto_div_phase needs
   // no recomputing. The tracked readout moves with the applied one, since
   // the loop's answer for the old front ends is now the wrong one by
   // exactly this much.
@@ -1492,7 +1490,7 @@ static void div_apply_weight(double wr, double wi) {
 
   //
   // Where the loop has got to, in the units the operator reads. Kept
-  // separately from div_gain/div_phase, which describe what is actually
+  // separately from auto_div_gain/auto_div_phase, which describe what is actually
   // being applied to the samples: under Hold the two diverge, and being
   // able to see the tracked answer while the manual controls hold a
   // different one is the whole point of the control.
@@ -1516,7 +1514,7 @@ static void div_apply_weight(double wr, double wi) {
   }
 
   //
-  // The sample path reads div_cos and div_sin one after the other without
+  // The sample path reads auto_div_cos and auto_div_sin one after the other without
   // a lock, so a read can catch the old value of one and the new value of
   // the other. That costs a single sample computed with a mismatched pair
   // - inaudible - and the alternative, locking per sample at up to 384 kHz,
@@ -1528,30 +1526,30 @@ static void div_apply_weight(double wr, double wi) {
     // the two can be compared without waiting out the slew.
     //
     div_jump = 0;
-    div_cos = wr;
-    div_sin = wi;
+    auto_div_cos = wr;
+    auto_div_sin = wi;
   } else {
-    div_cos += DIV_SLEW_FRAC * (wr - div_cos);
-    div_sin += DIV_SLEW_FRAC * (wi - div_sin);
+    auto_div_cos += DIV_SLEW_FRAC * (wr - auto_div_cos);
+    auto_div_sin += DIV_SLEW_FRAC * (wi - auto_div_sin);
   }
   //
   // Back-compute the values the menu, the props file and remote clients
   // work in, so everything stays consistent with what is actually being
   // applied to the samples.
   //
-  mag = sqrt(div_cos * div_cos + div_sin * div_sin);
+  mag = sqrt(auto_div_cos * auto_div_cos + auto_div_sin * auto_div_sin);
 
   if (mag > 1.0e-9) {
-    div_gain = 20.0 * log10(mag);
+    auto_div_gain = 20.0 * log10(mag);
   } else {
-    div_gain = -27.0;
+    auto_div_gain = -27.0;
   }
 
-  if (div_gain >  27.0) { div_gain =  27.0; }
+  if (auto_div_gain >  27.0) { auto_div_gain =  27.0; }
 
-  if (div_gain < -27.0) { div_gain = -27.0; }
+  if (auto_div_gain < -27.0) { auto_div_gain = -27.0; }
 
-  div_phase = atan2(div_sin, div_cos) * (180.0 / M_PI);
+  auto_div_phase = atan2(auto_div_sin, auto_div_cos) * (180.0 / M_PI);
 }
 
 static int div_occ_cmp(const void *a, const void *b) {
@@ -1996,8 +1994,8 @@ static void div_process_block(void) {
     m.live_coherence   = div_auto_coherence;
     m.live_track_gain  = div_track_gain;
     m.live_track_phase = div_track_phase;
-    m.live_cos         = div_cos;
-    m.live_sin         = div_sin;
+    m.live_cos         = auto_div_cos;
+    m.live_sin         = auto_div_sin;
     diversity_capture_block(work0, work1, &m);
   }
 
@@ -2098,7 +2096,7 @@ static void div_process_block(void) {
       // pointed at the RADE station and not at something else.
       //
       // Without this the objective and the Invert button were inert in
-      // this mode. diversity_auto_invert() turns div_cos/div_sin over
+      // this mode. diversity_auto_invert() turns auto_div_cos/auto_div_sin over
       // immediately, so the audio changed - and then the next block
       // applied the un-inverted answer again and slewed straight back,
       // which looks like a control that does not work rather than one
@@ -2582,7 +2580,7 @@ void diversity_auto_sample(double i0, double q0, double i1, double q1) {
 // mechanism exists to prevent, so route the transmit gap into it and let
 // the worker re-acquire off the first clean block.
 //
-// Nothing here touches the applied weight. div_cos/div_sin are written
+// Nothing here touches the applied weight. auto_div_cos/auto_div_sin are written
 // only by div_apply_weight(), and every path that has no answer to give
 // sets div_auto_holding and returns without calling it - so the gain and
 // phase in force when the over started stay in force until a new lock
@@ -2614,7 +2612,7 @@ void diversity_auto_gap(void) {
 void diversity_auto_start(void) {
   if (div_auto_running) { return; }
 
-  if (div_auto_mode == DIV_AUTO_OFF) { return; }
+  if (div_auto_mode == DIV_MANUAL) { return; }
 
   if (!diversity_enabled || receivers < 1 || receiver[0] == NULL) { return; }
 
@@ -2776,7 +2774,7 @@ void diversity_auto_stop(void) {
 void diversity_auto_restart(void) {
   diversity_auto_stop();
 
-  if (diversity_enabled && div_auto_mode != DIV_AUTO_OFF) {
+  if (diversity_enabled && div_auto_mode != DIV_MANUAL) {
     diversity_auto_start();
   }
 }
@@ -2976,7 +2974,7 @@ void diversity_auto_apply_settings(const DIV_SETTINGS *s, int action) {
   // pilot correlator's front end has to be built or torn down when a RADE
   // reference is selected or left.
   //
-  if ((old_mode == DIV_AUTO_OFF) != (s->mode == DIV_AUTO_OFF) ||
+  if ((old_mode == DIV_MANUAL) != (s->mode == DIV_MANUAL) ||
       old_res != s->resolution ||
       (old_ref != s->ref && (old_ref == DIV_REF_RADE_V1 || s->ref == DIV_REF_RADE_V1))) {
     diversity_auto_restart();
@@ -2996,7 +2994,6 @@ void diversity_auto_apply_settings(const DIV_SETTINGS *s, int action) {
 
 void diversity_auto_get_status(DIV_STATUS *st) {
   st->enabled         = diversity_enabled;
-  st->indep_att       = div_indep_att;
   st->att0            = adc[0].attenuation;
   st->att1            = adc[1].attenuation;
   st->running         = div_auto_running;
@@ -3015,8 +3012,8 @@ void diversity_auto_get_status(DIV_STATUS *st) {
   st->arm_db          = div_auto_arm_db;
   st->occ_lo          = div_auto_occ_lo;
   st->occ_hi          = div_auto_occ_hi;
-  st->gain            = div_gain;
-  st->phase           = div_phase;
+  st->gain            = auto_div_gain;
+  st->phase           = auto_div_phase;
   st->track_gain      = div_track_gain;
   st->track_phase     = div_track_phase;
   st->rade_quality    = rade_corr_quality;
@@ -3027,7 +3024,7 @@ void diversity_auto_get_status(DIV_STATUS *st) {
 // already reads, so the status line, the antenna line and the panadapter
 // overlay need no remote-aware code of their own.
 //
-// div_gain/div_phase are the applied weight and are written here too: on
+// auto_div_gain/auto_div_phase are the applied weight and are written here too: on
 // a client they are what the sliders show, and while the loop owns them
 // the radio is the only thing that knows what they are.
 //
@@ -3037,7 +3034,6 @@ void diversity_auto_apply_status(const DIV_STATUS *st) {
   // The attenuators travel with the status rather than waiting for the
   // next INFO_ADC, so a client's menu follows one moved at the radio.
   //
-  div_indep_att          = st->indep_att;
   adc[0].attenuation     = st->att0;
   adc[1].attenuation     = st->att1;
   div_auto_running       = st->running;
@@ -3056,8 +3052,8 @@ void diversity_auto_apply_status(const DIV_STATUS *st) {
   div_auto_arm_db        = st->arm_db;
   div_auto_occ_lo        = st->occ_lo;
   div_auto_occ_hi        = st->occ_hi;
-  div_gain               = st->gain;
-  div_phase              = st->phase;
+  auto_div_gain          = st->gain;
+  auto_div_phase         = st->phase;
   div_track_gain         = st->track_gain;
   div_track_phase        = st->track_phase;
   rade_corr_quality      = st->rade_quality;
@@ -3163,7 +3159,7 @@ void diversity_auto_mode_changed(int mode) {
   }
 
   div_group_current = g;
-  const int    was_off = (div_auto_mode == DIV_AUTO_OFF);
+  const int    was_off = (div_auto_mode == DIV_MANUAL);
   const int    old_ref = div_auto_ref;
   const double old_res = div_auto_resolution;
   div_settings_load(&div_group_set[g]);
@@ -3175,7 +3171,7 @@ void diversity_auto_mode_changed(int mode) {
   // correlator's front end is built or torn down when a RADE reference is
   // taken up or left.
   //
-  if (was_off != (div_auto_mode == DIV_AUTO_OFF) ||
+  if (was_off != (div_auto_mode == DIV_MANUAL) ||
       old_res != div_auto_resolution ||
       (old_ref != div_auto_ref &&
        (old_ref == DIV_REF_RADE_V1 || div_auto_ref == DIV_REF_RADE_V1))) {
@@ -3208,8 +3204,8 @@ void diversity_auto_mode_changed(int mode) {
 // goes through here, not just the live one.
 //
 static void div_settings_validate(DIV_SETTINGS *s) {
-  if (s->mode < DIV_AUTO_OFF || s->mode > DIV_AUTO_BEST) {
-    s->mode = DIV_AUTO_OFF;
+  if (s->mode < DIV_MANUAL || s->mode > DIV_AUTO_BEST) {
+    s->mode = DIV_MANUAL;
   }
 
   if (s->ref < DIV_REF_BAND || s->ref > DIV_REF_DIGITAL_IQ) {
@@ -3359,7 +3355,6 @@ void diversity_auto_save_state(void) {
     diversity_auto_get_settings(&div_group_set[div_group_current]);
   }
 
-  SetPropI0("diversity_auto_mode",           div_auto_mode);
   SetPropI0("diversity_auto_ref",            div_auto_ref);
   SetPropI0("diversity_auto_ref_scheme",     DIV_REF_SCHEME);
   SetPropI0("diversity_auto_follow_filter",  div_auto_follow_filter);
@@ -3387,7 +3382,6 @@ void diversity_auto_save_state(void) {
 }
 
 void diversity_auto_restore_state(void) {
-  GetPropI0("diversity_auto_mode",           div_auto_mode);
   GetPropI0("diversity_auto_ref",            div_auto_ref);
   GetPropI0("diversity_auto_follow_filter",  div_auto_follow_filter);
   GetPropF0("diversity_auto_centre",         div_auto_centre);

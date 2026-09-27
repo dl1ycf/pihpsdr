@@ -240,10 +240,22 @@ extern int hpsdr_ptt;
 extern int cw_key_hit;
 extern int n_adc;
 
+//
+// div_auto_mode
+//
+enum {
+  DIV_MANUAL,         // manual gain/phase only
+  DIV_AUTO_NULL,      // minimise the correlated component (noise cancelling)
+  DIV_AUTO_SUM,       // co-phase the two antennas (maximum ratio combining)
+  DIV_AUTO_BEST       // use whichever antenna has the better SNR
+};
+
 extern int diversity_enabled;
-extern int div_indep_att;              // ADC1 keeps its own step attenuator in DIVERSITY
-extern double div_cos, div_sin;
-extern double div_gain, div_phase;
+extern int div_auto_mode;
+extern double auto_div_cos, auto_div_sin;
+extern double man_div_cos, man_div_sin;
+extern double man_div_gain, man_div_phase;
+extern double auto_div_gain, auto_div_phase;
 
 extern int capture_state;
 extern const int capture_max;

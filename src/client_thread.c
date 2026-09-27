@@ -1065,7 +1065,7 @@ static gpointer client_tcp_thread(gpointer arg) {
       rx_stack_horizontal = data.rx_stack_horizontal;
       n_adc = data.n_adc;
       diversity_enabled = data.diversity_enabled;
-      div_indep_att = data.div_indep_att;
+      div_auto_mode = data.div_auto_mode;
       soapy_iqswap = data.soapy_iqswap;
       radio->soapy.rx[0].antennas = data.soapy_rx1_antennas;
       radio->soapy.rx[1].antennas = data.soapy_rx2_antennas;
@@ -1109,8 +1109,8 @@ static gpointer client_tcp_thread(gpointer arg) {
       drive_min = from_double(data.drive_min);
       drive_max = from_double(data.drive_max);
       drive_digi_max = from_double(data.drive_digi_max);
-      div_gain = from_double(data.div_gain);
-      div_phase = from_double(data.div_phase);
+      man_div_gain = from_double(data.man_div_gain);
+      man_div_phase = from_double(data.man_div_phase);
       for (int i = 0; i < 11; i++) {
         pa_trim[i] = from_double(data.pa_trim[i]);
       }

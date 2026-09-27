@@ -277,21 +277,19 @@ int cw_key_hit = 0;
 int n_adc = 1;
 
 int diversity_enabled = 0;
-//        
-// Normally the two ADCs share ADC0's step attenuator while DIVERSITY is
-// running, because an attenuator change moves the relative gain between
-// the arms and so invalidates the weight. With this set they are
-// independent, and the change is fed forward into the weight instead -
-// which is what makes ADC0 attenuation usable against a local interferer
-// the second antenna cannot hear.
-//
-int div_indep_att = 0;
+int div_auto_mode = DIV_MANUAL;
 
-double div_cos = 1.0;      // I factor for diversity
-double div_sin = 1.0;      // Q factor for diversity
-double div_gain = 0.0;     // gain for diversity (in dB)
-double div_phase = 0.0;    // phase for diversity (in degrees, 0 ... 360)
+// Parameters for "manual" diversity
+double man_div_cos = 1.0;       // I factor for diversity
+double man_div_sin = 1.0;       // Q factor for diversity
+double man_div_gain = 0.0;      // gain for diversity (in dB)
+double man_div_phase = 0.0;    // phase for diversity (in degrees, 0 ... 360)
 
+//parameters for "auto" diversity
+double auto_div_gain = 0.0;
+double auto_div_phase = 0.0;
+double auto_div_cos = 1.0;
+double auto_div_sin = 1.0;
 //
 // Audio capture and replay
 // (Equalisers are switched off during capture and replay)
@@ -998,7 +996,7 @@ void radio_stop_program(void) {
   if (!radio_is_remote) {
     //
     // Before the protocol goes away: the analysis thread is still writing
-    // div_cos/div_sin, and radio_save_state() below reads them. Stopping
+    // auto_div_cos/auto_div_sin, and radio_save_state() below reads them. Stopping
     // it here keeps the saved pair consistent rather than a cos from one
     // update and a sin from the next.
     //
@@ -2274,10 +2272,10 @@ void radio_calc_div_params(void) {
   // of the DIVERSITY gain and phase
   //
   double amplitude, arg;
-  amplitude = pow(10.0, 0.05 * div_gain);
-  arg = div_phase * 0.017453292519943295769236907684886; // Pi/180
-  div_cos = amplitude * cos(arg);
-  div_sin = amplitude * sin(arg);
+  amplitude = pow(10.0, 0.05 * man_div_gain);
+  arg = man_div_phase * 0.017453292519943295769236907684886; // Pi/180
+  man_div_cos = amplitude * cos(arg);
+  man_div_sin = amplitude * sin(arg);
 }
 
 //  
@@ -2292,19 +2290,19 @@ void radio_calc_div_params(void) {
 // the weight over while the loop is running, and it makes this false.
 //      
 static int radio_div_auto_owns_weight(void) {
-  return div_auto_running && div_auto_mode != DIV_AUTO_OFF && !div_auto_hold;
+  return div_auto_running && div_auto_mode != DIV_MANUAL && !div_auto_hold;
 }         
 
 void radio_set_diversity_gain(double val) {
   if (radio_div_auto_owns_weight()) { return; }
   if (val < -27.0) { val = -27.0; }
   if (val >  27.0) { val =  27.0; }
-  div_gain = val;
+  man_div_gain = val;
   if (!suppress_popup_sliders) {
     g_idle_add(sliders_diversity_gain, NULL);
   }
   if (radio_is_remote) {
-    send_diversity(cl_sock_tcp, diversity_enabled, div_gain, div_phase);
+    send_diversity(cl_sock_tcp, diversity_enabled, man_div_gain, man_div_phase);
     return;
   }
   radio_calc_div_params();
@@ -2314,12 +2312,12 @@ void radio_set_diversity_phase(double value) {
   if (radio_div_auto_owns_weight()) { return; }
   while (value >  180.0) { value -= 360.0; }
   while (value < -180.0) { value += 360.0; }
-  div_phase = value;
+  man_div_phase = value;
   if (!suppress_popup_sliders) {
     g_idle_add(sliders_diversity_phase, NULL);
   }
   if (radio_is_remote) {
-    send_diversity(cl_sock_tcp, diversity_enabled, div_gain, div_phase);
+    send_diversity(cl_sock_tcp, diversity_enabled, man_div_gain, man_div_phase);
     return;
   }
   radio_calc_div_params();
@@ -2327,7 +2325,7 @@ void radio_set_diversity_phase(double value) {
 
 void radio_set_diversity(int state) {
   if (radio_is_remote) {
-    send_diversity(cl_sock_tcp, state, div_gain, div_phase);
+    send_diversity(cl_sock_tcp, state, man_div_gain, man_div_phase);
   } else {
     //
     // If we have only one receiver, then changing diversity
@@ -2852,24 +2850,6 @@ void radio_set_panstep(int id, int value) {
 }
 
 //
-// Tie the two step attenuators together, or let them go their own way.
-// The value only matters while DIVERSITY is enabled - the two protocols
-// send adc[1].attenuation unaltered the rest of the time.
-//
-void radio_set_indep_att(int state) {
-  if (div_indep_att == state) { return; }
-
-  div_indep_att = state;
-
-  if (radio_is_remote) {
-    send_diversity(cl_sock_tcp, diversity_enabled, div_gain, div_phase);
-    return;
-  }
-
-  schedule_high_priority();
-}
-
-//
 // The step attenuator of one ADC, addressed by ADC rather than by
 // receiver. This is the only way to reach ADC1 while DIVERSITY is
 // running, since the loop makes RX1 the active receiver and every other
@@ -3202,12 +3182,12 @@ static void radio_restore_state(void) {
     GetPropI0("enable_auto_tune",                            enable_auto_tune);
     GetPropI0("enable_tx_inhibit",                           enable_tx_inhibit);
     GetPropI0("radio_sample_rate",                           soapy_radio_sample_rate);
+    GetPropI0("diversity_auto_mode",                         div_auto_mode);
     GetPropI0("diversity_enabled",                           diversity_enabled);
-    GetPropI0("diversity_indep_att",                         div_indep_att);
-    GetPropF0("diversity_gain",                              div_gain);
-    GetPropF0("diversity_phase",                             div_phase);
-    GetPropF0("diversity_cos",                               div_cos);
-    GetPropF0("diversity_sin",                               div_sin);
+    GetPropF0("diversity_gain",                              man_div_gain);
+    GetPropF0("diversity_phase",                             man_div_phase);
+    GetPropF0("diversity_cos",                               man_div_cos);
+    GetPropF0("diversity_sin",                               man_div_sin);
     GetPropI0("new_pa_board",                                new_pa_board);
     GetPropI0("region",                                      region);
     GetPropI0("atlas_penelope",                              atlas_penelope);
@@ -3323,7 +3303,6 @@ static void radio_restore_state(void) {
   //
   if (RECEIVERS < 2 || n_adc < 2) {
     diversity_enabled = 0;
-    div_indep_att = 0;
   }
   //
   // If the N2ADR filter board is selected, this determines  most  OC settings
@@ -3427,11 +3406,11 @@ void radio_save_state(void) {
     SetPropI0("enable_tx_inhibit",                           enable_tx_inhibit);
     SetPropI0("radio_sample_rate",                           soapy_radio_sample_rate);
     SetPropI0("diversity_enabled",                           diversity_enabled);
-    SetPropI0("diversity_indep_att",                         div_indep_att);
-    SetPropF0("diversity_gain",                              div_gain);
-    SetPropF0("diversity_phase",                             div_phase);
-    SetPropF0("diversity_cos",                               div_cos);
-    SetPropF0("diversity_sin",                               div_sin);
+    SetPropI0("diversity_auto_mode",                         div_auto_mode);
+    SetPropF0("diversity_gain",                              man_div_gain);
+    SetPropF0("diversity_phase",                             man_div_phase);
+    SetPropF0("diversity_cos",                               man_div_cos);
+    SetPropF0("diversity_sin",                               man_div_sin);
     SetPropI0("new_pa_board",                                new_pa_board);
     SetPropI0("region",                                      region);
     SetPropI0("atlas_penelope",                              atlas_penelope);

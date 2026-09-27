@@ -336,7 +336,6 @@ void send_radio_data(int sock) {
   data.n_adc = n_adc;
   data.soapy_iqswap = soapy_iqswap;
   data.diversity_enabled = diversity_enabled;
-  data.div_indep_att = div_indep_att;
   data.soapy_rx1_antennas = radio->soapy.rx[0].antennas;
   data.soapy_rx2_antennas = radio->soapy.rx[1].antennas;
   data.soapy_tx_antennas = radio->soapy.tx.antennas;
@@ -379,8 +378,8 @@ void send_radio_data(int sock) {
   data.drive_min = to_double(drive_min);
   data.drive_max = to_double(drive_max);
   data.drive_digi_max = to_double(drive_digi_max);
-  data.div_gain = to_double(div_gain);
-  data.div_phase = to_double(div_phase);
+  data.man_div_gain = to_double(man_div_gain);
+  data.man_div_phase = to_double(man_div_phase);
   for (int i = 0; i < 11; i++) {
     data.pa_trim[i] = to_double(pa_trim[i]);
   }
@@ -815,10 +814,9 @@ void send_diversity(int s, int enabled, double gain, double phase) {
   DIVERSITY_COMMAND command;
   SYNC(command.header.sync);
   command.header.data_type = to_16(CMD_DIVERSITY);
-  command.indep_att = div_indep_att;
   command.diversity_enabled = enabled;
-  command.div_gain = to_double(gain);
-  command.div_phase =  to_double(phase);
+  command.man_div_gain = to_double(gain);
+  command.man_div_phase =  to_double(phase);
   send_tcp(s, (char *)&command, sizeof(command));
 }
 

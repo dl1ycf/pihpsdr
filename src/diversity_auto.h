@@ -37,21 +37,6 @@
 //
 
 //
-// div_auto_mode
-//
-enum {
-  DIV_AUTO_OFF = 0,   // manual gain/phase only
-  DIV_AUTO_NULL,      // minimise the correlated component (noise cancelling)
-  DIV_AUTO_SUM,       // co-phase the two antennas (maximum ratio combining)
-  DIV_AUTO_BEST       // use whichever antenna has the better SNR
-};
-
-//
-// New modes go on the end, for the same reason new references do: the
-// value is what lands in the props file.
-//
-
-//
 // div_auto_ref: what part of the spectrum the decision is taken from
 //
 enum {
@@ -69,7 +54,6 @@ enum {
 // DIV_REF_SCHEME there.
 //
 
-extern int    div_auto_mode;
 extern int    div_auto_ref;
 extern int    div_auto_follow_filter;   // analysis window follows the RX filter
 extern double div_auto_centre;          // window centre (Hz, rel. to tuned freq)

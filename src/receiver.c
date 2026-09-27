@@ -1307,22 +1307,28 @@ void rx_add_iq_samples(RECEIVER *rx, double i_sample, double q_sample) {
 
 void rx_add_div_iq_samples(RECEIVER *rx, double i0, double q0, double i1, double q1) {
   ASSERT_SERVER();
+  double i_sample, q_sample;
 
-  //
-  // Feed the raw, uncombined pair to the auto-phasing analysis. This
-  // happens before the summation below and before the noise blanker, so
-  // both antennas are seen with identical (that is, no) processing.
-  // 
-  if (div_auto_running) {
-    diversity_auto_sample(i0, q0, i1, q1);
+  if (div_auto_mode == DIV_MANUAL) {
+    //
+    // Take the "manual" values derived from the "manual" gain and phase
+    i_sample = i0 + (man_div_cos * i1 - man_div_sin * q1);
+    q_sample = q0 + (man_div_sin * i1 + man_div_cos * q1);
+  } else  {
+    //
+    // Feed the raw, uncombined pair to the auto-phasing analysis. This
+    // happens before the summation below and before the noise blanker, so
+    // both antennas are seen with identical (that is, no) processing.
+    // 
+    if (div_auto_running) { diversity_auto_sample(i0, q0, i1, q1); }
+    i_sample = i0 + (auto_div_cos * i1 - auto_div_sin * q1);
+    q_sample = q0 + (auto_div_sin * i1 + auto_div_cos * q1);
   }
 
   //
   // Note that we sum the second channel onto the first one
   // and then simply pass to add_iq_samples
   //
-  double i_sample = i0 + (div_cos * i1 - div_sin * q1);
-  double q_sample = q0 + (div_sin * i1 + div_cos * q1);
   rx_add_iq_samples(rx, i_sample, q_sample);
 }
 

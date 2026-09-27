@@ -1243,7 +1243,7 @@ static int rade_track(double tau, double hang, double *wr, double *wi) {
     if (!frozen) {
       frozen = 1;
       t_print("%s: pilot lost, holding last weight (%+0.1f dB %+0.0f deg) "
-              "for up to %0.0f s\n", __func__, div_gain, div_phase, hang);
+              "for up to %0.0f s\n", __func__, auto_div_gain, auto_div_phase, hang);
     }
 
     //
@@ -1336,7 +1336,7 @@ static int rade_track(double tau, double hang, double *wr, double *wi) {
             "pilot %0.0f%% / %+0.1f dB  w=%+0.1f dB %+0.0f deg  "
             "avg=%0.1fs hang=%0.1fs%s\n",
             __func__, ratio, lock_f,
-            100.0 * rade_corr_quality, rade_corr_snr, div_gain, div_phase,
+            100.0 * rade_corr_quality, rade_corr_snr, auto_div_gain, auto_div_phase,
             tau, hang, frozen ? "  FROZEN" : "");
   }
   //
