@@ -62,7 +62,7 @@ extern double div_auto_tau;             // adaptation time constant (seconds)
 extern double div_auto_hang;            // hold a RADE lock this long after the
                                         // pilot goes away, before re-acquiring
 extern double div_auto_coherence_min;   // hold below this coherence
-extern int    div_auto_weighting;       // DIV_WEIGHT_FLAT / _COHERENCE
+extern int    div_auto_weighting;       // always DIV_WEIGHT_FLAT (see .c)
 extern double div_auto_resolution;      // requested bin width, Hz
 
 //
@@ -95,7 +95,8 @@ extern int    div_auto_clamped;
 extern double div_auto_binhz;
 
 //
-// Bin weighting for the wideband window.
+// Bin weighting for the wideband window. Only FLAT is used; COHERENCE is
+// retired but kept so the field keeps its shape on the wire and on disk.
 //
 enum {
   DIV_WEIGHT_FLAT = 0,
