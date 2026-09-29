@@ -591,13 +591,13 @@ void rx_panadapter_update(RECEIVER *rx) {
     long long fmax = frequency + (maxi - rxpos) / rx->cAp;
     //
     // If smax is larger than ZBlevel, this marks a new frequency
-    // Else, lower the old max with 20 dB per second
+    // else, lower the old max with 5 dB per second
     //
     if (smax > rx->ZBlevel) {
       rx->ZBfreq = fmax;
       rx->ZBlevel = smax;
     } else {
-      rx->ZBlevel = rx->ZBlevel - 20.0 / rx->fps;
+      rx->ZBlevel = rx->ZBlevel - 5.0 / rx->fps;
     }
     for (int i = 1; i < mywidth; i++) {
       double s2 = (double)samples[i] + soffset;
@@ -668,7 +668,7 @@ void rx_panadapter_update(RECEIVER *rx) {
       // oscillating between -116 and -118 will either have a constant
       // (non-oscillating) pan_low of -115 or -120.
       //
-      int target = rx->noise_floor - 10;
+      int target = rx->noise_floor - 20;
       target = 5 * (target / 5);
       if (rx->panadapter_low > target + 5 || rx->panadapter_low < target - 5) {
         rx->panadapter_low = target;
