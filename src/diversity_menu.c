@@ -576,8 +576,6 @@ static void div_populate_from_settings(void) {
 
   if (width_spin)   { gtk_spin_button_set_value(GTK_SPIN_BUTTON(width_spin), div_auto_width); }
 
-  if (weight_combo) { gtk_combo_box_set_active(GTK_COMBO_BOX(weight_combo), div_auto_weighting); }
-
   if (tau_scale)    { gtk_range_set_value(GTK_RANGE(tau_scale), div_tau_to_pos(div_auto_tau)); }
 
   if (hang_scale)   { gtk_range_set_value(GTK_RANGE(hang_scale), div_auto_hang); }
@@ -835,12 +833,6 @@ static void res_changed_cb(GtkWidget *widget, gpointer data) {
   div_send_settings(DIV_ACTION_NONE);
 }
 
-static void weight_changed_cb(GtkWidget *widget, gpointer data) {
-  div_auto_weighting = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-  diversity_auto_reset();
-  div_send_settings(DIV_ACTION_NONE);
-}
-
 // cppcheck-suppress constParameterCallback
 static void reset_cb(GtkWidget *widget, gpointer data) {
   //
@@ -1044,21 +1036,6 @@ void diversity_menu(GtkWidget *parent) {
   //                            "the status line.");
   gtk_grid_attach(GTK_GRID(agrid), btn, 2, 2, 3, 1);
   g_signal_connect(btn, "changed", G_CALLBACK(res_changed_cb), NULL);
-  lbl = gtk_label_new("Weighting");
-  gtk_widget_set_name(lbl, "boldlabel");
-  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(agrid), lbl, 5, 2, 2, 1);
-  btn = gtk_combo_box_text_new();
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "Flat");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "Coherence");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(btn), div_auto_weighting);
-  //gtk_widget_set_tooltip_text(weight_combo,
-  //                            "Coherence weights each frequency bin by how well the two "
-  //                            "antennas agree in it, so a wide window can be used on "
-  //                            "speech without the noise-only parts of it diluting the "
-  //                            "answer. Flat is the older behaviour.");
-  gtk_grid_attach(GTK_GRID(agrid), btn, 7, 2, 3, 1);
-  g_signal_connect(btn, "changed", G_CALLBACK(weight_changed_cb), NULL);
   lbl = gtk_label_new("Averaging (s)");
   //gtk_widget_set_tooltip_text(tau_label,
   //                            "Time constant for the gain/phase estimate. "

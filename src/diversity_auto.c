@@ -383,10 +383,14 @@
 // diluted by noise-only bins that add to the denominator but not the
 // numerator.
 //
-// Coherence weights each bin by how well the antennas agree in it, so
-// bins carrying signal dominate and noise-only bins fall out. That is
-// what makes a wide window usable on SSB voice, where the energy moves
-// around constantly and there is no carrier to sit on.
+// Coherence weights each bin by how well the antennas agree in it. It is
+// retired: measured on recorded two-antenna captures it gave no better
+// an estimate than flat, and it only appeared to help by inflating the
+// coherence the gate compares - on noise-only captures as much as on
+// signal - so a given threshold became a laxer test. Compared at equal
+// false-alarm rate, flat keeps more signal blocks and gives a slightly
+// better output SNR. DIV_WEIGHT_COHERENCE stays in the enum so the field
+// keeps its shape on the wire and in the props file.
 //
 
 int    div_auto_ref            = DIV_REF_BAND;
@@ -395,8 +399,8 @@ double div_auto_centre         = 0.0;
 double div_auto_width          = 1000.0;
 double div_auto_tau            = 2.0;
 double div_auto_hang           = 10.0;
-double div_auto_coherence_min  = 0.30;
-int    div_auto_weighting      = DIV_WEIGHT_COHERENCE;
+double div_auto_coherence_min  = 0.20;
+int    div_auto_weighting      = DIV_WEIGHT_FLAT;
 double div_auto_resolution     = DIV_TARGET_BIN_HZ;
 
 //
@@ -445,9 +449,12 @@ double div_digital_width       = 2600.0;
 //
 // Defaults reproduce the single 0.30 that shipped before, except on RADE
 // V1, where the gate was never applied at all and 0.0 is what "as it was"
-// means.
+// means, and on Window, which is 0.20 because it moved to flat weighting.
+// Coherence weighting inflated the statistic, so flat needs about 0.10
+// less for the same false-alarm rate; flat at 0.20 has slightly fewer
+// false alarms than coherence at 0.30 did.
 //
-double div_band_cohmin         = 0.30;
+double div_band_cohmin         = 0.20;
 double div_carrier_cohmin      = 0.30;
 double div_digital_cohmin      = 0.30;
 double div_rade_cohmin         = 0.0;
@@ -3214,9 +3221,12 @@ static void div_settings_validate(DIV_SETTINGS *s) {
 
   s->follow_filter = s->follow_filter ? 1 : 0;
 
-  if (s->weighting < DIV_WEIGHT_FLAT || s->weighting > DIV_WEIGHT_COHERENCE) {
-    s->weighting = DIV_WEIGHT_COHERENCE;
-  }
+  //
+  // Pinned rather than range-checked: there is no control for it any
+  // more, and an older props file or client must not bring coherence
+  // weighting back alongside the lower Window threshold chosen for flat.
+  //
+  s->weighting = DIV_WEIGHT_FLAT;
 
   //
   // Each reference's own threshold, and the live one. All five share the
