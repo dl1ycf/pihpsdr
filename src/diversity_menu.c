@@ -42,7 +42,7 @@ static GtkWidget *gain_fine_scale = NULL;
 static GtkWidget *phase_fine_scale = NULL;
 static GtkWidget *phase_coarse_scale = NULL;
 
-static GtkWidget *adc1btn = NULL;
+static GtkWidget *auto_btn = NULL;
 static GtkWidget *mcontainer = NULL;
 static GtkWidget *acontainer = NULL;
 static GtkWidget *status_label = NULL;
@@ -537,11 +537,13 @@ static void mode_changed_cb(GtkWidget *widget, gpointer data) {
 //
 // cppcheck-suppress constParameterCallback
 static void invert_cb(GtkWidget *widget, gpointer data) {
-  if (div_auto_mode == DIV_MANUAL || div_auto_mode == DIV_AUTO_BEST) { return; }
+  if (div_auto_mode != DIV_AUTO_SUM && div_auto_mode != DIV_AUTO_NULL) { return; }
 
-  //gtk_combo_box_set_active(GTK_COMBO_BOX(auto_combo),
-  //                         (div_auto_mode == DIV_AUTO_NULL) ? DIV_AUTO_SUM
-  //                         : DIV_AUTO_NULL);
+  //
+  // This sends a signal, so auto_cb does the rest
+  //
+  gtk_combo_box_set_active(GTK_COMBO_BOX(auto_btn),
+                           (div_auto_mode == DIV_AUTO_NULL) ? DIV_AUTO_SUM : DIV_AUTO_NULL);
 }
 
 // cppcheck-suppress constParameterCallback
@@ -893,14 +895,14 @@ void diversity_menu(GtkWidget *parent) {
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), diversity_enabled);
   g_signal_connect(btn, "toggled", G_CALLBACK(enable_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 2, 1);
-  btn = gtk_combo_box_text_new();
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "Manual");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "Null (cancel common signal)");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "Sum (co-phase antennas)");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "Best (use the better antenna)");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(btn), div_auto_mode);
-  gtk_grid_attach(GTK_GRID(grid), btn, 2, row, 5, 1);
-  g_signal_connect(btn, "changed", G_CALLBACK(mode_changed_cb), NULL);
+  auto_btn = gtk_combo_box_text_new();
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_btn), "Manual");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_btn), "Null (cancel common signal)");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_btn), "Sum (co-phase antennas)");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_btn), "Best (use the better antenna)");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(auto_btn), div_auto_mode);
+  gtk_grid_attach(GTK_GRID(grid), auto_btn, 2, row, 4, 1);
+  g_signal_connect(auto_btn, "changed", G_CALLBACK(mode_changed_cb), NULL);
   //gtk_widget_set_tooltip_text(auto_combo,
   //                          "Sum combines both antennas. Best measures the "
   //                          "signal-to-noise ratio on each and hands the "
@@ -912,29 +914,29 @@ void diversity_menu(GtkWidget *parent) {
   if (have_rx_att) {
     row++;
     //
-    lbl = gtk_label_new("ADC0 Att:");
+    lbl = gtk_label_new("ATT ADC0:");
     gtk_widget_set_name(lbl, "boldlabel");
     gtk_widget_set_halign(lbl, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), lbl, 0, row, 2, 1);
     btn = gtk_spin_button_new_with_range(0.0, 31.0, 1.0);
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), adc[0].attenuation);
     g_signal_connect(btn, "value_changed", G_CALLBACK(att_cb), GINT_TO_POINTER(0));
-    gtk_grid_attach(GTK_GRID(grid), btn, 2, row, 3, 1);
-    lbl = gtk_label_new("ADC1 Att:");
+    gtk_grid_attach(GTK_GRID(grid), btn, 2, row, 4, 1);
+    lbl = gtk_label_new("ADC1:");
     gtk_widget_set_name(lbl, "boldlabel");
     gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(grid), lbl, 5, row, 2, 1);
-    adc1btn = gtk_spin_button_new_with_range(0.0, 31.0, 1.0);
-    gtk_spin_button_set_value(GTK_SPIN_BUTTON(adc1btn), adc[1].attenuation);
-    g_signal_connect(adc1btn, "value_changed", G_CALLBACK(att_cb), GINT_TO_POINTER(1));
-    gtk_grid_attach(GTK_GRID(grid), adc1btn, 7, row, 3, 1);
+    gtk_grid_attach(GTK_GRID(grid), lbl, 6, row, 1, 1);
+    btn = gtk_spin_button_new_with_range(0.0, 31.0, 1.0);
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), adc[1].attenuation);
+    g_signal_connect(btn, "value_changed", G_CALLBACK(att_cb), GINT_TO_POINTER(1));
+    gtk_grid_attach(GTK_GRID(grid), btn, 7, row, 4, 1);
   }
   row++;
   //
   // Container for the "manual" controls
   //
   mcontainer = gtk_fixed_new();
-  gtk_grid_attach(GTK_GRID(grid), mcontainer, 0, row, 10, 1);
+  gtk_grid_attach(GTK_GRID(grid), mcontainer, 0, row, 11, 1);
   GtkWidget *mgrid = gtk_grid_new();
   gtk_grid_set_column_homogeneous(GTK_GRID(mgrid), TRUE);
   gtk_grid_set_row_homogeneous(GTK_GRID(mgrid), TRUE);
@@ -977,9 +979,9 @@ void diversity_menu(GtkWidget *parent) {
   // Container for the "automatic" case
   //
   acontainer = gtk_fixed_new();
-  gtk_grid_attach(GTK_GRID(grid), acontainer, 0, row, 10, 1);
+  gtk_grid_attach(GTK_GRID(grid), acontainer, 0, row, 11, 1);
   GtkWidget *agrid = gtk_grid_new();
-  gtk_grid_set_column_homogeneous(GTK_GRID(agrid), FALSE);
+  gtk_grid_set_column_homogeneous(GTK_GRID(agrid), TRUE);
   gtk_grid_set_row_homogeneous(GTK_GRID(agrid), FALSE);
   gtk_grid_set_column_spacing (GTK_GRID(agrid), 5);
   gtk_grid_set_row_spacing (GTK_GRID(agrid), 5);
@@ -993,7 +995,7 @@ void diversity_menu(GtkWidget *parent) {
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "Carrier (AM/SAM)");
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "RADE V1 pilot (MVDR)");
   gtk_combo_box_set_active(GTK_COMBO_BOX(btn), div_auto_ref);
-  gtk_grid_attach(GTK_GRID(agrid), btn, 2, 0, 3, 1);
+  gtk_grid_attach(GTK_GRID(agrid), btn, 2, 0, 4, 1);
   g_signal_connect(btn, "changed", G_CALLBACK(ref_changed_cb), NULL);
   btn = gtk_check_button_new_with_label("Window follows RX filter");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), div_auto_follow_filter);
@@ -1011,21 +1013,23 @@ void diversity_menu(GtkWidget *parent) {
   // rates out of four.
   //
   btn = gtk_spin_button_new_with_range(-400000.0, 400000.0, 10.0);
+  gtk_scale_set_digits(GTK_SCALE(btn), 0);
   //gtk_widget_set_tooltip_text(centre_spin,
   //                            "Offset from the signal you are tuned to. In CW that is "
   //                            "the zero-beat note, one CW pitch away from the dial "
   //                           "frequency, so a centre of 0 sits on what you are "
   //                            "listening to in every mode.");
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), div_auto_centre);
-  gtk_grid_attach(GTK_GRID(agrid), btn, 2, 1, 3, 1);
+  gtk_grid_attach(GTK_GRID(agrid), btn, 2, 1, 4, 1);
   g_signal_connect(btn, "value_changed", G_CALLBACK(centre_cb), NULL);
-  lbl = gtk_label_new("Window width");
+  lbl = gtk_label_new("Width");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(agrid), lbl, 5, 1, 2, 1);
+  gtk_grid_attach(GTK_GRID(agrid), lbl, 6, 1, 1, 1);
   btn = gtk_spin_button_new_with_range(20.0, 40000.0, 10.0);
+  gtk_scale_set_digits(GTK_SCALE(btn), 0);
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), div_auto_width);
-  gtk_grid_attach(GTK_GRID(agrid), btn, 7, 1, 3, 1);
+  gtk_grid_attach(GTK_GRID(agrid), btn, 7, 1, 4, 1);
   g_signal_connect(btn, "value_changed", G_CALLBACK(width_cb), NULL);
   lbl = gtk_label_new("Resolution");
   gtk_widget_set_name(lbl, "boldlabel");
@@ -1042,22 +1046,22 @@ void diversity_menu(GtkWidget *parent) {
   //                            "but each step doubles the block period and so halves the "
   //                            "update rate. The bin width actually achieved is shown in "
   //                            "the status line.");
-  gtk_grid_attach(GTK_GRID(agrid), btn, 2, 2, 3, 1);
+  gtk_grid_attach(GTK_GRID(agrid), btn, 2, 2, 4, 1);
   g_signal_connect(btn, "changed", G_CALLBACK(res_changed_cb), NULL);
   lbl = gtk_label_new("Weighting");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(agrid), lbl, 5, 2, 2, 1);
+  //gtk_grid_attach(GTK_GRID(agrid), lbl, 6, 2, 1, 1);
   btn = gtk_combo_box_text_new();
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "Flat");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "Coherence");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "Weighting: Flat");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "Weighting: Coherence");
   gtk_combo_box_set_active(GTK_COMBO_BOX(btn), div_auto_weighting);
   //gtk_widget_set_tooltip_text(weight_combo,
   //                            "Coherence weights each frequency bin by how well the two "
   //                            "antennas agree in it, so a wide window can be used on "
   //                            "speech without the noise-only parts of it diluting the "
   //                            "answer. Flat is the older behaviour.");
-  gtk_grid_attach(GTK_GRID(agrid), btn, 7, 2, 3, 1);
+  gtk_grid_attach(GTK_GRID(agrid), btn, 7, 2, 4, 1);
   g_signal_connect(btn, "changed", G_CALLBACK(weight_changed_cb), NULL);
   lbl = gtk_label_new("Averaging (s)");
   //gtk_widget_set_tooltip_text(tau_label,
@@ -1076,15 +1080,15 @@ void diversity_menu(GtkWidget *parent) {
   gtk_scale_set_digits(GTK_SCALE(btn), 2);
   g_signal_connect(G_OBJECT(btn), "format-value", G_CALLBACK(tau_format_cb), NULL);
   gtk_range_set_value(GTK_RANGE(btn), div_tau_to_pos(div_auto_tau));
-  gtk_grid_attach(GTK_GRID(agrid), btn, 2, 3, 5, 1);
+  gtk_grid_attach(GTK_GRID(agrid), btn, 2, 3, 6, 1);
   g_signal_connect(G_OBJECT(btn), "value_changed", G_CALLBACK(tau_cb), NULL);
-  lbl = gtk_label_new("Min coherence (%)");
+  lbl = gtk_label_new("Min coher. (%)");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(agrid), lbl, 0, 4, 2, 1);
   btn = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 95.0, 5.0);
   gtk_range_set_value(GTK_RANGE(btn), 100.0 * div_auto_coherence_min);
-  gtk_grid_attach(GTK_GRID(agrid), btn, 2, 4, 5, 1);
+  gtk_grid_attach(GTK_GRID(agrid), btn, 2, 4, 6, 1);
   g_signal_connect(G_OBJECT(btn), "value_changed", G_CALLBACK(coh_cb), NULL);
   lbl = gtk_label_new("Hang (s)");
   //gtk_widget_set_tooltip_text(hang_label,
@@ -1100,7 +1104,7 @@ void diversity_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(agrid), lbl, 0, 5, 2, 1);
   btn = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 1.0, 30.0, 0.5);
   gtk_range_set_value(GTK_RANGE(btn), div_auto_hang);
-  gtk_grid_attach(GTK_GRID(agrid), btn, 2, 5, 5, 1);
+  gtk_grid_attach(GTK_GRID(agrid), btn, 2, 5, 6, 1);
   g_signal_connect(G_OBJECT(btn), "value_changed", G_CALLBACK(hang_cb), NULL);
   //
   // "Status" info at the bottom
@@ -1109,7 +1113,7 @@ void diversity_menu(GtkWidget *parent) {
   //gtk_widget_set_tooltip_text(reset_b,
   //                            "Discard the accumulated statistics and start the "
   //                            "estimate again from nothing.");
-  gtk_grid_attach(GTK_GRID(agrid), btn, 7, 3, 3, 1);
+  gtk_grid_attach(GTK_GRID(agrid), btn, 8, 3, 3, 1);
   g_signal_connect(btn, "clicked", G_CALLBACK(reset_cb), NULL);
   btn = gtk_toggle_button_new_with_label("Hold");
   //gtk_widget_set_tooltip_text(hold_b,
@@ -1118,7 +1122,7 @@ void diversity_menu(GtkWidget *parent) {
   //                            "it is held, and releasing puts the tracked answer in "
   //                            "place in one step. The status line shows the tracked "
   //                            "value meanwhile, so the two can be compared.");
-  gtk_grid_attach(GTK_GRID(agrid), btn, 7, 4, 3, 1);
+  gtk_grid_attach(GTK_GRID(agrid), btn, 8, 4, 3, 1);
   g_signal_connect(btn, "toggled", G_CALLBACK(hold_cb), NULL);
   btn = gtk_button_new_with_label("Invert");
   //gtk_widget_set_tooltip_text(invert_b,
@@ -1127,7 +1131,7 @@ void diversity_menu(GtkWidget *parent) {
   //                            "array is pointed at the wanted signal or at the "
   //                            "interference. Does not apply to Best, which selects "
   //                            "an antenna rather than steering a null.");
-  gtk_grid_attach(GTK_GRID(agrid), btn, 7, 5, 3, 1);
+  gtk_grid_attach(GTK_GRID(agrid), btn, 8, 5, 3, 1);
   g_signal_connect(btn, "clicked", G_CALLBACK(invert_cb), NULL);
   //
   // The status line spans both columns and is held to exactly
