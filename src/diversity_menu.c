@@ -1013,7 +1013,7 @@ void diversity_menu(GtkWidget *parent) {
   // rates out of four.
   //
   btn = gtk_spin_button_new_with_range(-400000.0, 400000.0, 10.0);
-  gtk_scale_set_digits(GTK_SCALE(btn), 0);
+  gtk_spin_button_set_digits(GTK_SPIN_BUTTON(btn), 0);
   //gtk_widget_set_tooltip_text(centre_spin,
   //                            "Offset from the signal you are tuned to. In CW that is "
   //                            "the zero-beat note, one CW pitch away from the dial "
@@ -1027,7 +1027,7 @@ void diversity_menu(GtkWidget *parent) {
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(agrid), lbl, 6, 1, 1, 1);
   btn = gtk_spin_button_new_with_range(20.0, 40000.0, 10.0);
-  gtk_scale_set_digits(GTK_SCALE(btn), 0);
+  gtk_spin_button_set_digits(GTK_SPIN_BUTTON(btn), 0);
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), div_auto_width);
   gtk_grid_attach(GTK_GRID(agrid), btn, 7, 1, 4, 1);
   g_signal_connect(btn, "value_changed", G_CALLBACK(width_cb), NULL);
