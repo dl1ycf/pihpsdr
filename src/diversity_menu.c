@@ -447,6 +447,34 @@ static int status_update_cb(gpointer data) {
   return G_SOURCE_CONTINUE;
 }
 
+//
+// The "Measure on" combo lists the references in its own order, which is
+// not the order of the DIV_REF_* enum. Every conversion between a combo
+// row and a reference goes through these two.
+//
+static const int div_ref_rows[] = {
+  DIV_REF_BAND,
+  DIV_REF_DIGITAL_IQ,
+  DIV_REF_CARRIER,
+  DIV_REF_RADE_V1
+};
+
+#define DIV_REF_NROWS ((int)(sizeof(div_ref_rows) / sizeof(div_ref_rows[0])))
+
+static int div_ref_to_row(int ref) {
+  for (int i = 0; i < DIV_REF_NROWS; i++) {
+    if (div_ref_rows[i] == ref) { return i; }
+  }
+
+  return 0;
+}
+
+static int div_row_to_ref(int row) {
+  if (row < 0 || row >= DIV_REF_NROWS) { return DIV_REF_BAND; }
+
+  return div_ref_rows[row];
+}
+
 static void mode_changed_cb(GtkWidget *widget, gpointer data) {
   int previous = div_auto_mode;
   div_auto_mode = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
@@ -665,7 +693,7 @@ static void ref_changed_cb(GtkWidget *widget, gpointer data) {
   // After restore, modify the GUI elements as to reflect the new values
   //
   store_ref_values(div_auto_ref);
-  div_auto_ref = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  div_auto_ref = div_row_to_ref(gtk_combo_box_get_active(GTK_COMBO_BOX(widget)));
   restore_ref_values(div_auto_ref);
 
   //
@@ -925,7 +953,7 @@ void diversity_menu(GtkWidget *parent) {
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "FSK/Digital (occupancy MVDR)");
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "Carrier (AM/SAM)");
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "RADE V1 pilot (MVDR)");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(btn), div_auto_ref);
+  gtk_combo_box_set_active(GTK_COMBO_BOX(btn), div_ref_to_row(div_auto_ref));
   gtk_grid_attach(GTK_GRID(agrid), btn, 2, 0, 4, 1);
   g_signal_connect(btn, "changed", G_CALLBACK(ref_changed_cb), NULL);
   btn = gtk_check_button_new_with_label("Window follows RX filter");
