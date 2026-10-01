@@ -2135,12 +2135,11 @@ static int server_command(gpointer data) {
     suppress_popup_sliders--;
   }
   break;
+#if 0
   case CMD_DIV_SETTINGS: {
     //
-    // The operator moved a control on the client. Everything the change
-    // implies - restart, reset, inverting the weight in force - is worked
-    // out from the difference against what is in force, in the one place
-    // that knows those rules.
+    // Everthing is controlled from the menu, so the server never sends
+    // such data except upon initial connect
     //
     const DIV_SETTINGS_COMMAND *command = (DIV_SETTINGS_COMMAND *)data;
     DIV_SETTINGS set;
@@ -2169,6 +2168,7 @@ static int server_command(gpointer data) {
     diversity_menu_refresh();
   }
   break;
+#endif
   case CMD_TXFILTER:
     if (transmitter != NULL) {
       transmitter->use_rx_filter = header->b1;

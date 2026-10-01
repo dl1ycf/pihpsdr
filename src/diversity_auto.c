@@ -2779,83 +2779,6 @@ void diversity_auto_restart(void) {
   }
 }
 
-//
-// Numbering scheme for diversity_auto_ref.
-//
-// Scheme 1 was BAND, CARRIER, RADE_BAND, RADE_V1, DIGITAL_IQ. The RADE
-// passband reference has since been retired - FSK/Digital does the same
-// job from the operator's passband and does it better - so scheme 2 is
-// BAND, CARRIER, RADE_V1, DIGITAL_IQ, and every value from 2 upwards
-// means something different from what it used to.
-//
-// A file written before this key existed carries no scheme, and the two
-// numberings cannot be told apart by inspection: a stored 2 is either the
-// old RADE passband or the new RADE V1. Writing the scheme is what makes
-// the migration below unambiguous rather than a guess.
-//
-#define DIV_REF_SCHEME 2
-
-//
-// Move the per-reference settings between their own slots and the live
-// pair the engine reads. The window centre/width has worked this way
-// since the references became modal; the coherence threshold now joins it,
-// for the reason in the note beside div_band_cohmin.
-//
-// Data only - the menu wraps these and updates its widgets afterwards.
-// They are not called from diversity_auto_apply_settings(): a settings
-// block carries the live values and the per-reference slots together and
-// is self-consistent by construction, so swapping again there would
-// overwrite what the sender chose.
-//
-static double div_cohmin_for_ref(int ref) {
-  switch (ref) {
-  case DIV_REF_CARRIER:    return div_carrier_cohmin;
-
-  case DIV_REF_DIGITAL_IQ: return div_digital_cohmin;
-
-  case DIV_REF_RADE_V1:    return div_rade_cohmin;
-
-  default:                 return div_band_cohmin;
-  }
-}
-
-void diversity_auto_ref_store(int ref) {
-  if (ref == DIV_REF_CARRIER) {
-    div_carrier_centre = div_auto_centre;
-    div_carrier_width  = div_auto_width;
-    div_carrier_cohmin = div_auto_coherence_min;
-  } else if (ref == DIV_REF_BAND) {
-    div_band_centre = div_auto_centre;
-    div_band_width  = div_auto_width;
-    div_band_cohmin = div_auto_coherence_min;
-  } else if (ref == DIV_REF_DIGITAL_IQ) {
-    div_digital_centre = div_auto_centre;
-    div_digital_width  = div_auto_width;
-    div_digital_cohmin = div_auto_coherence_min;
-  } else if (ref == DIV_REF_RADE_V1) {
-    //
-    // No window of its own - the correlator decides what it looks at -
-    // but it does have a threshold now.
-    //
-    div_rade_cohmin = div_auto_coherence_min;
-  }
-}
-
-void diversity_auto_ref_recall(int ref) {
-  if (ref == DIV_REF_CARRIER) {
-    div_auto_centre = div_carrier_centre;
-    div_auto_width  = div_carrier_width;
-  } else if (ref == DIV_REF_BAND) {
-    div_auto_centre = div_band_centre;
-    div_auto_width  = div_band_width;
-  } else if (ref == DIV_REF_DIGITAL_IQ) {
-    div_auto_centre = div_digital_centre;
-    div_auto_width  = div_digital_width;
-  }
-
-  div_auto_coherence_min = div_cohmin_for_ref(ref);
-}
-
 void diversity_auto_get_settings(DIV_SETTINGS *s) {
   s->mode           = div_auto_mode;
   s->ref            = div_auto_ref;
@@ -2909,8 +2832,9 @@ static void div_settings_load(const DIV_SETTINGS *s) {
   // radio starting up in RADE V1 would gate on whatever the *previous*
   // reference was set to, which for a file written before this existed is
   // 0.30 against a mode that had no gate at all.
+  // DL1YCF: THIS MUST BE CORRECTED
   //
-  div_auto_coherence_min = div_cohmin_for_ref(div_auto_ref);
+  div_auto_coherence_min = s->coherence_min;
   div_band_centre        = s->band_centre;
   div_band_width         = s->band_width;
   div_carrier_centre     = s->carrier_centre;
@@ -3186,12 +3110,6 @@ void diversity_auto_mode_changed(int mode) {
   // old weight anyway.
   //
   diversity_auto_reset();
-  //
-  // Show it, and tell a client that is running the panel. A mode change
-  // can arrive on the server thread as well as on the GTK one, and both
-  // halves of that belong to GTK.
-  //
-  g_idle_add(diversity_menu_settings_changed, NULL);
 }
 
 //
@@ -3279,13 +3197,6 @@ static void div_settings_validate(DIV_SETTINGS *s) {
   }
 }
 
-//
-// One group's block, to and from the props file.
-//
-// Written under the current reference numbering only - these keys did not
-// exist under scheme 1 - so there is nothing here to migrate. See
-// DIV_REF_SCHEME.
-//
 static void div_group_save(int g, const DIV_SETTINGS *s) {
   SetPropI1("diversity_group[%d].mode",           g, s->mode);
   SetPropI1("diversity_group[%d].ref",            g, s->ref);
@@ -3356,7 +3267,6 @@ void diversity_auto_save_state(void) {
   }
 
   SetPropI0("diversity_auto_ref",            div_auto_ref);
-  SetPropI0("diversity_auto_ref_scheme",     DIV_REF_SCHEME);
   SetPropI0("diversity_auto_follow_filter",  div_auto_follow_filter);
   SetPropF0("diversity_auto_centre",         div_auto_centre);
   SetPropF0("diversity_auto_width",          div_auto_width);
@@ -3408,51 +3318,6 @@ void diversity_auto_restore_state(void) {
   GetPropF0("diversity_carrier_width",       div_carrier_width);
   GetPropF0("diversity_digital_centre",      div_digital_centre);
   GetPropF0("diversity_digital_width",       div_digital_width);
-
-  //
-  // Migrate a reference written under the old numbering. Absent key means
-  // scheme 1; see DIV_REF_SCHEME. Only the single flat key needs it - the
-  // per-group keys below are newer than the renumbering - and it has to
-  // happen before the block is seeded from these values, so that every
-  // group inherits the migrated reference rather than the raw one.
-  //
-  {
-    //
-    // GetPropI0 leaves the variable alone when the key is absent, so the
-    // default here has to be the *old* scheme - a file that predates the
-    // key is exactly the one that needs migrating.
-    //
-    int scheme = 1;
-    GetPropI0("diversity_auto_ref_scheme", scheme);
-
-    if (scheme < 2) {
-      switch (div_auto_ref) {
-      case 2:
-        //
-        // The RADE passband reference. FSK/Digital replaces it: it places
-        // itself on the operator's passband in the same way and finds the
-        // modem's occupied bins inside it, so an operator who was using
-        // that lands on its successor rather than on something unrelated.
-        //
-        div_auto_ref = DIV_REF_DIGITAL_IQ;
-        break;
-
-      case 3: div_auto_ref = DIV_REF_RADE_V1;    break;   // was RADE V1
-      case 4: div_auto_ref = DIV_REF_DIGITAL_IQ; break;   // was FSK/Digital
-
-      default: break;                                     // 0 and 1 unmoved
-      }
-    }
-  }
-
-  //
-  // Same rule as div_settings_load(): whatever the file said, the live
-  // threshold belongs to the selected reference. After the migration
-  // above, so that a file carrying the old numbering picks up the
-  // threshold for the reference it ends up on rather than the one it was
-  // written as.
-  //
-  div_auto_coherence_min = div_cohmin_for_ref(div_auto_ref);
 
   //
   // Validate what came out of the file, then use it to seed every group

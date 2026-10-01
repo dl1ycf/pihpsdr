@@ -43,6 +43,8 @@ static GtkWidget *phase_fine_scale = NULL;
 static GtkWidget *phase_coarse_scale = NULL;
 
 static GtkWidget *auto_btn = NULL;
+static GtkWidget *win_width_btn = NULL;
+static GtkWidget *win_centre_btn = NULL;
 static GtkWidget *mcontainer = NULL;
 static GtkWidget *acontainer = NULL;
 static GtkWidget *status_label = NULL;
@@ -101,12 +103,6 @@ static double phase_coarse, phase_fine;
 static guint status_timer = 0;
 
 //
-// Set while a settings block from the radio is being pushed into the
-// widgets, so the "changed" handlers do not bounce it straight back.
-//
-static int updating_from_server = 0;
-
-//
 // Ship the whole control state whenever any one control moves.
 //
 // One message rather than one per control: the block is small, it is
@@ -116,8 +112,6 @@ static int updating_from_server = 0;
 // byte carries the one control that changes no setting.
 //
 static void div_send_settings(int action) {
-  if (updating_from_server) { return; }
-
   DIV_SETTINGS set;
   diversity_auto_get_settings(&set);
 
@@ -132,21 +126,6 @@ static void div_send_settings(int action) {
     send_div_settings(remoteclient.sock_tcp, &set, DIV_ACTION_NONE);
   }
 }
-
-//
-// Set while the status timer pushes automatically determined values into
-// the gain/phase sliders, so that the "value_changed" handlers below can
-// tell an operator adjustment from one of our own.
-//
-static int updating_from_auto = 0;
-
-//
-// Set while ref_changed_cb() is driving the objective combo. Without it,
-// modo_changed_cb() sees div_auto_mode already changed and concludes the
-// engine does not need starting - so selecting a RADE reference with Auto
-// set to Off silently started nothing at all.
-//
-static int updating_ref = 0;
 
 static void cleanup(void) {
   if (status_timer != 0) {
@@ -186,7 +165,7 @@ static void enable_cb(GtkWidget *widget, gpointer data) {
 
 static void att_cb(GtkWidget *widget, gpointer data) {
   radio_set_adc_attenuation(GPOINTER_TO_INT(data),
-                            gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget)));
+                            (int) (0.5+gtk_range_get_value(GTK_RANGE(widget))));
 }
 
 static void gain_coarse_changed_cb(GtkWidget *widget, gpointer data) {
@@ -553,75 +532,6 @@ static void hold_cb(GtkWidget *widget, gpointer data) {
 }
 
 //
-// The window controls are modal: the Window, Carrier and FSK/Digital
-// references each keep their own centre and width, so aiming the carrier
-// tracker at a station 5 kHz away does not destroy the window set up for
-// wideband work, and going back restores it.
-//
-#if 0
-//
-// Push the settings globals into the widgets, without the handlers
-// bouncing them straight back to the radio.
-//
-static void div_populate_from_settings(void) {
-  if (dialog == NULL) { return; }
-
-  updating_from_server = 1;
-
-  if (auto_combo)   { gtk_combo_box_set_active(GTK_COMBO_BOX(auto_combo), div_auto_mode); }
-
-  if (ref_combo)    { gtk_combo_box_set_active(GTK_COMBO_BOX(ref_combo), div_ref_to_row(div_auto_ref)); }
-
-  if (follow_b)     { gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(follow_b), div_auto_follow_filter); }
-
-  if (centre_spin)  { gtk_spin_button_set_value(GTK_SPIN_BUTTON(centre_spin), div_auto_centre); }
-
-  if (width_spin)   { gtk_spin_button_set_value(GTK_SPIN_BUTTON(width_spin), div_auto_width); }
-
-  if (weight_combo) { gtk_combo_box_set_active(GTK_COMBO_BOX(weight_combo), div_auto_weighting); }
-
-  if (tau_scale)    { gtk_range_set_value(GTK_RANGE(tau_scale), div_tau_to_pos(div_auto_tau)); }
-
-  if (hang_scale)   { gtk_range_set_value(GTK_RANGE(hang_scale), div_auto_hang); }
-
-  if (coh_scale)    { gtk_range_set_value(GTK_RANGE(coh_scale), 100.0 * div_auto_coherence_min); }
-
-  if (hold_b)       { gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(hold_b), div_auto_hold); }
-
-  if (res_combo) {
-    //
-    // The combo is an index into { 12, 6, 3 } Hz; the setting is the bin
-    // width itself. Match on midpoints so a value that has been through a
-    // double round trip still lands on its own entry.
-    //
-    const int i = (div_auto_resolution < 4.5) ? 2 : (div_auto_resolution < 9.0) ? 1 : 0;
-    gtk_combo_box_set_active(GTK_COMBO_BOX(res_combo), i);
-  }
-
-  updating_from_server = 0;
-}
-#endif
-
-//
-// The other end changed something. Used on the radio when a client moves
-// a control, so a menu open on both stays in step.
-//
-void diversity_menu_refresh(void) {
-  //div_populate_from_settings();
-}
-
-//
-// The radio changed mode and diversity_auto_mode_changed() has swapped
-// one block of modal settings for another. See diversity_menu.h.
-//
-gboolean diversity_menu_settings_changed(gpointer data) {
-  (void)data;
-  //div_populate_from_settings();
-  div_send_settings(DIV_ACTION_NONE);
-  return G_SOURCE_REMOVE;
-}
-
-//
 // Remote client: the radio has sent its settings - on connect, or because
 // someone moved a control on the radio's own panel. Adopt them and show
 // them. Runs on the GTK thread, put there by the client read loop.
@@ -692,39 +602,71 @@ gboolean diversity_client_set_status(gpointer data) {
 }
 
 //
-// The engine owns the swap itself - window pair and coherence threshold
-// together - because the threshold has to follow the reference on every
-// path, not only this one. These wrap it and move the widgets afterwards.
+// Some parameters of the engine are stored individually "by the reference"
+// So when changing the reference, one has to store the old parameters in
+// their individual slot, and restore them from the new slot.
 //
-static void div_window_store(int ref) {
-  diversity_auto_ref_store(ref);
+static void store_ref_values(int ref) {
+  switch (ref) {
+  case DIV_REF_CARRIER:
+    div_carrier_centre = div_auto_centre;
+    div_carrier_width  = div_auto_width;
+    div_carrier_cohmin = div_auto_coherence_min;
+    break;
+  case DIV_REF_BAND:
+    div_band_centre = div_auto_centre;
+    div_band_width  = div_auto_width;
+    div_band_cohmin = div_auto_coherence_min;
+    break;
+  case DIV_REF_DIGITAL_IQ:
+    div_digital_centre = div_auto_centre;
+    div_digital_width  = div_auto_width;
+    div_digital_cohmin = div_auto_coherence_min;
+    break;
+  case DIV_REF_RADE_V1:
+    div_rade_cohmin = div_auto_coherence_min;
+    break;
+  }
 }
 
-#if 0
-static void div_window_recall(int ref) {
-  diversity_auto_ref_recall(ref);
-
-  if (coh_scale) {
-    updating_from_auto = 1;
-    gtk_range_set_value(GTK_RANGE(coh_scale), 100.0 * div_auto_coherence_min);
-    updating_from_auto = 0;
-  }
-
-  if (centre_spin) {
-    updating_from_auto = 1;
-    gtk_spin_button_set_value(GTK_SPIN_BUTTON(centre_spin), div_auto_centre);
-    gtk_spin_button_set_value(GTK_SPIN_BUTTON(width_spin), div_auto_width);
-    updating_from_auto = 0;
+static void restore_ref_values(int ref) {
+  //
+  // In addition to just restoring the values,
+  // GUI elements have to be updated. To this end,
+  // block/unblock the respective signals.
+  //
+  switch (ref) {
+  case DIV_REF_CARRIER:
+    div_auto_centre = div_carrier_centre;
+    div_auto_width = div_carrier_width;
+    div_auto_coherence_min = div_carrier_cohmin;
+    break;
+  case DIV_REF_BAND:
+    div_auto_centre = div_band_centre;
+    div_auto_width  = div_band_width;
+    div_auto_coherence_min = div_band_cohmin;
+    break;
+  case DIV_REF_DIGITAL_IQ:
+    div_auto_centre = div_digital_centre;
+    div_auto_width  = div_digital_width;
+    div_auto_coherence_min = div_digital_cohmin;
+    break;
+  case DIV_REF_RADE_V1:
+    div_auto_coherence_min = div_rade_cohmin;
+    break;
   }
 }
-#endif
 
 static void ref_changed_cb(GtkWidget *widget, gpointer data) {
-  int previous = div_auto_ref;
-  int was_off = (div_auto_mode == DIV_MANUAL);
-  div_window_store(previous);
+  //
+  // Store the "current values" to the "old ref values",
+  // then restore the "current values" from the "new ref values"
+  //
+  // After restore, modify the GUI elements as to reflect the new values
+  //
+  store_ref_values(div_auto_ref);
   div_auto_ref = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-  //div_window_recall(div_auto_ref);
+  restore_ref_values(div_auto_ref);
 
   //
   // On RADE V1 the wanted signal is the one the pilot correlator is
@@ -733,11 +675,8 @@ static void ref_changed_cb(GtkWidget *widget, gpointer data) {
   // Sum on the way in; the operator can still choose otherwise
   // afterwards.
   //
-  if (div_auto_ref == DIV_REF_RADE_V1 && previous != DIV_REF_RADE_V1) {
-    div_auto_mode = DIV_AUTO_SUM;
-    updating_ref = 1;
-    //gtk_combo_box_set_active(GTK_COMBO_BOX(auto_combo), div_auto_mode);
-    updating_ref = 0;
+  if (div_auto_ref == DIV_REF_RADE_V1) {
+    gtk_combo_box_set_active(GTK_COMBO_BOX(auto_btn), DIV_AUTO_SUM);
   }
 
   //
@@ -746,35 +685,29 @@ static void ref_changed_cb(GtkWidget *widget, gpointer data) {
   // the objective off Off - or if the pilot correlator's own front end
   // has to be built or torn down.
   //
-  if (was_off != (div_auto_mode == DIV_MANUAL) ||
-      div_auto_ref == DIV_REF_RADE_V1 || previous == DIV_REF_RADE_V1) {
-    diversity_auto_restart();
-  }
-
+  diversity_auto_restart();
   diversity_auto_reset();
   div_send_settings(DIV_ACTION_NONE);
 }
 
 static void follow_cb(GtkWidget *widget, gpointer data) {
   div_auto_follow_filter = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  gtk_widget_set_sensitive(win_centre_btn, NOT(div_auto_follow_filter));
+  gtk_widget_set_sensitive(win_width_btn, NOT(div_auto_follow_filter));
   diversity_auto_reset();
   div_send_settings(DIV_ACTION_NONE);
 }
 
 static void centre_cb(GtkWidget *widget, gpointer data) {
-  if (updating_from_auto) { return; }
-
   div_auto_centre = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  div_window_store(div_auto_ref);
+  store_ref_values(div_auto_ref);
   diversity_auto_reset();
   div_send_settings(DIV_ACTION_NONE);
 }
 
 static void width_cb(GtkWidget *widget, gpointer data) {
-  if (updating_from_auto) { return; }
-
   div_auto_width = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-  div_window_store(div_auto_ref);
+  store_ref_values(div_auto_ref);
   diversity_auto_reset();
   div_send_settings(DIV_ACTION_NONE);
 }
@@ -811,15 +744,13 @@ static void coh_cb(GtkWidget *widget, gpointer data) {
   // the slider's 5 % step would quantise the recalled value on the way
   // back in.
   //
-  if (updating_from_auto) { return; }
-
   div_auto_coherence_min = 0.01 * gtk_range_get_value(GTK_RANGE(widget));
+  store_ref_values(div_auto_ref);
   //
   // Straight into the selected reference's own slot as well, so that a
   // settings block sent from here carries the new value rather than
   // whatever was stored at the last reference change.
   //
-  diversity_auto_ref_store(div_auto_ref);
   div_send_settings(DIV_ACTION_NONE);
 }
 
@@ -918,16 +849,16 @@ void diversity_menu(GtkWidget *parent) {
     gtk_widget_set_name(lbl, "boldlabel");
     gtk_widget_set_halign(lbl, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), lbl, 0, row, 2, 1);
-    btn = gtk_spin_button_new_with_range(0.0, 31.0, 1.0);
-    gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), adc[0].attenuation);
+    btn = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 31.0, 1.0);
+    gtk_range_set_value(GTK_RANGE(btn), adc[0].attenuation);
     g_signal_connect(btn, "value_changed", G_CALLBACK(att_cb), GINT_TO_POINTER(0));
     gtk_grid_attach(GTK_GRID(grid), btn, 2, row, 4, 1);
     lbl = gtk_label_new("ADC1:");
     gtk_widget_set_name(lbl, "boldlabel");
     gtk_widget_set_halign(lbl, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), lbl, 6, row, 1, 1);
-    btn = gtk_spin_button_new_with_range(0.0, 31.0, 1.0);
-    gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), adc[1].attenuation);
+    btn = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 31.0, 1.0);
+    gtk_range_set_value(GTK_RANGE(btn), adc[1].attenuation);
     g_signal_connect(btn, "value_changed", G_CALLBACK(att_cb), GINT_TO_POINTER(1));
     gtk_grid_attach(GTK_GRID(grid), btn, 7, row, 4, 1);
   }
@@ -1012,25 +943,23 @@ void diversity_menu(GtkWidget *parent) {
   // the status line shows - a fixed range here would be wrong at three
   // rates out of four.
   //
-  btn = gtk_spin_button_new_with_range(-400000.0, 400000.0, 10.0);
-  gtk_scale_set_digits(GTK_SCALE(btn), 0);
+  win_centre_btn = gtk_spin_button_new_with_range(-400000.0, 400000.0, 10.0);
   //gtk_widget_set_tooltip_text(centre_spin,
   //                            "Offset from the signal you are tuned to. In CW that is "
   //                            "the zero-beat note, one CW pitch away from the dial "
   //                           "frequency, so a centre of 0 sits on what you are "
   //                            "listening to in every mode.");
-  gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), div_auto_centre);
-  gtk_grid_attach(GTK_GRID(agrid), btn, 2, 1, 4, 1);
-  g_signal_connect(btn, "value_changed", G_CALLBACK(centre_cb), NULL);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(win_centre_btn), div_auto_centre);
+  gtk_grid_attach(GTK_GRID(agrid), win_centre_btn, 2, 1, 4, 1);
+  g_signal_connect(win_centre_btn, "value_changed", G_CALLBACK(centre_cb), NULL);
   lbl = gtk_label_new("Width");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(agrid), lbl, 6, 1, 1, 1);
-  btn = gtk_spin_button_new_with_range(20.0, 40000.0, 10.0);
-  gtk_scale_set_digits(GTK_SCALE(btn), 0);
-  gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), div_auto_width);
-  gtk_grid_attach(GTK_GRID(agrid), btn, 7, 1, 4, 1);
-  g_signal_connect(btn, "value_changed", G_CALLBACK(width_cb), NULL);
+  win_width_btn = gtk_spin_button_new_with_range(20.0, 40000.0, 10.0);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(win_width_btn), div_auto_width);
+  gtk_grid_attach(GTK_GRID(agrid), win_width_btn, 7, 1, 4, 1);
+  g_signal_connect(win_width_btn, "value_changed", G_CALLBACK(width_cb), NULL);
   lbl = gtk_label_new("Resolution");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
@@ -1166,7 +1095,9 @@ void diversity_menu(GtkWidget *parent) {
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
   //
- gtk_widget_hide(div_auto_mode > 0 ? mcontainer : acontainer);
- gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
- status_timer = g_timeout_add(250, status_update_cb, NULL);
+  gtk_widget_set_sensitive(win_centre_btn, NOT(div_auto_follow_filter));
+  gtk_widget_set_sensitive(win_width_btn, NOT(div_auto_follow_filter));
+  gtk_widget_hide(div_auto_mode > 0 ? mcontainer : acontainer);
+  gtk_window_resize(GTK_WINDOW(dialog), 1, 1);
+  status_timer = g_timeout_add(250, status_update_cb, NULL);
 }
