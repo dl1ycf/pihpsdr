@@ -154,6 +154,22 @@ static gboolean close_cb(void) {
   return TRUE;
 }
 
+static void sanitize_man_values() {
+  //
+  // set coarse/fine values from "sanitized" actual values
+  //
+  if (man_div_gain >  27.0) { man_div_gain = 27.0; }
+  if (man_div_gain < -27.0) { man_div_gain = -27.0; }
+  while (man_div_phase >  180.0) { man_div_phase -= 360.0; }
+  while (man_div_phase < -180.0) { man_div_phase += 360.0; }
+  gain_coarse = 2.0 * round(0.5 * man_div_gain);
+  if (man_div_gain >  25.0) { gain_coarse = 25.0; }
+  if (man_div_gain < -25.0) { gain_coarse = -25.0; }
+  gain_fine = man_div_gain - gain_coarse;
+  phase_coarse = 4.0 * round(man_div_phase * 0.25);
+  phase_fine = man_div_phase - phase_coarse;
+} 
+
 static void enable_cb(GtkWidget *widget, gpointer data) {
   int state = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   //
@@ -452,6 +468,18 @@ static void mode_changed_cb(GtkWidget *widget, gpointer data) {
   div_auto_mode = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
 
   if (div_auto_mode == DIV_MANUAL) {
+    //
+    // Copy the "auto" parameters to "manual". To do so, re-calculate
+    // the coarse/fine value and change the GUI elements, which then
+    // will fire the callbacks
+    //
+    man_div_gain = auto_div_gain;
+    man_div_phase = auto_div_phase;
+    sanitize_man_values();
+    gtk_range_set_value(GTK_RANGE(gain_coarse_scale), gain_coarse);
+    gtk_range_set_value(GTK_RANGE(gain_fine_scale), gain_fine);
+    gtk_range_set_value(GTK_RANGE(phase_coarse_scale), phase_coarse);
+    gtk_range_set_value(GTK_RANGE(phase_fine_scale), phase_fine);
     gtk_widget_hide(acontainer);
     gtk_widget_show(mcontainer);
   } else {
@@ -519,7 +547,7 @@ static void invert_cb(GtkWidget *widget, gpointer data) {
   if (div_auto_mode != DIV_AUTO_SUM && div_auto_mode != DIV_AUTO_NULL) { return; }
 
   //
-  // This sends a signal, so auto_cb does the rest
+  // This sends a signal, so mode_changed_cb does the rest
   //
   gtk_combo_box_set_active(GTK_COMBO_BOX(auto_btn),
                            (div_auto_mode == DIV_AUTO_NULL) ? DIV_AUTO_SUM : DIV_AUTO_NULL);
@@ -794,19 +822,6 @@ void diversity_menu(GtkWidget *parent) {
   gtk_header_bar_set_title(GTK_HEADER_BAR(headerbar), "piHPSDR - Diversity");
   g_signal_connect (dialog, "delete_event", G_CALLBACK (close_cb), NULL);
   g_signal_connect (dialog, "destroy", G_CALLBACK (close_cb), NULL);
-  //
-  // set coarse/fine values from "sanitized" actual values
-  //
-  if (man_div_gain >  27.0) { man_div_gain = 27.0; }
-  if (man_div_gain < -27.0) { man_div_gain = -27.0; }
-  while (man_div_phase >  180.0) { man_div_phase -= 360.0; }
-  while (man_div_phase < -180.0) { man_div_phase += 360.0; }
-  gain_coarse = 2.0 * round(0.5 * man_div_gain);
-  if (man_div_gain >  25.0) { gain_coarse = 25.0; }
-  if (man_div_gain < -25.0) { gain_coarse = -25.0; }
-  gain_fine = man_div_gain - gain_coarse;
-  phase_coarse = 4.0 * round(man_div_phase * 0.25);
-  phase_fine = man_div_phase - phase_coarse;
   GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
   GtkWidget *grid = gtk_grid_new();
   gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
@@ -845,7 +860,7 @@ void diversity_menu(GtkWidget *parent) {
   if (have_rx_att) {
     row++;
     //
-    lbl = gtk_label_new("ATT ADC0:");
+    lbl = gtk_label_new("ATT ADC1:");
     gtk_widget_set_name(lbl, "boldlabel");
     gtk_widget_set_halign(lbl, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), lbl, 0, row, 2, 1);
@@ -853,7 +868,7 @@ void diversity_menu(GtkWidget *parent) {
     gtk_range_set_value(GTK_RANGE(btn), adc[0].attenuation);
     g_signal_connect(btn, "value_changed", G_CALLBACK(att_cb), GINT_TO_POINTER(0));
     gtk_grid_attach(GTK_GRID(grid), btn, 2, row, 4, 1);
-    lbl = gtk_label_new("ADC1:");
+    lbl = gtk_label_new("ADC2:");
     gtk_widget_set_name(lbl, "boldlabel");
     gtk_widget_set_halign(lbl, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), lbl, 6, row, 1, 1);
@@ -873,10 +888,14 @@ void diversity_menu(GtkWidget *parent) {
   gtk_grid_set_row_homogeneous(GTK_GRID(mgrid), TRUE);
   gtk_grid_set_column_spacing (GTK_GRID(mgrid), 5);
   gtk_grid_set_row_spacing (GTK_GRID(mgrid), 5);
-  GtkWidget *gain_coarse_label = gtk_label_new("Gain (dB, coarse)");
-  gtk_widget_set_name(gain_coarse_label, "boldlabel");
-  gtk_widget_set_halign(gain_coarse_label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(mgrid), gain_coarse_label, 0, 0, 2, 1);
+  //
+  // Sanitize the manual values before setting the sliders
+  //
+  sanitize_man_values();
+  lbl = gtk_label_new("Gain (dB, coarse)");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
+  gtk_grid_attach(GTK_GRID(mgrid), lbl, 0, 0, 2, 1);
   gain_coarse_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, -25.0, +25.0, 0.5);
   gtk_range_set_value(GTK_RANGE(gain_coarse_scale), gain_coarse);
   gtk_grid_attach(GTK_GRID(mgrid), gain_coarse_scale, 2, 0, 8, 1);
