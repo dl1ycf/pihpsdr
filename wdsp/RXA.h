@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -147,6 +147,10 @@ struct _rxa
 	} emnr;
 	struct
 	{
+		NNR p;
+	} nnr;
+	struct
+	{
 		WCPAGC p;
 	} agc;
 	struct
@@ -167,11 +171,7 @@ struct _rxa
 	} gaussian;
     struct
     {
-        RNNR p; // NR3 + NR4 support (nr3)
-    } rnnr;
-    struct
-    {
-        SBNR p; // NR3 + NR4 support (nr4)
+        SBNR p; // NR4
     } sbnr;
 	struct
 	{
@@ -223,8 +223,8 @@ extern __declspec (dllexport) void SetRXAMode (int channel, int mode);
 
 extern void RXAResCheck (int channel);
 
-extern void RXAbp1Check (int channel, int amd_run, int snba_run, int emnr_run, int anf_run, int anr_run,
-                         int rnnr_run, int sbnr_run);  // NR3 + NR4 support
+extern void RXAbp1Check (int channel, int amd_run, int snba_run, 
+	int emnr_run, int nnr_run, int anf_run, int anr_run, int sbnr_run);  // NR4
 
 extern void RXAbp1Set (int channel);
 

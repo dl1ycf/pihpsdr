@@ -115,6 +115,10 @@ typedef struct _client {
   struct lws *wsi;              // libwebsockets connection
   GAsyncQueue *lws_tx_queue;    // queued PAYLOAD objects for LWS writable callback
   int initial_sent;             // initial state already sent via LWS
+  int audio_sample_rate;
+  int audio_channels;
+  int audio_sample_type;
+  int audio_samples;
   int rx_audio_enabled[TCI_RX_AUDIO_MAX_RECEIVERS];
   int tx_audio_enabled;
   unsigned int tx_audio_rx_count;
@@ -340,7 +344,7 @@ static void tci_queue_rx_audio_frame (CLIENT *client, int receiver_id) {
   TCI_STREAM stream;
   size_t frame_len;
   if (client == NULL || !client->running || !client->rx_audio_enabled[receiver_id]) { return; }
-  if (tci_audio_get_frame (receiver_id, &stream, sizeof (stream), &frame_len) == 0) {
+  if (tci_audio_get_frame (receiver_id, &stream, sizeof (stream), &frame_len, client->audio_channels) == 0) {
     return;
   }
   (void) tci_queue_binary_frame (client, (const unsigned char *)&stream, frame_len);
@@ -354,7 +358,7 @@ static int tci_queue_tx_chrono_frame (CLIENT *client) {
   memset (&header, 0, sizeof (header));
   header.receiver = 0;
   header.sample_rate = TCI_AUDIO_SAMPLE_RATE;
-  header.format = TCI_AUDIO_FORMAT_FLOAT32;
+  header.format = TCI_AUDIO_SAMPLE_TYPE;
   header.length = TCI_TX_AUDIO_CHRONO_LENGTH;
   header.type = TCI_STREAM_TX_CHRONO;
   header.channels = 2;
@@ -1498,8 +1502,8 @@ static void tci_cmd_trx (CLIENT *client, const TCI_CMD *cmd) {
           client->tx_audio_rx_count = 0;
           tci_send_text (client, "audio_samplerate:48000;");
           tci_send_text (client, "audio_stream_sample_type:float32;");
-          tci_send_text (client, "audio_stream_channels:1;");
-          tci_send_text (client, "audio_stream_samples:512;");
+          tci_send_text (client, "audio_stream_channels:2;");
+          tci_send_text (client, "audio_stream_samples:1024;");
           tci_send_text (client, "tx_stream_audio_buffering:50;");
           tci_send_text (client, "audio_start:0;");
         }
@@ -1776,34 +1780,37 @@ static void tci_cmd_tx_sensors_enable (CLIENT *client, const TCI_CMD *cmd) {
 
 
 static void tci_cmd_audio_start (CLIENT *client, const TCI_CMD *cmd) {
+  // unidirectional command from the client
   int receiver_id = tci_int (cmd->argv[0], 0);
-  char msg[MAXMSGSIZE];
   if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
+  //
+  // Do not start audio if a non-implemented value for
+  // sample_rate or sample_type has been given
+  if (client->audio_sample_rate != TCI_AUDIO_SAMPLE_RATE) { return; }
+  if (client->audio_samples != TCI_AUDIO_SAMPLES) { return; }
+  if (client->audio_sample_type != TCI_AUDIO_SAMPLE_TYPE) { return; }
   client->rx_audio_enabled[receiver_id] = 1;
   tci_update_audio_global();
-  snprintf (msg, MAXMSGSIZE, "audio_start:%d;", receiver_id);
+  //
+  // Although audio_start is unidirectional according to the TCI documentation,
+  // WSJT-X and TCI:remote (ON7OFF) expect this answer.
+  //
+  char msg[MAXMSGSIZE];
+  snprintf(msg, sizeof(msg), "audio_start:%d;", receiver_id);
   tci_send_text (client, msg);
 }
 
-static void tci_send_audio_samplerate (CLIENT *client) {
-  tci_send_text (client, "audio_samplerate:48000;");
-}
-
-static void tci_send_audio_stream_sample_type (CLIENT *client) {
-  tci_send_text (client, "audio_stream_sample_type:3;");
-}
-
-static void tci_send_audio_stream_channels (CLIENT *client) {
-  tci_send_text (client, "audio_stream_channels:2;");
-}
-
-static void tci_send_audio_stream_samples (CLIENT *client) {
-  tci_send_text (client, "audio_stream_samples:512;");
-}
-
 static void tci_cmd_audio_samplerate (CLIENT *client, const TCI_CMD *cmd) {
-  tci_send_audio_samplerate (client);
-  tci_send_audio_stream_samples (client);
+  // unidirectional command from the client.
+  int rate = tci_int (cmd->argv[0], 0);
+  client->audio_sample_rate = rate;
+  //
+  // Although audio_start is unidirectional according to the TCI documentation,
+  // TCI:remote (ON7OFF) expect this answer.
+  //
+  char msg[MAXMSGSIZE];
+  snprintf(msg, sizeof(msg), "audio_samplerate:%d;", rate);
+  tci_send_text (client, msg);
 }
 
 static void tci_cmd_iq_samplerate(CLIENT *client, const TCI_CMD *cmd) {
@@ -1835,24 +1842,53 @@ static void tci_cmd_mon_enable(CLIENT *client, const TCI_CMD *cmd) {
 }
 
 static void tci_cmd_audio_stream_sample_type (CLIENT *client, const TCI_CMD *cmd) {
-  tci_send_audio_stream_sample_type (client);
+  // unidirectional command from the client.
+  if (strstr(cmd->argv[0], "float32") || strstr(cmd->argv[0], "FLOAT32")) {
+    client->audio_sample_type = 3;
+  } else if (strstr(cmd->argv[0], "int32") || strstr(cmd->argv[0], "INT32")) {
+    client->audio_sample_type = 2;
+  } else if (strstr(cmd->argv[0], "int24") || strstr(cmd->argv[0], "INT24")) {
+    client->audio_sample_type = 1;
+  } else if (strstr(cmd->argv[0], "int16") || strstr(cmd->argv[0], "INT16")) {
+    client->audio_sample_type = 0;
+  }
 }
 
 static void tci_cmd_audio_stream_channels (CLIENT *client, const TCI_CMD *cmd) {
-  tci_send_audio_stream_channels (client);
+  // unidirectional command from the client.
+  int channels = tci_int (cmd->argv[0], 0);
+  if (channels == 1) {
+    client->audio_channels = 1;
+  } else {
+    client->audio_channels = 2;
+  }
 }
 
 static void tci_cmd_audio_stream_samples (CLIENT *client, const TCI_CMD *cmd) {
-  tci_send_audio_stream_samples (client);
+  // unidirectional command from the client.
+  int samples = tci_int (cmd->argv[0], 0);
+  client->audio_samples = samples;
+  char msg[MAXMSGSIZE];
+  snprintf(msg, sizeof(msg), "audio_samples:%d;", samples);
+  tci_send_text (client, msg);
 }
 
 static void tci_cmd_audio_stop (CLIENT *client, const TCI_CMD *cmd) {
+  // unidirectional command from the client
   int receiver_id = tci_int (cmd->argv[0], 0);
-  char msg[MAXMSGSIZE];
   if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
+  //
+  // Silently ignore if the audio has not been started
+  //
+  if (!client->rx_audio_enabled[receiver_id]) { return; }
   client->rx_audio_enabled[receiver_id] = 0;
   tci_update_audio_global();
-  snprintf (msg, MAXMSGSIZE, "audio_stop:%d;", receiver_id);
+  //
+  // Although audio_start is unidirectional according to the TCI documentation,
+  // WSJT-X and TCI:remote (ON7OFF) expect this answer.
+  //
+  char msg[MAXMSGSIZE];
+  snprintf(msg, sizeof(msg), "audio_off:%d;", receiver_id);
   tci_send_text (client, msg);
 }
 
@@ -2288,10 +2324,10 @@ static const TCI_DISPATCH tci_dispatch[] = {
   { "iq_samplerate",     1,  1, tci_cmd_iq_samplerate },
   { "mon_volume",        0,  1, tci_cmd_mon_volume },
   { "mon_enable",        0,  1, tci_cmd_mon_enable },
-  { "audio_samplerate",            0, -1, tci_cmd_audio_samplerate },
-  { "audio_stream_sample_type",    0, -1, tci_cmd_audio_stream_sample_type },
-  { "audio_stream_channels",       0, -1, tci_cmd_audio_stream_channels },
-  { "audio_stream_samples",        0, -1, tci_cmd_audio_stream_samples },
+  { "audio_samplerate",            1, 1, tci_cmd_audio_samplerate },
+  { "audio_stream_sample_type",    1, 1, tci_cmd_audio_stream_sample_type },
+  { "audio_stream_channels",       1, 1, tci_cmd_audio_stream_channels },
+  { "audio_stream_samples",        1, 1, tci_cmd_audio_stream_samples },
   { "rx_sensors_enable", 1,  2, tci_cmd_rx_sensors_enable },
   { "tx_sensors_enable", 1,  2, tci_cmd_tx_sensors_enable },
   { "audio_start",       1,  1, tci_cmd_audio_start },
@@ -2497,6 +2533,13 @@ static int tci_init_client (int fd) {
       for (int i = 0; i < TCI_RX_AUDIO_MAX_RECEIVERS; i++) {
         client->rx_audio_enabled[i] = 0;
       }
+      //
+      // Set audio defaults
+      //
+      client->audio_sample_rate = TCI_AUDIO_SAMPLE_RATE;
+      client->audio_channels = 2;
+      client->audio_sample_type = TCI_AUDIO_SAMPLE_TYPE;
+      client->audio_samples = TCI_AUDIO_SAMPLES;
       return c;
     }
   }
@@ -2622,6 +2665,15 @@ static void tci_send_initial_state (CLIENT *client) {
   tci_send_macros_cwspeed (client);
   tci_send_cw_macros_delay(client);
   tci_send_keyer_cwspeed (client);
+  //
+  // Default audio options for TX audio
+  //
+  tci_send_text (client, "audio_stream_sample_type: float32;");
+  tci_send_text (client, "audio_stream_channels: 2");
+  tci_send_text (client, "audio_stream_samples: 1024");
+  tci_send_text (client, "audio_samplerate:48000;");
+  tci_send_text (client, "tx_stream_audio_buffering:50;");
+  //
   tci_send_text (client, "ready;");
   tci_send_text (client, "start;");
 }
@@ -2923,7 +2975,7 @@ int launch_tci (void) {
   t_print ("---- LAUNCHING TCI LWS SERVER ----\n");
   //
   // Verify that a TCI audio stream header has exactly 64 bytes,
-  // and that a TCI audio stream struct has 32832 bytes (if filled completely).
+  // and that a TCI audio stream struct has 16448 bytes (if filled completely).
   // This should ensure that the audio stream data begins exactly 64 bytes
   // after the header and is thus properly aligned for "float" access.
   //
@@ -2931,8 +2983,8 @@ int launch_tci (void) {
     t_print ("TCI cannot start, audio stream header is not 64 bytes long\n");
     return -1;
   }
-  if (sizeof(TCI_STREAM) != 32832) {
-    t_print("TCI cannot start, audio stream is not 32832 bytes long\n");
+  if (sizeof(TCI_STREAM) != 16448) {
+    t_print("TCI cannot start, audio stream is not 16448 bytes long\n");
     return -1;
   }
   memset(tciclient, 0, sizeof(tciclient));

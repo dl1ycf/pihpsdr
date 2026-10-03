@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -109,7 +109,7 @@ void xiqc (IQC a)
 			switch (a->state)
 			{
 			case RUN:
-
+			
 				break;
 			case BEGIN:
 				PRE0 = (1.0 - a->cup[a->count]) * I + a->cup[a->count] * PRE0;
@@ -154,7 +154,7 @@ void xiqc (IQC a)
 
 			{
 				double omag2 = PRE0 * PRE0 + PRE1 * PRE1;
-				if (omag2 > IQC_OUT_MAX * IQC_OUT_MAX)
+				if (omag2 > IQC_OUT_MAX * IQC_OUT_MAX) 
 				{
 					double sc = IQC_OUT_MAX / sqrt(omag2);
 					PRE0 *= sc;

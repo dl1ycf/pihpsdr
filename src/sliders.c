@@ -132,8 +132,12 @@ static void attenuation_value_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void agcgain_value_changed_cb(GtkWidget *widget, gpointer data) {
-  double value = gtk_range_get_value(GTK_RANGE(widget));
-  radio_set_agc_gain(active_receiver->id, value);
+  if (active_receiver->agc_automatic_gain) {
+    gtk_range_set_value (GTK_RANGE(widget), active_receiver->agc_gain);
+  } else {
+    double value = gtk_range_get_value(GTK_RANGE(widget));
+    radio_set_agc_gain(active_receiver->id, value);
+  }
 }
 
 static void linein_value_changed_cb(GtkWidget *widget, gpointer data) {
@@ -755,7 +759,7 @@ int sliders_diversity_gain(gpointer data) {
   //
   // This ONLY produces a popup-slider
   //
-  show_popup_slider(DIV_GAIN, -1, -27.0, 27.0, 0.01, div_gain, "Diversity Gain");
+  show_popup_slider(DIV_GAIN, -1, -27.0, 27.0, 0.01, man_div_gain, "Diversity Gain");
   return G_SOURCE_REMOVE;
 }
 
@@ -763,7 +767,7 @@ int sliders_diversity_phase(gpointer data) {
   //
   // This ONLY produces a popup-slider
   //
-  show_popup_slider(DIV_PHASE, -1, -180.0, 180.0, 0.1, div_phase, "Diversity Phase");
+  show_popup_slider(DIV_PHASE, -1, -180.0, 180.0, 0.1, man_div_phase, "Diversity Phase");
   return G_SOURCE_REMOVE;
 }
 

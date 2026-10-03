@@ -64,6 +64,7 @@
 #include "band.h"
 #include "client_server.h"
 #include "ext.h"
+#include "diversity_menu.h"
 #include "filter.h"
 #include "iambic.h"
 #include "main.h"
@@ -145,6 +146,7 @@ static int send_periodic_data(gpointer arg) {
   // here to inform the client when the server has moved the drive slider
   // to zero (SWR protection measure)
   //
+
   DISPLAY_DATA disp_data;
   SYNC(disp_data.header.sync);
   disp_data.header.data_type = to_16(INFO_DISPLAY);
@@ -627,6 +629,14 @@ static void server_loop(void) {
       }
     }
     break;
+    case CMD_DIV_SETTINGS: {
+      DIV_SETTINGS_COMMAND *command = g_new(DIV_SETTINGS_COMMAND, 1);
+      command->header = header;
+      if (recv_tcp(remoteclient.sock_tcp, (char *)command + sizeof(HEADER), sizeof(DIV_SETTINGS_COMMAND) - sizeof(HEADER)) > 0) {
+        g_idle_add(server_command, command);
+      }
+    }
+    break;
     case CMD_DEXP: {
       DEXP_DATA *command = g_new(DEXP_DATA, 1);
       command->header = header;
@@ -720,6 +730,7 @@ static void server_loop(void) {
     // submit that copy  to server_command().
     //
     case CMD_ADC:
+    case CMD_ADC_ATTENUATION:
     case CMD_ANAN10E:
     case CMD_ATTENUATION:
     case CMD_BANDSTACK:
@@ -772,13 +783,13 @@ static void server_loop(void) {
     case CMD_TOGGLE_TUNE:
     case CMD_TUNE:
     case CMD_TWOTONE:
+    case CMD_TXNOISE:
     case CMD_TXPROFILE:
     case CMD_TX_FPS:
     case CMD_TXFILTER:
     case CMD_VFO_A_TO_B:
     case CMD_VFO_B_TO_A:
     case CMD_VFO_SWAP:
-    case CMD_VOX:
     case CMD_XIT:
     case CMD_XVTR:
     case CMD_ZOOM: {
@@ -1250,7 +1261,7 @@ static int server_command(gpointer data) {
     // make some changes effective
     //
     radio_apply_band_settings(0, 0);
-    radio_calc_drive_level();
+    radio_calc_drive_level(0);
     schedule_high_priority();
   }
   break;
@@ -1447,13 +1458,6 @@ static int server_command(gpointer data) {
     radio_set_mox(header->b1);
     g_idle_add(ext_vfo_update, NULL);
     break;
-  case CMD_VOX:
-    //
-    // The client sends this to fire/remove VOX.
-    //
-    radio_set_vox(header->b1);
-    g_idle_add(ext_vfo_update, NULL);
-    break;
   case CMD_TUNE:
     if (transmitter != NULL) {
       full_tune = from_16(header->s1);
@@ -1472,6 +1476,13 @@ static int server_command(gpointer data) {
       send_twotone(remoteclient.sock_tcp, transmitter->twotone);
     }
     break;
+  case CMD_TXNOISE:
+    if (transmitter != NULL) {
+      radio_set_txnoise(transmitter, header->b1);
+      g_idle_add(ext_vfo_update, NULL);
+      send_txnoise(remoteclient.sock_tcp, transmitter->txnoise);
+    }
+    break;
   case CMD_AGC: {
     //
     // The client sends AGC parameters
@@ -1481,6 +1492,7 @@ static int server_command(gpointer data) {
     if (id < receivers) {
       RECEIVER *rx = receiver[id];
       rx->agc = agc_command->agc;
+      rx->agc_automatic_gain = agc_command->agc_automatic_gain;
       rx->agc_hang_threshold = from_double(agc_command->hang_thresh);
       suppress_popup_sliders++;
       radio_set_agc_gain(id, from_double(agc_command->gain));
@@ -1490,10 +1502,6 @@ static int server_command(gpointer data) {
       rx->agc_custom_hang   = from_16(agc_command->custom_hang);
       rx->agc_custom_slope  = from_16(agc_command->custom_slope);
       rx_set_agc(rx);
-      //
-      // Now hang and thresh have been calculated and need be sent back
-      //
-      send_agc(remoteclient.sock_tcp, rx);
     }
   }
   break;
@@ -1510,6 +1518,19 @@ static int server_command(gpointer data) {
     suppress_popup_sliders++;
     radio_set_attenuation(id, att);
     suppress_popup_sliders--;
+  }
+  break;
+  case CMD_ADC_ATTENUATION: {
+    int a = header->b1;
+    int att = from_16(header->s1);
+    suppress_popup_sliders++;
+    radio_set_adc_attenuation(a, att);
+    suppress_popup_sliders--;
+    //
+    // Send the ADC back, so the client's menu shows what the radio ended
+    // up with rather than what it asked for.
+    //
+    send_adc_data(remoteclient.sock_tcp, a);
   }
   break;
   case CMD_SQUELCH: {
@@ -1555,6 +1576,7 @@ static int server_command(gpointer data) {
       rx->nr2_post_nlevel        = command->nr2_post_nlevel;
       rx->nr2_post_factor        = command->nr2_post_factor;
       rx->nr2_post_rate          = command->nr2_post_rate;
+      rx->nnr_model              = command->nnr_model;
       rx->nr4_noise_scaling_type = command->nr4_noise_scaling_type;
       rx->nb_tau                 = from_double(command->nb_tau);
       rx->nb_hang                = from_double(command->nb_hang);
@@ -1562,6 +1584,7 @@ static int server_command(gpointer data) {
       rx->nb_thresh              = from_double(command->nb_thresh);
       rx->nr2_trained_threshold  = from_double(command->nr2_trained_threshold);
       rx->nr2_trained_t2         = from_double(command->nr2_trained_t2);
+      rx->nnr_floor              = from_double(command->nnr_floor);
       rx->nr4_reduction_amount   = from_double(command->nr4_reduction_amount);
       rx->nr4_smoothing_factor   = from_double(command->nr4_smoothing_factor);
       rx->nr4_whitening_factor   = from_double(command->nr4_whitening_factor);
@@ -1735,7 +1758,6 @@ static int server_command(gpointer data) {
     //
     for (int id = 0; id < receivers; id++) {
       send_rx_filter_cut(remoteclient.sock_tcp, id);
-      send_agc(remoteclient.sock_tcp, receiver[id]);
     }
     if (transmitter != NULL) {
       send_tx_filter_cut(remoteclient.sock_tcp);
@@ -2066,8 +2088,6 @@ static int server_command(gpointer data) {
   break;
   case CMD_RXMENU: {
     //
-    // cannot use send_agc since we transfer bypass info
-    // from both ADCs
     // Data included here is what is changed in the RX menu
     //
     const RXMENU_DATA *command = (RXMENU_DATA *)data;
@@ -2088,12 +2108,47 @@ static int server_command(gpointer data) {
   case CMD_DIVERSITY: {
     const DIVERSITY_COMMAND *command = (DIVERSITY_COMMAND *)data;
     suppress_popup_sliders++;
+    div_auto_mode = command->div_auto_mode;
     radio_set_diversity(command->diversity_enabled);
-    radio_set_diversity_gain(from_double(command->div_gain));
-    radio_set_diversity_phase(from_double(command->div_phase));
+    radio_set_diversity_gain(from_double(command->man_div_gain));
+    radio_set_diversity_phase(from_double(command->man_div_phase));
     suppress_popup_sliders--;
   }
   break;
+#if 0
+  case CMD_DIV_SETTINGS: {
+    //
+    // Everthing is controlled from the menu, so the server never sends
+    // such data except upon initial connect
+    //
+    const DIV_SETTINGS_COMMAND *command = (DIV_SETTINGS_COMMAND *)data;
+    DIV_SETTINGS set;
+    set.mode           = command->mode;
+    set.ref            = command->ref;
+    set.follow_filter  = command->follow_filter;
+    set.weighting      = command->weighting;
+    set.hold           = command->hold;
+    set.centre         = from_double(command->centre);
+    set.width          = from_double(command->width);
+    set.tau            = from_double(command->tau);
+    set.hang           = from_double(command->hang);
+    set.coherence_min  = from_double(command->coherence_min);
+    set.resolution     = from_double(command->resolution);
+    set.band_centre    = from_double(command->band_centre);
+    set.band_width     = from_double(command->band_width);
+    set.carrier_centre = from_double(command->carrier_centre);
+    set.carrier_width  = from_double(command->carrier_width);
+    set.digital_centre = from_double(command->digital_centre);
+    set.digital_width  = from_double(command->digital_width);
+    diversity_auto_apply_settings(&set, command->header.b1);
+    //
+    // If the radio's own Diversity menu is open, it is now showing the
+    // state before the client's change.
+    //
+    diversity_menu_refresh();
+  }
+  break;
+#endif
   case CMD_TXFILTER:
     if (transmitter != NULL) {
       transmitter->use_rx_filter = header->b1;
@@ -2265,7 +2320,6 @@ static int server_command(gpointer data) {
       rx->filter_high = from_16(header->s2);
       rx_set_bandpass(rx);
       rx_set_agc(rx);
-      send_agc(remoteclient.sock_tcp, rx);
       g_idle_add(ext_vfo_update, NULL);
     }
   }

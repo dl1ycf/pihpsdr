@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -28,7 +28,7 @@ warren@pratt.one
 #define _syncbuffs_h
 #include "comm.h"
 
-#define SYNCB_MULT		(3)
+#define SYNCB_MULT		(3)						
 typedef struct _syncb
 {
 	void (*exf)(void);							// pointer to function to execute after output buffer is filled
@@ -36,11 +36,11 @@ typedef struct _syncb
 	int nstreams;								// number of streams of data being buffered
 	int   max_in_size;							// max input number of complex samples
 	int   max_outsize;							// max output number of complex samples
-	int   r1_outsize;							// number of complex samples taken out of the ring for processing
+	int   r1_outsize;							// number of complex samples taken out of the ring for processing 
 
 	int   r1_size;								// size of a single maximum sized transfer
 	int   r1_active_buffsize;					// size of ring (in complex samples)
-
+	
 	double** r1_baseptr;						// array of pointers, one to each ring
 	int   r1_inidx;								// in 'double', actual index into the buffer is 2 times this
 	int   r1_outidx;							// in 'double', actual index into the buffer is 2 times this
@@ -58,7 +58,7 @@ extern void destroy_syncbuffs (SYNCB a);
 
 extern void flush_syncbuffs (SYNCB a);
 
-extern void Syncbound (SYNCB a, int nsamples, double** in);
+extern void Syncbound (SYNCB a, int nsamples, double** in);	
 
 extern void syncbdata (SYNCB a);
 

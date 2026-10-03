@@ -90,7 +90,7 @@ static void impulse_halfband_dcheb(double* h, int N, double atten_db)
 
 
 
-static double bh7 (int n, int N)
+static double bh7 (int n, int N) 
 {
     // For ODD 'N'
     const double a0 = 0.27105140069342;
@@ -138,7 +138,7 @@ static int xhbres(HBRES r)
     int h_center_idx = 0, idx_left = 0, idx_right = 0;
     double hval = 0.0;
     complex_t accum = { 0.0, 0.0 };
-
+    
     for (int i = 0; i < r->size; i++)
     {
         r->ring[r->ring_ptr] = r->in[i];
@@ -367,7 +367,7 @@ static void calc_HBResampler(HBResampler tData)
         }
         if (i == tData->nStages - 1)
             tData->rsmps[i].out = tData->out;
-        else
+        else 
             tData->rsmps[i].out = tData->buff[i];
         tData->rsmps[i].N = tData->taps[i];
         tData->rsmps[i].ring_ptr = 0;

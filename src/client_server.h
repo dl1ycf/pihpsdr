@@ -33,6 +33,7 @@
 
 enum _header_type_enum {
   CMD_ADC,
+  CMD_ADC_ATTENUATION,
   CMD_AGC,
   CMD_AMCARRIER,
   CMD_ANAN10E,
@@ -50,6 +51,7 @@ enum _header_type_enum {
   CMD_DEXP,
   CMD_DIGIMAX,
   CMD_DIVERSITY,
+  CMD_DIV_SETTINGS,
   CMD_DRIVE,
   CMD_DUP,
   CMD_FILTER_BOARD,
@@ -115,6 +117,7 @@ enum _header_type_enum {
   CMD_TXFFT,
   CMD_TXFILTER,
   CMD_TXMENU,
+  CMD_TXNOISE,
   CMD_TXPROFILE,
   CMD_TX_DISPLAY,
   CMD_TX_EQ,
@@ -126,7 +129,6 @@ enum _header_type_enum {
   CMD_VFO_STEPSIZE,
   CMD_VFO_SWAP,
   CMD_VOLUME,
-  CMD_VOX,
   CMD_XIT,
   CMD_XVTR,
   CMD_ZOOM,
@@ -134,6 +136,7 @@ enum _header_type_enum {
   INFO_BAND,
   INFO_BANDSTACK,
   INFO_DISPLAY,
+  INFO_DIVERSITY,
   INFO_MEMORY,
   INFO_PS,
   INFO_RADIO,
@@ -149,7 +152,7 @@ enum _header_type_enum {
   CLIENT_SERVER_COMMANDS,
 };
 
-#define CLIENT_SERVER_VERSION 0x01300006 // 32-bit version number
+#define CLIENT_SERVER_VERSION 0x01310000 // 32-bit version number
 #define SPECTRUM_DATA_SIZE 4096          // Maximum width of a panadapter
 #define AUDIO_DATA_SIZE 512              // 512 (mono) samples
 
@@ -344,8 +347,8 @@ typedef struct __attribute__((__packed__)) _radio_data {
   mydouble drive_max;
   mydouble drive_digi_max;
   mydouble pa_trim[11];
-  mydouble div_gain;
-  mydouble div_phase;
+  mydouble man_div_gain;
+  mydouble man_div_phase;
   mydouble soapy_rx1_gain_step;
   mydouble soapy_rx1_gain_min;
   mydouble soapy_rx1_gain_max;
@@ -412,6 +415,7 @@ typedef struct __attribute__((__packed__)) _radio_data {
   uint8_t  rx_stack_horizontal;
   uint8_t  n_adc;
   uint8_t  diversity_enabled;
+  uint8_t  div_auto_mode;
   uint8_t  soapy_iqswap;
   uint8_t  soapy_rx1_antennas;
   uint8_t  soapy_rx2_antennas;
@@ -594,6 +598,7 @@ typedef struct __attribute__((__packed__)) _receiver_data {
   mydouble nb_hang;
   mydouble nb_advtime;
   mydouble nb_thresh;
+  mydouble nnr_floor;
   mydouble nr4_reduction_amount;
   mydouble nr4_smoothing_factor;
   mydouble nr4_whitening_factor;
@@ -637,6 +642,7 @@ typedef struct __attribute__((__packed__)) _receiver_data {
   uint8_t nr2_post_nlevel; // 0 ... 100
   uint8_t nr2_post_factor; // 0 ... 100
   uint8_t nr2_post_rate;   // 0 ... 100
+  uint8_t nnr_model;
   uint8_t nr4_noise_scaling_type;
   uint8_t anf;
   uint8_t snb;
@@ -827,11 +833,61 @@ typedef struct __attribute__((__packed__)) _double_command {
 typedef struct __attribute__((__packed__)) _diversity_command {
   HEADER header;
   //
-  mydouble div_gain;
-  mydouble div_phase;
+  mydouble man_div_gain;
+  mydouble man_div_phase;
   //
   uint8_t diversity_enabled;
+  uint8_t div_auto_mode;
 } DIVERSITY_COMMAND;
+
+//
+// The automatic phasing loop's settings. Travels both ways: client to
+// server to apply a control the operator moved, server to client on
+// connect and whenever the radio's own panel changes something. The radio
+// is the owner - a connecting client adopts what it finds rather than
+// imposing what it saved.
+//
+// header.b1 carries the action byte (DIV_ACTION_*), for the one control
+// that changes no setting and so cannot be seen as a difference.
+//
+typedef struct __attribute__((__packed__)) _div_settings_command {
+  HEADER header;
+  //
+  uint8_t  mode;
+  uint8_t  ref;
+  uint8_t  follow_filter;
+  uint8_t  weighting;
+  uint8_t  hold;
+  uint8_t  pad[3];
+  //
+  mydouble centre, width;
+  mydouble tau, hang, coherence_min, resolution;
+  mydouble band_centre, band_width;
+  mydouble carrier_centre, carrier_width;
+  mydouble digital_centre, digital_width;
+} DIV_SETTINGS_COMMAND;
+
+//
+// What the loop is measuring. Server to client, on a timer, so the
+// client's status line, antenna line and panadapter overlay show what the
+// radio is actually doing.
+//
+typedef struct __attribute__((__packed__)) _div_status_data {
+  HEADER header;
+  //
+  uint8_t  enabled;
+  uint8_t  running, holding, clamped, arm_valid;
+  uint8_t  arm_pick, carrier_valid, occ_valid, rade_locked;
+  uint8_t  rade_confirming;
+  int8_t   rade_side;
+  uint8_t  att0, att1;
+  uint8_t  pad;
+  //
+  mydouble binhz, coherence, carrier, arm_db;
+  mydouble occ_lo, occ_hi;
+  mydouble gain, phase, track_gain, track_phase;
+  mydouble rade_quality;
+} DIV_STATUS_DATA;
 
 typedef struct __attribute__((__packed__)) _agc_command {
   HEADER header;
@@ -848,6 +904,7 @@ typedef struct __attribute__((__packed__)) _agc_command {
   //
   uint8_t id;
   uint8_t agc;
+  uint8_t agc_automatic_gain;
 } AGC_COMMAND;
 
 //
@@ -891,6 +948,7 @@ typedef struct __attribute__((__packed__)) _noise_command {
   mydouble nb_thresh;
   mydouble nr2_trained_threshold;
   mydouble nr2_trained_t2;
+  mydouble nnr_floor;
   mydouble nr4_reduction_amount;
   mydouble nr4_smoothing_factor;
   mydouble nr4_whitening_factor;
@@ -916,6 +974,7 @@ typedef struct __attribute__((__packed__)) _noise_command {
   uint8_t  nr2_post_nlevel;
   uint8_t  nr2_post_factor;
   uint8_t  nr2_post_rate;
+  uint8_t  nnr_model;
   uint8_t  nr4_noise_scaling_type;
 } NOISE_COMMAND;
 
@@ -972,6 +1031,7 @@ extern void send_agc(int s, const RECEIVER *rx);
 extern void send_am_carrier(int s);
 extern void send_anan10E(int s, int new);
 extern void send_attenuation(int s, int rx, int attenuation);
+extern void send_adc_attenuation(int s, int adc, int attenuation);
 extern void send_band(int s, int rx, int band);
 extern void send_band_data(int s, int band);
 extern void send_bandstack(int s, int old, int new);
@@ -1051,6 +1111,7 @@ extern void send_swap_iq(int s, int swap_iq);
 extern void send_toggle_tune(int s);
 extern void send_tune(int s, int state);
 extern void send_twotone(int s, int state);
+extern void send_txnoise(int s, int state);
 extern void send_txprofile(int s, int what, int m);
 extern void send_tx_compressor(int s);
 extern void send_tx_data(int s);
@@ -1067,7 +1128,6 @@ extern void send_vfo_step(int s, int v, int steps);
 extern void send_vfo_stepsize(int s, int v, int stepsize);
 extern void send_vfo_swap(int sock);
 extern void send_volume(int s, int rx, double volume);
-extern void send_vox(int s, int state);
 extern void send_xit(int s, int id);
 extern void send_xvtr_changed(int s);
 extern void send_zoom(int s, const RECEIVER *rx);

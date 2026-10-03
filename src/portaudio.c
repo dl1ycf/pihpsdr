@@ -213,23 +213,19 @@ int audio_open_input(TRANSMITTER *tx) {
     t_print("%s: not registered: %s\n", __func__, tx->audio_name);
     return -1;
   }
-
   if (tx->audio_handle != NULL) {
     tx->audio_handle = NULL;
     usleep (50000);
   }
-
   //
   // Construct audio_data structure. Only when everything succeeds,
   // this pointer is put into the tx data structure
   //
   audio_data *ad = g_new(audio_data, 1);
-
   if (ad == NULL) {
     t_print("%s: alloc ad error\n", __func__);
     return -1;
   }
-
   bzero(&inputParameters, sizeof(inputParameters)); //not necessary if you are filling in all the fields
   inputParameters.channelCount = 1;   // MONO
   inputParameters.device = padev;

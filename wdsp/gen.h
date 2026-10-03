@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -34,7 +34,7 @@ typedef struct _gen
 	double* in;					// input buffer (retained in case I want to mix in a generated signal)
 	double* out;				// output buffer
 	double rate;				// sample rate
-	int mode;
+	int mode;					
 	struct _tone
 	{
 		double mag;

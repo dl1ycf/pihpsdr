@@ -118,10 +118,8 @@ int audio_open_output(RECEIVER *rx) {
     rx->audio_handle = NULL;
     usleep (50000);
   }
-
   audio_data *ad = g_new(audio_data, 1);
   if (ad == NULL) { return -1; }
-
   //
   // Do not try top open if name has not been recorded during startup
   //
@@ -141,7 +139,6 @@ int audio_open_output(RECEIVER *rx) {
     g_free(ad);
     return -1;
   }
-
   if ((err = snd_pcm_open (&ad->alsahandle, rx->audio_name, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0) {
     t_print("%s: cannot open audio device %s (%s)\n", __func__, rx->audio_name, snd_strerror (err));
     g_free(ad);
@@ -233,7 +230,6 @@ int audio_open_input(TRANSMITTER *tx) {
     g_free(ad);
     return -1;
   }
-
   if ((err = snd_pcm_open (&ad->alsahandle, tx->audio_name, SND_PCM_STREAM_CAPTURE, SND_PCM_ASYNC)) < 0) {
     t_print("%s: cannot open audio device %s (%s)\n", __func__, tx->audio_name, snd_strerror (err));
     return -1;
@@ -253,7 +249,6 @@ int audio_open_input(TRANSMITTER *tx) {
     g_free(ad);
     return -1;
   }
-
   if ((err = snd_pcm_start (ad->alsahandle)) < 0) {
     t_print("%s: cannot start audio interface for use (%s)\n", __func__,
             snd_strerror (err));
@@ -317,7 +312,7 @@ void tx_audio_write(RECEIVER *rx, double sample) {
   volatile audio_data *ad = (audio_data *) rx->audio_handle;
   if (ad == NULL) { return; }
   g_mutex_lock((GMutex *)(&ad->audio_mutex));
-  ad=rx->audio_handle;
+  ad = rx->audio_handle;
   if (ad != NULL) {
     if (ad->cwaudio != 1) {
       //

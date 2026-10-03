@@ -284,12 +284,12 @@ void rx_save_state(const RECEIVER *rx) {
   SetPropI1("receiver.%d.mute_when_not_active", rx->id,         rx->mute_when_not_active);
   SetPropI1("receiver.%d.mute_radio", rx->id,                   rx->mute_radio);
   SetPropI1("receiver.%d.panadapter_low", rx->id,               rx->panadapter_low);
+  SetPropI1("receiver.%d.pan_low_automatic", rx->id,            rx->pan_low_automatic);
   SetPropI1("receiver.%d.panadapter_high", rx->id,              rx->panadapter_high);
   SetPropI1("receiver.%d.panadapter_step", rx->id,              rx->panadapter_step);
   SetPropI1("receiver.%d.panadapter_peaks_on", rx->id,          rx->panadapter_peaks_on);
   SetPropI1("receiver.%d.panadapter_num_peaks", rx->id,         rx->panadapter_num_peaks);
   SetPropI1("receiver.%d.panadapter_ignore_range_divider", rx->id, rx->panadapter_ignore_range_divider);
-  SetPropI1("receiver.%d.panadapter_ignore_noise_percentile", rx->id, rx->panadapter_ignore_noise_percentile);
   SetPropI1("receiver.%d.panadapter_hide_noise_filled", rx->id, rx->panadapter_hide_noise_filled);
   SetPropI1("receiver.%d.panadapter_peaks_in_passband_filled", rx->id, rx->panadapter_peaks_in_passband_filled);
   SetPropI1("receiver.%d.display_waterfall", rx->id,            rx->display_waterfall);
@@ -315,6 +315,7 @@ void rx_save_state(const RECEIVER *rx) {
     SetPropF1("receiver.%d.volume", rx->id,                     rx->volume);
     SetPropI1("receiver.%d.agc", rx->id,                        rx->agc);
     SetPropF1("receiver.%d.agc_gain", rx->id,                   rx->agc_gain);
+    SetPropI1("receiver.%d.agc_automatic_gain", rx->id,         rx->agc_automatic_gain);
     SetPropF1("receiver.%d.agc_hang_threshold", rx->id,         rx->agc_hang_threshold);
     SetPropI1("receiver.%d.nb", rx->id,                         rx->nb);
     SetPropI1("receiver.%d.nr", rx->id,                         rx->nr);
@@ -347,6 +348,8 @@ void rx_save_state(const RECEIVER *rx) {
     SetPropF1("receiver.%d.nb_advtime", rx->id,                 rx->nb_advtime);
     SetPropF1("receiver.%d.nb_hang", rx->id,                    rx->nb_hang);
     SetPropF1("receiver.%d.nb_thresh", rx->id,                  rx->nb_thresh);
+    SetPropI1("receiver.%d.nnr_model", rx->id,                  rx->nnr_model);
+    SetPropF1("receiver.%d.nnr_floor", rx->id,                  rx->nnr_floor);
     SetPropF1("receiver.%d.nr4_reduction_amount", rx->id,       rx->nr4_reduction_amount);
     SetPropF1("receiver.%d.nr4_smoothing_factor", rx->id,       rx->nr4_smoothing_factor);
     SetPropF1("receiver.%d.nr4_whitening_factor", rx->id,       rx->nr4_whitening_factor);
@@ -389,12 +392,12 @@ void rx_restore_state(RECEIVER *rx) {
   GetPropI1("receiver.%d.mute_when_not_active", rx->id,         rx->mute_when_not_active);
   GetPropI1("receiver.%d.mute_radio", rx->id,                   rx->mute_radio);
   GetPropI1("receiver.%d.panadapter_low", rx->id,               rx->panadapter_low);
+  GetPropI1("receiver.%d.pan_low_automatic", rx->id,            rx->pan_low_automatic);
   GetPropI1("receiver.%d.panadapter_high", rx->id,              rx->panadapter_high);
   GetPropI1("receiver.%d.panadapter_step", rx->id,              rx->panadapter_step);
   GetPropI1("receiver.%d.panadapter_peaks_on", rx->id,          rx->panadapter_peaks_on);
   GetPropI1("receiver.%d.panadapter_num_peaks", rx->id,         rx->panadapter_num_peaks);
   GetPropI1("receiver.%d.panadapter_ignore_range_divider", rx->id, rx->panadapter_ignore_range_divider);
-  GetPropI1("receiver.%d.panadapter_ignore_noise_percentile", rx->id, rx->panadapter_ignore_noise_percentile);
   GetPropI1("receiver.%d.panadapter_hide_noise_filled", rx->id, rx->panadapter_hide_noise_filled);
   GetPropI1("receiver.%d.panadapter_peaks_in_passband_filled", rx->id, rx->panadapter_peaks_in_passband_filled);
   GetPropI1("receiver.%d.display_waterfall", rx->id,            rx->display_waterfall);
@@ -425,6 +428,7 @@ void rx_restore_state(RECEIVER *rx) {
     GetPropF1("receiver.%d.display_average_time", rx->id,       rx->display_average_time);
     GetPropF1("receiver.%d.volume", rx->id,                     rx->volume);
     GetPropI1("receiver.%d.agc", rx->id,                        rx->agc);
+    GetPropI1("receiver.%d.agc_automatic_gain", rx->id,         rx->agc_automatic_gain);
     GetPropF1("receiver.%d.agc_gain", rx->id,                   rx->agc_gain);
     GetPropF1("receiver.%d.agc_hang_threshold", rx->id,         rx->agc_hang_threshold);
     GetPropI1("receiver.%d.nb", rx->id,                         rx->nb);
@@ -458,6 +462,8 @@ void rx_restore_state(RECEIVER *rx) {
     GetPropF1("receiver.%d.nb_advtime", rx->id,                 rx->nb_advtime);
     GetPropF1("receiver.%d.nb_hang", rx->id,                    rx->nb_hang);
     GetPropF1("receiver.%d.nb_thresh", rx->id,                  rx->nb_thresh);
+    GetPropI1("receiver.%d.nnr_model", rx->id,                  rx->nnr_model);
+    GetPropF1("receiver.%d.nnr_floor", rx->id,                  rx->nnr_floor);
     GetPropF1("receiver.%d.nr4_reduction_amount", rx->id,       rx->nr4_reduction_amount);
     GetPropF1("receiver.%d.nr4_smoothing_factor", rx->id,       rx->nr4_smoothing_factor);
     GetPropF1("receiver.%d.nr4_whitening_factor", rx->id,       rx->nr4_whitening_factor);
@@ -759,6 +765,8 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->dsp_size = 2048;
   rx->fft_size = 2048;
   rx->low_latency = 0;
+  rx->ZBfreq = 0;
+  rx->ZBlevel = -200.0;
   rx->smetermode = SMETER_AVERAGE;
   rx->fps = 10;
   rx->update_timer_id = 0;
@@ -775,7 +783,6 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->panadapter_peaks_on = 0;
   rx->panadapter_num_peaks = 3;
   rx->panadapter_ignore_range_divider = 20;
-  rx->panadapter_ignore_noise_percentile = 80;
   rx->panadapter_hide_noise_filled = 1;
   rx->panadapter_peaks_in_passband_filled = 0;
   rx->waterfall_high = -40;
@@ -812,6 +819,8 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->nr2_trained_t2 = 0.2;         // t2 value for trained threshold
   // New feature defaults
   rx->nbp_window        = 0;      // 4-term BH window
+  rx->agc_automatic_gain = 0;
+  rx->noise_floor = -120.0;
   rx->agc_custom_attack = 1;
   rx->agc_custom_decay  = 250;
   rx->agc_custom_hang   = 250;
@@ -832,6 +841,8 @@ RECEIVER *rx_create_receiver(int id, int width, int height) {
   rx->nb_hang =    0.00001;       // Lag=0.01     in the DSP menu
   rx->nb_thresh =  4.95;          // Threshold=30 in the DSP menu
   rx->nb2_mode = 0;               // Zero mode
+  rx->nnr_model = 0;              // Standard
+  rx->nnr_floor = -25.0;          // This is the default
   rx->nr4_reduction_amount = 10.0;
   rx->nr4_smoothing_factor = 20.0;
   rx->nr4_whitening_factor = 0.0;
@@ -979,7 +990,7 @@ void rx_change_adc(const RECEIVER *rx) {
   schedule_receive_specific();
 }
 
-void rx_set_frequency(const RECEIVER *rx, long long f) {
+void rx_set_frequency(RECEIVER *rx, long long f) {
   ASSERT_SERVER();
   int id = rx->id;
   //
@@ -993,7 +1004,7 @@ void rx_set_frequency(const RECEIVER *rx, long long f) {
   rx_frequency_changed(rx);
 }
 
-void rx_frequency_changed(const RECEIVER *rx) {
+void rx_frequency_changed(RECEIVER *rx) {
   ASSERT_SERVER();
   int id = rx->id;
   if (vfo[id].ctun) {
@@ -1047,6 +1058,7 @@ void rx_frequency_changed(const RECEIVER *rx) {
 #endif
     break;
   }
+  rx->ZBfreq = 0LL;
 }
 
 void rx_set_sam_mode(const RECEIVER *rx) {
@@ -1117,7 +1129,7 @@ static void rx_process_buffer(RECEIVER *rx) {
   //
   double scale = 0.6 * pow(10.0, -0.05 * rx->volume);
 #ifdef TCI
-  double tciscale = pow(10.0, -0.05*(rx->volume - rx->tci_volume));
+  double tciscale = pow(10.0, -0.05 * (rx->volume - rx->tci_volume));
 #endif
   double unscale = 1.0 / scale;
   // Without DUPLEX; xmit will always be false.
@@ -1181,7 +1193,7 @@ static void rx_process_buffer(RECEIVER *rx) {
     // programs, we ship out before applying mute_rx or STEREO effects.
     //
     if (tci_audio_rx_active) {
-      tci_audio_rx_sample(rx->id, tciscale*left_sample, tciscale*right_sample);
+      tci_audio_rx_sample(rx->id, tciscale * left_sample, tciscale * right_sample);
     }
 #endif
     if (xmit && mute_rx_while_transmitting) {
@@ -1286,12 +1298,15 @@ void rx_add_iq_samples(RECEIVER *rx, double i_sample, double q_sample) {
 
 void rx_add_div_iq_samples(RECEIVER *rx, double i0, double q0, double i1, double q1) {
   ASSERT_SERVER();
+  double i_sample, q_sample;
+
+  i_sample = i0 + (man_div_cos * i1 - man_div_sin * q1);
+  q_sample = q0 + (man_div_sin * i1 + man_div_cos * q1);
+
   //
   // Note that we sum the second channel onto the first one
   // and then simply pass to add_iq_samples
   //
-  double i_sample = i0 + (div_cos * i1 - div_sin * q1);
-  double q_sample = q0 + (div_sin * i1 + div_cos * q1);
   rx_add_iq_samples(rx, i_sample, q_sample);
 }
 
@@ -1402,6 +1417,7 @@ void rx_set_filter(RECEIVER *rx) {
   rx_set_bandpass(rx);
   rx_set_cw_peak(rx, have_peak, (double) cw_keyer_sidetone_frequency);
   rx_set_agc(rx);
+  rx->ZBfreq = 0;
 }
 
 void rx_set_framerate(RECEIVER *rx) {
@@ -1430,6 +1446,14 @@ void rx_set_framerate(RECEIVER *rx) {
 ////////////////////////////////////////////////////////
 
 void rx_change_sample_rate(RECEIVER *rx, int sample_rate) {
+  //
+  // The auto-phasing FFT length is derived from the sample rate, so it has
+  // to be rebuilt. Stop it before the rate changes under it.
+  //
+  if (rx->id == 0) {
+    //diversity_auto_stop();
+  }
+
   //
   // If the sample rate decreases, a valid CTUN offset may become invalid
   //
@@ -1488,6 +1512,10 @@ void rx_change_sample_rate(RECEIVER *rx, int sample_rate) {
   g_mutex_unlock(&rx->mutex);
   t_print("%s: RXid=%d rate=%d buffer_size=%d output_samples=%d\n", __func__, rx->id, rx->sample_rate,
           rx->buffer_size, rx->output_samples);
+
+  if (rx->id == 0) {
+    //diversity_auto_restart();
+  }
 }
 
 void rx_close(const RECEIVER *rx) {
@@ -1650,14 +1678,8 @@ void rx_off(const RECEIVER *rx, int wait) {
   //
   // switch receiver OFF.
   // if (wait)  wait until slew-down completed; else return immediately
-  // ATTENTION:
-  // when using 2 RX, it regularly happened that after RX1 being shut down
-  // with wait==0 and RX2 with wait==1, upon restart of the receivers
-  // the WDSP RX1 thread was hanging in wdspmain (waiting for Sem_BuffReady).
-  // Therefore we do the wait in any case until we know what is going on.
-  // This slightly slows down the RX/TX transition when using 2RX.
   //
-  SetChannelState(rx->id, 0, 1);
+  SetChannelState(rx->id, 0, wait);
 }
 
 void rx_on(const RECEIVER *rx) {
@@ -1789,6 +1811,15 @@ void rx_set_agc(RECEIVER *rx) {
     RXTXprofile[mode].rx.agc_custom_hang   = rx->agc_custom_hang;
     RXTXprofile[mode].rx.agc_custom_slope  = rx->agc_custom_slope;
     profiles_copy_rxtxprofile(mode);
+  }
+  if (remoteclient.running) {
+    //
+    // Send AGC data to the client. This data includes updated "hang" and
+    // "thresh" levels.
+    // If "AGC automatic gain" is active, the client is informed about the
+    // new AGC gain value.
+    //
+    send_agc(remoteclient.sock_tcp,  rx);
   }
 }
 
@@ -2080,6 +2111,8 @@ void rx_set_noise(const RECEIVER *rx) {
     RXTXprofile[mode].rx.nb_advtime = rx->nb_advtime;
     RXTXprofile[mode].rx.nb_hang = rx->nb_hang;
     RXTXprofile[mode].rx.nb_thresh = rx->nb_thresh;
+    RXTXprofile[mode].rx.nnr_model = rx->nnr_model;
+    RXTXprofile[mode].rx.nnr_floor = rx->nnr_floor;
     RXTXprofile[mode].rx.nr4_reduction_amount = rx->nr4_reduction_amount;
     RXTXprofile[mode].rx.nr4_smoothing_factor = rx->nr4_smoothing_factor;
     RXTXprofile[mode].rx.nr4_whitening_factor = rx->nr4_whitening_factor;
@@ -2113,7 +2146,7 @@ void rx_set_noise(const RECEIVER *rx) {
   //
   SetRXAANRRun(rx->id, 0);
   SetRXAEMNRRun(rx->id, 0);
-  SetRXARNNRRun(rx->id, 0);
+  SetRXANNRRun(rx->id, 0);
   SetRXASBNRRun(rx->id, 0);
   //
   // NR
@@ -2135,9 +2168,10 @@ void rx_set_noise(const RECEIVER *rx) {
   SetRXAEMNRaeRun(rx->id,               1); // ArtifactElminiation *always* ON
   SetRXAEMNRpost2Run(rx->id,            rx->nr2_post);
   //
-  // NR3
+  // NNR
   //
-  SetRXARNNRPosition(rx->id,            rx->nr_agc);
+  SetRXANNRMaskFloor(rx->id,            rx->nnr_floor);
+  (void) SetRXANNRModel(rx->id,         rx->nnr_model);
   //
   // NR4
   //
@@ -2159,7 +2193,7 @@ void rx_set_noise(const RECEIVER *rx) {
     SetRXAEMNRRun(rx->id, 1);
     break;
   case 3:
-    SetRXARNNRRun(rx->id, 1);
+    SetRXANNRRun(rx->id, 1);
     break;
   case 4:
     SetRXASBNRRun(rx->id, 1);

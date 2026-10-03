@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -56,7 +56,7 @@ void init_nob (NOB a)
         for (i = 0; i < a->hang_slew_count; i++)
             a->hwave[i] = 0.5 * cos (i * coef);
     }
-
+	
     flush_nob (a);
 }
 
@@ -91,10 +91,10 @@ NOB create_nob (
 	a->max_imp_seq_time = max_imp_seq_time;
 	a->backtau = backtau;
 	a->threshold = threshold;
-	a->dline_size = (int)(MAX_SAMPLERATE * (MAX_ADV_SLEW_TIME +
-											MAX_ADV_TIME +
-											MAX_HANG_SLEW_TIME +
-											MAX_HANG_TIME +
+	a->dline_size = (int)(MAX_SAMPLERATE * (MAX_ADV_SLEW_TIME + 
+											MAX_ADV_TIME + 
+											MAX_HANG_SLEW_TIME + 
+											MAX_HANG_TIME + 
 											MAX_SEQ_TIME ) + 2);
 	a->dline = (double *)malloc0 (a->dline_size * sizeof (complex));
 	a->imp = (int *)malloc0 (a->dline_size * sizeof (int));
@@ -197,7 +197,7 @@ void xnob (NOB a)
 						a->out[2 * i + 0] = a->dline[2 * a->out_idx + 0];
 						a->out[2 * i + 1] = a->dline[2 * a->out_idx + 1];
 						a->Ilast = a->dline[2 * a->out_idx + 0];
-						a->Qlast = a->dline[2 * a->out_idx + 1];
+						a->Qlast = a->dline[2 * a->out_idx + 1];    
 						if (a->imp[a->scan_idx] > 0)
 						{
 							a->time = 0;
@@ -244,7 +244,7 @@ void xnob (NOB a)
 								a->blank_count -= a->hang_slew_count;
 								a->Inext = a->dline[2 * tidx + 0];
 								a->Qnext = a->dline[2 * tidx + 1];
-
+                                
 								if (a->mode == 1 || a->mode == 2 || a->mode == 4)
 								{
 									bfboutidx = a->bfb_in_idx;
@@ -375,7 +375,7 @@ void xnob (NOB a)
 								a->state = 4;
 								a->time = 0;
 							}
-							else
+							else 
 								a->state = 0;
 						}
 						break;

@@ -21,7 +21,6 @@ void MacTTS(const char *text) {
   // with English language
   //
   NSString* str = [NSString stringWithUTF8String:text];
-
   //
   // Create the synthesizer instance upon the first call to MacTTS,
   // then keep it.
@@ -30,11 +29,9 @@ void MacTTS(const char *text) {
     t_print("%s: Creating the MacOS Speech Synthesizer Instance\n", __func__);
     synth = [[AVSpeechSynthesizer alloc] init];
   }
-
   AVSpeechUtterance *utter = [[AVSpeechUtterance alloc] initWithString:str];
   AVSpeechSynthesisVoice *voice = [AVSpeechSynthesisVoice voiceWithLanguage:@"en-GB"];
   [utter setVoice:voice];
-
   //
   // If the previous text is not yet completely spoken,
   // abort such that the new text does not have to wait
@@ -42,7 +39,6 @@ void MacTTS(const char *text) {
   if ([synth isSpeaking]) {
     [synth stopSpeakingAtBoundary:AVSpeechBoundaryImmediate ];
   }
-
   //
   // Put the text into the queue of the synthesizer
   // and return. The synthesizer will be busy with speaking

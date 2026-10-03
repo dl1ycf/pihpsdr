@@ -88,25 +88,6 @@ enum txaMeterType {
 
 
 //
-// Interfaces from RXA.c
-//
-
-extern void SetRXAMode (int channel, int mode);
-extern void RXASetPassband (int channel, double f_low, double f_high);
-extern void RXASetNC (int channel, int nc);
-extern void RXASetMP (int channel, int mp);
-
-//
-// Interfaces from TXA.c
-//
-
-extern void SetTXAMode (int channel, int mode);
-extern void SetTXABandpassFreqs (int channel, double f_low, double f_high);
-extern void TXASetNC (int channel, int nc);
-extern void TXASetMP (int channel, int mp);
-extern void SetTXAFMAFFilter (int channel, double low, double high);
-
-//
 // Interfaces from amd.c
 //
 
@@ -312,6 +293,8 @@ extern void GetTXACFCOMPPeqDraw (int channel, double* X, double* Y);
 
 extern void SetTXACFIRRun (int channel, int run);
 extern void SetTXACFIRNC(int channel, int nc);
+extern void SetTXACFIRCurve(int channel, int DD, int R, int Pairs, int runrate, int cicrate,
+	double cutoff, int xtype, double xbw);
 
 //
 // Interfaces from channel.c
@@ -326,6 +309,7 @@ extern void SetDSPBuffsize (int channel, int dsp_size);
 extern void SetInputSamplerate (int channel, int in_rate);
 extern void SetDSPSamplerate (int channel, int dsp_rate);
 extern void SetOutputSamplerate (int channel, int out_rate);
+extern int WaitChannelFlush(int channel, int timeout_ms);
 extern void SetAllRates (int channel, int in_rate, int dsp_rate, int out_rate);
 extern int SetChannelState (int channel, int state, int dmode);
 extern void SetChannelTDelayUp (int channel, double time);
@@ -676,6 +660,30 @@ extern void RXANBPGetMinNotchWidth (int channel, double* minwidth);
 extern void RXANBPSetAutoIncrease (int channel, int autoincr);
 
 //
+// Interfaces from nnet.c
+//
+
+extern void SetNNRModelPathSlot (int slot, const char* path);
+extern void SetNNRModelPath (const char* path);
+
+//
+// Interfaces from nnr.c
+//
+
+extern void SetRXANNRRun (int channel, int setit);
+extern void SetRXANNRPosition (int channel, int position);
+extern void SetRXANNRMaskFloor (int channel, double floor_db);
+extern int SetRXANNRModel (int channel, int slot);
+extern int GetRXANNRModel (int channel);
+extern void SetRXANNRcmode (int channel, int cmode);
+extern void SetRXANNRTestMode (int channel, int mode);
+extern void SetRXANNRAlpha (int channel, double alpha);
+extern void SetRXANNRAlphaKnee (int channel, double knee_db);
+extern void SetRXANNRTau (int channel, double tau);
+extern void SetRXANNRMaxGain (int channel, double gmax_db);
+extern void SetRXANNRSmooth (int channel, double att_ms, double rel_ms);
+
+//
 // Interfaces from nob.c
 //
 
@@ -867,12 +875,13 @@ extern void getControlFlag(void* ptr, int* control_flag);
 extern void* create_rmatchLegacyV(int in_size, int out_size, int nom_inrate, int nom_outrate, int ringsize);
 
 //
-// Interfaces from rnnr.c
+// Interfaces from RXA.c
 //
 
-extern void SetRXARNNRRun (int channel, int run);
-extern void RNNRloadModel(const char* file_path);
-extern void SetRXARNNRPosition(int channel, int position);
+extern void SetRXAMode (int channel, int mode);
+extern void RXASetPassband (int channel, double f_low, double f_high);
+extern void RXASetNC (int channel, int nc);
+extern void RXASetMP (int channel, int mp);
 
 //
 // Interfaces from sbnr.c
@@ -953,6 +962,16 @@ extern void SetRXASSQLRun (int channel, int run);
 extern void SetRXASSQLThreshold (int channel, double threshold);
 extern void SetRXASSQLTauMute (int channel, double tau_mute);
 extern void SetRXASSQLTauUnMute (int channel, double tau_unmute);
+
+//
+// Interfaces from TXA.c
+//
+
+extern void SetTXAMode (int channel, int mode);
+extern void SetTXABandpassFreqs (int channel, double f_low, double f_high);
+extern void TXASetNC (int channel, int nc);
+extern void TXASetMP (int channel, int mp);
+extern void SetTXAFMAFFilter (int channel, double low, double high);
 
 //
 // Interfaces from utilities.c

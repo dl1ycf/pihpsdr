@@ -649,6 +649,7 @@ static void new_protocol_high_priority(void) {
           || MIDI_cw_is_active
           || !cw_keyer_internal
           || transmitter->twotone
+          || transmitter->txnoise
           || hpsdr_ptt) {
         high_priority_buffer_to_radio[4] |= 0x02;
       }
@@ -1217,11 +1218,7 @@ static void new_protocol_high_priority(void) {
   // ADC step attenuator of ADC0 and ADC1
   //
   high_priority_buffer_to_radio[1443] = adc[0].attenuation;
-  if (diversity_enabled) {
-    high_priority_buffer_to_radio[1442] = adc[0].attenuation; // DIVERSITY: ADC0 att value for ADC1 as well
-  } else {
-    high_priority_buffer_to_radio[1442] = adc[1].attenuation;
-  }
+  high_priority_buffer_to_radio[1442] = adc[1].attenuation;
   //
   //  Upon transmitting with PA enabled, set the attenuators to maximum attenuation
   //  Exception: use value of transmitter->attenuation if transmitting with PURESIGNAL.
@@ -1344,7 +1341,7 @@ static void new_protocol_transmit_specific(void) {
   // Setting of the ADC0/ADC1 step attenuators while transmitting
   //
   transmit_specific_buffer[59] = adc[0].attenuation;
-  transmit_specific_buffer[58] = diversity_enabled ? adc[0].attenuation : adc[1].attenuation;
+  transmit_specific_buffer[58] = adc[1].attenuation;
   if (!txband->disablePA && pa_enabled) {
     transmit_specific_buffer[58] = 31;   // ADC1
     transmit_specific_buffer[59] = 31;   // ADC0

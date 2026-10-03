@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -142,9 +142,9 @@ void SetSNCTCSSRun (SNOTCH a, int run)
 
 void calc_speak (SPEAK a)
 {
-	double ratio;
+	double ratio;	
 	double f_corr, g_corr, bw_corr, bw_parm, A, f_min;
-
+	
 	switch (a->design)
 	{
 	case 0:
@@ -275,10 +275,10 @@ void xspeak (SPEAK a)
 				for (n = 0; n < a->nstages; n++)
 				{
 					if (n > 0) a->x0[2 * n + j] = a->y0[2 * (n - 1) + j];
-					a->y0[2 * n + j]	= a->a0 * a->x0[2 * n + j]
-										+ a->a1 * a->x1[2 * n + j]
-										+ a->a2 * a->x2[2 * n + j]
-										+ a->b1 * a->y1[2 * n + j]
+					a->y0[2 * n + j]	= a->a0 * a->x0[2 * n + j] 
+										+ a->a1 * a->x1[2 * n + j] 
+										+ a->a2 * a->x2[2 * n + j] 
+										+ a->b1 * a->y1[2 * n + j] 
 										+ a->b2 * a->y2[2 * n + j];
 					a->y2[2 * n + j] = a->y1[2 * n + j];
 					a->y1[2 * n + j] = a->y0[2 * n + j];
@@ -370,15 +370,15 @@ void calc_mpeak (MPEAK a)
 	a->mix = (double *) malloc0 (a->size * sizeof (complex));
 	for (i = 0; i < a->npeaks; i++)
 	{
-		a->pfil[i] = create_speak (	1,
-									a->size,
-									a->in,
-									a->tmp,
-									a->rate,
-									a->f[i],
-									a->bw[i],
-									a->gain[i],
-									a->nstages,
+		a->pfil[i] = create_speak (	1, 
+									a->size, 
+									a->in, 
+									a->tmp, 
+									a->rate, 
+									a->f[i], 
+									a->bw[i], 
+									a->gain[i], 
+									a->nstages, 
 									1 );
 	}
 }

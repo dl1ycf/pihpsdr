@@ -148,7 +148,7 @@ static void pa_value_changed_cb(GtkWidget *widget, gpointer data) {
     send_band_data(cl_sock_tcp, b);
     return;
   } else {
-    radio_calc_drive_level();
+    radio_calc_drive_level(transmitter->tune);
   }
 }
 

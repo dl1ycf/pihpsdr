@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -88,7 +88,7 @@ ANB create_anb	(
 
 PORT
 void destroy_anb (ANB a)
-{
+{ 
 	DeleteCriticalSection (&a->cs_update);
 	_aligned_free (a->legacy);																						/////////////// legacy interface - remove
 	_aligned_free (a->dline);
@@ -153,7 +153,7 @@ void xanb (ANB a)
 				case 3:
 					if (a->count > 0)
 						a->htime = -a->count;
-
+                                
 					a->out[2 * i + 0] = 0.0;
 					a->out[2 * i + 1] = 0.0;
 					if (++a->htime > a->hang_count)
@@ -177,7 +177,7 @@ void xanb (ANB a)
 					break;
 			}
 			if (a->count > 0) a->count--;
-			if (++a->in_idx == a->dline_size) a->in_idx = 0;
+			if (++a->in_idx == a->dline_size) a->in_idx = 0; 
 			if (++a->out_idx == a->dline_size) a->out_idx = 0;
 		}
 		LeaveCriticalSection (&a->cs_update);

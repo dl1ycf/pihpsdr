@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -70,9 +70,9 @@ void destroy_syncbuffs (SYNCB a)
 	EnterCriticalSection (&a->csOUT);				// block the syncb thread before syncbdata()
 	Sleep (25);										// wait for the thread to arrive at the top of the syncb_main() loop
 	InterlockedBitTestAndReset(&a->run, 0);			// set a trap for the syncb thread
-	ReleaseSemaphore(a->Sem_BuffReady, 1, 0);		// be sure the syncb thread can pass WaitForSingleObject in syncb_main()
+	ReleaseSemaphore(a->Sem_BuffReady, 1, 0);		// be sure the syncb thread can pass WaitForSingleObject in syncb_main()									// 
 	LeaveCriticalSection (&a->csOUT);				// let the thread pass to the trap in syncbdata()
-	LeaveCriticalSection (&a->csIN);
+	LeaveCriticalSection (&a->csIN);				
 	Sleep (2);										// wait for the syncb thread to die
 	DeleteCriticalSection (&a->csOUT);
 	DeleteCriticalSection (&a->csIN);
@@ -94,7 +94,7 @@ void flush_syncbuffs (SYNCB a)
 	while (!WaitForSingleObject (a->Sem_BuffReady, 1)) ;
 }
 
-void Syncbound (SYNCB a, int nsamples, double** in)
+void Syncbound (SYNCB a, int nsamples, double** in)	
 {
 	int i, n;
 	int first, second;
@@ -134,7 +134,7 @@ void syncbdata (SYNCB a)
 	int i;
 	int first, second;
 	EnterCriticalSection (&a->csOUT);
-	if (!_InterlockedAnd (&a->run, 1))
+	if (!_InterlockedAnd (&a->run, 1)) 
 	{
 		LeaveCriticalSection (&a->csOUT);
 		_endthread();
@@ -162,7 +162,7 @@ void syncbdata (SYNCB a)
 void syncb_main (void *p)
 {
 	SYNCB a = (SYNCB)p;
-
+	
 	while (_InterlockedAnd (&a->run, 1))
 	{
 		WaitForSingleObject (a->Sem_BuffReady,INFINITE);
@@ -179,7 +179,7 @@ void SetSYNCBRingOutsize (SYNCB a, int size)
 	EnterCriticalSection (&a->csOUT);				// block the syncb thread before syncbdata()
 	Sleep (25);										// wait for the thread to arrive at the top of the syncb_main() loop
 	InterlockedBitTestAndReset(&a->run, 0);			// set a trap for the syncb thread
-	ReleaseSemaphore(a->Sem_BuffReady, 1, 0);		// be sure the syncb thread can pass WaitForSingleObject in syncb_main()
+	ReleaseSemaphore(a->Sem_BuffReady, 1, 0);		// be sure the syncb thread can pass WaitForSingleObject in syncb_main()									// 
 	LeaveCriticalSection (&a->csOUT);				// let the thread pass to the trap in syncbdata()
 	Sleep (2);										// wait for the syncb thread to die
 	flush_syncbuffs(a);								// restore ring to pristine condition

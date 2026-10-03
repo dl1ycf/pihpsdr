@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -60,7 +60,7 @@ void xmav (MAV a, int input, double* output)
     if (a->load < a->ringmax) a->load++;
     a->ring[a->i] = input;
 	a->sum += a->ring[a->i];
-
+    
 	if (a->load >= a->ringmin)
 		*output = (double)a->sum / (double)a->load;
 	else
@@ -140,7 +140,7 @@ void calc_rmatch (RMATCH a)
 	a->iin = a->rsize / 2;
 	a->iout = 0;
 	a->resout = (double *) malloc0 (max_ring_insize * sizeof (complex));
-	a->v = create_varsamp (1, a->insize, a->in, a->resout, a->nom_inrate, a->nom_outrate,
+	a->v = create_varsamp (1, a->insize, a->in, a->resout, a->nom_inrate, a->nom_outrate, 
 		a->fc_high, a->fc_low, a->R, a->gain, a->var, a->varmode);
 	a->ffmav = create_aamav (a->ff_ringmin, a->ff_ringmax, a->nom_ratio);
 	a->propmav = create_mav (a->prop_ringmin, a->prop_ringmax, 0.0);
@@ -316,7 +316,7 @@ void xrmatchIN (void* b, double* in)
 		EnterCriticalSection (&a->cs_ring);
 		a->n_ring += newsamps;
 		if ((ovfl = a->n_ring - a->rsize) > 0)
-		{
+		{	
 			InterlockedIncrement (&a->overflows);
 			// a->n_ring = a->rsize / 2;
 			a->n_ring = a->rsize; //
@@ -433,7 +433,7 @@ void xrmatchOUT (void* b, double* out)
 		int first, second;
 		a->out = out;
 		EnterCriticalSection (&a->cs_ring);
-		if (a->n_ring < a->outsize)
+		if (a->n_ring < a->outsize) 
 		{
 			dslew (a);
 			a->ucnt = a->ntslew;

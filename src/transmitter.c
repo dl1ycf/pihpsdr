@@ -331,7 +331,6 @@ void tx_save_state(const TRANSMITTER *tx) {
   SetPropI1("transmitter.%d.panadapter_peaks_on",                 tx->id,    tx->panadapter_peaks_on);
   SetPropI1("transmitter.%d.panadapter_num_peaks",                tx->id,    tx->panadapter_num_peaks);
   SetPropI1("transmitter.%d.panadapter_ignore_range_divider",     tx->id,    tx->panadapter_ignore_range_divider);
-  SetPropI1("transmitter.%d.panadapter_ignore_noise_percentile",  tx->id,    tx->panadapter_ignore_noise_percentile);
   SetPropI1("transmitter.%d.panadapter_hide_noise_filled",        tx->id,    tx->panadapter_hide_noise_filled);
   SetPropI1("transmitter.%d.panadapter_peaks_in_passband_filled", tx->id,    tx->panadapter_peaks_in_passband_filled);
   SetPropI1("transmitter.%d.audiomonitor",                        tx->id,    tx->audiomonitor);
@@ -422,7 +421,6 @@ void tx_restore_state(TRANSMITTER *tx) {
   GetPropI1("transmitter.%d.panadapter_peaks_on",                 tx->id,    tx->panadapter_peaks_on);
   GetPropI1("transmitter.%d.panadapter_num_peaks",                tx->id,    tx->panadapter_num_peaks);
   GetPropI1("transmitter.%d.panadapter_ignore_range_divider",     tx->id,    tx->panadapter_ignore_range_divider);
-  GetPropI1("transmitter.%d.panadapter_ignore_noise_percentile",  tx->id,    tx->panadapter_ignore_noise_percentile);
   GetPropI1("transmitter.%d.panadapter_hide_noise_filled",        tx->id,    tx->panadapter_hide_noise_filled);
   GetPropI1("transmitter.%d.panadapter_peaks_in_passband_filled", tx->id,    tx->panadapter_peaks_in_passband_filled);
   // BACKWARDS: next two lines
@@ -998,7 +996,6 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->panadapter_peaks_on = 0;
   tx->panadapter_num_peaks = 4;  // if the typical application is a two-tone test we need four
   tx->panadapter_ignore_range_divider = 24;
-  tx->panadapter_ignore_noise_percentile = 50;
   tx->panadapter_hide_noise_filled = 1;
   tx->panadapter_peaks_in_passband_filled = 0;
   tx->displaying = 0;
@@ -1017,11 +1014,12 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->swrtune = 0;
   tx->swrtune_volume = 0.1;
   tx->twotone = 0;
+  tx->txnoise = 0;
   tx->tt1_freq = 700.0;
   tx->tt2_freq = 1900.0;
   tx->puresignal = 0;
   //
-  // PS 2.0 default parameters
+  // PS 3.0 default parameters
   //
   tx->ps_ampdelay = 150;      // ATTENTION: this value is in nano-seconds
   tx->ps_oneshot = 0;
@@ -1190,7 +1188,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   //
   // allocate buffers
   //
-  tx->audiomon_vol = pow(10.0, 0.05*tx->audiomon_db);
+  tx->audiomon_vol = pow(10.0, 0.05 * tx->audiomon_db);
   tx->mic_input_buffer = g_new(double, 2 * tx->buffer_size);
   tx->iq_output_buffer = g_new(double, 2 * tx->output_samples);
   tx->cw_sig_rf = g_new(double, tx->output_samples);
@@ -1512,7 +1510,7 @@ static void tx_full_buffer(TRANSMITTER *tx) {
   // cwmode only valid in the old protocol, in the new protocol we use a different mechanism
   //
   int txmode = vfo_get_tx_mode();
-  cwmode = (txmode == modeCWL || txmode == modeCWU) && !tx->tune && !tx->twotone;
+  cwmode = (txmode == modeCWL || txmode == modeCWU) && !tx->tune && !tx->twotone && !tx->txnoise;
   if (cwmode) {
     //
     // clear VOX peak level in case is it non-zero.
@@ -1829,7 +1827,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, double mic_sample) {
   if (vox_enabled) {
     if (amplitude >= vox_threshold) {
       if (!vox_triggered) {
-        g_idle_add(ext_radio_set_vox, GINT_TO_POINTER(1));
+        g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(1));
         vox_triggered = 1;
       }
       //
@@ -1846,7 +1844,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, double mic_sample) {
     } else if (vox_count > 0) {
       vox_count--;
       if (vox_count == 0) {
-        g_idle_add(ext_radio_set_vox, GINT_TO_POINTER(0));
+        g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(0));
         vox_triggered = 0;
       }
     }
@@ -1988,7 +1986,7 @@ void tx_add_ps_iq_samples(const TRANSMITTER *tx, double i_sample_tx, double q_sa
   if (rx_feedback->samples >= rx_feedback->buffer_size) {
     if (radio_is_transmitting()) {
       int txmode = vfo_get_tx_mode();
-      int cwmode = (txmode == modeCWL || txmode == modeCWU) && !tx->tune && !tx->twotone;
+      int cwmode = (txmode == modeCWL || txmode == modeCWU) && !tx->tune && !tx->twotone && !tx->txnoise;
 #if 0
       //
       // Special code to document the amplitude of the feedback samples.
@@ -2097,10 +2095,10 @@ void tx_set_filter(TRANSMITTER *tx) {
   switch (txmode) {
   case modeCWL:
   case modeCWU:
-    // Our CW signal is always at zero frequency in IQ space, but note
+    // WDSP is by-passed for CW, so this only applies to "TX noise"
     // WDSP is by-passed anyway.
-    tx->filter_low  = -150;
-    tx->filter_high = 150;
+    tx->filter_low  = -250;
+    tx->filter_high = 250;
     break;
   case modeDSB:
   case modeAM:
@@ -2330,7 +2328,7 @@ void tx_ps_onoff(TRANSMITTER *tx, int state) {
   // c.) Switching off PS while TXing: just wait 100 msec
   //     before proceeding.
   //
-  // d.) Switching off PS while RXing: feed some dumm
+  // d.) Switching off PS while RXing: feed some dummy
   //     feedback samples into pscc to induce the state
   //     change.
   //
@@ -2711,40 +2709,40 @@ void tx_set_pre_emphasize(const TRANSMITTER *tx) {
   SetTXAFMEmphPosition(tx->id, tx->pre_emphasize);
 }
 
-void tx_set_singletone(const TRANSMITTER *tx, int state, double freq) {
+void tx_set_signal(TRANSMITTER *tx, int tune, int txnoise, int twotone) {
   ASSERT_SERVER();
   //
-  // Produce the TX signal for TUNEing
-  //
-  if (state) {
-    SetTXAPostGenToneFreq(tx->id, freq);
-    SetTXAPostGenToneMag(tx->id, 0.99999);
-    SetTXAPostGenMode(tx->id, 0);
-    SetTXAPostGenRun(tx->id, 1);
-  } else {
-    SetTXAPostGenRun(tx->id, 0);
-    //
-    // Most radios show "tails" of the TX signal after a TX/RX transition,
-    // so wait after the SingleTone signal has been removed, before
-    // removing MOX.
-    //
-    //
-    usleep(100000);
-  }
-}
-
-void tx_set_twotone(TRANSMITTER *tx, int state) {
-  ASSERT_SERVER();
-  //
-  // During a two-tone experiment, call a function periodically
+  // During a "signal", call a function periodically
   // (every 100 msec) that calibrates the TX attenuation value
   // if PureSignal is running with AutoCalibration. The timer will
   // automatically be removed
   //
   static guint timer = 0;
-  if (state == tx->twotone) { return; }
-  tx->twotone = state;
-  if (state) {
+  //
+  // There can be only one instance running
+  //
+  if (tune) {
+    txnoise = 0;
+    twotone = 0;
+  }
+  if (twotone) {
+    txnoise = 0;
+  }
+  if (tune == tx->tune && twotone == tx->twotone && txnoise == tx->txnoise) { return; }
+  tx->tune = tune;
+  tx->twotone = twotone;
+  tx->txnoise = txnoise;
+  if (txnoise) {
+    //
+    // Experimentally, the level 1.0 is OK for a filter width of 4000,
+    // for a filter width of 2000 one needs 3 dB extra,
+    double w = tx->filter_high - tx->filter_low;
+    double a = sqrt(4000.0 / w);
+    SetTXAPreGenNoiseMag(tx->id, a);
+    SetTXAPreGenMode(tx->id, 2);
+    SetTXAPreGenRun(tx->id, 1);
+    SetTXAPostGenRun(tx->id, 0);
+  } else if (twotone) {
     // set frequencies and levels
     switch (vfo_get_tx_mode()) {
     case modeCWL:
@@ -2759,10 +2757,15 @@ void tx_set_twotone(TRANSMITTER *tx, int state) {
     SetTXAPostGenTTMag (tx->id, 0.49999, 0.49999);
     SetTXAPostGenMode(tx->id, 1);
     SetTXAPostGenRun(tx->id, 1);
-    if (timer == 0) {
-      timer = g_timeout_add((guint) 100, ps_calibration_timer, &timer);
-    }
+    SetTXAPreGenRun(tx->id, 0);
+  } else if (tune) {
+    SetTXAPostGenToneFreq(tx->id, 0.0);
+    SetTXAPostGenToneMag(tx->id, 0.99999);
+    SetTXAPostGenMode(tx->id, 0);
+    SetTXAPostGenRun(tx->id, 1);
+    SetTXAPreGenRun(tx->id, 0);
   } else {
+    SetTXAPreGenRun(tx->id, 0);
     SetTXAPostGenRun(tx->id, 0);
     //
     // Most radios show "tails" of the TX signal after a TX/RX transition,
@@ -2771,6 +2774,20 @@ void tx_set_twotone(TRANSMITTER *tx, int state) {
     //
     usleep(100000);
   }
-  g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(state));
+  //
+  // If starting a TwoTone or a Noise, start PS calibration
+  //
+  if (twotone || txnoise) {
+    if (timer == 0) {
+      timer = g_timeout_add((guint) 100, ps_calibration_timer, &timer);
+    }
+  }
+  //
+  // Execute MOX
+  //
+  if (twotone || txnoise || tune) {
+    g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(1));
+  } else {
+    g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(0));
+  }
 }
-

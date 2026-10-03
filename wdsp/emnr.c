@@ -2,7 +2,7 @@
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2015, 2025 Warren Pratt, NR0V
+Copyright (C) 2015, 2025, 2026 Warren Pratt, NR0V
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -27,7 +27,6 @@ warren@wpratt.com
 #include "comm.h"
 #include "calculus.h"
 #include "zetaHat.h"
-#include "FDnoiseIQ.h"
 
 /********************************************************************************************************
 *																										*
@@ -81,7 +80,7 @@ double bessI0 (double x)
 
 double bessI1 (double x)
 {
-
+	
 	double res, p;
 	if (x == 0.0)
 		res = 0.0;
@@ -92,7 +91,7 @@ double bessI1 (double x)
 		{
 			p = x / 3.75;
 			p = p * p;
-			res = x
+			res = x 
 				  * (((((( 0.00032411  * p
 					     + 0.00301532) * p
 					     + 0.02658733) * p
@@ -129,7 +128,7 @@ double e1xb (double x)
 {
 	double e1, ga, r, t, t0;
 	int k, m;
-	if (x == 0.0)
+	if (x == 0.0) 
 		e1 = 1.0e300;
 	else if (x <= 1.0)
 	{
@@ -227,7 +226,7 @@ int readZetaHat(const char* zeta_file, int* rows, int* cols,
 		if (e == 0 && fread(zetaValid, sizeof(int),    nvals, pzetaBinary) != nvals) e = 1;
 		fclose(pzetaBinary);
 	}
-	else
+	else 
 		e = 1;
 	if (e)
 	{
@@ -296,6 +295,7 @@ void CwriteZetaHat(const char* cfile, int zetaHat_rows, int zetaHat_cols,
 	}
 }
 void post2_calc_w(EMNR a);
+void post2_init_table(void);
 
 void calc_emnr(EMNR a)
 {
@@ -566,9 +566,9 @@ void calc_emnr(EMNR a)
 	a->post2.rate_decay = exp(-a->fsize / (a->post2.tc_decay * a->rate * a->ovrlp));
 	a->post2.taper = 0.12;
 	a->post2.w = (double*)malloc0(a->msize * sizeof(double));
-	a->post2.noise_frames = FDnoise_frames;
-	a->post2.noise_frame_index = 0;
-	a->post2.noise_frame = (double*)malloc0(2 * a->msize * sizeof(double));
+	post2_init_table ();
+	a->post2.rngstate = 2463534242u + 2654435761u * (unsigned int)(size_t)a;
+	if (a->post2.rngstate == 0) a->post2.rngstate = 2463534242u;
 	a->post2.olddmag = 0.0;
 	post2_calc_w(a);
 }
@@ -577,7 +577,6 @@ void decalc_emnr(EMNR a)
 {
 	int i;
 	// post2
-	_aligned_free(a->post2.noise_frame);
 	_aligned_free(a->post2.w);
 	// ae
 	_aligned_free(a->ae.nmask);
@@ -634,11 +633,11 @@ void decalc_emnr(EMNR a)
 	_aligned_free(a->window);
 }
 
-EMNR create_emnr (int run, int position, int size, double* in, double* out, int fsize, int ovrlp,
+EMNR create_emnr (int run, int position, int size, double* in, double* out, int fsize, int ovrlp, 
 	int rate, int wintype, double gain, int gain_method, int npe_method, int ae_run)
 {
 	EMNR a = (EMNR) malloc0 (sizeof (emnr));
-
+	
 	a->run = run;
 	a->position = position;
 	a->bsize = size;
@@ -691,7 +690,7 @@ void LambdaD(EMNR a)
 	double bc;
 	double QeqTilda, QeqTildaSub;
 	double noise_slope_max;
-
+	
 	sum_prev_p = 0.0;
 	sum_lambda_y = 0.0;
 	sum_prev_sigma2N = 0.0;
@@ -768,7 +767,7 @@ void LambdaD(EMNR a)
 			for (ku = 0; ku < a->np.U; ku++)
 				if (a->np.actminbuff[ku][k] < min) min = a->np.actminbuff[ku][k];
 			a->np.pmin_u[k] = min;
-			if ((a->np.lmin_flag[k] == 1)
+			if ((a->np.lmin_flag[k] == 1) 
 				&& (a->np.actmin_sub[k] < noise_slope_max * a->np.pmin_u[k])
 				&& (a->np.actmin_sub[k] >                   a->np.pmin_u[k]))
 			{
@@ -783,7 +782,7 @@ void LambdaD(EMNR a)
 		if (++a->np.amb_idx == a->np.U) a->np.amb_idx = 0;
 		a->np.subwc = 1;
 	}
-	else
+	else 
 	{
 		if (a->np.subwc > 1)
 		{
@@ -864,7 +863,7 @@ void aepf(EMNR a)
 	else
 		zetaT = zeta;
 	if (zetaT == 1.0)
-		N = 1;
+		N = 1;				
 	else
 		N = 1 + 2 * (int)(0.5 + a->ae.psi * (1.0 - zetaT / a->ae.zetaThresh));
 	n = N / 2;
@@ -895,11 +894,41 @@ void aepf(EMNR a)
 			a->mask[k] *= 0.05;
 }
 
+#define POST2_NTAB			1024
+#define POST2_NOISE_MAG		113.98
+
+static double post2_cs[POST2_NTAB];
+static double post2_sn[POST2_NTAB];
+static int post2_tab_ready = 0;
+
+void post2_init_table (void)
+{
+	int i;
+	if (post2_tab_ready) return;
+	for (i = 0; i < POST2_NTAB; i++)
+	{
+		double th = 2.0 * PI * (double)i / (double)POST2_NTAB;
+		post2_cs[i] = POST2_NOISE_MAG * cos (th);
+		post2_sn[i] = POST2_NOISE_MAG * sin (th);
+	}
+	post2_tab_ready = 1;
+}
+
+static unsigned int post2_rand (EMNR a)
+{
+	unsigned int x = a->post2.rngstate;
+	x ^= x << 13;
+	x ^= x >> 17;
+	x ^= x << 5;
+	a->post2.rngstate = x;
+	return x;
+}
+
 void post2_calc_w(EMNR a)
 {
 	int i;
 	int ilim = (int)(a->post2.taper * a->msize);
-	memset(a->post2.w, a->msize, sizeof(double));
+	memset(a->post2.w, 0, a->msize * sizeof(double));
 	for (i = 0; i < ilim; i++)
 	{
 		a->post2.w[i] = 0.75 - 0.25 * cos(PI * (ilim - 1 - i) / (ilim - 1));
@@ -928,15 +957,13 @@ void post2(EMNR a)
 		else a->post2.olddmag *= rate_decay;
 		dmag = fmax(dmag, a->post2.olddmag);
 		dmult = dmag * 4.0 * a->gain;
-		memcpy(a->post2.noise_frame, FDnoise + 2 * a->msize * a->post2.noise_frame_index,
-			2 * ilim * sizeof(double));
-		a->post2.noise_frame_index = (a->post2.noise_frame_index + 1) % a->post2.noise_frames;
 		for (i = 1; i < ilim; i++)
 		{
+			unsigned int ph = post2_rand (a) & (POST2_NTAB - 1);
 			Irem = a->gain * a->forfftout[2 * i + 0] - a->revfftin[2 * i + 0];
 			Qrem = a->gain * a->forfftout[2 * i + 1] - a->revfftin[2 * i + 1];
-			Iwhite = dmult * a->post2.noise_frame[2 * i + 0];
-			Qwhite = dmult * a->post2.noise_frame[2 * i + 1];
+			Iwhite = dmult * post2_cs[ph];
+			Qwhite = dmult * post2_sn[ph];
 			Inoise = (1.0 - factor) * Irem + factor * Iwhite;
 			Qnoise = (1.0 - factor) * Qrem + factor * Qwhite;
 			a->revfftin[2 * i + 0] = w[i] * (a->revfftin[2 * i + 0] + nlevel * Inoise);
@@ -1059,9 +1086,9 @@ int getZeta( EMNR a, double gamma, double eps, double* zeta)
 		return -1;
 	index = i_gamma * a->g.dim_zeta + i_xi;
 	int ztvalue = a->g.zeta_true[index];
-	if (ztvalue <= 0)
+	if (ztvalue <= 0) 
 		return -2;
-	else
+	else 
 		*zeta = a->g.zeta_hat[index];
 	return 0;
 }
@@ -1285,9 +1312,9 @@ void SetRXAEMNRRun (int channel, int run)
 	EMNR a = rxa[channel].emnr.p;
 	if (a->run != run)
 	{
-		RXAbp1Check (channel, rxa[channel].amd.p->run, rxa[channel].snba.p->run,
-			run, rxa[channel].anf.p->run, rxa[channel].anr.p->run,
-            rxa[channel].rnnr.p->run, rxa[channel].sbnr.p->run); // NR3 + NR4 support
+		RXAbp1Check(channel, rxa[channel].amd.p->run, rxa[channel].snba.p->run,
+			run, getRun_nnr(rxa[channel].nnr.p), rxa[channel].anf.p->run, rxa[channel].anr.p->run,
+			rxa[channel].sbnr.p->run); // NR4
 		EnterCriticalSection (&ch[channel].csDSP);
 		a->run = run;
 		RXAbp1Set (channel);

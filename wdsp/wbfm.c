@@ -246,7 +246,7 @@ static void calc_bqs(double fs, double f_low, double f_high, bqs bqsec[])
 	double pole_im[2] = {  cos(PI / 4.0),  cos(3.0 * PI / 4.0) };
 	double W0sq = W0 * W0;
 	double T = 1.0 / fs;
-	for (int k = 0; k < 2; k++)
+	for (int k = 0; k < 2; k++) 
 	{
 		double a1_a = -BW * pole_re[k];
 		double a2_a = W0sq + BW * BW * (pole_im[k] * pole_im[k]
@@ -279,7 +279,7 @@ static void calc_bqs(double fs, double f_low, double f_high, bqs bqsec[])
 	printf("  f_high   = %.1f Hz\n", f_high);
 	printf("\n");
 
-	for (int k = 0; k < 2; k++)
+	for (int k = 0; k < 2; k++) 
 	{
 		printf("Section %d:\n", k);
 		printf("  b0 = % .10f\n", bqsec[k].b0);
@@ -345,7 +345,7 @@ typedef struct _wbsql
 	double rate;
 	int size;
 	nopwr npwr;
-	double mag19;
+	double mag19;			
 	double pwrNoise;
 	double pilot_true_thresh;
 	double pilot_good_thresh;

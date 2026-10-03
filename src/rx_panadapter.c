@@ -161,8 +161,8 @@ void rx_panadapter_update(RECEIVER *rx) {
   }
   xoffset = rx->cAp * vfo[rx->id].offset;
   double rxpos = rx->cBp + xoffset;
-  double filter_left  = rx->cAp * rx->filter_low  + xoffset + rx->cBp;
-  double filter_right = rx->cAp * rx->filter_high + xoffset + rx->cBp;
+  double filter_left  = rx->cAp * rx->filter_low  + rxpos;
+  double filter_right = rx->cAp * rx->filter_high + rxpos;
   if (mode == modeCWU) {
     filter_left  -= cw_keyer_sidetone_frequency * rx->cAp;
     filter_right -= cw_keyer_sidetone_frequency * rx->cAp;
@@ -298,6 +298,7 @@ void rx_panadapter_update(RECEIVER *rx) {
       }
     }
   }
+
   //
   // (Multi-) Notches
   //
@@ -404,13 +405,108 @@ void rx_panadapter_update(RECEIVER *rx) {
                * (double) myheight
                / (double) (panhi - panlo));
     cairo_move_to(cr, 0.0, s1);
+    //
+    // Determine noise floor and strongest peak in the passband "on the fly"
+    //
+    int noisecount = 0;
+    int ifl = (int) (filter_left + 0.5);
+    int ifr = (int) (filter_right + 0.5);
+    if (ifl < 0) { ifl = 0; }
+    if (ifr >= mywidth) { ifr = mywidth - 1; }
+    int maxi = ifl;
+    double smax = samples[ifl];
+    for (int i = ifl + 1; i <= ifr; i++) {
+      double s2 = (double)samples[i] + soffset;
+      if (s2 > smax) {
+        maxi = i;
+        smax = s2;
+      }
+    }
+    long long fmax = frequency + (maxi - rxpos) / rx->cAp;
+    //
+    // If smax is larger than ZBlevel, this marks a new frequency
+    // else, lower the old max with 5 dB per second
+    //
+    if (smax > rx->ZBlevel) {
+      rx->ZBfreq = fmax;
+      rx->ZBlevel = smax;
+    } else {
+      rx->ZBlevel = rx->ZBlevel - 5.0 / rx->fps;
+    }
     for (int i = 1; i < mywidth; i++) {
-      double s2;
-      s2 = (double)samples[i] + soffset;
+      double s2 = (double)samples[i] + soffset;
+      //
+      // Count number of pixels that exceed the noise floor
+      // The target for this value is one fourth of all pixels
+      //
+      if (s2 > rx->noise_floor) { noisecount++; }
       s2 = floor((panhi - s2)
                  * (double) myheight
                  / (double) (panhi - panlo));
       cairo_line_to(cr, i, s2);
+    }
+    double noisefrac = (double) noisecount / (double) mywidth;
+    double min5 = 50.0 / rx->fps;
+    double min1 = 10.0 / rx->fps;
+    if (noisefrac > 0.8) {
+      // nearly all pixels above the noise floor: it is much too low
+      rx->noise_floor += min5;
+    } else if (noisefrac > 0.3) {
+      // too many pixels above the noise floor: it is too low
+      rx->noise_floor += min1;
+    } else if (noisefrac > 0.1) {
+      // This is the target area
+    } else if (noisefrac > 0.02) {
+      //too few pixels above the noise floor: it is too high
+      rx->noise_floor -= min1;
+    } else {
+      //almost no pixels above the noise floor: it is much too high
+      rx->noise_floor -= min5;
+    }
+    if (rx->agc_automatic_gain && !radio_is_remote) {
+      //
+      // Bind "AGC green line" to the just determined noise floor,
+      // but do not change AGC gain if there are slight oscillations
+      //
+      if (rx->agc_thresh + soffset > rx->noise_floor + 10.0) {
+        // green line well above noise floor: increase AGC gain strongly
+        rx->agc_gain += min5;
+        rx_set_agc(rx);
+      }
+      if (rx->agc_thresh + soffset > rx->noise_floor + 3.0) {
+        // green line above noise floor: increase AGC gain
+        rx->agc_gain += min1;
+        rx_set_agc(rx);
+      } else if (rx->agc_thresh + soffset > rx->noise_floor - 3.0) {
+        // do nothing. This is the target area
+      } else if (rx->agc_thresh + soffset > rx->noise_floor - 10.0) {
+        // green line below noise floor: decrease AGC gain
+        rx->agc_gain -= min1;
+        rx_set_agc(rx);
+      } else {
+        // green line well below noise floor: decrease AGC gain strongly
+        rx->agc_gain -= min5;
+        rx_set_agc(rx);
+      }
+    }
+    if (rx->pan_low_automatic) {
+      //
+      // Note this works independently on the client
+      //
+      // We do not want to make the panadapter "nervous".
+      // The panlow value is rounded to a multiple of 5, and
+      // an adjustment is only made if the difference between
+      // the target and the nominal value is larger than 5.
+      // For example, a noise floor oscillating between -119 and -121
+      // will constantly have pan_low = -120. Likewise, a noise floor
+      // oscillating between -116 and -118 will either have a constant
+      // (non-oscillating) pan_low of -115 or -120.
+      //
+      int target = rx->noise_floor - 20;
+      target = 5 * (target / 5);
+      if (rx->panadapter_low > target + 5 || rx->panadapter_low < target - 5) {
+        rx->panadapter_low = target;
+      }
     }
     cairo_pattern_t *gradient;
     gradient = NULL;
@@ -473,7 +569,6 @@ void rx_panadapter_update(RECEIVER *rx) {
       int num_peaks = rx->panadapter_num_peaks;
       gboolean peaks_in_passband = SET(rx->panadapter_peaks_in_passband_filled);
       gboolean hide_noise = SET(rx->panadapter_hide_noise_filled);
-      double noise_percentile = (double)rx->panadapter_ignore_noise_percentile;
       int ignore_range_divider = rx->panadapter_ignore_range_divider;
       int ignore_range = (mywidth + ignore_range_divider - 1) / ignore_range_divider; // Round up
       double peaks[num_peaks];
@@ -482,21 +577,6 @@ void rx_panadapter_update(RECEIVER *rx) {
         peaks[a] = -200;
         peak_positions[a] = 0;
       }
-      // Calculate the noise level if needed
-      double noise_level = 0.0;
-      if (hide_noise) {
-        // Dynamically allocate a copy of samples for sorting
-        double *sorted_samples = g_new(double, mywidth);
-        if (sorted_samples != NULL) {
-          for (int i = 0; i < mywidth; i++) {
-            sorted_samples[i] = (double)samples[i] + soffset;
-          }
-          qsort(sorted_samples, mywidth, sizeof(double), compare_doubles);
-          int index = (int)((noise_percentile / 100.0) * mywidth);
-          noise_level = sorted_samples[index] + 3.0;
-          g_free(sorted_samples);
-        }
-      }
       // Detect peaks
       double filter_left_bound = peaks_in_passband ? filter_left : 0;
       double filter_right_bound = peaks_in_passband ? filter_right : mywidth;
@@ -504,7 +584,7 @@ void rx_panadapter_update(RECEIVER *rx) {
         if (i >= filter_left_bound && i <= filter_right_bound) {
           double s = (double)samples[i] + soffset;
           // Check if the point is a peak
-          if ((!hide_noise || s >= noise_level) && s > samples[i - 1] && s > samples[i + 1]) {
+          if ((!hide_noise || s >= rx->noise_floor + 5.0) && s > samples[i - 1] && s > samples[i + 1]) {
             int replace_index = -1;
             int start_range = i - ignore_range;
             int end_range = i + ignore_range;

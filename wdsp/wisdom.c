@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -88,11 +88,11 @@ int WDSPwisdom (char* directory)
 		while (psize <= MAX_WISDOM_SIZE)
 		{
 			fprintf(stdout, "Planning REAL    FORWARD  FFT size %d\n", psize);
-				fflush(stdout);
+			fflush(stdout);
 			sprintf(status, "Planning REAL    FORWARD  FFT size %d\n", psize);
 			tplan = fftw_plan_dft_r2c_1d(psize, fftin, (fftw_complex *)fftout, FFTW_PATIENT);
-				fftw_execute (tplan);
-				fftw_destroy_plan (tplan);
+			fftw_execute (tplan);
+			fftw_destroy_plan (tplan);
 			fprintf(stdout, "Planning REAL    INVERSE  FFT size %d\n", psize);
 			fflush(stdout);
 			sprintf(status, "Planning REAL    INVERSE  FFT size %d\n", psize);

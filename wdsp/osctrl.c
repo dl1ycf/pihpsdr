@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -92,7 +92,7 @@ void xosctrl (OSCTRL a)
 			a->dl[2 * a->in_idx + 0] = a->inbuff[2 * i + 0];							// put sample in delay line
 			a->dl[2 * a->in_idx + 1] = a->inbuff[2 * i + 1];
 			a->env_out = a->dlenv[a->in_idx];											// take env out of delay line
-			a->dlenv[a->in_idx] = sqrt (a->inbuff[2 * i + 0] * a->inbuff[2 * i + 0]		// put env in delay line
+			a->dlenv[a->in_idx] = sqrt (a->inbuff[2 * i + 0] * a->inbuff[2 * i + 0]		// put env in delay line 
 			                          + a->inbuff[2 * i + 1] * a->inbuff[2 * i + 1]);
 			if (a->dlenv[a->in_idx]  >  a->max_env) a->max_env = a->dlenv[a->in_idx];
 			if (a->env_out >= a->max_env && a->env_out > 0.0)							// run the buffer

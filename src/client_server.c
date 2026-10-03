@@ -334,8 +334,8 @@ void send_radio_data(int sock) {
   data.have_saturn_xdma = have_saturn_xdma;
   data.rx_stack_horizontal = rx_stack_horizontal;
   data.n_adc = n_adc;
-  data.diversity_enabled = diversity_enabled;
   data.soapy_iqswap = soapy_iqswap;
+  data.diversity_enabled = diversity_enabled;
   data.soapy_rx1_antennas = radio->soapy.rx[0].antennas;
   data.soapy_rx2_antennas = radio->soapy.rx[1].antennas;
   data.soapy_tx_antennas = radio->soapy.tx.antennas;
@@ -378,8 +378,8 @@ void send_radio_data(int sock) {
   data.drive_min = to_double(drive_min);
   data.drive_max = to_double(drive_max);
   data.drive_digi_max = to_double(drive_digi_max);
-  data.div_gain = to_double(div_gain);
-  data.div_phase = to_double(div_phase);
+  data.man_div_gain = to_double(man_div_gain);
+  data.man_div_phase = to_double(man_div_phase);
   for (int i = 0; i < 11; i++) {
     data.pa_trim[i] = to_double(pa_trim[i]);
   }
@@ -530,6 +530,7 @@ void send_rx_data(int sock, int id) {
   data.nr2_post_nlevel         = rx->nr2_post_nlevel;
   data.nr2_post_factor         = rx->nr2_post_factor;
   data.nr2_post_rate           = rx->nr2_post_rate;
+  data.nnr_model               = rx->nnr_model;
   data.nr4_noise_scaling_type  = rx->nr4_noise_scaling_type;
   data.anf                     = rx->anf;
   data.snb                     = rx->snb;
@@ -576,6 +577,7 @@ void send_rx_data(int sock, int id) {
   data.nb_hang                 = to_double(rx->nb_hang);
   data.nb_advtime              = to_double(rx->nb_advtime);
   data.nb_thresh               = to_double(rx->nb_thresh);
+  data.nnr_floor               = to_double(rx->nnr_floor);
   data.nr4_reduction_amount    = to_double(rx->nr4_reduction_amount);
   data.nr4_smoothing_factor    = to_double(rx->nr4_smoothing_factor);
   data.nr4_whitening_factor    = to_double(rx->nr4_whitening_factor);
@@ -813,8 +815,8 @@ void send_diversity(int s, int enabled, double gain, double phase) {
   SYNC(command.header.sync);
   command.header.data_type = to_16(CMD_DIVERSITY);
   command.diversity_enabled = enabled;
-  command.div_gain = to_double(gain);
-  command.div_phase =  to_double(phase);
+  command.man_div_gain = to_double(gain);
+  command.man_div_phase =  to_double(phase);
   send_tcp(s, (char *)&command, sizeof(command));
 }
 
@@ -834,6 +836,7 @@ void send_agc(int s, const RECEIVER *rx) {
   command.custom_slope  = to_16(rx->agc_custom_slope);
   //
   command.agc = rx->agc;
+  command.agc_automatic_gain = rx->agc_automatic_gain;
   send_tcp(s, (char *)&command, sizeof(command));
 }
 
@@ -851,6 +854,20 @@ void send_attenuation(int s, int id, int attenuation) {
   SYNC(header.sync);
   header.data_type = to_16(CMD_ATTENUATION);
   header.b1 = id;
+  header.s1 = to_16(attenuation);
+  send_tcp(s, (char *)&header, sizeof(HEADER));
+}
+
+//
+// The same thing addressed by ADC rather than by receiver. This is how a
+// client reaches ADC1 while DIVERSITY is running, where every
+// receiver-indexed path resolves to ADC0.
+//
+void send_adc_attenuation(int s, int a, int attenuation) {
+  HEADER header;
+  SYNC(header.sync);
+  header.data_type = to_16(CMD_ADC_ATTENUATION);
+  header.b1 = a;
   header.s1 = to_16(attenuation);
   send_tcp(s, (char *)&header, sizeof(HEADER));
 }
@@ -932,6 +949,7 @@ void send_noise(int s, const RECEIVER *rx) {
   command.nr2_post_nlevel           = rx->nr2_post_nlevel;
   command.nr2_post_factor           = rx->nr2_post_factor;
   command.nr2_post_rate             = rx->nr2_post_rate;
+  command.nnr_model                 = rx->nnr_model;
   command.nr4_noise_scaling_type    = rx->nr4_noise_scaling_type;
   command.anf_taps                  = to_16(rx->anf_taps);
   command.anf_delay                 = to_16(rx->anf_delay);
@@ -943,6 +961,7 @@ void send_noise(int s, const RECEIVER *rx) {
   command.nb_thresh                 = to_double(rx->nb_thresh);
   command.nr2_trained_threshold     = to_double(rx->nr2_trained_threshold);
   command.nr2_trained_t2            = to_double(rx->nr2_trained_t2);
+  command.nnr_floor                 = to_double(rx->nnr_floor);
   command.nr4_reduction_amount      = to_double(rx->nr4_reduction_amount);
   command.nr4_smoothing_factor      = to_double(rx->nr4_smoothing_factor);
   command.nr4_whitening_factor      = to_double(rx->nr4_whitening_factor);
@@ -983,6 +1002,14 @@ void send_band(int s, int v, int band) {
   send_tcp(s, (char *)&header, sizeof(header));
 }
 
+void send_txnoise(int s, int state) {
+  HEADER header;
+  SYNC(header.sync);
+  header.data_type = to_16(CMD_TXNOISE);
+  header.b1 = state;
+  send_tcp(s, (char *)&header, sizeof(header));
+}
+
 void send_twotone(int s, int state) {
   HEADER header;
   SYNC(header.sync);
@@ -998,14 +1025,6 @@ void send_tune(int s, int state) {
   header.b1 = state;
   header.s1 = to_16(full_tune);
   header.s2 = to_16(memory_tune);
-  send_tcp(s, (char *)&header, sizeof(header));
-}
-
-void send_vox(int s, int state) {
-  HEADER header;
-  SYNC(header.sync);
-  header.data_type = to_16(CMD_VOX);
-  header.b1 = state;
   send_tcp(s, (char *)&header, sizeof(header));
 }
 

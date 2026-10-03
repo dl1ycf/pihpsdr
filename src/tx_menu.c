@@ -243,7 +243,7 @@ static void spinbtn_cb(GtkWidget *widget, gpointer data) {
       break;
     case TX_MON_VOLUME:
       transmitter->audiomon_db = vi;
-      transmitter->audiomon_vol = pow(10.0, 0.05*v);
+      transmitter->audiomon_vol = pow(10.0, 0.05 * v);
       break;
     }
   } else if (d == CFCFREQ) {

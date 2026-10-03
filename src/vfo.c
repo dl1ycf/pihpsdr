@@ -998,16 +998,6 @@ void vfo_update(void) {
     cairo_line_to(cr, x2 + 5, vfl->filter_y - 15);
     cairo_stroke(cr);
   }
-#if 0
-  //
-  // Only for debugging: mark right edge
-  //
-  cairo_set_line_width(cr, 3.0);
-  cairo_set_source_rgba(cr, COLOUR_OK);
-  cairo_move_to(cr, vfl->width, 0);
-  cairo_line_to(cr, vfl->width, vfl->height);
-  cairo_stroke(cr);
-#endif
   // -----------------------------------------------------------
   //
   // Draw a string specifying the mode, the filter width
@@ -1300,7 +1290,7 @@ void vfo_update(void) {
       break;
     case 3:
       cairo_set_source_rgba(cr, COLOUR_ATTN);
-      cairo_show_text(cr, "NR3");
+      cairo_show_text(cr, "NNR");
       break;
     case 4:
       cairo_set_source_rgba(cr, COLOUR_ATTN);

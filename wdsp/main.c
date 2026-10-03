@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -75,7 +75,7 @@ void create_main (int channel)
 		create_txa (channel);
 		break;
 	case 31:  //
-
+		
 		break;
 	}
 }
@@ -91,7 +91,7 @@ void destroy_main (int channel)
 		destroy_txa (channel);
 		break;
 	case 31:  //
-
+		
 		break;
 	}
 }
@@ -107,7 +107,7 @@ void flush_main (int channel)
 		flush_txa (channel);
 		break;
 	case 31:
-
+		
 		break;
 	}
 }

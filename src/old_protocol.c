@@ -312,7 +312,6 @@ static gpointer old_protocol_txiq_thread(gpointer data) {
     // This is a no-op if "wait" is in the past
     //
     clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &wait, NULL);
-
     if (P1running && pthread_mutex_trylock(&send_mutex) == 0) {
       //
       // If we do not get a lock, this means a protocol restart is
@@ -2085,14 +2084,8 @@ static void ozy_send_buffer(unsigned char *buffer) {
       if (n_adc == 2) {
         //
         // Setting of the ADC1 step attenuator
-        // If diversity is enabled, use RX1 att value for RX2
-        // Note bit5 must *always be set, otherwise the attenuation is zero.
         //
-        if (diversity_enabled) {
-          buffer[C1] = 0x20 | (adc[0].attenuation & 0x1F);
-        } else {
-          buffer[C1] = 0x20 | (adc[1].attenuation & 0x1F);
-        }
+        buffer[C1] = 0x20 | (adc[1].attenuation & 0x1F);
         if (radio_is_transmitting() && pa_enabled && !txband->disablePA) {
           buffer[C1] = 0x3F;
         }
@@ -2147,6 +2140,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
       buffer[C0] = 0x1E;
       if ((txmode == modeCWU || txmode == modeCWL) && !transmitter->tune
           && !transmitter->twotone
+          && !transmitter->txnoise
           && cw_keyer_internal
           && !MIDI_cw_is_active
           && !CAT_cw_is_active) {
@@ -2473,6 +2467,7 @@ static void ozy_send_buffer(unsigned char *buffer) {
           || MIDI_cw_is_active
           || !cw_keyer_internal
           || transmitter->twotone
+          || transmitter->txnoise
           || hpsdr_ptt) {
         buffer[C0] |= 0x01;
       }

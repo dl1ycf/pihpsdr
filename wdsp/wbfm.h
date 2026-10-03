@@ -62,7 +62,7 @@ typedef struct _wbfm
 	double dcbSave_x;
 	double dcbSave_y;
 	double disc_gain_comp;
-
+	
 	// filter:  0-15 kHz
 	FIRCORE pfil0_15;
 	double flow_fil0_15;

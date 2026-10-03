@@ -30,6 +30,10 @@ john.d.melton@googlemail.com
 #include "linux_port.h"
 #include "comm.h"
 
+//
+// This is only defined in calcc.c (not calcc.h) so we put it here
+//
+extern void __cdecl doPSCorrChange(void* arg);
 /********************************************************************************************************
 *																										*
 *	Linux Port Utilities																				*

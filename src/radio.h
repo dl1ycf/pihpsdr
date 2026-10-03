@@ -233,16 +233,29 @@ extern long long tune_timeout;
 extern int meter_type;
 extern int extended_meter;
 
-extern int vox;
+//extern int vox;
 extern int CAT_cw_is_active;
 extern int MIDI_cw_is_active;
 extern int hpsdr_ptt;
 extern int cw_key_hit;
 extern int n_adc;
 
+//
+// div_auto_mode
+//
+enum {
+  DIV_MANUAL,         // manual gain/phase only
+  DIV_AUTO_NULL,      // minimise the correlated component (noise cancelling)
+  DIV_AUTO_SUM,       // co-phase the two antennas (maximum ratio combining)
+  DIV_AUTO_BEST       // use whichever antenna has the better SNR
+};
+
 extern int diversity_enabled;
-extern double div_cos, div_sin;
-extern double div_gain, div_phase;
+extern int div_auto_mode;
+extern double auto_div_cos, auto_div_sin;
+extern double man_div_cos, man_div_sin;
+extern double man_div_gain, man_div_phase;
+extern double auto_div_gain, auto_div_phase;
 
 extern int capture_state;
 extern const int capture_max;
@@ -324,6 +337,7 @@ extern void   radio_set_split(int v);
 extern void   radio_set_mox(int state);
 extern void   radio_set_twotone(TRANSMITTER *tx, int state);
 extern void   radio_set_tune(int state);
+extern void   radio_set_txnoise(TRANSMITTER *tx, int state);
 extern void   radio_set_duplex(int state);
 extern void   radio_set_cw_speed(int s);
 extern void   radio_set_sidetone_freq(int f);
@@ -333,20 +347,20 @@ extern void   radio_set_drive(double d);
 extern void   radio_set_diversity(int state);
 extern void   radio_set_diversity_gain(double g);
 extern void   radio_set_diversity_phase(double p);
-extern void   radio_calc_drive_level(void);
+extern void   radio_calc_drive_level(int tune);
 extern void   radio_calc_div_params(void);
 extern void   radio_calc_tune_drive_level(void);
 extern void   radio_set_panhigh(int id, int value);
 extern void   radio_set_panlow(int id, int value);
 extern void   radio_set_panstep(int id, int value);
 extern void   radio_set_attenuation(int id, int value);
+extern void   radio_set_adc_attenuation(int a, int value);
 extern void   radio_set_random(int id, int value);
 extern void   radio_set_dither(int id, int value);
 extern void   radio_set_preamp(int id, int value);
 extern void   radio_toggle_preamp(int id);
 extern void   radio_set_c25_att(int id, int value);
 extern void   radio_set_alex_attenuation(int v);
-extern int    radio_is_transmitting(void);
 extern void   radio_set_satmode(int mode);
 extern int    radio_max_band(void);
 extern void   radio_start_xmit_captured_data(void);
@@ -376,6 +390,7 @@ extern int  radio_client_set_mox(gpointer data);
 extern int  radio_client_set_vox(gpointer data);
 extern int  radio_client_set_tune(gpointer data);
 extern int  radio_client_set_twotone(gpointer data);
+extern int  radio_client_set_txnoise(gpointer data);
 extern int  radio_server_protocol_run(gpointer data);
 extern int  radio_server_protocol_stop(gpointer data);
 
@@ -384,6 +399,7 @@ extern int smeter3dB;
 
 extern void my_combo_attach(GtkGrid *grid, GtkWidget *combo, int row, int col, int spanrow, int spancol);
 
+static inline int radio_is_transmitting() { return mox; }
 //
 // Macro to flag an unimplemented client/server feature,
 // or a client trying to do things only a server should do.

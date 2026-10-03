@@ -82,7 +82,6 @@ typedef struct _transmitter {
   int panadapter_peaks_on;
   int panadapter_num_peaks;
   int panadapter_ignore_range_divider;
-  int panadapter_ignore_noise_percentile;
   int panadapter_hide_noise_filled;
   int panadapter_peaks_in_passband_filled;
 
@@ -99,12 +98,15 @@ typedef struct _transmitter {
   int out_of_band;
   guint out_of_band_timer_id;
 
-  int tune;
   int swrtune;            // produce SWR-dependent side tone while TUNE-ing
   double swrtune_volume;  // Volume of SWR-dependent side tone (1-127)
   double tt1_freq;        // Two-Tone frequencies
   double tt2_freq;        // Two-Tone frequencies
-  int twotone;
+
+  int txnoise;            // Currently producing pre-gen "noise"
+  int tune;               // Currently producing post-gen single-tone signal
+  int twotone;            // Currently producint post-gen two-tone signal
+
   int puresignal;
   int feedback;
   int auto_on;
@@ -264,8 +266,7 @@ extern void   tx_set_out_of_band(TRANSMITTER *tx);
 extern void   tx_set_phrot(const TRANSMITTER *tx);
 extern void   tx_set_pre_emphasize(const TRANSMITTER *tx);
 extern void   tx_set_ramps(TRANSMITTER *tx);
-extern void   tx_set_singletone(const TRANSMITTER *tx, int state, double freq);
-extern void   tx_set_twotone(TRANSMITTER *tx, int state);
+extern void   tx_set_signal(TRANSMITTER *tx, int tune, int noise, int twotone);
 extern void   tx_set_vox(const TRANSMITTER *tx);
 extern void   tx_queue_cw_event(int state, int wait);
 extern double vox_get_peak(void);

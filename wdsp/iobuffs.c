@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -534,11 +534,11 @@ void fexchange2 (int channel, INREAL *Iin, INREAL *Qin, OUTREAL *Iout, OUTREAL *
 				(a->r1_baseptr + 2 * a->r1_inidx)[2 * i + 0] = (double)(Iin[i]);
 				(a->r1_baseptr + 2 * a->r1_inidx)[2 * i + 1] = (double)(Qin[i]);
 			}
-			// add check with *error += -1; for case when r1 is full and an overwrite occurs
+																										// add check with *error += -1; for case when r1 is full and an overwrite occurs
 		if ((a->r1_unqueuedsamps += a->in_size) >= a->r1_outsize)
 		{
 			n = a->r1_unqueuedsamps / a->r1_outsize;
-			ReleaseSemaphore(a->Sem_BuffReady, n, 0);
+			ReleaseSemaphore(a->Sem_BuffReady, n, 0);	
 			a->r1_unqueuedsamps -= n * a->r1_outsize;
 		}
 		if ((a->r1_inidx += a->in_size) == a->r1_active_buffsize)
@@ -595,7 +595,7 @@ void dexchange (int channel, double* in, double* out)
 	if (a->bfo && (a->r2_unqueuedsamps += a->r2_insize) >= a->out_size)
 	{
 		n = a->r2_unqueuedsamps / a->out_size;
-		ReleaseSemaphore(a->Sem_OutReady, n, 0);
+		ReleaseSemaphore(a->Sem_OutReady, n, 0);	
 		a->r2_unqueuedsamps -= n * a->out_size;
 	}
 	memcpy (out, a->r1_baseptr + 2 * a->r1_outidx, a->r1_outsize * sizeof (complex));

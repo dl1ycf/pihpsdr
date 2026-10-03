@@ -408,10 +408,10 @@ int audio_open_output(RECEIVER *rx) {
     .process = pw_out_cb,
   };
   ad->stream = pw_stream_new_simple(pw_thread_loop_get_loop(ad->loop),
-                                   "pihpsdr-playback",
-                                   props,
-                                   &stream_events,
-                                   rx);
+                                    "pihpsdr-playback",
+                                    props,
+                                    &stream_events,
+                                    rx);
   if (ad->stream == NULL) {
     pw_core_disconnect(ad->core);
     pw_thread_loop_unlock(ad->loop);
@@ -551,23 +551,21 @@ int audio_open_input(TRANSMITTER *tx) {
                                   PW_KEY_NODE_LATENCY, PIPEWIRE_QUANTUM_CAPTURE,
                                   NULL
                                 );
-
   if (monitor) {
     //
     // This is an audio output device, and we want to use its associated monitor
     //
     pw_properties_set(props, PW_KEY_STREAM_CAPTURE_SINK, "true");
   }
-
   static const struct pw_stream_events stream_events = {
     PW_VERSION_STREAM_EVENTS,
     .process = pw_in_cb,
   };
   ad->stream = pw_stream_new_simple(pw_thread_loop_get_loop(ad->loop),
-                                   "pihpsdr-capture-stream",
-                                   props,
-                                   &stream_events,
-                                   tx);
+                                    "pihpsdr-capture-stream",
+                                    props,
+                                    &stream_events,
+                                    tx);
   if (ad->stream == NULL) {
     pw_core_disconnect(ad->core);
     pw_thread_loop_unlock(ad->loop);

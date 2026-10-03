@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -53,7 +53,7 @@ typedef struct _firmin
 	double gain;			// filter gain
 }firmin, *FIRMIN;
 
-extern FIRMIN create_firmin (int run, int position, int size, double* in, double* out,
+extern FIRMIN create_firmin (int run, int position, int size, double* in, double* out, 
 	int nc, double f_low, double f_high, int samplerate, int wintype, double gain);
 
 extern void destroy_firmin (FIRMIN a);
@@ -107,7 +107,7 @@ typedef struct _firopt
 	fftw_plan* maskplan;	// plans for frequency domain masks
 } firopt, *FIROPT;
 
-extern FIROPT create_firopt (int run, int position, int size, double* in, double* out,
+extern FIROPT create_firopt (int run, int position, int size, double* in, double* out, 
 	int nc, double f_low, double f_high, int samplerate, int wintype, double gain);
 
 extern void xfiropt (FIROPT a, int pos);
@@ -164,7 +164,7 @@ typedef struct _fircore
 	MINPHASE pminphase;
 } fircore, *FIRCORE;
 
-extern FIRCORE create_fircore (int size, double* in, double* out,
+extern FIRCORE create_fircore (int size, double* in, double* out, 
 	int nc, int mp, int pfactor, double* impulse);
 
 extern void xfircore (FIRCORE a);

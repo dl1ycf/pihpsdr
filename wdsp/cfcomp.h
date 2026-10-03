@@ -2,7 +2,7 @@
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2017, 2021, 2026 Warren Pratt, NR0V
+Copyright (C) 2017, 2021, 2026 Warren Pratt, NR0V 
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -110,8 +110,8 @@ typedef struct _cfcomp
 
 }cfcomp, *CFCOMP;
 
-extern CFCOMP create_cfcomp (int run, int position, int peq_run, int size, double* in, double* out, int fsize, int ovrlp,
-	int rate, int wintype, int comp_method, int nfreqsG, int nfreqsE, double precomp, double prepeq,
+extern CFCOMP create_cfcomp (int run, int position, int peq_run, int size, double* in, double* out, int fsize, int ovrlp, 
+	int rate, int wintype, int comp_method, int nfreqsG, int nfreqsE, double precomp, double prepeq, 
 	double* Fg, double* G, double* Fe, double* E, double mtau, double dtau);
 
 extern void destroy_cfcomp (CFCOMP a);
