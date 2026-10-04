@@ -25,9 +25,6 @@
 #include "radio.h"
 
 static GtkWidget *dialog = NULL;
-static GtkWidget *gain_coarse_scale = NULL;
-static GtkWidget *gain_fine_scale = NULL;
-static GtkWidget *phase_fine_scale = NULL;
 
 static double gain_coarse, gain_fine;
 static double phase_coarse, phase_fine;
@@ -36,9 +33,6 @@ static void cleanup(void) {
   if (dialog != NULL) {
     GtkWidget *tmp = dialog;
     dialog = NULL;
-    gain_coarse_scale = NULL;
-    gain_fine_scale = NULL;
-    phase_fine_scale = NULL;
     gtk_widget_destroy(tmp);
     sub_menu = NULL;
     active_menu  = NO_MENU;

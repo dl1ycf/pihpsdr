@@ -2101,11 +2101,12 @@ static void ozy_send_buffer(unsigned char *buffer) {
       // need to add tx attenuation and rx ADC selection
       buffer[C0] = 0x1C;
       // set adc of the two RX associated with the two piHPSDR receivers
+      buffer[C1] |= receiver[0]->adc & 0x03;
       if (diversity_enabled) {
-        // use ADC0 for RX1 and ADC1 for RX2 (fixed setting)
-        buffer[C1] |= 0x04;
+        // RX2 ADC is the ADC not used by RX1
+        buffer[C1] |= ((1-receiver[0]->adc) & 0x03) << 2;
       } else {
-        buffer[C1] |= receiver[0]->adc & 0x03;
+        // set RX2 ADC
         buffer[C1] |= (receiver[1]->adc & 0x03) << 2;
       }
       //
