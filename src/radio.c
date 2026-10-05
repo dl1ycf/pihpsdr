@@ -2582,7 +2582,7 @@ void radio_set_rf_gain(int id, double value) {
   int rxadc = receiver[id]->adc;
   adc[rxadc].gain = value;
   adc[rxadc].attenuation = 0.0;
-  g_idle_add(sliders_rf_gain, GINT_TO_POINTER(100 * suppress_popup_sliders + id));
+  g_idle_add(sliders_rf_gain, GINT_TO_POINTER(100 * suppress_popup_sliders + rxadc));
   if (radio_is_remote) {
     send_rfgain(cl_sock_tcp, id, adc[rxadc].gain);
     return;
@@ -2811,39 +2811,19 @@ void radio_set_panstep(int id, int value) {
 // handed to the diversity loop, which feeds it forward into the weight
 // and restarts its statistics.
 //
-void radio_set_adc_attenuation(int a, int value) {
-  if (a < 0 || a >= n_adc || !have_rx_att) { return; }
+void radio_set_adc_attenuation(int rxadc, int value) {
+  if (rxadc < 0 || rxadc >= n_adc || !have_rx_att) { return; }
 
   if (value <  0) { value =  0; }
   if (value > 31) { value = 31; }
 
-  adc[a].attenuation = value;
-  adc[a].gain = 0.0;
+  adc[rxadc].attenuation = value;
+  adc[rxadc].gain = 0.0;
 
-  //
-  // Move the slider through whichever receiver is sitting on this ADC.
-  // One of them, not all: sliders_attenuation() pops up a transient
-  // slider when the receiver it is given is not on the active ADC, and
-  // two receivers sharing an ADC would then produce two popups. The
-  // active receiver is preferred, which is the case that moves the
-  // permanent slider rather than popping one up.
-  //
-  int sid = -1;
-
-  for (int id = 0; id < receivers; id++) {
-    if (receiver[id]->adc != a) { continue; }
-
-    if (id == active_receiver->id) { sid = id; break; }
-
-    if (sid < 0) { sid = id; }
-  }
-
-  if (sid >= 0) {
-    g_idle_add(sliders_attenuation, GINT_TO_POINTER(100 * suppress_popup_sliders + sid));
-  }
+  g_idle_add(sliders_attenuation, GINT_TO_POINTER(100 * suppress_popup_sliders + rxadc));
 
   if (radio_is_remote) {
-    send_adc_attenuation(cl_sock_tcp, a, value);
+    send_adc_attenuation(cl_sock_tcp, rxadc, value);
     return;
   }
 
@@ -2857,7 +2837,7 @@ void radio_set_attenuation(int id, int value) {
   if (radio_is_remote) {
     adc[rxadc].attenuation = value;
     adc[rxadc].gain = 0.0;
-    g_idle_add(sliders_attenuation, GINT_TO_POINTER(100 * suppress_popup_sliders + id));
+    g_idle_add(sliders_attenuation, GINT_TO_POINTER(100 * suppress_popup_sliders + rxadc));
     send_attenuation(cl_sock_tcp, id, value);
     return;
   }

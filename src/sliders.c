@@ -399,8 +399,8 @@ int sliders_att_type_changed(gpointer data) {
       gtk_widget_hide(c25_container);
     }
     // no need to call these through the event queue
-    sliders_attenuation(GINT_TO_POINTER(100 + active_receiver->id));
-    sliders_rf_gain(GINT_TO_POINTER(100 + active_receiver->id));
+    sliders_attenuation(GINT_TO_POINTER(100 + active_receiver->adc));
+    sliders_rf_gain(GINT_TO_POINTER(100 + active_receiver->adc));
   }
   return G_SOURCE_REMOVE;
 }
@@ -412,12 +412,13 @@ int sliders_active_receiver_changed(gpointer data) {
     // new active receiver. No need to call these through the event queue.
     //
     gpointer id = GINT_TO_POINTER(100 + active_receiver->id);
+    gpointer rxadc = GINT_TO_POINTER(100 + active_receiver->adc);
     sliders_af_gain(id);
-    sliders_rf_gain(id);
+    sliders_rf_gain(rxadc);
     sliders_agc_gain(id);
     sliders_squelch(id);
     sliders_c25_att(id);
-    sliders_attenuation(id);
+    sliders_attenuation(rxadc);
     sliders_zoom(id);
     sliders_pan(id);
   }
@@ -456,18 +457,17 @@ int sliders_c25_att(gpointer data) {
 
 int sliders_attenuation(gpointer data) {
   int val = GPOINTER_TO_INT(data);
-  int id = val % 100;
-  if (id > receivers || !have_rx_att) { return G_SOURCE_REMOVE; }
+  int rxadc = val % 100;
+  if (rxadc < 0 || rxadc >= n_adc || !have_rx_att) { return G_SOURCE_REMOVE; }
   //
   // This ONLY moves the slider
   //
-  int rxadc = receiver[id]->adc;
   if (active_receiver->adc == rxadc && attenuation_scale != NULL) {
     g_signal_handler_block(G_OBJECT(attenuation_scale), att_signal_id);
     gtk_range_set_value (GTK_RANGE(attenuation_scale), (double)adc[rxadc].attenuation);
     g_signal_handler_unblock(G_OBJECT(attenuation_scale), att_signal_id);
   } else if (val < 100) {
-    show_popup_slider(ATTENUATION, id + 1, 0.0, 31.0, 1.0, (double)adc[rxadc].attenuation,
+    show_popup_slider(ATTENUATION, rxadc + 1, 0.0, 31.0, 1.0, (double)adc[rxadc].attenuation,
                       "Attenuation ADC");
   }
   return G_SOURCE_REMOVE;
@@ -510,12 +510,11 @@ int sliders_af_gain(gpointer data) {
 
 int sliders_rf_gain(gpointer data) {
   int val = GPOINTER_TO_INT(data);
-  int id = val % 100;
-  if (id > receivers || !have_rx_gain) { return G_SOURCE_REMOVE; }
+  int rxadc = val % 100;
+  if (rxadc < 0 || rxadc > n_adc || !have_rx_gain) { return G_SOURCE_REMOVE; }
   //
   // This ONLY moves the slider
   //
-  int rxadc = receiver[id]->adc;
   if (rf_gain_scale != NULL && active_receiver->adc == rxadc) {
     g_signal_handler_block(G_OBJECT(rf_gain_scale), rf_signal_id);
     gtk_range_set_value (GTK_RANGE(rf_gain_scale), adc[rxadc].gain);

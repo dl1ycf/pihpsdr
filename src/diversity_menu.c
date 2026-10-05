@@ -51,8 +51,10 @@ static void diversity_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void att_cb(GtkWidget *widget, gpointer data) {
+  suppress_popup_sliders++;
   radio_set_adc_attenuation(GPOINTER_TO_INT(data),
                             (int) (0.5+gtk_range_get_value(GTK_RANGE(widget))));
+  suppress_popup_sliders--;
 }
 
 static void gain_coarse_changed_cb(GtkWidget *widget, gpointer data) {
@@ -137,21 +139,23 @@ void diversity_menu(GtkWidget *parent) {
 
 
   if (have_rx_att) {
-    lbl = gtk_label_new("ATT ADC1:");
+    int rxadc = receiver[0]->adc;   // ADC of "primary" Antenna
+    int otheradc = 1 - rxadc;       // ADC of "noisy" Antenna
+    lbl = gtk_label_new("RX1 ATT:");
     gtk_widget_set_name(lbl, "boldlabel");
     gtk_widget_set_halign(lbl, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), lbl, 0, row, 2, 1);
     btn = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 31.0, 1.0);
-    gtk_range_set_value(GTK_RANGE(btn), adc[0].attenuation);
-    g_signal_connect(btn, "value_changed", G_CALLBACK(att_cb), GINT_TO_POINTER(0));
+    gtk_range_set_value(GTK_RANGE(btn), adc[rxadc].attenuation);
+    g_signal_connect(btn, "value_changed", G_CALLBACK(att_cb), GINT_TO_POINTER(rxadc));
     gtk_grid_attach(GTK_GRID(grid), btn, 2, row, 4, 1);
-    lbl = gtk_label_new("ADC2:");
+    lbl = gtk_label_new("Other:");
     gtk_widget_set_name(lbl, "boldlabel");
     gtk_widget_set_halign(lbl, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), lbl, 6, row, 1, 1);
     btn = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 31.0, 1.0);
-    gtk_range_set_value(GTK_RANGE(btn), adc[1].attenuation);
-    g_signal_connect(btn, "value_changed", G_CALLBACK(att_cb), GINT_TO_POINTER(1));
+    gtk_range_set_value(GTK_RANGE(btn), adc[otheradc].attenuation);
+    g_signal_connect(btn, "value_changed", G_CALLBACK(att_cb), GINT_TO_POINTER(otheradc));
     gtk_grid_attach(GTK_GRID(grid), btn, 7, row, 4, 1);
     row++;
   }
