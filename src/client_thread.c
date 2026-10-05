@@ -1167,8 +1167,8 @@ static gpointer client_tcp_thread(gpointer arg) {
       adc[i].min_gain = from_double(data.min_gain);
       adc[i].max_gain = from_double(data.max_gain);
       if (active_receiver->adc == i) {
-        g_idle_add(sliders_attenuation, GINT_TO_POINTER(100 + active_receiver->id));
-        g_idle_add(sliders_rf_gain, GINT_TO_POINTER(100 + active_receiver->id));
+        g_idle_add(sliders_attenuation, GINT_TO_POINTER(100 + active_receiver->adc));
+        g_idle_add(sliders_rf_gain, GINT_TO_POINTER(100 + active_receiver->adc));
       }
     }
     break;
@@ -1538,7 +1538,7 @@ static gpointer client_tcp_thread(gpointer arg) {
       // here shows what the radio is really set to.
       //
       DIV_SETTINGS_COMMAND *command = g_new(DIV_SETTINGS_COMMAND, 1);
-      command->header = header; 
+      command->header = header;
       if (recv_tcp(cl_sock_tcp, (char *)command + sizeof(HEADER), sizeof(DIV_SETTINGS_COMMAND) - sizeof(HEADER)) > 0) {
         g_idle_add(diversity_client_set_settings, command);
       } else {

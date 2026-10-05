@@ -436,10 +436,10 @@ static void server_loop(void) {
   // Send global variables
   //
   send_radio_data(remoteclient.sock_tcp);
-  // 
+  //
   // The radio owns the diversity settings; a connecting client adopts
-  // them rather than imposing what it happened to save. 
-  // 
+  // them rather than imposing what it happened to save.
+  //
   {
     DIV_SETTINGS set;
     diversity_auto_get_settings(&set);
@@ -1551,8 +1551,8 @@ static int server_command(gpointer data) {
     // up with rather than what it asked for.
     //
     send_adc_data(remoteclient.sock_tcp, a);
-  } 
-  break; 
+  }
+  break;
   case CMD_SQUELCH: {
     const DOUBLE_COMMAND *command = (DOUBLE_COMMAND *)data;
     int id = command->header.b1;

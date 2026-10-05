@@ -34,7 +34,7 @@
 // but as they stand they pop up a window that is too large and
 // covers important parts of the menu
 //
-#define gtk_widget_set_tooltip_text(x,y) 
+#define gtk_widget_set_tooltip_text(x,y)
 
 static GtkWidget *dialog = NULL;
 static GtkWidget *gain_coarse_scale = NULL;
@@ -168,7 +168,7 @@ static void sanitize_man_values() {
   gain_fine = man_div_gain - gain_coarse;
   phase_coarse = 4.0 * round(man_div_phase * 0.25);
   phase_fine = man_div_phase - phase_coarse;
-} 
+}
 
 static void enable_cb(GtkWidget *widget, gpointer data) {
   int state = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
@@ -180,8 +180,10 @@ static void enable_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void att_cb(GtkWidget *widget, gpointer data) {
+  suppress_popup_sliders++;
   radio_set_adc_attenuation(GPOINTER_TO_INT(data),
                             (int) (0.5+gtk_range_get_value(GTK_RANGE(widget))));
+  suppress_popup_sliders--;
 }
 
 static void gain_coarse_changed_cb(GtkWidget *widget, gpointer data) {
@@ -609,7 +611,6 @@ gboolean diversity_client_set_status(gpointer data) {
   st.rade_locked     = d->rade_locked;
   st.rade_confirming = d->rade_confirming;
   st.rade_side       = d->rade_side;
-  st.indep_att       = d->indep_att;
   st.att0            = d->att0;
   st.att1            = d->att1;
   st.binhz        = from_double(d->binhz);
@@ -860,21 +861,23 @@ void diversity_menu(GtkWidget *parent) {
   if (have_rx_att) {
     row++;
     //
-    lbl = gtk_label_new("ATT ADC1:");
+    int rxadc = receiver[0]->adc;
+    int otheradc = 1 - rxadc;
+    lbl = gtk_label_new("RX1 ATT:");
     gtk_widget_set_name(lbl, "boldlabel");
     gtk_widget_set_halign(lbl, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), lbl, 0, row, 2, 1);
     btn = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 31.0, 1.0);
-    gtk_range_set_value(GTK_RANGE(btn), adc[0].attenuation);
-    g_signal_connect(btn, "value_changed", G_CALLBACK(att_cb), GINT_TO_POINTER(0));
+    gtk_range_set_value(GTK_RANGE(btn), adc[rxadc].attenuation);
+    g_signal_connect(btn, "value_changed", G_CALLBACK(att_cb), GINT_TO_POINTER(rxadc));
     gtk_grid_attach(GTK_GRID(grid), btn, 2, row, 4, 1);
     lbl = gtk_label_new("ADC2:");
     gtk_widget_set_name(lbl, "boldlabel");
     gtk_widget_set_halign(lbl, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), lbl, 6, row, 1, 1);
     btn = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 31.0, 1.0);
-    gtk_range_set_value(GTK_RANGE(btn), adc[1].attenuation);
-    g_signal_connect(btn, "value_changed", G_CALLBACK(att_cb), GINT_TO_POINTER(1));
+    gtk_range_set_value(GTK_RANGE(btn), adc[otheradc].attenuation);
+    g_signal_connect(btn, "value_changed", G_CALLBACK(att_cb), GINT_TO_POINTER(otheradc));
     gtk_grid_attach(GTK_GRID(grid), btn, 7, row, 4, 1);
   }
   row++;

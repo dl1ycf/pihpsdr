@@ -670,7 +670,7 @@ static void new_protocol_high_priority(void) {
   high_priority_buffer_to_radio[5] = 0x00;
   if (diversity_enabled && !xmit) {
     //
-    // Use frequency of first receiver for both DDC0 and DDC1
+    // Use frequency of RX1 for both DDC0 and DDC1
     // This is overridden later if we do PureSignal TX
     // The "obscure" constant 34.952533333333333333333333333333 is 4294967296/122880000
     //
@@ -1422,17 +1422,19 @@ static void new_protocol_receive_specific(void) {
   if (diversity_enabled && !xmit) {
     //
     //    Some things are fixed.
-    //    We always use DDC0 for the signals from ADC0, and DDC1 for the signals from ADC1
-    //    The sample rate of both DDCs is that of receiver[0].
-    //    Boths ADCs take the dither/random setting from ADC0
+    //    We always use DDC0 for the signals from the ADC of RX1,
+    //    and DDC1 for the signals from the "other" ADC
+    //    The sample rate of both DDCs is that of RX1.
+    //    Boths ADCs take the dither/random setting from the RX1 ADC
     //
-    receive_specific_buffer[5] = adc[0].dither | (adc[0].dither << 1);
-    receive_specific_buffer[6] = adc[0].random | (adc[0].random << 1);
-    receive_specific_buffer[17] = 0;                                               // ADC0 associated with DDC0
+    int rx1adc = receiver[0]->adc;
+    receive_specific_buffer[5] = adc[rx1adc].dither | (adc[rx1adc].dither << 1);
+    receive_specific_buffer[6] = adc[rx1adc].random | (adc[rx1adc].random << 1);
+    receive_specific_buffer[17] = rx1adc;                                          // RX1 ADC associated with DDC0
     receive_specific_buffer[18] = ((receiver[0]->sample_rate / 1000) >> 8) & 0xFF; // sample rate MSB
     receive_specific_buffer[19] = ((receiver[0]->sample_rate / 1000)     ) & 0xFF; // sample rate LSB
     receive_specific_buffer[22] = 24;                                              // bits per sample
-    receive_specific_buffer[23] = 1;                                               // ADC1 associated with DDC1
+    receive_specific_buffer[23] = 1 - rx1adc;                                      // ADC not used by RX1 associated with DDC1
     receive_specific_buffer[24] = ((receiver[0]->sample_rate / 1000) >> 8) & 0xFF; // sample rate MSB
     receive_specific_buffer[25] = ((receiver[0]->sample_rate / 1000)     ) & 0xFF; // sample rate LSB
     receive_specific_buffer[26] = 24;                                              // bits per sample

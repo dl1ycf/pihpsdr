@@ -2278,23 +2278,7 @@ void radio_calc_div_params(void) {
   man_div_sin = amplitude * sin(arg);
 }
 
-//  
-// True while the automatic loop owns the weight, so a manual set from an
-// encoder, a popup slider or a remote client would be overwritten within
-// one analysis block - about 85 ms - after stepping the combined audio on
-// the way past.
-//    
-// The diversity menu greys out its own four sliders for this. The encoder
-// actions and the remote path have no such check of their own, so it lives
-// here where every manual setter goes through it. Hold is the way to take
-// the weight over while the loop is running, and it makes this false.
-//      
-static int radio_div_auto_owns_weight(void) {
-  return div_auto_running && div_auto_mode != DIV_MANUAL && !div_auto_hold;
-}         
-
 void radio_set_diversity_gain(double val) {
-  if (radio_div_auto_owns_weight()) { return; }
   if (val < -27.0) { val = -27.0; }
   if (val >  27.0) { val =  27.0; }
   man_div_gain = val;
@@ -2309,7 +2293,6 @@ void radio_set_diversity_gain(double val) {
 }
 
 void radio_set_diversity_phase(double value) {
-  if (radio_div_auto_owns_weight()) { return; }
   while (value >  180.0) { value -= 360.0; }
   while (value < -180.0) { value += 360.0; }
   man_div_phase = value;
@@ -2630,7 +2613,7 @@ void radio_set_rf_gain(int id, double value) {
   int rxadc = receiver[id]->adc;
   adc[rxadc].gain = value;
   adc[rxadc].attenuation = 0.0;
-  g_idle_add(sliders_rf_gain, GINT_TO_POINTER(100 * suppress_popup_sliders + id));
+  g_idle_add(sliders_rf_gain, GINT_TO_POINTER(100 * suppress_popup_sliders + rxadc));
   if (radio_is_remote) {
     send_rfgain(cl_sock_tcp, id, adc[rxadc].gain);
     return;
@@ -2859,49 +2842,28 @@ void radio_set_panstep(int id, int value) {
 // handed to the diversity loop, which feeds it forward into the weight
 // and restarts its statistics.
 //
-void radio_set_adc_attenuation(int a, int value) {
-  if (a < 0 || a >= n_adc || !have_rx_att) { return; }
+void radio_set_adc_attenuation(int rxadc, int value) {
+  if (rxadc < 0 || rxadc >= n_adc || !have_rx_att) { return; }
 
   if (value <  0) { value =  0; }
   if (value > 31) { value = 31; }
 
-  const int delta = value - adc[a].attenuation;
+  const int delta = value - adc[rxadc].attenuation;
 
   if (delta != 0 && diversity_enabled) {
     //
     // Called before the new value is in place: the loop is told by how
     // much the arm moved, not where it ended up.
     //
-    diversity_auto_att_changed(a, delta);
-  }
-    
-  adc[a].attenuation = value;
-  adc[a].gain = 0.0;
-    
-  //
-  // Move the slider through whichever receiver is sitting on this ADC.
-  // One of them, not all: sliders_attenuation() pops up a transient
-  // slider when the receiver it is given is not on the active ADC, and
-  // two receivers sharing an ADC would then produce two popups. The
-  // active receiver is preferred, which is the case that moves the
-  // permanent slider rather than popping one up.
-  //
-  int sid = -1;
-
-  for (int id = 0; id < receivers; id++) {
-    if (receiver[id]->adc != a) { continue; }
-
-    if (id == active_receiver->id) { sid = id; break; }
-
-    if (sid < 0) { sid = id; }
+    diversity_auto_att_changed(rxadc, delta);
   }
 
-  if (sid >= 0) {
-    g_idle_add(sliders_attenuation, GINT_TO_POINTER(100 * suppress_popup_sliders + sid));
-  }
+  adc[rxadc].attenuation = value;
+  adc[rxadc].gain = 0.0;
+  g_idle_add(sliders_attenuation, GINT_TO_POINTER(100 * suppress_popup_sliders + rxadc));
 
   if (radio_is_remote) {
-    send_adc_attenuation(cl_sock_tcp, a, value);
+    send_adc_attenuation(cl_sock_tcp, rxadc, value);
     return;
   }
 
@@ -2915,7 +2877,7 @@ void radio_set_attenuation(int id, int value) {
   if (radio_is_remote) {
     adc[rxadc].attenuation = value;
     adc[rxadc].gain = 0.0;
-    g_idle_add(sliders_attenuation, GINT_TO_POINTER(100 * suppress_popup_sliders + id));
+    g_idle_add(sliders_attenuation, GINT_TO_POINTER(100 * suppress_popup_sliders + rxadc));
     send_attenuation(cl_sock_tcp, id, value);
     return;
   }

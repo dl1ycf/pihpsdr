@@ -237,7 +237,6 @@ typedef struct _div_settings {
 
 typedef struct _div_status {
   int    enabled;           // the whole feature, as the radio has it
-  int    indep_att;         // ADC1 keeps its own step attenuator
   int    att0, att1;        // the two step attenuators, as the radio has them
   int    running, holding, clamped;
   int    arm_valid, arm_pick, carrier_valid, occ_valid;

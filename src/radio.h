@@ -355,7 +355,6 @@ extern void   radio_set_panlow(int id, int value);
 extern void   radio_set_panstep(int id, int value);
 extern void   radio_set_attenuation(int id, int value);
 extern void   radio_set_adc_attenuation(int a, int value);
-extern void   radio_set_indep_att(int state);
 extern void   radio_set_random(int id, int value);
 extern void   radio_set_dither(int id, int value);
 extern void   radio_set_preamp(int id, int value);

@@ -867,7 +867,6 @@ void send_div_status(int s, const DIV_STATUS *st) {
   data.rade_locked     = st->rade_locked;
   data.rade_confirming = st->rade_confirming;
   data.rade_side       = st->rade_side;
-  data.indep_att       = st->indep_att;
   data.att0            = st->att0;
   data.att1            = st->att1;
   data.pad = 0;
