@@ -45,7 +45,23 @@ static gboolean close_cb(void) {
   return TRUE;
 }
 
-static void diversity_cb(GtkWidget *widget, gpointer data) {
+static void sanitize_man_values() {
+  //
+  // set coarse/fine values from "sanitized" actual values
+  //
+  if (man_div_gain >  27.0) { man_div_gain = 27.0; }
+  if (man_div_gain < -27.0) { man_div_gain = -27.0; }
+  while (man_div_phase >  180.0) { man_div_phase -= 360.0; }
+  while (man_div_phase < -180.0) { man_div_phase += 360.0; }
+  gain_coarse = 2.0 * round(0.5 * man_div_gain);
+  if (man_div_gain >  25.0) { gain_coarse = 25.0; }
+  if (man_div_gain < -25.0) { gain_coarse = -25.0; }
+  gain_fine = man_div_gain - gain_coarse;
+  phase_coarse = 4.0 * round(man_div_phase * 0.25);
+  phase_fine = man_div_phase - phase_coarse;
+}
+
+static void enable_cb(GtkWidget *widget, gpointer data) {
   int state = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   radio_set_diversity(state);
 }
@@ -98,7 +114,7 @@ static void phase_fine_changed_cb(GtkWidget *widget, gpointer data) {
 }
 
 void diversity_menu(GtkWidget *parent) {
-  GtkWidget *lbl, *btn;
+  GtkWidget *btn, *lbl;
   dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
   GtkWidget *headerbar = gtk_header_bar_new();
@@ -107,19 +123,6 @@ void diversity_menu(GtkWidget *parent) {
   gtk_header_bar_set_title(GTK_HEADER_BAR(headerbar), "piHPSDR - Diversity");
   g_signal_connect (dialog, "delete_event", G_CALLBACK (close_cb), NULL);
   g_signal_connect (dialog, "destroy", G_CALLBACK (close_cb), NULL);
-  //
-  // set coarse/fine values from "sanitized" actual values
-  //
-  if (man_div_gain >  27.0) { man_div_gain = 27.0; }
-  if (man_div_gain < -27.0) { man_div_gain = -27.0; }
-  while (man_div_phase >  180.0) { man_div_phase -= 360.0; }
-  while (man_div_phase < -180.0) { man_div_phase += 360.0; }
-  gain_coarse = 2.0 * round(0.5 * man_div_gain);
-  if (man_div_gain >  25.0) { gain_coarse = 25.0; }
-  if (man_div_gain < -25.0) { gain_coarse = -25.0; }
-  gain_fine = man_div_gain - gain_coarse;
-  phase_coarse = 4.0 * round(man_div_phase * 0.25);
-  phase_fine = man_div_phase - phase_coarse;
   GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
   GtkWidget *grid = gtk_grid_new();
   gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
@@ -134,7 +137,7 @@ void diversity_menu(GtkWidget *parent) {
   btn = gtk_check_button_new_with_label("Diversity Enable");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), diversity_enabled);
   gtk_grid_attach(GTK_GRID(grid), btn, 6, row, 4, 1);
-  g_signal_connect(btn, "toggled", G_CALLBACK(diversity_cb), NULL);
+  g_signal_connect(btn, "toggled", G_CALLBACK(enable_cb), NULL);
   row++;
 
 
@@ -160,10 +163,10 @@ void diversity_menu(GtkWidget *parent) {
     row++;
   }
 
+  sanitize_man_values();
   lbl = gtk_label_new("Gain (dB, coarse)");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_widget_show(lbl);
   gtk_grid_attach(GTK_GRID(grid), lbl, 0, row, 2, 1);
   btn = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, -25.0, +25.0, 0.5);
   gtk_range_set_value(GTK_RANGE(btn), gain_coarse);

@@ -107,8 +107,8 @@ static double *mic_ring_buffer;
 static volatile atomic_int mic_ring_outpt = 0;
 static volatile atomic_int mic_ring_inpt = 0;
 
-static GThread *listen_thread_id;
-static GThread *udp_thread_id;
+static GThread *listen_thread_id = NULL;
+static GThread *udp_thread_id = NULL;
 
 static int server_running = 0;
 static int listen_socket = -1;

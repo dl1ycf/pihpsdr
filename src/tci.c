@@ -120,6 +120,7 @@ typedef struct _client {
   int audio_sample_type;
   int audio_samples;
   int rx_audio_enabled[TCI_RX_AUDIO_MAX_RECEIVERS];
+  int rx_last_nr[TCI_RX_AUDIO_MAX_RECEIVERS];
   int tx_audio_enabled;
   unsigned int tx_audio_rx_count;
   unsigned char *binary_rx_buf;
@@ -915,27 +916,11 @@ static void tci_send_rx_nf_enable_value (CLIENT *client, int receiver_id, int st
   tci_send_text (client, msg);
 }
 
-static int tci_rx_nb_allowed (int receiver_id) {
-  int mode;
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) {
-    return 0;
-  }
-  mode = vfo[receiver_id].mode;
-  return mode != modeDIGL && mode != modeDIGU;
-}
-
-static int tci_rx_nb_effective_state (int receiver_id) {
-  if (!tci_rx_nb_allowed(receiver_id)) {
-    return 0;
-  }
-  return receiver[receiver_id]->snb ? 1 : 0;
-}
-
 static void tci_send_rx_nb_enable (CLIENT *client, int receiver_id) {
   char msg[MAXMSGSIZE];
   if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
   snprintf (msg, MAXMSGSIZE, "rx_nb_enable:%d,%s;", receiver_id,
-            tci_rx_nb_effective_state(receiver_id) ? "true" : "false");
+            receiver[receiver_id]->snb ? "true" : "false");
   tci_send_text (client, msg);
 }
 
@@ -956,64 +941,19 @@ static void tci_send_rx_bin_enable_value (CLIENT *client, int receiver_id, int s
   tci_send_text (client, msg);
 }
 
-static int tci_rx_apf_allowed (int receiver_id) {
-  int mode;
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) {
-    return 0;
-  }
-  mode = vfo[receiver_id].mode;
-  return mode == modeCWU || mode == modeCWL;
-}
-
-static int tci_rx_apf_effective_state (int receiver_id) {
-  if (!tci_rx_apf_allowed(receiver_id)) {
-    return 0;
-  }
-  return vfo[receiver_id].cwAudioPeakFilter ? 1 : 0;
-}
-
 static void tci_send_rx_apf_enable (CLIENT *client, int receiver_id) {
   char msg[MAXMSGSIZE];
   if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
   snprintf (msg, MAXMSGSIZE, "rx_apf_enable:%d,%s;", receiver_id,
-            tci_rx_apf_effective_state(receiver_id) ? "true" : "false");
+            vfo[receiver_id].cwAudioPeakFilter ? "true" : "false");
   tci_send_text (client, msg);
-}
-
-static int tci_rx_nr_default_for_mode (int mode) {
-  switch (mode) {
-  case modeUSB:
-  case modeLSB:
-  case modeCWU:
-  case modeCWL:
-    return 4;
-  case modeAM:
-  case modeSAM:
-    return 3;
-  default:
-    return 0;
-  }
-}
-
-static int tci_rx_nr_allowed (int receiver_id) {
-  if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) {
-    return 0;
-  }
-  return tci_rx_nr_default_for_mode(vfo[receiver_id].mode) != 0;
-}
-
-static int tci_rx_nr_effective_state (int receiver_id) {
-  if (!tci_rx_nr_allowed(receiver_id)) {
-    return 0;
-  }
-  return receiver[receiver_id]->nr != 0;
 }
 
 static void tci_send_rx_nr_enable (CLIENT *client, int receiver_id) {
   char msg[MAXMSGSIZE];
   if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
   snprintf (msg, MAXMSGSIZE, "rx_nr_enable:%d,%s;", receiver_id,
-            tci_rx_nr_effective_state(receiver_id) ? "true" : "false");
+            receiver[receiver_id]->nr ? "true" : "false");
   tci_send_text (client, msg);
 }
 
@@ -1500,6 +1440,11 @@ static void tci_cmd_trx (CLIENT *client, const TCI_CMD *cmd) {
           tci_audio_tx_reset();
           client->tx_audio_enabled = 1;
           client->tx_audio_rx_count = 0;
+          //
+          // The TCI protocol is not overly clear who is the client and who
+          // is the server in case of TX audio. To be sure, we send the audio
+          // parameters we are expecting.
+          //
           tci_send_text (client, "audio_samplerate:48000;");
           tci_send_text (client, "audio_stream_sample_type:float32;");
           tci_send_text (client, "audio_stream_channels:2;");
@@ -1657,10 +1602,30 @@ static void tci_cmd_rx_nr_enable (CLIENT *client, const TCI_CMD *cmd) {
     return;
   }
   if (cmd->argc >= 2) {
-    int state = tci_bool(cmd->argv[1]) ? 4 : 0;
+    int state;
     RECEIVER *rx = receiver[receiver_id];
-    rx->nr = state;
-    rx_set_noise(rx);
+    //
+    // Turning OFF while NR is OFF, is a no-op
+    // Turning OFF while NR is ON,  the current NR model is stored in rx_last_nr[]
+    // Turning ON  while NR is OFF, the NR model is retrieved from rx_last_nr[]
+    // Turning ON  while NR is ON,  this is a no-op
+    //
+    if (tci_bool(cmd->argv[1])) {
+      state = rx->nr;
+      if (state == 0) {
+        state = client->rx_last_nr[receiver_id];
+      }
+    } else {
+      // NR OFF: store current state
+      if (rx->nr != 0) {
+        client->rx_last_nr[receiver_id] = rx->nr;
+      }
+      state = 0;
+    }
+    if (rx->nr != state) {
+      rx->nr = state;
+      rx_set_noise(rx);
+    }
   } else {
     tci_send_rx_nr_enable(client, receiver_id);
   }
@@ -1780,34 +1745,34 @@ static void tci_cmd_tx_sensors_enable (CLIENT *client, const TCI_CMD *cmd) {
 
 
 static void tci_cmd_audio_start (CLIENT *client, const TCI_CMD *cmd) {
-  // unidirectional command from the client
+  //
+  // Although this command is unidirectional (Client->Server), some software
+  // seems to expect an answer, therefore we re-play the command
+  //
   int receiver_id = tci_int (cmd->argv[0], 0);
   if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
   //
-  // Do not start audio if a non-implemented value for
-  // sample_rate or sample_type has been given
+  // Only start audio, if the requested sample rate, sample type and
+  // number of samples per buffer agrees with our standard values.
+  // So at the moment, only the number of channels (Stereo/Mono) are client-selectable.
+  //
   if (client->audio_sample_rate != TCI_AUDIO_SAMPLE_RATE) { return; }
-  if (client->audio_samples != TCI_AUDIO_SAMPLES) { return; }
   if (client->audio_sample_type != TCI_AUDIO_SAMPLE_TYPE) { return; }
+  if (client->audio_samples != TCI_AUDIO_SAMPLES) { return; }
   client->rx_audio_enabled[receiver_id] = 1;
   tci_update_audio_global();
-  //
-  // Although audio_start is unidirectional according to the TCI documentation,
-  // WSJT-X and TCI:remote (ON7OFF) expect this answer.
-  //
   char msg[MAXMSGSIZE];
   snprintf(msg, sizeof(msg), "audio_start:%d;", receiver_id);
   tci_send_text (client, msg);
 }
 
 static void tci_cmd_audio_samplerate (CLIENT *client, const TCI_CMD *cmd) {
-  // unidirectional command from the client.
+  //
+  // Although this command is unidirectional (Client->Server), some software
+  // seems to expect an answer, therefore we re-play the command
+  //
   int rate = tci_int (cmd->argv[0], 0);
   client->audio_sample_rate = rate;
-  //
-  // Although audio_start is unidirectional according to the TCI documentation,
-  // TCI:remote (ON7OFF) expect this answer.
-  //
   char msg[MAXMSGSIZE];
   snprintf(msg, sizeof(msg), "audio_samplerate:%d;", rate);
   tci_send_text (client, msg);
@@ -1842,7 +1807,10 @@ static void tci_cmd_mon_enable(CLIENT *client, const TCI_CMD *cmd) {
 }
 
 static void tci_cmd_audio_stream_sample_type (CLIENT *client, const TCI_CMD *cmd) {
-  // unidirectional command from the client.
+  //
+  // Although this command is unidirectional (Client->Server), some software
+  // seems to expect an answer, therefore we re-play the command
+  //
   if (strstr(cmd->argv[0], "float32") || strstr(cmd->argv[0], "FLOAT32")) {
     client->audio_sample_type = 3;
   } else if (strstr(cmd->argv[0], "int32") || strstr(cmd->argv[0], "INT32")) {
@@ -1852,43 +1820,54 @@ static void tci_cmd_audio_stream_sample_type (CLIENT *client, const TCI_CMD *cmd
   } else if (strstr(cmd->argv[0], "int16") || strstr(cmd->argv[0], "INT16")) {
     client->audio_sample_type = 0;
   }
+  //
+  // Since we only support float32, we send this answer
+  //
+  tci_send_text (client, "audio_stream_sample_type:float32;");
 }
 
 static void tci_cmd_audio_stream_channels (CLIENT *client, const TCI_CMD *cmd) {
-  // unidirectional command from the client.
+  //
+  // Although this command is unidirectional (Client->Server), some software
+  // seems to expect an answer, therefore we re-play the command
+  //
   int channels = tci_int (cmd->argv[0], 0);
   if (channels == 1) {
     client->audio_channels = 1;
+    tci_send_text (client, "audio_stream_channels:1;");
   } else {
     client->audio_channels = 2;
+    tci_send_text (client, "audio_stream_channels:2;");
   }
 }
 
 static void tci_cmd_audio_stream_samples (CLIENT *client, const TCI_CMD *cmd) {
-  // unidirectional command from the client.
+  //
+  // Although this command is unidirectional (Client->Server), some software
+  // seems to expect an answer, therefore we re-play the command
+  //
   int samples = tci_int (cmd->argv[0], 0);
   client->audio_samples = samples;
   char msg[MAXMSGSIZE];
-  snprintf(msg, sizeof(msg), "audio_samples:%d;", samples);
+  snprintf(msg, sizeof(msg), "audio_stream_samples:%d;", samples);
   tci_send_text (client, msg);
 }
 
 static void tci_cmd_audio_stop (CLIENT *client, const TCI_CMD *cmd) {
-  // unidirectional command from the client
+  //
+  // Although this command is unidirectional (Client->Server), some software
+  // seems to expect an answer, therefore we re-play the command
+  //
   int receiver_id = tci_int (cmd->argv[0], 0);
   if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
   //
-  // Silently ignore if the audio has not been started
+  // Silently ignore (and do not reply) if the audio has not been started
   //
   if (!client->rx_audio_enabled[receiver_id]) { return; }
   client->rx_audio_enabled[receiver_id] = 0;
   tci_update_audio_global();
-  //
-  // Although audio_start is unidirectional according to the TCI documentation,
-  // WSJT-X and TCI:remote (ON7OFF) expect this answer.
-  //
   char msg[MAXMSGSIZE];
-  snprintf(msg, sizeof(msg), "audio_off:%d;", receiver_id);
+  snprintf(msg, sizeof(msg), "audio_stop:%d;", receiver_id);
   tci_send_text (client, msg);
 }
 
@@ -2532,6 +2511,7 @@ static int tci_init_client (int fd) {
       client->binary_rx_size    = 0;
       for (int i = 0; i < TCI_RX_AUDIO_MAX_RECEIVERS; i++) {
         client->rx_audio_enabled[i] = 0;
+        client->rx_last_nr[i] = 4;  // use NR4 initially
       }
       //
       // Set audio defaults

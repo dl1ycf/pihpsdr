@@ -1167,7 +1167,7 @@ static gpointer client_tcp_thread(gpointer arg) {
       adc[i].max_gain = from_double(data.max_gain);
       if (active_receiver->adc == i) {
         g_idle_add(sliders_attenuation, GINT_TO_POINTER(100 + active_receiver->adc));
-        g_idle_add(sliders_rf_gain, GINT_TO_POINTER(100 + active_receiver->id));
+        g_idle_add(sliders_rf_gain, GINT_TO_POINTER(100 + active_receiver->adc));
       }
     }
     break;
