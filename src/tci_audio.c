@@ -107,8 +107,9 @@ void tci_audio_rx_sample (int id, double left, double right) {
 unsigned int tci_audio_get_frame (int receiver_id, TCI_STREAM *stream, size_t frame_size, size_t *frame_len,
                                   int channels) {
   //
-  // Retrieve up to TCI_RX_AUDIO_FRAME_FRAMES stereo samples from RX audio ring buffer, and form
-  // a valid TCI_STREAM data structure therefrom
+  // Retrieve up to TCI_AUDIO_SAMPLES stereo samples from RX audio ring buffer, and form
+  // a valid TCI_STREAM data structure therefrom. If the client's audio format is MONO, copy only
+  // left channel.
   //
   // Called from the LWS server, no mutex should be necessary
   // This is a consumer so outpt is updated only.
@@ -120,7 +121,7 @@ unsigned int tci_audio_get_frame (int receiver_id, TCI_STREAM *stream, size_t fr
   if (frame_len != NULL) { *frame_len = 0; }
   if (stream == NULL || frame_len == NULL || receiver_id >= TCI_RX_AUDIO_MAX_RECEIVERS) { return 0; }
   //
-  // Retrieve up to TCI_RX_AUDIO_FRAME_FRAMES from RX ring buffer and put into <out>
+  // Retrieve up to TCI_AUDIO_SAMPLE from RX ring buffer and put into <out>
   //
   TCI_RX_AUDIO_RING *ring = &tci_rx_audio_ring[receiver_id];
   //
@@ -141,7 +142,7 @@ unsigned int tci_audio_get_frame (int receiver_id, TCI_STREAM *stream, size_t fr
   stream->header.receiver = (uint32_t) receiver_id;
   stream->header.sample_rate = TCI_AUDIO_SAMPLE_RATE;
   stream->header.format = TCI_AUDIO_SAMPLE_TYPE;
-  stream->header.length = (uint32_t) (2 * frames);
+  stream->header.length = (uint32_t) (channels * frames);
   stream->header.type = TCI_STREAM_RX_AUDIO;
   stream->header.channels = channels;
   float *out = stream->audio;
