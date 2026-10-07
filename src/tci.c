@@ -1765,7 +1765,7 @@ static void tci_cmd_audio_start (CLIENT *client, const TCI_CMD *cmd) {
   int receiver_id = tci_int (cmd->argv[0], 0);
   if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
   //
-  // If receiver is already "owned", do not start
+  // If receiver is already "owned" by a client (including ourself), do not start
   //
   if (tci_audio_rx_active[receiver_id]) { return; }
   //
@@ -1778,21 +1778,20 @@ static void tci_cmd_audio_start (CLIENT *client, const TCI_CMD *cmd) {
   if (client->audio_sample_rate != TCI_AUDIO_SAMPLE_RATE) { return; }
   if (client->audio_sample_type != TCI_AUDIO_SAMPLE_TYPE) { return; }
   //
-  // I think we should ensure here that this client is the one and only one which
-  // receives audio from the specified receiver. It is OK if client#1 receives audio
-  // from RX1 and client#2 from RX2, but two clients must not receive audio from the
-  // same RX.
-  //
+  char msg[MAXMSGSIZE];
+  snprintf(msg, sizeof(msg), "audio_start:%d;", receiver_id);
+  tci_send_text (client, msg);
   //
   // We also have to store somehow the value of audio_samples used for the RX specified,
   // to be able to schedule "wakeups" at the correct pace.
   //
   tci_rx_audio_samples[receiver_id] = client->audio_samples;
   client->rx_audio_enabled[receiver_id] = 1;
+  //
+  // the "global update" will set tci_audio_rx_active[receiver_id] and thus
+  // start sending audio
+  //
   tci_update_audio_global();
-  char msg[MAXMSGSIZE];
-  snprintf(msg, sizeof(msg), "audio_start:%d;", receiver_id);
-  tci_send_text (client, msg);
 }
 
 static void tci_cmd_audio_samplerate (CLIENT *client, const TCI_CMD *cmd) {
