@@ -764,7 +764,8 @@ gpointer client_udp_thread(gpointer arg) {
       break;
     case INFO_RXAUDIO: {
       const RXAUDIO_DATA *rxdata = (RXAUDIO_DATA *)buffer;
-      RECEIVER *rx = receiver[rxdata->header.b1];
+      int id = rxdata->header.b1;
+      RECEIVER *rx = receiver[id];
       int numsamples = from_16(rxdata->header.s1);
       //
       // Note CAPTURing is only done on the server side
@@ -783,7 +784,7 @@ gpointer client_udp_thread(gpointer arg) {
         if (rx->audio_channel == LEFT)  { right_sample = 0.0; }
         if (rx->audio_channel == RIGHT) { left_sample  = 0.0; }
 #ifdef TCI
-        if (tci_audio_rx_active) {
+        if (tci_audio_rx_active[id]) {
           tci_audio_rx_sample(rx->id, left_sample, right_sample);
         }
 #endif
@@ -815,8 +816,8 @@ gpointer client_udp_thread(gpointer arg) {
           if (rx->audio_channel == LEFT)  { right_sample = 0.0; }
           if (rx->audio_channel == RIGHT) { left_sample  = 0.0; }
 #ifdef TCI
-          if (tci_audio_rx_active) {
-            tci_audio_rx_sample(rx->id, left_sample, right_sample);
+          if (tci_audio_rx_active[id]) {
+            tci_audio_rx_sample(id, left_sample, right_sample);
           }
 #endif
           if (rx->local_audio) {

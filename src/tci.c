@@ -62,9 +62,10 @@
 int tci_enable = 0;
 int tci_port   = 40001;
 
-int tci_audio_rx_active = 0;
+int tci_audio_rx_active[TCI_RX_AUDIO_MAX_RECEIVERS] = { 0 };
 int tci_audio_tx_active = 0;
 int tci_transmitter_owned = 0;
+
 //
 // OpCodes for WebSocket frames
 //
@@ -119,8 +120,8 @@ typedef struct _client {
   int audio_channels;
   int audio_sample_type;
   int audio_samples;
-  int rx_audio_enabled[TCI_RX_AUDIO_MAX_RECEIVERS];
-  int rx_last_nr[TCI_RX_AUDIO_MAX_RECEIVERS];
+  int rx_audio_enabled[TCI_RX_AUDIO_MAX_RECEIVERS]; // Whether THIS client owns RX1, RX2, ... audio
+  int rx_last_nr[TCI_RX_AUDIO_MAX_RECEIVERS];       // Last RX NR mode
   int tx_audio_enabled;
   unsigned int tx_audio_rx_count;
   unsigned char *binary_rx_buf;
@@ -319,18 +320,26 @@ static int tci_cw_msg_queue_next(void) {
 }
 
 static void tci_update_audio_global (void) {
-  int enrx = 0;
+  //
+  // This updates the global variables
+  // tci_audio_rx_active[TCI_RX_AUDIO_MAX_RECEIVERS]
+  // tci_audio_tx_active
+  //
+  int enrx[TCI_RX_AUDIO_MAX_RECEIVERS] = { 0 };
   int entx = 0;
   for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
     if (tciclient[c].running) {
       for (int i = 0; i < TCI_RX_AUDIO_MAX_RECEIVERS; i++) {
-        if (tciclient[c].rx_audio_enabled[i]) { enrx = 1; break; }
+        if (tciclient[c].rx_audio_enabled[i]) {
+          enrx[i] = 1;
+        }
       }
       if (tciclient[c].tx_audio_enabled) { entx = 1; }
     }
-    if (enrx && entx) { break; }
   }
-  tci_audio_rx_active = enrx;
+  for (int i = 0; i < TCI_RX_AUDIO_MAX_RECEIVERS; i++) {
+    tci_audio_rx_active[i] = enrx[i];
+  }
   tci_audio_tx_active = entx;
 }
 
@@ -345,10 +354,14 @@ static void tci_queue_rx_audio_frame (CLIENT *client, int receiver_id) {
   TCI_STREAM stream;
   size_t frame_len;
   if (client == NULL || !client->running || !client->rx_audio_enabled[receiver_id]) { return; }
-  if (tci_audio_get_frame (receiver_id, &stream, sizeof (stream), &frame_len, client->audio_channels) == 0) {
-    return;
+  unsigned int ret = tci_audio_get_frame (receiver_id, &stream, sizeof (stream), &frame_len,
+                                 client->audio_channels, client->audio_samples);
+  //
+  // Do not send an "empty" packet
+  //
+  if (ret) {
+    (void) tci_queue_binary_frame (client, (const unsigned char *)&stream, frame_len);
   }
-  (void) tci_queue_binary_frame (client, (const unsigned char *)&stream, frame_len);
 }
 
 
@@ -1752,13 +1765,29 @@ static void tci_cmd_audio_start (CLIENT *client, const TCI_CMD *cmd) {
   int receiver_id = tci_int (cmd->argv[0], 0);
   if (receiver_id < 0 || receiver_id >= receivers || receiver[receiver_id] == NULL) { return; }
   //
-  // Only start audio, if the requested sample rate, sample type and
-  // number of samples per buffer agrees with our standard values.
-  // So at the moment, only the number of channels (Stereo/Mono) are client-selectable.
+  // If receiver is already "owned", do not start
+  //
+  if (tci_audio_rx_active[receiver_id]) { return; }
+  //
+  // Only start audio, if the requested sample rate and  sample type
+  // agrees with our standard values.
+  //
+  // What is client-selectable is the number of channels (Stereo/Mono) and the maximum
+  // number of samples in a packet (audio_samples).
   //
   if (client->audio_sample_rate != TCI_AUDIO_SAMPLE_RATE) { return; }
   if (client->audio_sample_type != TCI_AUDIO_SAMPLE_TYPE) { return; }
-  if (client->audio_samples != TCI_AUDIO_SAMPLES) { return; }
+  //
+  // I think we should ensure here that this client is the one and only one which
+  // receives audio from the specified receiver. It is OK if client#1 receives audio
+  // from RX1 and client#2 from RX2, but two clients must not receive audio from the
+  // same RX.
+  //
+  //
+  // We also have to store somehow the value of audio_samples used for the RX specified,
+  // to be able to schedule "wakeups" at the correct pace.
+  //
+  tci_rx_audio_samples[receiver_id] = client->audio_samples;
   client->rx_audio_enabled[receiver_id] = 1;
   tci_update_audio_global();
   char msg[MAXMSGSIZE];
@@ -2271,6 +2300,11 @@ static void tci_cmd_stop (CLIENT *client, const TCI_CMD *cmd) {
       client->last_trx = 0;
     }
   }
+  client->tx_audio_enabled = 0;
+  for (int i = 0; i < TCI_RX_AUDIO_MAX_RECEIVERS; i++) {
+    client->rx_audio_enabled[i] = 0;
+  }
+  tci_update_audio_global();
 }
 
 static const TCI_DISPATCH tci_dispatch[] = {
@@ -2546,6 +2580,11 @@ static int tci_process_ws_payload (gpointer data) {
       load->client->tx_owner = 0;
       tci_transmitter_owned = 0;
     }
+    load->client->tx_audio_enabled = 0;
+    for (int i = 0; i < TCI_RX_AUDIO_MAX_RECEIVERS; i++) {
+      load->client->rx_audio_enabled[i] = 0;
+    }
+    tci_update_audio_global();
     break;
   default:
     if (rigctl_debug) {
@@ -2716,6 +2755,11 @@ static int tci_lws_write_queued (CLIENT *client) {
       client->tx_owner = 0;
       tci_transmitter_owned = 0;
     }
+    client->tx_audio_enabled = 0;
+    for (int i = 0; i > TCI_RX_AUDIO_MAX_RECEIVERS; i++) {
+      client->rx_audio_enabled[i] = 0;
+    }
+    tci_update_audio_global();
     return -1;
   }
   if (client->wsi != NULL && client->lws_tx_queue != NULL && g_async_queue_length(client->lws_tx_queue) > 0) {

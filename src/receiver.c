@@ -1201,7 +1201,7 @@ static void rx_process_buffer(RECEIVER *rx) {
     // Since TCI is mostly used for communication with digimode
     // programs, we ship out before applying mute_rx or STEREO effects.
     //
-    if (tci_audio_rx_active) {
+    if (tci_audio_rx_active[rx->id]) {
       tci_audio_rx_sample(rx->id, tciscale * left_sample, tciscale * right_sample);
     }
 #endif
