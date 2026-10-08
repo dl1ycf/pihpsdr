@@ -1,5 +1,6 @@
 /* Copyright (C)
-* 2015 - John Melton, G0ORX/N6LYT, 2016 - Steve Wilson, KA6S
+* 2015 - John Melton, G0ORX/N6LYT
+* 2016 - Steve Wilson, KA6S
 * 2025 - Christoph van Wüllen, DL1YCF
 *
 *   This program is free software: you can redistribute it and/or modify
