@@ -1323,6 +1323,12 @@ void rx_add_div_iq_samples(RECEIVER *rx, double i0, double q0, double i1, double
     if (div_auto_running) { diversity_auto_sample(i0, q0, i1, q1); }
     i_sample = i0 + (auto_div_cos * i1 - auto_div_sin * q1);
     q_sample = q0 + (auto_div_sin * i1 + auto_div_cos * q1);
+    //
+    // Held at the level of arm 0 alone when the normaliser is on; 1.0
+    // otherwise. See div_norm_refresh() in diversity_auto.c.
+    //
+    i_sample *= div_norm;
+    q_sample *= div_norm;
   }
 
   //

@@ -43,7 +43,8 @@ enum {
   DIV_REF_BAND = 0,   // all bins in the analysis window ("A")
   DIV_REF_CARRIER,    // the carrier bin only, found by our own tracker ("B")
   DIV_REF_RADE_V1,    // RADE V1 pilot correlation + MVDR
-  DIV_REF_DIGITAL_IQ  // occupied bins in the window, split, then MVDR
+  DIV_REF_DIGITAL_IQ, // occupied bins in the window, split, then MVDR
+  DIV_REF_CW          // CW / Morse: the keyed tone in the passband
 };
 
 //
@@ -59,14 +60,17 @@ extern int    div_auto_follow_filter;   // analysis window follows the RX filter
 extern double div_auto_centre;          // window centre (Hz, rel. to tuned freq)
 extern double div_auto_width;           // window width (Hz)
 extern double div_auto_tau;             // adaptation time constant (seconds)
-extern double div_auto_hang;            // hold a RADE lock this long after the
-                                        // pilot goes away, before re-acquiring
+extern double div_auto_hang;            // unused: kept for the wire and props file
+                                        // (no RADE lock timeout - see DIV_HANG_DEFAULT)
 extern double div_auto_coherence_min;   // hold below this coherence
-extern int    div_auto_weighting;       // DIV_WEIGHT_FLAT / _COHERENCE
+extern int    div_auto_weighting;       // always DIV_WEIGHT_FLAT (see .c)
 extern double div_auto_resolution;      // requested bin width, Hz
+extern int    div_auto_normalise;       // "Level output": hold the combined
+                                        // output at arm 0's level (see
+                                        // div_norm_refresh())
 
 //
-// The window controls are modal: the Window, Carrier and FSK/Digital
+// The window controls are modal: the Window, Carrier, FSK/Digital and CW
 // references each keep their own pair. div_auto_centre/width are the
 // active pair.
 //
@@ -76,9 +80,11 @@ extern double div_carrier_centre;
 extern double div_carrier_width;
 extern double div_digital_centre;
 extern double div_digital_width;
+extern double div_cw_centre;
+extern double div_cw_width;
 //
 // The coherence threshold is modal on the *reference*, not the mode: the
-// four references do not compare the same quantity. div_auto_coherence_min
+// references do not compare the same quantity. div_auto_coherence_min
 // always holds the value for whichever reference is selected; these hold
 // the rest. See the note in diversity_auto.c.
 //
@@ -86,6 +92,7 @@ extern double div_band_cohmin;
 extern double div_carrier_cohmin;
 extern double div_digital_cohmin;
 extern double div_rade_cohmin;
+extern double div_cw_cohmin;
 
 //
 // Status: the window had to be clamped to the Nyquist limit, and the bin
@@ -95,7 +102,8 @@ extern int    div_auto_clamped;
 extern double div_auto_binhz;
 
 //
-// Bin weighting for the wideband window.
+// Bin weighting for the wideband window. Only FLAT is used; COHERENCE is
+// retired but kept so the field keeps its shape on the wire and on disk.
 //
 enum {
   DIV_WEIGHT_FLAT = 0,
@@ -111,16 +119,18 @@ extern double div_auto_carrier;         // Hz, smoothed carrier estimate
 
 //
 // Which antenna is carrying the better signal-to-noise ratio, and by how
-// much. Positive means ADC1. Every reference estimates it - it is the
-// decision DIV_AUTO_BEST acts on - and it is worth showing whatever mode
-// is running, because nothing else an operator can see distinguishes an
-// antenna that is 12 dB down because it is deaf from one that is 12 dB
-// down because it is quiet. The two want opposite weights.
+// much. Positive means arm 1: ADC2, or ADC1 when RX1 is set to ADC2
+// (RX1's ADC is arm 0). Every reference estimates
+// it - it is the decision DIV_AUTO_BEST acts on - and it is worth
+// showing whatever mode is running, because nothing else an operator can
+// see distinguishes an antenna that is 12 dB down because it is deaf from
+// one that is 12 dB down because it is quiet. The two want opposite
+// weights.
 //
 // _valid is 0 until the reference has something to judge on: a
 // measurement of the signal on both arms and a noise floor to divide it
-// by. _pick is what DIV_AUTO_BEST last decided, 0 for ADC0 and 1 for
-// ADC1, and is meaningless while _valid is 0.
+// by. _pick is what DIV_AUTO_BEST last decided, arm 0 or arm 1, and is
+// meaningless while _valid is 0.
 //
 extern double div_auto_arm_db;
 extern int    div_auto_arm_valid;
@@ -158,6 +168,15 @@ extern int  div_rade_side_get(void);
 // The panadapter overlay places the drawn window with it.
 //
 extern double div_window_zero(int mode, int sidetone);
+extern void   div_carrier_follow_window(double filter_low, double filter_high, double *lo, double *hi);
+
+//
+// Called when "Follow RX Filter" is unticked: if the selected
+// reference's window is still at its default, return 1 with the current
+// RX passband as a window in *centre / *width, for the menu to store.
+// Returns 0 to leave the window as it is. See the .c.
+//
+extern int diversity_auto_seed_window(double *centre, double *width);
 
 //
 // Operator hold: the analysis keeps running and keeps updating
@@ -178,6 +197,14 @@ extern void   diversity_auto_set_hold(int on);
 // one step rather than slewed to.
 //
 extern void diversity_auto_invert(void);
+
+//
+//
+// Each arm's noise floor measured outside the filter, per bin; 0 while
+// there is none. For the test harness and the attenuator calibration.
+// See div_noise_floor_update().
+//
+extern int diversity_auto_noise_floor(double *n0, double *n1);
 
 //
 // MVDR for a two-element array: w = R^-1 h, normalised so arm 0 carries
@@ -229,10 +256,11 @@ typedef struct _div_settings {
   // beside div_band_cohmin in diversity_auto.c. coherence_min above is
   // the live one, for whichever reference is selected.
   //
-  double band_cohmin, carrier_cohmin, digital_cohmin, rade_cohmin;
+  double band_cohmin, carrier_cohmin, digital_cohmin, rade_cohmin, cw_cohmin;
   double band_centre, band_width;
   double carrier_centre, carrier_width;
   double digital_centre, digital_width;
+  double cw_centre, cw_width;
 } DIV_SETTINGS;
 
 typedef struct _div_status {
@@ -261,6 +289,14 @@ typedef struct _div_status {
 //
 extern void diversity_auto_ref_store(int ref);
 extern void diversity_auto_ref_recall(int ref);
+
+//
+// The lowest Min coherence worth setting on a reference: the coherence
+// two uncorrelated noises reach by accident over the bins and averaging
+// time in force. The engine never gates below it whatever the setting;
+// the menu uses it as the bottom of the slider. 0 for RADE V1.
+//
+extern double diversity_auto_coh_floor(int ref);
 
 extern void diversity_auto_get_settings(DIV_SETTINGS *s);
 extern void diversity_auto_apply_settings(const DIV_SETTINGS *s, int action);

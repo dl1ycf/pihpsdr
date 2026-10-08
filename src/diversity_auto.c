@@ -183,15 +183,26 @@
 // track a minimum over time instead.
 //
 // The hysteresis matters most where it matters least: two antennas within
-// a decibel of each other are the case where the choice does not matter
-// and the case where an ungated comparison would chatter between them.
+// a decibel or two of each other are the case where the choice does not
+// matter and the case where an ungated comparison would chatter between
+// them. 2 dB, with DIV_BEST_DWELL behind it: where a per-arm SNR exists on
+// every block - as the outside-filter floor gives it (LC-029) - two
+// near-equal antennas at 1 dB changed places every few blocks; on 154822
+// arm 1 on 56 % of them, for -17.97 dB against the better antenna.
 //
 // The floor rise is slow deliberately. It only has to outrun a change of
 // band conditions, and anything faster starts following the signal it is
 // supposed to be measuring underneath.
 //
-#define DIV_BEST_HYST_DB    1.0
+#define DIV_BEST_HYST_DB    2.0
 #define DIV_FLOOR_RISE_DB   0.2     // dB per second
+
+//
+// How long the other antenna has to lead by more than DIV_BEST_HYST_DB,
+// continuously, before Best changes to it, in seconds. See
+// div_apply_best().
+//
+#define DIV_BEST_DWELL      1.0
 
 //
 // The floor is tracked on power smoothed over this, not over the
@@ -216,8 +227,11 @@
 #define DIV_NRATIO_WIN      5.0
 
 //
-// How far the window power must stand above the tracked floor, on both
-// arms, before that floor is taken to be noise.
+// How far the window power must stand above its noise floor, on both
+// arms, before a per-arm SNR is published - with the outside-filter floor
+// that is simply "there is a signal to compare". With the temporal floor,
+// the fallback, it is also what tells a noise floor from a minimum that
+// was signal:
 //
 // Without this the tracker answers confidently and wrongly. Its minimum
 // is only a noise floor if the capture contained a moment with no signal
@@ -271,6 +285,119 @@
 // millisecond.
 //
 #define DIV_OCC_MAX_SAMPLES 4096
+
+//
+// ------------------------------------------------------------------
+// The per-arm noise floor, taken across frequency rather than time
+// ------------------------------------------------------------------
+//
+// What a maximum-ratio weight is missing is N0/N1, the ratio of the two
+// branch noises, and what the per-arm SNR readout needs is the same pair.
+// Both used to come from a minimum over *time*: the quietest the window
+// has recently been on each arm - see div_arm_floor_update() and
+// div_arm_nratio_update(), which are still here as the fallback where
+// this cannot be measured.
+//
+// A temporal minimum has one premise: that the band goes quiet often
+// enough for the quietest recent moment to be noise. DIV_ARM_MIN_DB is
+// the guard on it, and it refuses to answer for a signal that never
+// stops - which is the case the comment beside it describes.
+//
+// **A fading carrier defeats that guard**, and Finding 47 in
+// docs/diversity-measurements.md is the measurement. On a 41 m broadcast
+// whose carrier fades 17 dB peak to peak the fades supply the clearance
+// the guard asks for: the minima land in them, the smoothed power stands
+// well clear the rest of the time, and what gets published on 78 % of
+// blocks is a ratio of two independent fades. It read +10.5 dB where the
+// truth was -0.35, put 19 dB of surplus arm 1 into the Sum weight, and
+// cost 2.05 of the 2.60 dB that capture had to give. The same corruption
+// reaches the per-arm SNR through div_arm_from_floor(): 8.7 dB out with
+// its sign inverted, so Best chose the wrong antenna on 95.6 % of blocks.
+//
+// The estimate here has no such premise, because it never waits for a
+// gap. The noise floor is what the *quietest bins of this block* sit at,
+// and there are thousands of them within DIV_NF_HALF_SPAN_HZ of the dial
+// every block, outside the operator's filter where no wanted signal can
+// be. A fade takes the signal down and leaves those bins exactly where
+// they were, so a fade cannot be mistaken for silence; a carrier that
+// never stops is not a difficulty either, because nothing is being waited
+// for.
+//
+// Measured on feature/auto-diversity against the whole capture set - 26
+// files, 48 and 192 kHz, four transform sizes, signals from FT8 to DRM to
+// bare band noise - the median error is inside 0.3 dB on twenty of them
+// and 1.3 dB on all but two, against 1.4 to 10.6 dB for the temporal
+// minimum, which also produces no answer at all on six. Rechecked on
+// test/noise-floor against the guard band beside the passband on seven captures,
+// including the worst-scoring ones: within 0.5 dB on all of them. The
+// two apparent outliers are the estimate being right: on `122632` it follows the operator's ADC2
+// attenuator one for one from 0 to 16 dB while arm 0's floor holds to
+// 0.7 dB, and on `002710` it finds the two undocumented attenuator steps
+// that capture's format-version-1 header could not record.
+//
+// A low percentile rather than a minimum or a mean: a minimum over
+// thousands of bins is the low tail of the noise distribution and moves
+// with the bin count, a mean is dragged up by anything transmitting in
+// the sampled span, and a tenth percentile tolerates the span being up to
+// ninety per cent occupied before it starts to read the occupants.
+//
+#define DIV_NF_PCT          10
+//
+// ...averaged over a band of order statistics either side of it, rather
+// than read off as a single one. A lone percentile is one sample of a
+// noisy distribution and its scatter goes straight into the weight; two
+// percentiles either side is about forty sorted values at
+// DIV_NF_SAMPLES, a selection fences them almost for free, and
+// the ratio's block-to-block scatter drops from about 0.7 dB to 0.3.
+// Still a percentile, so it needs no distribution assumption - which a
+// trimmed mean scaled back to the true mean would.
+//
+#define DIV_NF_BAND         2
+//
+// Bins sampled per arm per block. Two selections over this length are
+// the whole cost, and at 1024 the percentile's own scatter is a few tenths of a
+// decibel before DIV_NF_TAU smooths it. Same striding idea as
+// DIV_OCC_MAX_SAMPLES: a wider span is sampled, not sorted in full.
+//
+#define DIV_NF_SAMPLES      1024
+//
+// Below this many candidate bins there is not enough spectrum outside the
+// filter to say anything, and the temporal floor is used instead. Reached
+// by a hand-placed window far wider than the passband it sits in, or a
+// wide (FM) filter at the lowest sample rate.
+//
+#define DIV_NF_MIN_BINS     128
+//
+// Keep this clear of the filter edge. The window is Blackman-Harris, so
+// leakage is not what this is for; it is the filter skirt itself, and
+// signals the operator has tuned close enough to hear the edge of.
+//
+#define DIV_NF_SKIRT_HZ     1000.0
+//
+// Sample the central fraction of the transform only. The DDC's own
+// response is not flat at the edge of its passband, and a floor measured
+// in the roll-off is a measurement of the roll-off.
+//
+#define DIV_NF_SPAN         0.80
+//
+// ...and no further than this either side of the dial, whatever the
+// sample rate. The two antennas' noise ratio is not the same across a
+// wide span - on the 40 m captures the 41 m broadcast part already read
+// 1.5-2 dB different from the amateur part inside +/-77 kHz - and at
+// 1536 kHz the span above would be +/-614 kHz, across band edges and
+// broadcast bands. Measured on nine captures, the estimate moves by
+// 0.5 dB at most between +/-10 and +/-77 kHz; only the block-to-block
+// scatter grows, which DIV_NF_TAU takes out (docs/noise-floor-refactor.md).
+// 20 kHz is the whole usable span at 48 kHz, so every rate from there up
+// measures the same neighbourhood.
+//
+#define DIV_NF_HALF_SPAN_HZ 20000.0
+//
+// Smoothing, seconds. Long enough to take the scatter out of a
+// percentile, short enough that the step attenuators - which reset the
+// statistics anyway - are followed rather than averaged through.
+//
+#define DIV_NF_TAU          2.0
 
 //
 // Fewer occupied bins than this and there is nothing worth calling a
@@ -346,6 +473,49 @@
 #define DIV_OCC_GUARD       4
 
 //
+// CW / Morse. See div_cw_solve().
+//
+// DIV_CW_BINS: the tone is accumulated over the peak and this many bins
+// either side. One: seven bins beat three by +0.07 dB, CI [-0.02, +0.16],
+// once the crest test was measured on its own span (Finding AD-50).
+//
+// DIV_CW_CREST_THRESH: the tone's power per bin over the region's mean
+// power per bin, below which the block is a keyclick or an impulse
+// raising the whole region, not a tone standing out of it. 2.0 is
+// +3.0 dB. It fires on 0.6 % to 37 % of blocks across the CW captures,
+// and taking it out moves the score by +0.01 dB (AD-50): kept because it
+// costs nothing and a click is not a tone.
+//
+// DIV_CW_FLUSH: see div_cw_age().
+//
+// DIV_CW_MIN_BINS: below this many usable bins in the region there is no
+// off-tone noise to measure against. Reached only by a very narrow filter.
+//
+// DIV_CW_ACT_DB: key detection. A block is keyed when the region's peak
+// stands this far above the quietest that peak has recently been - see
+// div_cw_solve(). Every setting from 2 to 6 dB rejects a steady carrier
+// equally (the tracker sat on one for 38.1 % of blocks with no gate and
+// 3.4 to 3.9 % across that range), and what rises with the setting is
+// only the signal strength the loop needs: a keyed signal n dB out of the
+// noise reads about n dB. 3 dB is the lowest that gets the whole benefit
+// (Finding AD-50). A constant, not a control: nothing in the useful range
+// is better than anything else in it, and above it the gate stops the
+// mode - at 14 dB the loop updates on 14 % of blocks and two captures
+// lose 4 to 6 dB.
+//
+// DIV_CW_ACT_RISE_DB: how fast that floor climbs back, in dB per second.
+// It has to recover inside a keying gap - a word space is 240 ms at 35 WPM
+// - without recovering inside a dot, 34 to 120 ms. Flat from 3 to 12 dB/s
+// and then a cliff: +0.26 dB at 12 against -0.71 at 24 (AD-50).
+//
+#define DIV_CW_BINS          1
+#define DIV_CW_CREST_THRESH  2.0
+#define DIV_CW_FLUSH         1e-200
+#define DIV_CW_MIN_BINS      6
+#define DIV_CW_ACT_DB        3.0
+#define DIV_CW_ACT_RISE_DB   12.0
+
+//
 // How far the receiver may be retuned before the accumulated statistics
 // are thrown away.
 //
@@ -383,10 +553,14 @@
 // diluted by noise-only bins that add to the denominator but not the
 // numerator.
 //
-// Coherence weights each bin by how well the antennas agree in it, so
-// bins carrying signal dominate and noise-only bins fall out. That is
-// what makes a wide window usable on SSB voice, where the energy moves
-// around constantly and there is no carrier to sit on.
+// Coherence weights each bin by how well the antennas agree in it. It is
+// retired: measured on recorded two-antenna captures it gave no better
+// an estimate than flat, and it only appeared to help by inflating the
+// coherence the gate compares - on noise-only captures as much as on
+// signal - so a given threshold became a laxer test. Compared at equal
+// false-alarm rate, flat keeps more signal blocks and gives a slightly
+// better output SNR. DIV_WEIGHT_COHERENCE stays in the enum so the field
+// keeps its shape on the wire and in the props file.
 //
 
 int    div_auto_ref            = DIV_REF_BAND;
@@ -395,8 +569,8 @@ double div_auto_centre         = 0.0;
 double div_auto_width          = 1000.0;
 double div_auto_tau            = 2.0;
 double div_auto_hang           = 10.0;
-double div_auto_coherence_min  = 0.30;
-int    div_auto_weighting      = DIV_WEIGHT_COHERENCE;
+double div_auto_coherence_min  = 0.20;
+int    div_auto_weighting      = DIV_WEIGHT_FLAT;
 double div_auto_resolution     = DIV_TARGET_BIN_HZ;
 
 //
@@ -406,10 +580,31 @@ double div_auto_resolution     = DIV_TARGET_BIN_HZ;
 // div_auto_width always hold the pair for whichever reference is
 // selected; these hold the pairs for the rest.
 //
+#define DIV_WIDTH_DEFAULT          1000.0
+#define DIV_DIGITAL_WIDTH_DEFAULT  2600.0
+#define DIV_CW_WIDTH_DEFAULT        600.0
+#define DIV_CARRIER_WIDTH_DEFAULT   400.0
+
+//
+// A reference's built-in window width, for the places that need to know
+// whether a window is still at it.
+//
+static double div_width_default(int ref) {
+  switch (ref) {
+  case DIV_REF_DIGITAL_IQ: return DIV_DIGITAL_WIDTH_DEFAULT;
+
+  case DIV_REF_CW:         return DIV_CW_WIDTH_DEFAULT;
+
+  case DIV_REF_CARRIER:    return DIV_CARRIER_WIDTH_DEFAULT;
+
+  default:                 return DIV_WIDTH_DEFAULT;
+  }
+}
+
 double div_band_centre         = 0.0;
-double div_band_width          = 1000.0;
+double div_band_width          = DIV_WIDTH_DEFAULT;
 double div_carrier_centre      = 0.0;
-double div_carrier_width       = 1000.0;
+double div_carrier_width       = DIV_CARRIER_WIDTH_DEFAULT;
 //
 // The digital default is the whole SSB audio passband rather than a
 // narrow slice: occupancy narrows it from there, so the operator does not
@@ -417,7 +612,12 @@ double div_carrier_width       = 1000.0;
 // the follow tick cleared.
 //
 double div_digital_centre      = 0.0;
-double div_digital_width       = 2600.0;
+double div_digital_width       = DIV_DIGITAL_WIDTH_DEFAULT;
+//
+// CW's hand-placed window, when Follow is off: a CW filter's width.
+//
+double div_cw_centre           = 0.0;
+double div_cw_width            = DIV_CW_WIDTH_DEFAULT;
 
 //
 // So is the coherence threshold, and for a stronger reason than the
@@ -427,7 +627,8 @@ double div_digital_width       = 2600.0;
 //   Window, Carrier    gamma^2 over the analysis window
 //   FSK/Digital        gamma^2 over the *occupied* bins only
 //   RADE V1            rade_corr_quality, which is acc_sig/(acc_sig+r00) -
-//                      a signal fraction, not a coherence at all
+//                      a signal fraction, not a coherence at all. Retired:
+//                      pinned at 0, see div_settings_validate()
 //
 // For equal arms and uncorrelated noise a gamma^2 gate at g demands a
 // per-arm SNR of sqrt(g)/(1-sqrt(g)), and a quality gate at q demands
@@ -444,13 +645,17 @@ double div_digital_width       = 2600.0;
 // docs/diversity-measurements.md.
 //
 // Defaults reproduce the single 0.30 that shipped before, except on RADE
-// V1, where the gate was never applied at all and 0.0 is what "as it was"
-// means.
+// V1, whose slot is pinned at 0.0 - the pilot gates already do the job -
+// and on Window, which is 0.20 because it moved to flat weighting.
+// Coherence weighting inflated the statistic, so flat needs about 0.10
+// less for the same false-alarm rate; flat at 0.20 has slightly fewer
+// false alarms than coherence at 0.30 did.
 //
-double div_band_cohmin         = 0.30;
+double div_band_cohmin         = 0.20;
 double div_carrier_cohmin      = 0.30;
 double div_digital_cohmin      = 0.30;
 double div_rade_cohmin         = 0.0;
+double div_cw_cohmin           = 0.10;
 
 //
 // Set when the requested window had to be pulled inside the Nyquist
@@ -570,10 +775,20 @@ static int             q_pending_drop = 0;   // dropped since the last enqueue
 static int             q_gap[DIV_QUEUE];     // gap ahead of each queued slot
 
 //
-// Set by diversity_auto_reset() on the GTK thread, consumed by the worker
-// between blocks. See the note there.
+// Requests from the GTK thread, as generation counters: the requester
+// bumps one, and the thread that acts on it compares it with a private
+// copy of its own. A test-and-clear flag loses a request raised between
+// the read and the clear; a counter cannot.
 //
-static int             reset_requested = 0;
+// reset_gen: diversity_auto_reset(), acted on by the worker between
+// blocks. See the note there.
+//
+// gap_gen: diversity_auto_gap(), acted on by the sample path on its next
+// sample, so that fillptr and q_pending_drop are written by that thread
+// alone. See the note there.
+//
+static gint            reset_gen = 0;
+static gint            gap_gen = 0;
 
 static GMutex          mbox_mutex;
 static GCond           mbox_cond;
@@ -600,6 +815,22 @@ static int             acc_valid = 0;
 // strided down to that many bins however wide the region is.
 //
 static double         *occ_scratch = NULL;
+
+//
+// Scratch for the per-arm noise floor, one buffer per arm. See
+// DIV_NF_SAMPLES.
+//
+static double         *nf_scratch0 = NULL, *nf_scratch1 = NULL;
+
+//
+// The per-arm noise floor itself, in power per bin, and whether it has
+// been established. Smoothed at DIV_NF_TAU; seeded from the first block
+// rather than started at zero, for the reason div_arm_nratio_update()
+// gives - a smoother that starts at zero reads its own startup transient
+// as the quietest the band has been.
+//
+static double          div_nf0 = 0.0, div_nf1 = 0.0;
+static int             div_nf_valid = 0;
 
 //
 // Which bins were found occupied, by wrapped index, so the noise pass can
@@ -629,6 +860,15 @@ struct div_context {
   int       weighting;
   int       att0;
   int       att1;
+  //
+  // The operator's manual notches, mirrored here for the same reason the
+  // filter edges are: they say which part of the passband is wanted, the
+  // analysis has to honour that, and a change of one has to reset the
+  // statistics like any other context change.
+  //
+  int       notch_on[3];
+  double    notch_centre[3];
+  double    notch_width[3];
 };
 
 static struct div_context lastctx;
@@ -648,8 +888,13 @@ static int div_jump = 0;
 
 //
 // Operator hold. The analysis carries on; only the application of its
-// answer is suspended. Not persisted - it is an operating state, not a
-// setting, and coming back up held would be baffling.
+// answer is suspended, so the weight in force stays exactly where it was -
+// a valid way to keep a local noise source nulled, or a peak that favours
+// one direction. Sticky: it survives closing the menu, retuning and mode
+// changes, and is released only by the Hold button or by switching
+// diversity off and on (radio_set_diversity()).
+// Not persisted - it is an operating state, not a setting, and coming back
+// up held would be baffling.
 //
 int    div_auto_hold = 0;
 double div_track_gain = 0.0;
@@ -659,6 +904,34 @@ double div_track_phase = 0.0;
 // Smoothed carrier frequency, shifted frame, for DIV_REF_CARRIER.
 //
 static double div_carrier_hz = 0.0;
+
+//
+// How long the antenna Best is not on has been ahead of it. See
+// DIV_BEST_DWELL.
+//
+static double best_lead = 0.0;
+
+//
+// CW key detection's temporal reference: the quietest the region's peak
+// has recently been. See div_cw_solve(). Reset with the statistics, so a
+// retune or a filter change starts it again.
+//
+static double cw_act_lo = 0.0;
+static int    cw_act_valid = 0;
+//
+// The CW noise floors per arm, smoothed at the Averaging time. See
+// div_cw_solve().
+//
+static double cw_nf0 = 0.0, cw_nf1 = 0.0;
+static int    cw_nf_valid = 0;
+
+//
+// The output-level normaliser: the smoothed passband powers behind it,
+// and the operator's tick (on by default). See div_norm_refresh().
+//
+static double norm_p0 = 0.0, norm_p1 = 0.0, norm_xr = 0.0, norm_xi = 0.0;
+static int    norm_valid = 0;
+int           div_auto_normalise = 1;
 
 
 //
@@ -736,6 +1009,8 @@ static void div_reset_stats(void) {
   acc_valid = 0;
   arm_floor_valid = 0;
   arm_floor0 = arm_floor1 = 0.0;
+  div_nf0 = div_nf1 = 0.0;
+  div_nf_valid = 0;
   arm_pw0 = arm_pw1 = 0.0;
   nr_f0 = nr_f1 = 0.0;
   nr_f_valid = 0;
@@ -747,10 +1022,17 @@ static void div_reset_stats(void) {
   arm_fast0 = arm_fast1 = 0.0;
   div_auto_arm_valid = 0;
   div_auto_arm_db = 0.0;
+  best_lead = 0.0;
   div_auto_coherence = 0.0;
   div_auto_holding = 1;
   div_carrier_hz = 0.0;
   div_auto_carrier_valid = 0;
+  cw_act_lo = 0.0;
+  cw_act_valid = 0;
+  norm_valid = 0;
+  div_norm = 1.0;
+  cw_nf0 = cw_nf1 = 0.0;
+  cw_nf_valid = 0;
   div_auto_occ_valid = 0;
   div_auto_occ_lo = 0.0;
   div_auto_occ_hi = 0.0;
@@ -771,7 +1053,9 @@ static void div_reset_stats(void) {
 //
 // auto_div_gain is the arm-1 gain in dB relative to arm 0. Attenuating arm 0
 // by delta makes arm 0 smaller, so the correct ratio falls by delta;
-// attenuating arm 1 raises it by delta. Applying that here keeps the
+// attenuating arm 1 raises it by delta. The caller names an ADC, not an
+// arm: arm 0 is the ADC RX1 is set to, so ADC2 is arm 1 only when RX1 is
+// on ADC1. Applying that here keeps the
 // combined audio continuous across the change - and, under Hold or with
 // the loop off, keeps the operator's own manual weight valid, which is
 // the thing tying the two attenuators together used to protect.
@@ -779,7 +1063,8 @@ static void div_reset_stats(void) {
 void diversity_auto_att_changed(int a, int delta_db) {
   if (radio_is_remote) { return; }
 
-  const double shift = (a == 1) ? (double)delta_db : -(double)delta_db;
+  const int arm = (a == receiver[0]->adc) ? 0 : 1;
+  const double shift = (arm == 1) ? (double)delta_db : -(double)delta_db;
   //
   // Scale what is being applied, then back-compute the readout, which is
   // the same order div_apply_weight() uses. Doing it the other way about
@@ -824,17 +1109,23 @@ void diversity_auto_reset(void) {
   if (radio_is_remote) { return; }
 
   //
-  // Called from a UI thread or from rxtx(). Zeroing the transform accumulators from
-  // here is harmless - the worker only ever adds to them, so the worst
-  // case is one block's contribution lost.
+  // Called from a UI thread or from rxtx(), so it only asks: the worker
+  // performs the reset between blocks (see div_worker_thread()).
   //
-  // rade_corr_reset() is a different matter: it clears the correlator's
-  // lock state and memsets an 80 KB accumulation grid that the worker may
-  // be part way through reading. So it is requested here and performed by
-  // the worker between blocks instead.
+  // Doing it here raced the worker. rade_corr_reset() clears the
+  // correlator's lock state and memsets an 80 KB grid the worker may be
+  // part way through reading. And div_reset_stats() is not only the
+  // transform accumulators, which the worker merely adds to: it zeroes
+  // smoothed state the worker reads and writes in place - the noise
+  // floors, the noise ratio, the key-detection minimum - with their valid
+  // flags. Zeroed under a worker half way through an update, a floor could
+  // be rebuilt from zero and marked valid, and a wildly wrong noise ratio
+  // then smoothed into the Sum weight over seconds.
   //
-  div_reset_stats();
-  reset_requested = 1;
+  // With diversity stopped there is no worker to act on it, and none is
+  // needed: diversity_auto_start() resets everything itself.
+  //
+  g_atomic_int_inc(&reset_gen);
 }
 
 //
@@ -930,6 +1221,23 @@ double div_window_zero(int mode, int sidetone) {
 }
 
 //
+// The Carrier reference's search region when it follows the RX filter: the
+// default width, centred in the passband - the carrier of AM and SAM sits
+// at the middle of the filter, and searching the whole passband would let
+// a sideband peak win. A passband narrower than that is used whole.
+// Edges in the shifted frame.
+//
+void div_carrier_follow_window(double filter_low, double filter_high, double *lo, double *hi) {
+  const double mid = 0.5 * (filter_low + filter_high);
+  double w = DIV_CARRIER_WIDTH_DEFAULT;
+
+  if (w > filter_high - filter_low) { w = filter_high - filter_low; }
+
+  *lo = mid - 0.5 * w;
+  *hi = mid + 0.5 * w;
+}
+
+//
 // The edges of a hand-placed window, in the shifted frame.
 //
 static void div_manual_window(const struct div_context *ctx, double *lo, double *hi) {
@@ -979,6 +1287,36 @@ static void div_get_context(struct div_context *ctx) {
   ctx->weighting      = div_auto_weighting;
   ctx->att0           = adc[0].attenuation;
   ctx->att1           = adc[1].attenuation;
+
+  //
+  // Taken from receiver 0 for the same reason everything else here is:
+  // the analysis runs on the pair of streams feeding it.
+  //
+  for (int i = 0; i < 3; i++) {
+    ctx->notch_on[i]     = rx->multi_notch_enable[i];
+    ctx->notch_centre[i] = rx->multi_notch_center[i];
+    ctx->notch_width[i]  = rx->multi_notch_width[i];
+  }
+}
+
+//
+// The notches, compared exactly. A notch that is off is not compared at
+// all: its centre and width still hold whatever the operator last set,
+// and sliding a disabled notch about must not throw the estimate away.
+//
+static int div_notches_differ(const struct div_context *a, const struct div_context *b) {
+  for (int i = 0; i < 3; i++) {
+    if (a->notch_on[i] != b->notch_on[i]) { return 1; }
+
+    if (!a->notch_on[i]) { continue; }
+
+    if (a->notch_centre[i] != b->notch_centre[i] ||
+        a->notch_width[i]  != b->notch_width[i]) {
+      return 1;
+    }
+  }
+
+  return 0;
 }
 
 //
@@ -1002,7 +1340,62 @@ static int div_context_changed(const struct div_context *a, const struct div_con
          a->width          != b->width          ||
          a->weighting      != b->weighting      ||
          a->att0           != b->att0           ||
-         a->att1           != b->att1;
+         a->att1           != b->att1           ||
+         div_notches_differ(a, b);
+}
+
+//
+// Does bin k fall inside one of the operator's manual notches?
+//
+// The analysis runs on the two raw antenna streams, upstream of WDSP, so
+// a notched interferer is still in our spectrum at full strength, and
+// without this it is picked as a peak and solved for like anything else.
+// Excluding the bins here is the only way the operator's declaration of
+// what they do not want reaches the estimate.
+//
+// Applied by every reference that works from the transform: the wideband
+// Window accumulation and the combine over it, the Carrier tracker's peak
+// search, and all four passes of the FSK/Digital occupancy split. RADE V1
+// is the exception and cannot be covered - rade_corr_process() is handed
+// the block in the time domain and does its own correlation, so there are
+// no bins here to leave out. It is also the one reference where it would
+// buy least: the pilot correlator looks for a specific waveform at a
+// specific offset, not for whatever is loudest.
+//
+// The frame. multi_notch_center is what reaches RXANBPEditNotch(), and
+// nbp.c forms its passband as "flow + offset" with
+// offset = ndb->tunefreq + ndb->shift. tunefreq is never set by piHPSDR
+// and stays at the zero create_notchdb() leaves, and shift is what
+// rx_set_offset() passes to RXANBPSetShiftFrequency() - the VFO
+// offset with the CW sidetone already folded in, which is exactly
+// div_frame_off(). So a notch centre lives in the raw frame, and
+//
+//   div_shift_to_bin(s) = -(s + frame_off),  s = centre - frame_off
+//
+// collapses to a bin frequency of simply -centre. The sidetone cancels,
+// which is why this needs no CW special case.
+//
+// "Entirely inside" rather than "overlapping": a bin straddling a notch
+// edge still carries wanted signal, and at a coarse Resolution a narrow
+// notch is narrower than one bin, where excluding on overlap would throw
+// away the whole region the operator was trying to keep.
+//
+static int div_bin_notched(const struct div_context *ctx, int k) {
+  const double lo = ((double)k - 0.5) * binhz;
+  const double hi = ((double)k + 0.5) * binhz;
+
+  for (int i = 0; i < 3; i++) {
+    if (!ctx->notch_on[i] || !(ctx->notch_width[i] > 0.0)) { continue; }
+
+    const double a = -(ctx->notch_centre[i] - 0.5 * ctx->notch_width[i]);
+    const double b = -(ctx->notch_centre[i] + 0.5 * ctx->notch_width[i]);
+    const double nlo = (a < b) ? a : b;
+    const double nhi = (a < b) ? b : a;
+
+    if (lo >= nlo && hi <= nhi) { return 1; }
+  }
+
+  return 0;
 }
 
 //
@@ -1029,10 +1422,11 @@ static int div_bin_range(const struct div_context *ctx, int *klo, int *khi) {
     //
     flo = div_carrier_hz - DIV_CARRIER_BINS * binhz;
     fhi = div_carrier_hz + DIV_CARRIER_BINS * binhz;
-  } else if (ctx->ref == DIV_REF_DIGITAL_IQ) {
+  } else if (ctx->ref == DIV_REF_DIGITAL_IQ || ctx->ref == DIV_REF_CW) {
     //
     // The *search region*, not the bins finally accumulated. Occupancy
-    // narrows it after the transform - see div_digital_solve().
+    // narrows it after the transform - see div_digital_solve() - and on
+    // CW the tone does - see div_cw_solve().
     //
     // Nothing computed from the spectrum may appear here: this runs
     // before the transform, and making the bin range depend on something
@@ -1210,6 +1604,205 @@ void div_mvdr2(double r00, double r11, double r01re, double r01im,
 }
 
 //
+// Partial selection (Hoare's FIND, as Wirth gives it): afterwards a[k]
+// holds the value it would hold were a[lo..hi] sorted, nothing before it
+// in that range is larger and nothing after it smaller. Linear on
+// average, against qsort's n log n with a call per comparison.
+//
+static void div_nf_select(double *a, int lo, int hi, int k) {
+  while (lo < hi) {
+    //
+    // Median of three, so a block that arrives already ordered - a
+    // spectrum sloping across the span - does not go quadratic.
+    //
+    const int mid = lo + (hi - lo) / 2;
+    double x = a[lo], y = a[mid], z = a[hi], t;
+
+    if (x > y) { t = x; x = y; y = t; }
+
+    if (y > z) { y = z; }
+
+    const double p = (x > y) ? x : y;
+    int i = lo, j = hi;
+
+    while (i <= j) {
+      while (a[i] < p) { i++; }
+
+      while (a[j] > p) { j--; }
+
+      if (i <= j) {
+        t = a[i];
+        a[i] = a[j];
+        a[j] = t;
+        i++;
+        j--;
+      }
+    }
+
+    if (k <= j) { hi = j; }
+    else if (k >= i) { lo = i; }
+    else { return; }
+  }
+}
+
+//
+// The mean of order statistics ilo..ihi of a[0..n-1], which is all the
+// floor needs of a sort. Two selections fence the band, which holds the
+// right values in no particular order; sorting just those (about forty)
+// and adding them smallest first gives the same sum, bit for bit, as
+// adding them from a fully sorted array.
+//
+static double div_nf_band_mean(double *a, int n, int ilo, int ihi) {
+  div_nf_select(a, 0, n - 1, ilo);
+
+  if (ihi > ilo) { div_nf_select(a, ilo + 1, n - 1, ihi); }
+
+  for (int i = ilo + 1; i <= ihi; i++) {
+    const double v = a[i];
+    int j = i - 1;
+
+    while (j >= ilo && a[j] > v) {
+      a[j + 1] = a[j];
+      j--;
+    }
+
+    a[j + 1] = v;
+  }
+
+  double sum = 0.0;
+
+  for (int i = ilo; i <= ihi; i++) { sum += a[i]; }
+
+  return sum / (double)(ihi - ilo + 1);
+}
+
+//
+// The two branch noise floors, in power per bin, from this block's
+// spectrum outside the operator's filter. See DIV_NF_PCT.
+//
+// What is excluded is the *filter*, not the analysis window. The Carrier
+// reference accumulates five bins and an AM signal's sidebands fill the
+// passband either side of them; sampling those as noise would credit
+// whichever arm hears the station better with the higher noise floor,
+// which is the error this function exists to remove. Where the operator
+// has placed a window wider than the filter - parking one on a known
+// noise, which Finding 4 recommends - the union is excluded instead.
+//
+// Returns 1 once div_nf0/div_nf1 hold something.
+//
+static int div_noise_floor_update(const struct div_context *ctx, int klo, int khi) {
+  if (fftout0 == NULL || nf_scratch0 == NULL || nfft <= 0 || binhz <= 0.0) { return 0; }
+
+  //
+  // The filter, through the same shift-and-invert div_bin_range() uses,
+  // widened to take in the analysis window and then by the skirt.
+  //
+  int elo, ehi;
+  {
+    const double a = div_shift_to_bin(ctx, (double)ctx->filter_low);
+    const double b = div_shift_to_bin(ctx, (double)ctx->filter_high);
+    const double flo = (a < b) ? a : b;
+    const double fhi = (a < b) ? b : a;
+    elo = (int)floor(flo / binhz);
+    ehi = (int)ceil (fhi / binhz);
+
+    if (klo < elo) { elo = klo; }
+
+    if (khi > ehi) { ehi = khi; }
+
+    const int skirt = (int)ceil(DIV_NF_SKIRT_HZ / binhz);
+    elo -= skirt;
+    ehi += skirt;
+  }
+  int span = (int)(0.5 * DIV_NF_SPAN * (double)nfft);
+  const int span_max = (int)(DIV_NF_HALF_SPAN_HZ / binhz);
+
+  if (span > span_max) { span = span_max; }
+
+  if (span < 1) { return 0; }
+
+  //
+  // How many bins are left to choose from, in closed form, so the stride
+  // can be set before anything is touched.
+  //
+  const int xlo = (elo > -span) ? elo :  -span;
+  const int xhi = (ehi <  span) ? ehi :   span;
+  const int excl = (xhi >= xlo) ? (xhi - xlo + 1) : 0;
+  const int cand = (2 * span + 1) - excl;
+
+  if (cand < DIV_NF_MIN_BINS) { return 0; }
+
+  const int stride = (cand > DIV_NF_SAMPLES) ? (cand / DIV_NF_SAMPLES + 1) : 1;
+  int ns = 0;
+
+  for (int k = -span; k <= span && ns < DIV_NF_SAMPLES; k += stride) {
+    if (k >= elo && k <= ehi) {
+      //
+      // Step over the excluded band in one go rather than striding
+      // through it, or a wide filter would eat most of the sample count.
+      //
+      k = ehi;
+      continue;
+    }
+
+    int idx = k % nfft;
+
+    if (idx < 0) { idx += nfft; }
+
+    nf_scratch0[ns] = (double)fftout0[idx][0] * fftout0[idx][0]
+                      + (double)fftout0[idx][1] * fftout0[idx][1];
+    nf_scratch1[ns] = (double)fftout1[idx][0] * fftout1[idx][0]
+                      + (double)fftout1[idx][1] * fftout1[idx][1];
+    ns++;
+  }
+
+  if (ns < DIV_NF_MIN_BINS) { return 0; }
+
+  int ilo = (ns * (DIV_NF_PCT - DIV_NF_BAND)) / 100;
+  int ihi = (ns * (DIV_NF_PCT + DIV_NF_BAND)) / 100;
+
+  if (ilo < 0)   { ilo = 0; }
+
+  if (ihi >= ns) { ihi = ns - 1; }
+
+  if (ihi < ilo) { ihi = ilo; }
+
+  const double f0 = div_nf_band_mean(nf_scratch0, ns, ilo, ihi);
+  const double f1 = div_nf_band_mean(nf_scratch1, ns, ilo, ihi);
+
+  if (!(f0 > 0.0) || !(f1 > 0.0)) { return 0; }
+
+  if (!div_nf_valid) {
+    div_nf0 = f0;
+    div_nf1 = f1;
+    div_nf_valid = 1;
+  } else {
+    const double a = 1.0 - exp(-blocktime / DIV_NF_TAU);
+    div_nf0 += a * (f0 - div_nf0);
+    div_nf1 += a * (f1 - div_nf1);
+  }
+
+  return 1;
+}
+
+//
+// The floor as it stands, per arm per bin (FFT power, relative to ADC
+// full scale), for readers outside the worker: the test harness, and the
+// attenuator calibration (docs/feature-att-calibration.md). Returns 0
+// while there is none. The worker writes these without a lock, so a
+// reader on another thread may see a value a block old, and on a 32-bit
+// machine could in principle see a double half written; nothing that
+// steers the combiner reads it this way.
+//
+int diversity_auto_noise_floor(double *n0, double *n1) {
+  if (!div_nf_valid) { return 0; }
+
+  *n0 = div_nf0;
+  *n1 = div_nf1;
+  return 1;
+}
+
+//
 // ------------------------------------------------------------------
 // Which antenna is better
 // ------------------------------------------------------------------
@@ -1223,8 +1816,10 @@ void div_mvdr2(double r00, double r11, double r01re, double r01im,
 //
 // The RADE V1 and FSK/Digital references already have both halves: their
 // MVDR covariance is a measurement of N0 and N1 taken off the signal. The
-// wideband Window and Carrier references have no such thing, so they get
-// a noise floor tracked over time instead - see div_arm_floor_update().
+// wideband Window and Carrier references have no such thing, so they take
+// one from the bins outside the operator's filter - see
+// div_noise_floor_update() - and fall back to a floor tracked over time
+// where too little lies outside it (div_arm_floor_update()).
 //
 // This is worth publishing whatever objective is running. Nothing an
 // operator can otherwise see separates an antenna that reads 12 dB down
@@ -1265,28 +1860,94 @@ static void div_arm_floor_update(double p0, double p1) {
 }
 
 //
-// The advantage of arm 1, in dB, from the tracked floors. Fails while
-// the floor has not been established, and while either arm is sitting on
-// its own floor - there is no signal to compare then, and the ratio of
-// two noises is not an answer to the question.
+// What the noise floor (div_noise_floor_update()) is as a fraction of the
+// mean noise power per bin. It averages order statistics 8 % to 12 %,
+// and the bin power of noise is exponentially distributed, where the
+// k-th smallest of n has mean H(n) - H(n-k) times the mean (H the
+// harmonic numbers). Over that band at n = DIV_NF_SAMPLES this is
+// 0.1055, 9.77 dB down; at the 128 to 850 samples a wide filter or a
+// narrow span leaves it is 0.106 to 0.111, within 0.2 dB of it.
 //
-static int div_arm_from_floor(double p0, double p1, double *db) {
-  if (!arm_floor_valid || arm_floor0 <= 0.0 || arm_floor1 <= 0.0) { return 0; }
+// The low percentile stays the measurement: on a busy band it is the
+// statistic the stations cannot reach. Its low bins are not quieter
+// noise, though - bin power fluctuates, and on bare noise a tenth of the
+// bins read 10 dB under the noise every bin carries (122843's outside
+// bins: median 8.16 dB over the 10th percentile, theory 8.17). Dividing
+// by this fraction is a fixed multiplier, so it lets no signal in; it
+// only puts the floor on the same footing as a summed window power.
+//
+// div_nf0/div_nf1 themselves are never scaled. A ratio of the two floors
+// needs none of this - the fraction cancels - and the accessor returns
+// the raw percentile, so it matters only where the floor stands for the
+// noise in absolute terms: div_arm_from_floor(). Without it a window of pure noise read
+// 9.3 dB of SNR on each arm, passed DIV_ARM_MIN_DB, and real differences
+// came out compressed - 6 dB as 2.2 dB at an arm SNR of 0 dB. Finding 56
+// in docs/diversity-measurements.md, and its status note.
+//
+#define DIV_NF_MEAN_FRAC    0.1055
 
-  const double s0 = p0 - arm_floor0;
-  const double s1 = p1 - arm_floor1;
+//
+// The SNR an arm buried in its own noise is credited with, so that the
+// other arm's lead stays finite. Scored with DIV_NF_MEAN_FRAC on the 45
+// Window/Carrier captures: requiring both arms to clear DIV_ARM_MIN_DB
+// silenced Best on the lopsided captures it exists for and lost 0.02 dB
+// of guard on average; requiring one, with this floor under the other,
+// gained 0.09 and 6.0 dB in-band on 122843, where ADC2 is 15 dB noisier.
+//
+#define DIV_ARM_BURIED_DB   (-10.0)
 
-  if (!(s0 > 0.0) || !(s1 > 0.0)) { return 0; }
+//
+// The advantage of arm 1, in dB. Fails while there is no noise reference,
+// and while either arm is sitting on its own floor - there is no signal
+// to compare then, and the ratio of two noises is not an answer to the
+// question.
+//
+// nbins is how many bins p0 and p1 were summed over, because the spectral
+// floor is per bin and the window powers are not. The temporal floor is
+// the fallback and is already in window units, so it needs no scaling -
+// which is also why it cannot be mixed with the other: the two are the
+// same quantity in different units and only nbins relates them.
+//
+// The spectral floor is a low percentile, and the noise in p0 and p1 is
+// there at its mean, so the floor is converted to the mean noise per bin
+// at this one point of use - see DIV_NF_MEAN_FRAC.
+//
+static int div_arm_from_floor(double p0, double p1, int nbins, double *db) {
+  double n0, n1;
+
+  if (div_nf_valid && div_nf0 > 0.0 && div_nf1 > 0.0 && nbins > 0) {
+    const double mean_noise0 = div_nf0 / DIV_NF_MEAN_FRAC;
+    const double mean_noise1 = div_nf1 / DIV_NF_MEAN_FRAC;
+    n0 = (double)nbins * mean_noise0;
+    n1 = (double)nbins * mean_noise1;
+  } else if (arm_floor_valid && arm_floor0 > 0.0 && arm_floor1 > 0.0) {
+    n0 = arm_floor0;
+    n1 = arm_floor1;
+  } else {
+    return 0;
+  }
+
+  double s0 = p0 - n0;
+  double s1 = p1 - n1;
 
   //
-  // Both arms have to stand clear of their own floor, or the floor is not
-  // yet known to be noise. See DIV_ARM_MIN_DB.
+  // One arm has to stand clear of its own floor, or there is no signal
+  // to compare. See DIV_ARM_MIN_DB. Only one: an arm buried in its noise
+  // - a weak antenna, or a dead port - is precisely the case where the
+  // other one is the answer, so it is credited with DIV_ARM_BURIED_DB
+  // and the readout becomes a lower bound on the other's lead.
   //
   const double need = pow(10.0, 0.1 * DIV_ARM_MIN_DB) - 1.0;
 
-  if (s0 < need * arm_floor0 || s1 < need * arm_floor1) { return 0; }
+  if (!(s0 >= need * n0) && !(s1 >= need * n1)) { return 0; }
 
-  *db = 10.0 * log10((s1 / arm_floor1) / (s0 / arm_floor0));
+  const double buried = pow(10.0, 0.1 * DIV_ARM_BURIED_DB);
+
+  if (!(s0 >= buried * n0)) { s0 = buried * n0; }
+
+  if (!(s1 >= buried * n1)) { s1 = buried * n1; }
+
+  *db = 10.0 * log10((s1 / n1) / (s0 / n0));
   return 1;
 }
 
@@ -1390,10 +2051,10 @@ static void div_arm_nratio_update(double x0, double x1, double p0, double p1) {
 // assumption that the two branches carry equal noise. Maximum ratio
 // combining actually wants conj(h1/h0) * (N0/N1), and on a pair of
 // antennas whose front ends are far apart that missing factor is the
-// whole answer. Measured on `002534` - ADC1 12.3 dB hotter and 5.1 dB
+// whole answer. Measured on `002534` - ADC2 12.3 dB hotter and 5.1 dB
 // worse - the loop applied |w| = 1.17 where 0.072 was right, made the
 // audio 14.8 dB louder with a noise floor 18.3 dB higher, and landed
-// 3.6 dB *below* simply listening to ADC0 where +1.4 dB was available.
+// 3.6 dB *below* simply listening to ADC1 where +1.4 dB was available.
 // The two forms differ by exactly the noise ratio and the measurement
 // says so: 16.2 against a measured 16.8. See Findings 20 and 22 in
 // docs/diversity-measurements.md.
@@ -1404,17 +2065,136 @@ static void div_arm_nratio_update(double x0, double x1, double p0, double p1) {
 // because it uses the co-phasing direction and throws the magnitude away,
 // and a positive real factor does not move a direction.
 //
-// The ratio is latched rather than used live. It is a property of the two
-// receive chains, not of the path, so it changes when the operator moves
-// a step attenuator - which resets the statistics through
-// div_context_changed() - and hardly otherwise. Latching it means the
-// weight does not switch formula every time arm_valid toggles, which on a
-// continuous carrier it does constantly (Finding 16: asserted on 4 to
-// 32 % of blocks). Until it has been measured once the behaviour is
-// exactly what it was before.
+// It comes from div_noise_floor_update() - this block's own spectrum,
+// outside the filter - which is available on essentially every block and
+// cannot be fooled by a fading carrier. See DIV_NF_PCT for what that
+// replaced and what it cost.
+//
+// The temporal minimum is the fallback, for the one case the spectral
+// floor cannot serve - a hand-placed window so wide that fewer than
+// DIV_NF_MIN_BINS are left outside it. It is latched, because it is a
+// property of the two receive chains rather than of the path and because
+// switching formula every time its clearance test toggled - which on a
+// continuous carrier is constantly, 4 to 32 % of blocks by Finding 16 -
+// moved the weight for no reason. The spectral floor needs no latch: it
+// is smoothed at DIV_NF_TAU and does not toggle.
+//
+// Until either has been measured once the behaviour is exactly what it
+// was before this term existed.
+//
+// Measured over 39 Window/Carrier captures (docs/test-noisefloor.md):
+// the outside-filter ratio scores +0.50 dB against the better antenna,
+// the temporal minimum +0.27. It loses where both antennas hear one noise
+// source - 154822, 0.99 coherent in the passband - because
+// N0/N1 * Sxy/Sxx is the maximum-ratio answer only for uncorrelated noise,
+// and the temporal minimum's misestimate happened to give a weight nearer
+// one that cancels some of the common noise. Two covariance solves meant
+// to cancel such noise were tried and dropped.
 //
 static double div_wideband_sum_scale(void) {
+  if (div_nf_valid && div_nf0 > 0.0 && div_nf1 > 0.0) {
+    return div_nf0 / div_nf1;
+  }
+
   return arm_nratio_valid ? arm_nratio : 1.0;
+}
+
+//
+// How fast the passband powers behind the normaliser are smoothed, in
+// seconds, and how far it may scale the output - down 40 dB, which covers
+// Best's +20 dB with room, and up 6 dB, so nothing downstream ever sees a
+// large gain from here.
+//
+#define DIV_NORM_TAU        1.0
+#define DIV_NORM_MIN        0.01
+#define DIV_NORM_MAX        2.0
+
+//
+// The output-level normaliser.
+//
+// receiver.c forms z0 + w*z1 with arm 0 at unit gain, so the combined
+// output is louder than one antenna by whatever the weight does - over 39
+// captures a median +2.1 dB in Sum, +7.4 at the ninetieth percentile -
+// and +20 dB the moment Best hands the output to arm 1, because the
+// combiner can only say "arm 1" as w at the clamp. That rise is not
+// signal. div_norm scales the output back to the level arm 0 alone would
+// have, over the operator's passband:
+//
+//     |z0 + w z1|^2 = P0 + |w|^2 P1 + 2 Re(conj(w) P01)
+//
+// with P0, P1, P01 = <X0 conj(X1)> smoothed at DIV_NORM_TAU, and w the
+// weight actually in force. The powers are what is smoothed, not the
+// correction: recomputed every time the weight is written, a Best switch
+// or a slew step is levelled in the same block rather than a second later.
+//
+// Null is excluded - making the output quieter is its purpose - and so is
+// RADE V1, which never runs the transform the powers come from.
+//
+static void div_norm_refresh(void) {
+  if (!div_auto_normalise || div_auto_mode == DIV_AUTO_NULL || !norm_valid) {
+    div_norm = 1.0;
+    return;
+  }
+
+  const double c = auto_div_cos, sn = auto_div_sin;
+  const double pout = norm_p0 + (c * c + sn * sn) * norm_p1 + 2.0 * (c * norm_xr + sn * norm_xi);
+
+  if (!(pout > 0.0) || !(norm_p0 > 0.0)) {
+    div_norm = 1.0;
+    return;
+  }
+
+  double g = sqrt(norm_p0 / pout);
+
+  if (g < DIV_NORM_MIN) { g = DIV_NORM_MIN; }
+
+  if (g > DIV_NORM_MAX) { g = DIV_NORM_MAX; }
+
+  div_norm = g;
+}
+
+//
+// The passband powers behind it, from this block's transform.
+//
+static void div_norm_update(const struct div_context *ctx) {
+  const double a = div_shift_to_bin(ctx, (double)ctx->filter_low);
+  const double b = div_shift_to_bin(ctx, (double)ctx->filter_high);
+  const double nyq = 0.5 * (double)ctx->sample_rate - binhz;
+  double flo = (a < b) ? a : b;
+  double fhi = (a < b) ? b : a;
+
+  if (flo < -nyq) { flo = -nyq; }
+
+  if (fhi >  nyq) { fhi =  nyq; }
+
+  const int klo = (int)ceil(flo / binhz);
+  const int khi = (int)floor(fhi / binhz);
+  double p0 = 0.0, p1 = 0.0, xr = 0.0, xi = 0.0;
+
+  for (int k = klo; k <= khi; k++) {
+    if (div_bin_notched(ctx, k)) { continue; }
+
+    int idx = k % nfft;
+
+    if (idx < 0) { idx += nfft; }
+
+    const double i0 = fftout0[idx][0], q0 = fftout0[idx][1];
+    const double i1 = fftout1[idx][0], q1 = fftout1[idx][1];
+    p0 += i0 * i0 + q0 * q0;
+    p1 += i1 * i1 + q1 * q1;
+    xr += i0 * i1 + q0 * q1;
+    xi += q0 * i1 - i0 * q1;
+  }
+
+  if (!(p0 > 0.0) || !(p1 > 0.0)) { return; }
+
+  const double al = norm_valid ? 1.0 - exp(-blocktime / DIV_NORM_TAU) : 1.0;
+  norm_p0 += al * (p0 - norm_p0);
+  norm_p1 += al * (p1 - norm_p1);
+  norm_xr += al * (xr - norm_xr);
+  norm_xi += al * (xi - norm_xi);
+  norm_valid = 1;
+  div_norm_refresh();
 }
 
 //
@@ -1451,10 +2231,22 @@ static void div_apply_best(double cophase_re, double cophase_im) {
     return;
   }
 
-  if (div_auto_arm_pick == 0) {
-    if (div_auto_arm_db >  DIV_BEST_HYST_DB) { div_auto_arm_pick = 1; }
+  //
+  // Change only when the other antenna has led by more than the
+  // hysteresis for DIV_BEST_DWELL, continuously.
+  //
+  const int other_leads = (div_auto_arm_pick == 0) ? (div_auto_arm_db >  DIV_BEST_HYST_DB)
+                          : (div_auto_arm_db < -DIV_BEST_HYST_DB);
+
+  if (other_leads) {
+    best_lead += blocktime;
+
+    if (best_lead >= DIV_BEST_DWELL) {
+      div_auto_arm_pick = !div_auto_arm_pick;
+      best_lead = 0.0;
+    }
   } else {
-    if (div_auto_arm_db < -DIV_BEST_HYST_DB) { div_auto_arm_pick = 0; }
+    best_lead = 0.0;
   }
 
   if (div_auto_arm_pick == 0) {
@@ -1550,12 +2342,161 @@ static void div_apply_weight(double wr, double wi) {
   if (auto_div_gain < -27.0) { auto_div_gain = -27.0; }
 
   auto_div_phase = atan2(auto_div_sin, auto_div_cos) * (180.0 / M_PI);
+  div_norm_refresh();
 }
 
 static int div_occ_cmp(const void *a, const void *b) {
   const double x = *(const double *)a;
   const double y = *(const double *)b;
   return (x > y) - (x < y);
+}
+
+//
+// The noise floor of the coherence gate.
+//
+// The gate compares a magnitude-squared coherence against the operator's
+// Min coherence, and that estimate has a floor of its own: over N
+// independent samples the coherence of two *uncorrelated* noises is not
+// zero but distributed as Beta(1, N-1), averaging 1/N. Set the gate below
+// that and it stops being a gate - noise-only blocks pass, and the loop
+// fits a weight to whatever the two antennas happen to agree on by
+// accident: random tracking, worth about 3 dB of added noise on a matched
+// pair. Holding where we were is always the better answer, because it is
+// the best chance of being right when the signal returns.
+//
+// So the gate never compares against less than the coherence that pure
+// noise reaches DIV_COH_FLOOR_PFA of the time,
+//
+//     floor = 1 - PFA^(1/(N-1))  ~  -ln(PFA)/N for large N,
+//
+// whatever the slider says. N depends on everything the operator can set:
+//
+// - bins: the window width (or the carrier tracker's five bins, or the
+//   occupied span on FSK/Digital) divided by the bin width. (The menu's
+//   slider bottom uses the whole search region on FSK/Digital instead;
+//   see diversity_auto_coh_floor().) Neighbouring
+//   bins of the 4-term Blackman-Harris window are not independent - 82 %
+//   correlated one bin apart, 44 % two apart, 15 % three apart - so they
+//   are counted as n^2 / sum_jk |rho(j-k)|^2, which is about n/2.76 on a
+//   wide window;
+// - blocks: the exponential average holds (sum w)^2 / sum w^2 independent
+//   blocks, which is (2-alpha)/alpha in steady state and only one on the
+//   block after a reset or a retune - which is when a single-block
+//   estimate is most easily fooled. An averaging change does not reset;
+//   the count follows the new alpha over the next few blocks.
+//
+// A wide window at a long average has a floor of a fraction of a percent,
+// so the setting is what gates there; the five-bin Carrier reference at a
+// short average has a floor of tens of percent, and the floor is what
+// gates. One fixed number could never have served both.
+//
+// 0.1 %: at twelve blocks a second, pure noise passes a gate at the floor
+// about once a minute, and never many times running.
+//
+// On FSK/Digital a region with no noise bins is accumulated with each bin
+// weighted by its own coherence, which biases the estimate upward; the
+// floor is then a lower bound, which is the safe direction.
+//
+#define DIV_COH_FLOOR_PFA 0.001
+#define DIV_COH_FLOOR_MAX 0.5
+
+static double div_coh_floor_n(double nbins, double nblocks) {
+  //
+  // Correlation of a white-noise spectrum between bins k apart under the
+  // window div_make_window() builds; zero beyond four.
+  //
+  static const double rho[] = { 1.0, 0.8160, 0.4386, 0.1500, 0.0304 };
+  const int nr = (int)(sizeof(rho) / sizeof(rho[0]));
+
+  if (!(nbins >= 1.0))   { nbins = 1.0; }
+
+  if (!(nblocks >= 1.0)) { nblocks = 1.0; }
+
+  double den = nbins;
+
+  for (int k = 1; k < nr && k < nbins; k++) {
+    den += 2.0 * (nbins - k) * rho[k] * rho[k];
+  }
+
+  double n = (nbins * nbins / den) * nblocks;
+
+  if (n < 2.0) { n = 2.0; }
+
+  double f = 1.0 - pow(DIV_COH_FLOOR_PFA, 1.0 / (n - 1.0));
+
+  if (f > DIV_COH_FLOOR_MAX) { f = DIV_COH_FLOOR_MAX; }
+
+  if (f < 0.0) { f = 0.0; }
+
+  return f;
+}
+
+//
+// The effective number of blocks in the running average, kept alongside
+// it: sum w and sum w^2 over the weights the exponential average has
+// given the blocks it holds. See div_coh_floor_n().
+//
+static double acc_w1 = 0.0, acc_w2 = 0.0;
+
+static double div_acc_blocks(void) {
+  return (acc_w2 > 0.0) ? acc_w1 * acc_w1 / acc_w2 : 1.0;
+}
+
+//
+// What the gate actually compares against, given how many bins went into
+// this block's estimate.
+//
+static double div_gate_threshold(int nbins) {
+  const double f = div_coh_floor_n((double)nbins, div_acc_blocks());
+  return (div_auto_coherence_min > f) ? div_auto_coherence_min : f;
+}
+
+//
+// The same floor from the settings alone, in steady state, for the menu:
+// the bottom of the Min coherence slider. Computed from the settings
+// rather than from the engine's own state so that a remote client, where
+// no engine runs, reaches the same answer from the same numbers.
+//
+// Returns 0 for RADE V1, which gates on the pilot, not on a coherence.
+//
+// On FSK/Digital this is the floor for the whole search region, not for
+// the occupied span the gate uses block by block. The span is
+// re-estimated every block and comes and goes with the signal, and the
+// floor is steep in it, so a slider bottom that followed it jumped about
+// under the operator's hand. The region's floor is the lower one, so the
+// slider never claims more than the gate holds to; where the occupied span
+// is narrower the gate is stricter than the slider shows. See
+// div_gate_threshold().
+//
+double diversity_auto_coh_floor(int ref) {
+  if (ref == DIV_REF_RADE_V1) { return 0.0; }
+
+  const double bhz = (div_auto_binhz > 0.0) ? div_auto_binhz : div_auto_resolution;
+
+  if (!(bhz > 0.0)) { return 0.0; }
+
+  const double bt = 1.0 / bhz;
+  const double tau = (div_auto_tau > 0.0) ? div_auto_tau : bt;
+  const double alpha = 1.0 - exp(-bt / tau);
+  const double nblk = (alpha > 0.0 && alpha < 1.0) ? (2.0 - alpha) / alpha : 1.0;
+  double width;
+
+  //
+  // CW accumulates exactly the tone bins, wherever the tone is.
+  //
+  if (ref == DIV_REF_CW) { return div_coh_floor_n(2.0 * DIV_CW_BINS + 1.0, nblk); }
+
+  if (ref == DIV_REF_CARRIER) {
+    width = (2.0 * DIV_CARRIER_BINS + 1.0) * bhz;
+  } else if (div_auto_follow_filter && receivers > 0 && receiver[0] != NULL) {
+    width = (double)receiver[0]->filter_high - (double)receiver[0]->filter_low;
+  } else {
+    width = div_auto_width;
+  }
+
+  if (!(width > 0.0)) { width = div_auto_width; }
+
+  return div_coh_floor_n(floor(width / bhz) + 1.0, nblk);
 }
 
 //
@@ -1567,7 +2508,7 @@ static int div_occ_cmp(const void *a, const void *b) {
 // the *noise* on its own, so "Sum" has to assume the two branches carry
 // equal, uncorrelated noise - which is what makes w = +Sxy/Sxx maximum
 // ratio combining. On a real station that assumption is usually false:
-// ADC1 is often a small loop or an active whip on a bare rear-panel
+// ADC2 is often a small loop or an active whip on a bare rear-panel
 // input, and much of what both antennas hear is common-mode noise picked
 // up on the feedlines, which is correlated between them.
 //
@@ -1600,6 +2541,8 @@ static void div_digital_solve(const struct div_context *ctx, int klo, int khi) {
   int ns = 0;
 
   for (int k = klo; k <= khi && ns < DIV_OCC_MAX_SAMPLES; k += stride) {
+    if (div_bin_notched(ctx, k)) { continue; }
+
     int idx = k % nfft;
 
     if (idx < 0) { idx += nfft; }
@@ -1642,6 +2585,8 @@ static void div_digital_solve(const struct div_context *ctx, int klo, int khi) {
   // First pass: which bins carry signal, and the channel over them.
   //
   for (int k = klo; k <= khi; k++) {
+    if (div_bin_notched(ctx, k)) { continue; }
+
     int idx = k % nfft;
 
     if (idx < 0) { idx += nfft; }
@@ -1710,6 +2655,8 @@ static void div_digital_solve(const struct div_context *ctx, int klo, int khi) {
   // Distance from the signal is what keeps the signal out of R instead.
   //
   for (int k = klo; k <= khi; k++) {
+    if (div_bin_notched(ctx, k)) { continue; }
+
     int idx = k % nfft;
 
     if (idx < 0) { idx += nfft; }
@@ -1764,6 +2711,8 @@ static void div_digital_solve(const struct div_context *ctx, int klo, int khi) {
     nsig = nnoise = 0;
 
     for (int k = klo; k <= khi; k++) {
+      if (div_bin_notched(ctx, k)) { continue; }
+
       int idx = k % nfft;
 
       if (idx < 0) { idx += nfft; }
@@ -1840,7 +2789,7 @@ static void div_digital_solve(const struct div_context *ctx, int klo, int khi) {
 
   if (div_auto_coherence > 1.0) { div_auto_coherence = 1.0; }
 
-  if (div_auto_coherence < div_auto_coherence_min) {
+  if (div_auto_coherence < div_gate_threshold(nsig)) {
     div_auto_holding = 1;
     return;
   }
@@ -1918,8 +2867,393 @@ static void div_digital_solve(const struct div_context *ctx, int klo, int khi) {
 }
 
 //
+// CW / Morse: the keyed tone in the passband.
+//
+// The search region is the RX filter (or a hand-placed window), as for
+// FSK/Digital. Each block the strongest tone in it is found, and the
+// cross spectrum is accumulated over that tone and DIV_CW_BINS bins
+// either side - nothing else in the region, so the rest of a filter wide
+// enough to hold other stations does not dilute the estimate.
+//
+// The peak search is weighted by a Gaussian centred on the region. In CW
+// that is not an arbitrary prior: rx_set_filter() folds the sidetone into
+// the filter edges, so the centre of the passband is the note the operator
+// zero-beat, and a signal near the edge is by construction not the one
+// being tuned. Over eleven CW captures it put the tracker on the wanted
+// tone on 82.6 % of key-down blocks against 80.5 % for a plain argmax
+// (Finding AD-50).
+//
+// The averages age every block, whether or not the block is accepted.
+// Every bin in the region is scaled by (1 - alpha) each block, and only
+// an accepted block adds alpha of its own tone bins back. So the average
+// forgets at the operator's Averaging time however seldom a block is
+// accepted - between letters, between overs, through keyclicks - and
+// the first accepted block after a long gap dominates, rather than being
+// averaged into data from a transmission that ended seconds ago. This is
+// also why CW runs before the window accumulation in
+// div_process_block() rather than after it: after it, every key-up block
+// was averaged into the tone bins as noise, and every accepted block was
+// counted twice.
+//
+// The Sum weight carries the branch noise ratio, from the off-tone bins
+// smoothed at the Averaging time. The antenna pairs in the capture set run 8 to 12 dB
+// apart in noise and leaving the term out costs about 1 dB. Null is not
+// scaled: minimum output power is what Null means.
+//
+static void div_cw_age(int klo, int khi, double d) {
+  for (int k = klo; k <= khi; k++) {
+    int idx = k % nfft;
+
+    if (idx < 0) { idx += nfft; }
+
+    bin_xy_re[idx] *= d;
+    bin_xy_im[idx] *= d;
+    bin_xx[idx]    *= d;
+    bin_yy[idx]    *= d;
+
+    //
+    // A bin the tone has not visited for minutes would otherwise decay
+    // into denormals, which are slow; by then it holds nothing.
+    //
+    if (bin_xx[idx] < DIV_CW_FLUSH && bin_yy[idx] < DIV_CW_FLUSH) {
+      bin_xy_re[idx] = bin_xy_im[idx] = bin_xx[idx] = bin_yy[idx] = 0.0;
+    }
+  }
+
+  acc_w1 *= d;
+  acc_w2 *= d * d;
+}
+
+//
+// One arm's noise floor over the off-tone bins of the region, per bin:
+// the mean of the quieter half. Other stations in a wide filter sit in the
+// upper half, so it is not raised by them, and averaging a couple of dozen
+// bins is far steadier than a low percentile - the 10th percentile of the
+// forty-odd bins a CW filter leaves is the fourth smallest, which moved by
+// 10 dB from block to block and put that into the noise ratio. The scale
+// is not the noise power's, and needs not be: only ratios of these are
+// used. Strided into occ_scratch as the occupancy split is, so the sort
+// stays bounded however wide the region. Returns 0 when there are too few
+// bins to say.
+//
+static double div_cw_floor(const struct div_context *ctx, int klo, int khi,
+                           int peak, const fftwf_complex *fft) {
+  const int n = khi - klo + 1;
+  const int stride = (n > DIV_OCC_MAX_SAMPLES) ? (n / DIV_OCC_MAX_SAMPLES + 1) : 1;
+  int ns = 0;
+
+  for (int k = klo; k <= khi && ns < DIV_OCC_MAX_SAMPLES; k += stride) {
+    if (abs(k - peak) < DIV_OCC_GUARD || div_bin_notched(ctx, k)) { continue; }
+
+    int idx = k % nfft;
+
+    if (idx < 0) { idx += nfft; }
+
+    occ_scratch[ns++] = (double)fft[idx][0] * fft[idx][0]
+                        + (double)fft[idx][1] * fft[idx][1];
+  }
+
+  if (ns < 2) { return 0.0; }
+
+  qsort(occ_scratch, ns, sizeof(double), div_occ_cmp);
+  double sum = 0.0;
+
+  for (int i = 0; i < ns / 2; i++) { sum += occ_scratch[i]; }
+
+  return sum / (double)(ns / 2);
+}
+
+static void div_cw_solve(const struct div_context *ctx, int klo, int khi) {
+  double alpha = 1.0 - exp(-blocktime / div_auto_tau);
+
+  if (acc_valid) { div_cw_age(klo, khi, 1.0 - alpha); }
+
+  //
+  // The peak, weighted towards the centre of the region.
+  //
+  const double k_centre = 0.5 * (double)(klo + khi);
+  const double sigma = 0.25 * (double)(khi - klo + 1);
+  int peak = klo;
+  double peakval = -1.0, peak_raw = 0.0, p_region = 0.0;
+  int nregion = 0;
+
+  for (int k = klo; k <= khi; k++) {
+    if (div_bin_notched(ctx, k)) { continue; }
+
+    int idx = k % nfft;
+
+    if (idx < 0) { idx += nfft; }
+
+    const double p = (double)fftout0[idx][0] * fftout0[idx][0]
+                     + (double)fftout0[idx][1] * fftout0[idx][1]
+                     + (double)fftout1[idx][0] * fftout1[idx][0]
+                     + (double)fftout1[idx][1] * fftout1[idx][1];
+    const double dk = (double)k - k_centre;
+    const double pw = p * exp(-dk * dk / (2.0 * sigma * sigma));
+    p_region += p;
+    nregion++;
+
+    if (pw > peakval) {
+      peakval = pw;
+      peak_raw = p;
+      peak = k;
+    }
+  }
+
+  if (!(peakval > 0.0) || nregion < DIV_CW_MIN_BINS) {
+    div_auto_occ_valid = 0;
+    div_auto_holding = 1;
+    return;
+  }
+
+  //
+  // This block's noise floor per arm and per bin, off the tone, and the
+  // same smoothed at the Averaging time for the noise ratio and the per-arm
+  // SNR: one block's floor still moves by a dB or so, and used raw it went
+  // straight into the Sum weight's gain. Every block updates it, keyed or
+  // not - the noise is there either way.
+  //
+  const double n0 = div_cw_floor(ctx, klo, khi, peak, fftout0);
+  const double n1 = div_cw_floor(ctx, klo, khi, peak, fftout1);
+  const int floors = (n0 > 0.0 && n1 > 0.0);
+
+  if (floors) {
+    if (!cw_nf_valid) {
+      cw_nf0 = n0;
+      cw_nf1 = n1;
+      cw_nf_valid = 1;
+    } else {
+      cw_nf0 += alpha * (n0 - cw_nf0);
+      cw_nf1 += alpha * (n1 - cw_nf1);
+    }
+  }
+
+  //
+  // Is anything being keyed?
+  //
+  // Not the keying rate: at 10 to 35 WPM the envelope moves at 4 to 15 Hz,
+  // and one block per 43 to 171 ms samples that below Nyquist at every
+  // Resolution. What survives the block rate is that Morse stops - between
+  // letters, words and overs - and a carrier does not. So the peak's power
+  // against the quietest the peak has recently been: a minimum that falls
+  // at once and climbs back at DIV_CW_ACT_RISE_DB. The peak over bins, not
+  // a per-bin contrast - one noise bin swings 15 dB on its own, and the
+  // maximum over bins is far steadier. On the capture with a carrier two
+  // bins from the zero beat it reads 0.0 dB through the gap between overs,
+  // 31.1 dB while stations work and 42.2 dB on key-down (AD-50).
+  //
+  // Seeded from this block's own noise (both arms, as peak_raw is), not
+  // from the first peak: seeded from the peak it would read 0 dB until the
+  // other station first paused, after every reset. From the noise the first
+  // block reads the tone's own SNR, and a steady carrier still closes the
+  // gate as the floor climbs into it.
+  //
+  {
+    const double rise = pow(10.0, 0.1 * DIV_CW_ACT_RISE_DB * blocktime);
+
+    if (!cw_act_valid) {
+      cw_act_lo = floors ? n0 + n1 : peak_raw;
+      cw_act_valid = 1;
+    }
+
+    if (peak_raw < cw_act_lo) {
+      cw_act_lo = peak_raw;
+    } else {
+      cw_act_lo *= rise;
+
+      if (cw_act_lo > peak_raw) { cw_act_lo = peak_raw; }
+    }
+  }
+
+  if (!(peak_raw >= cw_act_lo * pow(10.0, 0.1 * DIV_CW_ACT_DB))) {
+    div_auto_holding = 1;
+    return;
+  }
+
+  //
+  // The tone: the peak and DIV_CW_BINS either side, inside the region and
+  // clear of the operator's notches.
+  //
+  double p_tone = 0.0;
+  int ntone = 0;
+
+  for (int k = peak - DIV_CW_BINS; k <= peak + DIV_CW_BINS; k++) {
+    if (k < klo || k > khi || div_bin_notched(ctx, k)) { continue; }
+
+    int idx = k % nfft;
+
+    if (idx < 0) { idx += nfft; }
+
+    p_tone += (double)fftout0[idx][0] * fftout0[idx][0]
+              + (double)fftout0[idx][1] * fftout0[idx][1]
+              + (double)fftout1[idx][0] * fftout1[idx][0]
+              + (double)fftout1[idx][1] * fftout1[idx][1];
+    ntone++;
+  }
+
+  //
+  // Keyclicks and impulses raise the whole region at once, so the tone
+  // stops standing out of it. See DIV_CW_CREST_THRESH.
+  //
+  const double crest = p_tone * (double)nregion / ((double)ntone * p_region);
+
+  if (!(crest >= DIV_CW_CREST_THRESH)) {
+    div_auto_holding = 1;
+    return;
+  }
+
+  //
+  // The readout, and the span the panadapter shades: the tone's frequency
+  // smoothed at the Averaging time, as the carrier tracker does.
+  //
+  const double hz = -(double)peak * binhz - div_frame_off(ctx);
+
+  if (!div_auto_carrier_valid) {
+    div_carrier_hz = hz;
+    div_auto_carrier_valid = 1;
+  } else {
+    div_carrier_hz += alpha * (hz - div_carrier_hz);
+  }
+
+  div_auto_carrier = div_carrier_hz;
+  {
+    const double a = div_carrier_hz - ((double)DIV_CW_BINS + 0.5) * binhz;
+    const double b = div_carrier_hz + ((double)DIV_CW_BINS + 0.5) * binhz;
+    div_auto_occ_lo = (a < b) ? a : b;
+    div_auto_occ_hi = (a < b) ? b : a;
+    div_auto_occ_valid = 1;
+  }
+
+  //
+  // Accept the block: alpha of its tone bins goes into averages that have
+  // already been aged above. The first block after a reset is taken whole.
+  //
+  if (!acc_valid) {
+    alpha = 1.0;
+    acc_valid = 1;
+    acc_w1 = acc_w2 = 0.0;
+  }
+
+  acc_w1 += alpha;
+  acc_w2 += alpha * alpha;
+  double sig_xy_re = 0.0, sig_xy_im = 0.0, sig_xx = 0.0, sig_yy = 0.0;
+
+  for (int k = peak - DIV_CW_BINS; k <= peak + DIV_CW_BINS; k++) {
+    if (k < klo || k > khi || div_bin_notched(ctx, k)) { continue; }
+
+    int idx = k % nfft;
+
+    if (idx < 0) { idx += nfft; }
+
+    const double i0 = fftout0[idx][0], q0 = fftout0[idx][1];
+    const double i1 = fftout1[idx][0], q1 = fftout1[idx][1];
+    bin_xy_re[idx] += alpha * (i0 * i1 + q0 * q1);
+    bin_xy_im[idx] += alpha * (q0 * i1 - i0 * q1);
+    bin_xx[idx]    += alpha * (i0 * i0 + q0 * q0);
+    bin_yy[idx]    += alpha * (i1 * i1 + q1 * q1);
+    sig_xy_re += bin_xy_re[idx];
+    sig_xy_im += bin_xy_im[idx];
+    sig_xx    += bin_xx[idx];
+    sig_yy    += bin_yy[idx];
+  }
+
+  if (!(sig_xx > 0.0) || !(sig_yy > 0.0)) {
+    div_auto_holding = 1;
+    return;
+  }
+
+  div_auto_coherence = (sig_xy_re * sig_xy_re + sig_xy_im * sig_xy_im) / (sig_xx * sig_yy);
+
+  if (div_auto_coherence > 1.0) { div_auto_coherence = 1.0; }
+
+  if (div_auto_coherence < div_gate_threshold(ntone)) {
+    div_auto_holding = 1;
+    return;
+  }
+
+  div_auto_holding = 0;
+  //
+  // Per-arm SNR, as the advantage of arm 1 - div_apply_best() reads a
+  // positive value as "switch to arm 1".
+  //
+  div_arm_publish(cw_nf_valid,
+                  cw_nf_valid ? 10.0 * log10((sig_yy / cw_nf1) / (sig_xx / cw_nf0)) : 0.0);
+
+  if (div_auto_mode == DIV_AUTO_BEST) {
+    div_apply_best(sig_xy_re / sig_xx, sig_xy_im / sig_xx);
+    return;
+  }
+
+  if (div_auto_mode == DIV_AUTO_NULL) {
+    div_apply_weight(-sig_xy_re / sig_yy, -sig_xy_im / sig_yy);
+    return;
+  }
+
+  //
+  // The noise ratio for Sum: from the bins outside the filter when that
+  // floor is valid, else from the off-tone bins of the region
+  // (cw_nf0/cw_nf1, as before LC-029).
+  //
+  // The off-tone floor fails twice on T-017/T-018 (docs/test-findings.md).
+  // At a 50 Hz filter the region is 6 bins, and the bins 4 or more from
+  // the tone are one or two at its edge, full of keyclick sideband: it
+  // read one arm 10-15 dB better with the arms level and drove the weight
+  // to +20 dB. And in a 15 dB fade on one arm it was 2.4 dB worse than
+  // Window. The outside-filter floor is clear of both: +1.23 -> +2.08 dB
+  // on the filter sweep, +1.39 -> +1.99 on the pileup, against the better
+  // antenna. Best still reads the per-arm SNR from the off-tone floor.
+  //
+  double nratio = cw_nf_valid ? cw_nf0 / cw_nf1 : 1.0;
+
+  if (div_nf_valid && div_nf0 > 0.0 && div_nf1 > 0.0) {
+    nratio = div_nf0 / div_nf1;
+  }
+
+  div_apply_weight(nratio * sig_xy_re / sig_xx, nratio * sig_xy_im / sig_xx);
+}
+
+//
 // Process one block. Runs on the analysis thread.
 //
+#ifdef DIVERSITY_CAPTURE
+//
+// DEVELOPMENT TOOL - remove with the rest of the capture instrument.
+//
+// The context the previous captured block was taken with, so that the
+// record can say whether this one differs. lastctx is no use for that:
+// div_process_block() only writes it when it resets, so a change inside
+// DIV_RETUNE_HZ - or an attenuator step on a block that also reset for
+// another reason - would never show.
+//
+// The comparison is exact, deliberately. div_context_changed() is the
+// engine's question ("is the estimate still valid?") and it tolerates a
+// 20 Hz dial move; this is the reader's question ("did anything move in
+// this file?"), and an analyst looking for the block where an attenuator
+// or a filter changed wants every one of them.
+//
+static struct div_context divcap_prevctx;
+static int divcap_haveprev = 0;
+
+static int divcap_ctx_differs(const struct div_context *a,
+                              const struct div_context *b) {
+  return a->frequency      != b->frequency      ||
+         a->ctun_frequency != b->ctun_frequency ||
+         a->offset         != b->offset         ||
+         a->sidetone       != b->sidetone       ||
+         a->sample_rate    != b->sample_rate    ||
+         a->mode           != b->mode           ||
+         a->filter_low     != b->filter_low     ||
+         a->filter_high    != b->filter_high    ||
+         a->ref            != b->ref            ||
+         a->follow         != b->follow         ||
+         a->weighting      != b->weighting      ||
+         a->att0           != b->att0           ||
+         a->att1           != b->att1           ||
+         a->centre         != b->centre         ||
+         a->width          != b->width;
+}
+#endif
+
 static void div_process_block(void) {
   struct div_context ctx;
   int klo, khi;
@@ -1931,6 +3265,10 @@ static void div_process_block(void) {
 
   div_get_context(&ctx);
 
+#ifdef DIVERSITY_CAPTURE
+  int divcap_reset = 0;
+#endif
+
   if (div_context_changed(&ctx, &lastctx)) {
     //
     // The radio moved under us: anything we accumulated describes a
@@ -1939,6 +3277,9 @@ static void div_process_block(void) {
     div_reset_stats();
     rade_corr_reset();
     lastctx = ctx;
+#ifdef DIVERSITY_CAPTURE
+    divcap_reset = 1;
+#endif
   }
 
 #ifdef DIVERSITY_CAPTURE
@@ -1955,7 +3296,29 @@ static void div_process_block(void) {
     struct divcap_block m;
     memset(&m, 0, sizeof(m));
     m.dropped         = (guint32)divcap_dropped;
-    m.rec_flags       = 0;
+    //
+    // Bit 0: this block's context differs from the previous captured
+    // block's. The first block of a file never sets it - there is nothing
+    // before it to differ from.
+    //
+    m.rec_flags       = 0u;
+
+    if (divcap_haveprev && divcap_ctx_differs(&ctx, &divcap_prevctx)) {
+      m.rec_flags |= DIVCAP_FLAG_CTX_CHANGED;
+    }
+
+    if (divcap_reset) { m.rec_flags |= DIVCAP_FLAG_ENGINE_RESET; }
+
+    //
+    // Which converter arm 0 came from: RX1's ADC, so ADC2 sets the bit. It
+    // only describes the recording (the engine does not act on it), and
+    // lives in the flags word because the block record is full: see
+    // DIVCAP_FLAG_ARM_SWAP.
+    //
+    if (receiver[0] != NULL && receiver[0]->adc == 1) { m.rec_flags |= DIVCAP_FLAG_ARM_SWAP; }
+
+    divcap_prevctx    = ctx;
+    divcap_haveprev   = 1;
     m.frequency       = (gint64)ctx.frequency;
     m.ctun_frequency  = (gint64)ctx.ctun_frequency;
     m.offset          = (gint64)ctx.offset;
@@ -2024,9 +3387,13 @@ static void div_process_block(void) {
     //
     const int expect = div_rade_side_expected(&ctx);
     const int bank = (expect == 0) ? -1 : (expect < 0 ? 0 : 1);
+    //
+    // The one reference a manual notch does not reach: the correlator is
+    // given the block in the time domain, so div_bin_notched() has nothing
+    // to act on here. See the note there.
+    //
     int ok = rade_corr_process(work0, work1, nfft, bank,
-                               div_frame_off(&ctx), div_auto_tau, div_auto_hang,
-                               &wr, &wi);
+                               div_frame_off(&ctx), div_auto_tau, &wr, &wi);
     //
     // The overlay follows the passband, locked or not. It used to switch
     // to the bank the correlator reported once it locked, which is how a
@@ -2133,6 +3500,7 @@ static void div_process_block(void) {
 
   fftwf_execute(plan0);
   fftwf_execute(plan1);
+  div_norm_update(&ctx);
 
   if (ctx.ref == DIV_REF_CARRIER) {
     //
@@ -2159,8 +3527,17 @@ static void div_process_block(void) {
     // is then outside the search entirely. The selection has no memory
     // between blocks, so restricting the region is the whole mechanism.
     //
+    // With Follow RX Filter ticked the region is the default width in the
+    // middle of the filter; the operator's window is for when it is not.
+    //
     double wlo, whi;
-    div_manual_window(&ctx, &wlo, &whi);
+
+    if (ctx.follow) {
+      div_carrier_follow_window(ctx.filter_low, ctx.filter_high, &wlo, &whi);
+    } else {
+      div_manual_window(&ctx, &wlo, &whi);
+    }
+
     const double a = div_shift_to_bin(&ctx, wlo);
     const double b = div_shift_to_bin(&ctx, whi);
     double slo = (a < b) ? a : b;
@@ -2177,6 +3554,13 @@ static void div_process_block(void) {
     double peakval = -1.0;
 
     for (int k = klo_s; k <= khi_s; k++) {
+      //
+      // A notched carrier is one the operator has said they do not want
+      // tracked, which is exactly the heterodyne this search would
+      // otherwise lock to first.
+      //
+      if (div_bin_notched(&ctx, k)) { continue; }
+
       int idx = k % nfft;
 
       if (idx < 0) { idx += nfft; }
@@ -2256,6 +3640,22 @@ static void div_process_block(void) {
   }
 
   //
+  // CW takes it from here, before the window accumulation below: it
+  // accumulates the tone bins only, on the blocks it accepts, and ages the
+  // rest. See div_cw_solve().
+  //
+  if (ctx.ref == DIV_REF_CW) {
+    //
+    // The floor from outside the filter, for the Sum noise ratio in
+    // div_cw_solve(). CW returns before the update below, so it is taken
+    // here; klo/khi are the CW region, which is the filter.
+    //
+    div_noise_floor_update(&ctx, klo, khi);
+    div_cw_solve(&ctx, klo, khi);
+    return;
+  }
+
+  //
   // See below: weighting applies to the wideband window only.
   //
   const int coherence_weighted = (ctx.weighting == DIV_WEIGHT_COHERENCE)
@@ -2270,7 +3670,21 @@ static void div_process_block(void) {
     acc_valid = 1;
   }
 
+  //
+  // Alpha 1 on the first block after a reset makes these 1 and 1 whatever
+  // they held before. See div_coh_floor_n().
+  //
+  acc_w1 = (1.0 - alpha) * acc_w1 + alpha;
+  acc_w2 = (1.0 - alpha) * (1.0 - alpha) * acc_w2 + alpha * alpha;
+
   double cur_xx = 0.0, cur_yy = 0.0;
+  //
+  // Bins actually accumulated: the window less whatever the operator has
+  // notched out of it. div_arm_from_floor() scales the per-bin noise floor
+  // by this to compare it with the window powers, so it has to be the
+  // count summed and not the width of the window.
+  //
+  int used_bins = 0;
 
   //
   // Per-bin running spectra. Keeping these per bin rather than as four
@@ -2278,6 +3692,8 @@ static void div_process_block(void) {
   // antennas agree in each - see below.
   //
   for (int k = klo; k <= khi; k++) {
+    if (div_bin_notched(&ctx, k)) { continue; }
+
     int idx = k % nfft;
 
     if (idx < 0) { idx += nfft; }
@@ -2299,6 +3715,7 @@ static void div_process_block(void) {
     //
     cur_xx += i0 * i0 + q0 * q0;
     cur_yy += i1 * i1 + q1 * q1;
+    used_bins++;
   }
 
   //
@@ -2328,6 +3745,7 @@ static void div_process_block(void) {
   //
   acc_xy_re = acc_xy_im = acc_xx = acc_yy = 0.0;
   double wsum = 0.0;
+  int nacc = 0;
   //
   // This block's power against the smoothed power, over the same bins and
   // with the same weights, so the staleness test below asks about exactly
@@ -2336,6 +3754,8 @@ static void div_process_block(void) {
   double cur_p = 0.0, acc_p = 0.0;
 
   for (int k = klo; k <= khi; k++) {
+    if (div_bin_notched(&ctx, k)) { continue; }
+
     int idx = k % nfft;
 
     if (idx < 0) { idx += nfft; }
@@ -2375,6 +3795,7 @@ static void div_process_block(void) {
                       + (double)fftout1[idx][1] * fftout1[idx][1]);
     acc_p     += w * (xx + yy);
     wsum      += w;
+    nacc++;
   }
 
   //
@@ -2403,6 +3824,14 @@ static void div_process_block(void) {
     arm_fast0 += fa * (cur_xx - arm_fast0);
     arm_fast1 += fa * (cur_yy - arm_fast1);
   }
+  //
+  // The noise floor, from the bins outside the filter. Here rather than
+  // beside the transform because this is where it is consumed and because
+  // the Carrier reference recomputes klo/khi after the tracker has run -
+  // the exclusion has to take in the window that was actually
+  // accumulated, not the search region it was found in.
+  //
+  div_noise_floor_update(&ctx, klo, khi);
   div_arm_floor_update(arm_fast0, arm_fast1);
   {
     //
@@ -2412,7 +3841,7 @@ static void div_process_block(void) {
     // before it has been written.
     //
     double db = 0.0;
-    const int ok = div_arm_from_floor(arm_pw0, arm_pw1, &db);
+    const int ok = div_arm_from_floor(arm_pw0, arm_pw1, used_bins, &db);
     div_arm_publish(ok, db);
   }
   div_arm_nratio_update(cur_xx, cur_yy, arm_pw0, arm_pw1);
@@ -2441,10 +3870,11 @@ static void div_process_block(void) {
 
   if (div_auto_coherence > 1.0) { div_auto_coherence = 1.0; }
 
-  if (div_auto_coherence < div_auto_coherence_min) {
+  if (div_auto_coherence < div_gate_threshold(nacc)) {
     //
-    // Nothing the two antennas agree on. Hold what we have rather than
-    // chase noise.
+    // Nothing the two antennas agree on - or no more than two noises agree
+    // by accident over this many bins and blocks. Hold what we have rather
+    // than chase noise.
     //
     div_auto_holding = 1;
     return;
@@ -2471,6 +3901,7 @@ static void div_process_block(void) {
 
 static gpointer div_worker_thread(gpointer data) {
   (void) data;
+  int reset_seen = g_atomic_int_get(&reset_gen);
   t_print("%s: diversity auto-phasing analysis thread running\n", __func__);
 
   for (;;) {
@@ -2491,8 +3922,11 @@ static gpointer div_worker_thread(gpointer data) {
     q_gap[q_tail] = 0;
     g_mutex_unlock(&mbox_mutex);
 
-    if (reset_requested) {
-      reset_requested = 0;
+    const int reset_now = g_atomic_int_get(&reset_gen);
+
+    if (reset_now != reset_seen) {
+      reset_seen = reset_now;
+      div_reset_stats();
       rade_corr_reset();
     }
 
@@ -2531,6 +3965,21 @@ void diversity_auto_sample(double i0, double q0, double i1, double q1) {
   // Called once per sample pair from rx_add_div_iq_samples(), on the
   // protocol receive thread. Nothing but stores happens here.
   //
+  // A transmit gap signalled since the last sample: the partly filled
+  // block holds samples from before it, so start the block again here, on
+  // the boundary, and mark the next block as following a gap.
+  //
+  static int gap_seen = 0;
+  const int gap_now = g_atomic_int_get(&gap_gen);
+
+  if (gap_now != gap_seen) {
+    gap_seen = gap_now;
+    fillptr = 0;
+    g_mutex_lock(&mbox_mutex);
+    q_pending_drop++;
+    g_mutex_unlock(&mbox_mutex);
+  }
+
   fill0[2 * fillptr    ] = (float)i0;
   fill0[2 * fillptr + 1] = (float)q0;
   fill1[2 * fillptr    ] = (float)i1;
@@ -2565,7 +4014,7 @@ void diversity_auto_sample(double i0, double q0, double i1, double q1) {
 }
 
 //
-// Called from rxtx() when the radio is about to transmit.
+// Called from rxtx() on both edges of a transmission.
 //
 // Both protocols stop feeding rx_add_div_iq_samples() for the whole over:
 // new_protocol only sets RXACTION_DIV when !xmit - duplex included, see
@@ -2587,12 +4036,14 @@ void diversity_auto_sample(double i0, double q0, double i1, double q1) {
 // produces a better fit. That is deliberate: they may not be ideal for
 // the returning signal, but they are a great deal better than nothing.
 //
-// Racing the sample path is harmless, so this needs no lock of its own
-// for fillptr. Storing zero can only move the fill position backwards
-// within the buffer, never outside it, so the worst case is one mangled
-// block - and that is the very block being flagged as following a gap,
-// whose correlator state the worker discards before processing it.
-// q_pending_drop is taken under the mutex, as it is on the sample path.
+// This runs on the GTK thread and only bumps gap_gen. It used to zero
+// fillptr and bump q_pending_drop itself, racing the protocol thread that
+// owns them: the store could land in the middle of a block being
+// written. Now the sample path does both on its first sample after the
+// signal, which is exactly on the boundary. Both edges are signalled
+// because samples can still arrive between the RX->TX call and the stream
+// stopping; the TX->RX signal discards that remnant before post-TX
+// samples are added to it.
 //
 void diversity_auto_gap(void) {
   //
@@ -2603,10 +4054,7 @@ void diversity_auto_gap(void) {
   //
   if (!div_auto_running || radio_is_remote) { return; }
 
-  fillptr = 0;
-  g_mutex_lock(&mbox_mutex);
-  q_pending_drop++;
-  g_mutex_unlock(&mbox_mutex);
+  g_atomic_int_inc(&gap_gen);
 }
 
 void diversity_auto_start(void) {
@@ -2644,6 +4092,8 @@ void diversity_auto_start(void) {
     bin_xx    = g_new0(double, DIV_MAX_NFFT);
     bin_yy    = g_new0(double, DIV_MAX_NFFT);
     occ_scratch = g_new0(double, DIV_OCC_MAX_SAMPLES);
+    nf_scratch0 = g_new0(double, DIV_NF_SAMPLES);
+    nf_scratch1 = g_new0(double, DIV_NF_SAMPLES);
     occ_mask    = g_new0(unsigned char, DIV_MAX_NFFT);
     for (int i = 0; i < DIV_QUEUE; i++) {
       qbuf0[i] = g_new0(float, 2 * DIV_MAX_NFFT);
@@ -2675,7 +4125,6 @@ void diversity_auto_start(void) {
   q_head = q_tail = q_count = 0;
   q_pending_drop = 0;
   memset(q_gap, 0, sizeof(q_gap));
-  reset_requested = 0;
   mbox_quit = 0;
   fill0 = qbuf0[0];
   fill1 = qbuf1[0];
@@ -2684,19 +4133,15 @@ void diversity_auto_start(void) {
   div_get_context(&lastctx);
   t_print("%s: nfft=%d bin=%0.2f Hz block=%0.1f ms rate=%d\n", __func__,
           nfft, binhz, 1000.0 * blocktime, receiver[0]->sample_rate);
+  //
+  // The correlator needs a DDC rate that is a whole multiple of the
+  // 8 kHz modem rate, which every rate piHPSDR offers is. Should that
+  // ever fail, the reference is left as the operator set it - it is the
+  // menu's - and the loop simply holds: rade_corr_process() produces no
+  // weight while the correlator is not running.
+  //
   if (div_auto_ref == DIV_REF_RADE_V1) {
-    if (!rade_corr_start(receiver[0]->sample_rate)) {
-      //
-      // The correlator needs a DDC rate that is a whole multiple of the
-      // 8 kHz modem rate. Every rate piHPSDR offers satisfies that, but
-      // fall back to FSK/Digital rather than silently doing nothing if
-      // that ever stops being true - it places itself on the operator's
-      // passband and finds the modem's occupied bins there, which is the
-      // job the retired RADE passband reference used to do.
-      //
-      t_print("%s: falling back to DIV_REF_DIGITAL_IQ\n", __func__);
-      div_auto_ref = DIV_REF_DIGITAL_IQ;
-    }
+    (void)rade_corr_start(receiver[0]->sample_rate);
   }
 
   worker = g_thread_new("div_auto", div_worker_thread, NULL);
@@ -2716,6 +4161,11 @@ void diversity_auto_start(void) {
 int diversity_auto_capture_start(void) {
   if (!div_auto_running || receivers < 1 || receiver[0] == NULL) { return 0; }
 
+  //
+  // A new file starts with nothing before it, so the first block must not
+  // be marked as differing from the last block of the previous one.
+  //
+  divcap_haveprev = 0;
   return diversity_capture_start(receiver[0]->sample_rate, nfft);
 }
 
@@ -2746,6 +4196,11 @@ void diversity_auto_stop(void) {
   // see the quit flag.
   //
   div_auto_running = 0;
+  //
+  // No engine, no level to hold: the output goes back to what the weight
+  // alone gives. See div_norm_refresh().
+  //
+  div_norm = 1.0;
   g_mutex_lock(&mbox_mutex);
   mbox_quit = 1;
   g_cond_signal(&mbox_cond);
@@ -2779,6 +4234,46 @@ void diversity_auto_restart(void) {
   }
 }
 
+//
+// Unticking "Follow RX Filter" hands the window to the operator.
+// If the selected reference has no window of the operator's own yet -
+// still at its built-in default - start it on the passband that was being
+// followed a moment ago, rather than on a default that can straddle the
+// carrier. A window the operator has placed is left alone, however
+// narrow: 20 Hz is a width the slider offers, and anything below it has
+// already been put back to the default by div_settings_validate().
+//
+// The window is returned, not written: div_auto_centre and div_auto_width
+// are the menu's settings, so the menu stores the result (returns 1), files
+// it under the reference and shows it. Returns 0 to leave the window alone.
+//
+// The follow window is filter_low..filter_high and a hand-placed one is
+// div_window_zero() + centre +/- width/2, so this reproduces it exactly,
+// CW included.
+//
+int diversity_auto_seed_window(double *centre, double *width) {
+  if (div_auto_ref == DIV_REF_RADE_V1) { return 0; }
+
+  if (div_auto_centre != 0.0 || div_auto_width != div_width_default(div_auto_ref)) { return 0; }
+
+  const double lo = (double)receiver[0]->filter_low;
+  const double hi = (double)receiver[0]->filter_high;
+
+  if (hi - lo < 20.0) { return 0; }
+
+  if (div_auto_ref == DIV_REF_CARRIER) {
+    double clo, chi;
+    div_carrier_follow_window(lo, hi, &clo, &chi);
+    *centre = 0.5 * (clo + chi) - div_window_zero(vfo[0].mode, cw_keyer_sidetone_frequency);
+    *width  = chi - clo;
+    return 1;
+  }
+
+  *centre = 0.5 * (lo + hi) - div_window_zero(vfo[0].mode, cw_keyer_sidetone_frequency);
+  *width  = hi - lo;
+  return 1;
+}
+
 void diversity_auto_get_settings(DIV_SETTINGS *s) {
   s->mode           = div_auto_mode;
   s->ref            = div_auto_ref;
@@ -2801,6 +4296,9 @@ void diversity_auto_get_settings(DIV_SETTINGS *s) {
   s->carrier_width  = div_carrier_width;
   s->digital_centre = div_digital_centre;
   s->digital_width  = div_digital_width;
+  s->cw_cohmin      = div_cw_cohmin;
+  s->cw_centre      = div_cw_centre;
+  s->cw_width       = div_cw_width;
 }
 
 //
@@ -2818,12 +4316,12 @@ static void div_settings_load(const DIV_SETTINGS *s) {
   div_auto_width         = s->width;
   div_auto_tau           = s->tau;
   div_auto_hang          = s->hang;
-  div_auto_coherence_min = s->coherence_min;
   div_auto_resolution    = s->resolution;
   div_band_cohmin        = s->band_cohmin;
   div_carrier_cohmin     = s->carrier_cohmin;
   div_digital_cohmin     = s->digital_cohmin;
-  div_rade_cohmin        = s->rade_cohmin;
+  div_cw_cohmin          = s->cw_cohmin;
+  div_rade_cohmin        = 0.0;   // retired, whatever the block says - see div_settings_validate()
   //
   // The live threshold always belongs to the selected reference. Taking
   // it from the slot rather than from s->coherence_min is what makes that
@@ -2832,15 +4330,30 @@ static void div_settings_load(const DIV_SETTINGS *s) {
   // radio starting up in RADE V1 would gate on whatever the *previous*
   // reference was set to, which for a file written before this existed is
   // 0.30 against a mode that had no gate at all.
-  // DL1YCF: THIS MUST BE CORRECTED
   //
-  div_auto_coherence_min = s->coherence_min;
+  // The slot is taken from the block itself, so this needs nothing the
+  // menu keeps.
+  //
+  switch (s->ref) {
+  case DIV_REF_CARRIER:    div_auto_coherence_min = s->carrier_cohmin; break;
+
+  case DIV_REF_DIGITAL_IQ: div_auto_coherence_min = s->digital_cohmin; break;
+
+  case DIV_REF_RADE_V1:    div_auto_coherence_min = 0.0;               break;   // retired - see div_settings_validate()
+
+  case DIV_REF_CW:         div_auto_coherence_min = s->cw_cohmin;      break;
+
+  default:                 div_auto_coherence_min = s->band_cohmin;    break;
+  }
+
   div_band_centre        = s->band_centre;
   div_band_width         = s->band_width;
   div_carrier_centre     = s->carrier_centre;
   div_carrier_width      = s->carrier_width;
   div_digital_centre     = s->digital_centre;
   div_digital_width      = s->digital_width;
+  div_cw_centre          = s->cw_centre;
+  div_cw_width           = s->cw_width;
 }
 
 //
@@ -3113,6 +4626,19 @@ void diversity_auto_mode_changed(int mode) {
 }
 
 //
+// The Hang setting no longer does anything. There is no timeout on a
+// RADE lock: it is held, weight and all, through any fade, and replaced
+// only when the resync search finds a new one (RADE_RESYNC_DA in
+// rade_correlator.c). In the other references the coherence gate is the
+// arbiter, and hang time has no part to play there either.
+//
+// The field stays on the wire and in the props file so neither changes
+// shape, pinned to this value by div_settings_validate(); nothing reads
+// it. div_auto_hang's initialiser is the same 10.0.
+//
+#define DIV_HANG_DEFAULT 10.0
+
+//
 // Clamp everything in a settings block to what the controls can express.
 //
 // A props file can be hand-edited or written by a future version, and an
@@ -3126,24 +4652,26 @@ static void div_settings_validate(DIV_SETTINGS *s) {
     s->mode = DIV_MANUAL;
   }
 
-  if (s->ref < DIV_REF_BAND || s->ref > DIV_REF_DIGITAL_IQ) {
+  if (s->ref < DIV_REF_BAND || s->ref > DIV_REF_CW) {
     s->ref = DIV_REF_BAND;
   }
 
   s->follow_filter = s->follow_filter ? 1 : 0;
 
-  if (s->weighting < DIV_WEIGHT_FLAT || s->weighting > DIV_WEIGHT_COHERENCE) {
-    s->weighting = DIV_WEIGHT_COHERENCE;
-  }
+  //
+  // Pinned rather than range-checked: there is no control for it any
+  // more, and an older props file or client must not bring coherence
+  // weighting back alongside the lower Window threshold chosen for flat.
+  //
+  s->weighting = DIV_WEIGHT_FLAT;
 
   //
-  // Each reference's own threshold, and the live one. All five share the
-  // slider's range; RADE V1's default of zero is deliberate and legal -
-  // it is the gate never having been applied in that mode before.
+  // Each reference's own threshold, and the live one. These share the
+  // slider's range; RADE V1's is pinned below.
   //
   {
     double *c[] = { &s->coherence_min, &s->band_cohmin, &s->carrier_cohmin,
-                    &s->digital_cohmin, &s->rade_cohmin
+                    &s->digital_cohmin, &s->cw_cohmin
                   };
 
     for (unsigned i = 0; i < sizeof(c) / sizeof(c[0]); i++) {
@@ -3154,6 +4682,44 @@ static void div_settings_validate(DIV_SETTINGS *s) {
   }
 
   //
+  // RADE V1's threshold is pinned, not ranged: there is no control for it
+  // any more. It gated rade_corr_quality, the pilot's signal fraction, and
+  // it can only do harm:
+  //
+  // - Three gates on the pilot already stand in front of it - the
+  //   acquisition ladder's sigmas, the confirm and probation ladder, and
+  //   RADE_USE_RATIO's per-frame freeze. Over the capture set the five
+  //   recordings with no signal in them produce no weight at all through
+  //   those, 3515 blocks of dead air, so the false-alarm job a threshold
+  //   exists for is already done.
+  // - The quantity it gates does not separate a good lock from a poor
+  //   one: 234508, a strong capture producing a weight on three blocks in
+  //   four, reads a median 0.217 with 31 % of its blocks under 0.05, and
+  //   202743, which re-acquires eight times a minute, reads 0.193.
+  // - No reachable setting was safe. On 165826, the marginal capture where
+  //   the combiner beats both antennas, every block that produced a weight
+  //   is under 0.25 and a third are under 0.05; moving the gate from 0 to
+  //   0.15 takes the loop from a weight on 32.6 % of blocks to 1.7 %.
+  //
+  // Zero is the default, so nothing an operator has today moves. The
+  // field stays on the wire and in the props file so neither changes
+  // shape, and the comparison stays in the engine so the offline harness
+  // can still sweep it. From 082dba0b on feature/auto-diversity.
+  //
+  s->rade_cohmin = 0.0;
+
+  //
+  // Values no control can produce - zero or less, or not a number - are
+  // treated as missing and given the default, not clamped to the nearest
+  // legal value. A settings block saved before it was ever restored is all
+  // zeros, and clamping that yields 0.2 s averaging, 3 Hz bins and a 20 Hz
+  // window with Follow off: legal, and useless.
+  //
+  if (!(s->tau > 0.0))        { s->tau = 2.0; }
+
+  if (!(s->resolution > 0.0)) { s->resolution = DIV_TARGET_BIN_HZ; }
+
+  //
   // 0.2, not 0.1, to match the slider's minimum.
   //
   if (s->tau < 0.2)  { s->tau = 0.2; }
@@ -3161,13 +4727,13 @@ static void div_settings_validate(DIV_SETTINGS *s) {
   if (s->tau > 30.0) { s->tau = 30.0; }
 
   //
-  // Both ends match the slider. Zero is deliberately not allowed: the
-  // hang has to outlast the gate that feeds it, which averages over
-  // about a second, or a single noisy frame would end a lock.
+  // Pinned, not ranged. There is no control for it any more and it is not
+  // a setting an operator can improve on - see DIV_HANG_DEFAULT - so a
+  // value left in a props file by an older build, or sent by an older
+  // client, is replaced rather than merely clamped. The field stays on
+  // the wire and in the file so that neither has to change shape.
   //
-  if (s->hang < 1.0)  { s->hang = 1.0; }
-
-  if (s->hang > 30.0) { s->hang = 30.0; }
+  s->hang = DIV_HANG_DEFAULT;
 
   if (s->resolution < 3.0)  { s->resolution = 3.0; }
 
@@ -3183,11 +4749,27 @@ static void div_settings_validate(DIV_SETTINGS *s) {
   // div_bin_range() does the real limiting against the Nyquist frequency
   // at the rate in use.
   //
-  double *widths[]  = { &s->width, &s->band_width, &s->carrier_width, &s->digital_width };
-  double *centres[] = { &s->centre, &s->band_centre, &s->carrier_centre, &s->digital_centre };
+  // A width below 20 Hz cannot have been set from the menu, so it is not
+  // an operator's window: that reference goes back to its default window,
+  // and if it is the live one, back to following the RX filter.
+  //
+  double *widths[]  = { &s->width, &s->band_width, &s->carrier_width, &s->digital_width,
+                        &s->cw_width
+                      };
+  double *centres[] = { &s->centre, &s->band_centre, &s->carrier_centre, &s->digital_centre,
+                        &s->cw_centre
+                      };
+  const double defaults[] = { div_width_default(s->ref), DIV_WIDTH_DEFAULT, DIV_CARRIER_WIDTH_DEFAULT,
+                              DIV_DIGITAL_WIDTH_DEFAULT, DIV_CW_WIDTH_DEFAULT
+                            };
 
-  for (int i = 0; i < 4; i++) {
-    if (*widths[i] < 20.0)    { *widths[i] = 20.0; }
+  for (int i = 0; i < 5; i++) {
+    if (!(*widths[i] >= 20.0)) {
+      *widths[i]  = defaults[i];
+      *centres[i] = 0.0;
+
+      if (i == 0) { s->follow_filter = 1; }
+    }
 
     if (*widths[i] > 40000.0) { *widths[i] = 40000.0; }
 
@@ -3218,6 +4800,9 @@ static void div_group_save(int g, const DIV_SETTINGS *s) {
   SetPropF1("diversity_group[%d].carrier_width",  g, s->carrier_width);
   SetPropF1("diversity_group[%d].digital_centre", g, s->digital_centre);
   SetPropF1("diversity_group[%d].digital_width",  g, s->digital_width);
+  SetPropF1("diversity_group[%d].cw_cohmin",      g, s->cw_cohmin);
+  SetPropF1("diversity_group[%d].cw_centre",      g, s->cw_centre);
+  SetPropF1("diversity_group[%d].cw_width",       g, s->cw_width);
 }
 
 //
@@ -3227,6 +4812,31 @@ static void div_group_save(int g, const DIV_SETTINGS *s) {
 // set to - which is exactly the old single-block behaviour, until the
 // operator moves a control in one mode and not another.
 //
+//
+// What a group starts from when the props file holds no diversity
+// settings at all - a fresh install. An operator with settings of their
+// own keeps them in every mode: a file from before the per-group blocks
+// seeds every group from its flat keys, and a group's own keys win over
+// both (div_group_restore() runs after this).
+//
+// CW starts on the CW reference, at 0.2 s averaging. The CW captures were
+// recorded at 0.33 to 1.05 s; swept over eleven of them the short end of
+// the slider scored +0.20 dB mean against -0.40 at 1.0 s and -0.19 at
+// 2.0 s (feature/auto-diversity, 565c6e40) - a CW result, not a general
+// one, so it is a seed for this group and not a global default. The live
+// window and threshold are the CW reference's own, as a reference change
+// would bring them in.
+//
+static void div_group_seed(int g, DIV_SETTINGS *s) {
+  if (g != DIV_GROUP_CW) { return; }
+
+  s->ref           = DIV_REF_CW;
+  s->tau           = 0.2;
+  s->centre        = s->cw_centre;
+  s->width         = s->cw_width;
+  s->coherence_min = s->cw_cohmin;
+}
+
 static void div_group_restore(int g, DIV_SETTINGS *s) {
   GetPropI1("diversity_group[%d].mode",           g, s->mode);
   GetPropI1("diversity_group[%d].ref",            g, s->ref);
@@ -3248,6 +4858,9 @@ static void div_group_restore(int g, DIV_SETTINGS *s) {
   GetPropF1("diversity_group[%d].carrier_width",  g, s->carrier_width);
   GetPropF1("diversity_group[%d].digital_centre", g, s->digital_centre);
   GetPropF1("diversity_group[%d].digital_width",  g, s->digital_width);
+  GetPropF1("diversity_group[%d].cw_cohmin",      g, s->cw_cohmin);
+  GetPropF1("diversity_group[%d].cw_centre",      g, s->cw_centre);
+  GetPropF1("diversity_group[%d].cw_width",       g, s->cw_width);
 }
 
 void diversity_auto_save_state(void) {
@@ -3285,6 +4898,10 @@ void diversity_auto_save_state(void) {
   SetPropF0("diversity_carrier_width",       div_carrier_width);
   SetPropF0("diversity_digital_centre",      div_digital_centre);
   SetPropF0("diversity_digital_width",       div_digital_width);
+  SetPropF0("diversity_cw_cohmin",           div_cw_cohmin);
+  SetPropF0("diversity_cw_centre",           div_cw_centre);
+  SetPropF0("diversity_cw_width",            div_cw_width);
+  SetPropI0("diversity_auto_normalise",      div_auto_normalise);
 
   for (int g = 0; g < DIV_GROUPS; g++) {
     div_group_save(g, &div_group_set[g]);
@@ -3292,6 +4909,14 @@ void diversity_auto_save_state(void) {
 }
 
 void diversity_auto_restore_state(void) {
+  //
+  // Whether the file holds any diversity settings at all. GetProp leaves
+  // a variable alone when its key is absent, so a value no reference can
+  // take says the key was not there. See div_group_seed().
+  //
+  int saved_ref = -1;
+  GetPropI0("diversity_auto_ref",            saved_ref);
+  const int fresh = (saved_ref < 0);
   GetPropI0("diversity_auto_ref",            div_auto_ref);
   GetPropI0("diversity_auto_follow_filter",  div_auto_follow_filter);
   GetPropF0("diversity_auto_centre",         div_auto_centre);
@@ -3318,6 +4943,17 @@ void diversity_auto_restore_state(void) {
   GetPropF0("diversity_carrier_width",       div_carrier_width);
   GetPropF0("diversity_digital_centre",      div_digital_centre);
   GetPropF0("diversity_digital_width",       div_digital_width);
+  //
+  // Not seeded from diversity_auto_coherence_min as the three above are:
+  // a file written before CW existed was never run on it, so it gets
+  // CW's own default.
+  //
+  GetPropF0("diversity_cw_cohmin",           div_cw_cohmin);
+  GetPropF0("diversity_cw_centre",           div_cw_centre);
+  GetPropF0("diversity_cw_width",            div_cw_width);
+  GetPropI0("diversity_auto_normalise",      div_auto_normalise);
+
+  div_auto_normalise = div_auto_normalise ? 1 : 0;
 
   //
   // Validate what came out of the file, then use it to seed every group
@@ -3330,6 +4966,9 @@ void diversity_auto_restore_state(void) {
 
   for (int g = 0; g < DIV_GROUPS; g++) {
     div_group_set[g] = base;
+
+    if (fresh) { div_group_seed(g, &div_group_set[g]); }
+
     div_group_restore(g, &div_group_set[g]);
     div_settings_validate(&div_group_set[g]);
   }

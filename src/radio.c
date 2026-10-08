@@ -281,7 +281,7 @@ int div_auto_mode = DIV_MANUAL;
 
 // Parameters for "manual" diversity
 double man_div_cos = 1.0;       // I factor for diversity
-double man_div_sin = 1.0;       // Q factor for diversity
+double man_div_sin = 0.0;       // Q factor for diversity
 double man_div_gain = 0.0;      // gain for diversity (in dB)
 double man_div_phase = 0.0;    // phase for diversity (in degrees, 0 ... 360)
 
@@ -289,8 +289,15 @@ double man_div_phase = 0.0;    // phase for diversity (in degrees, 0 ... 360)
 double auto_div_gain = 0.0;
 double auto_div_phase = 0.0;
 double auto_div_cos = 1.0;
-double auto_div_sin = 1.0;
+double auto_div_sin = 0.0;
 //
+// Scales the combined output so it stays at the level of arm 0 alone. 1.0
+// unless the auto-diversity engine sets it - see div_norm_refresh() in
+// diversity_auto.c.
+//
+double div_norm = 1.0;
+//
+
 // Audio capture and replay
 // (Equalisers are switched off during capture and replay)
 //
@@ -1833,6 +1840,14 @@ static void rxtx(int state) {
     t_print("%s: WARNING: rxtx called but no transmitter!", __func__);
     return;
   }
+  //
+  // The diversity sample stream stops for the whole over, in duplex as
+  // well, so tell the auto-phasing analysis - on both edges - that its
+  // input has a hole in it. The weight in force is kept. See
+  // diversity_auto_gap().
+  //
+  diversity_auto_gap();
+
   if (!radio_is_remote) {
     //
     // Abort any running Capture, Transmit, Replay
@@ -1857,12 +1872,6 @@ static void rxtx(int state) {
     // Perform RX->TX transition
     //
     if (!radio_is_remote) {
-      //
-      // The diversity sample stream stops for the whole over, in duplex as
-      // well, so tell the auto-phasing analysis that its input is about to
-      // acquire a hole. The weight in force is kept.
-      //
-      diversity_auto_gap();
       RECEIVER *rx_feedback = receiver[PS_RX_FEEDBACK];
       RECEIVER *tx_feedback = receiver[PS_TX_FEEDBACK];
       if (rx_feedback) { rx_feedback->samples = 0; }
@@ -2307,9 +2316,23 @@ void radio_set_diversity_phase(double value) {
 }
 
 void radio_set_diversity(int state) {
+  //
+  // Switching diversity off or on is one of the two things that release
+  // Hold; the other is the operator's own Hold button. Only on a real
+  // change of state: a client's manual gain and phase arrive by this same
+  // path with the state unchanged. On a client this only clears the local
+  // copy so the button follows at once - the radio does the real release
+  // when the command arrives.
+  //
+  const int toggled = (state != diversity_enabled);
+
   if (radio_is_remote) {
+    if (toggled) { div_auto_hold = 0; }
+
     send_diversity(cl_sock_tcp, state, man_div_gain, man_div_phase);
   } else {
+    if (toggled) { diversity_auto_set_hold(0); }
+
     //
     // If we have only one receiver, then changing diversity
     // changes the number of HPSR receivers so we restart the
@@ -2834,7 +2857,7 @@ void radio_set_panstep(int id, int value) {
 
 //
 // The step attenuator of one ADC, addressed by ADC rather than by
-// receiver. This is the only way to reach ADC1 while DIVERSITY is
+// receiver. This is the only way to reach ADC2 while DIVERSITY is
 // running, since the loop makes RX1 the active receiver and every other
 // path resolves the ADC through it.
 //
@@ -3202,6 +3225,7 @@ static void radio_restore_state(void) {
     band_restore_state();
     mem_restore_state();
     vfo_restore_state();
+    diversity_auto_restore_state();
   }
   //
   // RX/TX profiles are needed on the client side as well,

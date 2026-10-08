@@ -344,13 +344,19 @@ void rx_panadapter_update(RECEIVER *rx) {
       //
       // The search region, not the few bins finally accumulated: it is
       // the region the operator sets, and seeing it is how they aim at a
-      // carrier other than the primary.
+      // carrier other than the primary. The default width mid-passband, when
+      // Follow RX Filter is ticked.
       //
-      wlo = wman_lo;
-      whi = wman_hi;
+      if (div_auto_follow_filter) {
+        div_carrier_follow_window(rx->filter_low, rx->filter_high, &wlo, &whi);
+      } else {
+        wlo = wman_lo;
+        whi = wman_hi;
+      }
       break;
 
     case DIV_REF_DIGITAL_IQ:
+    case DIV_REF_CW:
       //
       // Again the search region. What was found occupied inside it is
       // drawn over the top further down, so both are visible at once:
@@ -373,14 +379,15 @@ void rx_panadapter_update(RECEIVER *rx) {
       // The whole modem band, on the side the operator's sideband puts
       // it, and deliberately not clipped to the filter: the pilot
       // correlator taps the raw stream ahead of WDSP and needs all thirty
-      // carriers whatever the filter is set to.
+      // carriers whatever the filter is set to. Drawn to the occupied
+      // edges, half a carrier spacing beyond the outer carrier centres.
       //
       if (div_rade_side_get() < 0) {
-        wlo = -RADE_CORR_FHI;
-        whi = -RADE_CORR_FLO;
+        wlo = -RADE_CORR_OCC_HI;
+        whi = -RADE_CORR_OCC_LO;
       } else {
-        wlo = RADE_CORR_FLO;
-        whi = RADE_CORR_FHI;
+        wlo = RADE_CORR_OCC_LO;
+        whi = RADE_CORR_OCC_HI;
       }
 
       break;
@@ -413,11 +420,12 @@ void rx_panadapter_update(RECEIVER *rx) {
       cairo_fill(cr);
 
       //
-      // In digital mode, shade the bins found occupied inside the region.
-      // Same accent again but stronger, so it reads as "this part of the
-      // region is what is being measured" rather than as a second thing.
+      // In digital mode, shade the bins found occupied inside the region;
+      // in CW, the tone being tracked. Same accent again but stronger, so
+      // it reads as "this part of the region is what is being measured"
+      // rather than as a second thing.
       //
-      if (div_auto_ref == DIV_REF_DIGITAL_IQ && div_auto_occ_valid) {
+      if ((div_auto_ref == DIV_REF_DIGITAL_IQ || div_auto_ref == DIV_REF_CW) && div_auto_occ_valid) {
         double ol = rx->cAp * div_auto_occ_lo + xoffset + rx->cBp;
         double oh = rx->cAp * div_auto_occ_hi + xoffset + rx->cBp;
 

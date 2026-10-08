@@ -143,7 +143,7 @@
 //
 // This statistic is used for acquisition only. Holding an existing lock
 // is a different and much more forgiving test - see RADE_USE_RATIO and
-// the hang time it is counted against.
+// the resync search that decides when a lock is replaced.
 //
 // 4.8 rather than the 6.0 this started at.
 //
@@ -204,6 +204,74 @@ static const double rade_acq_sigma[RADE_ACQ_CHECKS] = { 7.5, 6.75, RADE_LOCK_SIG
 
 #define RADE_PROBATION      8       // frames, ~1 s
 
+//
+// Resync while frozen.
+//
+// There used to be a hang: a timeout after which a lock whose pilot had
+// stopped being measurable was given up. It held the weight, and it also
+// gated the *search*: rade_acquire() runs only when tracking is zero, and
+// tracking was cleared only when the hang expired.
+// So when one station stopped and another started, the correlator spent
+// the whole hang correlating one hypothesis belonging to a transmission
+// that had already ended, and looked nowhere else. Measured on twenty
+// re-acquisitions across six 80 m captures, the search itself takes a
+// median 2.9 s and confirmation 0.8 - so of the 13.7 s a changeover cost,
+// ten were a timeout with the search switched off. See Finding 44 in
+// docs/diversity-measurements.md.
+//
+// The search therefore runs during the freeze too, and a candidate at a
+// *different* alignment is taken at once. That is the right statistic for
+// the job: a timeout says only that nothing has been heard for a while,
+// where a fresh sync alignment is a positive detection saying something
+// has arrived.
+//
+// Only a different one. The same alignment found again is this station
+// coming back out of a fade, and it keeps its lock and its averages.
+//
+// No timeout. A new lock replaces an old one; nothing else does, short of
+// a retune or other context change, which resets everything anyway. While
+// the pilot is absent the weight is held - the best chance of being right
+// when the signal returns - and the averages age at the operator's
+// averaging time. Measured on TEST through the whole engine and scored on
+// decode, three runs each: a 2 s timeout cost 51, 30 and 10 synced frames
+// against a 10 s one on three captures, and a 10 s one scored the same as
+// none on those three and 5 frames worse on a fourth. A short timer drops
+// locks that would have recovered; a long one does nothing, or worse. See
+// LC-014 in docs/changes.md.
+//
+// Accepted, deliberately: a *new* station landing within RADE_RESYNC_DA of
+// the old alignment (0.9 % of changeovers, below) is taken for the old
+// one coming back. If its pilot is strong enough the tracker follows it
+// and the averaging moves the weight to it; if not, the old weight stays.
+// Not worth a mechanism of its own.
+//
+// Timing decides that, not frequency. Finding 15: the frequency loop has
+// stable lock points one modem frame rate apart, 8.33 Hz, and its
+// unambiguous range is half that - so two stations can differ by a
+// frequency the loop cannot tell from zero. Timing modulo one modem frame
+// has no such ambiguity, and a different station lands anywhere in the
+// 960 samples with near-uniform probability.
+//
+// RADE_RESYNC_DA is how close still counts as the same station. The
+// tracker nudges by a sample a frame and the search refines over
+// +/-RADE_ACQ_TREFINE around a coarse cell of RADE_ACQ_TSTEP, so a few
+// samples of disagreement is ordinary; 4 of 960 leaves a 0.9 % chance of
+// calling a genuinely different station the same one.
+//
+// The cost is a full search per modem frame for the duration of a freeze,
+// on top of the tracking that already runs there. That is the peak load
+// in this file (see the CPU section of diversity.md). It is the same
+// work the cold search does whenever there is no lock at all, so a held
+// lock with no pilot costs what having no lock would.
+//
+#define RADE_RESYNC_DA      4       // samples at 8 kHz
+
+//
+// How far the averages are allowed to age while the pilot is absent
+// before the ageing stops. See the note in rade_track().
+//
+#define RADE_STALE_MIN      1e-3
+
 
 //
 // Holding a lock is deliberately far more forgiving than getting one.
@@ -230,26 +298,13 @@ static const double rade_acq_sigma[RADE_ACQ_CHECKS] = { 7.5, 6.75, RADE_LOCK_SIG
 // signal that is really gone - end of over, or the operator retuning -
 // should force a re-acquisition.
 //
-// How long "really gone" is depends on what the operator is listening to,
-// so it is the Hang control in the Diversity menu rather than a constant
-// here, and it arrives as the hang argument to rade_corr_process().
-//
-// It replaced a fixed ten seconds counted off the *slow* ratio below,
-// which was too slow twice over. That average has a six-second time
-// constant, so on a signal that simply stopped it took about seven
-// seconds to fall from the six a clean lock reads to the two the test
-// wanted, and only then did the ten start. Sixteen seconds of holding one
-// station's weight is not what the ten was meant to mean, and on a
-// frequency where several stations take turns it is most of an over -
-// each one has its own optimal weight, and the combiner spent the
-// beginning of every over applying the previous station's.
-//
-// So the hang is counted off the fast gate instead: RADE_USE_RATIO below
-// already decides, about a second at a time, whether this frame is worth
-// measuring, and consecutive frames that are not are exactly what "the
-// pilot is not there" means. One good frame resets the count, so a fade
-// that flickers does not accumulate towards a drop - only a continuous
-// absence does.
+// "Really gone" is not decided by time at all. A new station is taken
+// when the resync search finds it (see RADE_RESYNC_DA); until then the
+// lock and the weight are held, which is what a fade needs. The history:
+// a fixed ten seconds counted off the slow ratio below, then an operator
+// Hang control counted off the fast gate, then Hang pinned at 10 s - and
+// each version of the timer either held the previous station's weight
+// into the next over or dropped a lock that would have recovered.
 //
 // mag_avg/floor_avg survive as the *reported* health of a lock, which is
 // what a level-independent ratio over several seconds is good for: a
@@ -500,7 +555,7 @@ static double pilot_energy = 0.0;
 //
 static int64_t lock_a = 0;           // absolute sample index of the pilot
 static double lock_f = 0.0;          // Hz
-static int    drop_count = 0;
+static int    frozen_frames = 0;   // consecutive frames with no usable pilot
 static int    tracking = 0;          // a candidate is being followed
 static int    probation = 0;         // frames of confirmation still owed
 static cplx   prev_d0;               // last frame's pilot correlation
@@ -534,6 +589,12 @@ static double acc_x00 = 0.0;
 static cplx   acc_r01;
 static double acc_r00 = 0.0, acc_r11 = 0.0;
 static double acc_sig = 0.0;
+//
+// How much of the accumulators' content is still the live signal's, as a
+// fraction: 1.0 while the pilot is being measured, falling as the ageing
+// below runs during a freeze. Only a stop condition - see rade_track().
+//
+static double stale_scale = 1.0;
 static int    acc_valid = 0;
 
 //
@@ -677,7 +738,7 @@ void rade_corr_reset(void) {
   rade_corr_locked = 0;
   rade_corr_confirming = 0;
   tracking = 0;
-  drop_count = 0;
+  frozen_frames = 0;
   probation = 0;
   prev_valid = 0;
   nudged = 0;
@@ -691,6 +752,7 @@ void rade_corr_reset(void) {
   acc_r01 = cset(0.0, 0.0);
   acc_r00 = acc_r11 = 0.0;
   acc_sig = 0.0;
+  stale_scale = 1.0;
   acc_valid = 0;
   mag_avg = 0.0;
   floor_avg = 0.0;
@@ -819,7 +881,21 @@ static cplx rade_dft_bin(const float *r, int64_t a, double hz) {
 //
 // Coarse then fine search for the pilot on arm 0.
 //
-static int rade_acquire(int expect_bank) {
+//
+// Returns 1 and writes the candidate to *out_a / *out_f / *out_bank; the
+// caller decides whether to take it. It used to write lock_a and lock_f
+// itself, which was fine while the only caller was the cold search - but
+// the resync search below runs with a lock still held and has to be able
+// to say no, and save-and-restore around a function that commits half a
+// dozen statics is the kind of thing that works until someone adds a
+// seventh. rade_commit_candidate() is the other half.
+//
+// rade_corr_quality is still written on the way through, as the search's
+// own progress report. A caller that already has a quality worth showing
+// has to put it back.
+//
+static int rade_acquire(int expect_bank, int64_t *out_a, double *out_f,
+                        int *out_bank) {
   int64_t best_a = 0;
   int best_f = 0;
   //
@@ -1029,19 +1105,28 @@ static int rade_acquire(int expect_bank) {
   memset(acq_grid, 0, sizeof(acq_grid));
   acq_passes = 0;
   acq_check = 0;
-  //
-  // A candidate, not yet a lock: rade_track() has to like it for
-  // RADE_PROBATION frames before any weight comes out of it.
-  //
+  *out_a    = best_a;
+  *out_bank = best_bank;
+  *out_f    = acq_freq[best_f];
+  return 1;
+}
+
+//
+// Take a candidate the search produced. A candidate, not yet a lock:
+// rade_track() has to like it for RADE_PROBATION frames before any weight
+// comes out of it.
+//
+static void rade_commit_candidate(int64_t a, double f, int bank) {
   probation = RADE_PROBATION;
   prev_valid = 0;
-  lock_a = best_a;
-  lock_bank = best_bank;
-  rade_corr_mirrored = best_bank;
-  lock_f = acq_freq[best_f];
+  lock_a = a;
+  lock_bank = bank;
+  rade_corr_mirrored = bank;
+  lock_f = f;
   rade_corr_freq_off = lock_f;
-  drop_count = 0;
-  return 1;
+  frozen_frames = 0;
+  tracking = 1;
+  rade_corr_confirming = 1;
 }
 
 //
@@ -1087,7 +1172,7 @@ static void rade_mvdr_weight(double *wr, double *wi) {
 // Once locked, measure the channel on both arms at the tracked timing and
 // frequency, update the covariance of what is left over, and solve.
 //
-static int rade_track(double tau, double hang, double *wr, double *wi) {
+static int rade_track(double tau, double *wr, double *wi) {
   cplx pw[RADE_CORR_M];
   rade_pilot_at(lock_f, pw);
   //
@@ -1237,36 +1322,54 @@ static int rade_track(double tau, double hang, double *wr, double *wi) {
   if (use_ratio < RADE_USE_RATIO) {
     //
     // Nothing worth measuring in this frame. Keep the weight exactly
-    // where it was - do not let noise move it - and start counting
-    // towards the operator's hang time.
+    // where it was - do not let noise move it - and keep the lock until a
+    // new one replaces it. See "No timeout" at RADE_RESYNC_DA.
     //
     if (!frozen) {
       frozen = 1;
       t_print("%s: pilot lost, holding last weight (%+0.1f dB %+0.0f deg) "
-              "for up to %0.0f s\n", __func__, auto_div_gain, auto_div_phase, hang);
+              "until a new lock replaces it\n", __func__, auto_div_gain, auto_div_phase);
     }
 
     //
-    // At least one frame, whatever the caller passed: a hang shorter than
-    // the second RADE_USE_ALPHA averages over would end a lock on a
-    // single noisy frame, which is the failure the smoothing exists to
-    // prevent.
+    // The weight is frozen; the averages behind it are not.
     //
-    int limit = (int)lround(hang / RADE_FRAME_SECS);
-
-    if (limit < 1) { limit = 1; }
-
-    if (++drop_count >= limit) {
-      t_print("%s: lost RADE pilot lock (pilot/floor %0.2f, gone %0.1f s), "
-              "searching again\n", __func__, ratio,
-              drop_count * RADE_FRAME_SECS);
-      rade_corr_reset();
+    // Nothing is added to them while the pilot is absent, but they go on
+    // decaying at the operator's averaging time, because old data is old
+    // data. Frozen outright, an average built over the last two seconds of
+    // a station that stopped eight seconds ago would still be carrying
+    // (1-alpha) of the weight when the next station's first frame arrived,
+    // and the channel it describes decorrelates in half a second to four
+    // (Finding 21). Aged, that first live frame dominates, which is the
+    // right answer when there is no valid history to average it into.
+    //
+    // The held weight does not move. Every accumulator is scaled by the
+    // same factor, div_mvdr2()'s guard and diagonal load are both relative
+    // (Finding 11), and rade_corr_snr and rade_corr_quality are ratios of
+    // two of them - so this is invisible until the signal comes back,
+    // which is the only time it should be visible.
+    //
+    // It stops at RADE_STALE_MIN. Beyond 30 dB down the old content
+    // changes no answer, and at a short averaging time an unbounded decay
+    // would run the accumulators towards zero for the rest of the freeze.
+    //
+    if (acc_valid && stale_scale > RADE_STALE_MIN) {
+      const double aa = 1.0 - exp(-RADE_FRAME_SECS / (tau > 0.05 ? tau : 0.05));
+      const double d = 1.0 - aa;
+      acc_x01 = cscale(acc_x01, d);
+      acc_x00 *= d;
+      acc_r00 *= d;
+      acc_r11 *= d;
+      acc_r01 = cscale(acc_r01, d);
+      acc_sig *= d;
+      stale_scale *= d;
     }
 
+    frozen_frames++;
     return 0;
   }
 
-  drop_count = 0;
+  frozen_frames = 0;
   //
   // Alias resolution. See the note at RADE_ALIAS_LAG.
   //
@@ -1334,10 +1437,10 @@ static int rade_track(double tau, double hang, double *wr, double *wi) {
     track_report = 0;
     t_print("%s: tracking  pilot/floor %0.2f  f=%+0.1f Hz  "
             "pilot %0.0f%% / %+0.1f dB  w=%+0.1f dB %+0.0f deg  "
-            "avg=%0.1fs hang=%0.1fs%s\n",
+            "avg=%0.1fs%s\n",
             __func__, ratio, lock_f,
             100.0 * rade_corr_quality, rade_corr_snr, auto_div_gain, auto_div_phase,
-            tau, hang, frozen ? "  FROZEN" : "");
+            tau, frozen ? "  FROZEN" : "");
   }
   //
   // The channel, as a cross-spectrum rather than as two coherent means.
@@ -1421,6 +1524,7 @@ static int rade_track(double tau, double hang, double *wr, double *wi) {
   acc_r11 += alpha * (e1 - acc_r11);
   acc_r01 = cadd(cscale(acc_r01, 1.0 - alpha), cscale(e01, alpha));
   acc_sig += alpha * (sigpow - acc_sig);
+  stale_scale = 1.0;
 
   if (acc_r00 > 1e-20 && acc_sig > 0.0) {
     rade_corr_snr = 10.0 * log10(acc_sig / acc_r00);
@@ -1475,7 +1579,7 @@ static int rade_track(double tau, double hang, double *wr, double *wi) {
 
 int rade_corr_process(const float *arm0, const float *arm1, int n,
                       int expect_bank, double frame_off, double tau,
-                      double hang, double *wr, double *wi) {
+                      double *wr, double *wi) {
   if (!running) { return 0; }
 
   //
@@ -1568,25 +1672,86 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
   //
   if (ringtotal < RADE_ACQ_SPAN) { return 0; }
 
+  //
+  // Rate limit the search: it is by far the most expensive thing here, and
+  // there is no point running it more than once per modem frame. The same
+  // limiter serves the cold search and the resync search below - only one
+  // of the two can be running at a time.
+  //
+  const int may_search = (ringtotal >= next_process);
+
   if (!tracking) {
-    //
-    // Rate limit the search: it is by far the most expensive thing here,
-    // and there is no point running it more than once per modem frame.
-    //
-    if (ringtotal < next_process) { return 0; }
+    if (!may_search) { return 0; }
 
     next_process = ringtotal + RADE_CORR_NMF;
+    int64_t cand_a;
+    double cand_f;
+    int cand_bank;
 
-    if (!rade_acquire(expect_bank)) { return 0; }
+    if (!rade_acquire(expect_bank, &cand_a, &cand_f, &cand_bank)) { return 0; }
 
     //
     // A candidate. rade_track() follows it for RADE_PROBATION frames
     // before rade_corr_locked goes up and any weight comes out.
     //
-    tracking = 1;
-    rade_corr_confirming = 1;
+    rade_commit_candidate(cand_a, cand_f, cand_bank);
     t_print("%s: RADE pilot candidate  modem %s carrier  a=%lld  f=%+0.1f Hz\n",
             __func__, lock_bank ? "above" : "below", (long long)lock_a, lock_f);
+  } else if (frozen && may_search) {
+    //
+    // Locked, but the pilot is not measurable at the tracked alignment.
+    // Look for a new lock to replace it. See RADE_RESYNC_DA.
+    //
+    next_process = ringtotal + RADE_CORR_NMF;
+    int64_t cand_a;
+    double cand_f;
+    int cand_bank;
+    //
+    // rade_acquire() writes rade_corr_quality as its own progress report.
+    // There is a lock here with a quality worth showing, so put it back
+    // unless the candidate is actually taken.
+    //
+    const double held_quality = rade_corr_quality;
+
+    if (rade_acquire(expect_bank, &cand_a, &cand_f, &cand_bank)) {
+      //
+      // Timing difference modulo one modem frame, signed, so that a
+      // candidate one sample either side of the tracked pilot reads as
+      // one sample rather than as 959.
+      //
+      int64_t da = (cand_a - lock_a) % RADE_CORR_NMF;
+
+      if (da < 0) { da += RADE_CORR_NMF; }
+
+      if (da > RADE_CORR_NMF / 2) { da -= RADE_CORR_NMF; }
+
+      if (cand_bank == lock_bank && llabs(da) <= RADE_RESYNC_DA) {
+        //
+        // Our own station, coming back. The acquisition statistic
+        // integrates over several seconds and the freeze gate over about
+        // one, so the two can disagree this way on a marginal signal:
+        // leave the lock and the averages exactly as they are.
+        //
+        rade_corr_quality = held_quality;
+      } else {
+        t_print("%s: resync - pilot found %lld samples and %+0.1f Hz from the "
+                "held lock, dropping it %0.1f s into the freeze\n", __func__,
+                (long long)llabs(da), cand_f - lock_f,
+                frozen_frames * RADE_FRAME_SECS);
+        //
+        // A different station, so the channel the averages describe is the
+        // wrong one. Through the reset rather than straight into a commit:
+        // it clears the accumulators, the smoothed pilot and floor and the
+        // alias estimate, which is exactly the state a cold acquisition
+        // would have handed the candidate, and it leaves one description
+        // of what starting again means.
+        //
+        rade_corr_reset();
+        rade_commit_candidate(cand_a, cand_f, cand_bank);
+      }
+    } else {
+      rade_corr_quality = held_quality;
+    }
   }
 
   //
@@ -1607,7 +1772,7 @@ int rade_corr_process(const float *arm0, const float *arm1, int n,
       return 0;
     }
 
-    int ok = rade_track(tau, hang, wr, wi);
+    int ok = rade_track(tau, wr, wi);
 
     //
     // Advance whatever happened. The pilot moves on by exactly one modem

@@ -924,8 +924,8 @@ void send_attenuation(int s, int id, int attenuation) {
 
 //
 // The same thing addressed by ADC rather than by receiver. This is how a
-// client reaches ADC1 while DIVERSITY is running, where every
-// receiver-indexed path resolves to ADC0.
+// client reaches ADC2 while DIVERSITY is running, where every
+// receiver-indexed path resolves to ADC1.
 //
 void send_adc_attenuation(int s, int a, int attenuation) {
   HEADER header;

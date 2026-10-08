@@ -30,7 +30,8 @@
 // Waveform parameters, from the radae sources (rade_dsp.h, rade_ofdm.c):
 //
 //   Fs   8000 Hz     modem sample rate
-//   Nc   30          OFDM carriers, 750 ... 2200 Hz (centred on 1500)
+//   Nc   30          OFDM carriers, 750 ... 2200 Hz (centred on 1475:
+//                    radae aims at 1500 and rounds to the 50 Hz grid)
 //   M    160         samples per symbol
 //   Ncp  32          cyclic prefix
 //   Ns   4           data symbols per modem frame
@@ -49,12 +50,20 @@
 #define RADE_CORR_NMF     ((RADE_CORR_NS + 1) * (RADE_CORR_M + RADE_CORR_NCP))
 
 //
-// Lowest and highest audio frequency occupied by the modem, in Hz. They
-// bound the sideband test in div_rade_side_expected() and draw the modem
-// passband on the RX panadapter overlay (rx_panadapter.c).
+// Lowest and highest modem carrier, in Hz: carrier centres, not band
+// edges. They bound the sideband test in div_rade_side_expected().
 //
 #define RADE_CORR_FLO     750.0
 #define RADE_CORR_FHI     2200.0
+
+//
+// The edges of the band the modem occupies, in Hz: the outer carrier
+// centres above, widened by half the 50 Hz carrier spacing. These, not
+// the centres, are what the RX panadapter overlay draws, so that the
+// outer carriers are inside it rather than cut in half.
+//
+#define RADE_CORR_OCC_LO  (RADE_CORR_FLO - 0.5 * RADE_CORR_FS / RADE_CORR_M)
+#define RADE_CORR_OCC_HI  (RADE_CORR_FHI + 0.5 * RADE_CORR_FS / RADE_CORR_M)
 
 //
 // Status. Written by the analysis thread.
@@ -117,11 +126,9 @@ extern void rade_corr_reset(void);
 // tau is the operator's averaging time in seconds, which sets how fast the
 // channel and covariance estimates follow the path.
 //
-// hang is the operator's hang time in seconds: how long a lock survives
-// after the pilot stops being detectable before the correlator gives up
-// and searches again. Short suits a frequency several stations are taking
-// turns on, where each one wants its own weight; long rides out a fade on
-// a single station.
+// There is no hang: a lock whose pilot has stopped being detectable is
+// held, weight and all, until a new lock replaces it. See RADE_RESYNC_DA
+// in rade_correlator.c.
 //
 // Returns 1 when a new weight is available in *wr/*wi, in which case it
 // is expressed in the same sense as div_cos/div_sin, i.e. ready to be
@@ -130,6 +137,6 @@ extern void rade_corr_reset(void);
 //
 extern int rade_corr_process(const float *arm0, const float *arm1, int n,
                              int expect_bank, double frame_off, double tau,
-                             double hang, double *wr, double *wi);
+                             double *wr, double *wi);
 
 #endif
