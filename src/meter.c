@@ -120,7 +120,7 @@ static void meter_rounded_rect(cairo_t *cr, double x, double y, double w, double
   cairo_close_path(cr);
 }
 
-/* ───────────────────────── Dual-scale bar ───────────────────────── */
+/* Dual-scale bar */
 static void rxmeter_dualscale(cairo_t *cr, double smtr, int sval, int sval2,
                               double max_rxlvl, double pk, double ref9, double perS) {
   char sf[32];
@@ -232,7 +232,7 @@ static void rxmeter_dualscale(cairo_t *cr, double smtr, int sval, int sval2,
   }
 }
 
-/* ───────────────────── Edgewise moving-coil ───────────────────── */
+/* Edgewise moving-coil */
 static void rxmeter_edgewise(cairo_t *cr, double smtr, int sval, int sval2,
                              double max_rxlvl, double pk) {
   char sf[32];
@@ -378,7 +378,7 @@ static void rxmeter_edgewise(cairo_t *cr, double smtr, int sval, int sval2,
   cairo_show_text(cr, sf);
 }
 
-/* ───────────────────── Edgewise TX power meter ───────────────────── */
+/* Edgewise TX power meter */
 static void txmeter_edgewise(cairo_t *cr, double frac, double pk, const char *pwrstr,
                              double swr, int swr_alarm, double interval, int units,
                              double alc, int cwmode) {
@@ -505,7 +505,7 @@ static void txmeter_edgewise(cairo_t *cr, double frac, double pk, const char *pw
   }
 }
 
-/* ───────────────────── Dual-scale TX power bar ───────────────────── */
+/* Dual-scale TX power bar */
 static void txmeter_powerbar(cairo_t *cr, double frac, double pk, const char *pwrstr,
                              double swr, int swr_alarm, double interval, int units) {
   char sf[32];
@@ -773,7 +773,7 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
   switch (meter_type) {
   case ANALOG: {
     //
-    // Analog RX — Option 2 face (dark glass + filled arc) with Option 3 text
+    // Analog RX - Option 2 face (dark glass + filled arc) with Option 3 text
     //
     int i;
     double x;
@@ -796,13 +796,13 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
       max_angle = 320.0;
     }
     bydb = (max_angle - min_angle) / 114.0;
-    // ── Dim arc track (full scale background) ──────────────────────────────
+    // Dim arc track (full scale background)
     //cairo_set_line_width(cr, 10.0);
     cairo_set_line_width(cr, 10.0 * scalfac);
     cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.06);
     cairo_arc(cr, cx, cy, radius, min_angle * M_PI / 180.0, max_angle * M_PI / 180.0);
     cairo_stroke(cr);
-    // ── Filled coloured arc up to needle position (80 micro-segments) ──────
+    // Filled coloured arc up to needle position (80 micro-segments)
     {
       int   ARC_STEPS = 80;
       double needle_pcnt = smtr / 114.0;
@@ -835,7 +835,7 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
         cairo_stroke(cr);
       }
     }
-    // ── Tick marks (outside the arc band, colour-coded) ────────────────────
+    // Tick marks (outside the arc band, colour-coded)
     cairo_set_line_width(cr, 1.5 * scalfac);
     for (i = 1; i < 10; i++) {
       angle   = ((double)i * 8.0 * bydb) + min_angle;
@@ -890,7 +890,7 @@ void rxmeter_update(int fps, double rxlvl, double peak, double gain, double out)
       cairo_show_text(cr, sf);
       cairo_new_path(cr);
     }
-    // ── Slim needle with radial-gradient pivot dot ──────────────────────────
+    // Slim needle with radial-gradient pivot dot
     {
       double needle_pcnt = smtr / 114.0;
       double rc, gc, bc;
@@ -1148,13 +1148,13 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
         min_angle = 220.0;
         max_angle = 320.0;
       }
-      // ── Dim arc track ─────────────────────────────────────────────────────
+      // Dim arc track
       cairo_set_line_width(cr, 10.0 * scalfac);
       cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.06);
       cairo_arc(cr, cx, cy, radius, min_angle * M_PI / 180.0, max_angle * M_PI / 180.0);
       cairo_stroke(cr);
-      // ── Radial face gradient ──────────────────────────────────────────────
-      // ── Filled coloured arc up to needle position ─────────────────────────
+      // Radial face gradient
+      // Filled coloured arc up to needle position
       // TX power colour: green(low) → amber(mid) → red(high)
       {
         double needle_angle = max_pwr * (max_angle - min_angle) / (10.0 * interval) + min_angle;
@@ -1189,7 +1189,7 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
           cairo_stroke(cr);
         }
       }
-      // ── Tick marks (colour-coded, outside arc band) ───────────────────────
+      // Tick marks (colour-coded, outside arc band)
       cairo_set_line_width(cr, 1.5 * scalfac);
       for (int i = 0; i <= 100; i++) {
         angle   = (double)i * 0.01 * max_angle + (double)(100 - i) * 0.01 * min_angle;
@@ -1232,7 +1232,7 @@ void txmeter_update(int fps, double pwr, double alc, double swr, double mic, dou
         }
         cairo_new_path(cr);
       }
-      // ── Slim needle with pivot dot ────────────────────────────────────────
+      // Slim needle with pivot dot
       {
         angle = max_pwr * (max_angle - min_angle) / (10.0 * interval) + min_angle;
         if (angle > max_angle + 5) { angle = max_angle + 5; }

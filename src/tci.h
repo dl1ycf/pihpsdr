@@ -18,10 +18,11 @@
 */
 
 #include "receiver.h"
+#include "tci_audio.h"
 
 extern int tci_enable;
 extern int tci_port;   // usually 40001
-extern int tci_audio_rx_active;
+extern int tci_audio_rx_active[TCI_RX_AUDIO_MAX_RECEIVERS];
 extern int tci_audio_tx_active;
 
 extern int launch_tci(void);

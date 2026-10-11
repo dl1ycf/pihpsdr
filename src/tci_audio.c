@@ -43,6 +43,14 @@
 #define TCI_TX_AUDIO_RING_FRAMES 65536
 #define TCI_TX_AUDIO_RING_MASK   65535
 
+//
+// This tells us which client owns RX1/RX2 audio,
+// and how many samples per packet are requested,
+// and provides a counter for "waking up" LWS service
+//
+int tci_rx_audio_owned[TCI_RX_AUDIO_MAX_RECEIVERS] = { 0 };
+int tci_rx_audio_samples[TCI_RX_AUDIO_MAX_RECEIVERS];
+static int tci_rx_audio_wakeup_count[TCI_RX_AUDIO_MAX_RECEIVERS] = { 0 };
 
 typedef struct _tci_rx_audio_ring {
   GMutex mutex;
@@ -82,7 +90,6 @@ void tci_audio_rx_sample (int id, double left, double right) {
   // called from the RX thread, and may update inpt.
   //
   TCI_RX_AUDIO_RING *ring;
-  static int wakeup_count = TCI_AUDIO_SAMPLES;
   if (id < 0 || id >= TCI_RX_AUDIO_MAX_RECEIVERS) { return; }
   ring = &tci_rx_audio_ring[id];
   int newpt = (ring->inpt + 1) & TCI_RX_AUDIO_RING_MASK;
@@ -93,46 +100,41 @@ void tci_audio_rx_sample (int id, double left, double right) {
     MEMORY_BARRIER;
     ring->inpt = newpt;
   }
-  if (--wakeup_count <= 0) {
+  if (++tci_rx_audio_wakeup_count[id] >= tci_rx_audio_samples[id]) {
     //
     // If both RX are active sending audio, this will
     // do the wake-up more often than needed. tci_audio_wakeup()
     // notifies LWS that there is "something to write".
     //
     tci_audio_wakeup();
-    wakeup_count = TCI_AUDIO_SAMPLES;
+    tci_rx_audio_wakeup_count[id] = 0;
   }
 }
 
 unsigned int tci_audio_get_frame (int receiver_id, TCI_STREAM *stream, size_t frame_size, size_t *frame_len,
-                                  int channels) {
+                                  int channels, int numsamples) {
   //
-  // Retrieve up to TCI_AUDIO_SAMPLES stereo samples from RX audio ring buffer, and form
+  // Retrieve up to numsamples stereo samples from RX audio ring buffer, and form
   // a valid TCI_STREAM data structure therefrom. If the client's audio format is MONO, copy only
   // left channel.
   //
   // Called from the LWS server, no mutex should be necessary
   // This is a consumer so outpt is updated only.
   //
-  // While we are handling stereo frames exclusively in the internal storage,
+  // While the ring buffer always holds stereo frames,
   // we will only send the left audio channel if a single channel has been
   // requested.
   //
   if (frame_len != NULL) { *frame_len = 0; }
   if (stream == NULL || frame_len == NULL || receiver_id >= TCI_RX_AUDIO_MAX_RECEIVERS) { return 0; }
-  //
-  // Retrieve up to TCI_AUDIO_SAMPLE from RX ring buffer and put into <out>
-  //
   TCI_RX_AUDIO_RING *ring = &tci_rx_audio_ring[receiver_id];
   //
-  // Since audio_samples is fixed at 1024, this locks every 21 ms
+  // This locks every 21 ms if numsamples is 1024, which we use unless another value is specified.
   //
   g_mutex_lock(&ring->mutex);
-  int frames = (ring->inpt - ring->outpt) & TCI_RX_AUDIO_RING_MASK;
-  if (frames > TCI_AUDIO_SAMPLES) {
-    frames = TCI_AUDIO_SAMPLES;
-  }
-  size_t len = sizeof(TCI_STREAM_HEADER) + channels * frames * sizeof(float);
+  int frames = (ring->inpt - ring->outpt) & TCI_RX_AUDIO_RING_MASK;           // number of frames available
+  if (frames > numsamples) { frames = numsamples; }                           // number of frames to be sent
+  size_t len = sizeof(TCI_STREAM_HEADER) + channels * frames * sizeof(float); // number of bytes to be sent
   if (len > frame_size || frames <= 0) {
     g_mutex_unlock(&ring->mutex);
     return 0;
@@ -140,8 +142,8 @@ unsigned int tci_audio_get_frame (int receiver_id, TCI_STREAM *stream, size_t fr
   *frame_len = len;
   memset (stream, 0, sizeof(TCI_STREAM_HEADER));
   stream->header.receiver = (uint32_t) receiver_id;
-  stream->header.sample_rate = TCI_AUDIO_SAMPLE_RATE;
-  stream->header.format = TCI_AUDIO_SAMPLE_TYPE;
+  stream->header.sample_rate = TCI_AUDIO_SAMPLE_RATE;           // This is fixed.
+  stream->header.format = TCI_AUDIO_SAMPLE_TYPE;                // This is fixed.
   stream->header.length = (uint32_t) (channels * frames);
   stream->header.type = TCI_STREAM_RX_AUDIO;
   stream->header.channels = channels;

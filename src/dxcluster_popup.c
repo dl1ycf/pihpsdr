@@ -53,7 +53,7 @@ static void tune_to_spot(const DX_SPOT *spot) {
   t_print("dxcluster: tuned to %s on %lld Hz\n", spot->dx_call, target);
 }
 
-/* ── Single-spot popup ──────────────────────────────────────────────── */
+/* Single-spot popup */
 
 typedef struct {
   GtkWidget *dialog;

@@ -16,12 +16,8 @@
 *
 */
 
-#include "dxcluster.h"
-#include "dxcluster_db.h"
-#include "property.h"
-#include "message.h"
-
 #include <arpa/inet.h>
+#include <cairo.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
@@ -36,7 +32,12 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-/* ── Module state ─────────────────────────────────────────────────────── */
+#include "dxcluster.h"
+#include "dxcluster_db.h"
+#include "property.h"
+#include "message.h"
+
+/* Module state */
 static pthread_mutex_t state_lock = PTHREAD_MUTEX_INITIALIZER;
 static DXC_SETTINGS    settings;
 static int             settings_initialised = 0;
@@ -54,7 +55,7 @@ static int             sock_fd        = -1;   /* protected by state_lock */
 static pthread_cond_t  wake_cv        = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t wake_lock      = PTHREAD_MUTEX_INITIALIZER;
 
-/* ── Helpers ──────────────────────────────────────────────────────────── */
+/* Helpers */
 
 static void set_state_locked(DXC_STATE s) {
   state = s;
@@ -81,7 +82,7 @@ static void ring_push_locked(const DX_SPOT *s) {
   if (ring_count < DXC_MAX_SPOTS) { ring_count++; }
 }
 
-/* ── Cluster spot line parser ─────────────────────────────────────────── */
+/* Cluster spot line parser */
 /*
  * Standard format we expect from VE7CC and most other clusters:
  *
@@ -102,7 +103,7 @@ static int parse_spot_line(const char *line, DX_SPOT *out) {
     return 0;
   }
   const char *p = line + 6;
-  /* Spotter callsign — up to ':' */
+  /* Spotter callsign - up to ':' */
   const char *colon = strchr(p, ':');
   if (!colon) { return 0; }
   size_t spotter_len = (size_t)(colon - p);
@@ -123,7 +124,7 @@ static int parse_spot_line(const char *line, DX_SPOT *out) {
   out->freq_hz = (long long)(freq_khz * 1000.0 + 0.5);
   p = endp;
   while (*p == ' ') { p++; }
-  /* DX callsign — up to next space */
+  /* DX callsign - up to next space */
   const char *call_start = p;
   while (*p && *p != ' ') { p++; }
   size_t call_len = (size_t)(p - call_start);
@@ -188,9 +189,9 @@ static int parse_spot_line(const char *line, DX_SPOT *out) {
   return 1;
 }
 
-/* ── Filtering ────────────────────────────────────────────────────────── */
+/* Filtering */
 /*
- * Region from callsign prefix. Coarse mapping — good enough for the filter.
+ * Region from callsign prefix. Coarse mapping - good enough for the filter.
  * Reference: ITU prefix list and amateur band conventions.
  */
 static int spotter_in_region(const char *call, const DXC_SETTINGS *s) {
@@ -276,7 +277,7 @@ static int spot_passes_filters(const DX_SPOT *spot, const DXC_SETTINGS *s,
   return 1;
 }
 
-/* ── Worker thread: TCP client + parser loop ──────────────────────────── */
+/* Worker thread: TCP client + parser loop */
 
 static int tcp_connect(const char *host, int port, char *err_buf, int err_buf_len) {
   if (err_buf) { err_buf[0] = '\0'; }
@@ -336,7 +337,7 @@ static int tcp_connect(const char *host, int port, char *err_buf, int err_buf_le
           break;
         }
         if (sr == 0) { continue; }   /* 1s tick, keep polling */
-        /* Socket woke — check actual status */
+        /* Socket woke - check actual status */
         int soerr = 0;
         socklen_t soerr_len = sizeof(soerr);
         if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &soerr, &soerr_len) < 0) {
@@ -350,7 +351,7 @@ static int tcp_connect(const char *host, int port, char *err_buf, int err_buf_le
           break;
         }
         if (soerr == EINPROGRESS || soerr == EALREADY) {
-          /* Kernel says still working — wait another tick */
+          /* Kernel says still working - wait another tick */
           continue;
         }
         /* Real failure on this candidate */
@@ -479,7 +480,7 @@ static void *worker_main(void *arg) {
       if (n <= 0) {
         /* Distinguish timeout (recv returns -1 with EAGAIN) from peer close */
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          /* No data within 60s — that's fine, keep waiting */
+          /* No data within 60s - that's fine, keep waiting */
           continue;
         }
         break;
@@ -513,7 +514,7 @@ static void *worker_main(void *arg) {
     set_state(DXC_DISCONNECTED);
     t_print("dxcluster: disconnected\n");
     if (worker_stop) { break; }
-    /* Reload settings — user may have disabled */
+    /* Reload settings - user may have disabled */
     pthread_mutex_lock(&state_lock);
     s = settings;
     pthread_mutex_unlock(&state_lock);
@@ -536,7 +537,7 @@ static void wake_worker(void) {
   pthread_mutex_unlock(&wake_lock);
 }
 
-/* ── Public API ───────────────────────────────────────────────────────── */
+/* Public API */
 
 static void set_default_settings(DXC_SETTINGS *s) {
   memset(s, 0, sizeof(*s));
@@ -591,7 +592,7 @@ void dxcluster_init(void) {
     }
     fclose(f);
   }
-  /* Always start the worker — it loops on state.enabled internally */
+  /* Always start the worker - it loops on state.enabled internally */
   worker_running = 1;
   worker_stop    = 0;
   pthread_create(&worker_tid, NULL, worker_main, NULL);
@@ -759,7 +760,7 @@ void dxcluster_restore_state(void) {
   GetPropS0("dxcluster.blacklist",          s.blacklist);
   /* Sanity: restore defaults if persisted values are obviously bogus.
    * GetPropS0 happily overwrites a default with "" if the props file has
-   * an empty entry — defend against that for fields where empty makes
+   * an empty entry - defend against that for fields where empty makes
    * no sense. */
   if (s.server[0] == '\0') {
     snprintf(s.server, sizeof(s.server), "%s", "ve7cc.net");
@@ -776,10 +777,9 @@ void dxcluster_restore_state(void) {
   pthread_mutex_unlock(&state_lock);
 }
 
-/* ── Panadapter draw + hit-test ───────────────────────────────────────── */
-#include <cairo.h>
+/* Panadapter draw + hit-test */
 
-/* Each rendered group on the current frame. Stored as flat list — at most
+/* Each rendered group on the current frame. Stored as flat list - at most
  * a few dozen entries per frame on a busy band. */
 #define DXC_DRAW_CACHE_MAX  128
 typedef struct {

@@ -36,7 +36,12 @@
 //
 // BigEndian NOTE: TCI has all binary data in little-endian,
 // so the piHPSDR TCI code will currently not work on BigEndian
-// CPUs where a big-to-little endian conversion is required
+// CPUs (x86, most ARM CPUs and many current microControllers are LittleEndian).
+//
+// But the same applies to CPUs which a different encoding for
+// floating point data, so the current "hope" is we have a
+// LittleEndian CPU with IEEE754 32-bit float format also
+// with LittleEndian-ness
 //
 //
 typedef struct _tci_stream_header {
@@ -62,11 +67,13 @@ typedef struct _tci_stream {
   float    audio[4096];
 } TCI_STREAM;
 
+extern int tci_rx_audio_samples[TCI_RX_AUDIO_MAX_RECEIVERS];
+
 extern double tci_get_next_mic_sample();
 extern void tci_audio_rx_sample (int id, double left, double right);
 extern unsigned int tci_audio_get_write_count (int receiver_id);
 extern unsigned int tci_audio_get_frame (int receiver_id, TCI_STREAM *stream, size_t frame_size, size_t *frame_len,
-    int channels);
+    int channels, int numsamples);
 extern void tci_audio_handle_tx_frame (const TCI_STREAM *stream, size_t len);
 extern void tci_audio_tx_reset (void);
 
