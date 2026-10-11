@@ -55,9 +55,9 @@ static void theme_combo_cb(GtkWidget *widget, gpointer data) {
   theme_set();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Entry point — called from new_menu.c (see INTEGRATION_GUIDE.md)
-// ─────────────────────────────────────────────────────────────────────────────
+//
+//  Entry point - called from new_menu.c (see INTEGRATION_GUIDE.md)
+//
 
 void theme_menu(GtkWidget *parent) {
   GtkWidget *w, *label;
@@ -77,13 +77,13 @@ void theme_menu(GtkWidget *parent) {
   gtk_grid_set_row_spacing(GTK_GRID(grid), 8);
   gtk_container_set_border_width(GTK_CONTAINER(grid), 10);
   int row = 0;
-  // ── Close button ──────────────────────────────────────────────────────────
+  // Close button
   w = gtk_button_new_with_label("Close");
   gtk_widget_set_name(w, "close_button");
   g_signal_connect(w, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), w, 0, row, 1, 1);
   row++;
-  // ── Separator ─────────────────────────────────────────────────────────────
+  // Separator
   gtk_grid_attach(GTK_GRID(grid),
                   gtk_separator_new(GTK_ORIENTATION_HORIZONTAL),
                   0, row, 3, 1);
@@ -113,9 +113,9 @@ void theme_menu(GtkWidget *parent) {
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (w), gtk_dark_theme);
   gtk_grid_attach(GTK_GRID(grid), w, 1, row, 1, 1);
   g_signal_connect(w, "toggled", G_CALLBACK(dark_cb), NULL);
-  // ── Theme selector row ────────────────────────────────────────────────────
+  // Theme selector row
   row++;
-  // ── Theme selector row ────────────────────────────────────────────────────
+  // Theme selector row
   label = gtk_label_new("piHPSDR Colour Theme");
   gtk_widget_set_name(label, "boldlabel");
   gtk_widget_set_halign(label, GTK_ALIGN_END);

@@ -24,7 +24,7 @@ int gtk_dark_theme = 0;
 
 const THEME themes[] = {
 
-  // ── piHPSDR ──
+  // -- piHPSDR --
   // This is the "legacy" color scheme
   {
     .name       = "piHPSDR",
@@ -59,7 +59,7 @@ const THEME themes[] = {
     .dxspot     = TC(1.00, 1.00, 0.15, 1.00),
   },
 
-  // ── Bright ──
+  // -- Bright --
   // This is the legacy color scheme but
   // without "weak" colours, meant for those
   // with impaired vision
@@ -96,8 +96,8 @@ const THEME themes[] = {
     .dxspot     = TC(1.00, 1.00, 0.15, 1.00),
   },
 
-  // ── Navy/Cyan ──
-  // Dark navy background, cyan signal, amber peaks — high contrast, easy on eyes
+  // -- Navy/Cyan --
+  // Dark navy background, cyan signal, amber peaks - high contrast, easy on eyes
   {
     .name       = "Navy/Cyan",
     .pan_backgnd = TC(0.102, 0.122, 0.149, 1.00),
@@ -131,8 +131,8 @@ const THEME themes[] = {
     .dxspot     = TC(0.950, 0.700, 0.150, 1.00),
   },
 
-  // ── Classic ──
-  // Pure black background, traditional green/amber/red — like an old oscilloscope
+  // -- Classic -- 
+  // Pure black background, traditional green/amber/red -- like an old oscilloscope
   {
     .name       = "Classic",
     .pan_backgnd = TC(0.00, 0.00, 0.00, 1.00),
@@ -166,7 +166,7 @@ const THEME themes[] = {
     .dxspot     = TC(1.000, 0.703, 0.150, 1.00),
   },
 
-  // ── Amber ──
+  // -- Amber --
   // Warm amber glow — inspired by vintage Heathkit displays
   {
     .name       = "Amber",
@@ -201,7 +201,7 @@ const THEME themes[] = {
     .dxspot     = TC(1.000, 0.703, 0.150, 1.00),
   },
 
-  // ── Phosphor ──
+  // -- Phosphor --
   // Old P31 CRT green phosphor — evocative of cold-war era spectrum analysers
   {
     .name       = "Phosphor",
@@ -236,8 +236,8 @@ const THEME themes[] = {
     .dxspot     = TC(0.830, 1.000, 0.787, 1.00),
   },
 
-  // ── Steel Blue ──
-  // Deep ocean blue — cool, professional, easy on the eyes for long sessions
+  // -- Steel Blue --
+  // Deep ocean blue -- cool, professional, easy on the eyes for long sessions
   {
     .name       = "Steel Blue",
     .pan_backgnd = TC(0.04, 0.06, 0.10, 1.00),
@@ -271,7 +271,7 @@ const THEME themes[] = {
     .dxspot     = TC(1.000, 0.830, 0.320, 1.00),
   },
 
-  // ── Sunrise ──
+  // -- Sunrise --
   // Purple-to-gold gradient — dramatic, inspired by atmospheric propagation
   {
     .name       = "Sunrise",
@@ -306,8 +306,8 @@ const THEME themes[] = {
     .dxspot     = TC(1.000, 0.703, 0.150, 1.00),
   },
 
-  // ── Midnight ──
-  // Very dark slate with electric violet accents — night session theme
+  // -- Midnight --
+  // Very dark slate with electric violet accents -- night session theme
   {
     .name       = "Midnight",
     .pan_backgnd = TC(0.04, 0.04, 0.08, 1.00),
@@ -341,7 +341,7 @@ const THEME themes[] = {
     .dxspot     = TC(1.000, 0.872, 0.320, 1.00),
   },
 
-  // ── Arctic ──
+  // -- Arctic --
   // Ice white/silver background, deep blue signal — like a frozen polar sky
   {
     .name       = "Arctic",
@@ -376,7 +376,7 @@ const THEME themes[] = {
     .dxspot     = TC(1.000, 0.915, 0.575, 1.00),
   },
 
-  // ── Desert ──
+  // -- Desert --
   // Warm terracotta and sand — earthy, easy on the eyes at sunset
   {
     .name       = "Desert",
@@ -410,7 +410,7 @@ const THEME themes[] = {
     .dxspot     = TC(1.000, 0.787, 0.320, 1.00),
   },
 
-  // ── Neon ──
+  // -- Neon --
   // Cyberpunk neon pink/green on near-black — high energy, high contrast
   {
     .name       = "Neon",
@@ -445,8 +445,8 @@ const THEME themes[] = {
     .dxspot     = TC(1.000, 0.915, 0.150, 1.00),
   },
 
-  // ── Military ──
-  // Dark olive/green tactical display — subdued, field-ready aesthetic
+  // -- Military --
+  // Dark olive/green tactical display - subdued, field-ready aesthetic
   {
     .name       = "Military",
     .pan_backgnd = TC(0.05, 0.07, 0.03, 1.00),
@@ -480,8 +480,8 @@ const THEME themes[] = {
     .dxspot     = TC(0.915, 0.847, 0.235, 1.00),
   },
 
-  // ── Solarized ──
-  // Ethan Schoonover Solarized palette — scientifically balanced, reduced eye fatigue
+  // -- Solarized --
+  // Ethan Schoonover Solarized palette - scientifically balanced, reduced eye fatigue
   {
     .name       = "Solarized",
     .pan_backgnd = TC(0.000, 0.169, 0.212, 1.00),  // base03 #002b36
@@ -515,8 +515,8 @@ const THEME themes[] = {
     .dxspot     = TC(0.753, 0.606, 0.150, 1.00),
   },
 
-  // ── Crimson ──
-  // Dark red/maroon tones — dramatic, good for darkroom operation
+  // -- Crimson --
+  // Dark red/maroon tones - dramatic, good for darkroom operation
   {
     .name       = "Crimson",
     .pan_backgnd = TC(0.08, 0.02, 0.02, 1.00),
@@ -550,8 +550,8 @@ const THEME themes[] = {
     .dxspot     = TC(1.000, 0.745, 0.320, 1.00),
   },
 
-  // ── Aurora ──
-  // Northern lights — shifting cyan-green-magenta gradient, deep black sky
+  // -- Aurora --
+  // Northern lights - shifting cyan-green-magenta gradient, deep black sky
   {
     .name       = "Aurora",
     .pan_backgnd = TC(0.01, 0.02, 0.05, 1.00),

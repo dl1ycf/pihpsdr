@@ -137,7 +137,7 @@ static int button_colour_timer(gpointer arg) {
   return G_SOURCE_CONTINUE;
 }
 
-/* ── Dialog construction ──────────────────────────────────────────────── */
+/* Dialog construction */
 
 void dxcluster_menu(GtkWidget *parent) {
   GtkWidget *lbl;

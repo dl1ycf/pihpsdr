@@ -33,6 +33,7 @@
 #ifndef _DXCLUSTER_H_
 #define _DXCLUSTER_H_
 
+#include <cairo.h>
 #include <gtk/gtk.h>
 #include <time.h>
 
@@ -117,12 +118,10 @@ int         dxcluster_spots_received_this_session(void);
  * (1 for a single spot, more for a stacked group). `out_spots` should
  * point to at least DXC_MAX_GROUP entries.
  *
- * `rx_id` lets us distinguish multi-receiver views — only the active
+ * `rx_id` lets us distinguish multi-receiver views -- only the active
  * RX's spots are click-targetable.
  */
 #define DXC_MAX_GROUP   16
-
-#include <cairo.h>
 
 void dxcluster_draw_spots(cairo_t *cr, int rx_id,
                           long long frequency,
