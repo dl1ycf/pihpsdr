@@ -32,11 +32,14 @@
 #include "vfo.h"
 #include "message.h"
 
-static GtkWidget   *dialog = NULL;
-static GtkListStore *store = NULL;
-static GtkTreeView *tree_view = NULL;
-static GtkWidget   *search_entry, *date_combo, *band_combo, *mode_combo;
-static GtkWidget   *summary_lbl;
+static GtkWidget    *dialog = NULL;
+static GtkListStore *spot_store = NULL;
+static GtkTreeView  *spot_view = NULL;
+static GtkWidget    *search_entry = NULL;
+static GtkWidget    *date_combo = NULL;
+static GtkWidget    *band_combo = NULL;
+static GtkWidget    *mode_combo = NULL;
+static GtkWidget    *summary_lbl = NULL;
 
 #define MAX_RESULTS 2000
 
@@ -53,6 +56,14 @@ enum {
 };
 
 static void cleanup(void) {
+  spot_store = NULL;
+  spot_view = NULL;
+  search_entry = NULL;
+  date_combo = NULL;
+  band_combo = NULL;
+  mode_combo = NULL;
+  summary_lbl = NULL;
+
   if (dialog) {
     GtkWidget *d = dialog;
     dialog = NULL;
@@ -78,11 +89,17 @@ static gboolean on_delete_event(GtkWidget *w, GdkEvent *e, gpointer d) {
 static void build_query(DXC_DB_QUERY *q, char *mode_buf, int mode_buf_len) {
   memset(q, 0, sizeof(*q));
   q->max_results = MAX_RESULTS;
-  const char *search = gtk_entry_get_text(GTK_ENTRY(search_entry));
+  const char *search = "";
+  if (search_entry) {
+    search = gtk_entry_get_text(GTK_ENTRY(search_entry));
+  }
   q->callsign_substring = (search && search[0]) ? search : NULL;
   /* Date range */
   time_t now = time(NULL);
-  int date_choice = gtk_combo_box_get_active(GTK_COMBO_BOX(date_combo));
+  int date_choice = 0;
+  if (date_combo) {
+    date_choice = gtk_combo_box_get_active(GTK_COMBO_BOX(date_combo));
+  }
   switch (date_choice) {
   case 0:
     q->since = now - 86400;
@@ -98,7 +115,11 @@ static void build_query(DXC_DB_QUERY *q, char *mode_buf, int mode_buf_len) {
     break;
   }
   /* Mode */
-  int mode_choice = gtk_combo_box_get_active(GTK_COMBO_BOX(mode_combo));
+
+  int mode_choice = 0;
+  if (mode_combo) {
+    mode_choice = gtk_combo_box_get_active(GTK_COMBO_BOX(mode_combo));
+  }
   mode_buf[0] = '\0';
   switch (mode_choice) {
   case 1:
@@ -121,7 +142,10 @@ static void build_query(DXC_DB_QUERY *q, char *mode_buf, int mode_buf_len) {
   }
   q->mode = mode_buf[0] ? mode_buf : NULL;
   /* Band */
-  int band_choice = gtk_combo_box_get_active(GTK_COMBO_BOX(band_combo));
+  int band_choice = 0;
+  if (band_combo) {
+    band_choice = gtk_combo_box_get_active(GTK_COMBO_BOX(band_combo));
+  }
   if (band_choice == 1 && active_receiver) {
     /* current band */
     int b = get_band_from_frequency(vfo[active_receiver->id].frequency);
@@ -134,8 +158,8 @@ static void build_query(DXC_DB_QUERY *q, char *mode_buf, int mode_buf_len) {
 }
 
 static void refresh_list(void) {
-  if (!store) { return; }
-  gtk_list_store_clear(store);
+  if (!spot_store) { return; }
+  gtk_list_store_clear(spot_store);
   char mode_buf[16];
   DXC_DB_QUERY q;
   build_query(&q, mode_buf, sizeof(mode_buf));
@@ -148,8 +172,8 @@ static void refresh_list(void) {
     strftime(tbuf, sizeof(tbuf), "%H:%M  %d/%m", &tm_utc);
     snprintf(fbuf, sizeof(fbuf), "%.1f", rows[i].freq_hz / 1000.0);
     GtkTreeIter it;
-    gtk_list_store_append(store, &it);
-    gtk_list_store_set(store, &it,
+    gtk_list_store_append(spot_store, &it);
+    gtk_list_store_set(spot_store, &it,
                        COL_TIME,    tbuf,
                        COL_FREQ,    fbuf,
                        COL_MODE,    rows[i].mode,
@@ -165,7 +189,9 @@ static void refresh_list(void) {
   int matching = dxcluster_db_count_matching(&q);
   char sbuf[64];
   snprintf(sbuf, sizeof(sbuf), "%d match · %d total", matching, total);
-  gtk_label_set_text(GTK_LABEL(summary_lbl), sbuf);
+  if (summary_lbl) {
+    gtk_label_set_text(GTK_LABEL(summary_lbl), sbuf);
+  }
 }
 
 //cppcheck-suppress constParameterCallback
@@ -210,8 +236,8 @@ static void on_export_clicked(GtkButton *btn, gpointer data) {
 }
 
 static void on_tune_clicked(GtkButton *btn, gpointer data) {
-  if (!active_receiver) { return; }
-  GtkTreeSelection *sel = gtk_tree_view_get_selection(tree_view);
+  if (!active_receiver || !spot_view) { return; }
+  GtkTreeSelection *sel = gtk_tree_view_get_selection(spot_view);
   GtkTreeIter it;
   GtkTreeModel *mod = NULL;
   if (!gtk_tree_selection_get_selected(sel, &mod, &it)) { return; }
@@ -305,18 +331,18 @@ void dxcluster_history_menu(GtkWidget *parent) {
   gtk_box_pack_start(GTK_BOX(toolbar), summary_lbl, TRUE, TRUE, 0);
   gtk_box_pack_start(GTK_BOX(vbox), toolbar, FALSE, FALSE, 0);
   /* The list view */
-  store = gtk_list_store_new(COL_COUNT,
-                             G_TYPE_STRING,  /* time   */
-                             G_TYPE_STRING,  /* freq   */
-                             G_TYPE_STRING,  /* mode   */
-                             G_TYPE_STRING,  /* call   */
-                             G_TYPE_STRING,  /* spotter*/
-                             G_TYPE_STRING,  /* comment*/
-                             G_TYPE_INT64,   /* time_ts*/
-                             G_TYPE_INT64);  /* freq_hz*/
-  GtkWidget *tv = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
-  tree_view = GTK_TREE_VIEW(tv);
-  gtk_tree_view_set_grid_lines(tree_view, GTK_TREE_VIEW_GRID_LINES_HORIZONTAL);
+  spot_store = gtk_list_store_new(COL_COUNT,
+                                  G_TYPE_STRING,  /* time   */
+                                  G_TYPE_STRING,  /* freq   */
+                                  G_TYPE_STRING,  /* mode   */
+                                  G_TYPE_STRING,  /* call   */
+                                  G_TYPE_STRING,  /* spotter*/
+                                  G_TYPE_STRING,  /* comment*/
+                                  G_TYPE_INT64,   /* time_ts*/
+                                  G_TYPE_INT64);  /* freq_hz*/
+  GtkWidget *tv = gtk_tree_view_new_with_model(GTK_TREE_MODEL(spot_store));
+  spot_view = GTK_TREE_VIEW(tv);
+  gtk_tree_view_set_grid_lines(spot_view, GTK_TREE_VIEW_GRID_LINES_HORIZONTAL);
   g_signal_connect(tv, "row-activated", G_CALLBACK(on_row_activated), NULL);
   struct { const char *title; int col; int width; } cols[] = {
     { "Time (UTC)", COL_TIME,    110 },
@@ -333,7 +359,7 @@ void dxcluster_history_menu(GtkWidget *parent) {
                              cols[i].title, r, "text", cols[i].col, NULL);
     gtk_tree_view_column_set_fixed_width(c, cols[i].width);
     gtk_tree_view_column_set_resizable(c, TRUE);
-    gtk_tree_view_append_column(tree_view, c);
+    gtk_tree_view_append_column(spot_view, c);
   }
   GtkWidget *scroll = gtk_scrolled_window_new(NULL, NULL);
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
