@@ -2,18 +2,28 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleIdentifier</key>
+	<string>org.dl1ycf.piHPSDR</string>
 	<key>CFBundleName</key>
 	<string>piHPSDR</string>
-	<key>CFBundleIdentifier</key>
-	<string>com.dl1ycf.piHPSDR</string>
+        <key>CFBundleDisplayName</key>
+        <string>piHPSDR</string>
 	<key>CFBundleExecutable</key>
 	<string>pihpsdr</string>
 	<key>CFBundleIconFile</key>
 	<string>piHPSDR_logo.icns</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
-	<key>CFBundleSignature</key>
-	<string>BNDL</string>
+        <key>CFBundleShortVersionString</key>
+        <string>3.x</string>
+        <key>CFBundleDevelopmentRegion</key>
+        <string>en</string>
+        <key>CFBundleGetInfoString</key>
+        <string>en</string>
+        <key>CFBundleGetInfoString</key>
+        <string>piHPSDR: OpenHPSDR/SoapySDR Host App</string>
+        <key>NSHumanReadableCopyright</key>
+        <string>Copyright (C) 2013-2099 by JM, CvW and others</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Allow for using Sound input devices</string>
 	<key>NSLocalNetworkUsageDescription</key>
@@ -22,5 +32,7 @@
 	<true/>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+        <key>LSMinimumSystemVersion</key>
+        <string>15.0</string>
 </dict>
 </plist>
