@@ -676,7 +676,7 @@ void rx_panadapter_update(RECEIVER *rx) {
       // oscillating between -116 and -118 will either have a constant
       // (non-oscillating) pan_low of -115 or -120.
       //
-      int target = rx->noise_floor - 20;
+      int target = rx->noise_floor - 25;
       target = 5 * (target / 5);
       if (rx->panadapter_low > target + 5 || rx->panadapter_low < target - 5) {
         rx->panadapter_low = target;

@@ -26,6 +26,9 @@
 #include <sys/utsname.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <net/if.h>
+#include <net/if_arp.h>
+#include <ifaddrs.h>
 
 #include <wdsp.h>    // only needed for WDSPwisdom() and wisdom_get_status()
 
@@ -292,6 +295,95 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   g_idle_add(init, NULL);
 }
 
+#ifdef __APPLE__
+void check_ethernet_interfaces() {
+  //
+  // The sole purpose of this is to test MacOS TCC allowance
+  // for "local network access" early on startup. So this is
+  // only called on MacOS, and only interfaces that  are up
+  // and running are tested, and loopback interfaces are skipped
+  // (since they do not require "local network access" allowance).
+  //
+  // Upon failure, a diagnostic message is printed.
+  //
+  static struct sockaddr_in if_addr = {0};
+  struct ifaddrs *addrs, *ifa;
+  struct sockaddr_in to_addr = {0};
+  unsigned char buffer[63];
+  int sock, rc;
+  if (getifaddrs(&addrs) != 0) {
+    t_print("%s: getifaddr failed\n", __func__);
+    return;
+  }
+  ifa = addrs;
+  while (ifa && ifa->ifa_addr) {
+    if (ifa->ifa_addr->sa_family != AF_INET || (ifa->ifa_flags & IFF_LOOPBACK) == IFF_LOOPBACK
+          || (ifa->ifa_flags & IFF_UP) != IFF_UP || (ifa->ifa_flags & IFF_RUNNING) != IFF_RUNNING) {
+       ifa = ifa->ifa_next;
+       continue;
+    }
+    // try this interface
+    t_print("%s: Testing %s\n", __func__, ifa->ifa_name);
+    sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (sock < 0) {
+      t_perror("Cannot create socket for checking:");
+      ifa = ifa->ifa_next;
+      continue;
+    }
+    if (ifa->ifa_addr->sa_family == AF_INET) {
+      memcpy(&if_addr, ifa->ifa_addr, sizeof(if_addr));
+    }
+    // bind to this interface and the discovery port
+    if_addr.sin_family = AF_INET;
+    if_addr.sin_port = htons(0);  // system assigned port
+    if (bind(sock, (struct sockaddr *) &if_addr, sizeof(if_addr)) < 0) {
+      t_perror("Bind socket failed for checking:");
+      close(sock);
+      ifa = ifa->ifa_next;
+      continue;
+    }
+    int on = 1;
+    rc = setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on));
+    if (rc != 0) {
+      t_perror("Cannot set SO_BROADCAST:");
+      close(sock);
+      ifa = ifa->ifa_next;
+      continue;
+    }
+    to_addr.sin_family = AF_INET;
+    to_addr.sin_port = htons(1024);
+    to_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+    int optval = 1;
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+    setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+    memset(buffer, 0, 63);
+    //
+    // This is not a legal HPSDR packet, so piHPSDR will not get a response
+    //
+    buffer[0] = 0xAA;
+    buffer[1] = 0xBB;
+    buffer[2] = 0xCC;
+    t_print("%s: Sending dummy packet\n", __func__);
+    if (sendto(sock, buffer, 63, 0, (struct sockaddr *) &to_addr, sizeof(to_addr)) < 0) {
+      //
+      // On MacOS with "LocalNetworkAccess" not allowed, this results in a
+      // "no route to host" error.
+      //
+      t_perror("CheckInterface: sendto socket failed for discovery_socket:");
+      t_print("%s: Error sending test packet to Interface %s\n", __func__, ifa->ifa_name);
+      t_print("%s: --> On MacOS, the reason for this could be that piHPSDR\n", __func__);
+      t_print("%s: --> does not have 'Local Network' allowance.\n", __func__);
+      t_print("%s: --> This can be changed in SystemSettings->Security\n", __func__);
+    } else {
+      t_print("%s: Dummy packet successfully sent to Interface %s\n", __func__, ifa->ifa_name);
+    }
+    usleep(100000);
+    close(sock);
+    ifa = ifa->ifa_next;
+  }
+}
+#endif
+
 int main(int argc, char **argv) {
   GtkApplication *pihpsdr;
   int rc;
@@ -330,14 +422,22 @@ int main(int argc, char **argv) {
       close(i);
     }
   }
+  startup(argv[0]);
+#ifdef __APPLE__
+  //
+  // This tries all interfaces and does no real work. However,
+  // it might be useful to get TCC allowance for local network
+  // access on Apple Macintosh
+  //
+  check_ethernet_interfaces();
+#endif
+  setlocale(LC_ALL, "C");  // make a decimal point a decimal point
   //
   // The following call will most likely fail (until this program
   // has the privileges to reduce the nice value). But if the
   // privilege is there, it may help to run piHPSDR at a lower nice
   // value.
   //
-  startup(argv[0]);
-  setlocale(LC_ALL, "C");  // make a decimal point a decimal point
   rc = getpriority(PRIO_PROCESS, 0);
   t_print("%s: Base priority on startup: %d\n", __func__, rc);
   setpriority(PRIO_PROCESS, 0, -10);

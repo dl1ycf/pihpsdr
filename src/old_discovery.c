@@ -78,8 +78,10 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
       t_perror("socket() failed for p1 discovery broadcast socket");
       return;
     }
-    memcpy(&interface_addr, iface->ifa_addr, sizeof(interface_addr));
-    memcpy(&interface_netmask, iface->ifa_netmask, sizeof(interface_netmask));
+    if (iface->ifa_addr->sa_family == AF_INET) {
+      memcpy(&interface_addr, iface->ifa_addr, sizeof(interface_addr));
+      memcpy(&interface_netmask, iface->ifa_netmask, sizeof(interface_netmask));
+    }
     // bind to this interface and the discovery port
     interface_addr.sin_family = AF_INET;
     interface_addr.sin_port = htons(0); // system assigned port
@@ -543,7 +545,6 @@ void p1_discovery(void) {
           ifa->ifa_addr->sa_family == AF_INET
           && (ifa->ifa_flags & IFF_UP) == IFF_UP
           && (ifa->ifa_flags & IFF_RUNNING) == IFF_RUNNING
-          //&& (ifa->ifa_flags & IFF_LOOPBACK) != IFF_LOOPBACK
           && strncmp("veth", ifa->ifa_name, 4)
           && strncmp("dock", ifa->ifa_name, 4)
           && strncmp("hass", ifa->ifa_name, 4)
