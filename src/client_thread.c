@@ -1534,9 +1534,7 @@ static gpointer client_tcp_thread(gpointer arg) {
     break;
     case CMD_DIV_SETTINGS: {
       //
-      // The radio owns the diversity settings. This arrives on connect,
-      // and again whenever the radio's own panel changes one, so the menu
-      // here shows what the radio is really set to.
+      // The radio owns the diversity settings. This arrives on connect *only*.
       //
       DIV_SETTINGS_COMMAND *command = g_new(DIV_SETTINGS_COMMAND, 1);
       command->header = header;

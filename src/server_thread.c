@@ -649,14 +649,6 @@ static void server_loop(void) {
       }
     }
     break;
-    case CMD_DIV_SETTINGS: {
-      DIV_SETTINGS_COMMAND *command = g_new(DIV_SETTINGS_COMMAND, 1);
-      command->header = header;
-      if (recv_tcp(remoteclient.sock_tcp, (char *)command + sizeof(HEADER), sizeof(DIV_SETTINGS_COMMAND) - sizeof(HEADER)) > 0) {
-        g_idle_add(server_command, command);
-      }
-    }
-    break;
     case CMD_DEXP: {
       DEXP_DATA *command = g_new(DEXP_DATA, 1);
       command->header = header;
