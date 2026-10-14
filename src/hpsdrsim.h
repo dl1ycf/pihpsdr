@@ -64,6 +64,7 @@ EXTERN int NDEVICE;
 
 EXTERN double noiseItab[LENNOISE];
 EXTERN double noiseQtab[LENNOISE];
+EXTERN double sine_generator(int *p1, int *p2, int freq);
 
 //
 // A table of (man made) noise fed to the I samples of ADC0

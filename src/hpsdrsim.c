@@ -84,6 +84,7 @@
 
 #define EXTERN
 #include "hpsdrsim.h"
+#include "sintab.h"
 
 /*
  * These variables store the state of the "old protocol" SDR.
@@ -215,6 +216,34 @@ static  struct termios tios_old;
 
 static struct sigaction sigint_action;
 static struct sigaction sigterm_action;
+
+//
+// Sine generator. Many can run in parallel and need their
+// "own" phase-words
+//
+double sine_generator(int *phase1, int *phase2, int freq) {
+  register double val, s, d;
+  register int p1 = *phase1;
+  register int p2 = *phase2;
+  register int32_t f256 = freq * 256; // so we know 256*freq won't overflow
+  s = sintab[p1];
+  d = sintab[p1 + 1] - s;
+  val = s + p2 * d * 0.00390625; // 1/256
+  p1 += f256 / 48000;
+  p2 += ((f256 % 48000) * 256) / 48000;
+  // correct overflows in fractional and integer phase to keep
+  // p1,p2 within bounds
+  if (p2 > 255) {
+    p2 -= 256;
+    p1++;
+  }
+  if (p1 > 255) {
+    p1 -= 256;
+  }
+  *phase1 = p1;
+  *phase2 = p2;
+  return val;
+}
 
 //
 // Call this when the program terminates, or when
@@ -1447,6 +1476,12 @@ void *handler_ep6(void *arg) {
     127, 127, 127, 24,  0,  0,  0,  0,
     127, 127, 127, 32, 66, 66, 66, 66
   };
+  double micdouble;
+  int micint = 0;
+  int mic_count = 1;
+  int mic_divisor = 1;
+  int sin700p1=0, sin700p2=0;
+  int sin1900p1=0, sin1900p2=0;
   int32_t adc1isample, adc1qsample;
   int32_t adc2isample, adc2qsample;
   int32_t dacisample, dacqsample;
@@ -1483,6 +1518,7 @@ void *handler_ep6(void *arg) {
       n = 0;
       wait = 1000000L;
     }
+    mic_divisor = 1 << rate;
     // plug in sequence numbers
     buffer[4] = (counter >> 24) & 0xFF;
     buffer[5] = (counter >> 16) & 0xFF;
@@ -1694,8 +1730,22 @@ void *handler_ep6(void *arg) {
           *pointer++ = (myqsample >>  8) & 0xFF;
           *pointer++ = (myqsample >>  0) & 0xFF;
         }
-        // Microphone samples: silence
-        pointer += 2;
+        //
+        // Microphone samples
+        //
+        // At 48k sample rate, there is one microphone sample (16-bit mono)
+        // per RX IQ sample. At higher sample rates (96k, 192k, 384k) the
+        // microphone sample is simply repeated 2/4/8 times
+        //
+        if (mic_count >= mic_divisor) {
+          micdouble = 0.4999 * (sine_generator(&sin700p1, &sin700p2, 700) + sine_generator(&sin1900p1, &sin1900p2, 1900));
+          micint = micdouble * 32767.0;
+          mic_count = 1;
+        } else {
+          mic_count++;
+        }
+        *pointer++ = (micint >> 8) & 0xFF;
+        *pointer++ = (micint     ) & 0xFF;
         rxptr++;
         if (rxptr >= OLDRTXLEN) { rxptr = 0; }
         noiseIQpt++;

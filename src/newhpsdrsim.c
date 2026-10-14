@@ -1552,6 +1552,8 @@ void *mic_thread(void *data) {
   unsigned char buffer[132];
   unsigned char *p;
   int yes = 1;
+  int sin700p1 = 0, sin700p2 = 0;
+  int sin1900p1 = 0, sin1900p2 = 0;
   struct timespec delay;
   sock = socket(AF_INET, SOCK_DGRAM, 0);
   if (sock < 0) {
@@ -1580,6 +1582,12 @@ void *mic_thread(void *data) {
     *p++ = (seqnum >>  0) & 0xFF;
     seqnum++;
     // 64 samples with 48000 kHz, makes 1333333 nsec
+    for (int i=0; i < 64; i++) {
+      double val = 0.4999 * (sine_generator(&sin700p1, &sin700p2, 700) + sine_generator(&sin1900p1, &sin1900p2, 1900));
+      int ival = val * 32767.0;
+      *p++ = (ival >> 8) & 0xFF;
+      *p++ = (ival & 0xFF);
+    }
     if (speed == 0) {
       delay.tv_nsec += 1333333;
     } else if (speed == 1) {

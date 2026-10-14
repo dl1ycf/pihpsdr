@@ -830,7 +830,6 @@ gboolean diversity_client_set_settings(gpointer data) {
   set.digital_centre = from_double(c->digital_centre);
   set.digital_width  = from_double(c->digital_width);
   diversity_auto_apply_settings(&set, DIV_ACTION_NONE);
-  //div_populate_from_settings();
   g_free(data);
   return G_SOURCE_REMOVE;
 }

@@ -726,14 +726,14 @@ clean:
 #
 #############################################################################
 
-src/hpsdrsim.o:     src/hpsdrsim.c  src/hpsdrsim.h
+src/hpsdrsim.o:     src/hpsdrsim.c  src/hpsdrsim.h src/sintab.h
 	$(CC) -c $(CFLAGS) -o src/hpsdrsim.o src/hpsdrsim.c
 	
 src/newhpsdrsim.o:	src/newhpsdrsim.c src/hpsdrsim.h
 	$(CC) -c $(CFLAGS) -o src/newhpsdrsim.o src/newhpsdrsim.c
 
-hpsdrsim:       src/hpsdrsim.o src/newhpsdrsim.o
-	$(LINK) -o hpsdrsim src/hpsdrsim.o src/newhpsdrsim.o -lm
+hpsdrsim:       src/hpsdrsim.o src/newhpsdrsim.o src/sintab.o
+	$(LINK) -o hpsdrsim src/hpsdrsim.o src/newhpsdrsim.o src/sintab.o -lm
 
 
 #############################################################################
