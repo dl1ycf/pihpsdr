@@ -108,8 +108,8 @@ static double *mic_ring_buffer;
 static volatile atomic_int mic_ring_outpt = 0;
 static volatile atomic_int mic_ring_inpt = 0;
 
-static GThread *listen_thread_id;
-static GThread *udp_thread_id;
+static GThread *listen_thread_id = NULL;
+static GThread *udp_thread_id = NULL;
 
 static int server_running = 0;
 static int listen_socket = -1;
@@ -2135,40 +2135,6 @@ static int server_command(gpointer data) {
     suppress_popup_sliders--;
   }
   break;
-#if 0
-  case CMD_DIV_SETTINGS: {
-    //
-    // Everthing is controlled from the menu, so the server never sends
-    // such data except upon initial connect
-    //
-    const DIV_SETTINGS_COMMAND *command = (DIV_SETTINGS_COMMAND *)data;
-    DIV_SETTINGS set;
-    set.mode           = command->mode;
-    set.ref            = command->ref;
-    set.follow_filter  = command->follow_filter;
-    set.weighting      = command->weighting;
-    set.hold           = command->hold;
-    set.centre         = from_double(command->centre);
-    set.width          = from_double(command->width);
-    set.tau            = from_double(command->tau);
-    set.hang           = from_double(command->hang);
-    set.coherence_min  = from_double(command->coherence_min);
-    set.resolution     = from_double(command->resolution);
-    set.band_centre    = from_double(command->band_centre);
-    set.band_width     = from_double(command->band_width);
-    set.carrier_centre = from_double(command->carrier_centre);
-    set.carrier_width  = from_double(command->carrier_width);
-    set.digital_centre = from_double(command->digital_centre);
-    set.digital_width  = from_double(command->digital_width);
-    diversity_auto_apply_settings(&set, command->header.b1);
-    //
-    // If the radio's own Diversity menu is open, it is now showing the
-    // state before the client's change.
-    //
-    diversity_menu_refresh();
-  }
-  break;
-#endif
   case CMD_TXFILTER:
     if (transmitter != NULL) {
       transmitter->use_rx_filter = header->b1;
