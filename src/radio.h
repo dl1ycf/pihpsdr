@@ -253,6 +253,7 @@ enum {
 extern int diversity_enabled;
 extern int div_auto_mode;
 extern double auto_div_cos, auto_div_sin;
+extern double div_norm;         // output-level normaliser, 1.0 when off
 extern double man_div_cos, man_div_sin;
 extern double man_div_gain, man_div_phase;
 extern double auto_div_gain, auto_div_phase;

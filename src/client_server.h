@@ -25,6 +25,7 @@
 #include <netinet/in.h>
 #include <opus/opus.h>
 
+#include "diversity_auto.h"
 #include "mode.h"
 #include "receiver.h"
 #include "transmitter.h"
@@ -1048,6 +1049,8 @@ extern void send_dexp(int s);
 extern void send_digidrivemax(int s);
 extern void send_display(int s, int id);
 extern void send_diversity(int s, int enabled, double gain, double phase);
+extern void send_div_settings(int s, const DIV_SETTINGS *set, int action);
+extern void send_div_status(int s, const DIV_STATUS *st);
 extern void send_drive(int s, double value);
 extern void send_duplex(int s, int state);
 extern void send_eq(int s, int id);

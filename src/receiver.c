@@ -28,6 +28,7 @@
 #include "bandstack.h"
 #include "channel.h"
 #include "client_server.h"
+#include "diversity_auto.h"
 #include "discovered.h"
 #include "ext.h"
 #include "filter.h"
@@ -1087,6 +1088,14 @@ void rx_mode_changed(RECEIVER *rx) {
   rx_set_mode(rx);
   rx_filter_changed(rx);
   rx_set_offset(rx);         // CW BFO offset
+  //
+  // The auto-phasing loop keeps its settings per group of modes, and this
+  // is every route a mode can change by. RX0 only: that is the receiver
+  // diversity combines into.
+  //
+  if (rx->id == 0) {
+    diversity_auto_mode_changed(vfo[rx->id].mode);
+  }
 }
 
 void rx_vfo_changed(RECEIVER *rx) {
@@ -1300,8 +1309,27 @@ void rx_add_div_iq_samples(RECEIVER *rx, double i0, double q0, double i1, double
   ASSERT_SERVER();
   double i_sample, q_sample;
 
-  i_sample = i0 + (man_div_cos * i1 - man_div_sin * q1);
-  q_sample = q0 + (man_div_sin * i1 + man_div_cos * q1);
+  if (div_auto_mode == DIV_MANUAL) {
+    //
+    // Take the "manual" values derived from the "manual" gain and phase
+    i_sample = i0 + (man_div_cos * i1 - man_div_sin * q1);
+    q_sample = q0 + (man_div_sin * i1 + man_div_cos * q1);
+  } else  {
+    //
+    // Feed the raw, uncombined pair to the auto-phasing analysis. This
+    // happens before the summation below and before the noise blanker, so
+    // both antennas are seen with identical (that is, no) processing.
+    //
+    if (div_auto_running) { diversity_auto_sample(i0, q0, i1, q1); }
+    i_sample = i0 + (auto_div_cos * i1 - auto_div_sin * q1);
+    q_sample = q0 + (auto_div_sin * i1 + auto_div_cos * q1);
+    //
+    // Held at the level of arm 0 alone when the normaliser is on; 1.0
+    // otherwise. See div_norm_refresh() in diversity_auto.c.
+    //
+    i_sample *= div_norm;
+    q_sample *= div_norm;
+  }
 
   //
   // Note that we sum the second channel onto the first one
@@ -1451,7 +1479,7 @@ void rx_change_sample_rate(RECEIVER *rx, int sample_rate) {
   // to be rebuilt. Stop it before the rate changes under it.
   //
   if (rx->id == 0) {
-    //diversity_auto_stop();
+    diversity_auto_stop();
   }
 
   //
@@ -1514,7 +1542,7 @@ void rx_change_sample_rate(RECEIVER *rx, int sample_rate) {
           rx->buffer_size, rx->output_samples);
 
   if (rx->id == 0) {
-    //diversity_auto_restart();
+    diversity_auto_restart();
   }
 }
 

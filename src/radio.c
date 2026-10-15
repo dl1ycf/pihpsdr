@@ -37,6 +37,7 @@
 #include "client_server.h"
 #include "css.h"
 #include "discovered.h"
+#include "diversity_auto.h"
 #include "dxcluster.h"
 #include "ext.h"
 #include "filter.h"
@@ -276,7 +277,7 @@ int cw_key_hit = 0;
 int n_adc = 1;
 
 int diversity_enabled = 0;
-int div_auto_mode = 0;
+int div_auto_mode = DIV_MANUAL;
 
 // Parameters for "manual" diversity
 double man_div_cos = 1.0;       // I factor for diversity
@@ -290,6 +291,13 @@ double auto_div_phase = 0.0;
 double auto_div_cos = 1.0;
 double auto_div_sin = 0.0;
 //
+// Scales the combined output so it stays at the level of arm 0 alone. 1.0
+// unless the auto-diversity engine sets it - see div_norm_refresh() in
+// diversity_auto.c.
+//
+double div_norm = 1.0;
+//
+
 // Audio capture and replay
 // (Equalisers are switched off during capture and replay)
 //
@@ -993,6 +1001,14 @@ void radio_stop_program(void) {
   dxcluster_shutdown(); // save spots, close sqLITE
   t_print("%s: DX Cluster closed\n", __func__);
   if (!radio_is_remote) {
+    //
+    // Before the protocol goes away: the analysis thread is still writing
+    // auto_div_cos/auto_div_sin, and radio_save_state() below reads them. Stopping
+    // it here keeps the saved pair consistent rather than a cos from one
+    // update and a sin from the next.
+    //
+    diversity_auto_stop();
+    t_print("%s: diversity analysis stopped\n", __func__);
     radio_protocol_stop();
     t_print("%s: protocol stopped\n", __func__);
     radio_stop_radio();
@@ -1670,6 +1686,12 @@ void radio_start_radio(void) {
   g_idle_add(ext_vfo_update, NULL);
   schedule_high_priority();
   //
+  // DIVERSITY is restored from the props file without going through
+  // radio_set_diversity(), so the auto-phasing analysis has to be kicked
+  // off here for the case where both it and diversity were left enabled.
+  //
+  diversity_auto_restart();
+  //
   // Now the radio is up and running. Connect "Radio" keyboard interceptor
   //
   g_signal_handler_disconnect(top_window, keypress_signal_id);
@@ -1818,6 +1840,14 @@ static void rxtx(int state) {
     t_print("%s: WARNING: rxtx called but no transmitter!", __func__);
     return;
   }
+  //
+  // The diversity sample stream stops for the whole over, in duplex as
+  // well, so tell the auto-phasing analysis - on both edges - that its
+  // input has a hole in it. The weight in force is kept. See
+  // diversity_auto_gap().
+  //
+  diversity_auto_gap();
+
   if (!radio_is_remote) {
     //
     // Abort any running Capture, Transmit, Replay
@@ -2286,9 +2316,23 @@ void radio_set_diversity_phase(double value) {
 }
 
 void radio_set_diversity(int state) {
+  //
+  // Switching diversity off or on is one of the two things that release
+  // Hold; the other is the operator's own Hold button. Only on a real
+  // change of state: a client's manual gain and phase arrive by this same
+  // path with the state unchanged. On a client this only clears the local
+  // copy so the button follows at once - the radio does the real release
+  // when the command arrives.
+  //
+  const int toggled = (state != diversity_enabled);
+
   if (radio_is_remote) {
+    if (toggled) { div_auto_hold = 0; }
+
     send_diversity(cl_sock_tcp, state, man_div_gain, man_div_phase);
   } else {
+    if (toggled) { diversity_auto_set_hold(0); }
+
     //
     // If we have only one receiver, then changing diversity
     // changes the number of HPSR receivers so we restart the
@@ -2323,6 +2367,16 @@ void radio_set_diversity(int state) {
     schedule_high_priority();
     schedule_receive_specific();
     radio_calc_div_params();
+
+    //
+    // diversity_enabled was already set to state at the top of this block,
+    // which is what diversity_auto_start() keys off.
+    //
+    if (state) {
+      diversity_auto_start();
+    } else {
+      diversity_auto_stop();
+    }
 
   }
   diversity_enabled = state;
@@ -2803,7 +2857,7 @@ void radio_set_panstep(int id, int value) {
 
 //
 // The step attenuator of one ADC, addressed by ADC rather than by
-// receiver. This is the only way to reach the "other" ADC while DIVERSITY is
+// receiver. This is the only way to reach ADC2 while DIVERSITY is
 // running, since the loop makes RX1 the active receiver and every other
 // path resolves the ADC through it.
 //
@@ -2817,9 +2871,18 @@ void radio_set_adc_attenuation(int rxadc, int value) {
   if (value <  0) { value =  0; }
   if (value > 31) { value = 31; }
 
+  const int delta = value - adc[rxadc].attenuation;
+
+  if (delta != 0 && diversity_enabled) {
+    //
+    // Called before the new value is in place: the loop is told by how
+    // much the arm moved, not where it ended up.
+    //
+    diversity_auto_att_changed(rxadc, delta);
+  }
+
   adc[rxadc].attenuation = value;
   adc[rxadc].gain = 0.0;
-
   g_idle_add(sliders_attenuation, GINT_TO_POINTER(100 * suppress_popup_sliders + rxadc));
 
   if (radio_is_remote) {
@@ -3162,6 +3225,7 @@ static void radio_restore_state(void) {
     band_restore_state();
     mem_restore_state();
     vfo_restore_state();
+    diversity_auto_restore_state();
   }
   //
   // RX/TX profiles are needed on the client side as well,
@@ -3385,6 +3449,7 @@ void radio_save_state(void) {
     band_save_state();
     mem_save_state();
     vfo_save_state();
+    diversity_auto_save_state();
   }
   //
   // Toolbar, Sliders, Mode settings (RX/TX local audio settings),
