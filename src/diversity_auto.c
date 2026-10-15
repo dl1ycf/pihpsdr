@@ -21,6 +21,7 @@
 #include <string.h>
 #include <fftw3.h>
 
+#include "client_server.h"
 #include "diversity_auto.h"
 #include "diversity_menu.h"
 #include "message.h"
@@ -151,15 +152,16 @@
 //
 
 //
-// Tunables. Target bin width, in Hz. The FFT length is chosen per sample
-// rate to land near this, so the frequency resolution and the block
-// duration are the same whatever the radio is running at.
+// Tunables. The FFT length is chosen per sample rate to land near the
+// target bin width, so the frequency resolution and the block duration
+// are the same whatever the radio is running at. The target is the
+// engine's own choice, diversity_auto_bin_policy(); see div_auto_resolution.
 //
-// The default target; the operator can ask for finer bins - see
-// div_auto_resolution.
+// The floor of 2048 lets every rate from 48 kHz up reach 24 Hz (23.44 Hz,
+// a 42.7 ms block); at 4096 a 24 Hz request at 48 kHz was silently granted
+// as 11.72 Hz (Finding 43).
 //
-#define DIV_TARGET_BIN_HZ   12.0
-#define DIV_MIN_NFFT        4096
+#define DIV_MIN_NFFT        2048
 #define DIV_MAX_NFFT        65536
 
 //
@@ -572,7 +574,7 @@ double div_auto_tau            = 2.0;
 double div_auto_hang           = 10.0;
 double div_auto_coherence_min  = 0.20;
 int    div_auto_weighting      = DIV_WEIGHT_FLAT;
-double div_auto_resolution     = DIV_TARGET_BIN_HZ;
+double div_auto_resolution     = DIV_RES_AUTO;
 
 //
 // The window controls are modal: DIV_REF_BAND, DIV_REF_CARRIER and
@@ -639,7 +641,7 @@ double div_cw_width            = DIV_CW_WIDTH_DEFAULT;
 // window of pure noise still reports about 1/N for N averages - so the
 // same threshold is a different false-alarm risk in a five-bin carrier
 // window and a two-hundred-bin passband, and moves again with Averaging
-// and Resolution.
+// and the bin width.
 //
 // The parameter was already modal, but on the mode group, which is the
 // wrong axis: what fixes the meaning is the reference. See Finding 26 in
@@ -927,12 +929,20 @@ static double cw_nf0 = 0.0, cw_nf1 = 0.0;
 static int    cw_nf_valid = 0;
 
 //
-// The output-level normaliser: the smoothed passband powers behind it,
-// and the operator's tick (on by default). See div_norm_refresh().
+// The output-level normaliser: the smoothed passband powers behind it.
+// Always on where it applies; see div_norm_refresh().
 //
 static double norm_p0 = 0.0, norm_p1 = 0.0, norm_xr = 0.0, norm_xi = 0.0;
 static int    norm_valid = 0;
+#ifdef DIVERSITY_CAPTURE
+//
+// LOCAL TEST AID, not part of the diversity feature (LT-027): the old
+// "Level output" tick, back so that the level normaliser can be switched
+// off to compare with it. Only in "make DIVCAP=1" builds, and removed with
+// them (test/diversity/devtools/remove.sh). Normal builds always level.
+//
 int           div_auto_normalise = 1;
+#endif
 
 
 //
@@ -1160,6 +1170,73 @@ static int div_choose_nfft(int sample_rate, double target_hz) {
 }
 
 //
+// The bin width Auto asks for, from the reference and the Averaging time.
+//
+// The block period is 1 / bin width, and an average of only a few blocks is
+// hardly an average: at 0.2 s a 6 Hz block (171 ms) is most of one
+// averaging time (alpha 0.57) and a 3 Hz block is longer than it. So the
+// short end gets the coarsest bins; beyond it 12 Hz, the default, which is
+// where nothing measured does better:
+//
+//   - up to 1 s: 24 Hz (43 ms) on Window and Carrier. Against 12 Hz it is
+//     +0.1 dB on Sum (+0.05 to +0.26 dB on seven captures taken after the
+//     policy was fixed, none worse than -0.15) and +0.2 dB on Null
+//     (T-021);
+//   - above 1 s, and FSK/Digital, CW and RADE V1 at any time: 12 Hz.
+//     FSK/Digital is out of the 24 Hz tier because its occupancy split
+//     needs the resolution: on PSK31, a multitone mode and FT8 captures
+//     24 Hz costs 1.4 to 2.3 dB on Sum (T-021). CW tracks a tone in a
+//     filter that can be 100 Hz wide, and keys at a rate a longer block
+//     smears; RADE V1 works in the time domain, so the bin width only sets
+//     the chunk the samples arrive in.
+//
+// There is no 6 Hz tier. It was one (above 5 s) and T-021 measured it:
+// Window Sum -0.16 dB, Null -0.24 dB overall and -0.39 dB on FSK/Digital,
+// with single captures losing 2 to 4.6 dB, against +0.17 dB on FSK/Digital
+// Sum. The slider stops at 6 s anyway.
+//
+// The 1 s edge was chosen after looking at the sweep it is scored on;
+// seven Window captures taken since agree with it, Carrier has six and no
+// held-out ones (docs/test-findings.md, T-021).
+//
+double diversity_auto_bin_policy(int ref, double tau) {
+  if (tau <= 1.0 && (ref == DIV_REF_BAND || ref == DIV_REF_CARRIER)) {
+    return 24.0;
+  }
+
+  return 12.0;
+}
+
+//
+// The bin width the engine runs at: the operator's, or Auto's.
+//
+static double div_target_hz(void) {
+  return (div_auto_resolution > 0.0)
+         ? div_auto_resolution
+         : diversity_auto_bin_policy(div_auto_ref, div_auto_tau);
+}
+
+void diversity_auto_retarget(void) {
+  if (!div_auto_running || radio_is_remote || receiver[0] == NULL) { return; }
+
+#ifdef DIVERSITY_CAPTURE
+
+  //
+  // DEVELOPMENT TOOL. A capture file has one transform size, and a restart
+  // closes it, so Averaging crossing one of Auto's edges would end the
+  // recording. Hold the transform while one is running; the next call
+  // after it ends (the menu's status tick makes one) catches up.
+  //
+  if (div_capture_active) { return; }
+
+#endif
+
+  if (div_choose_nfft(receiver[0]->sample_rate, div_target_hz()) != nfft) {
+    diversity_auto_restart();
+  }
+}
+
+//
 // 4-term Blackman-Harris. The whole point of the analysis window is to
 // look at one narrow slice of spectrum and ignore everything else, so the
 // -92 dB sidelobes are worth having over the -31 dB of a Hann.
@@ -1377,7 +1454,7 @@ static int div_context_changed(const struct div_context *a, const struct div_con
 // which is why this needs no CW special case.
 //
 // "Entirely inside" rather than "overlapping": a bin straddling a notch
-// edge still carries wanted signal, and at a coarse Resolution a narrow
+// edge still carries wanted signal, and at a coarse bin width a narrow
 // notch is narrower than one bin, where excluding on overlap would throw
 // away the whole region the operator was trying to keep.
 //
@@ -2128,11 +2205,23 @@ static double div_wideband_sum_scale(void) {
 // correction: recomputed every time the weight is written, a Best switch
 // or a slew step is levelled in the same block rather than a second later.
 //
-// Null is excluded - making the output quieter is its purpose - and so is
-// RADE V1, which never runs the transform the powers come from.
+// There is no switch for it. It acts in Sum and Best, on Window, Carrier,
+// FSK/Digital and CW, while the engine runs on the radio. It does not act
+// (div_norm is 1.0) in Manual, where receiver.c never applies it; in Null,
+// where making the output quieter is the purpose; on RADE V1, which never
+// runs the transform the powers come from; with diversity off; on a
+// remote client, which runs no engine; and until the first block has been
+// transformed since a start or a reset. Full list: LC-055 in
+// docs/changes/lc-engine.md.
 //
 static void div_norm_refresh(void) {
-  if (!div_auto_normalise || div_auto_mode == DIV_AUTO_NULL || !norm_valid) {
+#ifdef DIVERSITY_CAPTURE
+  if (!div_auto_normalise) {
+    div_norm = 1.0;
+    return;
+  }
+#endif
+  if (div_auto_mode == DIV_AUTO_NULL || !norm_valid) {
     div_norm = 1.0;
     return;
   }
@@ -2472,7 +2561,7 @@ static double div_gate_threshold(int nbins) {
 double diversity_auto_coh_floor(int ref) {
   if (ref == DIV_REF_RADE_V1) { return 0.0; }
 
-  const double bhz = (div_auto_binhz > 0.0) ? div_auto_binhz : div_auto_resolution;
+  const double bhz = (div_auto_binhz > 0.0) ? div_auto_binhz : div_target_hz();
 
   if (!(bhz > 0.0)) { return 0.0; }
 
@@ -3034,7 +3123,7 @@ static void div_cw_solve(const struct div_context *ctx, int klo, int khi) {
   //
   // Not the keying rate: at 10 to 35 WPM the envelope moves at 4 to 15 Hz,
   // and one block per 43 to 171 ms samples that below Nyquist at every
-  // Resolution. What survives the block rate is that Morse stops - between
+  // bin width. What survives the block rate is that Morse stops - between
   // letters, words and overs - and a carrier does not. So the peak's power
   // against the quietest the peak has recently been: a minimum that falls
   // at once and climbs back at DIV_CW_ACT_RISE_DB. The peak over bins, not
@@ -3415,26 +3504,9 @@ static void div_process_block(void) {
     div_arm_publish(rade_corr_arm_valid, rade_corr_arm_db);
 
     //
-    // The coherence gate reaches this mode too.
+    // No Min coherence gate here: the pilot already gates (see
+    // div_band_cohmin, and LC-016/LC-049 in docs/changes/lc-rade.md).
     //
-    // It did not before: div_auto_coherence was set to rade_corr_quality
-    // and then never compared with anything, so the Min coherence control
-    // was inert in RADE V1 - the one reference where the operator is most
-    // likely to be watching a marginal signal and wondering why the loop
-    // is acting on it. The quantity is not a coherence but a signal
-    // fraction, acc_sig/(acc_sig + acc_r00), which is why it has its own
-    // threshold: at the same slider position a gamma^2 gate and a quality
-    // gate ask for per-arm SNRs four and a half decibels apart. See
-    // div_band_cohmin.
-    //
-    // Default zero, which is the behaviour this replaces exactly.
-    //
-    if (ok && rade_corr_quality < div_auto_coherence_min) {
-      div_auto_coherence = rade_corr_quality;
-      div_auto_holding = 1;
-      return;
-    }
-
     if (ok) {
       div_auto_coherence = rade_corr_quality;
       div_auto_holding = 0;
@@ -3657,11 +3729,6 @@ static void div_process_block(void) {
   }
 
   //
-  // See below: weighting applies to the wideband window only.
-  //
-  const int coherence_weighted = (ctx.weighting == DIV_WEIGHT_COHERENCE)
-                                 && (ctx.ref == DIV_REF_BAND);
-  //
   // Exponential forgetting across blocks, applied per bin.
   //
   double alpha = 1.0 - exp(-blocktime / div_auto_tau);
@@ -3688,9 +3755,8 @@ static void div_process_block(void) {
   int used_bins = 0;
 
   //
-  // Per-bin running spectra. Keeping these per bin rather than as four
-  // scalars is what allows the bins to be weighted by how well the two
-  // antennas agree in each - see below.
+  // Per-bin running spectra, kept per bin so that a bin can be left out
+  // (a notch, a bin outside the signal) without disturbing the rest.
   //
   for (int k = klo; k <= khi; k++) {
     if (div_bin_notched(&ctx, k)) { continue; }
@@ -3732,25 +3798,19 @@ static void div_process_block(void) {
   //
   // Combine the bins.
   //
-  // Flat reproduces the original behaviour: sum everything and divide,
-  // which is a power-weighted average of h(f). It is dominated by the
-  // loudest bins whether or not the antennas agree there, and noise-only
-  // bins dilute it by adding to the denominator but not the numerator.
-  //
-  // Coherence weights each bin by its own magnitude-squared coherence, so
-  // bins carrying a signal both antennas hear dominate and noise-only
-  // bins fall out. That is what makes a wide window work on SSB voice,
-  // where the energy moves about constantly and there is no carrier to
-  // sit on: the window can span the whole passband and the estimator
-  // picks the bins worth using, following the voice as it moves.
+  // Flat: sum everything and divide, which is a power-weighted average of
+  // h(f). It is dominated by the loudest bins whether or not the antennas
+  // agree there, and noise-only bins dilute it by adding to the
+  // denominator but not the numerator. (An earlier Coherence weighting,
+  // each bin by its own coherence, was retired: see docs/changes/lc-gate.md,
+  // LC-006 and LC-049.)
   //
   acc_xy_re = acc_xy_im = acc_xx = acc_yy = 0.0;
-  double wsum = 0.0;
   int nacc = 0;
   //
-  // This block's power against the smoothed power, over the same bins and
-  // with the same weights, so the staleness test below asks about exactly
-  // what the estimate is being made from. See DIV_STALE_DB.
+  // This block's power against the smoothed power, over the same bins, so
+  // the staleness test below asks about exactly what the estimate is being
+  // made from. See DIV_STALE_DB.
   //
   double cur_p = 0.0, acc_p = 0.0;
 
@@ -3762,40 +3822,16 @@ static void div_process_block(void) {
     if (idx < 0) { idx += nfft; }
 
     double xx = bin_xx[idx], yy = bin_yy[idx];
-    double w = 1.0;
 
-    //
-    // Only where there is a window of bins to choose between. The carrier
-    // reference accumulates a handful either side of one peak, all of them
-    // the same signal, so weighting them against each other does nothing -
-    // and the menu hides the control there, which would otherwise leave
-    // whichever setting was last chosen in Window mode silently in force.
-    //
-    if (coherence_weighted) {
-      double den = xx * yy;
-
-      if (den <= 0.0) { continue; }
-
-      double g2 = (bin_xy_re[idx] * bin_xy_re[idx]
-                   + bin_xy_im[idx] * bin_xy_im[idx]) / den;
-
-      if (g2 > 1.0) { g2 = 1.0; }
-
-      w = g2;
-
-      if (w <= 0.0) { continue; }
-    }
-
-    acc_xy_re += w * bin_xy_re[idx];
-    acc_xy_im += w * bin_xy_im[idx];
-    acc_xx    += w * xx;
-    acc_yy    += w * yy;
-    cur_p     += w * ((double)fftout0[idx][0] * fftout0[idx][0]
-                      + (double)fftout0[idx][1] * fftout0[idx][1]
-                      + (double)fftout1[idx][0] * fftout1[idx][0]
-                      + (double)fftout1[idx][1] * fftout1[idx][1]);
-    acc_p     += w * (xx + yy);
-    wsum      += w;
+    acc_xy_re += bin_xy_re[idx];
+    acc_xy_im += bin_xy_im[idx];
+    acc_xx    += xx;
+    acc_yy    += yy;
+    cur_p     += (double)fftout0[idx][0] * fftout0[idx][0]
+                 + (double)fftout0[idx][1] * fftout0[idx][1]
+                 + (double)fftout1[idx][0] * fftout1[idx][0]
+                 + (double)fftout1[idx][1] * fftout1[idx][1];
+    acc_p     += xx + yy;
     nacc++;
   }
 
@@ -3847,7 +3883,7 @@ static void div_process_block(void) {
   }
   div_arm_nratio_update(cur_xx, cur_yy, arm_pw0, arm_pw1);
 
-  if (acc_xx <= 0.0 || acc_yy <= 0.0 || wsum <= 0.0) {
+  if (acc_xx <= 0.0 || acc_yy <= 0.0 || nacc == 0) {
     div_auto_coherence = 0.0;
     div_auto_holding = 1;
     return;
@@ -3856,10 +3892,7 @@ static void div_process_block(void) {
   //
   // Is what these statistics describe still on the air?
   //
-  // Under Coherence weighting the comparison is weighted too, so it
-  // follows the bins the estimate actually rests on rather than the whole
-  // window - which is what makes it sensitive to a narrow signal, a CW
-  // carrier included, stopping inside a wide filter.
+  // The comparison runs over the bins the estimate rests on.
   //
   if (acc_p > 0.0 && cur_p * pow(10.0, DIV_STALE_DB / 10.0) < acc_p) {
     div_auto_holding = 1;
@@ -4072,7 +4105,7 @@ void diversity_auto_start(void) {
   //
   if (radio_is_remote) { return; }
 
-  nfft = div_choose_nfft(receiver[0]->sample_rate, div_auto_resolution);
+  nfft = div_choose_nfft(receiver[0]->sample_rate, div_target_hz());
   binhz = (double)receiver[0]->sample_rate / (double)nfft;
   div_auto_binhz = binhz;
   blocktime = (double)nfft / (double)receiver[0]->sample_rate;
@@ -4317,7 +4350,7 @@ static void div_settings_load(const DIV_SETTINGS *s) {
   div_auto_width         = s->width;
   div_auto_tau           = s->tau;
   div_auto_hang          = s->hang;
-  div_auto_resolution    = s->resolution;
+  div_auto_resolution    = DIV_RES_AUTO;   // pinned, whatever the block says - see div_settings_validate()
   div_band_cohmin        = s->band_cohmin;
   div_carrier_cohmin     = s->carrier_cohmin;
   div_digital_cohmin     = s->digital_cohmin;
@@ -4377,7 +4410,7 @@ void diversity_auto_apply_settings(const DIV_SETTINGS *s, int action) {
   const int    old_weight = div_auto_weighting;
   const double old_centre = div_auto_centre;
   const double old_width  = div_auto_width;
-  const double old_res    = div_auto_resolution;
+  const double old_res    = div_target_hz();
   div_settings_load(s);
 
   //
@@ -4413,7 +4446,7 @@ void diversity_auto_apply_settings(const DIV_SETTINGS *s, int action) {
   // reference is selected or left.
   //
   if ((old_mode == DIV_MANUAL) != (s->mode == DIV_MANUAL) ||
-      old_res != s->resolution ||
+      old_res != div_target_hz() ||
       (old_ref != s->ref && (old_ref == DIV_REF_RADE_V1 || s->ref == DIV_REF_RADE_V1))) {
     diversity_auto_restart();
   }
@@ -4495,6 +4528,74 @@ void diversity_auto_apply_status(const DIV_STATUS *st) {
   div_track_gain         = st->track_gain;
   div_track_phase        = st->track_phase;
   rade_corr_quality      = st->rade_quality;
+}
+
+//
+// Remote client: the radio has sent its settings - on connect, or because
+// someone moved a control on the radio's own panel. Adopt them. Runs on
+// the GTK thread, put there by the client read loop.
+//
+gboolean diversity_client_set_settings(gpointer data) {
+  const DIV_SETTINGS_COMMAND *c = (const DIV_SETTINGS_COMMAND *)data;
+  DIV_SETTINGS set;
+  set.mode           = c->mode;
+  set.ref            = c->ref;
+  set.follow_filter  = c->follow_filter;
+  set.weighting      = c->weighting;
+  set.hold           = c->hold;
+  set.centre         = from_double(c->centre);
+  set.width          = from_double(c->width);
+  set.tau            = from_double(c->tau);
+  set.hang           = from_double(c->hang);
+  set.coherence_min  = from_double(c->coherence_min);
+  set.resolution     = from_double(c->resolution);
+  set.band_centre    = from_double(c->band_centre);
+  set.band_width     = from_double(c->band_width);
+  set.carrier_centre = from_double(c->carrier_centre);
+  set.carrier_width  = from_double(c->carrier_width);
+  set.digital_centre = from_double(c->digital_centre);
+  set.digital_width  = from_double(c->digital_width);
+  diversity_auto_apply_settings(&set, DIV_ACTION_NONE);
+  g_free(data);
+  return G_SOURCE_REMOVE;
+}
+
+//
+// Remote client: what the loop is measuring. Written straight into the
+// globals the status line, the antenna line and the panadapter overlay
+// already read, so none of them needs to know where it came from.
+//
+gboolean diversity_client_set_status(gpointer data) {
+  const DIV_STATUS_DATA *d = (const DIV_STATUS_DATA *)data;
+  DIV_STATUS st;
+  st.enabled         = d->enabled;
+  st.running         = d->running;
+  st.holding         = d->holding;
+  st.clamped         = d->clamped;
+  st.arm_valid       = d->arm_valid;
+  st.arm_pick        = d->arm_pick;
+  st.carrier_valid   = d->carrier_valid;
+  st.occ_valid       = d->occ_valid;
+  st.rade_locked     = d->rade_locked;
+  st.rade_confirming = d->rade_confirming;
+  st.rade_side       = d->rade_side;
+  st.att0            = d->att0;
+  st.att1            = d->att1;
+  st.binhz        = from_double(d->binhz);
+  st.coherence    = from_double(d->coherence);
+  st.carrier      = from_double(d->carrier);
+  st.arm_db       = from_double(d->arm_db);
+  st.occ_lo       = from_double(d->occ_lo);
+  st.occ_hi       = from_double(d->occ_hi);
+  st.gain         = from_double(d->gain);
+  st.phase        = from_double(d->phase);
+  st.track_gain   = from_double(d->track_gain);
+  st.track_phase  = from_double(d->track_phase);
+  st.rade_quality = from_double(d->rade_quality);
+  //
+  diversity_auto_apply_status(&st);
+  g_free(data);
+  return G_SOURCE_REMOVE;
 }
 
 //
@@ -4599,7 +4700,7 @@ void diversity_auto_mode_changed(int mode) {
   div_group_current = g;
   const int    was_off = (div_auto_mode == DIV_MANUAL);
   const int    old_ref = div_auto_ref;
-  const double old_res = div_auto_resolution;
+  const double old_res = div_target_hz();
   div_settings_load(&div_group_set[g]);
 
   //
@@ -4610,7 +4711,7 @@ void diversity_auto_mode_changed(int mode) {
   // taken up or left.
   //
   if (was_off != (div_auto_mode == DIV_MANUAL) ||
-      old_res != div_auto_resolution ||
+      old_res != div_target_hz() ||
       (old_ref != div_auto_ref &&
        (old_ref == DIV_REF_RADE_V1 || div_auto_ref == DIV_REF_RADE_V1))) {
     diversity_auto_restart();
@@ -4713,19 +4814,21 @@ static void div_settings_validate(DIV_SETTINGS *s) {
   // Values no control can produce - zero or less, or not a number - are
   // treated as missing and given the default, not clamped to the nearest
   // legal value. A settings block saved before it was ever restored is all
-  // zeros, and clamping that yields 0.2 s averaging, 3 Hz bins and a 20 Hz
-  // window with Follow off: legal, and useless.
+  // zeros, and clamping that yields 0.2 s averaging and a 20 Hz window
+  // with Follow off: legal, and useless.
   //
   if (!(s->tau > 0.0))        { s->tau = 2.0; }
-
-  if (!(s->resolution > 0.0)) { s->resolution = DIV_TARGET_BIN_HZ; }
 
   //
   // 0.2, not 0.1, to match the slider's minimum.
   //
   if (s->tau < 0.2)  { s->tau = 0.2; }
 
-  if (s->tau > 30.0) { s->tau = 30.0; }
+  //
+  // 6 s is the slider's top (DIV_TAU_MAX in diversity_menu.c). A props file
+  // or client from before the cap is brought down to it.
+  //
+  if (s->tau > 6.0)  { s->tau = 6.0; }
 
   //
   // Pinned, not ranged. There is no control for it any more and it is not
@@ -4736,9 +4839,14 @@ static void div_settings_validate(DIV_SETTINGS *s) {
   //
   s->hang = DIV_HANG_DEFAULT;
 
-  if (s->resolution < 3.0)  { s->resolution = 3.0; }
-
-  if (s->resolution > 12.0) { s->resolution = 12.0; }
+  //
+  // Pinned to Auto, like the Hang above: there is no control for the bin
+  // width any more (the engine takes it from Averaging and the reference,
+  // diversity_auto_bin_policy()), so a 12, 6 or 3 Hz left in a props file
+  // by an older build, or sent by an older client, is replaced rather than
+  // honoured. The field stays on the wire and in the file.
+  //
+  s->resolution = DIV_RES_AUTO;
 
   //
   // The widths: 20.0, not 10.0, because the spin button's minimum is 20
@@ -4902,7 +5010,9 @@ void diversity_auto_save_state(void) {
   SetPropF0("diversity_cw_cohmin",           div_cw_cohmin);
   SetPropF0("diversity_cw_centre",           div_cw_centre);
   SetPropF0("diversity_cw_width",            div_cw_width);
+#ifdef DIVERSITY_CAPTURE
   SetPropI0("diversity_auto_normalise",      div_auto_normalise);
+#endif
 
   for (int g = 0; g < DIV_GROUPS; g++) {
     div_group_save(g, &div_group_set[g]);
@@ -4952,9 +5062,10 @@ void diversity_auto_restore_state(void) {
   GetPropF0("diversity_cw_cohmin",           div_cw_cohmin);
   GetPropF0("diversity_cw_centre",           div_cw_centre);
   GetPropF0("diversity_cw_width",            div_cw_width);
+#ifdef DIVERSITY_CAPTURE
   GetPropI0("diversity_auto_normalise",      div_auto_normalise);
-
   div_auto_normalise = div_auto_normalise ? 1 : 0;
+#endif
 
   //
   // Validate what came out of the file, then use it to seed every group
@@ -4975,13 +5086,13 @@ void diversity_auto_restore_state(void) {
   }
 
   //
-  // Back to "nothing filed away yet". The mode is not restored until
-  // after this runs, so which group the live values belong to is not
-  // knowable here; the first diversity_auto_mode_changed() adopts that
-  // group's block, which for a file written by this version is the same
-  // thing the flat keys just gave us. Without the reset, that first call
-  // would file the live values under whichever group was current before
-  // the restore and overwrite the block just read for it.
+  // Back to "nothing filed away yet". No receiver exists yet, so
+  // diversity_auto_mode_changed() has not announced a mode and which
+  // group the live values belong to is not knowable here; the first call
+  // adopts that group's block, which for a file written by this version
+  // is the same thing the flat keys just gave us. Without the reset, that
+  // first call would file the live values under whichever group was
+  // current before the restore and overwrite the block just read for it.
   //
   div_group_current = -1;
 }

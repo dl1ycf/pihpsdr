@@ -27,7 +27,6 @@
 #include "radio.h"
 #include "rade_correlator.h"
 #include "receiver.h"
-#include "rx_panadapter.h"
 #include "vfo.h"
 
 #ifdef DIVERSITY_CAPTURE
@@ -57,33 +56,69 @@ static GtkWidget *win_centre_btn = NULL;
 static GtkWidget *coh_scale = NULL;
 static GtkWidget *mcontainer = NULL;
 static GtkWidget *acontainer = NULL;
-static GtkWidget *status_label = NULL;
 static GtkWidget *coh_label = NULL;
 static GtkWidget *arm_label = NULL;
 static GtkWidget *hold_b = NULL;
-static GtkWidget *level_b = NULL;
+static GtkWidget *enable_b = NULL;
 
 static void hold_cb(GtkWidget *widget, gpointer data);
+
+#ifdef DIVERSITY_CAPTURE
+//
+// ===================================================================
+//  LOCAL TEST AID - NOT PART OF THE DIVERSITY FEATURE (LT-027).
+//  Compiled only under "make DIVCAP=1", never sent upstream. The old
+//  "Level output" tick, so that the level normaliser can be switched off
+//  to compare with it; normal builds always level (LC-055). Delete this
+//  block, the one in the teardown, the one in the status tick and the one
+//  beside the objective combo to remove it; remove.sh does.
+// ===================================================================
+//
+// Radio-side only: not on the wire, so it is insensitive on a client. It
+// is greyed out whenever the normaliser is not acting - diversity off,
+// Manual, Null, RADE V1 or a remote client - so it never looks like it does
+// something it does not (see div_norm_refresh()).
+//
+extern int div_auto_normalise;
+static GtkWidget *level_b = NULL;
+
+static void div_level_sensitive(void) {
+  if (level_b == NULL) { return; }
+
+  const int active = !radio_is_remote && diversity_enabled
+                     && (div_auto_mode == DIV_AUTO_SUM || div_auto_mode == DIV_AUTO_BEST)
+                     && div_auto_ref != DIV_REF_RADE_V1;
+
+  if (gtk_widget_get_sensitive(level_b) != active) { gtk_widget_set_sensitive(level_b, active); }
+}
+
+static void normalise_cb(GtkWidget *widget, gpointer data) {
+  (void)data;
+  div_auto_normalise = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+}
+#endif
 
 //
 // The Averaging slider is geometric, not linear.
 //
-// The control spans 0.2 to 30 s and the interesting part of it is the
+// The control spans 0.2 to 6 s and the interesting part of it is the
 // short end: Null wants the shortest average that still passes the
 // coherence gate, and the difference between 0.2 and 0.5 s is worth more
-// than the difference between 20 and 30 s. Laid out linearly, everything
-// below five seconds sits in the first sixth of the travel and cannot be
-// set accurately; laid out geometrically - equal ratio per pixel, which
-// is the natural spacing for a time constant - 0.2 to 5 s occupies 64 %
-// of it. See Findings 18 and 21 in docs/diversity-measurements.md.
+// than the difference between 4 and 6 s. It stops at 6 s because nothing
+// measured gains from more: over 70 wideband captures the best fixed
+// value up to 10 s is worth +0.04 dB over capping at 6 s, and the RADE
+// decode scores show no trend (docs/test-findings.md, T-019). Laid out
+// geometrically - equal ratio per pixel, which is the natural spacing for
+// a time constant - the short end gets the travel. See Findings 18 and 21
+// in docs/diversity-measurements.md.
 //
 // The widget therefore carries a position, 0 to DIV_TAU_STEPS, and the
-// two functions below convert. A thousand steps over a 150:1 range is
-// half a percent a step, so a round trip through the widget moves tau by
-// less than a quarter of a percent.
+// two functions below convert. A thousand steps over a 30:1 range is
+// a third of a percent a step, so a round trip through the widget moves tau
+// by less than a fifth of a percent.
 //
 #define DIV_TAU_MIN     0.2
-#define DIV_TAU_MAX    30.0
+#define DIV_TAU_MAX     6.0
 #define DIV_TAU_STEPS  1000.0
 
 static double div_tau_from_pos(double pos) {
@@ -214,7 +249,10 @@ static void cleanup(void) {
     // diversity is switched off and on again (see radio_set_diversity()).
     //
     hold_b = NULL;
+    enable_b = NULL;
+#ifdef DIVERSITY_CAPTURE
     level_b = NULL;
+#endif
     gtk_widget_destroy(tmp);
     sub_menu = NULL;
     win_centre_btn = NULL;
@@ -254,32 +292,12 @@ static void sanitize_man_values() {
   phase_fine = man_div_phase - phase_coarse;
 }
 
-//
-// "Level output" is greyed out whenever the normaliser is not acting, so
-// the tick never looks like it does something it does not. It acts only
-// with diversity on, in Sum or Best: Null is excluded on purpose, Manual
-// never runs the loop, and RADE V1 never runs the transform its powers
-// come from (see div_norm_refresh()). It cannot be set from a remote
-// client at all.
-//
-static void div_level_sensitive(void) {
-  if (level_b == NULL) { return; }
-
-  const int active = !radio_is_remote && diversity_enabled
-                     && (div_auto_mode == DIV_AUTO_SUM || div_auto_mode == DIV_AUTO_BEST)
-                     && div_auto_ref != DIV_REF_RADE_V1;
-
-  if (gtk_widget_get_sensitive(level_b) != active) { gtk_widget_set_sensitive(level_b, active); }
-}
-
 static void enable_cb(GtkWidget *widget, gpointer data) {
   int state = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   //
-  // This starts or stops the analysis thread, so what the controls below
-  // may be used for changes with it.
+  // This starts or stops the analysis thread.
   //
   radio_set_diversity(state);
-  div_level_sensitive();
 }
 
 static void att_cb(GtkWidget *widget, gpointer data) {
@@ -346,50 +364,54 @@ static const char *div_rade_side_text(void) {
 //
 // The status line.
 //
-// It is the widest thing in the dialog, so it sets the minimum window
-// width, and it must not grow. Every line is therefore built to exactly
-// DIV_STATUS_CHARS characters out of four fixed fields - what is being
-// measured, what the loop is doing, one detail belonging to the mode, and
-// the weight - each printed with a precision that truncates as well as a
-// width that pads. Nothing that arrives at run time can widen it.
+// Five columns, each its own label with a minimum width, side by side:
+// what is being measured, what the loop is doing, the coherence the gate
+// is comparing with Min coherence (blank on RADE V1, which has none), one
+// detail belonging to the mode, and the weight. A column is as wide as the
+// widest thing it can show, so a state going from "track" to "wait" cannot
+// move the coherence beside it, and the whole line stays about as wide as
+// it was as a single label. They are in the dialog's own font, like every
+// other label in it; the font size is fixed at 15 px by css.c, so the
+// widths are in pixels.
 //
-// It is set in a monospace face for the same reason: fixed character
-// counts only line up in a fixed-width font, and a status line whose
-// columns wander is harder to read at a glance than an unaligned one.
+// The widths, in pixels, with a few to spare each:
+//   tag     "Win 24Hz*"
+//   state   "search"
+//   coh     "coh 100%"
+//   detail  "+1234.5 Hz"
 //
-// The predecessor was a printf per mode, the longest around a hundred
-// characters, and it dictated a dialog half again as wide as the controls
-// needed.
-//
-#define DIV_STATUS_TAG    9
-#define DIV_STATUS_STATE  6
-#define DIV_STATUS_DETAIL 10
-//
-// Three fields, three separating spaces, and a 16-character weight:
-//   "%+6.1f dB %+5.0f°"
-//
-// The degree sign is one character but two bytes, so this is a count of
-// *characters* - which is what gtk_label_set_width_chars() wants, and
-// what the fields are padded to. It is not strlen().
-//
-#define DIV_STATUS_CHARS  (DIV_STATUS_TAG + DIV_STATUS_STATE + DIV_STATUS_DETAIL + 3 + 16)
+#define DIV_STATUS_W_TAG     88
+#define DIV_STATUS_W_STATE   60
+#define DIV_STATUS_W_COH     80
+#define DIV_STATUS_W_DETAIL  98
+
+enum { DIV_COL_TAG, DIV_COL_STATE, DIV_COL_COH, DIV_COL_DETAIL, DIV_COL_WEIGHT, DIV_COLS };
+static GtkWidget *status_col[DIV_COLS];
+static const int status_w[DIV_COLS] = {
+  DIV_STATUS_W_TAG, DIV_STATUS_W_STATE, DIV_STATUS_W_COH, DIV_STATUS_W_DETAIL, -1
+};
 
 //
-// A small breathing space at each end. The label is the widest thing in
-// the dialog, so this is the only reason it is not hard against both
-// window edges.
+// A status label: the dialog's usual one, left-justified, with a minimum
+// width in pixels (-1 for none).
 //
-#define DIV_STATUS_MARGIN 6
+static GtkWidget *div_status_label(int width_px) {
+  GtkWidget *l = gtk_label_new("");
+  gtk_widget_set_name(l, "boldlabel");
+  gtk_label_set_xalign(GTK_LABEL(l), 0.0);
+  gtk_widget_set_size_request(l, width_px, -1);
+  return l;
+}
 
-static void div_status_set(const char *tag, const char *state, const char *detail,
-                           double g, double p) {
-  char text[128];
-  snprintf(text, sizeof(text), "%-*.*s %-*.*s %-*.*s %+6.1f dB %+5.0f°",
-           DIV_STATUS_TAG, DIV_STATUS_TAG, tag,
-           DIV_STATUS_STATE, DIV_STATUS_STATE, state,
-           DIV_STATUS_DETAIL, DIV_STATUS_DETAIL, detail,
-           g, p);
-  gtk_label_set_text(GTK_LABEL(status_label), text);
+static void div_status_set(const char *tag, const char *state, const char *coh,
+                           const char *detail, double g, double p) {
+  char wt[48];
+  snprintf(wt, sizeof(wt), "%+5.1f dB %+4.0f°", g, p);
+  gtk_label_set_text(GTK_LABEL(status_col[DIV_COL_TAG]), tag);
+  gtk_label_set_text(GTK_LABEL(status_col[DIV_COL_STATE]), state);
+  gtk_label_set_text(GTK_LABEL(status_col[DIV_COL_COH]), coh);
+  gtk_label_set_text(GTK_LABEL(status_col[DIV_COL_DETAIL]), detail);
+  gtk_label_set_text(GTK_LABEL(status_col[DIV_COL_WEIGHT]), wt);
 }
 
 //
@@ -407,8 +429,7 @@ static void div_status_set(const char *tag, const char *state, const char *detai
 // weights - which is the case the 60 m captures turned up. See Finding 13
 // in docs/diversity-measurements.md.
 //
-// Held to DIV_STATUS_CHARS by construction, like the line above it: the
-// longest string this can produce is exactly that wide.
+// From the same left edge as the line above it.
 //
 static void div_arm_status_set(void) {
   char text[96];
@@ -502,11 +523,14 @@ static int status_update_cb(gpointer data) {
 
   div_coh_range_update();
   //
-  // On the tick as well as in the callbacks below: Enable can change from
-  // outside the menu.
+  // Auto's bin width follows Averaging and the reference; this restarts only
+  // if it now wants a different transform, which also catches up after a
+  // capture (held the transform while it ran).
   //
+  diversity_auto_retarget();
+#ifdef DIVERSITY_CAPTURE
   div_level_sensitive();
-
+#endif
   //
   // Whether the loop is running is not something this dialog is told
   // about. It changes on the Diversity Enable tick, on a resolution
@@ -534,7 +558,7 @@ static int status_update_cb(gpointer data) {
 
   //
   // DEVELOPMENT TOOL. The block count goes on the button rather than into
-  // the status line, which is held to exactly DIV_STATUS_CHARS.
+  // the status line.
   //
   if (divcap_b != NULL) {
     char cap[48];
@@ -562,12 +586,24 @@ static int status_update_cb(gpointer data) {
     g_signal_handlers_unblock_by_func(hold_b, G_CALLBACK(hold_cb), NULL);
   }
 
+  //
+  // The same for Enable: diversity is also switched by the DIVT action (a
+  // CAT command, a toolbar button) and by a remote client, none of which
+  // knows about this dialog. Blocking the handler keeps this from calling
+  // radio_set_diversity() again.
+  //
+  if (enable_b && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_b)) != diversity_enabled) {
+    g_signal_handlers_block_by_func(enable_b, G_CALLBACK(enable_cb), NULL);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(enable_b), diversity_enabled);
+    g_signal_handlers_unblock_by_func(enable_b, G_CALLBACK(enable_cb), NULL);
+  }
+
   if (!div_auto_running) {
-    div_status_set("Auto off", "", "", auto_div_gain, auto_div_phase);
+    div_status_set("Auto off", "", "", "", auto_div_gain, auto_div_phase);
     return G_SOURCE_CONTINUE;
   }
 
-  char tag[32], detail[32];
+  char tag[32], detail[32], coh[16];
   const char *state;
   //
   // Under Hold the weight shown is the one the loop has tracked to, not
@@ -582,6 +618,16 @@ static int status_update_cb(gpointer data) {
   //
   const char *clamp = div_auto_clamped ? "*" : "";
   detail[0] = 0;
+  //
+  // The coherence the gate compares with Min coherence, on every reference
+  // that has that setting. RADE V1 has none (the pilot gates), so its field
+  // stays blank.
+  //
+  if (div_auto_ref == DIV_REF_RADE_V1) {
+    coh[0] = 0;
+  } else {
+    snprintf(coh, sizeof(coh), "coh %3.0f%%", 100.0 * div_auto_coherence);
+  }
 
   switch (div_auto_ref) {
   case DIV_REF_CARRIER:
@@ -654,9 +700,8 @@ static int status_update_cb(gpointer data) {
     } else {
       state = div_auto_hold ? "HOLD" : (div_auto_holding ? "wait" : "track");
       //
-      // The occupied width rather than the coherence: it is what the
-      // occupancy split decided, and it is checkable against the darker
-      // band on the panadapter.
+      // The occupied width: it is what the occupancy split decided, and it
+      // is checkable against the darker band on the panadapter.
       //
       snprintf(detail, sizeof(detail), "occ %4.0fHz",
                div_auto_occ_hi - div_auto_occ_lo);
@@ -667,11 +712,10 @@ static int status_update_cb(gpointer data) {
   default:
     snprintf(tag, sizeof(tag), "Win %.0fHz%s", div_auto_binhz, clamp);
     state = div_auto_hold ? "HOLD" : (div_auto_holding ? "wait" : "track");
-    snprintf(detail, sizeof(detail), "coh %3.0f%%", 100.0 * div_auto_coherence);
     break;
   }
 
-  div_status_set(tag, state, detail, g, p);
+  div_status_set(tag, state, coh, detail, g, p);
   return G_SOURCE_CONTINUE;
 }
 
@@ -710,7 +754,6 @@ static int div_row_to_ref(int row) {
 static void mode_changed_cb(GtkWidget *widget, gpointer data) {
   int previous = div_auto_mode;
   div_auto_mode = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-  div_level_sensitive();
 
   if (div_auto_mode == DIV_MANUAL) {
     //
@@ -802,93 +845,6 @@ static void invert_cb(GtkWidget *widget, gpointer data) {
 static void hold_cb(GtkWidget *widget, gpointer data) {
   diversity_auto_set_hold(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)));
   div_send_settings(DIV_ACTION_NONE);
-}
-
-//
-// Remote client: the radio has sent its settings - on connect, or because
-// someone moved a control on the radio's own panel. Adopt them and show
-// them. Runs on the GTK thread, put there by the client read loop.
-//
-gboolean diversity_client_set_settings(gpointer data) {
-  const DIV_SETTINGS_COMMAND *c = (const DIV_SETTINGS_COMMAND *)data;
-  DIV_SETTINGS set;
-  set.mode           = c->mode;
-  set.ref            = c->ref;
-  set.follow_filter  = c->follow_filter;
-  set.weighting      = c->weighting;
-  set.hold           = c->hold;
-  set.centre         = from_double(c->centre);
-  set.width          = from_double(c->width);
-  set.tau            = from_double(c->tau);
-  set.hang           = from_double(c->hang);
-  set.coherence_min  = from_double(c->coherence_min);
-  set.resolution     = from_double(c->resolution);
-  set.band_centre    = from_double(c->band_centre);
-  set.band_width     = from_double(c->band_width);
-  set.carrier_centre = from_double(c->carrier_centre);
-  set.carrier_width  = from_double(c->carrier_width);
-  set.digital_centre = from_double(c->digital_centre);
-  set.digital_width  = from_double(c->digital_width);
-  diversity_auto_apply_settings(&set, DIV_ACTION_NONE);
-  g_free(data);
-  return G_SOURCE_REMOVE;
-}
-
-//
-// Remote client: what the loop is measuring. Written straight into the
-// globals the status line, the antenna line and the panadapter overlay
-// already read, so none of them needs to know where it came from.
-//
-gboolean diversity_client_set_status(gpointer data) {
-  const DIV_STATUS_DATA *d = (const DIV_STATUS_DATA *)data;
-  DIV_STATUS st;
-  st.enabled         = d->enabled;
-  st.running         = d->running;
-  st.holding         = d->holding;
-  st.clamped         = d->clamped;
-  st.arm_valid       = d->arm_valid;
-  st.arm_pick        = d->arm_pick;
-  st.carrier_valid   = d->carrier_valid;
-  st.occ_valid       = d->occ_valid;
-  st.rade_locked     = d->rade_locked;
-  st.rade_confirming = d->rade_confirming;
-  st.rade_side       = d->rade_side;
-  st.att0            = d->att0;
-  st.att1            = d->att1;
-  st.binhz        = from_double(d->binhz);
-  st.coherence    = from_double(d->coherence);
-  st.carrier      = from_double(d->carrier);
-  st.arm_db       = from_double(d->arm_db);
-  st.occ_lo       = from_double(d->occ_lo);
-  st.occ_hi       = from_double(d->occ_hi);
-  st.gain         = from_double(d->gain);
-  st.phase        = from_double(d->phase);
-  st.track_gain   = from_double(d->track_gain);
-  st.track_phase  = from_double(d->track_phase);
-  st.rade_quality = from_double(d->rade_quality);
-  //
-  // Whether the panadapter overlay should be on screen, before and after
-  // adopting this block: rx_panadapter.c draws it while diversity is on
-  // and the objective is not Manual.
-  //
-  const int overlay_was = (diversity_enabled && div_auto_mode != DIV_MANUAL);
-  diversity_auto_apply_status(&st);
-  const int overlay_now = (diversity_enabled && div_auto_mode != DIV_MANUAL);
-
-  //
-  // The panadapter repaints its whole surface every frame, so on the radio
-  // the overlay clears itself with the next frame. A client only draws
-  // when a spectrum packet arrives and passes client_thread.c's tests, so
-  // switching diversity off at the radio could leave the last frame, green
-  // box and all, on screen until those agreed again. Repaint once here.
-  //
-  if (overlay_was && !overlay_now && receivers > 0 && receiver[0] != NULL
-      && receiver[0]->display_panadapter && receiver[0]->panadapter_surface != NULL) {
-    rx_panadapter_update(receiver[0]);
-  }
-
-  g_free(data);
-  return G_SOURCE_REMOVE;
 }
 
 //
@@ -1008,7 +964,6 @@ static void ref_changed_cb(GtkWidget *widget, gpointer data) {
   store_ref_values(div_auto_ref);
   div_auto_ref = div_row_to_ref(gtk_combo_box_get_active(GTK_COMBO_BOX(widget)));
   restore_ref_values(div_auto_ref);
-  div_level_sensitive();
 
   //
   // On RADE V1 the wanted signal is the one the pilot correlator is
@@ -1038,15 +993,6 @@ static void ref_changed_cb(GtkWidget *widget, gpointer data) {
   diversity_auto_restart();
   diversity_auto_reset();
   div_send_settings(DIV_ACTION_NONE);
-}
-
-//
-// The output-level normaliser. Radio-side only: it is not on the wire, so
-// it is insensitive on a client.
-//
-static void normalise_cb(GtkWidget *widget, gpointer data) {
-  (void)data;
-  div_auto_normalise = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
 }
 
 static void follow_cb(GtkWidget *widget, gpointer data) {
@@ -1103,6 +1049,11 @@ static gchar *tau_format_cb(GtkScale *scale, gdouble value, gpointer data) {
 
 static void tau_cb(GtkWidget *widget, gpointer data) {
   div_auto_tau = div_tau_from_pos(gtk_range_get_value(GTK_RANGE(widget)));
+  //
+  // Auto's bin width follows Averaging; this restarts only if it moved
+  // the transform length.
+  //
+  diversity_auto_retarget();
   div_send_settings(DIV_ACTION_NONE);
 }
 
@@ -1122,20 +1073,6 @@ static void coh_cb(GtkWidget *widget, gpointer data) {
   // settings block sent from here carries the new value rather than
   // whatever was stored at the last reference change.
   //
-  div_send_settings(DIV_ACTION_NONE);
-}
-
-static void res_changed_cb(GtkWidget *widget, gpointer data) {
-  static const double res[] = { 12.0, 6.0, 3.0 };
-  int i = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-
-  if (i < 0 || i > 2) { i = 0; }
-
-  div_auto_resolution = res[i];
-  //
-  // The transform length changes, so the engine has to be rebuilt.
-  //
-  diversity_auto_restart();
   div_send_settings(DIV_ACTION_NONE);
 }
 
@@ -1168,6 +1105,7 @@ void diversity_menu(GtkWidget *parent) {
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), diversity_enabled);
   g_signal_connect(btn, "toggled", G_CALLBACK(enable_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 2, 1);
+  enable_b = btn;
   auto_btn = gtk_combo_box_text_new();
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_btn), "Manual");
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_btn), "Null (cancel common signal)");
@@ -1176,14 +1114,13 @@ void diversity_menu(GtkWidget *parent) {
   gtk_combo_box_set_active(GTK_COMBO_BOX(auto_btn), div_auto_mode);
   gtk_grid_attach(GTK_GRID(grid), auto_btn, 2, row, 4, 1);
   g_signal_connect(auto_btn, "changed", G_CALLBACK(mode_changed_cb), NULL);
-  //
-  // Beside the objective it depends on; greyed out when it is not acting -
-  // see div_level_sensitive().
-  //
+#ifdef DIVERSITY_CAPTURE
   level_b = gtk_check_button_new_with_label("Level output");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(level_b), div_auto_normalise);
   gtk_grid_attach(GTK_GRID(grid), level_b, 7, row, 4, 1);
   g_signal_connect(level_b, "toggled", G_CALLBACK(normalise_cb), NULL);
+  div_level_sensitive();
+#endif
   //gtk_widget_set_tooltip_text(auto_combo,
   //                          "Sum combines both antennas. Best measures the "
   //                          "signal-to-noise ratio on each and hands the "
@@ -1323,23 +1260,6 @@ void diversity_menu(GtkWidget *parent) {
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(win_width_btn), div_auto_width);
   gtk_grid_attach(GTK_GRID(agrid), win_width_btn, 7, 1, 4, 1);
   g_signal_connect(win_width_btn, "value_changed", G_CALLBACK(width_cb), NULL);
-  lbl = gtk_label_new("Resolution");
-  gtk_widget_set_name(lbl, "boldlabel");
-  gtk_widget_set_halign(lbl, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(agrid), lbl, 0, 2, 2, 1);
-  btn = gtk_combo_box_text_new();
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "12 Hz bins (fast)");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "6 Hz bins");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), "3 Hz bins (weak signals)");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(btn),
-                           div_auto_resolution > 9.0 ? 0 : (div_auto_resolution > 4.5 ? 1 : 2));
-  //gtk_widget_set_tooltip_text(res_combo,
-  //                            "Finer bins lift a weak carrier further out of the noise, "
-  //                            "but each step doubles the block period and so halves the "
-  //                            "update rate. The bin width actually achieved is shown in "
-  //                            "the status line.");
-  gtk_grid_attach(GTK_GRID(agrid), btn, 2, 2, 4, 1);
-  g_signal_connect(btn, "changed", G_CALLBACK(res_changed_cb), NULL);
   lbl = gtk_label_new("Averaging (s)");
   //gtk_widget_set_tooltip_text(tau_label,
   //                            "Time constant for the gain/phase estimate. "
@@ -1419,38 +1339,28 @@ void diversity_menu(GtkWidget *parent) {
 
 #endif
   //
-  // The status line spans both columns and is held to exactly
-  // DIV_STATUS_CHARS characters, so it fits inside the width the controls
-  // already need and cannot push the dialog wider whatever it has to say.
+  // The status line: five columns side by side. See the note above
+  // div_status_set().
   //
-  status_label = gtk_label_new("");
-  gtk_widget_set_name(status_label, "boldlabel");
-  gtk_widget_set_halign(status_label, GTK_ALIGN_FILL);
-  gtk_label_set_xalign(GTK_LABEL(status_label), 0.0);
-  gtk_widget_set_margin_start(status_label, DIV_STATUS_MARGIN);
-  gtk_widget_set_margin_end(status_label, DIV_STATUS_MARGIN);
-  gtk_label_set_width_chars(GTK_LABEL(status_label), DIV_STATUS_CHARS);
-  gtk_label_set_max_width_chars(GTK_LABEL(status_label), DIV_STATUS_CHARS);
-  gtk_grid_attach(GTK_GRID(agrid), status_label, 0, 8,10, 1);
+  GtkWidget *sgrid = gtk_grid_new();
+  gtk_widget_set_halign(sgrid, GTK_ALIGN_START);
+
+  for (int i = 0; i < DIV_COLS; i++) {
+    status_col[i] = div_status_label(status_w[i]);
+    gtk_grid_attach(GTK_GRID(sgrid), status_col[i], i, 0, 1, 1);
+  }
+
+  gtk_grid_attach(GTK_GRID(agrid), sgrid, 0, 8, 10, 1);
   //
-  // Second line, same treatment: monospace, the same fixed width, so the
-  // two line up and neither can widen the dialog.
+  // Second line, from the left edge.
   //
-  arm_label = gtk_label_new("");
-  gtk_widget_set_name(arm_label, "boldlabel");
-  gtk_widget_set_halign(arm_label, GTK_ALIGN_FILL);
-  gtk_label_set_xalign(GTK_LABEL(arm_label), 0.0);
-  gtk_widget_set_margin_start(arm_label, DIV_STATUS_MARGIN);
-  gtk_widget_set_margin_end(arm_label, DIV_STATUS_MARGIN);
-  gtk_label_set_width_chars(GTK_LABEL(arm_label), DIV_STATUS_CHARS);
-  gtk_label_set_max_width_chars(GTK_LABEL(arm_label), DIV_STATUS_CHARS);
+  arm_label = div_status_label(-1);
   gtk_grid_attach(GTK_GRID(agrid), arm_label, 0, 9, 10, 1);
   gtk_container_add(GTK_CONTAINER(acontainer), agrid);
   //
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);
-  div_level_sensitive();
 
   //
   // No Min coherence row on RADE V1: see ref_changed_cb().

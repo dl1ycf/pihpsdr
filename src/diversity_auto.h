@@ -26,7 +26,8 @@
 //
 //     z = z0 + w * z1,     w = div_cos + j*div_sin
 //
-// with z0 taken from ADC0 (main antenna) and z1 from ADC1 (aux antenna).
+// with z0 taken from the ADC RX1 is set to (arm 0: ADC1, the main antenna,
+// unless RX1 is set to ADC2) and z1 from the other ADC (arm 1).
 // This module estimates a "good" w by looking at the cross spectrum of
 // the two raw streams, and writes the result back into div_cos/div_sin
 // (and, back-computed, div_gain/div_phase).
@@ -52,8 +53,7 @@ enum {
 // New references go on the end. The value is what is written to the
 // props file, so inserting one in the middle - or removing one, as the
 // RADE passband reference was - silently changes what an existing file
-// means. diversity_auto_restore_state() migrates instead; see
-// DIV_REF_SCHEME there.
+// means.
 //
 
 extern int    div_auto_ref;
@@ -65,10 +65,8 @@ extern double div_auto_hang;            // unused: kept for the wire and props f
                                         // (no RADE lock timeout - see DIV_HANG_DEFAULT)
 extern double div_auto_coherence_min;   // hold below this coherence
 extern int    div_auto_weighting;       // always DIV_WEIGHT_FLAT (see .c)
-extern double div_auto_resolution;      // requested bin width, Hz
-extern int    div_auto_normalise;       // "Level output": hold the combined
-                                        // output at arm 0's level (see
-                                        // div_norm_refresh())
+extern double div_auto_resolution;      // DIV_RES_AUTO; a fixed width in Hz only from the
+                                        // test tools (pinned by div_settings_validate())
 
 //
 // The window controls are modal: the Window, Carrier, FSK/Digital and CW
@@ -94,6 +92,26 @@ extern double div_carrier_cohmin;
 extern double div_digital_cohmin;
 extern double div_rade_cohmin;
 extern double div_cw_cohmin;
+
+//
+// div_auto_resolution when the engine is to choose the bin width itself:
+// diversity_auto_bin_policy(), from the reference and the Averaging time.
+// The choice is the engine's own derived value and is never written into
+// div_auto_resolution; the achieved width is div_auto_binhz.
+//
+#define DIV_RES_AUTO  (-1.0)
+
+//
+// The bin width Auto asks for, in Hz. Pure, so the table can be tested.
+//
+extern double diversity_auto_bin_policy(int ref, double tau);
+
+//
+// After a control that Auto depends on moved (Averaging, the reference):
+// restart the transform if Auto now wants a different length. Does nothing
+// otherwise, and nothing for a fixed bin width.
+//
+extern void diversity_auto_retarget(void);
 
 //
 // Status: the window had to be clamped to the Nyquist limit, and the bin
@@ -282,14 +300,6 @@ typedef struct _div_status {
 //
 #define DIV_ACTION_NONE   0
 #define DIV_ACTION_RESET  1
-
-//
-// Move the per-reference settings - window pair and coherence threshold -
-// between their own slots and the live values the engine reads. Called
-// when the operator changes reference.
-//
-extern void diversity_auto_ref_store(int ref);
-extern void diversity_auto_ref_recall(int ref);
 
 //
 // The lowest Min coherence worth setting on a reference: the coherence
