@@ -33,6 +33,8 @@ warren@wpratt.com
 #ifndef _firmin_h
 #define _firmin_h
 
+#include "linux_port.h"   // for CRITICAL_SECTION
+
 typedef struct _firmin
 {
 	int run;				// run control

@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@pratt.one
 
@@ -60,7 +60,7 @@ typedef struct _icfir
 	FIRCORE p;
 } icfir, * ICFIR;
 
-void icfir_impulse(ICFIRIMP a, int N, int DD, int R, int Pairs, double runrate, double cicrate, 
+void icfir_impulse(ICFIRIMP a, int N, int DD, int R, int Pairs, double runrate, double cicrate,
 	double cutoff, int xtype, double xbw, int rtype, double scale, int wintype);
 
 ICFIRIMP build_icfir_impulse(int nc, int wintype)
@@ -99,7 +99,7 @@ void decalc_icfir (ICFIR a)
 	teardown_icfir_impulse(a->picfirimp);
 }
 
-ICFIR create_icfir (int run, int size, int nc, int mp, double* in, double* out, int runrate, int cicrate, 
+ICFIR create_icfir (int run, int size, int nc, int mp, double* in, double* out, int runrate, int cicrate,
 	int DD, int R, int Pairs, double cutoff, int xtype, double xbw, int wintype)
 //	run:  0 - no action; 1 - operate
 //	size:  number of complex samples in an input buffer to the CFIR filter
@@ -183,7 +183,7 @@ void setOutRate_icfir (ICFIR a, int rate)
 	calc_icfir (a);
 }
 
-void icfir_impulse (ICFIRIMP a, int N, int DD, int R, int Pairs, double runrate, double cicrate, 
+void icfir_impulse (ICFIRIMP a, int N, int DD, int R, int Pairs, double runrate, double cicrate,
 	double cutoff, int xtype, double xbw, int rtype, double scale, int wintype)
 {
 	// N:		number of impulse response samples

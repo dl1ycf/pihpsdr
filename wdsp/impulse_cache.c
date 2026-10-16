@@ -41,6 +41,7 @@ mw0lge@grange-lane.co.uk
 
 #define _CRT_SECURE_NO_WARNINGS
 #include "comm.h"
+#include <limits.h>
 
 /********************************************************************************************************
 *																										*
@@ -95,12 +96,12 @@ void remove_impulse_cache_tail(size_t bucket)
 
 	cache_entry** pp = &_cache_heads[bucket];
 
-	while (*pp && (*pp)->next) 
+	while (*pp && (*pp)->next)
 	{
 		pp = &(*pp)->next;
 	}
 
-	if (*pp) 
+	if (*pp)
 	{
 		_aligned_free((*pp)->impulse);
 		_aligned_free(*pp);
@@ -141,7 +142,7 @@ double* get_impulse_cache_entry(size_t bucket, HASH_T hash, int N)
 	cache_entry* e = _cache_heads[bucket];
 	
 	while (e) {
-		if (e->hash == hash && e->N == N) 
+		if (e->hash == hash && e->N == N)
 		{
 			if (prev)
 			{
@@ -232,21 +233,23 @@ int read_impulse_cache(const char* path)
 	if (buckets != CACHE_BUCKETS) { fclose(fp); return -1; }
 	for (size_t b = 0; b < buckets; b++) {
 		uint32_t count;
-		if (fread(&count, sizeof(count), 1, fp) != 1) { fclose(fp); return -1; }
+		if (fread(&count, sizeof(count), 1, fp) != 1 || count > MAX_CACHE_ENTRIES) { fclose(fp); free_impulse_cache(); return -1; }
 		cache_entry* tail = NULL;
 		for (uint32_t i = 0; i < count; i++) {
 			HASH_T hash;
 			int    N;
-			if (fread(&hash, sizeof(HASH_T), 1, fp) != 1) { fclose(fp); return -1; }
-			if (fread(&N, sizeof(N), 1, fp) != 1) { fclose(fp); return -1; }
-			double* data = (double*)malloc0(N * sizeof(complex));
-			if (fread(data, sizeof(complex), N, fp) != (size_t)N) { _aligned_free(data); fclose(fp); return -1; }
+			if (fread(&hash, sizeof(HASH_T), 1, fp) != 1) { fclose(fp); free_impulse_cache(); return -1; }
+			if (fread(&N, sizeof(N), 1, fp) != 1) { fclose(fp); free_impulse_cache(); return -1; }
+			if (N <= 0 || (size_t)N > INT_MAX / sizeof(complex)) { fclose(fp); free_impulse_cache(); return -1; }
+			double* data = (double*)malloc0((size_t)N * sizeof(complex));
+			if (!data) { fclose(fp); free_impulse_cache(); return -1; }
+			if (fread(data, sizeof(complex), N, fp) != (size_t)N) { _aligned_free(data); fclose(fp); free_impulse_cache(); return -1; }
 			cache_entry* e = (cache_entry*)malloc0(sizeof(cache_entry));
 			e->hash = hash;
 			e->N = N;
 			e->impulse = data;
 			e->next = NULL;
-			if (tail)       
+			if (tail)
 				tail->next = e;
 			else
 				_cache_heads[b] = e;
@@ -259,7 +262,7 @@ int read_impulse_cache(const char* path)
 }
 
 PORT
-void use_impulse_cache(int use) 
+void use_impulse_cache(int use)
 {
 	EnterCriticalSection(&_cs_use_cache);
 	_use_cache = use;

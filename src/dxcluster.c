@@ -235,7 +235,14 @@ static int spotter_in_region(const char *call, const DXC_SETTINGS *s) {
 }
 
 static int mode_passes_filter(const char *mode, const DXC_SETTINGS *s) {
-  if (!mode || !mode[0]) { return s->mode_other; }
+  if (!mode || !mode[0]) {
+    //
+    // Very many spots leave the "Mode" field empty. So in case of doubt,
+    // accept them.
+    //
+    //return s->mode_other;
+    return 1;  // empty modes pass test
+  }
   if (!strcmp(mode, "FT8"))  { return s->mode_ft8;  }
   if (!strcmp(mode, "FT4"))  { return s->mode_ft4;  }
   if (!strcmp(mode, "CW"))   { return s->mode_cw;   }

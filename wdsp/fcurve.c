@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -59,7 +59,7 @@ double* get_pfcpulse(FCIMP a)
 	return a->impulse;
 }
 
-void exec_fcimp (FCIMP a, double f0, double f1, double g0, double g1, 
+void exec_fcimp (FCIMP a, double f0, double f1, double g0, double g1,
 	int curve, double samplerate, double scale, int ctfmode)
 {
 	int i;
@@ -174,7 +174,7 @@ void exec_fcimp (FCIMP a, double f0, double f1, double g0, double g1,
 double* fc_impulse (int nc, double f0, double f1, double g0, double g1, int curve, double samplerate, double scale, int ctfmode, int wintype)
 {
 	// check for previous in the cache
-	struct Params 
+	struct Params
 	{
 		int     nc;
 		int     curve;

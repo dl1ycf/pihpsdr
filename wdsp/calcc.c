@@ -209,80 +209,80 @@ void print_OriginalAndFitSamples(CALCC a);
 
 void print_EQ_Samples(CALCC a);
 
-#define SAMPLE_NBUCKS			  16           
-#define SAMPLE_ACCEPT_OVERRANGE	  1             
-#define SAMPLE_MIN_X              0.0050         
-#define VAR_FORCED_SLOPE          0.001         
+#define SAMPLE_NBUCKS			  16
+#define SAMPLE_ACCEPT_OVERRANGE	  1
+#define SAMPLE_MIN_X              0.0050
+#define VAR_FORCED_SLOPE          0.001
 
-#define DCB_ENABLED				  0       
+#define DCB_ENABLED				  0
 #define DCB_THRESH				  0.05
 #define DCB_CAP					  0.25
-#define DCB_FLOOR				  0.03          
+#define DCB_FLOOR				  0.03
 #define DCB_NBINS				  24
 #define DCB_CONFIRM				  2
 #define DCB_MIN_PER_BIN			  20
 #define DCB_ALPHA				  0.30
 
-#define EQ_ENABLE                 1            
-#define EQ_MIN_PTS		          60            
-#define EQ_NBINS                  100            
-#define EQ_MODE                   0		         
-#define EQ_ROBUST_X               0.20	        
-#define EQ_XMIN                   0.02	       
-#define EQ_MIN_CNT	              3                
+#define EQ_ENABLE                 1
+#define EQ_MIN_PTS		          60
+#define EQ_NBINS                  100
+#define EQ_MODE                   0		
+#define EQ_ROBUST_X               0.20	
+#define EQ_XMIN                   0.02	
+#define EQ_MIN_CNT	              3
 #define EXTP0_PIN_X_LO            0.01
 #define EXTP0_PIN_X_HEAD_MAX      0.20
 #define EXTP0_PIN_WARMUP_CYCLES   5
 #define EXTP0_PIN_WARMUP_ALPHA    0.40
 #define EXTP0_PIN_ALPHA           0.10
 
-#define PS_NF_DEGREE              3                        
-#define PS_NF_N_CTRL              20         
-#define PS_NF_CTRL_MAX            200          
-#define PS_NF_ORDERING_MODE       NF_ORDER_BY_X         
-#define PS_NF_SPEARMAN_THRESH     0.85             
-#define PS_NF_MAG_PREFILT_XMIN    0.04                    
-#define PS_NF_MAG_PREFILT_YMAX    1.8                     
-#define PS_NF_PHS_PREFILT_XMIN    0.02                  
-#define PS_NF_PHS_PREFILT_YMAX    0.0                         
+#define PS_NF_DEGREE              3
+#define PS_NF_N_CTRL              20
+#define PS_NF_CTRL_MAX            200
+#define PS_NF_ORDERING_MODE       NF_ORDER_BY_X
+#define PS_NF_SPEARMAN_THRESH     0.85
+#define PS_NF_MAG_PREFILT_XMIN    0.04
+#define PS_NF_MAG_PREFILT_YMAX    1.8
+#define PS_NF_PHS_PREFILT_XMIN    0.02
+#define PS_NF_PHS_PREFILT_YMAX    0.0
 
-#define PS_NF_UNIFORM_KNOTS       1          
-#define PS_NF_PIN_START           1                       
-#define PS_NF_PIN_START_X         0.0          
-#define PS_NF_MAG_PIN_END         1                            
-#define PS_NF_MAG_END_X           1.0           
+#define PS_NF_UNIFORM_KNOTS       1
+#define PS_NF_PIN_START           1
+#define PS_NF_PIN_START_X         0.0
+#define PS_NF_MAG_PIN_END         1
+#define PS_NF_MAG_END_X           1.0
 #define PS_NF_MAG_END_Y           1.0
-#define PS_NF_PHS_PIN_END         0                       
-#define PS_NF_XWEIGHT_X0          0.0             
-#define PS_NF_XWEIGHT_MIN         0.04         
+#define PS_NF_PHS_PIN_END         0
+#define PS_NF_XWEIGHT_X0          0.0
+#define PS_NF_XWEIGHT_MIN         0.04
 
-#define PS_NF_OUTLIER_ITERS       2                              
-#define PS_NF_OUTLIER_SIGMA       2.5       
-#define PS_NF_OUTLIER_MIN_FRAC    0.5           
+#define PS_NF_OUTLIER_ITERS       2
+#define PS_NF_OUTLIER_SIGMA       2.5
+#define PS_NF_OUTLIER_MIN_FRAC    0.5
 
-#define PS_NF_CV_FRACTION         0.1                         
-#define PS_NF_CV_OVERFIT_RATIO    1.5                 
-#define PS_NF_CV_FATAL_RATIO      10.0                 
+#define PS_NF_CV_FRACTION         0.1
+#define PS_NF_CV_OVERFIT_RATIO    1.5
+#define PS_NF_CV_FATAL_RATIO      10.0
 
-#define PS_NF_LOCAL_OUTLIER_ITERS 0                      
-#define PS_NF_LOCAL_OUTLIER_SIGMA 4.0                      
-#define PS_NF_LOCAL_OUTLIER_BANDS 20                               
+#define PS_NF_LOCAL_OUTLIER_ITERS 0
+#define PS_NF_LOCAL_OUTLIER_SIGMA 4.0
+#define PS_NF_LOCAL_OUTLIER_BANDS 20
 
-#define PS_NF_FOLD_DETECT         1                   
+#define PS_NF_FOLD_DETECT         1
 
-#define PS_NF_ADAPTIVE_ITERS      0                     
-#define PS_NF_ADAPTIVE_THRESH     2.0            
-#define PS_NF_REPARAM_ITERS       2         
-#define PS_NF_MIN_PTS_PER_CTRL    20         
-#define PS_NF_IRLS_ITERS          2                          
-#define PS_NF_IRLS_EPSILON        1e-6                     
+#define PS_NF_ADAPTIVE_ITERS      0
+#define PS_NF_ADAPTIVE_THRESH     2.0
+#define PS_NF_REPARAM_ITERS       2
+#define PS_NF_MIN_PTS_PER_CTRL    20
+#define PS_NF_IRLS_ITERS          2
+#define PS_NF_IRLS_EPSILON        1e-6
 
-#define PS_NF_MAG_YMIN            0.0                   
+#define PS_NF_MAG_YMIN            0.0
 #define PS_NF_MAG_YMAX            0.0
-#define PS_NF_PHS_YMIN           (-1.05)         
+#define PS_NF_PHS_YMIN           (-1.05)
 #define PS_NF_PHS_YMAX           (+1.05)
 
-#define PS_NF_EMA_MAX_CTRL        32          
+#define PS_NF_EMA_MAX_CTRL        32
 
 #define PS_NS_EXTEND_LEFT_MODE    0
 #define PS_NS_EXTEND_BOUND_FRAC   0.05
@@ -291,19 +291,19 @@ void print_EQ_Samples(CALCC a);
 #define PS_NS_EMA_ALPHA_LO        0.30
 #define PS_NS_EMA_X_BND           0.20
 
-#define EXTREMA_CHECK             0.05		   
-#define EXTREMA_STEPS             100		       
-#define EXTREMA_X_LO              0.05		       
-#define EXTREMA_X_HI              0.85		       
+#define EXTREMA_CHECK             0.05		
+#define EXTREMA_STEPS             100		
+#define EXTREMA_X_LO              0.05		
+#define EXTREMA_X_HI              0.85		
 
-#define SCHECK_PTS                40             
-#define SCHECK_TOL                0.10        
-#define TOP_BUCKET_PTS            100          
-#define DEADLOCK_MIN_FRAC         0.06           
-#define SC_IDENTITY_PTS           20           
-#define SC_IDENTITY_TOL		      0.05        
+#define SCHECK_PTS                40
+#define SCHECK_TOL                0.10
+#define TOP_BUCKET_PTS            100
+#define DEADLOCK_MIN_FRAC         0.06
+#define SC_IDENTITY_PTS           20
+#define SC_IDENTITY_TOL		      0.05
 
-#define DISP_PTS                  512            
+#define DISP_PTS                  512
 
 
 typedef struct _cpt
@@ -453,21 +453,21 @@ static void sampleCollectClear(PSCOLLECTION Collect)
 
 typedef struct _eqdensity
 {
-	int* cnt;		         
-	double* sx;		         
-	double* sm;		         
-	double* sc;		         
-	double* ss;		         
-	int nb_lo;		         
-	int lo_max;	              
+	int* cnt;		
+	double* sx;		
+	double* sm;		
+	double* sc;		
+	double* ss;		
+	int nb_lo;		
+	int lo_max;
 	int* offs;
 	int* fill;
-	double* lm;		       
+	double* lm;		
 	double* lc;
 	double* ls;
-	double* med_m;	       
-	double* med_c;	       
-	double* med_s;	       
+	double* med_m;	
+	double* med_c;	
+	double* med_s;	
 } eqdensity, * EQDENSITY;
 
 static EQDENSITY build_eqdensity(CALCC c)
@@ -478,12 +478,12 @@ static EQDENSITY build_eqdensity(CALCC c)
 	a->sm  = (double*)malloc0(EQ_NBINS * sizeof(double));
 	a->sc  = (double*)malloc0(EQ_NBINS * sizeof(double));
 	a->ss  = (double*)malloc0(EQ_NBINS * sizeof(double));
-	if (EQ_MODE == 1)	         
+	if (EQ_MODE == 1)	
 	{
 		a->nb_lo = (int)(EQ_ROBUST_X * (double)EQ_NBINS + 0.5);
-		a->lo_max = c->nsamps;        
+		a->lo_max = c->nsamps;
 	}
-	else         
+	else
 	{
 		a->nb_lo = 0;
 		a->lo_max = 0;
@@ -548,53 +548,53 @@ static int equalize_density(CALCC a)
 	memset(e->sm,  0, nb * sizeof(double));
 	memset(e->sc,  0, nb * sizeof(double));
 	memset(e->ss,  0, nb * sizeof(double));
-	for (int i = 0; i < a->nsamps; i++)		    
+	for (int i = 0; i < a->nsamps; i++)		
 	{
-		if (a->x[i] < EQ_XMIN) continue;            
+		if (a->x[i] < EQ_XMIN) continue;
 		int b = (int)(a->x[i] * nb);		    							
-		if (b < 0)      b = 0;				     
+		if (b < 0)      b = 0;				
 		if (b > nb - 1) b = nb - 1;
-		e->cnt[b]++;						       
-		e->sx[b] += a->x[i];				         
-		e->sm[b] += a->ym[i];				         
-		e->sc[b] += a->yc[i];				         
-		e->ss[b] += a->ys[i];				         
+		e->cnt[b]++;						
+		e->sx[b] += a->x[i];				
+		e->sm[b] += a->ym[i];				
+		e->sc[b] += a->yc[i];				
+		e->ss[b] += a->ys[i];				
 	}
-	if (e->nb_lo > 0)	     
+	if (e->nb_lo > 0)	
 	{
 		e->offs[0] = 0;
 		for (int b = 0; b < e->nb_lo; b++) e->offs[b + 1] = e->offs[b] + e->cnt[b];
 		memset(e->fill, 0, EQ_NBINS * sizeof(int));
-		for (int i = 0; i < a->nsamps; i++)		    
+		for (int i = 0; i < a->nsamps; i++)		
 		{
-			if (a->x[i] < EQ_XMIN) continue;            
+			if (a->x[i] < EQ_XMIN) continue;
 			int b = (int)(a->x[i] * nb);			    	
-			if (b < 0)      b = 0;					     
+			if (b < 0)      b = 0;					
 			if (b > nb - 1) b = nb - 1;
-			if (b < e->nb_lo)						         
+			if (b < e->nb_lo)						
 			{
-				int idx = e->offs[b] + e->fill[b]++;          
-				e->lm[idx] = a->ym[i];				          
+				int idx = e->offs[b] + e->fill[b]++;
+				e->lm[idx] = a->ym[i];				
 				e->lc[idx] = a->yc[i];
 				e->ls[idx] = a->ys[i];
 			}
 		}
-		for (int b = 0; b < e->nb_lo; b++)	        
+		for (int b = 0; b < e->nb_lo; b++)	
 		{
-			if (e->cnt[b] >= 3)				        
+			if (e->cnt[b] >= 3)				
 			{
-				e->med_m[b] = eq_median(e->lm + e->offs[b], e->cnt[b]);	      
-				e->med_c[b] = eq_median(e->lc + e->offs[b], e->cnt[b]);	      
-				e->med_s[b] = eq_median(e->ls + e->offs[b], e->cnt[b]);	      
+				e->med_m[b] = eq_median(e->lm + e->offs[b], e->cnt[b]);	
+				e->med_c[b] = eq_median(e->lc + e->offs[b], e->cnt[b]);	
+				e->med_s[b] = eq_median(e->ls + e->offs[b], e->cnt[b]);	
 			}
 		}
 	}
-	int n = 0;						     
-	for (int b = 0; b < nb; b++)	      
+	int n = 0;						
+	for (int b = 0; b < nb; b++)	
 	{
-		if (e->cnt[b] == 0) continue;			     
-		if (e->cnt[b] < EQ_MIN_CNT) continue;	       
-		double inv = 1.0 / (double)e->cnt[b];	        
+		if (e->cnt[b] == 0) continue;			
+		if (e->cnt[b] < EQ_MIN_CNT) continue;	
+		double inv = 1.0 / (double)e->cnt[b];	
 		a->m_eqd[n].x = a->c_eqd[n].x = a->s_eqd[n].x = e->sx[b] * inv;
 		a->m_eqd[n].y = e->sm[b] * inv;
 		a->c_eqd[n].y = e->sc[b] * inv;
@@ -605,7 +605,7 @@ static int equalize_density(CALCC a)
 			a->c_eqd[n].y = e->med_c[b];
 			a->s_eqd[n].y = e->med_s[b];
 		}
-		n++;	       
+		n++;	
 	}
 	return n;
 }
@@ -630,10 +630,10 @@ static void teardown_extrema(EXTREMA a)
 
 static int count_extrema(EXTREMA e, const NS_Spline* s)
 {
-	const double x_lo = EXTREMA_X_LO;		       
-	const double x_hi = EXTREMA_X_HI;		       
-	const int n_steps = EXTREMA_STEPS;		       
-	const double min_prom = EXTREMA_CHECK;	   
+	const double x_lo = EXTREMA_X_LO;		
+	const double x_hi = EXTREMA_X_HI;		
+	const int n_steps = EXTREMA_STEPS;		
+	const double min_prom = EXTREMA_CHECK;	
 	if (!s || n_steps < 3) return 0;
 	double prev_y = ns_eval_near_clamped(s, x_lo, 1.0);
 	for (int i = 0; i < n_steps; i++)
@@ -643,34 +643,34 @@ static int count_extrema(EXTREMA e, const NS_Spline* s)
 		prev_y = e->ys[i];
 	}
 
-	int    extrema = 0;									   
-	int    dir = 0;										    
-	double ext = e->ys[0];								   
+	int    extrema = 0;									
+	int    dir = 0;										
+	double ext = e->ys[0];								
 
 	for (int i = 1; i < n_steps; i++)
 	{
 		double y = e->ys[i];
-		if (dir == 0)									    
+		if (dir == 0)									
 		{
-			if (y > e->ys[0] + min_prom) dir = 1;		  
-			else if (y < e->ys[0] - min_prom) dir = -1;	  
+			if (y > e->ys[0] + min_prom) dir = 1;		
+			else if (y < e->ys[0] - min_prom) dir = -1;	
 			if (dir >= 0 && y > ext) ext = y;
 			if (dir <= 0 && y < ext) ext = y;
 			continue;
 		}
-		if (dir > 0)									   
+		if (dir > 0)									
 		{
-			if (y > ext) ext = y;						  
-			else if (ext - y >= min_prom)				  
+			if (y > ext) ext = y;						
+			else if (ext - y >= min_prom)				
 			{
 				extrema++;
 				dir = -1; ext = y;
 			}
 		}
-		else											   
+		else											
 		{
-			if (y < ext) ext = y;						  
-			else if (y - ext >= min_prom)				  
+			if (y < ext) ext = y;						
+			else if (y - ext >= min_prom)				
 			{
 				extrema++;
 				dir = 1; ext = y;
@@ -816,7 +816,7 @@ static int sin_cos_identity_check(CALCC a)
 		prev_s = s; prev_c = c;
 	}
 	if (max_identity_err > SC_IDENTITY_TOL) error = 1;
-	if (error) 
+	if (error)
 		dprintf("***** PS: sin²+cos² deviates by %.3f\n", max_identity_err);
 	return error;
 }
@@ -903,9 +903,9 @@ static void size_calcc (CALCC a)
 	a->s_dcb = build_dcb(a->nsamps);
 	a->dcb_phasor_mag  = (double*)malloc0(a->nsamps * sizeof(double));
 
-	a->m_anchor_ema   = 0.04;        
-	a->c_anchor_ema   = 0.04;        
-	a->s_anchor_ema   = 0.04;        
+	a->m_anchor_ema   = 0.04;
+	a->c_anchor_ema   = 0.04;
+	a->s_anchor_ema   = 0.04;
 	a->m_anchor_valid = 0;
 	a->c_anchor_valid = 0;
 	a->s_anchor_valid = 0;
@@ -1254,9 +1254,9 @@ static void calc (CALCC a)
 	a->m_config->start_pt            = (NF_Point2){ PS_NF_PIN_START_X, a->m_y_pin_try };
 	a->m_config->pin_end             = PS_NF_MAG_PIN_END;
 	a->m_config->end_pt              = (NF_Point2){ PS_NF_MAG_END_X, PS_NF_MAG_END_Y };
-	a->m_config->pin_end_horiz       = a->m_fold_prev;        
-	a->m_config->pin_end_flat        = a->m_fold_prev;        
-	a->m_config->pin_end_flat2       = a->m_fold_prev;        
+	a->m_config->pin_end_horiz       = a->m_fold_prev;
+	a->m_config->pin_end_flat        = a->m_fold_prev;
+	a->m_config->pin_end_flat2       = a->m_fold_prev;
 	a->m_config->x_weight_x0         = PS_NF_XWEIGHT_X0;
 	a->m_config->x_weight_min        = PS_NF_XWEIGHT_MIN;
 	a->m_config->outlier_iters       = PS_NF_OUTLIER_ITERS;
@@ -2083,10 +2083,15 @@ PORT
 void PSSaveCorr (int channel, char* filename)
 {
 	CALCC a;
-	int i = 0;
+	size_t i;
+	if (!filename) return;
+	/* Reject oversized names before modifying the shared buffer. */
+	for (i = 0; i < sizeof(((CALCC)0)->util.save_file); ++i)
+		if (filename[i] == '\0') break;
+	if (i == sizeof(((CALCC)0)->util.save_file)) return;
 	EnterCriticalSection (&txa[channel].calcc.cs_update);
 	a = txa[channel].calcc.p;
-	while (a->util.save_file[i++] = *filename++);
+	memcpy(a->util.save_file, filename, i + 1);
 	ReleaseSemaphore(a->SemsPSCorr[1], 1, 0);
 	LeaveCriticalSection (&txa[channel].calcc.cs_update);
 }
@@ -2095,10 +2100,15 @@ PORT
 void PSRestoreCorr (int channel, char* filename)
 {
 	CALCC a;
-	int i = 0;
+	size_t i;
+	if (!filename) return;
+	/* Reject oversized names before modifying the shared buffer. */
+	for (i = 0; i < sizeof(((CALCC)0)->util.restore_file); ++i)
+		if (filename[i] == '\0') break;
+	if (i == sizeof(((CALCC)0)->util.restore_file)) return;
 	EnterCriticalSection (&txa[channel].calcc.cs_update);
 	a = txa[channel].calcc.p;
-	while (a->util.restore_file[i++] = *filename++);
+	memcpy(a->util.restore_file, filename, i + 1);
 	a->ctrl.turnon = 1;
 	ReleaseSemaphore(a->SemsPSCorr[2], 1, 0);
 	LeaveCriticalSection (&txa[channel].calcc.cs_update);

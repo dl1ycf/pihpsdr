@@ -309,7 +309,6 @@ extern void SetDSPBuffsize (int channel, int dsp_size);
 extern void SetInputSamplerate (int channel, int in_rate);
 extern void SetDSPSamplerate (int channel, int dsp_rate);
 extern void SetOutputSamplerate (int channel, int out_rate);
-extern int WaitChannelFlush(int channel, int timeout_ms);
 extern void SetAllRates (int channel, int in_rate, int dsp_rate, int out_rate);
 extern int SetChannelState (int channel, int state, int dmode);
 extern void SetChannelTDelayUp (int channel, double time);
@@ -591,6 +590,7 @@ extern void SetTXAPostGenTTPulseDutyCycle(int channel, double dc);
 extern void SetTXAPostGenTTPulseToneFreq(int channel, double freq1, double freq2);
 extern void SetTXAPostGenTTPulseTransition(int channel, double transtime);
 extern void SetTXAPostGenTTPulseIQout(int channel, int IQout);
+extern void SetTXAPostGenNoiseMag(int channel, double mag);
 
 //
 // Interfaces from iir.c

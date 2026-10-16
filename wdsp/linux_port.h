@@ -61,11 +61,9 @@ john.d.melton@googlemail.com
 #define __stdcall
 #define __forceinline
 
-#define _aligned_malloc(x,y) malloc(x)
-#define _aligned_free(x)	 free(x)
 // Activate these for malloc debug
-//#define _aligned_malloc(x,y) my_malloc(x);
-//#define _aligned_free(x) my_free(x);
+//#define posix_memalign(x,y) my_malloc(x);
+//#define free(x) my_free(x);
 
 void *my_malloc(size_t size);
 void my_free(void *p);
@@ -89,7 +87,9 @@ void my_free(void *p);
 #define WAIT_OBJECT_0   0x0000000
 #define WAIT_TIMEOUT    0x0009999
 #define WAIT_FAILED            -1
+#ifndef INT_MAX
 #define INT_MAX        2147483647
+#endif
 
 void QueueUserWorkItem(void *function,void *context,int flags);
 

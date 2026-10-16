@@ -84,6 +84,12 @@ void about_menu(GtkWidget *parent) {
   gtk_widget_set_name(label, "boldlabel");
   gtk_grid_attach(GTK_GRID(grid), label, 1, row, 19, 1);
   row++;
+  snprintf(text, sizeof(text), "Build Options: %s, Audio=%s", build_options, build_audio);
+  label = gtk_label_new(text);
+  gtk_widget_set_halign(label, GTK_ALIGN_START);
+  gtk_widget_set_name(label, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), label, 1, row, 19, 1);
+  row++;
   snprintf(text, sizeof(text), "Build Version: %s\n"
                                "  (Commit %s, Date: %s)\n"
                                "  WDSP Version: %d.%02d",
@@ -97,7 +103,7 @@ void about_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), label, 1, row, 19, 1);
   row++;
   if (radio_is_remote) {
-    snprintf(text, sizeof(text), "Device: %s, Protocol %s, running remote at %s\n",
+    snprintf(text, sizeof(text), "Device: %s, Protocol %s, running remote at %s",
              radio->name, radio->protocol == ORIGINAL_PROTOCOL ? "1" : "2",
              inet_ntoa(radio->network.address.sin_addr));
   } else {
@@ -115,7 +121,7 @@ void about_menu(GtkWidget *parent) {
         snprintf(interface_addr, sizeof(interface_addr), " (%s)", inet_ntoa(radio->network.interface_address.sin_addr));
         if (!strcmp(interface_addr, " (0.0.0.0)")) { *interface_addr = 0; }
         if (have_saturn_xdma) {
-          snprintf(text, sizeof(text), "Device: Saturn (via XDMA), Protocol %s, v%d.%d\n",
+          snprintf(text, sizeof(text), "Device: Saturn (via XDMA), Protocol %s, v%d.%d",
                    radio->protocol == ORIGINAL_PROTOCOL ? "1" : "2",
                    radio->software_version / 10, radio->software_version % 10);
         } else {
@@ -138,7 +144,7 @@ void about_menu(GtkWidget *parent) {
       break;
 #ifdef SOAPYSDR
     case SOAPYSDR_PROTOCOL:
-      snprintf(text, sizeof(text), "Device: %s (via SoapySDR)\n"
+      snprintf(text, sizeof(text), "Device: %s (via SoapySDR)"
                                    "  %s (%s)",
                radio->name, radio->soapy.hardware_key, radio->soapy.driver_key);
       break;

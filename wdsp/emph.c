@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@pratt.one
 
@@ -55,7 +55,7 @@ typedef struct _emphp
 	FIRCORE p;
 } emphp, * EMPHP;
 
-EMPHP create_emphp (int run, int position, int size, int nc, int mp, double* in, double* out, 
+EMPHP create_emphp (int run, int position, int size, int nc, int mp, double* in, double* out,
 	int rate, int ctype, double f_low, double f_high)
 {
 	EMPHP a = (EMPHP) malloc0 (sizeof (emphp));

@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@pratt.one
 
@@ -50,7 +50,7 @@ void build_window (SIPHON a)
 		a->window[i] *= scale;
 }
 
-SIPHON create_siphon (int run, int position, int mode, int disp, int insize, 
+SIPHON create_siphon (int run, int position, int mode, int disp, int insize,
 	double* in, int sipsize, int fftsize, int specmode)
 {
 	SIPHON a = (SIPHON) malloc0 (sizeof (siphon));
@@ -192,6 +192,11 @@ void RXAGetaSipF (int channel, float* out, int size)
 	SIPHON a= rxa[channel].sip1.p;
 	int i;
 	EnterCriticalSection (&a->update);
+	if (size < 0 || size > a->sipsize)
+	{
+		LeaveCriticalSection (&a->update);
+		return;
+	}
 	a->outsize = size;
 	suck (a);
 	LeaveCriticalSection (&a->update);
@@ -207,6 +212,11 @@ void RXAGetaSipF1 (int channel, float* out, int size)
 	SIPHON a= rxa[channel].sip1.p;
 	int i;
 	EnterCriticalSection (&a->update);
+	if (size < 0 || size > a->sipsize)
+	{
+		LeaveCriticalSection (&a->update);
+		return;
+	}
 	a->outsize = size;
 	suck (a);
 	LeaveCriticalSection (&a->update);
@@ -256,6 +266,11 @@ void TXAGetaSipF (int channel, float* out, int size)
 	SIPHON a = txa[channel].sip1.p;
 	int i;
 	EnterCriticalSection (&a->update);
+	if (size < 0 || size > a->sipsize)
+	{
+		LeaveCriticalSection (&a->update);
+		return;
+	}
 	a->outsize = size;
 	suck (a);
 	LeaveCriticalSection (&a->update);
@@ -271,6 +286,11 @@ void TXAGetaSipF1 (int channel, float* out, int size)
 	SIPHON a = txa[channel].sip1.p;
 	int i;
 	EnterCriticalSection (&a->update);
+	if (size < 0 || size > a->sipsize)
+	{
+		LeaveCriticalSection (&a->update);
+		return;
+	}
 	a->outsize = size;
 	suck (a);
 	LeaveCriticalSection (&a->update);
@@ -324,6 +344,12 @@ void TXASetSipAllocDisps (int channel, int n_alloc_disps, int* alloc_run, int* a
 	SIPHON a = txa[channel].sip1.p;
 	int i;
 	EnterCriticalSection(&a->update);
+	if (n_alloc_disps < 0 || n_alloc_disps > dMAX_DISPLAYS ||
+		(n_alloc_disps > 0 && (alloc_run == 0 || alloc_disp == 0)))
+	{
+		LeaveCriticalSection(&a->update);
+		return;
+	}
 	a->n_alloc_disps = n_alloc_disps;
 	for (i = 0; i < a->n_alloc_disps; i++)
 	{
@@ -375,6 +401,11 @@ void GetaSipF1EXT (int id, float* out, int size)
 	SIPHON a = psiphon[id];
 	int i;
 	EnterCriticalSection (&a->update);
+	if (size < 0 || size > a->sipsize)
+	{
+		LeaveCriticalSection (&a->update);
+		return;
+	}
 	a->outsize = size;
 	suck (a);
 	LeaveCriticalSection (&a->update);

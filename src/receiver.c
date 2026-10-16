@@ -2074,9 +2074,18 @@ void rx_set_mode(const RECEIVER *rx) {
   ASSERT_SERVER();
   //
   // Change the  mode of a running receiver according to what it stored
-  // in its controlling VFO.
+  // in its controlling VFO. When changing the mode and using NNR,
+  // re-specify model as needed
   //
-  SetRXAMode(rx->id, vfo[rx->id].mode);
+  int mode = vfo[rx->id].mode;
+
+  if ((rx->nr == 3) && (mode == modeCWU || mode == modeCWL)) {
+    (void) SetRXANNRModel(rx->id,         rx->nnr_model+2);
+  } else {
+    (void) SetRXANNRModel(rx->id,         rx->nnr_model);
+  }
+
+  SetRXAMode(rx->id, mode);
   rx_set_squelch(rx);
 }
 
@@ -2150,6 +2159,7 @@ void rx_set_noise(const RECEIVER *rx) {
     profiles_copy_rxtxprofile(mode);
   }
   g_idle_add(ext_vfo_update, NULL);
+  int mode = vfo[rx->id].mode;
   //
   // Note NB and NB2 are done "outside WDSP", that is
   // before the IQ samples enter further processing
@@ -2199,7 +2209,15 @@ void rx_set_noise(const RECEIVER *rx) {
   // NNR
   //
   SetRXANNRMaskFloor(rx->id,            rx->nnr_floor);
-  (void) SetRXANNRModel(rx->id,         rx->nnr_model);
+  //
+  // piHPSDR lets the use choose between the "Default" and "Premium" model only
+  // and automatically switches to the CW NNR models when doing CW
+  //
+  if (mode == modeCWU || mode == modeCWL) {
+    (void) SetRXANNRModel(rx->id,         rx->nnr_model+2);
+  } else {
+    (void) SetRXANNRModel(rx->id,         rx->nnr_model);
+  }
   //
   // NR4
   //
