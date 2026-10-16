@@ -91,6 +91,7 @@ warren@wpratt.com
 #include "meterlog10.h"
 #include "nbp.h"
 #include "nnr.h"
+#include "nnrbypass.h"
 #include "nob.h"
 #include "nobII.h"
 #include "nurbs.h"
@@ -113,6 +114,7 @@ warren@wpratt.com
 #include "varsamp.h"
 #include "wbfm.h"
 #include "wcpAGC.h"
+#include "wdsp_align.h"
 
 // manage differences among consoles
 #define _Thetis

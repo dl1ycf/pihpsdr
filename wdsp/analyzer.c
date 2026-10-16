@@ -20,7 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -345,7 +345,7 @@ void detector (	int det_type,			// detector type
 					if (bins[i + 1] > bins[i]) rose    = 1;
 					if (bins[i + 1] < bins[i]) fell    = 1;
 				}
-				// if the next bin is NOT within the pixel || there is no next bin, finalize the pixel 
+				// if the next bin is NOT within the pixel || there is no next bin, finalize the pixel
 				//    value and reset parameters
 				else
 				{
@@ -582,7 +582,7 @@ void stitch(int disp)
 		}
 		if (k == i)
 			// detect
-			detector (a->det_type[i], m, a->num_pixels, a->pix_per_bin, a->bin_per_pix, a->pre_av_out, 
+			detector (a->det_type[i], m, a->num_pixels, a->pix_per_bin, a->bin_per_pix, a->pre_av_out,
 				a->t_pixels[i], a->inv_enb, a->fsclipL, a->fsclipH, a->det_offset);
 		else
 			memcpy (a->t_pixels[i], a->t_pixels[k], a->num_pixels * sizeof (double));
@@ -763,7 +763,7 @@ void calc_dmb(int disp, int size)
 // tau:			Metering time constant in seconds.  E.g., '0.5'.
 // frame_rate:	Display frame_rate currently in use.  E.g., '60'.
 PORT
-void SetupDetectMaxBin(int run, int disp, int ss, int LO, double rate, 
+void SetupDetectMaxBin(int run, int disp, int ss, int LO, double rate,
 	double fLow, double fHigh, double tau, int frame_rate)
 {
 	// We only allow setup for one (ss,LO) pair at a time for each 'disp'.
@@ -868,7 +868,7 @@ DWORD WINAPI Cspectra (void *pargs)
 
 		// Detect value of Max FFT Bin in a freq range
 		DetectMaxBin(disp, ss, LO);
-		// 
+		//
 
 	}
 
@@ -920,7 +920,7 @@ DWORD WINAPI Cspectra (void *pargs)
 void interpolate(int disp, int set, double fmin, double fmax, int num_pixels)
 {
 	DP a = pdisp[disp];
-	int i; 
+	int i;
 	double f;
 	int n = a->n_freqs[set];
 	int k;
@@ -1169,24 +1169,24 @@ void ResetPixelBuffers(int disp)
 	LeaveCriticalSection(&a->SetAnalyzerSection);
 }
 
-PORT    
+PORT
 void SetAnalyzer (	int disp,			// display identifier
 					int n_pixout,		// pixel output identifier
 					int n_fft,			// number of LO frequencies = number of ffts used in elimination
 					int typ,			// 0 for real input data (I only); 1 for complex input data (I & Q)
-					int *flp,			// vector with one elt for each LO frequency, 1 if high-side LO, 0 otherwise 
+					int *flp,			// vector with one elt for each LO frequency, 1 if high-side LO, 0 otherwise
 					int sz,				// size of the fft, i.e., number of input samples
 					int bf_sz,			// number of samples transferred for each OpenBuffer()/CloseBuffer()
 					int win_type,		// integer specifying which window function to use
 					double pi,			// PiAlpha parameter for Kaiser window
-					int ovrlp,			// number of samples each fft (other than the first) is to re-use from the previous 
+					int ovrlp,			// number of samples each fft (other than the first) is to re-use from the previous
 					int clp,			// number of fft output bins to be clipped from EACH side of each sub-span
 					double fscLin,		// number of bins to clip from low end of entire span
 					double fscHin,		// number of bins to clip from high end of entire span
-					int n_pix,			// number of pixel values to return.  may be either <= or > number of bins 
-					int n_stch,			// number of sub-spans to concatenate to form a complete span 
-					int calset,			// identifier of which set of calibration data to use 
-					double fmin,		// frequency at first pixel value 
+					int n_pix,			// number of pixel values to return.  may be either <= or > number of bins
+					int n_stch,			// number of sub-spans to concatenate to form a complete span
+					int calset,			// identifier of which set of calibration data to use
+					double fmin,		// frequency at first pixel value
 					double fmax,		// frequency at last pixel value
 					int max_w
 				 )
@@ -1421,7 +1421,7 @@ void XCreateAnalyzer(	int disp,
 	*success = 0;
 }
 
-PORT   
+PORT
 void DestroyAnalyzer(int disp)
 {
 	DP a = pdisp[disp];
@@ -1501,7 +1501,7 @@ void DestroyAnalyzer(int disp)
 	_aligned_free (a);
 }
 
-PORT   
+PORT
 void GetPixels	(	int disp,
 					int pixout,
 					dOUTREAL *pix,		//if new pixel values avail, copies to pix and sets flag = 1
@@ -1566,7 +1566,7 @@ int calcompare (const void * a, const void * b)
 		return 1;
 }
 
-PORT   
+PORT
 void SetCalibration (	int disp,
 						int set_num,				//identifier for this calibration data set
 						int n_points,				//number of calibration points in the set
@@ -1598,7 +1598,7 @@ void SetCalibration (	int disp,
 	a->cal_changed = 1;
 }
 
-PORT   
+PORT
 void OpenBuffer(int disp, int ss, int LO, void **Ipointer, void **Qpointer)
 {
 	DP a = pdisp[disp];
@@ -1608,7 +1608,7 @@ void OpenBuffer(int disp, int ss, int LO, void **Ipointer, void **Qpointer)
 	LeaveCriticalSection(&a->SetAnalyzerSection);
 }
 
-PORT   
+PORT
 void CloseBuffer(int disp, int ss, int LO)
 {
 	DP a = pdisp[disp];

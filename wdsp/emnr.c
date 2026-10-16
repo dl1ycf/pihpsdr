@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -91,7 +91,7 @@ double bessI1 (double x)
 		{
 			p = x / 3.75;
 			p = p * p;
-			res = x 
+			res = x
 				  * (((((( 0.00032411  * p
 					     + 0.00301532) * p
 					     + 0.02658733) * p
@@ -128,7 +128,7 @@ double e1xb (double x)
 {
 	double e1, ga, r, t, t0;
 	int k, m;
-	if (x == 0.0) 
+	if (x == 0.0)
 		e1 = 1.0e300;
 	else if (x <= 1.0)
 	{
@@ -208,10 +208,10 @@ int readZetaHat(const char* zeta_file, int* rows, int* cols,
 {
 	char zetaBinary[256];
 	char bin[50] = ".bin";
-	sprintf (zetaBinary, "%s%s", zeta_file, bin);
+	int pathlen = zeta_file ? snprintf (zetaBinary, sizeof (zetaBinary), "%s%s", zeta_file, bin) : -1;
 	FILE* pzetaBinary;
 	int e = 0;
-	if (pzetaBinary = fopen(zetaBinary, "rb"))
+	if (pathlen > 0 && pathlen < (int)sizeof (zetaBinary) && (pzetaBinary = fopen(zetaBinary, "rb")))
 	{
 		int nvals = 0;
 		// 'fread's executed only through first error
@@ -221,12 +221,13 @@ int readZetaHat(const char* zeta_file, int* rows, int* cols,
 		if (e == 0 && fread(gmax,      sizeof(double), 1,     pzetaBinary) != 1) e = 1;
 		if (e == 0 && fread(ximin,     sizeof(double), 1,     pzetaBinary) != 1) e = 1;
 		if (e == 0 && fread(ximax,     sizeof(double), 1,     pzetaBinary) != 1) e = 1;
+		if (e == 0 && (*rows != 60 || *cols != 60)) e = 1;
 		if (e == 0)   nvals = (*rows) * (*cols);
 		if (e == 0 && fread(zetaHat,   sizeof(double), nvals, pzetaBinary) != nvals) e = 1;
 		if (e == 0 && fread(zetaValid, sizeof(int),    nvals, pzetaBinary) != nvals) e = 1;
 		fclose(pzetaBinary);
 	}
-	else 
+	else
 		e = 1;
 	if (e)
 	{
@@ -633,7 +634,7 @@ void decalc_emnr(EMNR a)
 	_aligned_free(a->window);
 }
 
-EMNR create_emnr (int run, int position, int size, double* in, double* out, int fsize, int ovrlp, 
+EMNR create_emnr (int run, int position, int size, double* in, double* out, int fsize, int ovrlp,
 	int rate, int wintype, double gain, int gain_method, int npe_method, int ae_run)
 {
 	EMNR a = (EMNR) malloc0 (sizeof (emnr));
@@ -767,7 +768,7 @@ void LambdaD(EMNR a)
 			for (ku = 0; ku < a->np.U; ku++)
 				if (a->np.actminbuff[ku][k] < min) min = a->np.actminbuff[ku][k];
 			a->np.pmin_u[k] = min;
-			if ((a->np.lmin_flag[k] == 1) 
+			if ((a->np.lmin_flag[k] == 1)
 				&& (a->np.actmin_sub[k] < noise_slope_max * a->np.pmin_u[k])
 				&& (a->np.actmin_sub[k] >                   a->np.pmin_u[k]))
 			{
@@ -782,7 +783,7 @@ void LambdaD(EMNR a)
 		if (++a->np.amb_idx == a->np.U) a->np.amb_idx = 0;
 		a->np.subwc = 1;
 	}
-	else 
+	else
 	{
 		if (a->np.subwc > 1)
 		{
@@ -1082,13 +1083,13 @@ int getZeta( EMNR a, double gamma, double eps, double* zeta)
 	i_gamma = (int)floor((gamma_dB - a->g.z_gamma_min) / gamma_per_cell);
 	i_xi    = (int)floor((xi_dB    - a->g.z_xihat_min) / xi_per_cell);
 	if (i_gamma < 0 || i_gamma >= a->g.dim_zeta ||
-		i_xi < 0 || xi_dB  >= a->g.dim_zeta)
+		i_xi < 0 || i_xi >= a->g.dim_zeta)
 		return -1;
 	index = i_gamma * a->g.dim_zeta + i_xi;
 	int ztvalue = a->g.zeta_true[index];
-	if (ztvalue <= 0) 
+	if (ztvalue <= 0)
 		return -2;
-	else 
+	else
 		*zeta = a->g.zeta_hat[index];
 	return 0;
 }
@@ -1352,7 +1353,7 @@ void SetRXAEMNRPosition (int channel, int position)
 	EMNR a = rxa[channel].emnr.p;
 	EnterCriticalSection (&ch[channel].csDSP);
 	a->position = position;
-	rxa[channel].bp1.p->position  = position;
+	RXAbp1Set (channel);
 	flush_emnr(a);
 	a->post2.olddmag = 0.0;
 	LeaveCriticalSection (&ch[channel].csDSP);

@@ -45,12 +45,11 @@ warren@pratt.one
 
 #include <math.h>
 #include <float.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#if defined(linux) || defined(__APPLE__)
-#include "linux_port.h" // for aligned_malloc
-#endif
+#include "wdsp_align.h"
 
 #ifndef NAN
 #  define NAN (0.0/0.0)
@@ -87,8 +86,8 @@ static void *ns_zmalloc(size_t size)
 
 typedef struct _ns_ws
 {
-    int      n_pts_max;                     
-    int      seg_cap;                
+    int      n_pts_max;
+    int      seg_cap;
     double  *xs_t;
     double  *ys_t;
     double  *ts;
@@ -154,8 +153,8 @@ static void build_spline_segments(NS_WS ws, const double *xs, const double *ys,
         return;
     }
 
-    int ni = n - 2;        
-    if (ni < 1) return;             
+    int ni = n - 2;
+    if (ni < 1) return;
 
     double *h, *sub, *dia, *sup, *rhs, *M;
     int ws_scratch = (ws != NULL && n <= ws->seg_cap);
@@ -166,7 +165,7 @@ static void build_spline_segments(NS_WS ws, const double *xs, const double *ys,
         sup = ws->seg_sup;
         rhs = ws->seg_rhs;
         M   = ws->seg_M;
-        memset(M, 0, (size_t)n * sizeof(double));      
+        memset(M, 0, (size_t)n * sizeof(double));
     } else {
         h   = (double*)ns_malloc(m  * sizeof(double));
         sub = (double*)ns_malloc(ni * sizeof(double));
@@ -446,15 +445,15 @@ int ns_extend_left(NS_WS ws,
     double B    = br->segs[seg_i].b;
     double C    = br->segs[seg_i].c;
     double D    = br->segs[seg_i].d;
-    double yb   = A + dxb * (B + dxb * (C + dxb * D));          
-    double L    = xb - x_target;                            
+    double yb   = A + dxb * (B + dxb * (C + dxb * D));
+    double L    = xb - x_target;
 
     double ypb;
     {
         double win = L;
-        if (win > x_right - xb) win = x_right - xb;        
+        if (win > x_right - xb) win = x_right - xb;
         if (win < 1e-9) {
-            ypb = B + dxb * (2.0 * C + dxb * 3.0 * D);               
+            ypb = B + dxb * (2.0 * C + dxb * 3.0 * D);
         } else {
             const int NW = 16;
             double sx = 0.0, sy = 0.0, sxx = 0.0, sxy = 0.0;
@@ -468,9 +467,9 @@ int ns_extend_left(NS_WS ws,
                                       : (B + dxb * (2.0 * C + dxb * 3.0 * D));
         }
     }
-    double A0 = yb - L * ypb;               
-    double A1 = ypb;                                         
-    double A2 = 0.0;                         
+    double A0 = yb - L * ypb;
+    double A1 = ypb;
+    double A2 = 0.0;
     double y_natural = A0;
     double bf = (bound_frac > 0.0) ? bound_frac : 0.0;
     double lo_bnd = yb - bf * fabs(yb);
@@ -689,8 +688,8 @@ int ns_eval_all(const NS_Spline *s, double x,
 void ns_x_range(const NS_Spline *s, double *x_min, double *x_max)
 {
     double lo=DBL_MAX, hi=-DBL_MAX;
-    if (s) {                                            
-        for (int b = 0; b < s->n_branches; b++) {          
+    if (s) {
+        for (int b = 0; b < s->n_branches; b++) {
             const NS_Branch *br = &s->branches[b];
             if (br->n_pts < 2) continue;
             if (br->xs[0]          < lo) lo = br->xs[0];
@@ -707,7 +706,7 @@ double ns_accuracy_check(const NS_Spline *s, const NF_Curve *curve,
 {
     if (max_err_out) *max_err_out = 0.0;
     if (rms_err_out) *rms_err_out = 0.0;
-    if (!s || !curve) return 0.0;                        
+    if (!s || !curve) return 0.0;
     if (n_check <= 0) n_check = 1000;
     double max_err = 0.0, sse = 0.0;
     int    cnt     = 0;
@@ -802,9 +801,12 @@ static NS_Spline *read_spline(FILE *f, double *cksum)
     NS_Spline *s = (NS_Spline*)ns_calloc(1, sizeof(NS_Spline));
     char key[64];
 
-    if (fscanf(f, "%63s %d", key, &s->n_branches) != 2) goto err;
+	int n_branches;
+	if (fscanf(f, "%63s %d", key, &n_branches) != 2) goto err;
+	if (n_branches < 1 || n_branches > NS_MAX_BRANCHES) goto err;
+	s->n_branches = n_branches;
     *cksum += s->n_branches;
-    s->branches = (NS_Branch*)ns_calloc(s->n_branches, sizeof(NS_Branch));
+    s->branches = (NS_Branch*)ns_calloc((size_t)s->n_branches, sizeof(NS_Branch));
 
     for (int b = 0; b < s->n_branches; b++) {
         NS_Branch *br = &s->branches[b];
@@ -812,6 +814,9 @@ static NS_Spline *read_spline(FILE *f, double *cksum)
         if (fscanf(f, "%63s %d %63s %d %63s %lf",
                    key, &bnum, key, &br->n_pts, key, &br->t_mid) != 6)
             goto err;
+		if (bnum != b || br->n_pts < 0 ||
+			(size_t)br->n_pts > SIZE_MAX / sizeof(double) ||
+			(br->n_pts > 0 && (size_t)(br->n_pts - 1) > SIZE_MAX / sizeof(NS_Seg))) goto err;
         *cksum += br->n_pts + br->t_mid;
 
         if (br->n_pts == 0) {
@@ -855,7 +860,7 @@ void curve_ema_init2(CurveEMA *e,
     e->y_clip_hi        = y_clip_hi;
     e->count            = 0;
     e->warmup_cycles    = 4;
-    
+
     for (int i = 0; i < CURVE_EMA_PTS; i++) {
         e->xs[i] = (double)i / (CURVE_EMA_PTS - 1);
         e->ys[i] = 1.0;

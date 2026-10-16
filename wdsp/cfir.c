@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@pratt.one
 
@@ -88,7 +88,7 @@ void calc_cfir (CFIR a)
 {
 	a->pcfirimp = build_cfir_impulse(a->nc, a->wintype);
 	a->scale = 1.0 / (double)(2 * a->size);
-	cfir_impulse (a->pcfirimp, a->nc, a->DD, a->R, a->Pairs, a->runrate, a->cicrate, 
+	cfir_impulse (a->pcfirimp, a->nc, a->DD, a->R, a->Pairs, a->runrate, a->cicrate,
 		a->cutoff, a->xtype, a->xbw, 1, a->scale, a->wintype);
 	a->p = create_fircore (a->size, a->in, a->out, a->nc, a->mp, 16, a->pcfirimp->impulse);
 }
@@ -99,7 +99,7 @@ void decalc_cfir (CFIR a)
 	teardown_cfir_impulse(a->pcfirimp);
 }
 
-CFIR create_cfir (int run, int size, int nc, int mp, double* in, double* out, int runrate, int cicrate, 
+CFIR create_cfir (int run, int size, int nc, int mp, double* in, double* out, int runrate, int cicrate,
 	int DD, int R, int Pairs, double cutoff, int xtype, double xbw, int wintype)
 //	run:  0 - no action; 1 - operate
 //	size:  number of complex samples in an input buffer to the CFIR filter
@@ -183,7 +183,7 @@ void setOutRate_cfir (CFIR a, int rate)
 	calc_cfir (a);
 }
 
-void cfir_impulse (CFIRIMP a, int N, int DD, int R, int Pairs, double runrate, double cicrate, 
+void cfir_impulse (CFIRIMP a, int N, int DD, int R, int Pairs, double runrate, double cicrate,
 	double cutoff, int xtype, double xbw, int rtype, double scale, int wintype)
 {
 	// N:		number of impulse response samples

@@ -48,9 +48,9 @@ warren@pratt.one
 #include <string.h>
 #include <stdio.h>
 #include <float.h>
-#if defined(linux) || defined(__APPLE__)
-#include "linux_port.h" // for aligned_malloc
-#endif
+#include <stdint.h>
+#include <limits.h>
+#include "wdsp_align.h"
 
 #ifndef NAN
 #  define NAN (0.0/0.0)
@@ -76,7 +76,7 @@ static void *xcalloc(size_t n, size_t sz)
 
 static double sq(double x)                  { return x * x; }
 
-#define NF_WS_SPEARMAN_CAP 512        
+#define NF_WS_SPEARMAN_CAP 512
 
 static void *nf_zmalloc(size_t size)
 {
@@ -89,54 +89,54 @@ static void *nf_zmalloc(size_t size)
 
 typedef struct _nf_ws
 {
-    int n_pts_max;              
-    int n_ctrl_max;                    
+    int n_pts_max;
+    int n_ctrl_max;
 
     double *sp_xs, *sp_ys, *sp_rx, *sp_ry;
     int    *sp_ix, *sp_iy;
 
-    int    *nn_order;        
-    char   *nn_visited;      
+    int    *nn_order;
+    char   *nn_visited;
 
     double *mat_N;
     double *mat_Nfree;
 
-    double *ls_AtA;          
-    double *ls_Atb;            
-    double *ls_L;            
+    double *ls_AtA;
+    double *ls_Atb;
+    double *ls_L;
 
-    double *fp_bx, *fp_by;   
-    double *fp_cx, *fp_cy;   
-    double *fp_cxf, *fp_cyf;  
+    double *fp_bx, *fp_by;
+    double *fp_cx, *fp_cy;
+    double *fp_cxf, *fp_cyf;
 
-    double *om_res;              
-    double *cv_res;                  
-    double *sr_seg_sse;           
-    double *rp_t_old;          
-    double *lor_band_res;     
-    int    *lor_band_idx;     
-    double *lor_sorted;       
-    double *lor_abs_dev;      
+    double *om_res;
+    double *cv_res;
+    double *sr_seg_sse;
+    double *rp_t_old;
+    double *lor_band_res;
+    int    *lor_band_idx;
+    double *lor_sorted;
+    double *lor_abs_dev;
 
-    NF_Point2 *pts_filtered;                
-    NF_Point2 *ordered;                     
-    double    *t_params;                    
-    char      *inlier_mask;                 
-    char      *cv_mask;                     
-    NF_Point2 *pts_in;                      
-    double    *t_in;                        
-    NF_Point2 *pts_work_a, *pts_work_b;       
-    double    *t_work_a,  *t_work_b;          
-    NF_Point2 *pts_fold;                    
-    double    *t_fold;                      
-    double    *seg_rms;                     
-    int       *seg_count;                   
-    double    *new_knots;                   
-    double    *w_data;                      
-    double    *xs_sorted;                   
-    NF_Point2 *pts2;                        
-    double    *t2;                          
-    double    *t_new2;                      
+    NF_Point2 *pts_filtered;
+    NF_Point2 *ordered;
+    double    *t_params;
+    char      *inlier_mask;
+    char      *cv_mask;
+    NF_Point2 *pts_in;
+    double    *t_in;
+    NF_Point2 *pts_work_a, *pts_work_b;
+    double    *t_work_a,  *t_work_b;
+    NF_Point2 *pts_fold;
+    double    *t_fold;
+    double    *seg_rms;
+    int       *seg_count;
+    double    *new_knots;
+    double    *w_data;
+    double    *xs_sorted;
+    NF_Point2 *pts2;
+    double    *t2;
+    double    *t_new2;
 } nf_ws;
 
 NF_WS build_nf_ws(int n_pts_max, int n_ctrl_max)
@@ -240,14 +240,14 @@ static double dist2(NF_Point2 a, NF_Point2 b) { return sq(a.x-b.x)+sq(a.y-b.y); 
 void nf_default_config(NF_Config *cfg)
 {
     cfg->degree             = 3;
-    cfg->n_ctrl             = 0;       
+    cfg->n_ctrl             = 0;
     cfg->n_ctrl_max         = 200;
     cfg->ordering_mode      = NF_ORDER_AUTO;
     cfg->spearman_threshold = 0.85;
-    cfg->nn_search_k        = 10; 
+    cfg->nn_search_k        = 10;
     cfg->outlier_iters      = 2;
     cfg->outlier_sigma      = 3.0;
-    cfg->outlier_min_fraction = 0.5; 
+    cfg->outlier_min_fraction = 0.5;
     cfg->pin_start          = 0;
     cfg->pin_end            = 0;
     cfg->start_pt.x = cfg->start_pt.y = 0.0;
@@ -258,24 +258,24 @@ void nf_default_config(NF_Config *cfg)
     cfg->cv_overfit_ratio   = 1.5;
     cfg->cv_fatal_ratio     = 10.0;
     cfg->min_pts_per_ctrl   = 20;
-    cfg->x_weight_x0  = 0.0;     
+    cfg->x_weight_x0  = 0.0;
     cfg->x_weight_min = 0.1;
     cfg->local_outlier_iters = 2;
     cfg->local_outlier_sigma = 4.0;
     cfg->local_outlier_bands = 20;
     cfg->fold_detect  = 1;
-    cfg->uniform_knots = 0;                     
+    cfg->uniform_knots = 0;
     cfg->y_min              = 0.0;
-    cfg->y_max              = 0.0;    
-    cfg->pre_filter_x_min   = 0.0;   
-    cfg->pre_filter_y_max   = 0.0;    
-    cfg->direct_n_segments        = 22;    
-    cfg->direct_monotone_x_start  = 0.8;    
-    cfg->reparam_iters      = 2; 
+    cfg->y_max              = 0.0;
+    cfg->pre_filter_x_min   = 0.0;
+    cfg->pre_filter_y_max   = 0.0;
+    cfg->direct_n_segments        = 22;
+    cfg->direct_monotone_x_start  = 0.8;
+    cfg->reparam_iters      = 2;
     cfg->irls_iters         = 2;
     cfg->irls_epsilon       = 1e-6;
 }
- 
+
 static int cmp_by_x(const void *a, const void *b)
 {
     double xa = ((const NF_Point2*)a)->x;
@@ -286,12 +286,12 @@ static int cmp_by_x(const void *a, const void *b)
 static void order_points_nn(NF_WS ws, const NF_Point2 *pts, int n, int *order)
 {
     char  *visited = ws->nn_visited;
-    memset(visited, 0, (size_t)n);      
+    memset(visited, 0, (size_t)n);
     int start = 0;
     for (int i = 1; i < n; i++)
         if (pts[i].x < pts[start].x) start = i;
     order[0]       = start;
-    visited[start] = 1; 
+    visited[start] = 1;
     for (int step = 1; step < n; step++) {
         int    cur    = order[step-1];
         double best_d = DBL_MAX;
@@ -313,7 +313,7 @@ static void order_points_nn(NF_WS ws, const NF_Point2 *pts, int n, int *order)
                 double d_new = dist2(pts[order[i]],   pts[order[k]])
                              + dist2(pts[order[i+1]], pts[order[k+1]]);
                 if (d_new < d_old - 1e-14) {
-                     
+
                     int lo = i+1, hi = k;
                     while (lo < hi) {
                         int tmp = order[lo]; order[lo] = order[hi];
@@ -340,7 +340,7 @@ double nf_spearman(NF_WS ws, const NF_Point2 *pts, int n)
     double *rx = ws->sp_rx;
     double *ry = ws->sp_ry;
 
-     
+
     for (int i = 0; i < m; i++) {
         int src = (n <= NF_SPEARMAN_SAMPLE) ? i : (int)((long)i * n / m);
         xs[i] = pts[src].x;
@@ -352,13 +352,13 @@ double nf_spearman(NF_WS ws, const NF_Point2 *pts, int n)
         while (j >= 0 && xs[ix[j]] > xs[key]) { ix[j+1] = ix[j]; j--; }
         ix[j+1] = key;
     }
-    for (int i = 0; i < m; i++) rx[ix[i]] = (double)i; 
+    for (int i = 0; i < m; i++) rx[ix[i]] = (double)i;
     for (int i = 1; i < m; i++) {
         int key = iy[i], j = i-1;
         while (j >= 0 && ys[iy[j]] > ys[key]) { iy[j+1] = iy[j]; j--; }
         iy[j+1] = key;
     }
-    for (int i = 0; i < m; i++) ry[iy[i]] = (double)i; 
+    for (int i = 0; i < m; i++) ry[iy[i]] = (double)i;
     double mean = (m - 1) / 2.0;
     double num = 0.0, dx2 = 0.0, dy2 = 0.0;
     for (int i = 0; i < m; i++) {
@@ -376,7 +376,7 @@ static void centripetal_parameterise(const NF_Point2 *ordered, int n, double *t)
     t[0] = 0.0;
     double total = 0.0;
     for (int i = 1; i < n; i++) {
-        
+
         total += sqrt(sqrt(dist2(ordered[i], ordered[i-1])));
         t[i] = total;
     }
@@ -389,7 +389,7 @@ static double *make_knots(const double *t, int m, int n, int p)
     int     n_knots = n + p + 1;
     double *U       = (double*)xcalloc(n_knots, sizeof(double));
 
-     
+
     for (int i = 0; i <= p; i++) { U[i] = 0.0; U[n_knots-1-i] = 1.0; }
     double d = (double)m / (double)(n - p);
     for (int j = 1; j <= n - p - 1; j++) {
@@ -448,24 +448,24 @@ static int find_span(int n, int p, double t, const double *U)
     }
     return lo;
 }
- 
+
 static void basis_funs(int span, double t, int p,
                        const double *U, double *N)
 {
     double left[64], right[64];
-    N[0] = 1.0;    
+    N[0] = 1.0;
     for (int j = 1; j <= p; j++) {
-        left[j]  = t - U[span + 1 - j];    
-        right[j] = U[span + j] - t;        
+        left[j]  = t - U[span + 1 - j];
+        right[j] = U[span + j] - t;
         double carry = 0.0;
         for (int r = 0; r < j; r++) {
             double denom  = right[r + 1] + left[j - r];
             double alpha  = (denom > DBL_EPSILON) ? left[j - r] / denom : 0.0;
             double prev_r = N[r];
             N[r]  = carry + (1.0 - alpha) * prev_r;
-            carry = alpha * prev_r;    
+            carry = alpha * prev_r;
         }
-        N[j] = carry;    
+        N[j] = carry;
     }
 }
 
@@ -530,7 +530,7 @@ static void chol_solve(const double *L, int n, double *b)
         b[i] /= L[i*n+i];
     }
 }
- 
+
 static void ls_solve_with_cond(NF_WS ws, const Mat *A, const double *b,
                                 double *x, double *cond_out)
 {
@@ -539,12 +539,12 @@ static void ls_solve_with_cond(NF_WS ws, const Mat *A, const double *b,
     double *AtA, *Atb, *L;
     if (ws) {
         AtA = ws->ls_AtA; Atb = ws->ls_Atb; L = ws->ls_L;
-        memset(AtA, 0, (size_t)n*n * sizeof(double));      
+        memset(AtA, 0, (size_t)n*n * sizeof(double));
         memset(Atb, 0, (size_t)n   * sizeof(double));
     } else {
         AtA = (double*)xcalloc((size_t)n*n, sizeof(double));
         Atb = (double*)xcalloc(n, sizeof(double));
-        L   = NULL;          
+        L   = NULL;
     }
     for (int i = 0; i < m; i++) {
         for (int j = 0; j < n; j++) {
@@ -568,10 +568,10 @@ static void ls_solve_with_cond(NF_WS ws, const Mat *A, const double *b,
         memcpy(L, AtA, (size_t)n*n * sizeof(double));
         for (int i = 0; i < n; i++) L[i*n+i] += lambda;
         if (cholesky(L, n) != 0) {
-             
+
             for (int i = 0; i < n; i++)
                 x[i] = (fabs(AtA[i*n+i]) > 1e-30) ? Atb[i]/AtA[i*n+i] : 0.0;
-            if (cond_out) *cond_out = 1e16;    
+            if (cond_out) *cond_out = 1e16;
             if (!ws) { free(L); free(AtA); free(Atb); }
             return;
         }
@@ -589,7 +589,7 @@ static void ls_solve_with_cond(NF_WS ws, const Mat *A, const double *b,
     chol_solve(L, n, x);
     if (!ws) { free(L); free(AtA); free(Atb); }
 }
- 
+
 static void ls_solve(NF_WS ws, const Mat *A, const double *b, double *x)
 {
     ls_solve_with_cond(ws, A, b, x, NULL);
@@ -598,7 +598,7 @@ static void ls_solve(NF_WS ws, const Mat *A, const double *b, double *x)
 static int fit_pass(NF_WS ws,
                     const NF_Point2 *pts_ordered, int m,
                     const double    *t_params,
-                    const double    *w_data,       
+                    const double    *w_data,
                     const double    *U,
                     int              n_ctrl,
                     int              p,
@@ -651,7 +651,7 @@ static int fit_pass(NF_WS ws,
     double *cx, *cy;
     if (ws) {
         cx = ws->fp_cx; cy = ws->fp_cy;
-        memset(cx, 0, (size_t)n_ctrl * sizeof(double));      
+        memset(cx, 0, (size_t)n_ctrl * sizeof(double));
         memset(cy, 0, (size_t)n_ctrl * sizeof(double));
     } else {
         cx = (double*)xcalloc(n_ctrl, sizeof(double));
@@ -670,7 +670,7 @@ static int fit_pass(NF_WS ws,
         double *cxf, *cyf;
         if (ws) {
             cxf = ws->fp_cxf; cyf = ws->fp_cyf;
-            memset(cxf, 0, (size_t)n_free * sizeof(double));      
+            memset(cxf, 0, (size_t)n_free * sizeof(double));
             memset(cyf, 0, (size_t)n_free * sizeof(double));
         } else {
             cxf = (double*)xcalloc(n_free, sizeof(double));
@@ -684,8 +684,8 @@ static int fit_pass(NF_WS ws,
         }
         if (!ws) { free(cxf); free(cyf); mat_free(&Nfree); }
     } else if (cond_out) {
-        *cond_out = 1.0;    
-    } 
+        *cond_out = 1.0;
+    }
     if (cfg && cfg->pin_start) {
         cx[0] = cfg->start_pt.x;
         cy[0] = cfg->start_pt.y;
@@ -693,7 +693,7 @@ static int fit_pass(NF_WS ws,
     if (cfg && cfg->pin_end) {
         cx[n_ctrl-1] = cfg->end_pt.x;
         cy[n_ctrl-1] = cfg->end_pt.y;
-    } 
+    }
     for (int i = 0; i < n_ctrl; i++) {
         out->ctrl_wx[i] = cx[i];
         out->ctrl_wy[i] = cy[i];
@@ -749,7 +749,7 @@ static double compute_rms_params(const NF_Curve *c,
     }
     return sqrt(sse / m);
 }
- 
+
 static int reparameterise_inplace(NF_WS ws, const NF_Curve *c,
                                    const NF_Point2 *ordered, int m,
                                    double *t_params)
@@ -767,7 +767,7 @@ static int reparameterise_inplace(NF_WS ws, const NF_Curve *c,
             double df = dv.x*dv.x + dv.y*dv.y;
             if (df < 1e-20) break;
             double step = f/df;
-             
+
             if (step >  0.1) step =  0.1;
             if (step < -0.1) step = -0.1;
             double tnew = ti - step;
@@ -785,16 +785,16 @@ static int reparameterise_inplace(NF_WS ws, const NF_Curve *c,
     }
     return 1;
 }
- 
+
 static void compute_segment_rms(NF_WS ws, const NF_Curve *c,
                                   const NF_Point2 *ordered, int m,
                                   const double *t_params,
                                   double *seg_rms, int *seg_count)
 {
     int n = c->n_ctrl, p = c->degree;
-    int n_segs = n - p;    
+    int n_segs = n - p;
     double *seg_sse = ws->sr_seg_sse;
-    memset(seg_sse, 0, (size_t)n_segs * sizeof(double));      
+    memset(seg_sse, 0, (size_t)n_segs * sizeof(double));
     for (int k = 0; k < n_segs; k++) { seg_rms[k]=0; seg_count[k]=0; }
     for (int i = 0; i < m; i++) {
         NF_Point2 ev  = nf_eval(c, t_params[i]);
@@ -819,7 +819,7 @@ static int compute_outlier_mask(NF_WS ws, const NF_Curve *c,
                                  double outlier_sigma,
                                  char *inlier_mask)
 {
-    double *res = ws->om_res; 
+    double *res = ws->om_res;
     double mean_res = 0.0;
     for (int i = 0; i < m; i++) {
         NF_Point2 ev = nf_eval(c, t_params[i]);
@@ -842,7 +842,7 @@ static int compute_outlier_mask(NF_WS ws, const NF_Curve *c,
     }
     return n_outliers;
 }
- 
+
 static double compute_cv_score(NF_WS ws, const NF_Curve *c,
                                 const NF_Point2 *ordered,
                                 int n_pts,
@@ -871,12 +871,12 @@ static double compute_cv_score(NF_WS ws, const NF_Curve *c,
         }
         double sigma = sqrt(var / n_cv);
         threshold = outlier_sigma * sigma;
-    } 
+    }
     double sse = 0.0;
     int    cnt = 0;
     for (int i = 0; i < n_pts; i++) {
         if (!cv_mask[i]) continue;
-        if (res[i] > threshold) continue;    
+        if (res[i] > threshold) continue;
         sse += sq(res[i]);
         cnt++;
     }
@@ -886,8 +886,8 @@ static double compute_cv_score(NF_WS ws, const NF_Curve *c,
 static double detect_fold_x_end(const NF_Curve *c)
 {
     int    n_scan  = 2000;
-    int    confirm = 10;    
-    double tol     = 1e-4; 
+    int    confirm = 10;
+    double tol     = 1e-4;
     NF_Point2 p0 = nf_eval(c, 0.0);
     double x_start = p0.x;
     double x_min   = x_start;
@@ -923,7 +923,7 @@ static double detect_fold_x_end(const NF_Curve *c)
     }
     return x_min;
 }
- 
+
 static int local_outlier_rejection(NF_WS ws, const NF_Curve *c,
                                     const NF_Point2 *ordered, int m,
                                     const double *t_params,
@@ -959,7 +959,7 @@ static int local_outlier_rejection(NF_WS ws, const NF_Curve *c,
         }
         if (n_band < 5) { continue; }
         double *sorted = ws->lor_sorted;
-        memcpy(sorted, band_res, n_band * sizeof(double)); 
+        memcpy(sorted, band_res, n_band * sizeof(double));
         for (int i = 1; i < n_band; i++) {
             double key = sorted[i]; int j = i-1;
             while (j >= 0 && sorted[j] > key) { sorted[j+1]=sorted[j]; j--; }
@@ -1026,14 +1026,14 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
     NF_Point2 *pts_filtered = NULL;
     int need_filter = (cfg.pre_filter_x_min > 0.0 || cfg.pre_filter_y_max > 0.0);
     if (need_filter) {
-         
+
         int n_keep = 0;
         for (int i = 0; i < n_pts; i++) {
             if (cfg.pre_filter_x_min > 0.0 && pts[i].x < cfg.pre_filter_x_min) continue;
             if (cfg.pre_filter_y_max > 0.0 && pts[i].y > cfg.pre_filter_y_max) continue;
             n_keep++;
         }
-        if (n_keep < n_pts) { 
+        if (n_keep < n_pts) {
             pts_filtered = ws->pts_filtered;
             int j = 0;
             for (int i = 0; i < n_pts; i++) {
@@ -1041,7 +1041,7 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
                 if (cfg.pre_filter_y_max > 0.0 && pts[i].y > cfg.pre_filter_y_max) continue;
                 pts_filtered[j++] = pts[i];
             }
-            pts   = pts_filtered;    
+            pts   = pts_filtered;
             n_pts = n_keep;
             result.quality |= NF_FIT_PRE_FILTERED;
         }
@@ -1070,7 +1070,7 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
     if (n <= 0) {
         n = (int)(sqrt((double)n_pts) * 1.5);
         if (n < p+2)  n = p+2;
-        if (n > 40)   n = 40;   
+        if (n > 40)   n = 40;
         if (cfg.min_pts_per_ctrl > 0) {
             int n_density = n_pts / cfg.min_pts_per_ctrl;
             if (n_density < p+2) n_density = p+2;
@@ -1090,7 +1090,7 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
     memset(inlier_mask, 1, n_pts);
     int n_inliers = n_pts;
     char *cv_mask = ws->cv_mask;
-    memset(cv_mask, 0, n_pts);             
+    memset(cv_mask, 0, n_pts);
     int   n_cv    = 0;
     if (cfg.cv_fraction > 0.0 && cfg.cv_fraction < 1.0) {
         int stride = (int)(1.0 / cfg.cv_fraction + 0.5);
@@ -1114,9 +1114,9 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
         n_inliers = 0;
         for (int i = 0; i < n_pts; i++)
             if (inlier_mask[i]) n_inliers++;
-        if (n_flagged == 0) break;    
+        if (n_flagged == 0) break;
         if (n_inliers < (int)(n_pts * cfg.outlier_min_fraction)) {
-            result.quality |= NF_FIT_BAD_TOOFEW; 
+            result.quality |= NF_FIT_BAD_TOOFEW;
             memset(inlier_mask, 1, n_pts);
             for (int i = 0; i < n_pts; i++)
                 if (cv_mask[i]) inlier_mask[i] = 0;
@@ -1150,12 +1150,12 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
                 inlier_mask,
                 cfg.local_outlier_sigma,
                 cfg.local_outlier_bands);
-            if (n_local == 0) break;   
+            if (n_local == 0) break;
             total_outliers += n_local;
             int n_in = 0;
             for (int i = 0; i < n_pts; i++)
                 if (inlier_mask[i] && !cv_mask[i]) n_in++;
-            if (n_in < n + 2) break;   
+            if (n_in < n + 2) break;
             NF_Point2 *pts_in = ws->pts_in;
             double    *t_in   = ws->t_in;
             int k = 0;
@@ -1188,7 +1188,7 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
     result.fold_x_end    = 0.0;
     if (cfg.fold_detect) {
         double fold_x = detect_fold_x_end(c);
-        if (fold_x > -0.5) {    
+        if (fold_x > -0.5) {
             result.fold_detected = 1;
             result.fold_x_end    = fold_x;
             double x_data_span_9a = ordered[n_pts-1].x - ordered[0].x;
@@ -1208,7 +1208,7 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
                     ordered[i].x >= x_cut)
                     m_new++;
             }
-            if (m_new >= n + 2) {   
+            if (m_new >= n + 2) {
                 NF_Point2 *pts_fold = ws->pts_work_b;
                 double    *t_fold   = ws->t_fold;
                 int k2 = 0;
@@ -1227,10 +1227,10 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
                 fit_pass(ws, pts_fold, m_new, t_new, NULL,
                          c->knots, n, p, &cfg, c, &cond);
                 result.condition_number = cond;
-                pts_work = pts_fold;          
-                t_work   = t_new;                                    
+                pts_work = pts_fold;
+                t_work   = t_new;
                 m_work   = m_new;
-                (void)t_fold;                      
+                (void)t_fold;
             }
         }
     }
@@ -1238,7 +1238,7 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
     for (int adapt_iter = 0;
          adapt_iter < cfg.adaptive_iters;
          adapt_iter++) {
-        int     n_segs    = c->n_ctrl - p;    
+        int     n_segs    = c->n_ctrl - p;
         double *seg_rms   = ws->seg_rms;
         int    *seg_count = ws->seg_count;
         compute_segment_rms(ws, c, pts_work, m_work, t_work,
@@ -1259,7 +1259,7 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
                 }
             }
         }
-        if (n_to_insert == 0) break;    
+        if (n_to_insert == 0) break;
         int n_new = c->n_ctrl + n_to_insert;
         if (n_new > cfg.n_ctrl_max) {
             result.quality |= NF_FIT_BAD_NOCONV;
@@ -1306,7 +1306,7 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
             if (fit_rms > 0 &&
                 result.cv_score > cfg.cv_overfit_ratio * fit_rms) {
                 result.quality |= NF_FIT_CV_MARGINAL;
-                break;    
+                break;
             }
         }
         if (cfg.y_min < cfg.y_max) {
@@ -1322,7 +1322,7 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
                 NF_Point2 pt = nf_eval(c, t);
                 if (pt.y < lo || pt.y > hi) oob = 1;
             }
-            if (oob) break;    
+            if (oob) break;
         }
     }
     if (adapted) result.quality |= NF_FIT_ADAPTED;
@@ -1341,7 +1341,7 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
     if (cfg.irls_iters > 0) {
         double *w_data = ws->w_data;
         for (int iter = 0; iter < cfg.irls_iters; iter++) {
-             
+
             for (int i = 0; i < m_work; i++) {
                 NF_Point2 ev  = nf_eval(c, t_work[i]);
                 double    res = sqrt(sq(ev.x-pts_work[i].x) +
@@ -1419,10 +1419,10 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
     if (cfg.fold_detect) {
         int final_fold_passes = 0;
         int max_final_passes  = 5;
-        int n_refit = n;    
+        int n_refit = n;
         while (final_fold_passes < max_final_passes) {
             double fold_x = detect_fold_x_end(c);
-            if (fold_x <= -0.5) break;    
+            if (fold_x <= -0.5) break;
             result.fold_detected = 1;
             result.fold_x_end    = fold_x;
             final_fold_passes++;
@@ -1435,7 +1435,7 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
                 x_cut = fold_x + margin;
             } else {
                 double margin = (-fold_x) * 2.0;
-                 
+
                 double min_margin2 = 0.005 * x_data_span;
                 if (margin < min_margin2) margin = min_margin2;
                 x_cut = margin;
@@ -1449,7 +1449,7 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
             for (int i = 0; i < n_pts; i++)
                 if (inlier_mask[i] && !cv_mask[i] && ordered[i].x >= x_cut)
                     m_new++;
-            if (m_new < n_refit + 2) break;    
+            if (m_new < n_refit + 2) break;
             NF_Point2 *pts2 = ws->pts2;
             double    *t2   = ws->t2;
             int k2 = 0;
@@ -1467,7 +1467,7 @@ NF_Curve *nf_fit(NF_WS ws, const NF_Point2 *pts, int n_pts,
                      c->knots, n_refit, p, &cfg, c, &cond);
             result.condition_number = cond;
             result.n_ctrl_final     = n_refit;
-            (void)t2;          
+            (void)t2;
         }
     }
     if (result.n_ctrl_final > 0)
@@ -1487,7 +1487,7 @@ double nf_compute_rms(const NF_Curve *c,
         if (t_params) {
             t = t_params[i];
         } else {
-             
+
             double best_d = DBL_MAX;
             t = 0.0;
             int scan_steps = 200;
@@ -1559,7 +1559,11 @@ NF_Curve *nf_curve_read(const char *path)
     char key[64];
     if (fscanf(f, "%63s %d", key, &c->degree)  != 2) goto err;
     if (fscanf(f, "%63s %d", key, &c->n_ctrl)  != 2) goto err;
+	if (c->degree < 1 || c->n_ctrl <= c->degree ||
+		c->n_ctrl > INT_MAX - c->degree - 1 ||
+		(size_t)c->n_ctrl > SIZE_MAX / sizeof(double)) goto err;
     int nk = c->n_ctrl + c->degree + 1;
+	if ((size_t)nk > SIZE_MAX / sizeof(double)) goto err;
     c->knots   = (double*)xmalloc(nk * sizeof(double));
     c->ctrl_wx = (double*)xmalloc(c->n_ctrl * sizeof(double));
     c->ctrl_wy = (double*)xmalloc(c->n_ctrl * sizeof(double));
@@ -1602,7 +1606,7 @@ static int outlier_mask_direct(const NF_Curve   *c,
     double *res = (double*)xmalloc(m * sizeof(double));
     double  mean_res = 0.0;
     for (int i = 0; i < m; i++) {
-         
+
         NF_Point2 ev = nf_eval(c, pts[i].x);
         res[i]    = fabs(ev.y - pts[i].y);
         mean_res += res[i];
@@ -1617,6 +1621,7 @@ static int outlier_mask_direct(const NF_Curve   *c,
         if (res[i] > thr) { inlier_mask[i] = 0; n_outliers++; }
         else              { inlier_mask[i] = 1; }
     }
+	free(res);
     return n_outliers;
 }
 
@@ -1632,14 +1637,14 @@ NF_Curve *nf_fit_direct(const NF_Point2 *pts,
     if (p < 1) p = 1;
     if (p > 9) p = 9;
     int n_segs = cfg.direct_n_segments > 0 ? cfg.direct_n_segments : 22;
-    int n_ctrl = n_segs + p;    
+    int n_ctrl = n_segs + p;
     NF_FitResult result;
     memset(&result, 0, sizeof(result));
     result.quality          = NF_FIT_OK | NF_FIT_DIRECT;
     result.condition_number = 1.0;
     result.n_ctrl_initial   = n_ctrl;
     result.n_ctrl_final     = n_ctrl;
-    result.ordering_used    = NF_ORDER_BY_X;   
+    result.ordering_used    = NF_ORDER_BY_X;
     if (n_pts < p + 2) {
         result.quality |= NF_FIT_BAD_TOOFEW;
         if (result_out) *result_out = result;
@@ -1705,7 +1710,7 @@ NF_Curve *nf_fit_direct(const NF_Point2 *pts,
         total_outliers = 0;
         for (int i = 0; i < n_pts; i++) if (!inlier_mask[i]) total_outliers++;
         int n_inliers = n_pts - total_outliers;
-        if (n_inliers < n_ctrl + 1) break;    
+        if (n_inliers < n_ctrl + 1) break;
         NF_Point2 *pts_in  = (NF_Point2*)xmalloc(n_inliers * sizeof(NF_Point2));
         double    *t_in    = (double*)   xmalloc(n_inliers * sizeof(double));
         int k = 0;
@@ -1740,7 +1745,7 @@ NF_Curve *nf_fit_direct(const NF_Point2 *pts,
     free(t_params);
     free(inlier_mask);
     free(pts_filtered);
-    result.spearman_rho = -2.0;    
+    result.spearman_rho = -2.0;
     if (result_out) *result_out = result;
     return c;
 }

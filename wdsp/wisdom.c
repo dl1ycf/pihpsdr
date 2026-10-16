@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@pratt.one
 
@@ -48,8 +48,9 @@ int WDSPwisdom (char* directory)
 	double* fftout;
 	char wisdom_file[1024];
 	const int maxsize = MAX_WISDOM_SIZE + 1;
-	strcpy (wisdom_file, directory);
-	strncat (wisdom_file, "wdspWisdom01", 16);
+	if (directory == NULL) return -1;
+	int pathlen = snprintf(wisdom_file, sizeof(wisdom_file), "%s%s", directory, "wdspWisdom01");
+	if (pathlen < 0 || (size_t)pathlen >= sizeof(wisdom_file)) return -1;
 	if(!fftw_import_wisdom_from_filename(wisdom_file))
 	{
 		fftin =  (double *) malloc0 (maxsize * sizeof (complex));

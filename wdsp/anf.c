@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -169,7 +169,7 @@ SetRXAANFRun (int channel, int run)
 	ANF a = rxa[channel].anf.p;
 	if (a->run != run)
 	{
-		RXAbp1Check (channel, rxa[channel].amd.p->run, rxa[channel].snba.p->run, 
+		RXAbp1Check (channel, rxa[channel].amd.p->run, rxa[channel].snba.p->run,
 			rxa[channel].emnr.p->run, getRun_nnr(rxa[channel].nnr.p), run, rxa[channel].anr.p->run,
 			rxa[channel].sbnr.p->run); // NR4
 		EnterCriticalSection (&ch[channel].csDSP);
@@ -234,7 +234,7 @@ SetRXAANFPosition (int channel, int position)
 {
 	EnterCriticalSection (&ch[channel].csDSP);
 	rxa[channel].anf.p->position = position;
-	rxa[channel].bp1.p->position = position;
+	RXAbp1Set (channel);
 	flush_anf (rxa[channel].anf.p);
 	LeaveCriticalSection (&ch[channel].csDSP);
 }

@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -245,7 +245,7 @@ void create_txa (int channel)
 		max(2048, ch[channel].dsp_size),			// number of coefficients
 		0,											// flag for minimum phase
 		txa[channel].midbuff,						// pointer to input buffer
-		txa[channel].midbuff,						// pointer to output buffer 
+		txa[channel].midbuff,						// pointer to output buffer
 		txa[channel].f_low,							// low freq cutoff
 		txa[channel].f_high,						// high freq cutoff
 		ch[channel].dsp_rate,						// samplerate
@@ -266,7 +266,7 @@ void create_txa (int channel)
 		max(2048, ch[channel].dsp_size),			// number of coefficients
 		0,											// flag for minimum phase
 		txa[channel].midbuff,						// pointer to input buffer
-		txa[channel].midbuff,						// pointer to output buffer 
+		txa[channel].midbuff,						// pointer to output buffer
 		txa[channel].f_low,							// low freq cutoff
 		txa[channel].f_high,						// high freq cutoff
 		ch[channel].dsp_rate,						// samplerate
@@ -288,7 +288,7 @@ void create_txa (int channel)
 		max(2048, ch[channel].dsp_size),			// number of coefficients
 		0,											// flag for minimum phase
 		txa[channel].midbuff,						// pointer to input buffer
-		txa[channel].midbuff,						// pointer to output buffer 
+		txa[channel].midbuff,						// pointer to output buffer
 		txa[channel].f_low,							// low freq cutoff
 		txa[channel].f_high,						// high freq cutoff
 		ch[channel].dsp_rate,						// samplerate
@@ -562,10 +562,6 @@ void xtxa (int channel)
 	xmeter (txa[channel].lvlrmeter.p);				// Leveler Meter
 	xcfcomp (txa[channel].cfcomp.p, 0);				// Continuous Frequency Compressor with post-EQ
 	xmeter (txa[channel].cfcmeter.p);				// CFC+PostEQ Meter
-    //
-    // Input signal generator moved directly before the main bandpass
-    //
-	//xgen (txa[channel].gen0.p);						// input signal generator
 	xbandpass (txa[channel].bp0.p, 0);				// primary bandpass filter
 	xcompressor (txa[channel].compressor.p);		// COMP compressor
 	xbandpass (txa[channel].bp1.p, 0);				// aux bandpass (runs if COMP)
