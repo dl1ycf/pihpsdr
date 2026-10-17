@@ -1,5 +1,13 @@
 LIST OF RECENT PIHPSDR CHANGES
 ==============================
+
+October 2026:
+-------------
+- About menu lists compile-time options and audio module
+- upgraded WDSP to version 2.11, including NNR for CW
+- added "automatic DIVERSITY" option, that automatically
+  and continuously determines the DIVERSITY mixing parameters
+
 September 2026:
 ---------------
 
@@ -15,6 +23,7 @@ September 2026:
 August 2026:
 ------------
 
+- Version 3.0 released.
 - new PipeWire audio module, now the default for LINUX
 
 July 2026:
