@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -32,7 +32,7 @@ typedef struct _iobf
 	int   channel;
 	int   in_size;								// input number of complex samples in a fexchange call
 	int   out_size;								// output number of complex samples in a fexchange call
-	int   r1_outsize;							// number of complex samples taken out of the input-pseudo-ring for processing 
+	int   r1_outsize;							// number of complex samples taken out of the input-pseudo-ring for processing
 	int   r2_insize;							// number of processed complex samples returned into the output-pseudo-ring
 	int   r1_size;								// size of a single maximum sized transfer
 	int   r2_size;								// size of a single maximum sized transfer

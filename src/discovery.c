@@ -263,6 +263,7 @@ static void host_entry_cb(GtkWidget *widget, gpointer data) {
   // but also at other occasions to update the combo-box and save
   // its contents.
   //
+  g_signal_handler_block(G_OBJECT(host_combo), host_combo_signal_id);
   if (host_entry_changed) {
     //
     // If  this flag has been set, something has been entered into the
@@ -281,7 +282,6 @@ static void host_entry_cb(GtkWidget *widget, gpointer data) {
       gtk_combo_box_text_prepend(GTK_COMBO_BOX_TEXT(host_combo), NULL, text);
       snprintf(host_addr, sizeof(host_addr), "%s", text);
     }
-    gtk_combo_box_set_active(GTK_COMBO_BOX(host_combo), 0);
     host_pos = 0;
     text = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(host_combo));
     host_empty = !(text && (strlen(text) > 0));
@@ -292,6 +292,8 @@ static void host_entry_cb(GtkWidget *widget, gpointer data) {
   // The combo box has changed, so dump contents to props file
   //
   save_remote();
+  gtk_combo_box_set_active(GTK_COMBO_BOX(host_combo), 0);
+  g_signal_handler_unblock(G_OBJECT(host_combo), host_combo_signal_id);
 }
 
 static void connect_cb(GtkWidget *widget, gpointer data) {
@@ -891,6 +893,7 @@ static void discovery(void) {
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(host_combo), NULL, host_list[i]);
     }
   }
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(host_combo), NULL, "");
   gtk_combo_box_text_prepend(GTK_COMBO_BOX_TEXT(host_combo), NULL, host_addr);
   host_pos = 0;
   gtk_combo_box_set_active(GTK_COMBO_BOX(host_combo), host_pos);

@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -38,10 +38,10 @@ extern double* get_pfcpulse (FCIMP a);
 extern void exec_fcimp (FCIMP a, double f0, double f1, double g0, double g1,
 	int curve, double samplerate, double scale, int ctfmode);
 
-extern double* fc_impulse (int nc, double f0, double f1, double g0, double g1, 
+extern double* fc_impulse (int nc, double f0, double f1, double g0, double g1,
 	int curve, double samplerate, double scale, int ctfmode, int wintype);
 
-extern double* fc_mults (int size, double f0, double f1, double g0, double g1, 
+extern double* fc_mults (int size, double f0, double f1, double g0, double g1,
 	int curve, double samplerate, double scale, int ctfmode, int wintype);
 
 #endif

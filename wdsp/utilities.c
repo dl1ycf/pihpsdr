@@ -279,7 +279,6 @@ void print_deviation (const char* filename, double dpmax, double rate)
 	}
 }
 
-#if !defined(linux) && !defined(__APPLE__)
 // Audacity:  Import Raw Data, Signed 32-bit PCM, Little-endian, Mono/Stereo per mode selection, 48K rate
 
 int audiocount = 0;
@@ -304,7 +303,7 @@ void WriteAudioFile(void* arg)
 	// }
 	if (file = fopen("AudioFile", "wb"))
 	{
-		fwrite((int*)dat, sizeof(int), audiocount, file);
+		fwrite((void*)dat, sizeof(int), audiocount, file);
 		fflush(file);
 		fclose(file);
 	}
@@ -440,7 +439,6 @@ void WriteScaledAudio (
 		_beginthread (WriteScaledAudioFile, 0, (void *)dstruct);
 	}
 }
-#endif
 
 /********************************************************************************************************
 *																										*

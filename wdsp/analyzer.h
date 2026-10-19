@@ -19,7 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@wpratt.com
 
@@ -102,7 +102,7 @@ typedef struct _dp
 	int end_dispatcher;										// set this flag to one to destroy the dispatcher thread
 	volatile int dispatcher;								// one if the dispatcher thread is alive & active
 	int ss;													// sub-span being processed
-	int LO;													// LO (within current sub-span) being processed 
+	int LO;													// LO (within current sub-span) being processed
 	int flag;
 	int have_samples[dMAX_STITCH][dMAX_NUM_FFT];			// number of unused samples remaining in a buffer
 	int type;												// 0 for REAL, 1 for COMPLEX
@@ -173,20 +173,20 @@ void XCreateAnalyzer (	int disp,
 						char *app_data_path
 					 );
 
-extern __declspec( dllexport )   
+extern __declspec( dllexport )
 void DestroyAnalyzer(int disp);
 
-extern __declspec( dllexport )   
+extern __declspec( dllexport )
 void SetCalibration (	int disp,
 						int set_num,				//identifier for this calibration data set
 						int n_points,				//number of calibration points in the set
 						double (*cal)[dMAX_M+1]		//pointer to the calibration table, first
 					);
 
-extern __declspec( dllexport )   
+extern __declspec( dllexport )
 void OpenBuffer(int disp, int ss, int LO, void **Ipointer, void **Qpointer);
 
-extern __declspec( dllexport )   
+extern __declspec( dllexport )
 void CloseBuffer(int disp, int ss, int LO);
 
 extern __declspec( dllexport )

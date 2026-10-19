@@ -28,6 +28,8 @@ john.d.melton@googlemail.com
 #if defined(linux) || defined(__APPLE__)
 
 
+#include <stdlib.h>
+#include <string.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdint.h>
