@@ -201,6 +201,8 @@ static void save_remote(void) {
   g_signal_handler_block(G_OBJECT(host_combo), host_combo_signal_id);
   clearProperties();
   int count = 0;
+  g_signal_handler_block(G_OBJECT(host_combo), host_combo_signal_id);
+  int old = gtk_combo_box_get_active(GTK_COMBO_BOX(host_combo));
   for (int i = 0; ; i++) {
     gtk_combo_box_set_active(GTK_COMBO_BOX(host_combo), i);
     if (gtk_combo_box_get_active(GTK_COMBO_BOX(host_combo)) != i) {
@@ -211,6 +213,8 @@ static void save_remote(void) {
       SetPropS1("host[%d]", count++, text);
     }
   }
+  gtk_combo_box_set_active(GTK_COMBO_BOX(host_combo), old);
+  g_signal_handler_unblock(G_OBJECT(host_combo), host_combo_signal_id);
   SetPropI0("num_hosts", count);
   SetPropS0("current_host", host_addr);
   if (pwd_from_props) {
@@ -227,7 +231,6 @@ static void save_remote(void) {
   SetPropI0("auto_reconnect", remote_auto_reconnect);
   SetPropS0("property_version", "3.00");
   saveProperties("remote.props");
-  g_signal_handler_unblock(G_OBJECT(host_combo), host_combo_signal_id);
 }
 
 static void audio_cb(GtkWidget *widget, gpointer data) {
@@ -263,7 +266,6 @@ static void host_entry_cb(GtkWidget *widget, gpointer data) {
   // but also at other occasions to update the combo-box and save
   // its contents.
   //
-  g_signal_handler_block(G_OBJECT(host_combo), host_combo_signal_id);
   if (host_entry_changed) {
     //
     // If  this flag has been set, something has been entered into the
@@ -286,14 +288,13 @@ static void host_entry_cb(GtkWidget *widget, gpointer data) {
     text = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(host_combo));
     host_empty = !(text && (strlen(text) > 0));
     host_entry_changed = 0;
+    gtk_combo_box_set_active(GTK_COMBO_BOX(host_combo), 0);
     g_signal_handler_unblock(G_OBJECT(host_combo), host_combo_signal_id);
   }
   //
   // The combo box has changed, so dump contents to props file
   //
   save_remote();
-  gtk_combo_box_set_active(GTK_COMBO_BOX(host_combo), 0);
-  g_signal_handler_unblock(G_OBJECT(host_combo), host_combo_signal_id);
 }
 
 static void connect_cb(GtkWidget *widget, gpointer data) {
