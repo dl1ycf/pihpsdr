@@ -167,7 +167,10 @@ void audio_get_cards() {
 }
 
 int audio_open_output(RECEIVER *rx) {
-  if (rx == NULL) { return -1; }
+  if (rx == NULL) {
+    t_print("%s: rx is NULL\n", __func__);
+    return -1;
+  }
   pa_sample_spec sample_spec;
   int err;
   sample_spec.rate = 48000;
@@ -282,7 +285,10 @@ static gpointer tx_audio_thread(gpointer arg) {
 }
 
 int audio_open_input(TRANSMITTER *tx) {
-  if (tx == NULL) { return -1; }
+  if (tx == NULL) {
+    t_print("%s: tx is NULL\n", __func__);
+    return -1;
+  }
   pa_sample_spec sample_spec;
   int err;
   pa_buffer_attr attr;
@@ -484,117 +490,115 @@ static int do_rxtx(gpointer data) {
 
 void tx_audio_write(RECEIVER *rx, double sample) {
   if (rx == NULL) { return; }
+  audio_data *ad = (audio_data *) rx->audio_handle;
+  if (ad == NULL) { return; }
   int err;
   //
   // While audio stream is being re-opened, return
   //
-  audio_data *ad = (audio_data *) rx->audio_handle;
-  if (ad == NULL || ad->cwaudio == 1 || ad->cwaudio == 4) { return; }
+  if (ad->cwaudio == 1 || ad->cwaudio == 4) { return; }
   g_mutex_lock(&ad->audio_mutex);
-  ad = rx->audio_handle;
-  if (ad != NULL) {
-    if (ad->cwaudio == 0 || ad->cwaudio == 5) {
-      ad->cwaudio = 1;
-      ad->cwcount = 0;
-      ad->skipcnt = 0;
-      ad->audio_buffer_offset = 0;
-      g_idle_add(do_rxtx, (gpointer) rx);
-      g_mutex_unlock(&ad->audio_mutex);
-      return;
+  if (ad->cwaudio == 0 || ad->cwaudio == 5) {
+    ad->cwaudio = 1;
+    ad->cwcount = 0;
+    ad->skipcnt = 0;
+    ad->audio_buffer_offset = 0;
+    g_idle_add(do_rxtx, (gpointer) rx);
+    g_mutex_unlock(&ad->audio_mutex);
+    return;
+  }
+  if (ad->cwaudio == 2) {
+    //
+    // Insert silence that amounts to low-water filling
+    //
+    float buffer[2 * out_buffer_size];
+    memset(buffer, 0, 2 * out_buffer_size * sizeof(float));
+    for (int i = 0; i < (CW_LAT_LOW + 10 * out_buffer_size) / (20 * out_buffer_size); i++) {
+      int rc = pa_simple_write(ad->pastream, buffer,
+                               2 * out_buffer_size * sizeof(float),
+                               &err);
+      if (rc < 0) {
+        t_print("%s: ERROR pa_simple_write: %s\n", __func__, pa_strerror(err));
+      }
     }
-    if (ad->cwaudio == 2) {
+    ad->cwaudio = 3;
+    ad->latency = CW_LAT_LOW; // do not adjust until first measured
+  }
+  int adjust = 1;
+  if (sample != 0.0) { ad->cwcount = 0; }
+  if (++ad->cwcount >= 16) {
+    ad->cwcount = 0;
+    //
+    // We arrive here if we have seen 16 zero samples in a row.
+    //
+    if (ad->latency > CW_LAT_TARGET) { adjust = 0; } // full: we are above target
+    if (ad->latency < CW_LAT_LOW ) { adjust = 2; } // low: we are below low water mark
+  }
+  switch (adjust) {
+  case 1:
+    //
+    // default case: put sample into buffer and that's it
+    //
+    ad->audio_buffer[ad->audio_buffer_offset * 2] = sample;
+    ad->audio_buffer[ad->audio_buffer_offset * 2 + 1] = sample;
+    ad->audio_buffer_offset++;
+    break;
+  case 2:
+    //
+    // write it twice if space permits
+    //
+    ad->audio_buffer[ad->audio_buffer_offset * 2] = sample;
+    ad->audio_buffer[ad->audio_buffer_offset * 2 + 1] = sample;
+    ad->audio_buffer_offset++;
+    if (ad->audio_buffer_offset <  out_buffer_size) {
+      ad->audio_buffer[ad->audio_buffer_offset * 2] = sample;
+      ad->audio_buffer[ad->audio_buffer_offset * 2 + 1] = sample;
+      ad->audio_buffer_offset++;
+    }
+    break;
+  default:
+    //
+    // Skip sample
+    //
+    break;
+  }
+  if (ad->audio_buffer_offset >= out_buffer_size) {
+    ad->latency = pa_simple_get_latency(ad->pastream, &err);
+    if (ad->latency > CW_LAT_MAX && ad->skipcnt == 0) {
       //
-      // Insert silence that amounts to low-water filling
+      // If the radio is running a a slightly too high clock rate, or if
+      // the audio hardware clocks slightly below 48 kHz, then the PA audio
+      // buffer will fill up. suppress audio data until the latency is below
+      // TARGET, or until a pre-calculated maximum number of output
+      // buffers has been suppressed.
+      // 20 * out_buffer_size is the number of microseconds one buffer
+      // contains.
+      //
+      ad->skipcnt = (ad->latency - CW_LAT_TARGET) / (20 * out_buffer_size);
+      t_print("%s: suppressing audio block\n", __func__);
+    }
+    if (ad->skipcnt > 0) {
+      ad->skipcnt--;
+    }
+    if (ad->skipcnt == 0 || ad->latency < CW_LAT_TARGET) {
+      //
+      // Write output buffer. To this end, a C variable length
+      // array is allocated to do the conversion from internal (double)
+      // to PulseAudio (float) format.
       //
       float buffer[2 * out_buffer_size];
-      memset(buffer, 0, 2 * out_buffer_size * sizeof(float));
-      for (int i = 0; i < (CW_LAT_LOW + 10 * out_buffer_size) / (20 * out_buffer_size); i++) {
-        int rc = pa_simple_write(ad->pastream, buffer,
-                                 2 * out_buffer_size * sizeof(float),
-                                 &err);
-        if (rc < 0) {
-          t_print("%s: ERROR pa_simple_write: %s\n", __func__, pa_strerror(err));
-        }
+      for (int i = 0; i < 2 * out_buffer_size; i++) {
+        buffer[i] = (float) ad->audio_buffer[i];
       }
-      ad->cwaudio = 3;
-      ad->latency = CW_LAT_LOW; // do not adjust until first measured
+      int rc = pa_simple_write(ad->pastream,
+                               buffer,
+                               2 * out_buffer_size * sizeof(float),
+                               &err);
+      if (rc < 0) {
+        t_print("%s: ERROR pa_simple_write: %s\n", __func__, pa_strerror(err));
+      }
     }
-    int adjust = 1;
-    if (sample != 0.0) { ad->cwcount = 0; }
-    if (++ad->cwcount >= 16) {
-      ad->cwcount = 0;
-      //
-      // We arrive here if we have seen 16 zero samples in a row.
-      //
-      if (ad->latency > CW_LAT_TARGET) { adjust = 0; } // full: we are above target
-      if (ad->latency < CW_LAT_LOW ) { adjust = 2; } // low: we are below low water mark
-    }
-    switch (adjust) {
-    case 1:
-      //
-      // default case: put sample into buffer and that's it
-      //
-      ad->audio_buffer[ad->audio_buffer_offset * 2] = sample;
-      ad->audio_buffer[ad->audio_buffer_offset * 2 + 1] = sample;
-      ad->audio_buffer_offset++;
-      break;
-    case 2:
-      //
-      // write it twice if space permits
-      //
-      ad->audio_buffer[ad->audio_buffer_offset * 2] = sample;
-      ad->audio_buffer[ad->audio_buffer_offset * 2 + 1] = sample;
-      ad->audio_buffer_offset++;
-      if (ad->audio_buffer_offset <  out_buffer_size) {
-        ad->audio_buffer[ad->audio_buffer_offset * 2] = sample;
-        ad->audio_buffer[ad->audio_buffer_offset * 2 + 1] = sample;
-        ad->audio_buffer_offset++;
-      }
-      break;
-    default:
-      //
-      // Skip sample
-      //
-      break;
-    }
-    if (ad->audio_buffer_offset >= out_buffer_size) {
-      ad->latency = pa_simple_get_latency(ad->pastream, &err);
-      if (ad->latency > CW_LAT_MAX && ad->skipcnt == 0) {
-        //
-        // If the radio is running a a slightly too high clock rate, or if
-        // the audio hardware clocks slightly below 48 kHz, then the PA audio
-        // buffer will fill up. suppress audio data until the latency is below
-        // TARGET, or until a pre-calculated maximum number of output
-        // buffers has been suppressed.
-        // 20 * out_buffer_size is the number of microseconds one buffer
-        // contains.
-        //
-        ad->skipcnt = (ad->latency - CW_LAT_TARGET) / (20 * out_buffer_size);
-        t_print("%s: suppressing audio block\n", __func__);
-      }
-      if (ad->skipcnt > 0) {
-        ad->skipcnt--;
-      }
-      if (ad->skipcnt == 0 || ad->latency < CW_LAT_TARGET) {
-        //
-        // Write output buffer. To this end, a C variable length
-        // array is allocated to do the conversion from internal (double)
-        // to PulseAudio (float) format.
-        //
-        float buffer[2 * out_buffer_size];
-        for (int i = 0; i < 2 * out_buffer_size; i++) {
-          buffer[i] = (float) ad->audio_buffer[i];
-        }
-        int rc = pa_simple_write(ad->pastream,
-                                 buffer,
-                                 2 * out_buffer_size * sizeof(float),
-                                 &err);
-        if (rc < 0) {
-          t_print("%s: ERROR pa_simple_write: %s\n", __func__, pa_strerror(err));
-        }
-      }
-      ad->audio_buffer_offset = 0;
-    }
+    ad->audio_buffer_offset = 0;
   }
   g_mutex_unlock(&ad->audio_mutex);
   return;
@@ -654,80 +658,78 @@ static int do_txrx(gpointer data) {
 
 void audio_write(RECEIVER *rx, double left, double right) {
   if (rx == NULL) { return; }
+  volatile audio_data *ad = (audio_data *) rx->audio_handle;
+  if (ad == NULL) { return; }
   int err;
   //
   // If transmitting without duplex, quickly return
   //
   if (rx == active_receiver && radio_is_transmitting() && !duplex) { return; }
-  volatile audio_data *ad = (audio_data *) rx->audio_handle;
   if (ad->cwaudio == 1 || ad->cwaudio == 4) { return; }
   g_mutex_lock((GMutex *)(&ad->audio_mutex));
-  ad = rx->audio_handle;
-  if (ad != NULL) {
-    if (ad->cwaudio == 3) {
-      ad->cwaudio = 4;
-      ad->cwcount = 0;
-      ad->skipcnt = 0;
-      ad->latency = 0;
-      ad->audio_buffer_offset = 0;
-      g_idle_add(do_txrx, (gpointer) rx);
-      g_mutex_unlock((GMutex *)(&ad->audio_mutex));
-      return;
+  if (ad->cwaudio == 3) {
+    ad->cwaudio = 4;
+    ad->cwcount = 0;
+    ad->skipcnt = 0;
+    ad->latency = 0;
+    ad->audio_buffer_offset = 0;
+    g_idle_add(do_txrx, (gpointer) rx);
+    g_mutex_unlock((GMutex *)(&ad->audio_mutex));
+    return;
+  }
+  if (ad->cwaudio == 5) {
+    //
+    // Insert silence that amounts target filling
+    //
+    float buffer[2 * out_buffer_size];
+    memset(buffer, 0, 2 * out_buffer_size * sizeof(float));
+    for (int i = 0; i < (AUDIO_LAT_TARGET + 10 * out_buffer_size) / (20 * out_buffer_size); i++) {
+      int rc = pa_simple_write(ad->pastream, buffer,
+                               2 * out_buffer_size * sizeof(float),
+                               &err);
+      if (rc < 0) {
+        t_print("%s: ERROR pa_simple_write: %s\n", __func__, pa_strerror(err));
+      }
     }
-    if (ad->cwaudio == 5) {
+    ad->cwaudio = 0;
+  }
+  ad->audio_buffer[ad->audio_buffer_offset * 2] = left;
+  ad->audio_buffer[(ad->audio_buffer_offset * 2) + 1] = right;
+  ad->audio_buffer_offset++;
+  if (ad->audio_buffer_offset >= out_buffer_size) {
+    ad->latency = pa_simple_get_latency(ad->pastream, &err);
+    if (ad->latency > AUDIO_LAT_MAX && ad->skipcnt == 0) {
       //
-      // Insert silence that amounts target filling
+      // If the radio is running a a slightly too high clock rate, or if
+      // the audio hardware clocks slightly below 48 kHz, then the PA audio
+      // buffer will fill up. suppress audio data until the latency is below
+      // AUDIO_LAT_LOW, or until a pre-calculated maximum number of output
+      // buffers has been suppressed.
+      //
+      ad->skipcnt = (ad->latency - AUDIO_LAT_TARGET) / (20 * out_buffer_size);
+      t_print("%s: suppressing audio block\n", __func__);
+    }
+    if (ad->skipcnt > 0) {
+      ad->skipcnt--;
+    }
+    if (ad->skipcnt == 0 || ad->latency < AUDIO_LAT_TARGET) {
+      //
+      // Write output buffer. To this end, a C variable length
+      // array is allocated to do the conversion from internal (double)
+      // to PulseAudio (float) format.
       //
       float buffer[2 * out_buffer_size];
-      memset(buffer, 0, 2 * out_buffer_size * sizeof(float));
-      for (int i = 0; i < (AUDIO_LAT_TARGET + 10 * out_buffer_size) / (20 * out_buffer_size); i++) {
-        int rc = pa_simple_write(ad->pastream, buffer,
-                                 2 * out_buffer_size * sizeof(float),
-                                 &err);
-        if (rc < 0) {
-          t_print("%s: ERROR pa_simple_write: %s\n", __func__, pa_strerror(err));
-        }
+      for (int i = 0; i < 2 * out_buffer_size; i++) {
+        buffer[i] = (float) ad->audio_buffer[i];
       }
-      ad->cwaudio = 0;
+      int rc = pa_simple_write(ad->pastream, buffer,
+                               2 * out_buffer_size * sizeof(float),
+                               &err);
+      if (rc < 0) {
+        t_print("%s: ERROR pa_simple_write: %s\n", __func__, pa_strerror(err));
+      }
     }
-    ad->audio_buffer[ad->audio_buffer_offset * 2] = left;
-    ad->audio_buffer[(ad->audio_buffer_offset * 2) + 1] = right;
-    ad->audio_buffer_offset++;
-    if (ad->audio_buffer_offset >= out_buffer_size) {
-      ad->latency = pa_simple_get_latency(ad->pastream, &err);
-      if (ad->latency > AUDIO_LAT_MAX && ad->skipcnt == 0) {
-        //
-        // If the radio is running a a slightly too high clock rate, or if
-        // the audio hardware clocks slightly below 48 kHz, then the PA audio
-        // buffer will fill up. suppress audio data until the latency is below
-        // AUDIO_LAT_LOW, or until a pre-calculated maximum number of output
-        // buffers has been suppressed.
-        //
-        ad->skipcnt = (ad->latency - AUDIO_LAT_TARGET) / (20 * out_buffer_size);
-        t_print("%s: suppressing audio block\n", __func__);
-      }
-      if (ad->skipcnt > 0) {
-        ad->skipcnt--;
-      }
-      if (ad->skipcnt == 0 || ad->latency < AUDIO_LAT_TARGET) {
-        //
-        // Write output buffer. To this end, a C variable length
-        // array is allocated to do the conversion from internal (double)
-        // to PulseAudio (float) format.
-        //
-        float buffer[2 * out_buffer_size];
-        for (int i = 0; i < 2 * out_buffer_size; i++) {
-          buffer[i] = (float) ad->audio_buffer[i];
-        }
-        int rc = pa_simple_write(ad->pastream, buffer,
-                                 2 * out_buffer_size * sizeof(float),
-                                 &err);
-        if (rc < 0) {
-          t_print("%s: ERROR pa_simple_write: %s\n", __func__, pa_strerror(err));
-        }
-      }
-      ad->audio_buffer_offset = 0;
-    }
+    ad->audio_buffer_offset = 0;
   }
   g_mutex_unlock((GMutex *)(&ad->audio_mutex));
   return;
