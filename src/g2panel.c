@@ -253,31 +253,50 @@ void g2panel_execute_button(int type, const int *vec, int button, int tr01, int 
   switch (action) {
   case BAND_PLUS:
   case BAND_MINUS:
-    if (tr10) { schedule_action(action, PRESSED, 0); }
-    if (tr12) { schedule_action(MENU_BAND, PRESSED, 0); }
+    if (tr10) {
+      // Release after short press: issue a "Pressed/Released" pair
+      // to cancel the repeat timer
+      schedule_action(action, PRESSED, 0);
+      schedule_action(action, RELEASED, 0);
+    }
+    if (tr12) { schedule_action(MENU_BAND, PRESSED, 0); } // no need to schedule a release here
     break;
   case FILTER_PLUS:
   case FILTER_MINUS:
-    if (tr10) { schedule_action(action, PRESSED, 0); }
-    if (tr12) { schedule_action(MENU_FILTER, PRESSED, 0); }
+    if (tr10) {
+      // Release after short press: issue a "Pressed/Released" pair
+      // to cancel the repeat timer
+      schedule_action(action, PRESSED, 0);
+      schedule_action(action, RELEASED, 0);
+    }
+    if (tr12) { schedule_action(MENU_FILTER, PRESSED, 0); } // no need to schedule a release here
     break;
   case MODE_PLUS:
   case MODE_MINUS:
-    if (tr10) { schedule_action(action, PRESSED, 0); }
-    if (tr12) { schedule_action(MENU_MODE, PRESSED, 0); }
+    if (tr10) {
+      // Release after short press: issue a "Pressed/Released" pair
+      // to cancel the repeat timer
+      schedule_action(action, PRESSED, 0);
+      schedule_action(action, RELEASED, 0);
+    }
+    if (tr12) { schedule_action(MENU_MODE, PRESSED, 0); } // no need to schedule a release here
     break;
   case ANF:
   case SNB:
   case NB:
   case NR:
-    if (tr10) { schedule_action(action, PRESSED, 0); }
-    if (tr12) { schedule_action(MENU_NOISE, PRESSED, 0); }
+    if (tr10) { schedule_action(action, PRESSED, 0); } // no need to schedule a release here
+    if (tr12) { schedule_action(MENU_NOISE, PRESSED, 0); } // no need to schedule a release here
     break;
   case TWO_TONE:
-    if (tr10) { schedule_action(action, PRESSED, 0); }
-    if (tr12) { schedule_action(MENU_PS, PRESSED, 0); }
+    if (tr10) { schedule_action(action, PRESSED, 0); } // no need to schedule a release here
+    if (tr12) { schedule_action(MENU_PS, PRESSED, 0); } // no need to schedule a release here
     break;
   default:
+    //
+    // For all other commands, this simply schedules a PRESSED upon initial press,
+    // and a RELEASED when releasing. No short/long press distinction is made
+    //
     if (tr01) { schedule_action(action, PRESSED, 0); }
     if (tr10 || tr20) { schedule_action(action, RELEASED, 0); }
     break;

@@ -2242,11 +2242,6 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         // "Long" buttons generate a "PRESSED" for the short-press event upon tr10,
         // and a "PRESSED" for the long-press event upon tr12.
         //
-        // ATTENTION: no RELEASE event is ever triggered for a "long" button. Such events are currently required
-        //            only for PTT, RIT_PLUS, RIT_MINS, XIT_PLUS, XIT_MINUS, and CW keyer actions, which may be associated
-        //            to the "function keys" F1-F8 on the original ANDROMEDA console.
-        //            In all other cases, there is no need to bother the system with RELEASE events.
-        //
         // NOTE: Rick's code for the original ANDROMEDA console went to andromeda.c
         //
         //
