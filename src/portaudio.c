@@ -195,6 +195,10 @@ int audio_open_input(TRANSMITTER *tx) {
   PaStreamParameters inputParameters;
   int i;
   int padev;
+  if (tx == NULL) {
+    t_print("%s: tx is NULL\n", __func__);
+    return -1;
+  }
   //
   // Look up device name and determine device ID
   //
@@ -455,6 +459,10 @@ int audio_open_output(RECEIVER *rx) {
   int padev;
   int channels;
   int i;
+  if (rx == NULL) {
+    t_print("%s: rx is NULL\n", __func__);
+    return -1;
+  }
   //
   // Look up device name and determine device ID
   //

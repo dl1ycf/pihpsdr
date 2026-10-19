@@ -355,6 +355,7 @@ int audio_open_output(RECEIVER *rx) {
     g_free(ad->audio_buffer);
     g_free(ad->st_buffer);
     g_free(ad);
+    t_print("%s: could not allocate audio buffer\n", __func__);
     return -1;
   }
   ad->loop = pw_thread_loop_new("pihpsdr-playback", NULL);
@@ -362,6 +363,7 @@ int audio_open_output(RECEIVER *rx) {
     g_free(ad->audio_buffer);
     g_free(ad->st_buffer);
     g_free(ad);
+    t_print("%s: could not create loop\n", __func__);
     return -1;
   }
   ad->context = pw_context_new(pw_thread_loop_get_loop(ad->loop), NULL, 0);
@@ -370,6 +372,7 @@ int audio_open_output(RECEIVER *rx) {
     g_free(ad->audio_buffer);
     g_free(ad->st_buffer);
     g_free(ad);
+    t_print("%s: could not create context\n", __func__);
     return -1;
   }
   if (pw_thread_loop_start(ad->loop) < 0) {
@@ -378,6 +381,7 @@ int audio_open_output(RECEIVER *rx) {
     g_free(ad->audio_buffer);
     g_free(ad->st_buffer);
     g_free(ad);
+    t_print("%s: could not start loop\n", __func__);
     return -1;
   }
   pw_thread_loop_lock(ad->loop);
@@ -390,6 +394,7 @@ int audio_open_output(RECEIVER *rx) {
     g_free(ad->audio_buffer);
     g_free(ad->st_buffer);
     g_free(ad);
+    t_print("%s: could not connect context\n", __func__);
     return -1;
   }
   // Playback Stream properties
@@ -421,6 +426,7 @@ int audio_open_output(RECEIVER *rx) {
     g_free(ad->audio_buffer);
     g_free(ad->st_buffer);
     g_free(ad);
+    t_print("%s: could not create stream\n", __func__);
     return -1;
   }
   struct spa_audio_info_raw info = {
@@ -451,6 +457,7 @@ int audio_open_output(RECEIVER *rx) {
     g_free(ad->audio_buffer);
     g_free(ad->st_buffer);
     g_free(ad);
+    t_print("%s: could not connect stream\n", __func__);
     return -1;
   }
   pw_thread_loop_unlock(ad->loop);
@@ -509,12 +516,14 @@ int audio_open_input(TRANSMITTER *tx) {
   ad->audio_buffer = g_new(double, MIC_BUFFER_SIZE);
   if (ad->audio_buffer == NULL) {
     g_free(ad);
+    t_print("%s: could not allocate audio buffer\n", __func__);
     return -1;
   }
   ad->loop = pw_thread_loop_new("pihpsdr-capture", NULL);
   if (ad->loop == NULL) {
     g_free(ad->audio_buffer);
     g_free(ad);
+    t_print("%s: could not create loop\n", __func__);
     return -1;
   }
   ad->context = pw_context_new(pw_thread_loop_get_loop(ad->loop), NULL, 0);
@@ -522,6 +531,7 @@ int audio_open_input(TRANSMITTER *tx) {
     pw_thread_loop_destroy(ad->loop);
     g_free(ad->audio_buffer);
     g_free(ad);
+    t_print("%s: could not create context\n", __func__);
     return -1;
   }
   if (pw_thread_loop_start(ad->loop) < 0) {
@@ -529,6 +539,7 @@ int audio_open_input(TRANSMITTER *tx) {
     pw_thread_loop_destroy(ad->loop);
     g_free(ad->audio_buffer);
     g_free(ad);
+    t_print("%s: could not start loop\n", __func__);
     return -1;
   }
   pw_thread_loop_lock(ad->loop);
@@ -540,6 +551,7 @@ int audio_open_input(TRANSMITTER *tx) {
     pw_thread_loop_destroy(ad->loop);
     g_free(ad->audio_buffer);
     g_free(ad);
+    t_print("%s: could not connect context\n", __func__);
     return -1;
   }
   struct pw_properties *props = pw_properties_new(
@@ -574,6 +586,7 @@ int audio_open_input(TRANSMITTER *tx) {
     pw_thread_loop_destroy(ad->loop);
     g_free(ad->audio_buffer);
     g_free(ad);
+    t_print("%s: could not create stream\n", __func__);
     return -1;
   }
   struct spa_audio_info_raw info = {
@@ -602,6 +615,7 @@ int audio_open_input(TRANSMITTER *tx) {
     pw_thread_loop_destroy(ad->loop);
     g_free(ad->audio_buffer);
     g_free(ad);
+    t_print("%s: could not connect stream\n", __func__);
     return -1;
   }
   pw_thread_loop_unlock(ad->loop);

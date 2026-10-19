@@ -212,11 +212,13 @@ int audio_open_output(RECEIVER *rx) {
   attr.fragsize  = (uint32_t) -1;
   audio_data *ad = g_new(audio_data, 1);
   if (ad == NULL) {
+    t_print("%s: could not allocate audio data\n", __func__);
     return -1;
   }
   ad->audio_buffer = g_new(double, 2 * out_buffer_size);
   if (ad->audio_buffer == NULL) {
     g_free(ad);
+    t_print("%s: could not allocate audio buffer\n", __func__);
     return -1;
   }
   ad->pastream   = pa_simple_new(NULL, // Use the default server.
@@ -319,6 +321,10 @@ int audio_open_input(TRANSMITTER *tx) {
     usleep(50000);
   }
   audio_data *ad = g_new(audio_data, 1);
+  if (ad == NULL) {
+    t_print("%s: could not allcoate audio data\n", __func__);
+    return -1;
+  }
   ad->pastream = pa_simple_new(NULL,      // Use the default server.
                                "piHPSDR",                   // Our application's name.
                                PA_STREAM_RECORD,
@@ -331,6 +337,7 @@ int audio_open_input(TRANSMITTER *tx) {
                               );
   if (ad->pastream == NULL) {
     g_free(ad);
+    t_print("%s: ERROR pa_simple_new: %s\n", __func__, pa_strerror(err));
     return -1;
   }
   ad->audio_buffer = g_new(double, MICRINGLEN);
@@ -338,6 +345,7 @@ int audio_open_input(TRANSMITTER *tx) {
   if (ad->audio_buffer == NULL) {
     pa_simple_free(ad->pastream);
     g_free(ad);
+    t_print("%s: could not allocate audio buffer\n", __func__);
     return -1;
   }
   GError *error;
@@ -348,6 +356,7 @@ int audio_open_input(TRANSMITTER *tx) {
     pa_simple_free(ad->pastream);
     g_free(ad->audio_buffer);
     g_free(ad);
+    t_print("%s: could not start mic thread\n", __func__);
     return -1;
   }
   tx->audio_handle = ad;

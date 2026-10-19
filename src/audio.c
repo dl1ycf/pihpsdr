@@ -112,14 +112,20 @@ typedef struct audio_data_ audio_data;
 int audio_open_output(RECEIVER *rx) {
   int soft_resample;
   int err;
-  if (rx == NULL) { return -1; }
+  if (rx == NULL) {
+    t_print("%s: rx is NULL\n", __func__);
+    return -1;
+  }
   if (rx->audio_handle != NULL) {
     // this should not happen
     rx->audio_handle = NULL;
     usleep (50000);
   }
   audio_data *ad = g_new(audio_data, 1);
-  if (ad == NULL) { return -1; }
+  if (ad == NULL) {
+    t_print("%s: could not allocate audio data\n", __func__);
+    return -1;
+  }
   //
   // Do not try top open if name has not been recorded during startup
   //
@@ -178,6 +184,7 @@ int audio_open_output(RECEIVER *rx) {
   if (ad->audio_buffer == NULL) {
     snd_pcm_close(ad->alsahandle);
     g_free(ad);
+    t_print("%s: could not allocate audio buffer\n", __func__);
     return -1;
   }
   //
@@ -204,14 +211,20 @@ int audio_open_output(RECEIVER *rx) {
 int audio_open_input(TRANSMITTER *tx) {
   int err;
   int soft_resample;
-  if (tx == NULL) { return -1; }
+  if (tx == NULL) {
+    t_print("%s: tx is NULL\n", __func__);
+    return -1;
+  }
   if (tx->audio_handle != NULL) {
     // we should not arrive here
     tx->audio_handle = NULL;
     usleep(50000);
   }
   audio_data *ad = g_new(audio_data, 1);
-  if (ad == NULL) { return -1; }
+  if (ad == NULL) {
+    t_print("%s: could not allocate audio data\n", __func__);
+    return -1;
+  }
   //
   // Do not try top open if name has not been recorded during startup
   //
@@ -241,10 +254,10 @@ int audio_open_input(TRANSMITTER *tx) {
     g_free(ad);
     return -1;
   }
-  t_print("%s: allocating ring buffer\n", __func__);
   ad->audio_buffer = g_new(double, MICRINGLEN);
   ad->audio_buffer_outpt = ad->audio_buffer_inpt = 0;
   if (ad->audio_buffer == NULL) {
+    t_print("%s: could not allocate audio buffer\n", __func__);
     snd_pcm_close(ad->alsahandle);
     g_free(ad);
     return -1;
