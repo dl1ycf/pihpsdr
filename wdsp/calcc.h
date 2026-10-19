@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@pratt.one
 
@@ -45,10 +45,10 @@ extern __declspec(dllexport) void pscc (int channel, int size, double* tx, doubl
 //				0b0001 = Extrapolate_Res.confidence  ('0' good; '1' reverted to linear)
 //		 1 - builder for cm
 //				0b0001 = nf_fit() Failed.		 [NURB Curve]
-//				0b0010 = nf_fit() Quality bad.   [NURB Curve] 
+//				0b0010 = nf_fit() Quality bad.   [NURB Curve]
 //              0b0100 = ns_build() Failed.      [Spline]
 //              0b1000 = ns_build() Quality bad. [Spline]
-//          0b00010000 = count_extrema() Failed. 
+//          0b00010000 = count_extrema() Failed.
 //          0b00100000 = MAG Cold Start Error
 //		 2 - builder for cc
 //              0b0001 = nf_fit() Failed.		 [NURB Curve]
@@ -70,9 +70,9 @@ extern __declspec(dllexport) void pscc (int channel, int size, double* tx, doubl
 //              0b0001 = New-Old Soln Compare Check
 // 			    0b0010 = Can't FIll Buckets, Probable Over-Drive
 //		 7 - count of attempted calibrations
-// 
+//
 //      12 - file write/read error
-//		13 - 
+//		13 -
 //		14 - indicates iqc_Run = 1
 //		15 - control state
 //

@@ -28,6 +28,10 @@ warren@pratt.one
 #ifdef _WIN32
 #include <Windows.h>
 #endif
+#if defined(linux) || defined(__APPLE__)
+#include "linux_port.h"
+#endif
+
 typedef double complex[2];
 #include "fftw3.h"
 #include "fir.h"

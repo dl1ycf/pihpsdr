@@ -27,19 +27,19 @@ warren@pratt.one
 #ifndef _extrapolate_h
 #define _extrapolate_h
 
-typedef enum 
+typedef enum
 {
-	EXTRAP_CONFIDENT      = 0,   
-	EXTRAP_LOW_CONFIDENCE = 1   
+	EXTRAP_CONFIDENT      = 0,
+	EXTRAP_LOW_CONFIDENCE = 1
 } ExtrapolationConfidence;
 
-typedef struct 
+typedef struct
 {
-	double                  y_at_1;        
-	ExtrapolationConfidence confidence;   
-	double                  y_linear;      
-	double                  y_quadratic;   
-	double                  y_cubic;       
+	double                  y_at_1;
+	ExtrapolationConfidence confidence;
+	double                  y_linear;
+	double                  y_quadratic;
+	double                  y_cubic;
 } ExtrapolationResult;
 
 // forward declarations

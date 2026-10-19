@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at  
+The author can be reached by email at
 
 warren@pratt.one
 
@@ -29,7 +29,7 @@ warren@pratt.one
 
 typedef struct _cfir *CFIR;
 
-extern CFIR create_cfir (int run, int size, int nc, int mp, double* in, double* out, int runrate, int cicrate, 
+extern CFIR create_cfir (int run, int size, int nc, int mp, double* in, double* out, int runrate, int cicrate,
 	int DD, int R, int Pairs, double cutoff, int xtype, double xbw, int wintype);
 
 extern void destroy_cfir (CFIR a);
