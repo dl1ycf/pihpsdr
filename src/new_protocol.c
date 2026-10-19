@@ -645,7 +645,8 @@ static void new_protocol_high_priority(void) {
       // radio reports a PTT signal, since only then we can use
       // a foot-switch to extend the TX time in a rag-chew QSO
       //
-      if (transmitter->tune || CAT_cw_is_active
+      if (transmitter->tune
+          || CAT_cw_is_active
           || MIDI_cw_is_active
           || !cw_keyer_internal
           || transmitter->twotone
@@ -1269,9 +1270,13 @@ static void new_protocol_transmit_specific(void) {
   transmit_specific_buffer[3] = (tx_specific_sequence      ) & 0xFF;
   transmit_specific_buffer[4] = 1; // 1 DAC
   transmit_specific_buffer[5] = 0; //  default no CW
-  if ((txmode == modeCWU || txmode == modeCWL) && cw_keyer_internal
+  if ((txmode == modeCWU || txmode == modeCWL)
+      && cw_keyer_internal
       && !CAT_cw_is_active
-      && !MIDI_cw_is_active) {
+      && !MIDI_cw_is_active
+      && !transmitter->tune
+      && !transmitter->twotone
+      && !transmitter->txnoise) {
     //
     // Set this byte only if in CW, and if using "CW handled in radio"
     //

@@ -2139,12 +2139,13 @@ static void ozy_send_buffer(unsigned char *buffer) {
       break;
     case 7:
       buffer[C0] = 0x1E;
-      if ((txmode == modeCWU || txmode == modeCWL) && !transmitter->tune
-          && !transmitter->twotone
-          && !transmitter->txnoise
+      if ((txmode == modeCWU || txmode == modeCWL)
           && cw_keyer_internal
+          && !CAT_cw_is_active
           && !MIDI_cw_is_active
-          && !CAT_cw_is_active) {
+          && !transmitter->tune
+          && !transmitter->twotone
+          && !transmitter->txnoise) {
         buffer[C1] |= 0x01;
       }
       //
