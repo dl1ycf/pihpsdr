@@ -137,14 +137,9 @@ static double div_tau_to_pos(double tau) {
 //
 // The "Measure on" list.
 //
-// The order the operator sees is not the order of the DIV_REF_* values.
-// Those are what land in the props file and go over the wire to a client,
-// so they are fixed and new ones go on the end. The list puts the general
-// purpose Window first, then the references for particular signals in
-// the order an operator tends to meet them: CW, FSK/Digital, a carrier
-// (AM/SAM), RADE V1. The table at div_ref_rows[] is the only place the
-// two orders meet - everything else works in DIV_REF_* - so adding a
-// reference means adding one line there.
+// The rows are the DIV_REF_* values in order (diversity_auto.h), so a row
+// is a reference and needs no conversion. A reference that is added goes on
+// the end of the enum and gets a label here.
 //
 
 static double gain_coarse, gain_fine;
@@ -720,36 +715,17 @@ static int status_update_cb(gpointer data) {
 }
 
 //
-// The "Measure on" combo lists the references in its own order, which is
-// not the order of the DIV_REF_* enum. Every conversion between a combo
-// row and a reference goes through these two.
+// The labels of the "Measure on" combo, indexed by DIV_REF_*.
 //
-static const struct {
-  int ref;
-  const char *label;
-} div_ref_rows[] = {
-  { DIV_REF_BAND,       "Window (wideband)"            },
-  { DIV_REF_CW,         "CW / Morse (keyed tone)"      },
-  { DIV_REF_DIGITAL_IQ, "FSK/Digital (occupancy MVDR)" },
-  { DIV_REF_CARRIER,    "Carrier (AM/SAM)"             },
-  { DIV_REF_RADE_V1,    "RADE V1 pilot (MVDR)"         }
+static const char *const div_ref_labels[] = {
+  [DIV_REF_BAND]       = "Window (wideband)",
+  [DIV_REF_CW]         = "CW / Morse (keyed tone)",
+  [DIV_REF_DIGITAL_IQ] = "FSK/Digital (occupancy MVDR)",
+  [DIV_REF_CARRIER]    = "Carrier (AM/SAM)",
+  [DIV_REF_RADE_V1]    = "RADE V1 pilot (MVDR)"
 };
 
-#define DIV_REF_NROWS ((int)(sizeof(div_ref_rows) / sizeof(div_ref_rows[0])))
-
-static int div_ref_to_row(int ref) {
-  for (int i = 0; i < DIV_REF_NROWS; i++) {
-    if (div_ref_rows[i].ref == ref) { return i; }
-  }
-
-  return 0;
-}
-
-static int div_row_to_ref(int row) {
-  if (row < 0 || row >= DIV_REF_NROWS) { return DIV_REF_BAND; }
-
-  return div_ref_rows[row].ref;
-}
+#define DIV_REF_NROWS ((int)(sizeof(div_ref_labels) / sizeof(div_ref_labels[0])))
 
 static void mode_changed_cb(GtkWidget *widget, gpointer data) {
   int previous = div_auto_mode;
@@ -962,7 +938,8 @@ static void ref_changed_cb(GtkWidget *widget, gpointer data) {
   // After restore, modify the GUI elements as to reflect the new values
   //
   store_ref_values(div_auto_ref);
-  div_auto_ref = div_row_to_ref(gtk_combo_box_get_active(GTK_COMBO_BOX(widget)));
+  const int row = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  div_auto_ref = (row < 0 || row >= DIV_REF_NROWS) ? DIV_REF_BAND : row;
   restore_ref_values(div_auto_ref);
 
   //
@@ -1108,8 +1085,8 @@ void diversity_menu(GtkWidget *parent) {
   enable_b = btn;
   auto_btn = gtk_combo_box_text_new();
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_btn), "Manual");
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_btn), "Null (cancel common signal)");
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_btn), "Sum (co-phase antennas)");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_btn), "Null (cancel common signal)");
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(auto_btn), "Best (use the better antenna)");
   gtk_combo_box_set_active(GTK_COMBO_BOX(auto_btn), div_auto_mode);
   gtk_grid_attach(GTK_GRID(grid), auto_btn, 2, row, 4, 1);
@@ -1222,10 +1199,10 @@ void diversity_menu(GtkWidget *parent) {
   btn = gtk_combo_box_text_new();
 
   for (int i = 0; i < DIV_REF_NROWS; i++) {
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), div_ref_rows[i].label);
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(btn), div_ref_labels[i]);
   }
 
-  gtk_combo_box_set_active(GTK_COMBO_BOX(btn), div_ref_to_row(div_auto_ref));
+  gtk_combo_box_set_active(GTK_COMBO_BOX(btn), div_auto_ref);
   gtk_grid_attach(GTK_GRID(agrid), btn, 2, 0, 4, 1);
   g_signal_connect(btn, "changed", G_CALLBACK(ref_changed_cb), NULL);
   btn = gtk_check_button_new_with_label("Follow RX Filter");

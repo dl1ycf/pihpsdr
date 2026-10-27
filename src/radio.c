@@ -3534,7 +3534,7 @@ int radio_client_start(gpointer data) {
   for (int i = 0; i < receivers; i++) {
     rx_restore_state(receiver[i]);  // this ONLY restores local display settings
     if (receiver[i]->local_audio) {
-      if (audio_open_output(receiver[i])) {
+      if (audio_open_output(receiver[i]) < 0) {
         receiver[i]->local_audio = 0;
       }
     }
@@ -3570,6 +3570,12 @@ int radio_client_start(gpointer data) {
   //
   g_signal_handler_disconnect(top_window, keypress_signal_id);
   keypress_signal_id = g_signal_connect(top_window, "key_press_event", G_CALLBACK(radio_keypress_cb), NULL);
+  //
+  // Start client threads. They live forever.
+  //
+  g_thread_new("client_udp", client_udp_thread, NULL);
+  g_thread_new("client_cw", client_sidetone_thread, transmitter);
+  g_idle_add(ext_vfo_update, NULL);
   return 0;
 }
 

@@ -562,8 +562,8 @@
 // coherence the gate compares - on noise-only captures as much as on
 // signal - so a given threshold became a laxer test. Compared at equal
 // false-alarm rate, flat keeps more signal blocks and gives a slightly
-// better output SNR. DIV_WEIGHT_COHERENCE stays in the enum so the field
-// keeps its shape on the wire and in the props file.
+// better output SNR. The weighting setting is gone (LC-062); the window
+// is always flat.
 //
 
 int    div_auto_ref            = DIV_REF_BAND;
@@ -571,9 +571,7 @@ int    div_auto_follow_filter  = 1;
 double div_auto_centre         = 0.0;
 double div_auto_width          = 1000.0;
 double div_auto_tau            = 2.0;
-double div_auto_hang           = 10.0;
 double div_auto_coherence_min  = 0.20;
-int    div_auto_weighting      = DIV_WEIGHT_FLAT;
 double div_auto_resolution     = DIV_RES_AUTO;
 
 //
@@ -657,7 +655,6 @@ double div_cw_width            = DIV_CW_WIDTH_DEFAULT;
 double div_band_cohmin         = 0.20;
 double div_carrier_cohmin      = 0.30;
 double div_digital_cohmin      = 0.30;
-double div_rade_cohmin         = 0.0;
 double div_cw_cohmin           = 0.10;
 
 //
@@ -860,7 +857,6 @@ struct div_context {
   int       follow;
   double    centre;
   double    width;
-  int       weighting;
   int       att0;
   int       att1;
   //
@@ -1362,7 +1358,6 @@ static void div_get_context(struct div_context *ctx) {
   ctx->follow         = div_auto_follow_filter;
   ctx->centre         = div_auto_centre;
   ctx->width          = div_auto_width;
-  ctx->weighting      = div_auto_weighting;
   ctx->att0           = adc[0].attenuation;
   ctx->att1           = adc[1].attenuation;
 
@@ -1416,7 +1411,6 @@ static int div_context_changed(const struct div_context *a, const struct div_con
          a->follow         != b->follow         ||
          a->centre         != b->centre         ||
          a->width          != b->width          ||
-         a->weighting      != b->weighting      ||
          a->att0           != b->att0           ||
          a->att1           != b->att1           ||
          div_notches_differ(a, b);
@@ -3336,7 +3330,6 @@ static int divcap_ctx_differs(const struct div_context *a,
          a->filter_high    != b->filter_high    ||
          a->ref            != b->ref            ||
          a->follow         != b->follow         ||
-         a->weighting      != b->weighting      ||
          a->att0           != b->att0           ||
          a->att1           != b->att1           ||
          a->centre         != b->centre         ||
@@ -3419,7 +3412,7 @@ static void div_process_block(void) {
     m.filter_high     = ctx.filter_high;
     m.ref             = ctx.ref;
     m.follow          = ctx.follow;
-    m.weighting       = ctx.weighting;
+    m.weighting       = 0;   // retired (LC-062); the record keeps its shape
     m.att0            = ctx.att0;
     m.att1            = ctx.att1;
     m.centre          = ctx.centre;
@@ -3436,7 +3429,7 @@ static void div_process_block(void) {
     m.auto_mode        = div_auto_mode;
     m.frame_off        = div_frame_off(&ctx);
     m.tau              = div_auto_tau;
-    m.hang             = div_auto_hang;
+    m.hang             = 10.0;   // retired (LC-062); the record keeps its shape
     m.live_locked      = rade_corr_locked;
     m.live_confirming  = rade_corr_confirming;
     m.live_mirrored    = rade_corr_mirrored;
@@ -4312,18 +4305,14 @@ void diversity_auto_get_settings(DIV_SETTINGS *s) {
   s->mode           = div_auto_mode;
   s->ref            = div_auto_ref;
   s->follow_filter  = div_auto_follow_filter;
-  s->weighting      = div_auto_weighting;
   s->hold           = div_auto_hold;
   s->centre         = div_auto_centre;
   s->width          = div_auto_width;
   s->tau            = div_auto_tau;
-  s->hang           = div_auto_hang;
   s->coherence_min  = div_auto_coherence_min;
-  s->resolution     = div_auto_resolution;
   s->band_cohmin    = div_band_cohmin;
   s->carrier_cohmin = div_carrier_cohmin;
   s->digital_cohmin = div_digital_cohmin;
-  s->rade_cohmin    = div_rade_cohmin;
   s->band_centre    = div_band_centre;
   s->band_width     = div_band_width;
   s->carrier_centre = div_carrier_centre;
@@ -4345,17 +4334,13 @@ static void div_settings_load(const DIV_SETTINGS *s) {
   div_auto_mode          = s->mode;
   div_auto_ref           = s->ref;
   div_auto_follow_filter = s->follow_filter;
-  div_auto_weighting     = s->weighting;
   div_auto_centre        = s->centre;
   div_auto_width         = s->width;
   div_auto_tau           = s->tau;
-  div_auto_hang          = s->hang;
-  div_auto_resolution    = DIV_RES_AUTO;   // pinned, whatever the block says - see div_settings_validate()
   div_band_cohmin        = s->band_cohmin;
   div_carrier_cohmin     = s->carrier_cohmin;
   div_digital_cohmin     = s->digital_cohmin;
   div_cw_cohmin          = s->cw_cohmin;
-  div_rade_cohmin        = 0.0;   // retired, whatever the block says - see div_settings_validate()
   //
   // The live threshold always belongs to the selected reference. Taking
   // it from the slot rather than from s->coherence_min is what makes that
@@ -4407,7 +4392,6 @@ void diversity_auto_apply_settings(const DIV_SETTINGS *s, int action) {
   const int    old_mode   = div_auto_mode;
   const int    old_ref    = div_auto_ref;
   const int    old_follow = div_auto_follow_filter;
-  const int    old_weight = div_auto_weighting;
   const double old_centre = div_auto_centre;
   const double old_width  = div_auto_width;
   const double old_res    = div_target_hz();
@@ -4456,7 +4440,7 @@ void diversity_auto_apply_settings(const DIV_SETTINGS *s, int action) {
   // what has been accumulated so far.
   //
   if (action == DIV_ACTION_RESET || old_ref != s->ref || old_follow != s->follow_filter ||
-      old_weight != s->weighting || old_centre != s->centre || old_width != s->width) {
+      old_centre != s->centre || old_width != s->width) {
     diversity_auto_reset();
   }
 
@@ -4535,26 +4519,65 @@ void diversity_auto_apply_status(const DIV_STATUS *st) {
 // someone moved a control on the radio's own panel. Adopt them. Runs on
 // the GTK thread, put there by the client read loop.
 //
+void diversity_settings_slot(DIV_SETTINGS *s, int ref,
+                             double **cohmin, double **centre, double **width) {
+  *cohmin = *centre = *width = NULL;
+
+  switch (ref) {
+  case DIV_REF_BAND:
+    *cohmin = &s->band_cohmin;    *centre = &s->band_centre;    *width = &s->band_width;
+    break;
+
+  case DIV_REF_CW:
+    *cohmin = &s->cw_cohmin;      *centre = &s->cw_centre;      *width = &s->cw_width;
+    break;
+
+  case DIV_REF_DIGITAL_IQ:
+    *cohmin = &s->digital_cohmin; *centre = &s->digital_centre; *width = &s->digital_width;
+    break;
+
+  case DIV_REF_CARRIER:
+    *cohmin = &s->carrier_cohmin; *centre = &s->carrier_centre; *width = &s->carrier_width;
+    break;
+
+  default:
+    break;
+  }
+}
+
+static void div_settings_validate(DIV_SETTINGS *s);
+
 gboolean diversity_client_set_settings(gpointer data) {
   const DIV_SETTINGS_COMMAND *c = (const DIV_SETTINGS_COMMAND *)data;
+  //
+  // Start from the settings in force, so a field the command does not
+  // carry (or a slot it leaves at zero) keeps a defined value instead of
+  // whatever the stack held, and run the result through the same check a
+  // props file gets.
+  //
   DIV_SETTINGS set;
+  diversity_auto_get_settings(&set);
   set.mode           = c->mode;
   set.ref            = c->ref;
   set.follow_filter  = c->follow_filter;
-  set.weighting      = c->weighting;
   set.hold           = c->hold;
   set.centre         = from_double(c->centre);
   set.width          = from_double(c->width);
   set.tau            = from_double(c->tau);
-  set.hang           = from_double(c->hang);
   set.coherence_min  = from_double(c->coherence_min);
-  set.resolution     = from_double(c->resolution);
-  set.band_centre    = from_double(c->band_centre);
-  set.band_width     = from_double(c->band_width);
-  set.carrier_centre = from_double(c->carrier_centre);
-  set.carrier_width  = from_double(c->carrier_width);
-  set.digital_centre = from_double(c->digital_centre);
-  set.digital_width  = from_double(c->digital_width);
+
+  for (int r = 0; r < DIV_REFS; r++) {
+    double *cohmin, *centre, *width;
+    diversity_settings_slot(&set, r, &cohmin, &centre, &width);
+
+    if (cohmin != NULL) { *cohmin = from_double(c->ref_cohmin[r]); }
+
+    if (centre != NULL) { *centre = from_double(c->ref_centre[r]); }
+
+    if (width  != NULL) { *width  = from_double(c->ref_width[r]);  }
+  }
+
+  div_settings_validate(&set);
   diversity_auto_apply_settings(&set, DIV_ACTION_NONE);
   g_free(data);
   return G_SOURCE_REMOVE;
@@ -4728,19 +4751,6 @@ void diversity_auto_mode_changed(int mode) {
 }
 
 //
-// The Hang setting no longer does anything. There is no timeout on a
-// RADE lock: it is held, weight and all, through any fade, and replaced
-// only when the resync search finds a new one (RADE_RESYNC_DA in
-// rade_correlator.c). In the other references the coherence gate is the
-// arbiter, and hang time has no part to play there either.
-//
-// The field stays on the wire and in the props file so neither changes
-// shape, pinned to this value by div_settings_validate(); nothing reads
-// it. div_auto_hang's initialiser is the same 10.0.
-//
-#define DIV_HANG_DEFAULT 10.0
-
-//
 // Clamp everything in a settings block to what the controls can express.
 //
 // A props file can be hand-edited or written by a future version, and an
@@ -4754,18 +4764,11 @@ static void div_settings_validate(DIV_SETTINGS *s) {
     s->mode = DIV_MANUAL;
   }
 
-  if (s->ref < DIV_REF_BAND || s->ref > DIV_REF_CW) {
+  if (s->ref < DIV_REF_BAND || s->ref > DIV_REF_RADE_V1) {
     s->ref = DIV_REF_BAND;
   }
 
   s->follow_filter = s->follow_filter ? 1 : 0;
-
-  //
-  // Pinned rather than range-checked: there is no control for it any
-  // more, and an older props file or client must not bring coherence
-  // weighting back alongside the lower Window threshold chosen for flat.
-  //
-  s->weighting = DIV_WEIGHT_FLAT;
 
   //
   // Each reference's own threshold, and the live one. These share the
@@ -4782,33 +4785,6 @@ static void div_settings_validate(DIV_SETTINGS *s) {
       if (*c[i] > 0.95)    { *c[i] = 0.95; }
     }
   }
-
-  //
-  // RADE V1's threshold is pinned, not ranged: there is no control for it
-  // any more. It gated rade_corr_quality, the pilot's signal fraction, and
-  // it can only do harm:
-  //
-  // - Three gates on the pilot already stand in front of it - the
-  //   acquisition ladder's sigmas, the confirm and probation ladder, and
-  //   RADE_USE_RATIO's per-frame freeze. Over the capture set the five
-  //   recordings with no signal in them produce no weight at all through
-  //   those, 3515 blocks of dead air, so the false-alarm job a threshold
-  //   exists for is already done.
-  // - The quantity it gates does not separate a good lock from a poor
-  //   one: 234508, a strong capture producing a weight on three blocks in
-  //   four, reads a median 0.217 with 31 % of its blocks under 0.05, and
-  //   202743, which re-acquires eight times a minute, reads 0.193.
-  // - No reachable setting was safe. On 165826, the marginal capture where
-  //   the combiner beats both antennas, every block that produced a weight
-  //   is under 0.25 and a third are under 0.05; moving the gate from 0 to
-  //   0.15 takes the loop from a weight on 32.6 % of blocks to 1.7 %.
-  //
-  // Zero is the default, so nothing an operator has today moves. The
-  // field stays on the wire and in the props file so neither changes
-  // shape, and the comparison stays in the engine so the offline harness
-  // can still sweep it. From 082dba0b on feature/auto-diversity.
-  //
-  s->rade_cohmin = 0.0;
 
   //
   // Values no control can produce - zero or less, or not a number - are
@@ -4829,24 +4805,6 @@ static void div_settings_validate(DIV_SETTINGS *s) {
   // or client from before the cap is brought down to it.
   //
   if (s->tau > 6.0)  { s->tau = 6.0; }
-
-  //
-  // Pinned, not ranged. There is no control for it any more and it is not
-  // a setting an operator can improve on - see DIV_HANG_DEFAULT - so a
-  // value left in a props file by an older build, or sent by an older
-  // client, is replaced rather than merely clamped. The field stays on
-  // the wire and in the file so that neither has to change shape.
-  //
-  s->hang = DIV_HANG_DEFAULT;
-
-  //
-  // Pinned to Auto, like the Hang above: there is no control for the bin
-  // width any more (the engine takes it from Averaging and the reference,
-  // diversity_auto_bin_policy()), so a 12, 6 or 3 Hz left in a props file
-  // by an older build, or sent by an older client, is replaced rather than
-  // honoured. The field stays on the wire and in the file.
-  //
-  s->resolution = DIV_RES_AUTO;
 
   //
   // The widths: 20.0, not 10.0, because the spin button's minimum is 20
@@ -4892,17 +4850,13 @@ static void div_group_save(int g, const DIV_SETTINGS *s) {
   SetPropI1("diversity_group[%d].mode",           g, s->mode);
   SetPropI1("diversity_group[%d].ref",            g, s->ref);
   SetPropI1("diversity_group[%d].follow_filter",  g, s->follow_filter);
-  SetPropI1("diversity_group[%d].weighting",      g, s->weighting);
   SetPropF1("diversity_group[%d].centre",         g, s->centre);
   SetPropF1("diversity_group[%d].width",          g, s->width);
   SetPropF1("diversity_group[%d].tau",            g, s->tau);
-  SetPropF1("diversity_group[%d].hang",           g, s->hang);
   SetPropF1("diversity_group[%d].coherence_min",  g, s->coherence_min);
-  SetPropF1("diversity_group[%d].resolution",     g, s->resolution);
   SetPropF1("diversity_group[%d].band_cohmin",    g, s->band_cohmin);
   SetPropF1("diversity_group[%d].carrier_cohmin", g, s->carrier_cohmin);
   SetPropF1("diversity_group[%d].digital_cohmin", g, s->digital_cohmin);
-  SetPropF1("diversity_group[%d].rade_cohmin",    g, s->rade_cohmin);
   SetPropF1("diversity_group[%d].band_centre",    g, s->band_centre);
   SetPropF1("diversity_group[%d].band_width",     g, s->band_width);
   SetPropF1("diversity_group[%d].carrier_centre", g, s->carrier_centre);
@@ -4936,31 +4890,53 @@ static void div_group_save(int g, const DIV_SETTINGS *s) {
 // window and threshold are the CW reference's own, as a reference change
 // would bring them in.
 //
+// AM, SAM and DSB start on the Carrier reference: a carrier is what those
+// modes have to lock to. The digital modes start on FSK/Digital. Both
+// take the reference's own threshold and hand-placed window, as CW does,
+// and keep the 2.0 s averaging. Follow RX Filter stays ticked in every
+// group, so the window only takes effect once an operator unticks it. These two are chosen by what the modes carry, not by a
+// sweep (LC-061).
+//
 static void div_group_seed(int g, DIV_SETTINGS *s) {
-  if (g != DIV_GROUP_CW) { return; }
+  switch (g) {
+  case DIV_GROUP_CW:
+    s->ref           = DIV_REF_CW;
+    s->tau           = 0.2;
+    s->centre        = s->cw_centre;
+    s->width         = s->cw_width;
+    s->coherence_min = s->cw_cohmin;
+    break;
 
-  s->ref           = DIV_REF_CW;
-  s->tau           = 0.2;
-  s->centre        = s->cw_centre;
-  s->width         = s->cw_width;
-  s->coherence_min = s->cw_cohmin;
+  case DIV_GROUP_AM:
+    s->ref           = DIV_REF_CARRIER;
+    s->centre        = s->carrier_centre;
+    s->width         = s->carrier_width;
+    s->coherence_min = s->carrier_cohmin;
+    break;
+
+  case DIV_GROUP_DIGITAL:
+    s->ref           = DIV_REF_DIGITAL_IQ;
+    s->centre        = s->digital_centre;
+    s->width         = s->digital_width;
+    s->coherence_min = s->digital_cohmin;
+    break;
+
+  default:
+    break;
+  }
 }
 
 static void div_group_restore(int g, DIV_SETTINGS *s) {
   GetPropI1("diversity_group[%d].mode",           g, s->mode);
   GetPropI1("diversity_group[%d].ref",            g, s->ref);
   GetPropI1("diversity_group[%d].follow_filter",  g, s->follow_filter);
-  GetPropI1("diversity_group[%d].weighting",      g, s->weighting);
   GetPropF1("diversity_group[%d].centre",         g, s->centre);
   GetPropF1("diversity_group[%d].width",          g, s->width);
   GetPropF1("diversity_group[%d].tau",            g, s->tau);
-  GetPropF1("diversity_group[%d].hang",           g, s->hang);
   GetPropF1("diversity_group[%d].coherence_min",  g, s->coherence_min);
-  GetPropF1("diversity_group[%d].resolution",     g, s->resolution);
   GetPropF1("diversity_group[%d].band_cohmin",    g, s->band_cohmin);
   GetPropF1("diversity_group[%d].carrier_cohmin", g, s->carrier_cohmin);
   GetPropF1("diversity_group[%d].digital_cohmin", g, s->digital_cohmin);
-  GetPropF1("diversity_group[%d].rade_cohmin",    g, s->rade_cohmin);
   GetPropF1("diversity_group[%d].band_centre",    g, s->band_centre);
   GetPropF1("diversity_group[%d].band_width",     g, s->band_width);
   GetPropF1("diversity_group[%d].carrier_centre", g, s->carrier_centre);
@@ -4993,14 +4969,10 @@ void diversity_auto_save_state(void) {
   SetPropF0("diversity_auto_centre",         div_auto_centre);
   SetPropF0("diversity_auto_width",          div_auto_width);
   SetPropF0("diversity_auto_tau",            div_auto_tau);
-  SetPropF0("diversity_auto_hang",           div_auto_hang);
   SetPropF0("diversity_auto_coherence_min",  div_auto_coherence_min);
-  SetPropI0("diversity_auto_weighting",      div_auto_weighting);
-  SetPropF0("diversity_auto_resolution",     div_auto_resolution);
   SetPropF0("diversity_band_cohmin",         div_band_cohmin);
   SetPropF0("diversity_carrier_cohmin",      div_carrier_cohmin);
   SetPropF0("diversity_digital_cohmin",      div_digital_cohmin);
-  SetPropF0("diversity_rade_cohmin",         div_rade_cohmin);
   SetPropF0("diversity_band_centre",         div_band_centre);
   SetPropF0("diversity_band_width",          div_band_width);
   SetPropF0("diversity_carrier_centre",      div_carrier_centre);
@@ -5033,10 +5005,7 @@ void diversity_auto_restore_state(void) {
   GetPropF0("diversity_auto_centre",         div_auto_centre);
   GetPropF0("diversity_auto_width",          div_auto_width);
   GetPropF0("diversity_auto_tau",            div_auto_tau);
-  GetPropF0("diversity_auto_hang",           div_auto_hang);
   GetPropF0("diversity_auto_coherence_min",  div_auto_coherence_min);
-  GetPropI0("diversity_auto_weighting",      div_auto_weighting);
-  GetPropF0("diversity_auto_resolution",     div_auto_resolution);
   //
   // A file written before these existed carries none of them, and GetProp
   // leaves a field alone when its key is absent - so each reference
@@ -5047,7 +5016,6 @@ void diversity_auto_restore_state(void) {
   GetPropF0("diversity_band_cohmin",         div_band_cohmin);
   GetPropF0("diversity_carrier_cohmin",      div_carrier_cohmin);
   GetPropF0("diversity_digital_cohmin",      div_digital_cohmin);
-  GetPropF0("diversity_rade_cohmin",         div_rade_cohmin);
   GetPropF0("diversity_band_centre",         div_band_centre);
   GetPropF0("diversity_band_width",          div_band_width);
   GetPropF0("diversity_carrier_centre",      div_carrier_centre);
