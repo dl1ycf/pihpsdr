@@ -1588,7 +1588,7 @@ static void new_protocol_receive_specific(void) {
     receive_specific_buffer[23] = n_adc;                         // TX-DAC (last ADC + 1) associated with DDC1
     receive_specific_buffer[24] = 0;                             // sample rate MSB
     receive_specific_buffer[25] = 192;                           // sample rate LSB
-    receive_specific_buffer[26] = 24;                            // bits per sample
+    receive_specific_buffer[28] = 24;                            // bits per sample
     receive_specific_buffer[1363] = 0x02;                        // sync DDC1 to DDC0
     receive_specific_buffer[7] |= 1;                             // enable  DDC0
   }
@@ -1609,7 +1609,7 @@ static void new_protocol_receive_specific(void) {
     receive_specific_buffer[23] = 1;                                               // ADC1 associated with DDC1
     receive_specific_buffer[24] = ((receiver[0]->sample_rate / 1000) >> 8) & 0xFF; // sample rate MSB
     receive_specific_buffer[25] = ((receiver[0]->sample_rate / 1000)     ) & 0xFF; // sample rate LSB
-    receive_specific_buffer[26] = 24;                                              // bits per sample
+    receive_specific_buffer[28] = 24;                                              // bits per sample
     receive_specific_buffer[1363] = 0x02;                                          // sync DDC1 to DDC0
     receive_specific_buffer[7] = 1;                                                // enable  DDC0 but disable all others
   }
