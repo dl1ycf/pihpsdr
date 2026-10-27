@@ -57,7 +57,7 @@
   static int    logfirst_num = 1;
 #endif
 
-#define NUMRECEIVERS 4
+#define NUMRECEIVERS 6
 
 /*
  * These variables represent the state of the machine
@@ -421,6 +421,10 @@ void *ddc_specific_thread(void *data) {
         rxrate[i] = rc;
         modified = 1;
         p2noisefac[i] = sqrt((double)rxrate[i]);
+      }
+      rc = buffer[22 + 6 * i];
+      if (rc != 24) {
+        t_print("WARNING: DDC%d sample size=%d\n", i, rc);
       }
       if (syncddc[i] != buffer[1363 + i]) {
         syncddc[i] = buffer[1363 + i];
