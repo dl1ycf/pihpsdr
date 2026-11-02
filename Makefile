@@ -496,6 +496,7 @@ src/meter.c \
 src/meter_menu.c \
 src/mode.c \
 src/mode_menu.c \
+src/mox_button. c \
 src/new_discovery.c \
 src/new_menu.c \
 src/new_protocol.c \
@@ -599,6 +600,7 @@ src/meter.o \
 src/meter_menu.o \
 src/mode.o \
 src/mode_menu.o \
+src/mox_button.o \
 src/new_discovery.o \
 src/new_menu.o \
 src/new_protocol.o \

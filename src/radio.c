@@ -51,6 +51,7 @@
   #include "midi.h"
 #endif
 #include "mode.h"
+#include "mox_button.h"
 #include "new_menu.h"
 #include "new_protocol.h"
 #include "old_protocol.h"
@@ -1674,6 +1675,7 @@ void radio_start_radio(void) {
   if (open_test_menu) {
     test_menu(top_window);
   }
+  mox_button(open_mox_button);
   if (transmitter != NULL && (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL)) {
     radio_calc_drive_level(0);
     //
@@ -3159,6 +3161,7 @@ static void radio_restore_state(void) {
   GetPropF0("linein_gain",                                   linein_gain);
   GetPropI0("mute_spkr_amp",                                 mute_spkr_amp);
   GetPropI0("mute_spkr_xmit",                                mute_spkr_xmit);
+  GetPropI0("open_mox_button",                               open_mox_button);
   if (!radio_is_remote) {
     //
     // These variables are sent from the server to the client upon connection,
@@ -3387,6 +3390,7 @@ void radio_save_state(void) {
   SetPropF0("linein_gain",                                   linein_gain);
   SetPropI0("mute_spkr_amp",                                 mute_spkr_amp);
   SetPropI0("mute_spkr_xmit",                                mute_spkr_xmit);
+  SetPropI0("open_mox_button",                               open_mox_button);
   if (!radio_is_remote) {
     SetPropI0("enable_auto_tune",                            enable_auto_tune);
     SetPropI0("enable_tx_inhibit",                           enable_tx_inhibit);
@@ -3563,6 +3567,7 @@ int radio_client_start(gpointer data) {
   if (open_test_menu) {
     test_menu(top_window);
   }
+  mox_button(open_mox_button);
   start_vfo_timer();
   remote_started = TRUE;
   //
