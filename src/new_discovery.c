@@ -140,12 +140,6 @@ static void p2_discover(struct ifaddrs* iface, int discflag) {
     //  to_addr.sin_addr.s_addr = htonl(ntohl(interface_addr.sin_addr.s_addr)
     //          | (ntohl(interface_netmask.sin_addr.s_addr) ^ 0xFFFFFFFF));
     //
-#ifdef __APPLE__
-    //
-    // MacOS fails for broadcasts to the loopback interface(s).
-    // so if this is a loopback, simply use the loopback addr
-    // (Note: currently we are not discovering on LO in P2)
-    //
     if ((iface->ifa_flags & IFF_LOOPBACK) == IFF_LOOPBACK) {
       //
       // No broadcast on loopback interfaces. Send UDP packet
@@ -153,7 +147,6 @@ static void p2_discover(struct ifaddrs* iface, int discflag) {
       //
       to_addr.sin_addr = interface_addr.sin_addr;
     }
-#endif
     break;
   case 2:
     //
@@ -257,6 +250,13 @@ static gpointer p2_discover_receive_thread(gpointer data) {
     }
     count++;
     t_print("%s: received %d bytes\n", __func__, bytes_read);
+    if (bytes_read < 24) {
+      //
+      // This code (only) inspects the first 24 bytes of a discovery reply packet,
+      // so make sure at least that many bytes have been received.
+      //
+      continue;
+    }
     //
     // If there is no P2 radio, but e.g. a P1 radio still sending streaming packets,
     // we will get invalid packets forever. So limit the number of "invalid" packets
