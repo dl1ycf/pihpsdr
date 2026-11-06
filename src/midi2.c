@@ -80,14 +80,19 @@ static void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
         t_print("%s: Unknown Event\n", __func__);
         break;
       case MIDI_NOTE:
+        // val==0 triggers RELEASE, all others trigger PRESS
         DoTheMidi(desc->action, desc->type, val);
         break;
       case MIDI_CTRL:
-        if (desc->type == AT_KNB) {
-          // CHANGED Jan 2024: report the "raw" value (0-127) upstream
+        switch (desc->type) {
+        case AT_KNB:
+          // CHANGED Jan 2024: report the "raw" value (0-127) as ABSOLUTE
+        case AT_BTN:
+          // val==0 triggers RELEASE, all others trigger PRESS
           DoTheMidi(desc->action, desc->type, val);
-        } else if (desc->type == AT_ENC) {
-          // translate value to direction/speed
+          break;
+        case AT_ENC:
+          // translate value to direction/speed and trigger a RELATIVE
           new = 0;
           if ((val >= desc->vfl1) && (val <= desc->vfl2)) { new = -16; }
           if ((val >= desc-> fl1) && (val <= desc-> fl2)) { new = -4; }
@@ -100,6 +105,10 @@ static void NewMidiEvent(enum MIDIevent event, int channel, int note, int val) {
           //                               val, new, desc->vfl1, desc->vfl2, desc->fl1, desc->fl2, desc->lft1, desc->lft2,
           //                               desc->rgt1, desc->rgt2, desc->fr1, desc->fr2, desc->vfr1, desc->vfr2);
           if (new != 0) { DoTheMidi(desc->action, desc->type, new); }
+          break;
+        default:
+          // AT_SLD cannot happen, and AT_NONE produces no action
+          break;
         }
         break;
       case MIDI_PITCH:
@@ -391,7 +400,8 @@ void midi_restore_state(void) {
         continue;
       }
       //
-      // execute fixed mapping MIDI_KEY-->AT_BTN and MIDI_PITCH-->AT_KNB
+      // execute fixed mapping MIDI_KEY-->AT_BTN and MIDI_PITCH-->AT_KNB,
+      // but a MIDI_CTRL can be an encoder, a knob, or a button
       //
       switch (event) {
       case EVENT_NONE:
@@ -405,15 +415,21 @@ void midi_restore_state(void) {
         type = AT_KNB;
         break;
       case MIDI_CTRL:
-        type = AT_ENC;
         //
-        // If the stored action cannot be mapped to an encoder, choose AT_KNB
+        // Priority: AT_ENC, then AT_KNB, then AT_BTN
         //
-        if ((ActionTable[action].type & AT_ENC) == 0) { type = AT_KNB; }
+        if ((ActionTable[action].type & AT_ENC)) {
+          type = AT_ENC;
+        } else if ((ActionTable[action].type & AT_KNB)) {
+          type = AT_KNB;
+        } else {
+          type = AT_BTN;
+        }
         snprintf(str, sizeof(str), "None");
         GetPropS3("midi[%d].entry[%d].channel[%d].type", i, entry, channel, str);
-        // this will become a "Slider" only when specifically told so
+        // this will become a "Slider" or a "Button" only when specifically told so
         if (String2ActionType(str) == AT_KNB) { type = AT_KNB; }
+        if (String2ActionType(str) == AT_BTN) { type = AT_BTN; }
         break;
       }
       //
