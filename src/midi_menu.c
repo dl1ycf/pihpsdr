@@ -806,7 +806,7 @@ static int updatePanel(int state) {
   switch (state) {
   case UPDATE_NEW:
     gtk_label_set_text(GTK_LABEL(newEvent), MidiEvent2String(thisEvent));
-    snprintf(text, sizeof(text), "%d", thisChannel);
+    snprintf(text, sizeof(text), "%d", thisChannel + 1);
     gtk_label_set_text(GTK_LABEL(newChannel), text);
     snprintf(text, sizeof(text), "%d", thisNote);
     gtk_label_set_text(GTK_LABEL(newNote), text);
@@ -821,6 +821,7 @@ static int updatePanel(int state) {
       thisType = AT_ENC;
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, ActionType2String(AT_ENC));
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, ActionType2String(AT_KNB));
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, ActionType2String(AT_BTN));
       updateEncoderParams();
       gtk_widget_set_sensitive(newType, TRUE);
       break;
@@ -852,7 +853,7 @@ static int updatePanel(int state) {
     break;
   case UPDATE_EXISTING:
     gtk_label_set_text(GTK_LABEL(newEvent), MidiEvent2String(thisEvent));
-    snprintf(text, sizeof(text), "%d", thisChannel);
+    snprintf(text, sizeof(text), "%d", thisChannel + 1);
     gtk_label_set_text(GTK_LABEL(newChannel), text);
     snprintf(text, sizeof(text), "%d", thisNote);
     gtk_label_set_text(GTK_LABEL(newNote), text);
@@ -865,13 +866,24 @@ static int updatePanel(int state) {
       gtk_widget_set_sensitive(newType, FALSE);
       break;
     case MIDI_CTRL:
+      //
+      // Some DJ consoles send CC messages for buttons. In this case, we shall interpret
+      // a non-zero value as "PRESS" and a zero value as "RELEASE"
+      //
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, ActionType2String(AT_ENC));
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, ActionType2String(AT_KNB));
-      if (thisType == AT_ENC) {
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(newType), NULL, ActionType2String(AT_BTN));
+      switch (thisType) {
+      default:
+        thisType = AT_ENC;
         gtk_combo_box_set_active (GTK_COMBO_BOX(newType), 0);
-      } else {
-        thisType = AT_KNB;
+        break;
+      case AT_KNB:
         gtk_combo_box_set_active (GTK_COMBO_BOX(newType), 1);
+        break;
+      case AT_BTN:
+        gtk_combo_box_set_active (GTK_COMBO_BOX(newType), 2);
+        break;
       }
       gtk_widget_set_sensitive(newType, TRUE);
       break;

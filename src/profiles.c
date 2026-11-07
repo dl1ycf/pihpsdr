@@ -138,7 +138,7 @@ void profiles_save_state(void) {
 void profiles_restore_state(void) {
   for (int i = 0; i < MODES + NUMPROFILES; i++) {
     //
-    // Restore only local audio settings on the client side
+    // Restore only local audio settings on both sides
     //
     RXTXprofile[i].rx.audio_channel =  STEREO;
     RXTXprofile[i].rx.local_audio =  0;
@@ -423,11 +423,6 @@ void profiles_restore_state(void) {
         GetPropF2("modeset.%d.cfc_lvl.%d", i, j,        RXTXprofile[i].tx.cfc_lvl[j]);
         GetPropF2("modeset.%d.cfc_post.%d", i, j,       RXTXprofile[i].tx.cfc_post[j]);
       }
-      GetPropI1("modeset.%d.rx_audio_channel", i,       RXTXprofile[i].rx.audio_channel);
-      GetPropI1("modeset.%d.rx_local_audio", i,         RXTXprofile[i].rx.local_audio);
-      GetPropI1("modeset.%d.tx_local_audio", i,         RXTXprofile[i].tx.local_audio);
-      GetPropS1("modeset.%d.rx_audio_name", i,          RXTXprofile[i].rx.audio_name);
-      GetPropS1("modeset.%d.tx_audio_name", i,          RXTXprofile[i].tx.audio_name);
     }
   }
 }

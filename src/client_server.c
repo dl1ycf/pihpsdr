@@ -825,27 +825,35 @@ void send_diversity(int s, int enabled, double gain, double phase) {
 //
 void send_div_settings(int s, const DIV_SETTINGS *set, int action) {
   DIV_SETTINGS_COMMAND command;
+  //
+  // Every byte is defined: the spare bytes and the slots no reference
+  // uses go out as zero.
+  //
+  memset(&command, 0, sizeof(command));
   SYNC(command.header.sync);
   command.header.data_type = to_16(CMD_DIV_SETTINGS);
   command.header.b1 = action;
   command.mode           = set->mode;
   command.ref            = set->ref;
   command.follow_filter  = set->follow_filter;
-  command.weighting      = set->weighting;
   command.hold           = set->hold;
-  memset(command.pad, 0, sizeof(command.pad));
   command.centre         = to_double(set->centre);
   command.width          = to_double(set->width);
   command.tau            = to_double(set->tau);
-  command.hang           = to_double(set->hang);
   command.coherence_min  = to_double(set->coherence_min);
-  command.resolution     = to_double(set->resolution);
-  command.band_centre    = to_double(set->band_centre);
-  command.band_width     = to_double(set->band_width);
-  command.carrier_centre = to_double(set->carrier_centre);
-  command.carrier_width  = to_double(set->carrier_width);
-  command.digital_centre = to_double(set->digital_centre);
-  command.digital_width  = to_double(set->digital_width);
+
+  for (int r = 0; r < DIV_REFS; r++) {
+    double *cohmin, *centre, *width;
+    // the slot accessor takes a writable block; it only reads here
+    diversity_settings_slot((DIV_SETTINGS *)set, r, &cohmin, &centre, &width);
+
+    if (cohmin != NULL) { command.ref_cohmin[r]  = to_double(*cohmin); }
+
+    if (centre != NULL) { command.ref_centre[r]  = to_double(*centre); }
+
+    if (width  != NULL) { command.ref_width[r]   = to_double(*width);  }
+  }
+
   send_tcp(s, (char *)&command, sizeof(command));
 }
 

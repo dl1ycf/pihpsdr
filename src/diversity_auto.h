@@ -41,19 +41,25 @@
 //
 // div_auto_ref: what part of the spectrum the decision is taken from
 //
+// The order is the order of the "Measure on" list in the Diversity menu,
+// whose rows are these values: general purpose Window first, then the
+// references for particular signals in the order an operator tends to meet
+// them.
+//
 enum {
   DIV_REF_BAND = 0,   // all bins in the analysis window ("A")
-  DIV_REF_CARRIER,    // the carrier bin only, found by our own tracker ("B")
-  DIV_REF_RADE_V1,    // RADE V1 pilot correlation + MVDR
+  DIV_REF_CW,         // CW / Morse: the keyed tone in the passband
   DIV_REF_DIGITAL_IQ, // occupied bins in the window, split, then MVDR
-  DIV_REF_CW          // CW / Morse: the keyed tone in the passband
+  DIV_REF_CARRIER,    // the carrier bin only, found by our own tracker ("B")
+  DIV_REF_RADE_V1     // RADE V1 pilot correlation + MVDR; the last one
 };
 
 //
-// New references go on the end. The value is what is written to the
-// props file, so inserting one in the middle - or removing one, as the
-// RADE passband reference was - silently changes what an existing file
-// means.
+// The value is what is written to the props file and goes over the wire, so
+// a reference that is added goes on the end, and the menu and the range
+// check in div_settings_validate() follow it. Inserting one in the middle -
+// or removing one, as the RADE passband reference was - silently changes
+// what an existing file means.
 //
 
 extern int    div_auto_ref;
@@ -61,12 +67,9 @@ extern int    div_auto_follow_filter;   // analysis window follows the RX filter
 extern double div_auto_centre;          // window centre (Hz, rel. to tuned freq)
 extern double div_auto_width;           // window width (Hz)
 extern double div_auto_tau;             // adaptation time constant (seconds)
-extern double div_auto_hang;            // unused: kept for the wire and props file
-                                        // (no RADE lock timeout - see DIV_HANG_DEFAULT)
 extern double div_auto_coherence_min;   // hold below this coherence
-extern int    div_auto_weighting;       // always DIV_WEIGHT_FLAT (see .c)
-extern double div_auto_resolution;      // DIV_RES_AUTO; a fixed width in Hz only from the
-                                        // test tools (pinned by div_settings_validate())
+extern double div_auto_resolution;      // DIV_RES_AUTO; a fixed width in Hz is a test
+                                        // override only: no setting, props key or wire field
 
 //
 // The window controls are modal: the Window, Carrier, FSK/Digital and CW
@@ -90,7 +93,6 @@ extern double div_cw_width;
 extern double div_band_cohmin;
 extern double div_carrier_cohmin;
 extern double div_digital_cohmin;
-extern double div_rade_cohmin;
 extern double div_cw_cohmin;
 
 //
@@ -119,15 +121,6 @@ extern void diversity_auto_retarget(void);
 //
 extern int    div_auto_clamped;
 extern double div_auto_binhz;
-
-//
-// Bin weighting for the wideband window. Only FLAT is used; COHERENCE is
-// retired but kept so the field keeps its shape on the wire and on disk.
-//
-enum {
-  DIV_WEIGHT_FLAT = 0,
-  DIV_WEIGHT_COHERENCE
-};
 
 //
 // Read-only status, updated by the analysis thread
@@ -261,10 +254,9 @@ typedef struct _div_settings {
   int    mode;              // DIV_AUTO_*
   int    ref;               // DIV_REF_*
   int    follow_filter;
-  int    weighting;
   int    hold;
   double centre, width;
-  double tau, hang, coherence_min, resolution;
+  double tau, coherence_min;
   //
   // The per-reference window pairs travel too. They are modal state the
   // operator built up, not derived values, so a client that only sent the
@@ -275,12 +267,30 @@ typedef struct _div_settings {
   // beside div_band_cohmin in diversity_auto.c. coherence_min above is
   // the live one, for whichever reference is selected.
   //
-  double band_cohmin, carrier_cohmin, digital_cohmin, rade_cohmin, cw_cohmin;
+  double band_cohmin, carrier_cohmin, digital_cohmin, cw_cohmin;
   double band_centre, band_width;
   double carrier_centre, carrier_width;
   double digital_centre, digital_width;
   double cw_centre, cw_width;
 } DIV_SETTINGS;
+
+//
+// Room for this many references in the per-reference tables of the wire
+// form (DIV_SETTINGS_COMMAND): one slot per DIV_REF_*, indexed by it. Five
+// are in use; a new reference takes the next slot with no change to the
+// command.
+//
+#define DIV_REFS 8
+
+//
+// The slot of a settings block that belongs to a reference: its Min
+// coherence and its window pair. Each pointer is NULL where the reference
+// has no such setting (RADE V1 has none; neither has a slot not yet
+// given out). This is the one place that says which field is whose, so
+// the pack and the unpack cannot disagree.
+//
+extern void diversity_settings_slot(DIV_SETTINGS *s, int ref,
+                                    double **cohmin, double **centre, double **width);
 
 typedef struct _div_status {
   int    enabled;           // the whole feature, as the radio has it

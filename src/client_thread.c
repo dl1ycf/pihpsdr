@@ -69,7 +69,7 @@ extern int clock_nanosleep(clockid_t __clock_id, int __flags,
 int cl_sock_tcp = -1;
 int remote_auto_reconnect = 0;
 int remote_latency_ms = 0;
-int remote_started = 0;
+int remote_started = 0; // This will be set to 1 upon the first CMD_START_RADIO received
 
 static GMutex accumulated_mutex;
 static int accumulated_steps[2] = {0, 0};
@@ -84,8 +84,8 @@ static struct sockaddr_in server_address;
 // and this is used to detect mode changes which may then
 // induce a change of the local audio setup
 //
-static int old_rx1mode;
-static int old_txmode;
+static int old_rx1mode = -1;
+static int old_txmode = -1;
 
 OpusEncoder *tx_opus_enc;
 OpusDecoder *opus_dec[2];
@@ -1426,18 +1426,23 @@ static gpointer client_tcp_thread(gpointer arg) {
     }
     break;
     case CMD_START_RADIO: {
+      //
       // sent by the server once upon initialisation
+      // so this is ignored if received a second time
+      //
       if (!remote_started) {
         //
         // Init the "old" modes used to detect mode changes
         //
         old_rx1mode = vfo[0].mode;
         old_txmode = vfo_get_tx_mode();
+        //
+        // radio_client_start will eventually start the client threads
+        // related to spectrum display and audio. Spawning off these
+        // threads should be deferred until the radio is up and running.
+        //
         g_idle_add(radio_client_start, (gpointer)server);
       }
-      g_thread_new("client_udp", client_udp_thread, NULL);
-      g_thread_new("client_cw", client_sidetone_thread, transmitter);
-      g_idle_add(ext_vfo_update, NULL);
     }
     break;
     case CMD_SAMPLE_RATE: {

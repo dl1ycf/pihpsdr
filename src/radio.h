@@ -243,10 +243,14 @@ extern int n_adc;
 //
 // div_auto_mode
 //
+// The order is the order of the objective list in the Diversity menu, whose
+// rows are these values. The value is what is written to the props file and
+// sent to a client, so a new objective goes on the end.
+//
 enum {
-  DIV_MANUAL,         // manual gain/phase only
-  DIV_AUTO_NULL,      // minimise the correlated component (noise cancelling)
+  DIV_MANUAL = 0,     // manual gain/phase only
   DIV_AUTO_SUM,       // co-phase the two antennas (maximum ratio combining)
+  DIV_AUTO_NULL,      // minimise the correlated component (noise cancelling)
   DIV_AUTO_BEST       // use whichever antenna has the better SNR
 };
 

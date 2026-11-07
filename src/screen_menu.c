@@ -24,6 +24,7 @@
 #include "ext.h"
 #include "main.h"
 #include "message.h"
+#include "mox_button.h"
 #include "new_menu.h"
 #include "radio.h"
 
@@ -128,6 +129,11 @@ static void toolbar_rows_cb(GtkWidget *widget, gpointer data) {
   schedule_apply();
 }
 
+static void moxbutton_cb(GtkWidget *widget, gpointer data) {
+  int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  mox_button(val);
+}
+
 void screen_menu(GtkWidget *parent) {
   GtkWidget *label;
   GtkWidget *button;
@@ -222,7 +228,13 @@ void screen_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), button, 1, row, 1, 1);
   g_signal_connect(button, "value-changed", G_CALLBACK(toolbar_rows_cb), NULL);
   row++;
-  col = 1;
+  col = 0;
+  button = gtk_check_button_new_with_label("BigMox Button");
+  gtk_widget_set_name(button, "boldlabel");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(button), open_mox_button);
+  gtk_grid_attach(GTK_GRID(grid), button, col, row, 1, 1);
+  g_signal_connect(button, "toggled", G_CALLBACK(moxbutton_cb), NULL);
+  col++;
   button = gtk_check_button_new_with_label("Stack RX horizontally");
   gtk_widget_set_name(button, "boldlabel");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(button), my_rx_stack_horizontal);

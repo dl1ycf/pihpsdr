@@ -109,11 +109,6 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
     //  to_addr.sin_addr.s_addr = htonl(ntohl(interface_addr.sin_addr.s_addr)
     //          | (ntohl(interface_netmask.sin_addr.s_addr) ^ 0xFFFFFFFF));
     //
-#ifdef __APPLE__
-    //
-    // MacOS fails for broadcasts to the loopback interface(s).
-    // so if this is a loopback, simply use the loopback addr
-    //
     if ((iface->ifa_flags & IFF_LOOPBACK) == IFF_LOOPBACK) {
       //
       // No broadcast on loopback interfaces. Send UDP packet
@@ -121,7 +116,6 @@ static void p1_discover(struct ifaddrs* iface, int discflag) {
       //
       to_addr.sin_addr = interface_addr.sin_addr;
     }
-#endif
     break;
   case 2:
     //
@@ -359,6 +353,13 @@ static gpointer p1_discover_receive_thread(gpointer data) {
     }
     count++;
     t_print("%s: received %d bytes\n", __func__, bytes_read);
+    if (bytes_read < 22) {
+      //
+      // This code will (only) inspect the first 22 bytes of the discovery reply packet.
+      // So make sure at least that many bytes have been received.
+      //
+      continue;
+    }
     //
     // If too many illegal packets are received in sequence, give up
     //

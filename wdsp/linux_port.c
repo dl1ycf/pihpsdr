@@ -352,8 +352,8 @@ void CloseHandle(HANDLE handle) {
 // MALLOC debug facility.
 // In the header file (linux_port.h), one can #define
 //
-//	_aligned_malloc(a,b) ==>  my_malloc(a)
-//	_aligned_free(a)	 ==>  my_free(a)
+//	posix_memalign(a,b) ==>  my_malloc(a)
+//	free(x)             ==>  my_free(a)
 //
 // Then all memory allocations/deallocations will be done via my_malloc() my_free()
 // Note this is thread-safe, since an explicit mutex is used.
@@ -398,7 +398,7 @@ typedef struct _MEM_LIST MEM_LIST;
 
 MEM_LIST malloc_slot[MEM_LIST_SIZE] = {0};
 
-void *my_malloc(size_t size) {
+int my_malloc(void **ptr, size_t alignment, size_t size) {
   int slot;
   void *baseptr, *freeptr;;
   uint8_t *p1, *p2;
@@ -421,9 +421,12 @@ void *my_malloc(size_t size) {
 	_exit(8);
   }
   baseptr=malloc(size+2048);
-  if (baseptr == NULL) { return NULL; }
+  if (baseptr == NULL) {
+    return -1;
+  }
 
   freeptr=baseptr+1024;
+  *ptr = freeptr;
 
   malloc_slot[slot].in_use = 1;
   malloc_slot[slot].baseptr = baseptr;
@@ -448,7 +451,7 @@ void *my_malloc(size_t size) {
   }
   pthread_mutex_unlock(&malloc_mutex);
   //fprintf(stderr,"my_malloc: Allocated Block slot=%d addr=%p\n", slot, freeptr);
-  return freeptr;
+  return 0;
 }
 
 void my_free(void *ptr) {

@@ -153,7 +153,7 @@ enum _header_type_enum {
   CLIENT_SERVER_COMMANDS,
 };
 
-#define CLIENT_SERVER_VERSION 0x01310001 // 32-bit version number
+#define CLIENT_SERVER_VERSION 0x01310002 // 32-bit version number
 #define SPECTRUM_DATA_SIZE 4096          // Maximum width of a panadapter
 #define AUDIO_DATA_SIZE 512              // 512 (mono) samples
 
@@ -851,22 +851,38 @@ typedef struct __attribute__((__packed__)) _diversity_command {
 // header.b1 carries the action byte (DIV_ACTION_*), for the one control
 // that changes no setting and so cannot be seen as a difference.
 //
+// The per-reference settings (Min coherence and window pair) are three
+// parallel tables indexed by DIV_REF_*, DIV_REFS slots each, so a new
+// reference needs no change to the layout. A slot a reference does not use
+// (RADE V1, and every slot not yet given out) is sent as zero and ignored.
+// centre, width and coherence_min are the live values for the selected
+// reference; they are kept beside its slot.
+//
+// spare[] is zero on send and ignored on receive. A flag or enum added
+// later takes a spare byte and is defined so that zero means off / default;
+// anything with a value gets a command of its own (the auto attenuator, the
+// ear split). A receiver never trusts the block: diversity_client_set_settings()
+// starts from the settings in force and runs the result through
+// div_settings_validate(). The radio is the owner, and a version mismatch
+// refuses the connection, so there is no defaulting across versions.
+//
 typedef struct __attribute__((__packed__)) _div_settings_command {
   HEADER header;
+  //
+  mydouble tau, centre, width, coherence_min;
+  mydouble ref_cohmin[DIV_REFS];
+  mydouble ref_centre[DIV_REFS];
+  mydouble ref_width[DIV_REFS];
   //
   uint8_t  mode;
   uint8_t  ref;
   uint8_t  follow_filter;
-  uint8_t  weighting;
   uint8_t  hold;
-  uint8_t  pad[3];
-  //
-  mydouble centre, width;
-  mydouble tau, hang, coherence_min, resolution;
-  mydouble band_centre, band_width;
-  mydouble carrier_centre, carrier_width;
-  mydouble digital_centre, digital_width;
+  uint8_t  spare[4];
 } DIV_SETTINGS_COMMAND;
+
+_Static_assert(sizeof(DIV_SETTINGS_COMMAND) == 244,
+               "DIV_SETTINGS_COMMAND changed size: bump CLIENT_SERVER_VERSION");
 
 //
 // What the loop is measuring. Server to client, on a timer, so the

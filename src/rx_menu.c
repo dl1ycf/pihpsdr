@@ -87,7 +87,7 @@ static void sample_rate_cb(GtkToggleButton *widget, gpointer data) {
   // There are so many different possibilities for sample rates, so
   // we just "scanf" from the combobox text entry
   //
-  if (sscanf(p, "%d", &samplerate) != 1) { return; }
+  if (p == NULL || sscanf(p, "%d", &samplerate) != 1) { return; }
   if (radio_is_remote) {
     if (protocol == NEW_PROTOCOL) {
       // change sample rate for current RX only

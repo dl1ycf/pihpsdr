@@ -25,6 +25,8 @@ john.d.melton@googlemail.com
 
 */
 
+#ifndef _linux_port_h_
+#define _linux_port_h_
 #if defined(linux) || defined(__APPLE__)
 
 
@@ -63,14 +65,23 @@ john.d.melton@googlemail.com
 #define __stdcall
 #define __forceinline
 
-// Activate these for malloc debug
-//#define posix_memalign(x,y) my_malloc(x);
-//#define free(x) my_free(x);
+#if 0
+//
+// With "#if 1", one can switch to a "debug memory allocator" that
+// allocates a "fence" around each section, initializes the fences
+// with some data an checks data integrity upon releasing that memory
+// later.
+//
+// With the advent of wdsp_align.h, it is important that
+// linux.h is included *before* wdsp_align.h
+//
+#define posix_memalign(x,y,z) my_malloc(x,y,z)
+#define free(x) my_free(x)
 
-void *my_malloc(size_t size);
+int my_malloc(void **p, size_t alignment, size_t size);
 void my_free(void *p);
+#endif
 
-#define freopen_s freopen
 #define min(x,y) (x<y?x:y)
 #define max(x,y) (x<y?y:x)
 #define THREAD_PRIORITY_HIGHEST 0
@@ -126,5 +137,6 @@ void SetThreadPriority(HANDLE thread, int priority);
 
 void CloseHandle(HANDLE hObject);
 
+#endif
 #endif
 
