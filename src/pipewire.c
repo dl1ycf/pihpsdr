@@ -434,8 +434,9 @@ int audio_open_output(RECEIVER *rx) {
     .rate = 48000,
     .channels = 2,
   };
-  info.position[0] = SPA_AUDIO_CHANNEL_MONO;
-  info.position[1] = SPA_AUDIO_CHANNEL_MONO + 1;
+  // A normal stereo pair (front left, front right)
+  info.position[0] = SPA_AUDIO_CHANNEL_FL;
+  info.position[1] = SPA_AUDIO_CHANNEL_FR;
   uint8_t buffer[1024];
   struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
   const struct spa_pod *params[1];
