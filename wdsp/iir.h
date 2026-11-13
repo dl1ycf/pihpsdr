@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -109,13 +109,20 @@ extern void setSamplerate_speak (SPEAK a, int rate);
 
 extern void setSize_speak (SPEAK a, int size);
 
-extern __declspec (dllexport) void SetRXABiQuadRun(int channel, int run);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
 
-extern __declspec (dllexport) void SetRXABiQuadFreq(int channel, double freq);
+extern PORT void SetRXABiQuadRun(int channel, int run);
 
-extern __declspec (dllexport) void SetRXABiQuadBandwidth(int channel, double bw);
+extern PORT void SetRXABiQuadFreq(int channel, double freq);
 
-extern __declspec (dllexport) void SetRXABiQuadGain(int channel, double gain);
+extern PORT void SetRXABiQuadBandwidth(int channel, double bw);
+
+extern PORT void SetRXABiQuadGain(int channel, double gain);
 
 #endif
 

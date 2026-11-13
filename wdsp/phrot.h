@@ -88,20 +88,7 @@ extern void setBuffers_phrot   (PHROT a, double* in, double* out);
 extern void setSamplerate_phrot(PHROT a, int rate);
 extern void setSize_phrot      (PHROT a, int size);
 
-__declspec(dllexport) void SetTXAPHROTRun     (int channel, int run);
-__declspec(dllexport) void SetTXAPHROTCorner  (int channel, double frequency);
-__declspec(dllexport) void SetTXAPHROTNstages (int channel, int nstages);
-__declspec(dllexport) void SetTXAPHROTReverse (int channel, int reverse);
-__declspec(dllexport) void SetTXAPHROTAutoMode(int channel, int autoMode);
-__declspec(dllexport) void SetTXAPHROTAutoReset(int channel);
-__declspec(dllexport) void GetTXAPHROTAsymmetry(int channel,
-                                                 double* in_pos,
-                                                 double* in_neg,
-                                                 double* in_ratio,
-                                                 double* out_pos,
-                                                 double* out_neg,
-                                                 double* out_ratio,
-                                                 double* current_fc,
-                                                 double* auto_step);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.]
 
 #endif  // _phrot_h

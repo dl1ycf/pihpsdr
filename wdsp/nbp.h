@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -72,7 +72,7 @@ typedef struct _nbp
 	int hadnotch;
 } nbp, *NBP;
 
-extern NBP create_nbp(int run, int fnfrun, int position, int size, int nc, int mp, double* in, double* out,
+extern NBP create_nbp(int run, int fnfrun, int position, int size, int nc, int mp, double* in, double* out, 
 	double flow, double fhigh, int rate, int wintype, double gain, int autoincr, int maxpb, NOTCHDB* ptraddr);
 
 extern void destroy_nbp (NBP a);
@@ -93,10 +93,17 @@ extern void setNc_nbp (NBP a);
 
 extern void setMp_nbp (NBP a);
 
-__declspec (dllexport) void RXANBPSetFreqs (int channel, double flow, double fhigh);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
 
-__declspec (dllexport) void RXANBPSetNC (int channel, int nc);
+PORT void RXANBPSetFreqs (int channel, double flow, double fhigh);
 
-__declspec (dllexport) void RXANBPSetMP (int channel, int mp);
+PORT void RXANBPSetNC (int channel, int nc);
+
+PORT void RXANBPSetMP (int channel, int mp);
 
 #endif

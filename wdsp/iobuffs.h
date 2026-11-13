@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -32,7 +32,7 @@ typedef struct _iobf
 	int   channel;
 	int   in_size;								// input number of complex samples in a fexchange call
 	int   out_size;								// output number of complex samples in a fexchange call
-	int   r1_outsize;							// number of complex samples taken out of the input-pseudo-ring for processing
+	int   r1_outsize;							// number of complex samples taken out of the input-pseudo-ring for processing 
 	int   r2_insize;							// number of processed complex samples returned into the output-pseudo-ring
 	int   r1_size;								// size of a single maximum sized transfer
 	int   r2_size;								// size of a single maximum sized transfer
@@ -85,6 +85,13 @@ extern void create_iobuffs (int channel);
 extern void destroy_iobuffs (int channel);
 
 extern void flush_iobuffs (int channel);
+
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
 
 PORT	// double, interleaved I/Q
 void fexchange0 (int channel, double* in, double* out, int* error);	

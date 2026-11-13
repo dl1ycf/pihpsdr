@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -73,8 +73,8 @@ typedef struct _fmsq
 	double* impulse;
 } fmsq, *FMSQ;
 
-extern FMSQ create_fmsq (int run, int size, double* insig, double* outsig, double* trigger, int rate, double fc,
-	double* pllpole, double tdelay, double avtau, double longtau, double tup, double tdown, double tail_thresh,
+extern FMSQ create_fmsq (int run, int size, double* insig, double* outsig, double* trigger, int rate, double fc, 
+	double* pllpole, double tdelay, double avtau, double longtau, double tup, double tdown, double tail_thresh, 
 	double unmute_thresh, double min_tail, double max_tail, int nc, int mp);
 
 extern void destroy_fmsq (FMSQ a);
@@ -91,10 +91,19 @@ extern void setSize_fmsq (FMSQ a, int size);
 
 // RXA Properties
 
-extern __declspec (dllexport) void SetRXAFMSQThreshold (int channel, double threshold);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.  Those
+// declared here are called by other modules or by ChannelMaster.]
 
-extern __declspec (dllexport) void SetRXAFMSQNC (int channel, int nc);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
 
-extern __declspec (dllexport) void SetRXAFMSQMP (int channel, int mp);
+extern PORT void SetRXAFMSQNC (int channel, int nc);
+
+extern PORT void SetRXAFMSQMP (int channel, int mp);
 
 #endif

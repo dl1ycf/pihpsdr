@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -64,10 +64,7 @@ extern void setSize_meter (METER a, int size);
 
 // RXA Properties
 
-extern __declspec (dllexport) double GetRXAMeter (int channel, int mt);
-
-// TXA Properties
-
-extern __declspec (dllexport) double GetTXAMeter (int channel, int mt);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.]
 
 #endif

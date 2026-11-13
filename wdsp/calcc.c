@@ -132,10 +132,17 @@ typedef struct _calcc
 	int     s_y_pin_valid;
 	int     s_pin_cycle;
 
-	double* m_prev_sol;
-	double* c_prev_sol;
-	double* s_prev_sol;
-	int     scheck_valid;
+	double* m_prev_sol;		// ACCEPTED solution:  the averaged solution of the last
+	double* c_prev_sol;		//   pass that passed every check, on the solution-check
+	double* s_prev_sol;		//   grid; written only at COMMIT in calc()
+	int     scheck_valid;	// 1 when the accepted solution above is valid
+	double* m_last;			// LAST RAW FIT:  the previous pass's raw fit, on the
+	double* c_last;			//   solution-check grid, used to confirm that a deviation
+	double* s_last;			//   persists (see scheck())
+	int     last_valid;		// 1 when the last raw fit above is valid
+	int     reseed_count;	// times a confirmed change re-seeded the averages (diagnostic)
+	int     hold_count;		// passes whose fit was held out of the averages (diagnostic)
+	double  scheck_dev_typ;	// typical raw-fit deviation from the accepted solution (fit noise)
 
 	struct _ctrl
 	{
@@ -209,80 +216,80 @@ void print_OriginalAndFitSamples(CALCC a);
 
 void print_EQ_Samples(CALCC a);
 
-#define SAMPLE_NBUCKS			  16
-#define SAMPLE_ACCEPT_OVERRANGE	  1
-#define SAMPLE_MIN_X              0.0050
-#define VAR_FORCED_SLOPE          0.001
+#define SAMPLE_NBUCKS			  16           
+#define SAMPLE_ACCEPT_OVERRANGE	  1             
+#define SAMPLE_MIN_X              0.0050         
+#define VAR_FORCED_SLOPE          0.001         
 
-#define DCB_ENABLED				  0
+#define DCB_ENABLED				  0       
 #define DCB_THRESH				  0.05
 #define DCB_CAP					  0.25
-#define DCB_FLOOR				  0.03
+#define DCB_FLOOR				  0.03          
 #define DCB_NBINS				  24
 #define DCB_CONFIRM				  2
 #define DCB_MIN_PER_BIN			  20
 #define DCB_ALPHA				  0.30
 
-#define EQ_ENABLE                 1
-#define EQ_MIN_PTS		          60
-#define EQ_NBINS                  100
-#define EQ_MODE                   0		
-#define EQ_ROBUST_X               0.20	
-#define EQ_XMIN                   0.02	
-#define EQ_MIN_CNT	              3
+#define EQ_ENABLE                 1            
+#define EQ_MIN_PTS		          60            
+#define EQ_NBINS                  100            
+#define EQ_MODE                   0		         
+#define EQ_ROBUST_X               0.20	        
+#define EQ_XMIN                   0.02	       
+#define EQ_MIN_CNT	              3                
 #define EXTP0_PIN_X_LO            0.01
 #define EXTP0_PIN_X_HEAD_MAX      0.20
 #define EXTP0_PIN_WARMUP_CYCLES   5
 #define EXTP0_PIN_WARMUP_ALPHA    0.40
 #define EXTP0_PIN_ALPHA           0.10
 
-#define PS_NF_DEGREE              3
-#define PS_NF_N_CTRL              20
-#define PS_NF_CTRL_MAX            200
-#define PS_NF_ORDERING_MODE       NF_ORDER_BY_X
-#define PS_NF_SPEARMAN_THRESH     0.85
-#define PS_NF_MAG_PREFILT_XMIN    0.04
-#define PS_NF_MAG_PREFILT_YMAX    1.8
-#define PS_NF_PHS_PREFILT_XMIN    0.02
-#define PS_NF_PHS_PREFILT_YMAX    0.0
+#define PS_NF_DEGREE              3                        
+#define PS_NF_N_CTRL              20         
+#define PS_NF_CTRL_MAX            200          
+#define PS_NF_ORDERING_MODE       NF_ORDER_BY_X         
+#define PS_NF_SPEARMAN_THRESH     0.85             
+#define PS_NF_MAG_PREFILT_XMIN    0.04                    
+#define PS_NF_MAG_PREFILT_YMAX    1.8                     
+#define PS_NF_PHS_PREFILT_XMIN    0.02                  
+#define PS_NF_PHS_PREFILT_YMAX    0.0                         
 
-#define PS_NF_UNIFORM_KNOTS       1
-#define PS_NF_PIN_START           1
-#define PS_NF_PIN_START_X         0.0
-#define PS_NF_MAG_PIN_END         1
-#define PS_NF_MAG_END_X           1.0
+#define PS_NF_UNIFORM_KNOTS       1          
+#define PS_NF_PIN_START           1                       
+#define PS_NF_PIN_START_X         0.0          
+#define PS_NF_MAG_PIN_END         1                            
+#define PS_NF_MAG_END_X           1.0           
 #define PS_NF_MAG_END_Y           1.0
-#define PS_NF_PHS_PIN_END         0
-#define PS_NF_XWEIGHT_X0          0.0
-#define PS_NF_XWEIGHT_MIN         0.04
+#define PS_NF_PHS_PIN_END         0                       
+#define PS_NF_XWEIGHT_X0          0.0             
+#define PS_NF_XWEIGHT_MIN         0.04         
 
-#define PS_NF_OUTLIER_ITERS       2
-#define PS_NF_OUTLIER_SIGMA       2.5
-#define PS_NF_OUTLIER_MIN_FRAC    0.5
+#define PS_NF_OUTLIER_ITERS       2                              
+#define PS_NF_OUTLIER_SIGMA       2.5       
+#define PS_NF_OUTLIER_MIN_FRAC    0.5           
 
-#define PS_NF_CV_FRACTION         0.1
-#define PS_NF_CV_OVERFIT_RATIO    1.5
-#define PS_NF_CV_FATAL_RATIO      10.0
+#define PS_NF_CV_FRACTION         0.1                         
+#define PS_NF_CV_OVERFIT_RATIO    1.5                 
+#define PS_NF_CV_FATAL_RATIO      10.0                 
 
-#define PS_NF_LOCAL_OUTLIER_ITERS 0
-#define PS_NF_LOCAL_OUTLIER_SIGMA 4.0
-#define PS_NF_LOCAL_OUTLIER_BANDS 20
+#define PS_NF_LOCAL_OUTLIER_ITERS 0                      
+#define PS_NF_LOCAL_OUTLIER_SIGMA 4.0                      
+#define PS_NF_LOCAL_OUTLIER_BANDS 20                               
 
-#define PS_NF_FOLD_DETECT         1
+#define PS_NF_FOLD_DETECT         1                   
 
-#define PS_NF_ADAPTIVE_ITERS      0
-#define PS_NF_ADAPTIVE_THRESH     2.0
-#define PS_NF_REPARAM_ITERS       2
-#define PS_NF_MIN_PTS_PER_CTRL    20
-#define PS_NF_IRLS_ITERS          2
-#define PS_NF_IRLS_EPSILON        1e-6
+#define PS_NF_ADAPTIVE_ITERS      0                     
+#define PS_NF_ADAPTIVE_THRESH     2.0            
+#define PS_NF_REPARAM_ITERS       2         
+#define PS_NF_MIN_PTS_PER_CTRL    20         
+#define PS_NF_IRLS_ITERS          2                          
+#define PS_NF_IRLS_EPSILON        1e-6                     
 
-#define PS_NF_MAG_YMIN            0.0
+#define PS_NF_MAG_YMIN            0.0                   
 #define PS_NF_MAG_YMAX            0.0
-#define PS_NF_PHS_YMIN           (-1.05)
+#define PS_NF_PHS_YMIN           (-1.05)         
 #define PS_NF_PHS_YMAX           (+1.05)
 
-#define PS_NF_EMA_MAX_CTRL        32
+#define PS_NF_EMA_MAX_CTRL        32          
 
 #define PS_NS_EXTEND_LEFT_MODE    0
 #define PS_NS_EXTEND_BOUND_FRAC   0.05
@@ -291,19 +298,23 @@ void print_EQ_Samples(CALCC a);
 #define PS_NS_EMA_ALPHA_LO        0.30
 #define PS_NS_EMA_X_BND           0.20
 
-#define EXTREMA_CHECK             0.05		
-#define EXTREMA_STEPS             100		
-#define EXTREMA_X_LO              0.05		
-#define EXTREMA_X_HI              0.85		
+#define EXTREMA_CHECK             0.05		   
+#define EXTREMA_STEPS             100		       
+#define EXTREMA_X_LO              0.05		       
+#define EXTREMA_X_HI              0.85		       
 
-#define SCHECK_PTS                40
-#define SCHECK_TOL                0.10
-#define TOP_BUCKET_PTS            100
-#define DEADLOCK_MIN_FRAC         0.06
-#define SC_IDENTITY_PTS           20
-#define SC_IDENTITY_TOL		      0.05
+#define SCHECK_PTS                40             
+#define SCHECK_X_LO               0.05			// solution-check grid runs from here to 1.0 (see scheck())
+#define SCHECK_TOL_LO             0.05			// raw-fit deviation that is not blended in unless confirmed
+#define SCHECK_TOL_HI             0.30			// raw-fit deviation that is rejected unless confirmed
+#define SCHECK_NOISE_MULT         3.0			// attention threshold, in multiples of the typical deviation
+#define SCHECK_NOISE_ALPHA        0.10			// averaging weight for the typical deviation
+#define TOP_BUCKET_PTS            100          
+#define DEADLOCK_MIN_FRAC         0.06           
+#define SC_IDENTITY_PTS           20           
+#define SC_IDENTITY_TOL		      0.05        
 
-#define DISP_PTS                  512
+#define DISP_PTS                  512            
 
 
 typedef struct _cpt
@@ -453,21 +464,21 @@ static void sampleCollectClear(PSCOLLECTION Collect)
 
 typedef struct _eqdensity
 {
-	int* cnt;		
-	double* sx;		
-	double* sm;		
-	double* sc;		
-	double* ss;		
-	int nb_lo;		
-	int lo_max;
+	int* cnt;		         
+	double* sx;		         
+	double* sm;		         
+	double* sc;		         
+	double* ss;		         
+	int nb_lo;		         
+	int lo_max;	              
 	int* offs;
 	int* fill;
-	double* lm;		
+	double* lm;		       
 	double* lc;
 	double* ls;
-	double* med_m;	
-	double* med_c;	
-	double* med_s;	
+	double* med_m;	       
+	double* med_c;	       
+	double* med_s;	       
 } eqdensity, * EQDENSITY;
 
 static EQDENSITY build_eqdensity(CALCC c)
@@ -478,12 +489,12 @@ static EQDENSITY build_eqdensity(CALCC c)
 	a->sm  = (double*)malloc0(EQ_NBINS * sizeof(double));
 	a->sc  = (double*)malloc0(EQ_NBINS * sizeof(double));
 	a->ss  = (double*)malloc0(EQ_NBINS * sizeof(double));
-	if (EQ_MODE == 1)	
+	if (EQ_MODE == 1)	         
 	{
 		a->nb_lo = (int)(EQ_ROBUST_X * (double)EQ_NBINS + 0.5);
-		a->lo_max = c->nsamps;
+		a->lo_max = c->nsamps;        
 	}
-	else
+	else         
 	{
 		a->nb_lo = 0;
 		a->lo_max = 0;
@@ -548,53 +559,53 @@ static int equalize_density(CALCC a)
 	memset(e->sm,  0, nb * sizeof(double));
 	memset(e->sc,  0, nb * sizeof(double));
 	memset(e->ss,  0, nb * sizeof(double));
-	for (int i = 0; i < a->nsamps; i++)		
+	for (int i = 0; i < a->nsamps; i++)		    
 	{
-		if (a->x[i] < EQ_XMIN) continue;
+		if (a->x[i] < EQ_XMIN) continue;            
 		int b = (int)(a->x[i] * nb);		    							
-		if (b < 0)      b = 0;				
+		if (b < 0)      b = 0;				     
 		if (b > nb - 1) b = nb - 1;
-		e->cnt[b]++;						
-		e->sx[b] += a->x[i];				
-		e->sm[b] += a->ym[i];				
-		e->sc[b] += a->yc[i];				
-		e->ss[b] += a->ys[i];				
+		e->cnt[b]++;						       
+		e->sx[b] += a->x[i];				         
+		e->sm[b] += a->ym[i];				         
+		e->sc[b] += a->yc[i];				         
+		e->ss[b] += a->ys[i];				         
 	}
-	if (e->nb_lo > 0)	
+	if (e->nb_lo > 0)	     
 	{
 		e->offs[0] = 0;
 		for (int b = 0; b < e->nb_lo; b++) e->offs[b + 1] = e->offs[b] + e->cnt[b];
 		memset(e->fill, 0, EQ_NBINS * sizeof(int));
-		for (int i = 0; i < a->nsamps; i++)		
+		for (int i = 0; i < a->nsamps; i++)		    
 		{
-			if (a->x[i] < EQ_XMIN) continue;
+			if (a->x[i] < EQ_XMIN) continue;            
 			int b = (int)(a->x[i] * nb);			    	
-			if (b < 0)      b = 0;					
+			if (b < 0)      b = 0;					     
 			if (b > nb - 1) b = nb - 1;
-			if (b < e->nb_lo)						
+			if (b < e->nb_lo)						         
 			{
-				int idx = e->offs[b] + e->fill[b]++;
-				e->lm[idx] = a->ym[i];				
+				int idx = e->offs[b] + e->fill[b]++;          
+				e->lm[idx] = a->ym[i];				          
 				e->lc[idx] = a->yc[i];
 				e->ls[idx] = a->ys[i];
 			}
 		}
-		for (int b = 0; b < e->nb_lo; b++)	
+		for (int b = 0; b < e->nb_lo; b++)	        
 		{
-			if (e->cnt[b] >= 3)				
+			if (e->cnt[b] >= 3)				        
 			{
-				e->med_m[b] = eq_median(e->lm + e->offs[b], e->cnt[b]);	
-				e->med_c[b] = eq_median(e->lc + e->offs[b], e->cnt[b]);	
-				e->med_s[b] = eq_median(e->ls + e->offs[b], e->cnt[b]);	
+				e->med_m[b] = eq_median(e->lm + e->offs[b], e->cnt[b]);	      
+				e->med_c[b] = eq_median(e->lc + e->offs[b], e->cnt[b]);	      
+				e->med_s[b] = eq_median(e->ls + e->offs[b], e->cnt[b]);	      
 			}
 		}
 	}
-	int n = 0;						
-	for (int b = 0; b < nb; b++)	
+	int n = 0;						     
+	for (int b = 0; b < nb; b++)	      
 	{
-		if (e->cnt[b] == 0) continue;			
-		if (e->cnt[b] < EQ_MIN_CNT) continue;	
-		double inv = 1.0 / (double)e->cnt[b];	
+		if (e->cnt[b] == 0) continue;			     
+		if (e->cnt[b] < EQ_MIN_CNT) continue;	       
+		double inv = 1.0 / (double)e->cnt[b];	        
 		a->m_eqd[n].x = a->c_eqd[n].x = a->s_eqd[n].x = e->sx[b] * inv;
 		a->m_eqd[n].y = e->sm[b] * inv;
 		a->c_eqd[n].y = e->sc[b] * inv;
@@ -605,7 +616,7 @@ static int equalize_density(CALCC a)
 			a->c_eqd[n].y = e->med_c[b];
 			a->s_eqd[n].y = e->med_s[b];
 		}
-		n++;	
+		n++;	       
 	}
 	return n;
 }
@@ -630,10 +641,10 @@ static void teardown_extrema(EXTREMA a)
 
 static int count_extrema(EXTREMA e, const NS_Spline* s)
 {
-	const double x_lo = EXTREMA_X_LO;		
-	const double x_hi = EXTREMA_X_HI;		
-	const int n_steps = EXTREMA_STEPS;		
-	const double min_prom = EXTREMA_CHECK;	
+	const double x_lo = EXTREMA_X_LO;		       
+	const double x_hi = EXTREMA_X_HI;		       
+	const int n_steps = EXTREMA_STEPS;		       
+	const double min_prom = EXTREMA_CHECK;	   
 	if (!s || n_steps < 3) return 0;
 	double prev_y = ns_eval_near_clamped(s, x_lo, 1.0);
 	for (int i = 0; i < n_steps; i++)
@@ -643,34 +654,34 @@ static int count_extrema(EXTREMA e, const NS_Spline* s)
 		prev_y = e->ys[i];
 	}
 
-	int    extrema = 0;									
-	int    dir = 0;										
-	double ext = e->ys[0];								
+	int    extrema = 0;									   
+	int    dir = 0;										    
+	double ext = e->ys[0];								   
 
 	for (int i = 1; i < n_steps; i++)
 	{
 		double y = e->ys[i];
-		if (dir == 0)									
+		if (dir == 0)									    
 		{
-			if (y > e->ys[0] + min_prom) dir = 1;		
-			else if (y < e->ys[0] - min_prom) dir = -1;	
+			if (y > e->ys[0] + min_prom) dir = 1;		  
+			else if (y < e->ys[0] - min_prom) dir = -1;	  
 			if (dir >= 0 && y > ext) ext = y;
 			if (dir <= 0 && y < ext) ext = y;
 			continue;
 		}
-		if (dir > 0)									
+		if (dir > 0)									   
 		{
-			if (y > ext) ext = y;						
-			else if (ext - y >= min_prom)				
+			if (y > ext) ext = y;						  
+			else if (ext - y >= min_prom)				  
 			{
 				extrema++;
 				dir = -1; ext = y;
 			}
 		}
-		else											
+		else											   
 		{
-			if (y < ext) ext = y;						
-			else if (y - ext >= min_prom)				
+			if (y < ext) ext = y;						  
+			else if (y - ext >= min_prom)				  
 			{
 				extrema++;
 				dir = 1; ext = y;
@@ -771,33 +782,202 @@ static double detect_clean_boundary(DCBY a, const double* x, const double* y,
 	return result;
 }
 
-static int scheck(CALCC a)
-{
-	int scheck_fail = 0;
+// ------------------------------------------------------------------------------
+// SOLUTION CHECK:  this pass's raw fit against the accepted solution, with
+// confirmation of real changes.
+//
+// [Through 2.11, scheck() compared this pass's AVERAGED solution with the
+// previous pass's averaged solution, tolerance 0.10.  The control-point
+// average moves only 10% of the way toward each new fit, so that comparison
+// saw one tenth of a new fit's deviation:  it tripped only when a fit
+// differed from the average by about 1.0.  A smaller glitch passed, entered
+// the average at 10% weight and was applied, and then took tens of passes to
+// decay.  A larger one was rejected, but its fit had already been blended
+// into the averages, which could make the following good passes fail too
+// and end in LRESET.  A real change of operating conditions migrated at
+// only 10% per pass, or, if large, failed three times and reset with the
+// correction turned off.]
+//
+// Here each pass's RAW fit (before averaging) is compared with:
+//
+//   the ACCEPTED solution:  the averaged solution of the last pass that passed
+//       every check (m_prev_sol, c_prev_sol, s_prev_sol; written only at
+//       COMMIT in calc()).  Its largest deviation is 'dev_acc'.
+//
+//   the LAST RAW FIT:  the previous pass's raw fit (m_last, c_last, s_last).
+//       Its largest deviation is 'dev_last'.
+//
+// Both use SCHECK_PTS points from x = SCHECK_X_LO to 1.0, on all three curves.
+// The region below SCHECK_X_LO is left out because there the curves are
+// governed by the left-end pin rather than by data.
+//
+// A deviation from the accepted solution is either a glitch (one bad pass) or
+// a real change of operating conditions (an amplifier switched in or out, an
+// antenna or load changed, and so on).  Neither this code nor the console can
+// tell which from a single pass.  The difference is that a real change
+// PERSISTS:  after a change, consecutive fits agree with EACH OTHER, but not
+// with the accepted solution.  Fit noise does not do that:  two noisy fits
+// typically differ from each other at least as much as each differs from the
+// (averaged) accepted solution.
+//
+// A deviation needs attention only if it is larger than the fit noise.  The
+// attention threshold 'thr' therefore adapts to the noise:
+//
+//       thr = max(SCHECK_TOL_LO, SCHECK_NOISE_MULT * dev_typ),  at most SCHECK_TOL_HI
+//
+// where dev_typ (scheck_dev_typ) is a running average of dev_acc, i.e. of how far
+// raw fits normally stray from the accepted solution.  With clean feedback,
+// dev_typ is about 0.01 and thr is SCHECK_TOL_LO, so even small changes are
+// noticed; with poor feedback SNR or TX/RX misalignment, thr rises above the
+// fit noise, so that noisy passes are not taken for changes.
+//
+// The four outcomes:
+//
+//   dev_acc <= thr:
+//       return 0:  normal pass; the fit is blended into the averages.
+//
+//   dev_acc > thr, and dev_last <= min(SCHECK_TOL_HI, dev_acc / 2):
+//       return 1:  this fit and the previous one agree with each other, and
+//       both differ from the accepted solution:  conditions have changed.
+//       The averages are re-seeded from this pass's fit and the new solution
+//       is applied directly ('reseed' in calc()).
+//
+//   dev_acc > SCHECK_TOL_HI, not confirmed:
+//       return 2:  this pass is rejected and nothing is committed (except
+//       that the left-end pins are restarted; see PINS).  Reported as
+//       'Solution Deviation', binfo[6] bit 0b0001, as before.  A glitch is
+//       thus kept out entirely; after a real change, the next pass confirms.
+//
+//   thr < dev_acc <= SCHECK_TOL_HI, not confirmed:
+//       return 3:  HOLD.  This pass's fit is kept out of the averages, but the
+//       pass is NOT a failure:  the accepted average is re-applied unchanged
+//       ('hold' in calc()).  A moderate glitch is thus kept out entirely; if
+//       the deviation persists, the next pass confirms it and re-seeds.
+//       [Such passes are not rejected because, with poor feedback SNR or TX/RX
+//       misalignment, fit noise reaches this range now and then; rejecting
+//       those passes would risk three failures in a row, i.e. LRESET.  Holding
+//       them costs nothing but leaving that pass out of the average.]
+//
+// In every case this pass's raw fit becomes the LAST RAW FIT for the next pass.
+// Large deviations that never agree with each other are rejected pass after
+// pass, and three rejections in a row cause LRESET, as before.  While passes
+// are being rejected, iqc keeps the correction it already has.
+//
+// PINS:  each fit is pinned at x = 0 to an AVERAGED pin value (10% per pass
+// after warm-up).  After a real change that average still reflects the old
+// conditions, so the next fits would be pinned to a stale value.  Restarting
+// the pins (y_pin_valid = 0) makes the next pass use its own extrapolated pin
+// value, followed by the usual warm-up (EXTP0_PIN_WARMUP_CYCLES passes at
+// EXTP0_PIN_WARMUP_ALPHA).  This is done on a rejection here and on a reseed
+// at COMMIT.  If a rejection was a glitch, the only cost is that the pins
+// re-warm from fresh data.
+//
+// TOLERANCES:  in simulation, raw fits differ from the accepted solution by
+// about 0.01 in clean conditions; with poor feedback SNR or TX/RX misalignment
+// the median is 0.02 - 0.05 and the largest about 0.10, with a rare 0.30; steady
+// amplifier drift gives about 0.07.  A small load change (more compression and
+// +5 deg AM/PM) gives about 0.07, a moderate one (+10 deg) about 0.15, and a
+// 20 deg change of loop phase about 0.3.  Two tests together separate a change
+// from fit noise:  the deviation must exceed the noise-scaled threshold, and
+// two consecutive fits must agree with each other (dev_last at most half of
+// dev_acc).  dev_typ is updated on every pass that reaches this check except
+// rejected ones.  LRESET sets it to zero; the first check after that starts it
+// at that pass's dev_acc, so the threshold reflects the conditions at once.
+// ------------------------------------------------------------------------------
+
+static void scheck_eval_raw(NS_WS ws, const NF_Curve* nurb, const NF_FitResult* res,
+	double y0, double* out)
+{	// this pass's raw fit, on the solution-check grid, through a temporary spline.
+	// [If the temporary spline cannot be built, ns_eval_near_clamped() returns
+	// 0.0; the pass then deviates, and the real ns_build() in calc() fails too.]
+	NS_Spline* t = ns_build(ws, nurb, res, 0);
+	double py = y0;
+	for (int k = 0; k < SCHECK_PTS; k++)
+	{
+		double xk = SCHECK_X_LO + (1.0 - SCHECK_X_LO) * (double)k / (double)(SCHECK_PTS - 1);
+		out[k] = ns_eval_near_clamped(t, xk, py);
+		py = out[k];
+	}
+	ns_free(t);
+}
+
+static void scheck_store_accepted(CALCC a)
+{	// record this pass's averaged solution as the accepted solution.
+	// Called at COMMIT, when a->m_spline etc. hold the averaged solution.
 	double m_py = a->m_calavg.ys[0];
 	double c_py = a->c_calavg.ys[0];
 	double s_py = a->s_calavg.ys[0];
 	for (int k = 0; k < SCHECK_PTS; k++)
 	{
-		double xk = (double)k / (double)(SCHECK_PTS - 1);
-		double m_y = ns_eval_near_clamped(a->m_spline, xk, m_py);
-		double c_y = ns_eval_near_clamped(a->c_spline, xk, c_py);
-		double s_y = ns_eval_near_clamped(a->s_spline, xk, s_py);
-		m_py = m_y; c_py = c_y; s_py = s_y;
-		if (a->scheck_valid)
-		{
-			if (fabs(m_y - a->m_prev_sol[k]) > SCHECK_TOL) scheck_fail = 1;
-			if (fabs(c_y - a->c_prev_sol[k]) > SCHECK_TOL) scheck_fail = 1;
-			if (fabs(s_y - a->s_prev_sol[k]) > SCHECK_TOL) scheck_fail = 1;
-		}
-		a->m_prev_sol[k] = m_y;
-		a->c_prev_sol[k] = c_y;
-		a->s_prev_sol[k] = s_y;
+		double xk = SCHECK_X_LO + (1.0 - SCHECK_X_LO) * (double)k / (double)(SCHECK_PTS - 1);
+		a->m_prev_sol[k] = m_py = ns_eval_near_clamped(a->m_spline, xk, m_py);
+		a->c_prev_sol[k] = c_py = ns_eval_near_clamped(a->c_spline, xk, c_py);
+		a->s_prev_sol[k] = s_py = ns_eval_near_clamped(a->s_spline, xk, s_py);
 	}
 	a->scheck_valid = 1;
-	if (scheck_fail)
-		dprintf("***** PS: Solution Deviation\n");
-	return scheck_fail;
+}
+
+static int scheck(CALCC a)
+{	// called from calc() BEFORE the control-point averaging, while a->m_nurb,
+	// a->c_nurb, and a->s_nurb still hold this pass's raw fits
+	double m_raw[SCHECK_PTS], c_raw[SCHECK_PTS], s_raw[SCHECK_PTS];
+	double dev_acc  = 0.0;		// largest deviation from the accepted solution
+	double dev_last = 1.0e30;	// largest deviation from the last raw fit (none:  huge)
+	int    result;
+	scheck_eval_raw(a->m_ns_ws, a->m_nurb, a->m_nfres, a->m_calavg.ys[0], m_raw);
+	scheck_eval_raw(a->c_ns_ws, a->c_nurb, a->c_nfres, a->c_calavg.ys[0], c_raw);
+	scheck_eval_raw(a->s_ns_ws, a->s_nurb, a->s_nfres, a->s_calavg.ys[0], s_raw);
+	for (int k = 0; k < SCHECK_PTS; k++)
+	{
+		dev_acc = fmax(dev_acc, fabs(m_raw[k] - a->m_prev_sol[k]));
+		dev_acc = fmax(dev_acc, fabs(c_raw[k] - a->c_prev_sol[k]));
+		dev_acc = fmax(dev_acc, fabs(s_raw[k] - a->s_prev_sol[k]));
+	}
+	if (a->last_valid)
+	{
+		dev_last = 0.0;
+		for (int k = 0; k < SCHECK_PTS; k++)
+		{
+			dev_last = fmax(dev_last, fabs(m_raw[k] - a->m_last[k]));
+			dev_last = fmax(dev_last, fabs(c_raw[k] - a->c_last[k]));
+			dev_last = fmax(dev_last, fabs(s_raw[k] - a->s_last[k]));
+		}
+	}
+	double typ = (a->scheck_dev_typ == 0.0) ? dev_acc : a->scheck_dev_typ;	// first pass:  start here
+	double thr = fmin(SCHECK_TOL_HI, fmax(SCHECK_TOL_LO, SCHECK_NOISE_MULT * typ));
+	if (dev_acc <= thr)
+		result = 0;										// normal pass
+	else if (dev_last <= fmin(SCHECK_TOL_HI, 0.5 * dev_acc))
+	{
+		dprintf("***** PS: Solution Deviation %.3f confirmed, new solution adopted\n", dev_acc);
+		result = 1;										// confirmed change:  re-seed
+	}
+	else if (dev_acc > SCHECK_TOL_HI)
+	{
+		a->m_y_pin_valid = 0;							// restart the pins (see PINS above)
+		a->c_y_pin_valid = 0;
+		a->s_y_pin_valid = 0;
+		dprintf("***** PS: Solution Deviation %.3f\n", dev_acc);
+		result = 2;										// rejected
+	}
+	else
+	{
+		a->hold_count++;
+		result = 3;										// moderate, not (yet) confirmed:  hold
+	}
+	if (result != 2)									// track the typical deviation (fit noise);
+	{													//   the first pass after a reset starts it
+		if (a->scheck_dev_typ == 0.0)
+			a->scheck_dev_typ = dev_acc;
+		else
+			a->scheck_dev_typ = SCHECK_NOISE_ALPHA * dev_acc
+			                  + (1.0 - SCHECK_NOISE_ALPHA) * a->scheck_dev_typ;
+	}
+	memcpy(a->m_last, m_raw, SCHECK_PTS * sizeof(double));	// this fit is the next pass's
+	memcpy(a->c_last, c_raw, SCHECK_PTS * sizeof(double));	//   'last raw fit'
+	memcpy(a->s_last, s_raw, SCHECK_PTS * sizeof(double));
+	a->last_valid = 1;
+	return result;
 }
 
 static int sin_cos_identity_check(CALCC a)
@@ -816,7 +996,7 @@ static int sin_cos_identity_check(CALCC a)
 		prev_s = s; prev_c = c;
 	}
 	if (max_identity_err > SC_IDENTITY_TOL) error = 1;
-	if (error)
+	if (error) 
 		dprintf("***** PS: sin²+cos² deviates by %.3f\n", max_identity_err);
 	return error;
 }
@@ -903,9 +1083,9 @@ static void size_calcc (CALCC a)
 	a->s_dcb = build_dcb(a->nsamps);
 	a->dcb_phasor_mag  = (double*)malloc0(a->nsamps * sizeof(double));
 
-	a->m_anchor_ema   = 0.04;
-	a->c_anchor_ema   = 0.04;
-	a->s_anchor_ema   = 0.04;
+	a->m_anchor_ema   = 0.04;        
+	a->c_anchor_ema   = 0.04;        
+	a->s_anchor_ema   = 0.04;        
 	a->m_anchor_valid = 0;
 	a->c_anchor_valid = 0;
 	a->s_anchor_valid = 0;
@@ -945,6 +1125,13 @@ static void size_calcc (CALCC a)
 	a->c_prev_sol  = (double*)malloc0(SCHECK_PTS * sizeof(double));
 	a->s_prev_sol  = (double*)malloc0(SCHECK_PTS * sizeof(double));
 	a->scheck_valid = 0;
+	a->m_last      = (double*)malloc0(SCHECK_PTS * sizeof(double));
+	a->c_last      = (double*)malloc0(SCHECK_PTS * sizeof(double));
+	a->s_last      = (double*)malloc0(SCHECK_PTS * sizeof(double));
+	a->last_valid  = 0;
+	a->reseed_count = 0;
+	a->hold_count   = 0;
+	a->scheck_dev_typ = 0.0;
 }
 
 static void desize_calcc (CALCC a)
@@ -1006,6 +1193,9 @@ static void desize_calcc (CALCC a)
 	_aligned_free(a->m_prev_sol); a->m_prev_sol = NULL;
 	_aligned_free(a->c_prev_sol); a->c_prev_sol = NULL;
 	_aligned_free(a->s_prev_sol); a->s_prev_sol = NULL;
+	_aligned_free(a->m_last); a->m_last = NULL;
+	_aligned_free(a->c_last); a->c_last = NULL;
+	_aligned_free(a->s_last); a->s_last = NULL;
 
 	_aligned_free(a->s_config);
 	_aligned_free(a->c_config);
@@ -1254,9 +1444,9 @@ static void calc (CALCC a)
 	a->m_config->start_pt            = (NF_Point2){ PS_NF_PIN_START_X, a->m_y_pin_try };
 	a->m_config->pin_end             = PS_NF_MAG_PIN_END;
 	a->m_config->end_pt              = (NF_Point2){ PS_NF_MAG_END_X, PS_NF_MAG_END_Y };
-	a->m_config->pin_end_horiz       = a->m_fold_prev;
-	a->m_config->pin_end_flat        = a->m_fold_prev;
-	a->m_config->pin_end_flat2       = a->m_fold_prev;
+	a->m_config->pin_end_horiz       = a->m_fold_prev;        
+	a->m_config->pin_end_flat        = a->m_fold_prev;        
+	a->m_config->pin_end_flat2       = a->m_fold_prev;        
 	a->m_config->x_weight_x0         = PS_NF_XWEIGHT_X0;
 	a->m_config->x_weight_min        = PS_NF_XWEIGHT_MIN;
 	a->m_config->outlier_iters       = PS_NF_OUTLIER_ITERS;
@@ -1449,125 +1639,193 @@ static void calc (CALCC a)
 		goto cleanup;
 	}
 
+	// ------------------------------------------------------------------------------
+	// COLD-START GUARDS
+	//
+	// On the first pass after a reset (a control-point average not yet valid),
+	// this pass's fit becomes the seed of the average, and every later pass is
+	// blended into it at only 10% per pass.  A bad seed therefore lingers for
+	// many passes.  The most likely way for a first pass to go wrong is at the
+	// left end of a curve, where the data are sparse and the curve is pinned to
+	// a value extrapolated to x = 0.  So, before anything is seeded, the left
+	// end of each fit is checked at x = 0.04:
+	//
+	//   magnitude:  must not exceed COLD_START_LEFT_MAX (1.8).  [The magnitude
+	//               pre-filter already discards data with ym > 1.8, so a fit
+	//               above that value at x = 0.04 is not supported by data.]
+	//   cos, sin:   |value| must not exceed 1.1.  [The phase fits are also range
+	//               checked inside the fitter (+/-1.05 plus a margin), so these
+	//               two will rarely trip; they are kept as a backstop.]
+	//
+	// HISTORY:  through 2.11 these guards were inside the control-point
+	// averaging blocks below and evaluated a->m_spline, a->c_spline and
+	// a->s_spline.  Those pointers are always NULL when calc() reaches that
+	// point:  this pass's splines are not built until after the averaging, a
+	// failed pass frees them in 'cleanup', a good pass hands them to iqc in
+	// doPSCorrChange() and sets them to NULL, and LRESET frees them.
+	// ns_eval_near_clamped() returns 0.0 for a NULL spline, so the guards could
+	// never trip.  (Same in 2.00.)
+	//
+	// Here the curves are evaluated through TEMPORARY splines built from this
+	// pass's fits.  On a cold pass the fits ARE what the averages will be
+	// seeded with (the seeding copies the fit's control points unchanged), so
+	// this is exactly the curve the original guards were meant to test.
+	//
+	// The guards reject before anything is seeded:  the pin averages and the
+	// three control-point averages are written only at COMMIT, after every
+	// check has passed.  (Inside the averaging blocks, where the guards used to
+	// be, a cos or sin rejection would have come after the magnitude average
+	// was already seeded, and after the pins were committed.)
+	//
+	// All three are evaluated before rejecting, so that every failing curve
+	// gets its bit:  binfo[1], binfo[2], binfo[3] bit 0b00100000, as before.
+	// A rejection counts as a failed calibration like any other (three in a
+	// row cause LRESET).  The temporary splines are freed immediately.  If a
+	// temporary spline cannot be built, ns_eval_near_clamped() returns 0.0 and
+	// the guard passes; the real ns_build() below then fails and reports the
+	// error in the usual way (binfo[x] bit 0b0100).
+	// ------------------------------------------------------------------------------
 	{
-		a->m_y_pin_ema   = a->m_y_pin_try;
-		a->m_y_pin_valid = 1;
-		a->c_y_pin_ema   = a->c_y_pin_try;
-		a->c_y_pin_valid = 1;
-		a->s_y_pin_ema   = a->s_y_pin_try;
-		a->s_y_pin_valid = 1;
+		const double COLD_START_LEFT_MAX = 1.8;		// magnitude limit at x = 0.04
+		const double COLD_START_COS_MAX  = 1.1;		// |cos| limit at x = 0.04
+		const double COLD_START_SIN_MAX  = 1.1;		// |sin| limit at x = 0.04
+		NS_Spline* cold;							// temporary spline from this pass's fit
+		double left_val;							// fit value at x = 0.04
+		if (!a->m_ctrl_ema_valid)					// magnitude average not yet seeded
+		{
+			cold = ns_build(a->m_ns_ws, a->m_nurb, a->m_nfres, 0);
+			left_val = ns_eval_near_clamped(cold, 0.04, a->m_calavg.ys[0]);
+			ns_free(cold);
+			if (left_val > COLD_START_LEFT_MAX)
+				a->binfo[1] |= 0b00100000;
+		}
+		if (!a->c_ctrl_ema_valid)					// cos average not yet seeded
+		{
+			cold = ns_build(a->c_ns_ws, a->c_nurb, a->c_nfres, 0);
+			left_val = ns_eval_near_clamped(cold, 0.04, a->c_calavg.ys[0]);
+			ns_free(cold);
+			if (fabs(left_val) > COLD_START_COS_MAX)
+				a->binfo[2] |= 0b00100000;
+		}
+		if (!a->s_ctrl_ema_valid)					// sin average not yet seeded
+		{
+			cold = ns_build(a->s_ns_ws, a->s_nurb, a->s_nfres, 0);
+			left_val = ns_eval_near_clamped(cold, 0.04, a->s_calavg.ys[0]);
+			ns_free(cold);
+			if (fabs(left_val) > COLD_START_SIN_MAX)
+				a->binfo[3] |= 0b00100000;
+		}
+		// binfo[1..3] are known to be zero on entry here (any earlier failure
+		// has already jumped to 'cleanup'), so this tests only the bits set above
+		if ((a->binfo[1] | a->binfo[2] | a->binfo[3]) & 0b00100000)
+			goto cleanup;
 	}
 
+	// ------------------------------------------------------------------------------
+	// SOLUTION CHECK on this pass's raw fits (see scheck()).  Done only when the
+	// averages are established and an accepted solution exists.  On a cold pass
+	// there is nothing to compare with; the cold-start guards above apply.
+	//
+	// [The pin averages used to be committed here, before any of the checks
+	// below.  They are now committed at COMMIT, with the control-point averages.]
+	// ------------------------------------------------------------------------------
+	int reseed = 0;		// 1:  confirmed change; re-seed the averages from this pass's fit
+	int hold   = 0;		// 1:  unconfirmed moderate deviation; keep this pass's fit out
+	if (a->m_ctrl_ema_valid && a->c_ctrl_ema_valid && a->s_ctrl_ema_valid && a->scheck_valid)
+	{
+		int sc = scheck(a);
+		if (sc == 2)
+		{
+			a->binfo[6] |= 0b0001;		// 'Solution Deviation', as before
+			goto cleanup;
+		}
+		reseed = (sc == 1);
+		hold   = (sc == 3);
+	}
+
+	// ------------------------------------------------------------------------------
+	// CONTROL-POINT AVERAGES
+	//
+	// The averaged control points are formed here, in the fit's own control-
+	// point arrays (a->m_nurb etc.), which the splines below are built from.  The
+	// stored averages (a->m_ctrl_ema_x/y etc.) are NOT changed here; they are
+	// written only at COMMIT, after every check has passed, so a rejected pass
+	// never enters the averages.  [Through 2.11 they were written here, before
+	// the identity check and scheck(), so a rejected fit still carried 10% weight
+	// into the following passes.]
+	//
+	//   normal pass:  average = alpha * fit + (1 - alpha) * stored average
+	//                 (the same arithmetic as before)
+	//   hold pass:    the stored average, unchanged (this pass's fit is not used)
+	//   cold pass:    this pass's fit, unchanged; it seeds the averages at COMMIT
+	//   reseed pass:  this pass's fit, unchanged; it re-seeds the averages at COMMIT
+	// ------------------------------------------------------------------------------
 	{
 		const double alpha = 0.10;
 		int nc = a->m_nurb->n_ctrl;
-		if (!a->m_ctrl_ema_valid)
+		if (hold)
 		{
-			const double COLD_START_LEFT_MAX = 1.8;
-			double left_val = ns_eval_near_clamped(a->m_spline, 0.04,
-				a->m_calavg.ys[0]);
-			if (left_val > COLD_START_LEFT_MAX)
-			{
-				a->binfo[1] |= 0b00100000;
-				goto cleanup;
-			}
 			for (int k = 0; k < nc; k++)
 			{
-				a->m_ctrl_ema_x[k] = a->m_nurb->ctrl_wx[k];
-				a->m_ctrl_ema_y[k] = a->m_nurb->ctrl_wy[k];
+				a->m_nurb->ctrl_wx[k] = a->m_ctrl_ema_x[k];
+				a->m_nurb->ctrl_wy[k] = a->m_ctrl_ema_y[k];
 			}
-			a->m_ctrl_n = nc;
-			a->m_ctrl_ema_valid = 1;
 		}
-		else
+		else if (a->m_ctrl_ema_valid && !reseed)
 		{
 			for (int k = 0; k < nc; k++)
 			{
-				a->m_ctrl_ema_x[k] = alpha * a->m_nurb->ctrl_wx[k]
+				a->m_nurb->ctrl_wx[k] = alpha * a->m_nurb->ctrl_wx[k]
 					+ (1.0 - alpha) * a->m_ctrl_ema_x[k];
-				a->m_ctrl_ema_y[k] = alpha * a->m_nurb->ctrl_wy[k]
+				a->m_nurb->ctrl_wy[k] = alpha * a->m_nurb->ctrl_wy[k]
 					+ (1.0 - alpha) * a->m_ctrl_ema_y[k];
 			}
-		}
-		for (int k = 0; k < nc; k++)
-		{
-			a->m_nurb->ctrl_wx[k] = a->m_ctrl_ema_x[k];
-			a->m_nurb->ctrl_wy[k] = a->m_ctrl_ema_y[k];
 		}
 	}
 
 	{
 		const double alpha = 0.10;
 		int nc = a->c_nurb->n_ctrl;
-		if (!a->c_ctrl_ema_valid)
+		if (hold)
 		{
-			const double COLD_START_COS_MAX = 1.1;
-			double c_left_val = ns_eval_near_clamped(a->c_spline, 0.04,
-				a->c_calavg.ys[0]);
-			if (fabs(c_left_val) > COLD_START_COS_MAX)
-			{
-				a->binfo[2] |= 0b00100000;
-				goto cleanup;
-			}
 			for (int k = 0; k < nc; k++)
 			{
-				a->c_ctrl_ema_x[k] = a->c_nurb->ctrl_wx[k];
-				a->c_ctrl_ema_y[k] = a->c_nurb->ctrl_wy[k];
+				a->c_nurb->ctrl_wx[k] = a->c_ctrl_ema_x[k];
+				a->c_nurb->ctrl_wy[k] = a->c_ctrl_ema_y[k];
 			}
-			a->c_ctrl_n = nc;
-			a->c_ctrl_ema_valid = 1;
 		}
-		else
+		else if (a->c_ctrl_ema_valid && !reseed)
 		{
 			for (int k = 0; k < nc; k++)
 			{
-				a->c_ctrl_ema_x[k] = alpha * a->c_nurb->ctrl_wx[k]
+				a->c_nurb->ctrl_wx[k] = alpha * a->c_nurb->ctrl_wx[k]
 					+ (1.0 - alpha) * a->c_ctrl_ema_x[k];
-				a->c_ctrl_ema_y[k] = alpha * a->c_nurb->ctrl_wy[k]
+				a->c_nurb->ctrl_wy[k] = alpha * a->c_nurb->ctrl_wy[k]
 					+ (1.0 - alpha) * a->c_ctrl_ema_y[k];
 			}
-		}
-		for (int k = 0; k < nc; k++)
-		{
-			a->c_nurb->ctrl_wx[k] = a->c_ctrl_ema_x[k];
-			a->c_nurb->ctrl_wy[k] = a->c_ctrl_ema_y[k];
 		}
 	}
 
 	{
 		const double alpha = 0.10;
 		int nc = a->s_nurb->n_ctrl;
-		if (!a->s_ctrl_ema_valid)
-		{
-			const double COLD_START_SIN_MAX = 1.1;
-			double s_left_val = ns_eval_near_clamped(a->s_spline, 0.04,
-			                        a->s_calavg.ys[0]);
-			if (fabs(s_left_val) > COLD_START_SIN_MAX)
-			{
-				a->binfo[3] |= 0b00100000;
-				goto cleanup;
-			}
-			for (int k = 0; k < nc; k++)
-			{
-				a->s_ctrl_ema_x[k] = a->s_nurb->ctrl_wx[k];
-				a->s_ctrl_ema_y[k] = a->s_nurb->ctrl_wy[k];
-			}
-			a->s_ctrl_n         = nc;
-			a->s_ctrl_ema_valid = 1;
-		} else
+		if (hold)
 		{
 			for (int k = 0; k < nc; k++)
 			{
-				a->s_ctrl_ema_x[k] = alpha * a->s_nurb->ctrl_wx[k]
-				                   + (1.0 - alpha) * a->s_ctrl_ema_x[k];
-				a->s_ctrl_ema_y[k] = alpha * a->s_nurb->ctrl_wy[k]
-				                   + (1.0 - alpha) * a->s_ctrl_ema_y[k];
+				a->s_nurb->ctrl_wx[k] = a->s_ctrl_ema_x[k];
+				a->s_nurb->ctrl_wy[k] = a->s_ctrl_ema_y[k];
 			}
 		}
-		for (int k = 0; k < nc; k++)
+		else if (a->s_ctrl_ema_valid && !reseed)
 		{
-			a->s_nurb->ctrl_wx[k] = a->s_ctrl_ema_x[k];
-			a->s_nurb->ctrl_wy[k] = a->s_ctrl_ema_y[k];
+			for (int k = 0; k < nc; k++)
+			{
+				a->s_nurb->ctrl_wx[k] = alpha * a->s_nurb->ctrl_wx[k]
+					+ (1.0 - alpha) * a->s_ctrl_ema_x[k];
+				a->s_nurb->ctrl_wy[k] = alpha * a->s_nurb->ctrl_wy[k]
+					+ (1.0 - alpha) * a->s_ctrl_ema_y[k];
+			}
 		}
 	}
 
@@ -1654,10 +1912,66 @@ static void calc (CALCC a)
 		goto cleanup;
 	}
 
-	if (scheck(a))
+	// ------------------------------------------------------------------------------
+	// COMMIT:  every check has passed.  Store the averaged control points and the
+	// pins, and record this solution as the accepted solution for the next pass's
+	// scheck().
+	//
+	// On a hold pass there is nothing new to store:  the averages, the pins, and
+	// the accepted solution are left as they are.
+	//
+	// On a reseed pass, the curve averages that iqc uses are restarted as well
+	// (count = 0 makes curve_ema_update() take the new solution directly), so the
+	// curves from the old conditions are not blended into the applied correction;
+	// and the pins are restarted, so they re-warm under the new conditions.
+	// ------------------------------------------------------------------------------
+	if (!hold)
 	{
-		a->binfo[6] |= 0b0001;
-		goto cleanup;
+		int nc = a->m_nurb->n_ctrl;
+		for (int k = 0; k < nc; k++)
+		{
+			a->m_ctrl_ema_x[k] = a->m_nurb->ctrl_wx[k];
+			a->m_ctrl_ema_y[k] = a->m_nurb->ctrl_wy[k];
+		}
+		a->m_ctrl_n = nc;
+		a->m_ctrl_ema_valid = 1;
+
+		nc = a->c_nurb->n_ctrl;
+		for (int k = 0; k < nc; k++)
+		{
+			a->c_ctrl_ema_x[k] = a->c_nurb->ctrl_wx[k];
+			a->c_ctrl_ema_y[k] = a->c_nurb->ctrl_wy[k];
+		}
+		a->c_ctrl_n = nc;
+		a->c_ctrl_ema_valid = 1;
+
+		nc = a->s_nurb->n_ctrl;
+		for (int k = 0; k < nc; k++)
+		{
+			a->s_ctrl_ema_x[k] = a->s_nurb->ctrl_wx[k];
+			a->s_ctrl_ema_y[k] = a->s_nurb->ctrl_wy[k];
+		}
+		a->s_ctrl_n = nc;
+		a->s_ctrl_ema_valid = 1;
+
+		a->m_y_pin_ema   = a->m_y_pin_try;
+		a->m_y_pin_valid = 1;
+		a->c_y_pin_ema   = a->c_y_pin_try;
+		a->c_y_pin_valid = 1;
+		a->s_y_pin_ema   = a->s_y_pin_try;
+		a->s_y_pin_valid = 1;
+
+		if (reseed)
+		{
+			a->m_calavg.count = 0;					// iqc's curves take the new solution
+			a->c_calavg.count = 0;					//   directly, not blended with the old
+			a->s_calavg.count = 0;
+			a->m_y_pin_valid = 0;					// restart the pins (see PINS in scheck())
+			a->c_y_pin_valid = 0;
+			a->s_y_pin_valid = 0;
+			a->reseed_count++;
+		}
+		scheck_store_accepted(a);
 	}
 
 	curve_ema_update(&a->m_calavg, a->m_spline);
@@ -1744,6 +2058,7 @@ void __cdecl doPSCorrChange(void* arg)
 {
 	CALCC a = (CALCC)arg;
 	uint32_t num_sems = 5;
+	flush_to_zero_on ();		// [this thread runs calc ();  denormal results become zero here;  see wdsp_platform.h]
 	while (1)
 	{
 		uint32_t waitstat = WaitForMultipleObjects(num_sems, a->SemsPSCorr, FALSE, INFINITE);
@@ -1913,6 +2228,8 @@ void pscc (int channel, int size, double* tx, double* rx)
 				a->c_y_pin_valid = 0; a->c_y_pin_ema = 1.0; a->c_pin_cycle = 0;
 				a->s_y_pin_valid = 0; a->s_y_pin_ema = 0.0; a->s_pin_cycle = 0;
 				a->scheck_valid = 0;
+				a->last_valid = 0;
+				a->scheck_dev_typ = 0.0;
 				a->ctrl.reset = 0;
 				if (!a->ctrl.turnon)
 					if (InterlockedBitTestAndReset(&a->ctrl.running, 0))

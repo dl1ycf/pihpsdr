@@ -70,28 +70,7 @@ extern void setNNRbypassRun(int channel);
 
 // RXA Properties
 
-extern __declspec (dllexport) void SetRXANNRRun (int channel, int setit);
-
-extern __declspec (dllexport) void SetRXANNRPosition (int channel, int position);
-
-extern __declspec (dllexport) void SetRXANNRMaskFloor (int channel, double floor_db);
-
-extern __declspec (dllexport) void SetRXANNRcmode (int channel, int cmode);
-
-extern __declspec (dllexport) void SetRXANNRTestMode (int channel, int mode);
-
-extern __declspec (dllexport) void SetRXANNRAlpha (int channel, double alpha);
-
-extern __declspec (dllexport) void SetRXANNRAlphaKnee (int channel, double knee_db);
-
-extern __declspec (dllexport) void SetRXANNRTau (int channel, double tau);
-
-extern __declspec (dllexport) void SetRXANNRMaxGain (int channel, double gmax_db);
-
-extern __declspec (dllexport) void SetRXANNRSmooth (int channel, double att_ms, double rel_ms);
-
-extern __declspec (dllexport) int SetRXANNRModel (int channel, int slot);
-
-extern __declspec (dllexport) int GetRXANNRModel (int channel);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.]
 
 #endif

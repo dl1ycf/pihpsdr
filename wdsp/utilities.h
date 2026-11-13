@@ -24,7 +24,14 @@ warren@wpratt.com
 
 */
 
-__declspec (dllexport) void *malloc0 (int size);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
+
+PORT void *malloc0 (int size);
 
 extern void print_impulse (const char* filename, int N, double* impulse, int rtype, int pr_mode);
 
@@ -44,7 +51,9 @@ extern void print_window_gain (const char* filename, int wintype, double inv_coh
 
 extern void print_deviation (const char* filename, double dpmax, double rate);
 
-__declspec (dllexport) void print_buffer_parameters (const char* filename, int channel);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.  Those
+// declared here are called by other modules or by ChannelMaster.]
 
 extern void WriteAudioWDSP(double seconds, int rate, int size, double* indata, int mode, double gain);
 
@@ -71,21 +80,9 @@ typedef struct _bfcu
 	int i_upper_corner;
 }bfcu, * BFCU;
 
-extern __declspec (dllexport) int create_bfcu(int id, int min_size, int max_size, double rate, double corner, int points);
-
-extern __declspec (dllexport) void destroy_bfcu(int id);
-
-extern __declspec (dllexport) void getFilterCorners(int id, int* lower_index, int* upper_index);
-
-extern __declspec (dllexport) void getFilterCurve(int id, int size, int w_type, int index_low, int index_high, double* segment);
-
 extern void test_bfcu();
 
-#if !defined(linux) && !defined(__APPLE__)
 extern void dprintf(const char* format, ...);
-#else
-#define dprintf printf
-#endif
 
 extern char* uint32_to_bitstr(uint32_t n, char* buf);
 

@@ -129,6 +129,9 @@ void xamd (AMD a)
 		{
 
 			case 0:		//AM Demodulator
+            default:    // [any other 'mode' gets the envelope demodulator.  Through
+                        // 2.11 there was no default, and an unrecognized 'mode'
+                        // left out_buff unwritten.]
 				{
 					for (i = 0; i < a->buff_size; i++)
 					{
@@ -194,6 +197,10 @@ void xamd (AMD a)
 						switch(a->sbmode)
 						{
 						case 0:	//both sidebands
+                        default:    // [any other 'sbmode' gets both sidebands.
+                                    // Through 2.11 there was no default, and an
+                                    // unrecognized 'sbmode' left 'audio'
+                                    // uninitialized.]
 							{
 								audio = corr[0];
 								break;
@@ -267,9 +274,9 @@ SetRXAAMDRun(int channel, int run)
 	AMD a = rxa[channel].amd.p;
 	if (a->run != run)
 	{
-		RXAbp1Check (channel, run, rxa[channel].snba.p->run, rxa[channel].emnr.p->run,
-			getRun_nnr(rxa[channel].nnr.p), rxa[channel].anf.p->run, rxa[channel].anr.p->run,
-			rxa[channel].sbnr.p->run); // NR4
+		RXAbp1Check (channel, run, rxa[channel].snba.p->run, rxa[channel].emnr.p->run,               // NR4
+			getRun_nnr(rxa[channel].nnr.p), rxa[channel].anf.p->run, rxa[channel].anr.p->run,        // NR4
+			rxa[channel].sbnr.p->run);                                                               // NR4
 		EnterCriticalSection (&ch[channel].csDSP);
 		a->run = run;
 		RXAbp1Set (channel);

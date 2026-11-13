@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -35,7 +35,7 @@ warren@wpratt.com
 
 typedef struct _emphp* EMPHP;
 
-extern EMPHP create_emphp (int run, int position, int size, int nc, int mp,
+extern EMPHP create_emphp (int run, int position, int size, int nc, int mp, 
 	double* in, double* out, int rate, int ctype, double f_low, double f_high);
 
 extern void destroy_emphp (EMPHP a);
@@ -50,11 +50,18 @@ extern void setSamplerate_emphp (EMPHP a, int rate);
 
 extern void setSize_emphp (EMPHP a, int size);
 
-__declspec (dllexport) void SetTXAFMEmphMP (int channel, int mp);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
 
-__declspec (dllexport) void SetTXAFMEmphNC (int channel, int nc);
+PORT void SetTXAFMEmphMP (int channel, int mp);
 
-__declspec (dllexport) void SetTXAFMPreEmphFreqs(int channel, double low, double high);
+PORT void SetTXAFMEmphNC (int channel, int nc);
+
+PORT void SetTXAFMPreEmphFreqs(int channel, double low, double high);
 
 extern void SetTXAFMPreEmphRun(int channel, int run);
 

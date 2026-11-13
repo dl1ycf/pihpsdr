@@ -42,7 +42,6 @@ void *malloc0 (int size)
 	return p;
 }
 
-#if !defined(linux) && !defined(__APPLE__)
 // Exported calls
 
 PORT void
@@ -58,7 +57,6 @@ DestroyCriticalSection (LPCRITICAL_SECTION cs_ptr)
 {	// used by VAC
 	free ((char *)cs_ptr);
 }
-#endif
 
 
 /********************************************************************************************************
@@ -584,8 +582,6 @@ void test_bfcu()
 *																										*
 ********************************************************************************************************/
 
-#if !defined(linux) && !defined(__APPLE__)
-
 // Prints to the Visual Studio Debug Window; works like printf(...)
 #include <stdarg.h>
 void dprintf(const char* format, ...)
@@ -599,7 +595,6 @@ void dprintf(const char* format, ...)
 	// Send to Visual Studio Output window
 	OutputDebugStringA(buffer);
 }
-#endif
 // Usage example:
 // dprintf("Error Code: %d at %s\n", 404, "main.cpp");
 

@@ -56,7 +56,6 @@ warren@pratt.one
 #define _wdsp_align_h
 
 #include <stdlib.h>
-#include "linux_port.h"
 
 #if defined(_WIN32) || defined(_WIN64)
 

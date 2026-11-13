@@ -32,7 +32,6 @@ warren@wpratt.com
 #define MAX_TAU_ATTACK		(0.01)
 #define RB_SIZE				(int)(MAX_SAMPLE_RATE * MAX_N_TAU * MAX_TAU_ATTACK + 1)
 
-#define AGCPORT				__declspec(dllexport)
 
 typedef struct _wcpagc
 {
@@ -141,53 +140,8 @@ extern void setSize_wcpagc (WCPAGC a, int size);
 
 // RXA Properties
 
-extern AGCPORT void SetRXAAGCMode (int channel, int mode);
-
-extern AGCPORT void SetRXAAGCFixed (int channel, double fixed_agc);
-
-extern AGCPORT void SetRXAAGCAttack (int channel, int attack);
-
-extern AGCPORT void SetRXAAGCDecay (int channel, int decay);
-
-extern AGCPORT void SetRXAAGCHang (int channel, int hang);
-
-extern AGCPORT void GetRXAAGCHangLevel(int channel, double *hangLevel);
-
-extern AGCPORT void SetRXAAGCHangLevel(int channel, double hangLevel);
-
-extern AGCPORT void GetRXAAGCHangThreshold(int channel, int *hangthreshold);
-
-extern AGCPORT void SetRXAAGCHangThreshold (int channel, int hangthreshold);
-
-extern AGCPORT void GetRXAAGCTop(int channel, double *max_agc);
-
-extern AGCPORT void SetRXAAGCTop (int channel, double max_agc);
-
-extern AGCPORT void SetRXAAGCSlope (int channel, int slope);
-
-extern AGCPORT void SetRXAAGCThresh(int channel, double thresh, double size, double rate);
-
-extern AGCPORT void GetRXAAGCThresh(int channel, double *thresh, double size, double rate);
-
-// TXA Properties
-
-extern AGCPORT void SetTXAALCSt (int channel, int state);
-
-extern AGCPORT void SetTXAALCAttack (int channel, int attack);
-
-extern AGCPORT void SetTXAALCDecay (int channel, int decay);
-
-extern AGCPORT void SetTXAALCHang (int channel, int hang);
-
-extern AGCPORT void SetTXALevelerSt (int channel, int state);
-
-extern AGCPORT void SetTXALevelerAttack (int channel, int attack);
-
-extern AGCPORT void SetTXALevelerDecay (int channel, int decay);
-
-extern AGCPORT void SetTXALevelerHang (int channel, int hang);
-
-extern AGCPORT void SetTXALevelerTop (int channel, double maxgain);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.]
 
 #endif
 

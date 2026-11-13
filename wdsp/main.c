@@ -2,7 +2,7 @@
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2013 Warren Pratt, NR0V
+Copyright (C) 2013, 2026 Warren Pratt, NR0V
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 The author can be reached by email at
 
-warren@wpratt.com
+warren@pratt.one
 
 */
 
@@ -28,12 +28,11 @@ warren@wpratt.com
 
 void wdspmain (void *pargs)
 {
-#if defined(_WIN32)
 	DWORD taskIndex = 0;
 	HANDLE hTask = AvSetMmThreadCharacteristics(TEXT("Pro Audio"), &taskIndex);
 	if (hTask != 0) AvSetMmThreadPriority(hTask, 2);
 	else SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
-#endif
+    flush_to_zero_on ();    // [denormal results become zero in this thread;  see wdsp_platform.h]
 
 	int channel = (int)(uintptr_t)pargs;
 	while (_InterlockedAnd (&ch[channel].run, 1))
@@ -59,9 +58,8 @@ void wdspmain (void *pargs)
 		}
 		LeaveCriticalSection (&ch[channel].csDSP);
 	}
-#if defined(_WIN32)
 	if (hTask != 0) AvRevertMmThreadCharacteristics (hTask);
-#endif
+    InterlockedBitTestAndReset (&ch[channel].main_alive, 0);    // Added 2026-10
 }
 
 void create_main (int channel)

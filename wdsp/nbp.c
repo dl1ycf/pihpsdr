@@ -53,6 +53,7 @@ void destroy_notchdb (NOTCHDB b)
 	_aligned_free (b->nlow);
 	_aligned_free (b->fwidth);
 	_aligned_free (b->fcenter);
+	_aligned_free (b);      // [the structure itself;  through 2.11 it was never freed]
 }
 
 /********************************************************************************************************

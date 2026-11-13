@@ -608,7 +608,7 @@ DWORD WINAPI spectra (void *pargs)
 	int LO = ((int)(uintptr_t)pargs) & 15;
 	DP a = pdisp[disp];
 
-	if (a->stop)
+	if (_InterlockedAnd (&a->stop, 1))
 	{
 		InterlockedDecrement(a->pnum_threads);
 		return 0;
@@ -623,14 +623,14 @@ DWORD WINAPI spectra (void *pargs)
 				 a->IQO_idx[ss][LO] -= a->bsize;
 		}
 
-		if (a->stop)
+		if (_InterlockedAnd (&a->stop, 1))
 		{
 			InterlockedDecrement(a->pnum_threads);
 			return 0;
 		}
 		fftw_execute (a->plan[ss][LO]);
 	}
-	if (a->stop)
+	if (_InterlockedAnd (&a->stop, 1))
 	{
 		InterlockedDecrement(a->pnum_threads);
 		return 0;
@@ -843,7 +843,7 @@ DWORD WINAPI Cspectra (void *pargs)
 	DP a = pdisp[disp];
 	int trans_size = a->size * sizeof(double);
 
-	if (a->stop)
+	if (_InterlockedAnd (&a->stop, 1))
 	{
 		InterlockedDecrement(a->pnum_threads);
 		return 0;
@@ -859,7 +859,7 @@ DWORD WINAPI Cspectra (void *pargs)
 				 a->IQO_idx[ss][LO] -= a->bsize;
 		}
 
-		if (a->stop)
+		if (_InterlockedAnd (&a->stop, 1))
 		{
 			InterlockedDecrement(a->pnum_threads);
 			return 0;
@@ -872,7 +872,7 @@ DWORD WINAPI Cspectra (void *pargs)
 
 	}
 
-	if (a->stop)
+	if (_InterlockedAnd (&a->stop, 1))
 	{
 		InterlockedDecrement(a->pnum_threads);
 		return 0;
@@ -1055,10 +1055,32 @@ int build_interpolants(int disp, int set, int n, int m, double *x, double (*y)[d
     return 0;
 }
 
+// The work items that sendbuf() queues.  Each runs spectra() or Cspectra() with
+// flush-to-zero on, so denormal results become zero (see wdsp_platform.h).  [A work
+// item runs on a thread that belongs to the system's thread pool, not to WDSP, so it
+// turns the mode off again afterwards if it was off before, and leaves the thread as
+// it found it.  Doing it here, rather than in spectra() and Cspectra(), covers their
+// early returns.]
+static DWORD WINAPI spectra_item (void *pargs)
+{
+  int was_on = flush_to_zero_on ();
+  DWORD rtn = spectra (pargs);
+  if (!was_on) flush_to_zero_off ();
+  return rtn;
+}
+
+static DWORD WINAPI Cspectra_item (void *pargs)
+{
+  int was_on = flush_to_zero_on ();
+  DWORD rtn = Cspectra (pargs);
+  if (!was_on) flush_to_zero_off ();
+  return rtn;
+}
+
 void __cdecl sendbuf(void *arg)
 {
 	DP a = pdisp[(int)(uintptr_t)arg];
-	while(!a->end_dispatcher)
+	while (!_InterlockedAnd (&a->end_dispatcher, 1))
 	{
 		for (a->ss = 0; a->ss < a->num_stitch; a->ss++)
 			for (a->LO = 0; a->LO < a->num_fft; a->LO++)
@@ -1071,9 +1093,9 @@ void __cdecl sendbuf(void *arg)
 					
 					InterlockedIncrement(a->pnum_threads);
 					if (a->type == 0)
-						QueueUserWorkItem(spectra, (void *)(((uintptr_t)arg << 12) + (a->ss << 4) + a->LO), 0);
+						QueueUserWorkItem(spectra_item, (void *)(((uintptr_t)arg << 12) + (a->ss << 4) + a->LO), 0);
 					else
-						QueueUserWorkItem(Cspectra, (void *)(((uintptr_t)arg << 12) + (a->ss << 4) + a->LO), 0);
+						QueueUserWorkItem(Cspectra_item, (void *)(((uintptr_t)arg << 12) + (a->ss << 4) + a->LO), 0);
 
 					if((a->IQout_index[a->ss][a->LO] += a->incr) >= a->bsize)
 						a->IQout_index[a->ss][a->LO] -= a->bsize;
@@ -1195,10 +1217,10 @@ void SetAnalyzer (	int disp,			// display identifier
 	int i, j;
 
 	EnterCriticalSection(&a->SetAnalyzerSection);
-	a->end_dispatcher = 1;
+	InterlockedBitTestAndSet (&a->end_dispatcher, 0);
 	while (InterlockedAnd(&a->dispatcher, 1))
 		Sleep(1);
-	a->stop = 1;
+	InterlockedBitTestAndSet (&a->stop, 0);
 	while (_InterlockedAnd(a->pnum_threads, 1023))
 		Sleep(1);
 	a->num_pixout = n_pixout;
@@ -1310,8 +1332,8 @@ void SetAnalyzer (	int disp,			// display identifier
 			a->IQout_index[i][j] = 0;
 		}
 
-	a->stop = 0;
-	a->end_dispatcher = 0;
+	InterlockedBitTestAndReset (&a->stop, 0);
+	InterlockedBitTestAndReset (&a->end_dispatcher, 0);
 	LeaveCriticalSection(&a->SetAnalyzerSection);
 }
 
@@ -1338,7 +1360,11 @@ void XCreateAnalyzer(	int disp,
 	for (i = 0; i < a->max_stitch; i++)
 		for (j = 0; j < a->max_num_fft; j++)
 		{
-			a->hSnapEvent[i][j] = CreateEvent(NULL, FALSE, FALSE, TEXT("snap"));
+            // [Unnamed:  each sub-span and FFT of each analyzer gets its own event.  Through
+            // 2.11 every one was named "snap", and Windows gives every event of the same
+            // name the same kernel object, so a snapshot finishing on one display or
+            // sub-span could release a SnapSpectrum() wait on another.]
+            a->hSnapEvent[i][j] = CreateEvent(NULL, FALSE, FALSE, NULL);
 			a->snap[i][j] = 0;
 		}
 	InitializeCriticalSectionAndSpinCount(&a->ResampleSection, 0);
@@ -1427,9 +1453,20 @@ void DestroyAnalyzer(int disp)
 	DP a = pdisp[disp];
 	int i, j;
 
-	a->end_dispatcher = 1;
+    // Stop the dispatcher, then wait until every work item it queued (spectra() or
+    // Cspectra()) has finished, before freeing anything they use.  [The same sequence as
+    // SetAnalyzer().  Through 2.11 only the dispatcher was waited for, so a work item still
+    // running could use the buffers after they were freed.  The work items don't take
+    // SetAnalyzerSection, so waiting while holding it can't deadlock;  holding it keeps
+    // Spectrum0() and its relatives from restarting the dispatcher meanwhile.]
+    EnterCriticalSection(&a->SetAnalyzerSection);
+    InterlockedBitTestAndSet (&a->end_dispatcher, 0);
 	while (InterlockedAnd(&a->dispatcher, 1))
 		Sleep(1);
+    InterlockedBitTestAndSet (&a->stop, 0);
+    while (_InterlockedAnd(a->pnum_threads, 1023))
+        Sleep(1);
+    LeaveCriticalSection(&a->SetAnalyzerSection);
 
 	for (i = 0; i < a->max_stitch; i++)
 		for (j = 0; j < a->max_num_fft; j++)

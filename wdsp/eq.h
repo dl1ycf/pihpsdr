@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -74,7 +74,7 @@ extern void eq_impulse(EQIMP a, int N, int nfreqs, double* F, double* G,
 	double samplerate, double scale, int ctfmode, int wintype, int deg,
 	double* impulse);
 
-extern EQP create_eqp (int run, int size, int nc, int mp, double *in, double *out,
+extern EQP create_eqp (int run, int size, int nc, int mp, double *in, double *out, 
 	int nfreqs, double* F, double* G, int ctfmode, int wintype, int samplerate);
 
 extern void destroy_eqp (EQP a);
@@ -89,13 +89,8 @@ extern void setSamplerate_eqp (EQP a, int rate);
 
 extern void setSize_eqp (EQP a, int size);
 
-__declspec (dllexport) void SetRXAEQNC (int channel, int nc);
-
-__declspec (dllexport) void SetRXAEQMP (int channel, int mp);
-
-__declspec (dllexport) void SetTXAEQNC (int channel, int nc);
-
-__declspec (dllexport) void SetTXAEQMP (int channel, int mp);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.]
 
 #endif
 
@@ -136,7 +131,7 @@ typedef struct _eq
 extern double* eq_mults(EQIMP peqimp, int size, int nfreqs, double* F, double* G, double samplerate,
 	double scale, int ctfmode, int wintype, int deg, double* impulse);
 
-extern EQ create_eq (int run, int size, double *in, double *out, int nfreqs,
+extern EQ create_eq (int run, int size, double *in, double *out, int nfreqs, 
 	double* F, double* G, int ctfmode, int wintype, int samplerate);
 
 extern void destroy_eq (EQ a);

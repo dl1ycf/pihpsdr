@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -29,7 +29,7 @@ warren@pratt.one
 
 typedef struct _cfir *CFIR;
 
-extern CFIR create_cfir (int run, int size, int nc, int mp, double* in, double* out, int runrate, int cicrate,
+extern CFIR create_cfir (int run, int size, int nc, int mp, double* in, double* out, int runrate, int cicrate, 
 	int DD, int R, int Pairs, double cutoff, int xtype, double xbw, int wintype);
 
 extern void destroy_cfir (CFIR a);
@@ -46,11 +46,17 @@ extern void setSize_cfir (CFIR a, int size);
 
 extern void setOutRate_cfir (CFIR a, int rate);
 
-extern __declspec (dllexport) void SetTXACFIRRun(int channel, int run);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.  Those
+// declared here are called by other modules or by ChannelMaster.]
 
-extern __declspec (dllexport) void SetTXACFIRNC(int channel, int nc);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
 
-extern __declspec (dllexport) void SetTXACFIRCurve(int channel, int DD, int R, int Pairs,
-	int runrate, int cicrate, double cutoff, int xtype, double xbw);
+extern PORT void SetTXACFIRNC(int channel, int nc);
 
 #endif

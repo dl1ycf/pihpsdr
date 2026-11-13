@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -119,7 +119,14 @@ extern void setSamplerate_snba (SNBA a, int rate);
 
 extern void setSize_snba (SNBA a, int size);
 
-__declspec (dllexport) void SetRXASNBAOutputBandwidth (int channel, double flow, double fhigh);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
+
+PORT void SetRXASNBAOutputBandwidth (int channel, double flow, double fhigh);
 
 typedef struct _bpsnba
 {
@@ -149,8 +156,8 @@ extern void calc_bpsnba (BPSNBA a);
 
 extern void decalc_bpsnba (BPSNBA a);
 
-extern BPSNBA create_bpsnba (int run, int run_notches, int position, int size, int nc, int mp, double* in, double* out, int rate,
-	double abs_low_freq, double abs_high_freq, double f_low, double f_high, int wintype, double gain, int autoincr,
+extern BPSNBA create_bpsnba (int run, int run_notches, int position, int size, int nc, int mp, double* in, double* out, int rate,  
+	double abs_low_freq, double abs_high_freq, double f_low, double f_high, int wintype, double gain, int autoincr, 
 	int maxpb, NOTCHDB* ptraddr);
 
 extern void destroy_bpsnba (BPSNBA a);
@@ -169,8 +176,8 @@ extern void xbpsnbaout (BPSNBA a, int position);
 
 extern void recalc_bpsnba_filter (BPSNBA a, int update);
 
-__declspec (dllexport) void RXABPSNBASetNC (int channel, int nc);
+PORT void RXABPSNBASetNC (int channel, int nc);
 
-__declspec (dllexport) void RXABPSNBASetMP (int channel, int mp);
+PORT void RXABPSNBASetMP (int channel, int mp);
 
 #endif

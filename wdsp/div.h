@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -47,10 +47,17 @@ extern void destroy_div (MDIV pdiv);
 
 extern void xdiv (MDIV pdiv);
 
-extern __declspec(dllexport) void xdivEXT (int id, int nsamples, double **in, double *out);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
 
-extern __declspec(dllexport) void create_divEXT (int id, int run, int nr, int size);
+extern PORT void xdivEXT (int id, int nsamples, double **in, double *out);
 
-extern __declspec(dllexport) void destroy_divEXT (int id);
+extern PORT void create_divEXT (int id, int run, int nr, int size);
+
+extern PORT void destroy_divEXT (int id);
 
 #endif

@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -30,6 +30,7 @@ struct _ch ch[MAX_CHANNELS];
 
 void start_thread (int channel)
 {
+	InterlockedBitTestAndSet (&ch[channel].main_alive, 0);
 	HANDLE handle = (HANDLE) _beginthread(wdspmain, 0, (void *)(uintptr_t)channel);
 	//SetThreadPriority(handle, THREAD_PRIORITY_HIGHEST);
 }
@@ -73,7 +74,7 @@ void build_channel (int channel)
 }
 
 PORT
-void OpenChannel (int channel, int in_size, int dsp_size, int input_samplerate, int dsp_rate, int output_samplerate,
+void OpenChannel (int channel, int in_size, int dsp_size, int input_samplerate, int dsp_rate, int output_samplerate, 
 	int type, int state, double tdelayup, double tslewup, double tdelaydown, double tslewdown, int bfo)
 {
 	ch[channel].in_size = in_size;
@@ -97,9 +98,10 @@ void OpenChannel (int channel, int in_size, int dsp_size, int input_samplerate, 
 		InterlockedBitTestAndReset (&ch[channel].iob.pc->exec_bypass, 0);
 		InterlockedBitTestAndSet (&ch[channel].exchange, 0);
 	}
-#if !defined(linux) && !defined(__APPLE__)
-	_MM_SET_FLUSH_ZERO_MODE (_MM_FLUSH_ZERO_ON);
-#endif
+	// [Through 2.11, _MM_SET_FLUSH_ZERO_MODE (_MM_FLUSH_ZERO_ON) was here.  The mode is
+	// a per-thread setting, so it affected only the thread that called OpenChannel (),
+	// not the DSP threads.  Each DSP thread now turns it on for itself;  see
+	// flush_to_zero_on () in wdsp_platform.h.]
 }
 
 void pre_main_destroy (int channel)
@@ -110,6 +112,18 @@ void pre_main_destroy (int channel)
 	InterlockedBitTestAndSet (&ch[channel].iob.pc->exec_bypass, 0);
 	ReleaseSemaphore (a->Sem_BuffReady, 1, 0);
 	Sleep (25);
+	// wait for the main dsp thread to exit
+	int count = 0;
+	const int timeout = 1000;
+	while (_InterlockedAnd (&ch[channel].main_alive, 1) && count < timeout)
+	{
+		Sleep (1);
+		count++;
+	}
+	// stop the flush thread before main is destroyed; a flush already under way completes first
+	InterlockedBitTestAndSet (&a->flush_bypass, 0);
+	ReleaseSemaphore (a->Sem_Flush, 1, 0);
+	while (InterlockedAnd (&a->flush_bypass, 0xffffffff)) Sleep (1);
 }
 
 void post_main_destroy (int channel)
@@ -274,7 +288,7 @@ int SetChannelState (int channel, int state, int dmode)
 			InterlockedBitTestAndSet (&ch[channel].flushflag, 0);
 			if (dmode)
 			{
-				while (_InterlockedAnd (&ch[channel].flushflag, 1) && count < timeout)
+				while (_InterlockedAnd (&ch[channel].flushflag, 1) && count < timeout) 
 				{
 					Sleep(1);
 					count++;

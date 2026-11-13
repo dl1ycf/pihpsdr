@@ -63,7 +63,8 @@ extern const double* getStage_nnet (NNET n, const char* name,
 
 extern int isReady_nnet (NNET n);
 
-extern __declspec (dllexport) void SetNNRModelPath (const char* path);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.]
 
 // diagnostics
 extern int getBins_nnet (NNET n);

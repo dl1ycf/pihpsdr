@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -55,7 +55,7 @@ typedef struct _fmmod
 	FIRCORE p;
 }fmmod, *FMMOD;
 
-extern FMMOD create_fmmod (int run, int size, double* in, double* out, int rate, double dev, double f_low, double f_high,
+extern FMMOD create_fmmod (int run, int size, double* in, double* out, int rate, double dev, double f_low, double f_high, 
 	int ctcss_run, double ctcss_level, double ctcss_freq, int bp_run, int nc, int mp);
 
 extern void destroy_fmmod (FMMOD a);
@@ -72,16 +72,21 @@ extern void setSize_fmmod (FMMOD a, int size);
 
 // TXA Properties
 
-extern __declspec (dllexport) void SetTXAFMDeviation (int channel, double deviation);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.  Those
+// declared here are called by other modules or by ChannelMaster.]
 
-extern __declspec (dllexport) void SetTXACTCSSFreq (int channel, double freq);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
 
-extern __declspec (dllexport) void SetTXACTCSSRun (int channel, int run);
+extern PORT void SetTXAFMMP (int channel, int mp);
 
-extern __declspec (dllexport) void SetTXAFMMP (int channel, int mp);
+extern PORT void SetTXAFMNC (int channel, int nc);
 
-extern __declspec (dllexport) void SetTXAFMNC (int channel, int nc);
-
-extern __declspec (dllexport) void SetTXAFMAFFreqs (int channel, double low, double high);
+extern PORT void SetTXAFMAFFreqs (int channel, double low, double high);
 
 #endif

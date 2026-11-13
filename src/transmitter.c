@@ -916,7 +916,7 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   tx->display_fill_border = 0;
   tx->dsp_size = 2048;
   tx->fft_size = 2048;
-  tx->alcmode = ALC_PEAK;
+  tx->alcmode = DISP_ALC_PEAK;
   tx->metermode = 0;  // PEP
   g_mutex_init(&tx->display_mutex);
   tx->update_timer_id = 0;
@@ -1136,9 +1136,9 @@ TRANSMITTER *tx_create_transmitter(int id, int pixels, int width, int height) {
   // these settings (including fps) should be the same in
   // the PS feedback receiver.
   //
-  tx->display_detector_mode = DET_PEAK;
+  tx->display_detector_mode = DISP_DET_PEAK;
   tx->display_average_time  = 120.0;
-  tx->display_average_mode  = AVG_LOGRECURSIVE;
+  tx->display_average_mode  = DISP_AVG_LOGRECURSIVE;
   //
   // If the pk value is slightly too large, this does no harm, but
   // if it is slightly too small, very strange things can happen.
@@ -2182,7 +2182,7 @@ void tx_get_meter(TRANSMITTER *tx) {
   ASSERT_SERVER();
   double alc, gain;
   switch (tx->alcmode) {
-  case ALC_PEAK:
+  case DISP_ALC_PEAK:
   default:
     alc = GetTXAMeter(tx->id, TXA_ALC_PK);
     gain = GetTXAMeter(tx->id, TXA_ALC_GAIN);
@@ -2192,7 +2192,7 @@ void tx_get_meter(TRANSMITTER *tx) {
     //
     if (gain > 0.0) { alc = gain; }
     break;
-  case ALC_AVERAGE:
+  case DISP_ALC_AVERAGE:
     alc = GetTXAMeter(tx->id, TXA_ALC_AV);
     break;
   }
@@ -2450,17 +2450,17 @@ void tx_set_average(const TRANSMITTER *tx) {
   SetDisplayAvBackmult(tx->id, 0, display_avb);
   SetDisplayNumAverage(tx->id, 0, display_average);
   switch (tx->display_average_mode) {
-  case AVG_NONE:
+  case DISP_AVG_NONE:
     wdspmode = AVERAGE_MODE_NONE;
     break;
-  case AVG_RECURSIVE:
+  case DISP_AVG_RECURSIVE:
     wdspmode = AVERAGE_MODE_RECURSIVE;
     break;
-  case AVG_LOGRECURSIVE:
+  case DISP_AVG_LOGRECURSIVE:
   default:
     wdspmode = AVERAGE_MODE_LOG_RECURSIVE;
     break;
-  case AVG_TIMEWINDOW:
+  case DISP_AVG_TIMEWINDOW:
     wdspmode = AVERAGE_MODE_TIME_WINDOW;
     break;
   }
@@ -2543,17 +2543,17 @@ void tx_set_detector(const TRANSMITTER *tx) {
   //
   int wdspmode;
   switch (tx->display_detector_mode) {
-  case DET_PEAK:
+  case DISP_DET_PEAK:
   default:
     wdspmode = DETECTOR_MODE_PEAK;
     break;
-  case DET_AVERAGE:
+  case DISP_DET_AVERAGE:
     wdspmode = DETECTOR_MODE_AVERAGE;
     break;
-  case DET_ROSENFELL:
+  case DISP_DET_ROSENFELL:
     wdspmode = DETECTOR_MODE_ROSENFELL;
     break;
-  case DET_SAMPLEHOLD:
+  case DISP_DET_SAMPLEHOLD:
     wdspmode = DETECTOR_MODE_SAMPLE;
     break;
   }
