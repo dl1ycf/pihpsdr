@@ -36,7 +36,14 @@ extern void destroy_calcc (CALCC a);
 
 extern void flush_calcc (CALCC a);
 
-extern __declspec(dllexport) void pscc (int channel, int size, double* tx, double* rx);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
+
+extern PORT void pscc (int channel, int size, double* tx, double* rx);
 
 #endif
 

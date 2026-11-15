@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -57,20 +57,7 @@ extern void setSize_panel (PANEL a, int size);
 
 // RXA Properties
 
-extern __declspec (dllexport) void SetRXAPanelRun (int channel, int run);
-
-extern __declspec (dllexport) void SetRXAPanelGain1 (int channel, double gain);
-
-extern __declspec (dllexport) void SetRXAPanelGain2 (int channel, double gainI, double gainQ);
-
-extern __declspec (dllexport) void SetRXAPanelPan (int channel, double pan);
-
-extern __declspec (dllexport) void SetRXAPanelCopy (int channel, int copy);
-
-extern __declspec (dllexport) void SetRXAPanelBinaural (int channel, int bin);
-
-// TXA Properties
-
-extern __declspec (dllexport) void SetTXAPanelRun (int channel, int run);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.]
 
 #endif

@@ -754,10 +754,10 @@ void setNNRbypassRun (int channel)
 	}
 
 	RXAbp1Check (channel,
-		rxa[channel].amd.p->run, rxa[channel].snba.p->run,
-		rxa[channel].emnr.p->run, getRun_nnrbypass (b),
-		rxa[channel].anf.p->run, rxa[channel].anr.p->run,
-		rxa[channel].sbnr.p->run);  // NR4
+		rxa[channel].amd.p->run, rxa[channel].snba.p->run,                                           // NR4
+		rxa[channel].emnr.p->run, getRun_nnrbypass (b),                                              // NR4
+		rxa[channel].anf.p->run, rxa[channel].anr.p->run,                                            // NR4
+		rxa[channel].sbnr.p->run);                                                                   // NR4
 	RXAbp1Set (channel);
 }
 

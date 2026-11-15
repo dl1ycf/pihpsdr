@@ -90,18 +90,7 @@ extern void setSize_anf (ANF a, int size);
 
 // RXA Properties
 
-extern __declspec (dllexport) void SetRXAANFRun (int channel, int setit);
-
-extern __declspec (dllexport) void SetRXAANFVals (int channel, int taps, int delay, double gain, double leakage);
-
-extern __declspec (dllexport) void SetRXAANFTaps (int channel, int taps);
-
-extern __declspec (dllexport) void SetRXAANFDelay (int channel, int delay);
-
-extern __declspec (dllexport) void SetRXAANFGain (int channel, double gain);
-
-extern __declspec (dllexport) void SetRXAANFLeakage (int channel, double leakage);
-
-extern __declspec (dllexport) void SetRXAANFPosition (int channel, int position);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.]
 
 #endif

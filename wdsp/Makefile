@@ -10,8 +10,7 @@ FFTWINCLUDE=`pkg-config --cflags fftw3`
 
 COMPILE=$(CC) $(CFLAGS) $(FFTWINCLUDE)
 
-OBJS=linux_port.o \
-amd.o \
+OBJS= amd.o \
 ammod.o \
 amsq.o \
 analyzer.o \
@@ -90,6 +89,7 @@ version.o \
 varsamp.o \
 wbfm.o \
 wcpAGC.o \
+wdsp_platform_posix.o \
 wisdom.o \
 zetaHat.o
 
@@ -128,65 +128,65 @@ DEPEND:
 
 # DO NOT DELETE
 
-RXA.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-RXA.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-RXA.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-RXA.o: doublepole.h eer.h emnr.h sbnr.h
+RXA.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+RXA.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+RXA.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+RXA.o: div.h doublepole.h eer.h emnr.h sbnr.h
 RXA.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 RXA.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 RXA.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 RXA.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 RXA.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 RXA.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-RXA.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-TXA.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-TXA.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-TXA.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-TXA.o: doublepole.h eer.h emnr.h sbnr.h
+RXA.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+TXA.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+TXA.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+TXA.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+TXA.o: div.h doublepole.h eer.h emnr.h sbnr.h
 TXA.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 TXA.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 TXA.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 TXA.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 TXA.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 TXA.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-TXA.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-amd.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-amd.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-amd.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-amd.o: doublepole.h eer.h emnr.h sbnr.h
+TXA.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+amd.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+amd.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+amd.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+amd.o: div.h doublepole.h eer.h emnr.h sbnr.h
 amd.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 amd.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 amd.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 amd.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 amd.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 amd.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-amd.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-ammod.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-ammod.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-ammod.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-ammod.o: doublepole.h eer.h emnr.h sbnr.h
+amd.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+ammod.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+ammod.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+ammod.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+ammod.o: div.h doublepole.h eer.h emnr.h sbnr.h
 ammod.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 ammod.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 ammod.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 ammod.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 ammod.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 ammod.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-ammod.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-amsq.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-amsq.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-amsq.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-amsq.o: doublepole.h eer.h emnr.h sbnr.h
+ammod.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+amsq.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+amsq.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+amsq.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+amsq.o: div.h doublepole.h eer.h emnr.h sbnr.h
 amsq.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 amsq.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 amsq.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 amsq.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 amsq.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 amsq.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-amsq.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-analyzer.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-analyzer.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-analyzer.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-analyzer.o: doublepole.h eer.h emnr.h sbnr.h
+amsq.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+analyzer.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+analyzer.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+analyzer.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+analyzer.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 analyzer.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 analyzer.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 analyzer.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -194,33 +194,33 @@ analyzer.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 analyzer.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h
 analyzer.o: resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h
 analyzer.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h wbfm.h
-analyzer.o: wcpAGC.h wdsp_align.h
-anf.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-anf.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-anf.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-anf.o: doublepole.h eer.h emnr.h sbnr.h
+analyzer.o: wcpAGC.h
+anf.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+anf.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+anf.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+anf.o: div.h doublepole.h eer.h emnr.h sbnr.h
 anf.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 anf.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 anf.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 anf.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 anf.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 anf.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-anf.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-anr.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-anr.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-anr.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-anr.o: doublepole.h eer.h emnr.h sbnr.h
+anf.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+anr.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+anr.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+anr.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+anr.o: div.h doublepole.h eer.h emnr.h sbnr.h
 anr.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 anr.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 anr.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 anr.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 anr.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 anr.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-anr.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-apfshadow.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-apfshadow.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-apfshadow.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-apfshadow.o: doublepole.h eer.h emnr.h sbnr.h
+anr.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+apfshadow.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+apfshadow.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+apfshadow.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+apfshadow.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 apfshadow.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 apfshadow.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 apfshadow.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -228,11 +228,11 @@ apfshadow.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 apfshadow.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h
 apfshadow.o: resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h
 apfshadow.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-apfshadow.o: wbfm.h wcpAGC.h wdsp_align.h
-bandpass.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-bandpass.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-bandpass.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-bandpass.o: doublepole.h eer.h emnr.h sbnr.h
+apfshadow.o: wbfm.h wcpAGC.h
+bandpass.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+bandpass.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+bandpass.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+bandpass.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 bandpass.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 bandpass.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 bandpass.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -240,56 +240,55 @@ bandpass.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 bandpass.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h
 bandpass.o: resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h
 bandpass.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h wbfm.h
-bandpass.o: wcpAGC.h wdsp_align.h
-calcc.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-calcc.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-calcc.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-calcc.o: doublepole.h eer.h emnr.h sbnr.h
+bandpass.o: wcpAGC.h
+calcc.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+calcc.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+calcc.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+calcc.o: div.h doublepole.h eer.h emnr.h sbnr.h
 calcc.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 calcc.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 calcc.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 calcc.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 calcc.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 calcc.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-calcc.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-calcc.o: extrapolate.h
-cblock.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-cblock.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-cblock.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-cblock.o: doublepole.h eer.h emnr.h sbnr.h
+calcc.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h extrapolate.h
+cblock.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+cblock.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+cblock.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+cblock.o: div.h doublepole.h eer.h emnr.h sbnr.h
 cblock.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 cblock.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 cblock.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 cblock.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 cblock.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 cblock.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-cblock.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-cfcomp.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-cfcomp.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-cfcomp.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-cfcomp.o: doublepole.h eer.h emnr.h sbnr.h
+cblock.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+cfcomp.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+cfcomp.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+cfcomp.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+cfcomp.o: div.h doublepole.h eer.h emnr.h sbnr.h
 cfcomp.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 cfcomp.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 cfcomp.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 cfcomp.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 cfcomp.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 cfcomp.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-cfcomp.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-cfir.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-cfir.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-cfir.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-cfir.o: doublepole.h eer.h emnr.h sbnr.h
+cfcomp.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+cfir.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+cfir.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+cfir.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+cfir.o: div.h doublepole.h eer.h emnr.h sbnr.h
 cfir.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 cfir.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 cfir.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 cfir.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 cfir.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 cfir.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-cfir.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-channel.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-channel.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-channel.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-channel.o: doublepole.h eer.h emnr.h sbnr.h
+cfir.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+channel.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+channel.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+channel.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+channel.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 channel.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 channel.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 channel.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -297,22 +296,21 @@ channel.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 channel.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h
 channel.o: reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
 channel.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
-channel.o: wdsp_align.h
-cmath.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-cmath.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-cmath.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-cmath.o: doublepole.h eer.h emnr.h sbnr.h
+cmath.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+cmath.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+cmath.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+cmath.o: div.h doublepole.h eer.h emnr.h sbnr.h
 cmath.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 cmath.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 cmath.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 cmath.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 cmath.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 cmath.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-cmath.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-compress.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-compress.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-compress.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-compress.o: doublepole.h eer.h emnr.h sbnr.h
+cmath.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+compress.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+compress.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+compress.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+compress.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 compress.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 compress.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 compress.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -320,178 +318,178 @@ compress.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 compress.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h
 compress.o: resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h
 compress.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h wbfm.h
-compress.o: wcpAGC.h wdsp_align.h
-delay.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-delay.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-delay.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-delay.o: doublepole.h eer.h emnr.h sbnr.h
+compress.o: wcpAGC.h
+delay.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+delay.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+delay.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+delay.o: div.h doublepole.h eer.h emnr.h sbnr.h
 delay.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 delay.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 delay.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 delay.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 delay.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 delay.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-delay.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-dexp.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-dexp.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-dexp.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-dexp.o: doublepole.h eer.h emnr.h sbnr.h
+delay.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+dexp.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+dexp.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+dexp.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+dexp.o: div.h doublepole.h eer.h emnr.h sbnr.h
 dexp.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 dexp.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 dexp.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 dexp.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 dexp.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 dexp.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-dexp.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-div.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-div.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-div.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-div.o: doublepole.h eer.h emnr.h sbnr.h
+dexp.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+div.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+div.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+div.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+div.o: div.h doublepole.h eer.h emnr.h sbnr.h
 div.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 div.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 div.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 div.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 div.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 div.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-div.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-doublepole.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-doublepole.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-doublepole.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
-doublepole.o: div.h doublepole.h eer.h emnr.h sbnr.h
-doublepole.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
-doublepole.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
-doublepole.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h
+div.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+doublepole.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+doublepole.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+doublepole.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+doublepole.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h
+doublepole.o: sbnr.h ../libspecbleach/include/specbleach_adenoiser.h emph.h
+doublepole.o: eq.h fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h
+doublepole.o: icfir.h iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h
 doublepole.o: nurbs_fit.h lmath.h main.h matchedCW.h meter.h meterlog10.h
 doublepole.o: nbp.h nnr.h nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h
 doublepole.o: phrot.h resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h
 doublepole.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
-doublepole.o: utilities.h wbfm.h wcpAGC.h wdsp_align.h
-eer.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-eer.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-eer.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-eer.o: doublepole.h eer.h emnr.h sbnr.h
+doublepole.o: utilities.h wbfm.h wcpAGC.h
+eer.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+eer.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+eer.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+eer.o: div.h doublepole.h eer.h emnr.h sbnr.h
 eer.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 eer.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 eer.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 eer.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 eer.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 eer.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-eer.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-emnr.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-emnr.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-emnr.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-emnr.o: doublepole.h eer.h emnr.h sbnr.h
+eer.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+emnr.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+emnr.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+emnr.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+emnr.o: div.h doublepole.h eer.h emnr.h sbnr.h
 emnr.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 emnr.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 emnr.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 emnr.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 emnr.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 emnr.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-emnr.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h calculus.h
-emnr.o: zetaHat.h
-emph.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-emph.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-emph.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-emph.o: doublepole.h eer.h emnr.h sbnr.h
+emnr.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h calculus.h zetaHat.h
+emph.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+emph.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+emph.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+emph.o: div.h doublepole.h eer.h emnr.h sbnr.h
 emph.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 emph.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 emph.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 emph.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 emph.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 emph.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-emph.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-eq.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-eq.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h nurbs.h
-eq.o: cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h doublepole.h
-eq.o: eer.h emnr.h sbnr.h ../libspecbleach/include/specbleach_adenoiser.h
-eq.o: emph.h eq.h fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h
-eq.o: icfir.h iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h
-eq.o: nurbs_fit.h lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
-eq.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h
-eq.o: reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-eq.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
+emph.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+eq.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+eq.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+eq.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+eq.o: div.h doublepole.h eer.h emnr.h sbnr.h
+eq.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
+eq.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
+eq.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
+eq.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
+eq.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
+eq.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
+eq.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
 extrapolate.o: extrapolate.h wdsp_align.h
-fcurve.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-fcurve.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-fcurve.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-fcurve.o: doublepole.h eer.h emnr.h sbnr.h
+fcurve.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+fcurve.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+fcurve.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+fcurve.o: div.h doublepole.h eer.h emnr.h sbnr.h
 fcurve.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 fcurve.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 fcurve.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 fcurve.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 fcurve.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 fcurve.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-fcurve.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-fir.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-fir.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-fir.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-fir.o: doublepole.h eer.h emnr.h sbnr.h
+fcurve.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+fir.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+fir.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+fir.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+fir.o: div.h doublepole.h eer.h emnr.h sbnr.h
 fir.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 fir.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 fir.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 fir.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 fir.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 fir.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-fir.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-firmin.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-firmin.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-firmin.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-firmin.o: doublepole.h eer.h emnr.h sbnr.h
+fir.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+firmin.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+firmin.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+firmin.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+firmin.o: div.h doublepole.h eer.h emnr.h sbnr.h
 firmin.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 firmin.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 firmin.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 firmin.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 firmin.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 firmin.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-firmin.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-fmd.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-fmd.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-fmd.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-fmd.o: doublepole.h eer.h emnr.h sbnr.h
+firmin.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+fmd.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+fmd.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+fmd.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+fmd.o: div.h doublepole.h eer.h emnr.h sbnr.h
 fmd.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 fmd.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 fmd.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 fmd.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 fmd.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 fmd.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-fmd.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-fmmod.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-fmmod.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-fmmod.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-fmmod.o: doublepole.h eer.h emnr.h sbnr.h
+fmd.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+fmmod.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+fmmod.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+fmmod.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+fmmod.o: div.h doublepole.h eer.h emnr.h sbnr.h
 fmmod.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 fmmod.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 fmmod.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 fmmod.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 fmmod.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 fmmod.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-fmmod.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-fmsq.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-fmsq.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-fmsq.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-fmsq.o: doublepole.h eer.h emnr.h sbnr.h
+fmmod.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+fmsq.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+fmsq.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+fmsq.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+fmsq.o: div.h doublepole.h eer.h emnr.h sbnr.h
 fmsq.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 fmsq.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 fmsq.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 fmsq.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 fmsq.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 fmsq.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-fmsq.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-gain.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-gain.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-gain.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-gain.o: doublepole.h eer.h emnr.h sbnr.h
+fmsq.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+gain.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+gain.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+gain.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+gain.o: div.h doublepole.h eer.h emnr.h sbnr.h
 gain.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 gain.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 gain.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 gain.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 gain.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 gain.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-gain.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-gaussian.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-gaussian.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-gaussian.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-gaussian.o: doublepole.h eer.h emnr.h sbnr.h
+gain.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+gaussian.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+gaussian.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+gaussian.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+gaussian.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 gaussian.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 gaussian.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 gaussian.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -499,56 +497,56 @@ gaussian.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 gaussian.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h
 gaussian.o: resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h
 gaussian.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h wbfm.h
-gaussian.o: wcpAGC.h wdsp_align.h
-gen.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-gen.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-gen.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-gen.o: doublepole.h eer.h emnr.h sbnr.h
+gaussian.o: wcpAGC.h
+gen.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+gen.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+gen.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+gen.o: div.h doublepole.h eer.h emnr.h sbnr.h
 gen.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 gen.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 gen.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 gen.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 gen.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 gen.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-gen.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-icfir.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-icfir.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-icfir.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-icfir.o: doublepole.h eer.h emnr.h sbnr.h
+gen.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+icfir.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+icfir.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+icfir.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+icfir.o: div.h doublepole.h eer.h emnr.h sbnr.h
 icfir.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 icfir.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 icfir.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 icfir.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 icfir.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 icfir.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-icfir.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-iir.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-iir.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-iir.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-iir.o: doublepole.h eer.h emnr.h sbnr.h
+icfir.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+iir.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+iir.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+iir.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+iir.o: div.h doublepole.h eer.h emnr.h sbnr.h
 iir.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 iir.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 iir.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 iir.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 iir.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 iir.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-iir.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-impulse_cache.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h
-impulse_cache.o: anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
-impulse_cache.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h
-impulse_cache.o: dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
-impulse_cache.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
-impulse_cache.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h
-impulse_cache.o: icfir.h iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h
-impulse_cache.o: nurbs_fit.h lmath.h main.h matchedCW.h meter.h meterlog10.h
-impulse_cache.o: nbp.h nnr.h nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h
-impulse_cache.o: phrot.h resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h
-impulse_cache.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
-impulse_cache.o: utilities.h wbfm.h wcpAGC.h wdsp_align.h
-iobuffs.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-iobuffs.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-iobuffs.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-iobuffs.o: doublepole.h eer.h emnr.h sbnr.h
+iir.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+impulse_cache.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+impulse_cache.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+impulse_cache.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+impulse_cache.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h
+impulse_cache.o: sbnr.h ../libspecbleach/include/specbleach_adenoiser.h
+impulse_cache.o: emph.h eq.h fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h
+impulse_cache.o: gen.h icfir.h iir.h impulse_cache.h iobuffs.h iqc.h
+impulse_cache.o: nurbs_spline.h nurbs_fit.h lmath.h main.h matchedCW.h
+impulse_cache.o: meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h nobII.h
+impulse_cache.o: osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
+impulse_cache.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
+impulse_cache.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+iobuffs.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+iobuffs.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+iobuffs.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+iobuffs.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 iobuffs.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 iobuffs.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 iobuffs.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -556,56 +554,43 @@ iobuffs.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 iobuffs.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h
 iobuffs.o: reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
 iobuffs.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
-iobuffs.o: wdsp_align.h
-iqc.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-iqc.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-iqc.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-iqc.o: doublepole.h eer.h emnr.h sbnr.h
+iqc.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+iqc.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+iqc.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+iqc.o: div.h doublepole.h eer.h emnr.h sbnr.h
 iqc.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 iqc.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 iqc.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 iqc.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 iqc.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 iqc.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-iqc.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-linux_port.o: linux_port.h comm.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-linux_port.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-linux_port.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
-linux_port.o: div.h doublepole.h eer.h emnr.h sbnr.h
-linux_port.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
-linux_port.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
-linux_port.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h
-linux_port.o: nurbs_fit.h lmath.h main.h matchedCW.h meter.h meterlog10.h
-linux_port.o: nbp.h nnr.h nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h
-linux_port.o: phrot.h resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h
-linux_port.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
-linux_port.o: utilities.h wbfm.h wcpAGC.h wdsp_align.h
-lmath.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-lmath.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-lmath.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-lmath.o: doublepole.h eer.h emnr.h sbnr.h
+iqc.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+lmath.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+lmath.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+lmath.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+lmath.o: div.h doublepole.h eer.h emnr.h sbnr.h
 lmath.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 lmath.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 lmath.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 lmath.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 lmath.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 lmath.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-lmath.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-main.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-main.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-main.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-main.o: doublepole.h eer.h emnr.h sbnr.h
+lmath.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+main.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+main.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+main.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+main.o: div.h doublepole.h eer.h emnr.h sbnr.h
 main.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 main.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 main.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 main.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 main.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 main.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-main.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-matchedCW.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-matchedCW.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-matchedCW.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-matchedCW.o: doublepole.h eer.h emnr.h sbnr.h
+main.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+matchedCW.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+matchedCW.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+matchedCW.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+matchedCW.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 matchedCW.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 matchedCW.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 matchedCW.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -613,150 +598,149 @@ matchedCW.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 matchedCW.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h
 matchedCW.o: resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h
 matchedCW.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-matchedCW.o: wbfm.h wcpAGC.h wdsp_align.h
-meter.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-meter.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-meter.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-meter.o: doublepole.h eer.h emnr.h sbnr.h
+matchedCW.o: wbfm.h wcpAGC.h
+meter.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+meter.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+meter.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+meter.o: div.h doublepole.h eer.h emnr.h sbnr.h
 meter.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 meter.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 meter.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 meter.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 meter.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 meter.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-meter.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-meterlog10.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-meterlog10.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-meterlog10.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
-meterlog10.o: div.h doublepole.h eer.h emnr.h sbnr.h
-meterlog10.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
-meterlog10.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
-meterlog10.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h
+meter.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+meterlog10.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+meterlog10.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+meterlog10.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+meterlog10.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h
+meterlog10.o: sbnr.h ../libspecbleach/include/specbleach_adenoiser.h emph.h
+meterlog10.o: eq.h fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h
+meterlog10.o: icfir.h iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h
 meterlog10.o: nurbs_fit.h lmath.h main.h matchedCW.h meter.h meterlog10.h
 meterlog10.o: nbp.h nnr.h nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h
 meterlog10.o: phrot.h resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h
 meterlog10.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
-meterlog10.o: utilities.h wbfm.h wcpAGC.h wdsp_align.h
-nbp.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-nbp.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-nbp.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-nbp.o: doublepole.h eer.h emnr.h sbnr.h
+meterlog10.o: utilities.h wbfm.h wcpAGC.h
+nbp.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+nbp.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+nbp.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+nbp.o: div.h doublepole.h eer.h emnr.h sbnr.h
 nbp.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 nbp.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 nbp.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 nbp.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 nbp.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 nbp.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-nbp.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-nnet.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-nnet.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-nnet.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-nnet.o: doublepole.h eer.h emnr.h sbnr.h
+nbp.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+nnet.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+nnet.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+nnet.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+nnet.o: div.h doublepole.h eer.h emnr.h sbnr.h
 nnet.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 nnet.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 nnet.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 nnet.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 nnet.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 nnet.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-nnet.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-nnet.o: nnet_profile.h nnet.h nnio.h
-nnio.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-nnio.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-nnio.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-nnio.o: doublepole.h eer.h emnr.h sbnr.h
+nnet.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h nnet_profile.h nnet.h
+nnet.o: nnio.h
+nnio.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+nnio.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+nnio.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+nnio.o: div.h doublepole.h eer.h emnr.h sbnr.h
 nnio.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 nnio.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 nnio.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 nnio.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 nnio.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 nnio.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-nnio.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-nnr.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-nnr.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-nnr.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-nnr.o: doublepole.h eer.h emnr.h sbnr.h
+nnio.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+nnr.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+nnr.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+nnr.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+nnr.o: div.h doublepole.h eer.h emnr.h sbnr.h
 nnr.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 nnr.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 nnr.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 nnr.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 nnr.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 nnr.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-nnr.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h nnet.h
-nnr.o: nnio.h
-nnrbypass.o: fir.h firmin.h linux_port.h wdsp_align.h
-nob.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-nob.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-nob.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-nob.o: doublepole.h eer.h emnr.h sbnr.h
+nnr.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h nnet.h nnio.h
+nnrbypass.o: wdsp_align.h wdsp_platform.h fir.h firmin.h
+nob.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+nob.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+nob.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+nob.o: div.h doublepole.h eer.h emnr.h sbnr.h
 nob.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 nob.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 nob.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 nob.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 nob.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 nob.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-nob.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-nobII.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-nobII.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-nobII.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-nobII.o: doublepole.h eer.h emnr.h sbnr.h
+nob.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+nobII.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+nobII.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+nobII.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+nobII.o: div.h doublepole.h eer.h emnr.h sbnr.h
 nobII.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 nobII.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 nobII.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 nobII.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 nobII.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 nobII.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-nobII.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-nurbs.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-nurbs.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-nurbs.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-nurbs.o: doublepole.h eer.h emnr.h sbnr.h
+nobII.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+nurbs.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+nurbs.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+nurbs.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+nurbs.o: div.h doublepole.h eer.h emnr.h sbnr.h
 nurbs.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 nurbs.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 nurbs.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 nurbs.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 nurbs.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 nurbs.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-nurbs.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-nurbs_fit.o: nurbs_fit.h wdsp_align.h linux_port.h
+nurbs.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+nurbs_fit.o: nurbs_fit.h wdsp_align.h
 nurbs_spline.o: nurbs_spline.h nurbs_fit.h wdsp_align.h
-osctrl.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-osctrl.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-osctrl.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-osctrl.o: doublepole.h eer.h emnr.h sbnr.h
+osctrl.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+osctrl.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+osctrl.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+osctrl.o: div.h doublepole.h eer.h emnr.h sbnr.h
 osctrl.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 osctrl.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 osctrl.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 osctrl.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 osctrl.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 osctrl.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-osctrl.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-patchpanel.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-patchpanel.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-patchpanel.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
-patchpanel.o: div.h doublepole.h eer.h emnr.h sbnr.h
-patchpanel.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
-patchpanel.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
-patchpanel.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h
+osctrl.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+patchpanel.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+patchpanel.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+patchpanel.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+patchpanel.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h
+patchpanel.o: sbnr.h ../libspecbleach/include/specbleach_adenoiser.h emph.h
+patchpanel.o: eq.h fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h
+patchpanel.o: icfir.h iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h
 patchpanel.o: nurbs_fit.h lmath.h main.h matchedCW.h meter.h meterlog10.h
 patchpanel.o: nbp.h nnr.h nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h
 patchpanel.o: phrot.h resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h
 patchpanel.o: shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
-patchpanel.o: utilities.h wbfm.h wcpAGC.h wdsp_align.h
-phrot.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-phrot.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-phrot.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-phrot.o: doublepole.h eer.h emnr.h sbnr.h
+patchpanel.o: utilities.h wbfm.h wcpAGC.h
+phrot.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+phrot.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+phrot.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+phrot.o: div.h doublepole.h eer.h emnr.h sbnr.h
 phrot.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 phrot.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 phrot.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 phrot.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 phrot.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 phrot.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-phrot.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-resample.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-resample.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-resample.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-resample.o: doublepole.h eer.h emnr.h sbnr.h
+phrot.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+resample.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+resample.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+resample.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+resample.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 resample.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 resample.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 resample.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -764,121 +748,121 @@ resample.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 resample.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h
 resample.o: resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h
 resample.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h wbfm.h
-resample.o: wcpAGC.h wdsp_align.h
-reshb.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-reshb.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-reshb.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-reshb.o: doublepole.h eer.h emnr.h sbnr.h
+resample.o: wcpAGC.h
+reshb.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+reshb.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+reshb.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+reshb.o: div.h doublepole.h eer.h emnr.h sbnr.h
 reshb.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 reshb.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 reshb.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 reshb.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 reshb.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 reshb.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-reshb.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-rmatch.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-rmatch.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-rmatch.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-rmatch.o: doublepole.h eer.h emnr.h sbnr.h
+reshb.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+rmatch.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+rmatch.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+rmatch.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+rmatch.o: div.h doublepole.h eer.h emnr.h sbnr.h
 rmatch.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 rmatch.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 rmatch.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 rmatch.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 rmatch.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 rmatch.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-rmatch.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-sbnr.o: ../libspecbleach/include/specbleach_adenoiser.h comm.h linux_port.h
-sbnr.o: amd.h ammod.h amsq.h analyzer.h anf.h anr.h apfshadow.h bandpass.h
-sbnr.o: firmin.h fir.h calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h
-sbnr.o: cmath.h compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h
-sbnr.o: sbnr.h emph.h eq.h fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h
-sbnr.o: gen.h icfir.h iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h
-sbnr.o: nurbs_fit.h lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h
-sbnr.o: nnr.h nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h
-sbnr.o: resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h
-sbnr.o: slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
-sbnr.o: wdsp_align.h
-sender.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-sender.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-sender.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-sender.o: doublepole.h eer.h emnr.h sbnr.h
+rmatch.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+sbnr.o: ../libspecbleach/include/specbleach_adenoiser.h comm.h
+sbnr.o: wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h anf.h
+sbnr.o: anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
+sbnr.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
+sbnr.o: doublepole.h eer.h emnr.h sbnr.h emph.h eq.h fcurve.h fmd.h fmmod.h
+sbnr.o: fmsq.h gain.h gaussian.h gen.h icfir.h iir.h impulse_cache.h
+sbnr.o: iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h main.h matchedCW.h
+sbnr.o: meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h nobII.h osctrl.h
+sbnr.o: patchpanel.h phrot.h resample.h reshb.h rmatch.h varsamp.h RXA.h
+sbnr.o: sender.h shift.h siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h
+sbnr.o: utilities.h wbfm.h wcpAGC.h
+sender.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+sender.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+sender.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+sender.o: div.h doublepole.h eer.h emnr.h sbnr.h
 sender.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 sender.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 sender.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 sender.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 sender.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 sender.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-sender.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-shift.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-shift.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-shift.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-shift.o: doublepole.h eer.h emnr.h sbnr.h
+sender.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+shift.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+shift.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+shift.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+shift.o: div.h doublepole.h eer.h emnr.h sbnr.h
 shift.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 shift.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 shift.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 shift.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 shift.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 shift.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-shift.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-siphon.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-siphon.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-siphon.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-siphon.o: doublepole.h eer.h emnr.h sbnr.h
+shift.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+siphon.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+siphon.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+siphon.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+siphon.o: div.h doublepole.h eer.h emnr.h sbnr.h
 siphon.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 siphon.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 siphon.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 siphon.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 siphon.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 siphon.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-siphon.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-slew.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-slew.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-slew.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-slew.o: doublepole.h eer.h emnr.h sbnr.h
+siphon.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+slew.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+slew.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+slew.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+slew.o: div.h doublepole.h eer.h emnr.h sbnr.h
 slew.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 slew.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 slew.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 slew.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 slew.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 slew.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-slew.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-snb.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-snb.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-snb.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-snb.o: doublepole.h eer.h emnr.h sbnr.h
+slew.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+snb.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+snb.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+snb.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+snb.o: div.h doublepole.h eer.h emnr.h sbnr.h
 snb.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 snb.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 snb.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 snb.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 snb.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 snb.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-snb.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-snoop.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-snoop.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-snoop.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-snoop.o: doublepole.h eer.h emnr.h sbnr.h
+snb.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+snoop.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+snoop.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+snoop.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+snoop.o: div.h doublepole.h eer.h emnr.h sbnr.h
 snoop.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 snoop.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 snoop.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 snoop.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 snoop.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 snoop.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-snoop.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-ssql.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-ssql.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-ssql.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-ssql.o: doublepole.h eer.h emnr.h sbnr.h
+snoop.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+ssql.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+ssql.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+ssql.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+ssql.o: div.h doublepole.h eer.h emnr.h sbnr.h
 ssql.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 ssql.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 ssql.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 ssql.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 ssql.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 ssql.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-ssql.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-syncbuffs.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-syncbuffs.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-syncbuffs.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-syncbuffs.o: doublepole.h eer.h emnr.h sbnr.h
+ssql.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+syncbuffs.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+syncbuffs.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+syncbuffs.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+syncbuffs.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 syncbuffs.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 syncbuffs.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 syncbuffs.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -886,11 +870,11 @@ syncbuffs.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 syncbuffs.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h
 syncbuffs.o: resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h
 syncbuffs.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-syncbuffs.o: wbfm.h wcpAGC.h wdsp_align.h
-utilities.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-utilities.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-utilities.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-utilities.o: doublepole.h eer.h emnr.h sbnr.h
+syncbuffs.o: wbfm.h wcpAGC.h
+utilities.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+utilities.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+utilities.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+utilities.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 utilities.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 utilities.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 utilities.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -898,11 +882,11 @@ utilities.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 utilities.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h
 utilities.o: resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h
 utilities.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-utilities.o: wbfm.h wcpAGC.h wdsp_align.h
-varsamp.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-varsamp.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-varsamp.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-varsamp.o: doublepole.h eer.h emnr.h sbnr.h
+utilities.o: wbfm.h wcpAGC.h
+varsamp.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+varsamp.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+varsamp.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+varsamp.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 varsamp.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 varsamp.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 varsamp.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -910,11 +894,10 @@ varsamp.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 varsamp.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h
 varsamp.o: reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
 varsamp.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
-varsamp.o: wdsp_align.h
-version.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-version.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-version.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-version.o: doublepole.h eer.h emnr.h sbnr.h
+version.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+version.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+version.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+version.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 version.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 version.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 version.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -922,66 +905,66 @@ version.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 version.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h
 version.o: reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
 version.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
-version.o: wdsp_align.h
-wbfm.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-wbfm.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-wbfm.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-wbfm.o: doublepole.h eer.h emnr.h sbnr.h
+wbfm.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+wbfm.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+wbfm.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+wbfm.o: div.h doublepole.h eer.h emnr.h sbnr.h
 wbfm.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 wbfm.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 wbfm.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 wbfm.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 wbfm.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 wbfm.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-wbfm.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-wcpAGC.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-wcpAGC.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-wcpAGC.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-wcpAGC.o: doublepole.h eer.h emnr.h sbnr.h
+wbfm.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+wcpAGC.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+wcpAGC.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+wcpAGC.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+wcpAGC.o: div.h doublepole.h eer.h emnr.h sbnr.h
 wcpAGC.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 wcpAGC.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 wcpAGC.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 wcpAGC.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 wcpAGC.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 wcpAGC.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-wcpAGC.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-wisdom.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-wisdom.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-wisdom.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-wisdom.o: doublepole.h eer.h emnr.h sbnr.h
+wcpAGC.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+wdsp_platform_posix.o: wdsp_platform.h wdsp_align.h
+wisdom.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+wisdom.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+wisdom.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+wisdom.o: div.h doublepole.h eer.h emnr.h sbnr.h
 wisdom.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 wisdom.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 wisdom.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 wisdom.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h
 wisdom.o: nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h
 wisdom.o: rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h
-wisdom.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-RXA.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-RXA.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-RXA.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-RXA.o: doublepole.h eer.h emnr.h sbnr.h
+wisdom.o: ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+RXA.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+RXA.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+RXA.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+RXA.o: div.h doublepole.h eer.h emnr.h sbnr.h
 RXA.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 RXA.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 RXA.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 RXA.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 RXA.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 RXA.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-RXA.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-TXA.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-TXA.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-TXA.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-TXA.o: doublepole.h eer.h emnr.h sbnr.h
+RXA.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+TXA.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h
+TXA.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+TXA.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+TXA.o: div.h doublepole.h eer.h emnr.h sbnr.h
 TXA.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 TXA.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 TXA.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 TXA.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 TXA.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 TXA.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-TXA.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-analyzer.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-analyzer.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-analyzer.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-analyzer.o: doublepole.h eer.h emnr.h sbnr.h
+TXA.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+analyzer.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+analyzer.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+analyzer.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+analyzer.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 analyzer.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 analyzer.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 analyzer.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -989,13 +972,15 @@ analyzer.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 analyzer.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h
 analyzer.o: resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h
 analyzer.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h wbfm.h
-analyzer.o: wcpAGC.h wdsp_align.h
-bandpass.o: firmin.h linux_port.h fir.h
+analyzer.o: wcpAGC.h
+bandpass.o: firmin.h fir.h wdsp_platform.h wdsp_align.h
+calcc.o: wdsp_platform.h wdsp_align.h
 cfcomp.o: nurbs.h
-channel.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-channel.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-channel.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-channel.o: doublepole.h eer.h emnr.h sbnr.h
+cfir.o: wdsp_platform.h wdsp_align.h
+channel.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+channel.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+channel.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+channel.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 channel.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 channel.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 channel.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -1003,28 +988,33 @@ channel.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 channel.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h
 channel.o: reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
 channel.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
-channel.o: wdsp_align.h
-comm.o: linux_port.h amd.h ammod.h amsq.h analyzer.h comm.h anf.h anr.h
-comm.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-comm.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-comm.o: doublepole.h eer.h emnr.h sbnr.h
+comm.o: wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h analyzer.h comm.h
+comm.o: anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h
+comm.o: cfcomp.h nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h
+comm.o: div.h doublepole.h eer.h emnr.h sbnr.h
 comm.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h fcurve.h
 comm.o: fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h iir.h
 comm.o: impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h lmath.h
 comm.o: main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h nnrbypass.h nob.h
 comm.o: nobII.h osctrl.h patchpanel.h phrot.h resample.h reshb.h rmatch.h
 comm.o: varsamp.h RXA.h sender.h shift.h siphon.h slew.h snb.h ssql.h
-comm.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h wdsp_align.h
-doublepole.o: firmin.h linux_port.h fir.h
-eq.o: firmin.h linux_port.h fir.h nurbs.h
-firmin.o: linux_port.h fir.h
-fmmod.o: firmin.h linux_port.h fir.h
-fmsq.o: eq.h firmin.h linux_port.h fir.h nurbs.h
-gaussian.o: firmin.h linux_port.h fir.h
-iobuffs.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-iobuffs.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-iobuffs.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-iobuffs.o: doublepole.h eer.h emnr.h sbnr.h
+comm.o: syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
+dexp.o: wdsp_platform.h wdsp_align.h
+div.o: wdsp_platform.h wdsp_align.h
+doublepole.o: firmin.h fir.h wdsp_platform.h wdsp_align.h
+eer.o: wdsp_platform.h wdsp_align.h
+emph.o: wdsp_platform.h wdsp_align.h
+eq.o: firmin.h fir.h nurbs.h
+firmin.o: fir.h
+fmd.o: wdsp_platform.h wdsp_align.h
+fmmod.o: firmin.h fir.h wdsp_platform.h wdsp_align.h
+fmsq.o: eq.h firmin.h fir.h nurbs.h wdsp_platform.h wdsp_align.h
+gaussian.o: firmin.h fir.h wdsp_platform.h wdsp_align.h
+iir.o: wdsp_platform.h wdsp_align.h
+iobuffs.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+iobuffs.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+iobuffs.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+iobuffs.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 iobuffs.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 iobuffs.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 iobuffs.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -1032,19 +1022,22 @@ iobuffs.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 iobuffs.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h resample.h
 iobuffs.o: reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h siphon.h slew.h
 iobuffs.o: snb.h ssql.h syncbuffs.h TXA.h utilities.h wbfm.h wcpAGC.h
-iobuffs.o: wdsp_align.h
 iqc.o: nurbs_spline.h nurbs_fit.h
-matchedCW.o: firmin.h linux_port.h fir.h
-nbp.o: firmin.h linux_port.h fir.h
+matchedCW.o: firmin.h fir.h wdsp_platform.h wdsp_align.h
+nbp.o: firmin.h fir.h wdsp_platform.h wdsp_align.h
 nnet.o: nnio.h
+nob.o: wdsp_platform.h wdsp_align.h
+nobII.o: wdsp_platform.h wdsp_align.h
 nurbs_spline.o: nurbs_fit.h
-rmatch.o: varsamp.h
+resample.o: wdsp_platform.h wdsp_align.h
+rmatch.o: varsamp.h wdsp_platform.h wdsp_align.h
 sbnr.o: ../libspecbleach/include/specbleach_adenoiser.h
-snb.o: resample.h
-syncbuffs.o: comm.h linux_port.h amd.h ammod.h amsq.h analyzer.h anf.h anr.h
-syncbuffs.o: apfshadow.h bandpass.h firmin.h fir.h calcc.h cblock.h cfcomp.h
-syncbuffs.o: nurbs.h cfir.h channel.h cmath.h compress.h delay.h dexp.h div.h
-syncbuffs.o: doublepole.h eer.h emnr.h sbnr.h
+siphon.o: wdsp_platform.h wdsp_align.h
+snb.o: resample.h wdsp_platform.h wdsp_align.h
+syncbuffs.o: comm.h wdsp_platform.h wdsp_align.h amd.h ammod.h amsq.h
+syncbuffs.o: analyzer.h anf.h anr.h apfshadow.h bandpass.h firmin.h fir.h
+syncbuffs.o: calcc.h cblock.h cfcomp.h nurbs.h cfir.h channel.h cmath.h
+syncbuffs.o: compress.h delay.h dexp.h div.h doublepole.h eer.h emnr.h sbnr.h
 syncbuffs.o: ../libspecbleach/include/specbleach_adenoiser.h emph.h eq.h
 syncbuffs.o: fcurve.h fmd.h fmmod.h fmsq.h gain.h gaussian.h gen.h icfir.h
 syncbuffs.o: iir.h impulse_cache.h iobuffs.h iqc.h nurbs_spline.h nurbs_fit.h
@@ -1052,5 +1045,7 @@ syncbuffs.o: lmath.h main.h matchedCW.h meter.h meterlog10.h nbp.h nnr.h
 syncbuffs.o: nnrbypass.h nob.h nobII.h osctrl.h patchpanel.h phrot.h
 syncbuffs.o: resample.h reshb.h rmatch.h varsamp.h RXA.h sender.h shift.h
 syncbuffs.o: siphon.h slew.h snb.h ssql.h syncbuffs.h TXA.h utilities.h
-syncbuffs.o: wbfm.h wcpAGC.h wdsp_align.h
-wbfm.o: firmin.h linux_port.h fir.h wcpAGC.h
+syncbuffs.o: wbfm.h wcpAGC.h
+utilities.o: wdsp_platform.h wdsp_align.h
+wbfm.o: firmin.h fir.h wcpAGC.h
+wdsp_platform.o: wdsp_align.h

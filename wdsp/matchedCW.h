@@ -69,10 +69,17 @@ extern void setGain_matched (MATCHED a, double gain);
 
 extern void CalcMatchedFilter(MATCHED a, double f_center, double bandwidth, double gain);
 
-extern __declspec (dllexport) void SetRXAMatchedRun (int channel, int run);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
 
-extern __declspec (dllexport) void SetRXAMatchedFreqs (int channel, double f_center, double bandwidth);
+extern PORT void SetRXAMatchedRun (int channel, int run);
 
-extern __declspec (dllexport) void SetRXAMatchedGain (int channel, double gain);
+extern PORT void SetRXAMatchedFreqs (int channel, double f_center, double bandwidth);
+
+extern PORT void SetRXAMatchedGain (int channel, double gain);
 
 #endif

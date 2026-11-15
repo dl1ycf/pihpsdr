@@ -2,7 +2,7 @@
 
 This file is part of a program that implements a Software-Defined Radio.
 
-Copyright (C) 2013 Warren Pratt, NR0V
+Copyright (C) 2013, 2026 Warren Pratt, NR0V
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -18,9 +18,9 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
-warren@wpratt.com
+warren@pratt.one
 
 */
 
@@ -426,9 +426,7 @@ void destroy_iobuffs (int channel)
 {
 	IOB a = ch[channel].iob.pc;
 
-	InterlockedBitTestAndSet(&a->flush_bypass, 0);
-	ReleaseSemaphore(a->Sem_Flush, 1, 0);
-	while (InterlockedAnd(&a->flush_bypass, 0xffffffff)) Sleep(1);
+	// the flush thread has already been stopped, in pre_main_destroy()
 	CloseHandle(a->Sem_Flush);
 
 	destroy_slews (a);
@@ -584,8 +582,50 @@ void dexchange (int channel, double* in, double* out)
 {
 	int n;
 	IOB a = ch[channel].iob.pd;
-	if (!_InterlockedAnd (&ch[channel].run, 1)) _endthread();
+	if (!_InterlockedAnd (&ch[channel].run, 1))
+	{	// called only from wdspmain(), inside csDSP
+		LeaveCriticalSection (&ch[channel].csDSP);
+		InterlockedBitTestAndReset (&ch[channel].main_alive, 0);
+		_endthread();
+	}
 
+	// ------------------------------------------------------------------------------
+	// TAKE THE NEW INPUT BUFFER FIRST, THEN DELIVER THE PREVIOUS OUTPUT.
+	//
+	// The input buffer is copied out of r1 BEFORE the previous buffer's output is
+	// put into r2 and Sem_OutReady is released.  The order matters when bfo = 1:
+	//
+	// The Sem_OutReady counts released here let fexchange*() make every exchange
+	// of the NEXT input buffer, and then the first exchange after it.  That first
+	// exchange writes its input into r1 BEFORE it waits on Sem_OutReady, and it
+	// writes into the half of r1 that holds the buffer being taken here (r1 holds
+	// DSP_MULT = 2 buffers).  So once Sem_OutReady has been released, the caller
+	// may overwrite the beginning of this buffer's input.  Copying the input
+	// first makes the release the event that permits the overwrite, so the copy is
+	// always complete before it can happen.
+	//
+	// HISTORY:  through 2.11 the input was copied last, after the release.  A
+	// caller running faster than real time (offline processing, the regression
+	// tests in tests\) could then overwrite the start of a buffer before it was
+	// copied:  the DSP thread processed a buffer that began with input from two
+	// buffers later.  The regression tests showed it as an intermittent change of
+	// output, in a different test each run, and in nearly every run under CPU
+	// load; the thread sanitizer reported exactly this pair of copies.  In real
+	// time the caller cannot get that far ahead unless the DSP thread stalls for
+	// about one DSP buffer's duration, so a radio would see it only rarely, as a
+	// glitch.  With bfo = 0 there is no Sem_OutReady wait;  the caller sees only
+	// that each output buffer becomes available after the input copy (a few
+	// microseconds) rather than before it.
+	//
+	// Nothing else changes:  the same data are copied, the indices advance the
+	// same way, and the same counts are released.  Every regression test's output
+	// is bit-for-bit unchanged.
+	// ------------------------------------------------------------------------------
+	memcpy (out, a->r1_baseptr + 2 * a->r1_outidx, a->r1_outsize * sizeof (complex));
+	if ((a->r1_outidx += a->r1_outsize) == a->r1_active_buffsize)
+		a->r1_outidx = 0;
+
+	// deliver the previous buffer's output
 	EnterCriticalSection (&a->r2_ControlSection);
 	a->r2_havesamps += a->r2_insize;
 	LeaveCriticalSection (&a->r2_ControlSection);
@@ -598,7 +638,4 @@ void dexchange (int channel, double* in, double* out)
 		ReleaseSemaphore(a->Sem_OutReady, n, 0);	
 		a->r2_unqueuedsamps -= n * a->out_size;
 	}
-	memcpy (out, a->r1_baseptr + 2 * a->r1_outidx, a->r1_outsize * sizeof (complex));
-	if ((a->r1_outidx += a->r1_outsize) == a->r1_active_buffsize)
-		a->r1_outidx = 0;
 }

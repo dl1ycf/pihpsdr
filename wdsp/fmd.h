@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -29,8 +29,8 @@ warren@pratt.one
 
 typedef struct _fmd* FMD;
 
-extern FMD create_fmd ( int run, int size, double* in, double* out, int rate, double deviation,
-	double f_low, double f_high, double fmin, double fmax, double zeta, double omegaN, double tau,
+extern FMD create_fmd ( int run, int size, double* in, double* out, int rate, double deviation, 
+	double f_low, double f_high, double fmin, double fmax, double zeta, double omegaN, double tau, 
 	double afgain, int sntch_run, double ctcss_freq, int nc_de, int mp_de, int nc_aud, int mp_aud);
 
 extern void destroy_fmd (FMD a);
@@ -53,14 +53,23 @@ extern void setFMDRun (int channel, int run);
 
 // RXA Properties
 
-extern __declspec (dllexport) void SetRXAFMDeviation (int channel, double deviation);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.  Those
+// declared here are called by other modules or by ChannelMaster.]
 
-extern __declspec (dllexport) void SetRXAFMNCde (int channel, int nc);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
 
-extern __declspec (dllexport) void SetRXAFMMPde (int channel, int mp);
+extern PORT void SetRXAFMNCde (int channel, int nc);
 
-extern __declspec (dllexport) void SetRXAFMNCaud (int channel, int nc);
+extern PORT void SetRXAFMMPde (int channel, int mp);
 
-extern __declspec (dllexport) void SetRXAFMMPaud (int channel, int mp);
+extern PORT void SetRXAFMNCaud (int channel, int nc);
+
+extern PORT void SetRXAFMMPaud (int channel, int mp);
 
 #endif

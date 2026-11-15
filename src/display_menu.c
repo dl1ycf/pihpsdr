@@ -94,16 +94,16 @@ static void detector_cb(GtkToggleButton *widget, gpointer data) {
   int val = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
   switch (val) {
   case 0:
-    myrx->display_detector_mode = DET_PEAK;
+    myrx->display_detector_mode = DISP_DET_PEAK;
     break;
   case 1:
-    myrx->display_detector_mode = DET_ROSENFELL;
+    myrx->display_detector_mode = DISP_DET_ROSENFELL;
     break;
   case 2:
-    myrx->display_detector_mode = DET_AVERAGE;
+    myrx->display_detector_mode = DISP_DET_AVERAGE;
     break;
   case 3:
-    myrx->display_detector_mode = DET_SAMPLEHOLD;
+    myrx->display_detector_mode = DISP_DET_SAMPLEHOLD;
     break;
   }
   if (radio_is_remote) {
@@ -118,16 +118,16 @@ static void average_cb(GtkToggleButton *widget, gpointer data) {
   int val = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
   switch (val) {
   case 0:
-    myrx->display_average_mode = AVG_NONE;
+    myrx->display_average_mode = DISP_AVG_NONE;
     break;
   case 1:
-    myrx->display_average_mode = AVG_RECURSIVE;
+    myrx->display_average_mode = DISP_AVG_RECURSIVE;
     break;
   case 2:
-    myrx->display_average_mode = AVG_TIMEWINDOW;
+    myrx->display_average_mode = DISP_AVG_TIMEWINDOW;
     break;
   case 3:
-    myrx->display_average_mode = AVG_LOGRECURSIVE;
+    myrx->display_average_mode = DISP_AVG_LOGRECURSIVE;
     break;
   }
   if (radio_is_remote) {
@@ -476,16 +476,16 @@ void display_menu(GtkWidget *parent) {
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(detector_combo), NULL, "Average");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(detector_combo), NULL, "Sample");
     switch (myrx->display_detector_mode) {
-    case DET_PEAK:
+    case DISP_DET_PEAK:
       gtk_combo_box_set_active(GTK_COMBO_BOX(detector_combo), 0);
       break;
-    case DET_ROSENFELL:
+    case DISP_DET_ROSENFELL:
       gtk_combo_box_set_active(GTK_COMBO_BOX(detector_combo), 1);
       break;
-    case DET_AVERAGE:
+    case DISP_DET_AVERAGE:
       gtk_combo_box_set_active(GTK_COMBO_BOX(detector_combo), 2);
       break;
-    case DET_SAMPLEHOLD:
+    case DISP_DET_SAMPLEHOLD:
       gtk_combo_box_set_active(GTK_COMBO_BOX(detector_combo), 3);
       break;
     }
@@ -502,16 +502,16 @@ void display_menu(GtkWidget *parent) {
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(average_combo), NULL, "Time Window");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(average_combo), NULL, "Log Recursive");
     switch (myrx->display_average_mode) {
-    case AVG_NONE:
+    case DISP_AVG_NONE:
       gtk_combo_box_set_active(GTK_COMBO_BOX(average_combo), 0);
       break;
-    case AVG_RECURSIVE:
+    case DISP_AVG_RECURSIVE:
       gtk_combo_box_set_active(GTK_COMBO_BOX(average_combo), 1);
       break;
-    case AVG_TIMEWINDOW:
+    case DISP_AVG_TIMEWINDOW:
       gtk_combo_box_set_active(GTK_COMBO_BOX(average_combo), 2);
       break;
-    case AVG_LOGRECURSIVE:
+    case DISP_AVG_LOGRECURSIVE:
       gtk_combo_box_set_active(GTK_COMBO_BOX(average_combo), 3);
       break;
     }

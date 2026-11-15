@@ -90,18 +90,7 @@ extern void setSize_anr (ANR a, int size);
 
 // RXA Properties
 
-extern __declspec (dllexport) void SetRXAANRRun (int channel, int setit);
-
-extern __declspec (dllexport) void SetRXAANRVals (int channel, int taps, int delay, double gain, double leakage);
-
-extern __declspec (dllexport) void SetRXAANRTaps (int channel, int taps);
-
-extern __declspec (dllexport) void SetRXAANRDelay (int channel, int delay);
-
-extern __declspec (dllexport) void SetRXAANRGain (int channel, double gain);
-
-extern __declspec (dllexport) void SetRXAANRLeakage (int channel, double leakage);
-
-extern __declspec (dllexport) void SetRXAANRPosition (int channel, int position);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.]
 
 #endif

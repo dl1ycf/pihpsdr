@@ -130,14 +130,21 @@ extern void setGain_bandpass (BANDPASS a, double gain, int update);
 
 extern void CalcBandpassFilter (BANDPASS a, double f_low, double f_high, double gain);
 
-extern __declspec (dllexport) void SetRXABandpassFreqs (int channel, double f_low, double f_high);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
 
-extern __declspec (dllexport) void SetRXABandpassNC (int channel, int nc);
+extern PORT void SetRXABandpassFreqs (int channel, double f_low, double f_high);
 
-extern __declspec (dllexport) void SetRXABandpassMP (int channel, int mp);
+extern PORT void SetRXABandpassNC (int channel, int nc);
 
-extern __declspec (dllexport) void SetTXABandpassNC (int channel, int nc);
+extern PORT void SetRXABandpassMP (int channel, int mp);
 
-extern __declspec (dllexport) void SetTXABandpassMP (int channel, int mp);
+extern PORT void SetTXABandpassNC (int channel, int nc);
+
+extern PORT void SetTXABandpassMP (int channel, int mp);
 
 #endif

@@ -56,9 +56,9 @@ static void txmeter_cb (GtkToggleButton *widget, gpointer data) {
 static void smeter_cb (GtkToggleButton *widget, gpointer data) {
   int val = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(widget));
   if (val) {
-    active_receiver->smetermode = SMETER_PEAK;
+    active_receiver->smetermode = DISP_SMETER_PEAK;
   } else {
-    active_receiver->smetermode = SMETER_AVERAGE;
+    active_receiver->smetermode = DISP_SMETER_AVERAGE;
   }
   if (radio_is_remote) {
     int alcmode = 0;
@@ -78,9 +78,9 @@ static void meter_type_cb (GtkToggleButton *widget, gpointer        data) {
 static void alc_cb(GtkToggleButton *widget, gpointer data) {
   int val = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(widget));
   if (val) {
-    transmitter->alcmode = ALC_PEAK;
+    transmitter->alcmode = DISP_ALC_PEAK;
   } else {
-    transmitter->alcmode = ALC_AVERAGE;
+    transmitter->alcmode = DISP_ALC_AVERAGE;
   }
   if (radio_is_remote) {
     send_meter(cl_sock_tcp, active_receiver->smetermode, transmitter->metermode, transmitter->alcmode);
@@ -134,11 +134,11 @@ void meter_menu (GtkWidget *parent) {
   gtk_widget_set_halign(lbl, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), lbl, 0, 3, 1, 1);
   mbtn = gtk_radio_button_new_with_label_from_widget(NULL, "Peak");
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(mbtn), active_receiver->smetermode == SMETER_PEAK);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(mbtn), active_receiver->smetermode == DISP_SMETER_PEAK);
   g_signal_connect(mbtn, "toggled", G_CALLBACK(smeter_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), mbtn, 1, 3, 1, 1);
   btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(mbtn), "Average");
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), !(active_receiver->smetermode == SMETER_PEAK));
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), !(active_receiver->smetermode == DISP_SMETER_PEAK));
   gtk_grid_attach(GTK_GRID(grid), btn, 2, 3, 1, 1);
   if (transmitter != NULL) {
     lbl = gtk_label_new("TX Pwr Reading");
@@ -157,11 +157,11 @@ void meter_menu (GtkWidget *parent) {
     gtk_widget_set_halign(lbl, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), lbl, 0, 5, 1, 1);
     mbtn = gtk_radio_button_new_with_label_from_widget(NULL, "Peak");
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(mbtn), transmitter->alcmode == ALC_PEAK);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(mbtn), transmitter->alcmode == DISP_ALC_PEAK);
     g_signal_connect(mbtn, "toggled", G_CALLBACK(alc_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), mbtn, 1, 5, 1, 1);
     btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(mbtn), "Average");
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), !(transmitter->alcmode == ALC_PEAK));
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), !(transmitter->alcmode == DISP_ALC_PEAK));
     gtk_grid_attach(GTK_GRID(grid), btn, 2, 5, 1, 1);
   }
   gtk_container_add(GTK_CONTAINER(content), grid);

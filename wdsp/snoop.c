@@ -46,7 +46,10 @@ SNOOP create_snoop(double* inbuff, int size, int rate, int ringtime)
 	return a;
 }
 
-void xsnoop(channel)
+// [Through 2.11 the parameter was declared as 'xsnoop(channel)', an old-style
+// definition with an implicit int.  MSVC accepts that; C99 and later do not,
+// and Clang and GCC 14 reject it.]
+void xsnoop(int channel)
 {
 	static int created;
 	static SNOOP a;
@@ -102,7 +105,7 @@ void xsnoop(channel)
 		{
 			double I = a->inbuff[2 * i + 0];
 			double Q = a->inbuff[2 * i + 1];
-			if ((a->IQ_count >= 1)
+			if ((a->IQ_count >= 1) 
 				&& ((fabs(a->old_I - I) > discontinuity)
 					|| (fabs(a->old_Q - Q) > discontinuity)))
 				IQ_discontinuity = 1;
@@ -115,7 +118,7 @@ void xsnoop(channel)
 			dprintf("***** Snoop Heartbeat! *****\n");
 		if (!buffs_zero && buff_repeat)
 			dprintf("***** Repeated Non-Zero Buffer Detected *****\n");
-		if (nan_count > 0)
+		if (nan_count > 0) 
 			dprintf("***** NaN Detected *****, Count = %d\n", nan_count);
 		if (inf_count > 0)
 			dprintf("***** Infinite Value Detected *****, Count = %d\n", inf_count);

@@ -98,8 +98,11 @@ typedef struct _dp
 	fftw_complex *Cfft_in[dMAX_STITCH][dMAX_NUM_FFT];		// pointers to fftw complex input vectors
 	fftw_complex *fft_out[dMAX_STITCH][dMAX_NUM_FFT];		// pointers to fftw complex output vectors
 	volatile LONG *pnum_threads;							// pointer to current number of active worker threads
-	int stop;												// when set, fft threads will be returned to the pool
-	int end_dispatcher;										// set this flag to one to destroy the dispatcher thread
+    // [stop and end_dispatcher are written by one thread and read by others, so, like
+    // dispatcher, they are set, cleared and read with the Interlocked functions.
+    // Through 2.11 they were plain int.]
+    volatile LONG stop;                                     // when set, fft threads will be returned to the pool
+    volatile LONG end_dispatcher;                           // set this flag to one to destroy the dispatcher thread
 	volatile int dispatcher;								// one if the dispatcher thread is alive & active
 	int ss;													// sub-span being processed
 	int LO;													// LO (within current sub-span) being processed
@@ -159,12 +162,14 @@ typedef struct _dp
 
 extern DP pdisp[];
 
-extern __declspec( dllexport )
-void CreateAnalyzer (	int disp,
-						int *success,
-						char *app_data_path);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
 
-extern __declspec( dllexport )
+extern PORT
 void XCreateAnalyzer (	int disp,
 						int *success,	//writes '0' to success if all went well, <0 if mem alloc failed
 						int m_size,		//maximum fft size to be used
@@ -173,43 +178,20 @@ void XCreateAnalyzer (	int disp,
 						char *app_data_path
 					 );
 
-extern __declspec( dllexport )
+extern PORT
 void DestroyAnalyzer(int disp);
 
-extern __declspec( dllexport )
-void SetCalibration (	int disp,
-						int set_num,				//identifier for this calibration data set
-						int n_points,				//number of calibration points in the set
-						double (*cal)[dMAX_M+1]		//pointer to the calibration table, first
-					);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.  Those
+// declared here are called by other modules or by ChannelMaster.]
 
-extern __declspec( dllexport )
-void OpenBuffer(int disp, int ss, int LO, void **Ipointer, void **Qpointer);
-
-extern __declspec( dllexport )
-void CloseBuffer(int disp, int ss, int LO);
-
-extern __declspec( dllexport )
+extern PORT
 void Spectrum(int disp, int ss, int LO, dINREAL* pI, dINREAL* pQ);
 
-extern __declspec( dllexport )
+extern PORT
 void Spectrum2(int run, int disp, int ss, int LO, dINREAL* pbuff);
 
-extern __declspec( dllexport )
+extern PORT
 void Spectrum0(int run, int disp, int ss, int LO, double* pbuff);
-
-extern __declspec( dllexport )
-void SnapSpectrum(	int disp,
-					int ss,
-					int LO,
-					double *snap_buff);
-
-extern __declspec( dllexport )
-void SnapSpectrumTimeout (int disp,
-	                      int ss,
-	                      int LO,
-	                      double* snap_buff,
-	                      DWORD timeout,
-	                      int* flag);
 
 #endif

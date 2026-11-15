@@ -71,12 +71,21 @@ extern void setGain_gaussian(GAUSSIAN a, double gain);
 
 extern void CalcGaussianFilter(GAUSSIAN a, double f_center, double bandwidth, double gain);
 
-extern __declspec (dllexport) void SetRXAGaussianRun(int channel, int run);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
 
-extern __declspec (dllexport) void SetRXAGaussianFreqs(int channel, double f_center, double bandwidth);
+extern PORT void SetRXAGaussianRun(int channel, int run);
 
-extern __declspec (dllexport) void SetRXAGaussianGain(int channel, double gain);
+extern PORT void SetRXAGaussianFreqs(int channel, double f_center, double bandwidth);
 
-extern __declspec (dllexport) void SetRXAGaussianNC(int channel, int nc);
+extern PORT void SetRXAGaussianGain(int channel, double gain);
+
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.  Those
+// declared here are called by other modules or by ChannelMaster.]
 
 #endif

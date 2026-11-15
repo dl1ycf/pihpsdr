@@ -169,9 +169,9 @@ SetRXAANRRun (int channel, int run)
 	ANR a = rxa[channel].anr.p;
 	if (a->run != run)
 	{
-		RXAbp1Check (channel, rxa[channel].amd.p->run, rxa[channel].snba.p->run,
-			rxa[channel].emnr.p->run, getRun_nnr(rxa[channel].nnr.p), rxa[channel].anf.p->run, run,
-			rxa[channel].sbnr.p->run); // NR4
+		RXAbp1Check (channel, rxa[channel].amd.p->run, rxa[channel].snba.p->run,                     // NR4
+			rxa[channel].emnr.p->run, getRun_nnr(rxa[channel].nnr.p), rxa[channel].anf.p->run, run,  // NR4
+			rxa[channel].sbnr.p->run);                                                               // NR4
 		EnterCriticalSection (&ch[channel].csDSP);
 		a->run = run;
 		RXAbp1Set (channel);

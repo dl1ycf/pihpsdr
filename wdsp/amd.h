@@ -109,10 +109,7 @@ extern void setSize_amd (AMD a, int size);
 
 // RXA Properties
 
-extern __declspec (dllexport) void SetRXAAMDRun(int channel, int run);
-
-extern __declspec (dllexport) void SetRXAAMDSBMode(int channel, int sbmode);
-
-extern __declspec (dllexport) void SetRXAAMDFadeLevel(int channel, int levelfade);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.]
 
 #endif

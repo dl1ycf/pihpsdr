@@ -55,6 +55,7 @@ extern void setSize_ammod (AMMOD a, int size);
 
 // TXA Properties
 
-extern __declspec (dllexport) void SetTXAAMCarrierLevel (int channel, double c_level);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.]
 
 #endif

@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -48,30 +48,39 @@ typedef struct _eer
 	double *legacyM;																									////////////  legacy interface - remove
 } eer, *EER;
 
-__declspec (dllexport) EER create_eer (int run, int size, double* in, double* out, double* outM, int rate, double mgain, double pgain, int rundelays, double mdelay, double pdelay, int amiq);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
 
-__declspec (dllexport) void destroy_eer (EER a);
+PORT EER create_eer (int run, int size, double* in, double* out, double* outM, int rate, double mgain, double pgain, int rundelays, double mdelay, double pdelay, int amiq);
 
-__declspec (dllexport) void flush_eer (EER a);
+PORT void destroy_eer (EER a);
 
-__declspec (dllexport) void xeer (EER a);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.  Those
+// declared here are called by other modules or by ChannelMaster.]
 
-__declspec (dllexport) void pSetEERRun (EER a, int run);
+PORT void xeer (EER a);
 
-__declspec (dllexport) void pSetEERAMIQ (EER a, int amiq);
+PORT void pSetEERRun (EER a, int run);
 
-__declspec (dllexport) void pSetEERMgain (EER a, double gain);
+PORT void pSetEERAMIQ (EER a, int amiq);
 
-__declspec (dllexport) void pSetEERPgain (EER a, double gain);
+PORT void pSetEERMgain (EER a, double gain);
 
-__declspec (dllexport) void pSetEERRunDelays (EER a, int run);
+PORT void pSetEERPgain (EER a, double gain);
 
-__declspec (dllexport) void pSetEERMdelay (EER a, double delay);
+PORT void pSetEERRunDelays (EER a, int run);
 
-__declspec (dllexport) void pSetEERPdelay (EER a, double delay);
+PORT void pSetEERMdelay (EER a, double delay);
 
-__declspec (dllexport) void pSetEERSize (EER a, int size);
+PORT void pSetEERPdelay (EER a, double delay);
 
-__declspec (dllexport) void pSetEERSamplerate (EER a, int rate);
+PORT void pSetEERSize (EER a, int size);
+
+PORT void pSetEERSamplerate (EER a, int rate);
 
 #endif

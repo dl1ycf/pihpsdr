@@ -1313,9 +1313,9 @@ void SetRXAEMNRRun (int channel, int run)
 	EMNR a = rxa[channel].emnr.p;
 	if (a->run != run)
 	{
-		RXAbp1Check(channel, rxa[channel].amd.p->run, rxa[channel].snba.p->run,
-			run, getRun_nnr(rxa[channel].nnr.p), rxa[channel].anf.p->run, rxa[channel].anr.p->run,
-			rxa[channel].sbnr.p->run); // NR4
+		RXAbp1Check (channel, rxa[channel].amd.p->run, rxa[channel].snba.p->run,                     // NR4
+			run, getRun_nnr(rxa[channel].nnr.p), rxa[channel].anf.p->run, rxa[channel].anr.p->run,   // NR4
+			rxa[channel].sbnr.p->run);                                                               // NR4
 		EnterCriticalSection (&ch[channel].csDSP);
 		a->run = run;
 		RXAbp1Set (channel);
@@ -1354,7 +1354,7 @@ void SetRXAEMNRPosition (int channel, int position)
 	EnterCriticalSection (&ch[channel].csDSP);
 	a->position = position;
 	RXAbp1Set (channel);
-	flush_emnr(a);
+	flush_emnr (a);
 	a->post2.olddmag = 0.0;
 	LeaveCriticalSection (&ch[channel].csDSP);
 }

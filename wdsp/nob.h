@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -62,7 +62,14 @@ typedef struct _anb
 	double *legacy;																										////////////  legacy interface - remove
 } anb, *ANB;
 
-__declspec (dllexport) ANB create_anb	(
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
+
+PORT ANB create_anb	(
 	int run,
 	int buffsize,
 	double* in,
@@ -75,29 +82,13 @@ __declspec (dllexport) ANB create_anb	(
 	double threshold
 						);
 
-__declspec (dllexport) void destroy_anb (ANB a);
+PORT void destroy_anb (ANB a);
 
-__declspec (dllexport) void flush_anb (ANB a);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.  Those
+// declared here are called by other modules or by ChannelMaster.]
 
-__declspec (dllexport) void xanb (ANB a);
-
-extern __declspec (dllexport) void create_anbEXT	(
-	int id,
-	int run,
-	int buffsize,
-	double samplerate,
-	double tau,
-	double hangtime,
-	double advtime,
-	double backtau,
-	double threshold
-					);
-
-extern __declspec (dllexport) void destroy_anbEXT (int id);
-
-extern __declspec (dllexport) void flush_anbEXT (int id);
-
-extern __declspec (dllexport) void xanbEXT (int id, double* in, double* out);
+PORT void xanb (ANB a);
 
 extern void setBuffers_anb (ANB a, double* in, double* out);
 
@@ -106,20 +97,20 @@ extern void setSamplerate_anb (ANB a, int rate);
 extern void setSize_anb (ANB a, int size);
 
 
-extern __declspec (dllexport) void pSetRCVRANBRun (ANB a, int run);
+extern PORT void pSetRCVRANBRun (ANB a, int run);
 
-extern __declspec (dllexport) void pSetRCVRANBBuffsize (ANB a, int size);
+extern PORT void pSetRCVRANBBuffsize (ANB a, int size);
 
-extern __declspec (dllexport) void pSetRCVRANBSamplerate (ANB a, int rate);
+extern PORT void pSetRCVRANBSamplerate (ANB a, int rate);
 
-extern __declspec (dllexport) void pSetRCVRANBTau (ANB a, double tau);
+extern PORT void pSetRCVRANBTau (ANB a, double tau);
 
-extern __declspec (dllexport) void pSetRCVRANBHangtime (ANB a, double time);
+extern PORT void pSetRCVRANBHangtime (ANB a, double time);
 
-extern __declspec (dllexport) void pSetRCVRANBAdvtime (ANB a, double time);
+extern PORT void pSetRCVRANBAdvtime (ANB a, double time);
 
-extern __declspec (dllexport) void pSetRCVRANBBacktau (ANB a, double tau);
+extern PORT void pSetRCVRANBBacktau (ANB a, double tau);
 
-extern __declspec (dllexport) void pSetRCVRANBThreshold (ANB a, double thresh);
+extern PORT void pSetRCVRANBThreshold (ANB a, double thresh);
 
 #endif

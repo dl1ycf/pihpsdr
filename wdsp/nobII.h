@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -78,7 +78,14 @@ typedef struct _nob
 	double *legacy;																										////////////  legacy interface - remove
 } nob, *NOB;
 
-__declspec (dllexport) NOB create_nob	(
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
+
+PORT NOB create_nob	(
 	int run,
 	int buffsize,
 	double* in,
@@ -94,30 +101,15 @@ __declspec (dllexport) NOB create_nob	(
 	double threshold
 						);
 
-__declspec (dllexport) void destroy_nob (NOB a);
+PORT void destroy_nob (NOB a);
 
-__declspec (dllexport) void flush_nob (NOB a);
+PORT void flush_nob (NOB a);
 
-__declspec (dllexport) void xnob (NOB a);
+PORT void xnob (NOB a);
 
-extern __declspec (dllexport) void create_nobEXT	(
-	int id,
-	int run,
-	int mode,
-	int buffsize,
-	double samplerate,
-	double slewtime,
-	double hangtime,
-	double advtime,
-	double backtau,
-	double threshold
-					);
-
-extern __declspec (dllexport) void destroy_nobEXT (int id);
-
-extern __declspec (dllexport) void flush_nobEXT (int id);
-
-extern __declspec (dllexport) void xnobEXT (int id, double* in, double* out);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.  Those
+// declared here are called by other modules or by ChannelMaster.]
 
 extern void setBuffers_nob (NOB a, double* in, double* out);
 
@@ -126,22 +118,22 @@ extern void setSamplerate_nob (NOB a, int rate);
 extern void setSize_nob (NOB a, int size);
 
 
-extern __declspec (dllexport) void pSetRCVRNOBRun (NOB a, int run);
+extern PORT void pSetRCVRNOBRun (NOB a, int run);
 
-extern __declspec (dllexport) void pSetRCVRNOBMode (NOB a, int mode);
+extern PORT void pSetRCVRNOBMode (NOB a, int mode);
 
-extern __declspec (dllexport) void pSetRCVRNOBBuffsize (NOB a, int size);
+extern PORT void pSetRCVRNOBBuffsize (NOB a, int size);
 
-extern __declspec (dllexport) void pSetRCVRNOBSamplerate (NOB a, int size);
+extern PORT void pSetRCVRNOBSamplerate (NOB a, int size);
 
-extern __declspec (dllexport) void pSetRCVRNOBTau (NOB a, double tau);
+extern PORT void pSetRCVRNOBTau (NOB a, double tau);
 
-extern __declspec (dllexport) void pSetRCVRNOBHangtime (NOB a, double time);
+extern PORT void pSetRCVRNOBHangtime (NOB a, double time);
 
-extern __declspec (dllexport) void pSetRCVRNOBAdvtime (NOB a, double time);
+extern PORT void pSetRCVRNOBAdvtime (NOB a, double time);
 
-extern __declspec (dllexport) void pSetRCVRNOBBacktau (NOB a, double tau);
+extern PORT void pSetRCVRNOBBacktau (NOB a, double tau);
 
-extern __declspec (dllexport) void pSetRCVRNOBThreshold (NOB a, double thresh);
+extern PORT void pSetRCVRNOBThreshold (NOB a, double thresh);
 
 #endif

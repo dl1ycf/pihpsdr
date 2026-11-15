@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@pratt.one
 
@@ -149,10 +149,10 @@ struct _rxa
 	{
 		NNR p;
 	} nnr;
-    struct
-    {
-        NNRBYPASS p;
-    } nnrbypass;
+	struct
+	{
+		NNRBYPASS p;
+	} nnrbypass;
 	struct
 	{
 		WCPAGC p;
@@ -173,10 +173,10 @@ struct _rxa
 	{
 		GAUSSIAN p;
 	} gaussian;
-    struct
-    {
-        SBNR p; // NR4
-    } sbnr;
+	struct                                                                                      // NR4
+	{                                                                                           // NR4
+		SBNR p;                                                                                 // NR4
+	} sbnr;                                                                                     // NR4
 	struct
 	{
 		SPEAK p;
@@ -223,12 +223,14 @@ extern void setDSPBuffsize_rxa (int channel);
 
 // RXA Properties
 
-extern __declspec (dllexport) void SetRXAMode (int channel, int mode);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.]
 
 extern void RXAResCheck (int channel);
 
-extern void RXAbp1Check (int channel, int amd_run, int snba_run,
-	int emnr_run, int nnrbypass_run, int anf_run, int anr_run, int sbnr_run);  // NR4
+extern void RXAbp1Check (int channel, int amd_run, int snba_run,                                // NR4
+        int emnr_run, int nnrbypass_run, int anf_run, int anr_run, int sbnr_run);               // NR4
+
 
 extern void RXAbp1Set (int channel);
 

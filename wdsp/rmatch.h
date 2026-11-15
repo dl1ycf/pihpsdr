@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-The author can be reached by email at
+The author can be reached by email at  
 
 warren@wpratt.com
 
@@ -114,46 +114,45 @@ typedef struct _rmatch
 	double fvar;
 } rmatch, *RMATCH;
 
-extern __declspec (dllexport) void* create_rmatchV(int in_size, int out_size, int nom_inrate, int nom_outrate, int ringsize, double var);
+// [PORT is defined in wdsp_platform.h, which comm.h includes ahead of the module
+// headers.  Some WDSP headers are also included on their own, ahead of comm.h
+// (ChannelMaster includes resample.h this way), so a header that uses PORT
+// includes wdsp_platform.h itself.  It also supplies the types, CRITICAL_SECTION
+// and HANDLE, that some of these headers use.]
+#include "wdsp_platform.h"
 
-extern __declspec (dllexport) void destroy_rmatchV (void* ptr);
+extern PORT void* create_rmatchV(int in_size, int out_size, int nom_inrate, int nom_outrate, int ringsize, double var);
 
-extern __declspec (dllexport) void xrmatchOUT (void* b, double* out);
+extern PORT void destroy_rmatchV (void* ptr);
 
-extern __declspec (dllexport) void xrmatchIN (void* b, double* in);
+extern PORT void xrmatchOUT (void* b, double* out);
 
-extern __declspec (dllexport) void setRMatchInsize (void* ptr, int insize);
+extern PORT void xrmatchIN (void* b, double* in);
 
-extern __declspec (dllexport) void setRMatchOutsize (void* ptr, int outsize);
+// [Exported (PORT) functions of this module that nothing else in WDSP, nor
+// ChannelMaster, calls are declared only in wdsp.h, the public header.  Those
+// declared here are called by other modules or by ChannelMaster.]
 
-extern __declspec (dllexport) void setRMatchNomInrate (void* ptr, int nom_inrate);
+extern PORT void getRMatchDiags (void* b, int* underflows, int* overflows, double* var, int* ringsize, int* nring);
 
-extern __declspec (dllexport) void setRMatchNomOutrate (void* ptr, int nom_outrate);
+extern PORT void resetRMatchDiags (void* b);
 
-extern __declspec (dllexport) void setRMatchRingsize (void* ptr, int ringsize);
+extern PORT void forceRMatchVar (void* b, int force, double fvar);
 
-extern __declspec (dllexport) void getRMatchDiags (void* b, int* underflows, int* overflows, double* var, int* ringsize, int* nring);
+extern PORT void setRMatchFeedbackGain(void* b, double feedback_gain);
 
-extern __declspec (dllexport) void resetRMatchDiags (void* b);
+extern PORT void setRMatchSlewTime1(void* b, double slew_time);
 
-extern __declspec (dllexport) void forceRMatchVar (void* b, int force, double fvar);
+extern PORT void setRMatchPropRingMin(void* ptr, int prop_min);
 
-extern __declspec (dllexport) void setRMatchFeedbackGain(void* b, double feedback_gain);
+extern PORT void setRMatchPropRingMax(void* ptr, int prop_max);
 
-extern __declspec (dllexport) void setRMatchSlewTime(void* b, double slew_time);
+extern PORT void setRMatchFFRingMin(void* ptr, int ff_ringmin);
 
-extern __declspec (dllexport) void setRMatchSlewTime1(void* b, double slew_time);
+extern PORT void setRMatchFFRingMax(void* ptr, int ff_ringmax);
 
-extern __declspec (dllexport) void setRMatchPropRingMin(void* ptr, int prop_min);
+extern PORT void setRMatchFFAlpha(void* ptr, double ff_alpha);
 
-extern __declspec (dllexport) void setRMatchPropRingMax(void* ptr, int prop_max);
-
-extern __declspec (dllexport) void setRMatchFFRingMin(void* ptr, int ff_ringmin);
-
-extern __declspec (dllexport) void setRMatchFFRingMax(void* ptr, int ff_ringmax);
-
-extern __declspec (dllexport) void setRMatchFFAlpha(void* ptr, double ff_alpha);
-
-extern __declspec (dllexport) void getControlFlag(void* ptr, int* control_flag);
+extern PORT void getControlFlag(void* ptr, int* control_flag);
 
 #endif

@@ -2492,7 +2492,6 @@ void radio_set_tune(int state) {
     radio_calc_drive_level(1);
     tx_set_signal(transmitter, 1, 0, 0);
   } else {
-    t_print("%s state=%d\n", __func__, state);
     tx_set_signal(transmitter, 0, 0, 0);
     if (transmitter->puresignal && !transmitter->ps_oneshot) {
       //
