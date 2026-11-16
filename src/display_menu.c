@@ -235,6 +235,10 @@ static void panadapter_step_value_changed_cb(GtkWidget *widget, gpointer data) {
   radio_set_panstep(myrx->id, value);
 }
 
+static void pan_vertical_drag_enable_cb(GtkWidget *widget, gpointer data) {
+  pan_vertical_drag_enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+}
+
 static void tx_panadapter_step_value_changed_cb(GtkWidget *widget, gpointer data) {
   int value = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
   transmitter->panadapter_step = value;
@@ -456,8 +460,8 @@ void display_menu(GtkWidget *parent) {
     btn = gtk_check_button_new_with_label("WF automatic");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), myrx->waterfall_automatic);
     gtk_grid_attach(GTK_GRID(mygrid), btn, col + 1, row, 1, 1);
-    row++;
     g_signal_connect(btn, "toggled", G_CALLBACK(waterfall_automatic_cb), myrx);
+    row++;
     if (!radio_is_remote && id == 0) {
       btn = gtk_check_button_new_with_label("Display Warnings");
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), display_warnings);
@@ -527,8 +531,12 @@ void display_menu(GtkWidget *parent) {
     gtk_grid_attach(GTK_GRID(mygrid), time_r, col + 1, row, 1, 1);
     g_signal_connect(time_r, "value_changed", G_CALLBACK(time_value_changed_cb), myrx);
     row++;
+    btn = gtk_check_button_new_with_label("Pan Vert Drag Enable");
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), pan_vertical_drag_enable);
+    gtk_grid_attach(GTK_GRID(mygrid), btn, col, row, 2, 1);
+    g_signal_connect(btn, "toggled", G_CALLBACK(pan_vertical_drag_enable_cb), NULL);
     row++;
-    btn = gtk_check_button_new_with_label("PanLow Automatic");
+    btn = gtk_check_button_new_with_label("Pan Low Automatic");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), myrx->pan_low_automatic);
     gtk_grid_attach(GTK_GRID(mygrid), btn, col, row, 2, 1);
     g_signal_connect(btn, "toggled", G_CALLBACK(pan_low_automatic_cb), myrx);

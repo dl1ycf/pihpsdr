@@ -160,7 +160,7 @@ gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpoin
           f += vfo[id0].frequency;
           vfo_id_move_to(id0, f, vfo_snap);
         }
-        if (has_movedy && from == 0) {
+        if (has_movedy && from == 0 && pan_vertical_drag_enable) {
           rx->panadapter_low += dy;
           //
           // Keep value within reasonable bounds
@@ -238,7 +238,7 @@ gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpoint
         has_movedx = TRUE;
       }
     }
-    if (dy != 0 && from == 0) {
+    if (dy != 0 && from == 0 && pan_vertical_drag_enable) {
       if (has_movedy || dy < -1 || dy > 1) {
         rx->panadapter_low += dy;
         last_y = y;
