@@ -2042,9 +2042,12 @@ static void ozy_send_buffer(unsigned char *buffer) {
       if (transmitter->puresignal) {
         buffer[C2] |= 0x40;
       }
-      // upon TX, use transmitter->attenuation
-      // Usually the firmware takes care of this, but it is no
-      // harm to do this here as well
+      //
+      // Set ADC1 attenuation:
+      // - upon TX, use transmitter->attenuation
+      //   Usually the firmware takes care of this, but it is no
+      //   harm to do this here as well
+      //
       if (device == DEVICE_HERMES_LITE2) {
         //
         // HERMESlite has a RXgain value in the range 0-60 that
@@ -2065,17 +2068,24 @@ static void ozy_send_buffer(unsigned char *buffer) {
         buffer[C4] = 0x40 | rxgain;
       } else {
         //
-        // Standard HPSDR ADC0 attenuator
+        // Standard HPSDR ADC1 attenuator:
+        // set to max if transmitting with PA  but without PS, or if not using ADC1 for RX
+        // set to tx-att if transmitting with PS
         //
-        buffer[C4] = 0x20 | (adc[0].attenuation & 0x1F);
+        int newatt = 0x1F;  // max value
+        if (diversity_enabled || receiver[0]->adc == 0 ||
+            (receivers > 1 && receiver[1]->adc == 0)) {
+          newatt = adc[0].attenuation;
+        }
         if (radio_is_transmitting()) {
           if (pa_enabled && !txband->disablePA) {
-            buffer[C4] = 0x3F;
+            newatt = 0x1F;
           }
           if (transmitter->puresignal) {
-            buffer[C4] = 0x20 | (transmitter->attenuation & 0x1F);
+            newatt = transmitter->attenuation;
           }
         }
+        buffer[C4] = 0x20 | newatt;
       }
       p1_command_loop = 5;
       break;
@@ -2083,12 +2093,18 @@ static void ozy_send_buffer(unsigned char *buffer) {
       buffer[C0] = 0x16;
       if (n_adc == 2) {
         //
-        // Setting of the ADC1 step attenuator
+        // Setting of the ADC2 step attenuator
+        // set to max if transmitting with PA, or if not using ADC2 for RX
         //
-        buffer[C1] = 0x20 | (adc[1].attenuation & 0x1F);
-        if (radio_is_transmitting() && pa_enabled && !txband->disablePA) {
-          buffer[C1] = 0x3F;
+        int newatt = 0x1F; // max value
+        if (diversity_enabled || receiver[0]->adc == 1 ||
+            (receivers > 1 && receiver[1]->adc == 1)) {
+          newatt = adc[1].attenuation;
         }
+        if (radio_is_transmitting() && pa_enabled && !txband->disablePA) {
+          newatt = 0x1F;
+        }
+        buffer[C1] = 0x20 | newatt;
       }
       if (cw_keys_reversed != 0) {
         buffer[C2] |= 0x40;
@@ -2107,17 +2123,19 @@ static void ozy_send_buffer(unsigned char *buffer) {
         buffer[C1] |= ((1-receiver[0]->adc) & 0x03) << 2;
       } else {
         // set RX2 ADC
-        buffer[C1] |= (receiver[1]->adc & 0x03) << 2;
+        if (receivers > 1) {
+          buffer[C1] |= (receiver[1]->adc & 0x03) << 2;
+        }
       }
       //
-      // This is probably never needed. It allows to assign ADC1
+      // This is probably never needed. It allows to assign ADC2
       // to the RX feedback channel (this is currently not allowed in the GUI).
       //
       if (rxfdbkchan > 1 && rxfdbkchan < 4 && transmitter->puresignal) {
         buffer[C1] |= ((receiver[PS_RX_FEEDBACK]->adc & 0x03) << (2 * rxfdbkchan));
       }
       //
-      // Setting of the ADC0 step attenuator while transmitting
+      // Setting of the ADC1 step attenuator while transmitting
       //
       if (device == DEVICE_HERMES_LITE2) {
         // bit7: enable TX att, bit6: enable 6-bit value, bit5:0 value
