@@ -201,6 +201,7 @@ extern int TxInhibit;
 
 extern int vfo_encoder_divisor;
 extern int vfo_snap;
+extern int pan_vertical_drag_enable;
 
 extern int protocol;
 extern int device;
