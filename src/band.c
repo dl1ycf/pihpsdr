@@ -605,6 +605,7 @@ int get_band_from_frequency(long long f) {
   // If no band has been found:
   //  - use bandWWV if the frequency is (close to) 2.5, 5.0, 10.0, 15.0, 20.0, or 25.0 MHz
   //    (WWV broadcasts on 25 MHz on an experimental basis)
+  //    and if the radio covers short-wave freq range
   //
   //  - use bandGEN if anything else does not give a match.
   //    Note that frequencies in the 6m band result in bandGEN
@@ -612,12 +613,14 @@ int get_band_from_frequency(long long f) {
   //
   if (found < 0) {
     found = bandGen;
-    if (llabs(f -  2500000LL) <= 1000) { found = bandWWV; }
-    if (llabs(f -  5000000LL) <= 1000) { found = bandWWV; }
-    if (llabs(f - 10000000LL) <= 1000) { found = bandWWV; }
-    if (llabs(f - 15000000LL) <= 1000) { found = bandWWV; }
-    if (llabs(f - 20000000LL) <= 1000) { found = bandWWV; }
-    if (llabs(f - 25000000LL) <= 1000) { found = bandWWV; }
+    if (radio->frequency_min < 25000000.0 && radio->frequency_max > 25000000.0) {
+      if (llabs(f -  2500000LL) <= 1000) { found = bandWWV; }
+      if (llabs(f -  5000000LL) <= 1000) { found = bandWWV; }
+      if (llabs(f - 10000000LL) <= 1000) { found = bandWWV; }
+      if (llabs(f - 15000000LL) <= 1000) { found = bandWWV; }
+      if (llabs(f - 20000000LL) <= 1000) { found = bandWWV; }
+      if (llabs(f - 25000000LL) <= 1000) { found = bandWWV; }
+    }
   }
   return found;
 }
