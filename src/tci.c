@@ -1403,6 +1403,16 @@ static int tci_radio_clear_mox(gpointer data) {
   client->last_trx = 0;
   client->tci_clearmox_timer = 0;
   radio_set_mox(0);
+  //
+  // If the radio is remote, then we have to wait until the server
+  // acknowledges that it went RX. Only thereafter we can do tci_send_mox.
+  // Wait max. 350 msec, and allow "other" GTK tasks in the mean-time.
+  //
+  for (int i = 0; i < 35; i++) {
+    if (!radio_is_transmitting()) { break; }
+    g_main_context_iteration(NULL, 0);
+    usleep(10000);
+  }
   tci_send_mox(client);
   tci_update_audio_global();
   //
@@ -1467,6 +1477,17 @@ static void tci_cmd_trx (CLIENT *client, const TCI_CMD *cmd) {
         }
         client->last_trx = 1;
         radio_set_mox(1);
+        //
+        // If the radio is remote, we have only sent "MOX" to the server
+        // but the client goes TX only if the server has completed the transition,
+        // and only then we can do tci_send_mox.
+        // Wait max. 350 msec, and allow "other" GTK tasks in the mean-time.
+        //
+        for (int i = 0; i < 35; i++) {
+          if (radio_is_transmitting()) { break; }
+          g_main_context_iteration(NULL, 0);
+          usleep(10000);
+        }
         tci_send_mox (client);
         tci_update_audio_global();
       } else {
