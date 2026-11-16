@@ -974,7 +974,9 @@ static void radio_create_visual(void) {
 }
 
 void radio_stop_program(void) {
-  t_print("%s: Start shutdown sequence\n", __func__);
+  t_print("%s: Start shutdown sequence...\n", __func__);
+  radio_save_state();
+  t_print("%s: Preferences written to %s\n", __func__, property_path);
 #ifdef GPIO
   gpio_close();
   t_print("%s: GPIO closed\n", __func__);
@@ -1019,8 +1021,6 @@ void radio_stop_program(void) {
       t_print("%s: SATURN code stopped\n", __func__);
     }
   }
-  radio_save_state();
-  t_print("%s: radio state saved\n", __func__);
 }
 
 void radio_exit_program(void) {
