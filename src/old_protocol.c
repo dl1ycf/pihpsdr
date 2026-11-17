@@ -1096,9 +1096,10 @@ static void process_control_bytes(void) {
     // TODO: what if hpsdr_ptt goes to zero while we
     //       are tuning or two-toning?
     if (hpsdr_ptt) {
+      t_print("%s: go TX\n", __func__);
       g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(1));
     } else { 
-      t_print("%s: Release\n", __func__);
+      t_print("%s: go RX\n", __func__);
       g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
     }
   }
