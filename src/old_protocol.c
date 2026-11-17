@@ -1097,7 +1097,8 @@ static void process_control_bytes(void) {
     //       are tuning or two-toning?
     if (hpsdr_ptt) {
       g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(1));
-    } else {
+    } else { 
+      t_print("%s: Release\n", __func__);
       g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
     }
   }
@@ -1153,6 +1154,7 @@ static void process_control_bytes(void) {
       }
       if (!TxInhibit && data == 0) {
         TxInhibit = 1;
+        t_print("%s: Inhibit\n", __func__);
         g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(0));
       }
       if (data == 1) { TxInhibit = 0; }

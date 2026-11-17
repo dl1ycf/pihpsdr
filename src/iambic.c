@@ -410,6 +410,7 @@ static void* keyer_thread(void *arg) {
         if (cwvox == 0) {
           // we have just reduced cwvox from 1 to 0.
           if (!moxbefore) {
+            t_print("%s: Release\n", __func__);
             g_timeout_add(50, ext_radio_set_mox, GINT_TO_POINTER(0));
             // Wait for MOX really gone. This is necessary since otherwise we may
             // still "see" PTT active upon the next key stroke and therefore fail

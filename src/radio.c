@@ -404,6 +404,7 @@ gboolean radio_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
     tts_atten();
     break;
   case GDK_KEY_space:
+    t_print("%s: mox=%d\n", __func__, mox);
     if (mox) {
       g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
     } else {
@@ -2131,6 +2132,7 @@ void radio_set_pan(int id, int value) {
 }
 
 void radio_set_mox(int state) {
+  t_print("%s: state=%d\n", __func__, state);
   if (radio_is_remote) {
     send_mox(cl_sock_tcp, state);
     return;
@@ -3673,6 +3675,7 @@ int radio_server_protocol_stop(gpointer data) {
 
 void radio_protocol_stop(void) {
   if (!radio_protocol_running) { return; }
+  t_print("%s: setmox=0\n", __func__);
   radio_set_mox(0);
   usleep(100000);
   switch (protocol) {

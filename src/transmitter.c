@@ -1844,6 +1844,7 @@ void tx_add_mic_sample(TRANSMITTER *tx, double mic_sample) {
     } else if (vox_count > 0) {
       vox_count--;
       if (vox_count == 0) {
+        t_print("%s: VoxTimeout\n", __func__);
         g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(0));
         vox_triggered = 0;
       }
@@ -2788,6 +2789,7 @@ void tx_set_signal(TRANSMITTER *tx, int tune, int txnoise, int twotone) {
   if (twotone || txnoise || tune) {
     g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(1));
   } else {
+    t_print("%s: Release\n", __func__);
     g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(0));
   }
 }

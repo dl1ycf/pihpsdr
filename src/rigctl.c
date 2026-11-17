@@ -603,6 +603,7 @@ static gpointer rigctl_cw_thread(gpointer data) {
       // Morse key, then continue transmitting.
       //
       if (!cw_key_hit && !hpsdr_ptt) {
+        t_print("%s: Release\n", __func__);
         g_timeout_add(50, ext_radio_set_mox, GINT_TO_POINTER(0));
         // wait up to 500 msec for MOX having gone
         // otherwise there might be a race condition when sending
@@ -1981,6 +1982,7 @@ static gboolean parse_extended_cmd (const char *command, CLIENT *client) {
         if (new) {
           radio_set_mox(1);
         } else {
+          t_print("%s: Release\n", __func__);
           g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
         }
       }
@@ -3370,6 +3372,7 @@ static int parse_cmd(gpointer data) {
       //SET       RX;
       //ENDDEF
       if (command[2] == ';') {
+        t_print("%s: Release\n", __func__);
         g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
       }
       break;

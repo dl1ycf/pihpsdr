@@ -1402,6 +1402,7 @@ static int tci_radio_clear_mox(gpointer data) {
   client->tx_audio_enabled = 0;
   client->last_trx = 0;
   client->tci_clearmox_timer = 0;
+  t_print("%s: Release\n", __func__);
   radio_set_mox(0);
   //
   // If the radio is remote, then we have to wait until the server
@@ -2316,6 +2317,7 @@ static void tci_cmd_stop (CLIENT *client, const TCI_CMD *cmd) {
         g_source_remove(client->tci_clearmox_timer);
         client->tci_clearmox_timer = 0;
       }
+      t_print("%s: Release\n", __func__);
       radio_set_mox(0);
       client->last_trx = 0;
     }
@@ -2916,6 +2918,7 @@ static int tci_lws_callback (struct lws *wsi, enum lws_callback_reasons reason,
         client->tci_clearmox_timer = 0;
       }
       if (client->last_trx) {
+        t_print("%s: Release\n", __func__);
         g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(0));
         client->last_trx = 0;
       }

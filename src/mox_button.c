@@ -55,6 +55,7 @@ static gboolean delete_cb(void) {
 static gboolean mox_press_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
   if (event->type != GDK_BUTTON_PRESS) { return TRUE; }
   if (mox) {
+    t_print("%s: Release\n", __func__);
     g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
   } else {
     radio_set_mox(1);

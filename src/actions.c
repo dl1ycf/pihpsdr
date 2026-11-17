@@ -1086,6 +1086,7 @@ int process_action(gpointer data) {
       // TODO: this involves a race condition if another "toggle mox" command
       //       arrives while the ptt_delay is waiting
       if (mox) {
+        t_print("%s: ActionMOX\n", __func__);
         g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
       } else {
         radio_set_mox(1);
@@ -1324,6 +1325,7 @@ int process_action(gpointer data) {
       if (new) {
         radio_set_mox(1);
       } else {
+        t_print("%s: ActionPTT\n", __func__);
         g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
       }
     }
@@ -1791,7 +1793,10 @@ int process_action(gpointer data) {
         send_mox(cl_sock_tcp, 0);
       } else {
         schedule_transmit_specific();
-        if (!hpsdr_ptt) { radio_set_mox(0); }
+        if (!hpsdr_ptt) {
+          t_print("%s: ActionCWPTT\n", __func__);
+          radio_set_mox(0);
+        }
       }
     }
     break;
