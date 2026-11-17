@@ -1249,7 +1249,7 @@ static void new_protocol_high_priority(void) {
       newatt0 = newatt1 = 0x1F;
     }
     if (transmitter->puresignal) {
-      newatt0 = 0x1F;
+      newatt0 = transmitter->attenuation & 0x1F;
     }
   }
 
