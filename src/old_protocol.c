@@ -2042,12 +2042,9 @@ static void ozy_send_buffer(unsigned char *buffer) {
       if (transmitter->puresignal) {
         buffer[C2] |= 0x40;
       }
-      //
-      // Set ADC1 attenuation:
-      // - upon TX, use transmitter->attenuation
-      //   Usually the firmware takes care of this, but it is no
-      //   harm to do this here as well
-      //
+      // upon TX, use transmitter->attenuation
+      // Usually the firmware takes care of this, but it is no
+      // harm to do this here as well
       if (device == DEVICE_HERMES_LITE2) {
         //
         // HERMESlite has a RXgain value in the range 0-60 that
@@ -2068,24 +2065,24 @@ static void ozy_send_buffer(unsigned char *buffer) {
         buffer[C4] = 0x40 | rxgain;
       } else {
         //
-        // Standard HPSDR ADC1 attenuator:
-        // set to max if transmitting with PA  but without PS, or if not using ADC1 for RX
-        // set to tx-att if transmitting with PS
+        // Standard HPSDR ADC1 attenuator
         //
-        int newatt = 0x1F;  // max value
-        if (diversity_enabled || receiver[0]->adc == 0 ||
-            (receivers > 1 && receiver[1]->adc == 0)) {
-          newatt = adc[0].attenuation;
+        int newatt0 = 0x1F;
+        if (diversity_enabled || receiver[0]->adc == 0) {
+          newatt0 = adc[0].attenuation & 0x1F;
+        }
+        if (receivers > 1 && receiver[1]->adc == 0) {
+          newatt0 = adc[0].attenuation & 0x1F;
         }
         if (radio_is_transmitting()) {
           if (pa_enabled && !txband->disablePA) {
-            newatt = 0x1F;
+            newatt0 = 0x1F;
           }
           if (transmitter->puresignal) {
-            newatt = transmitter->attenuation;
+            newatt0 = transmitter->attenuation & 0x1F;
           }
         }
-        buffer[C4] = 0x20 | newatt;
+        buffer[C4] = 0x20 | newatt0;
       }
       p1_command_loop = 5;
       break;
@@ -2094,17 +2091,18 @@ static void ozy_send_buffer(unsigned char *buffer) {
       if (n_adc == 2) {
         //
         // Setting of the ADC2 step attenuator
-        // set to max if transmitting with PA, or if not using ADC2 for RX
         //
-        int newatt = 0x1F; // max value
-        if (diversity_enabled || receiver[0]->adc == 1 ||
-            (receivers > 1 && receiver[1]->adc == 1)) {
-          newatt = adc[1].attenuation;
+        int newatt1 = 0x1F;
+        if (diversity_enabled || receiver[0]->adc == 1) {
+          newatt1 = adc[1].attenuation & 0x1F;
+        }
+        if (receivers > 1 && receiver[1]->adc == 1) {
+          newatt1 = adc[1].attenuation & 0x1F;
         }
         if (radio_is_transmitting() && pa_enabled && !txband->disablePA) {
-          newatt = 0x1F;
+          newatt1 = 0x1F;
         }
-        buffer[C1] = 0x20 | newatt;
+        buffer[C1] = 0x20 | newatt1;
       }
       if (cw_keys_reversed != 0) {
         buffer[C2] |= 0x40;

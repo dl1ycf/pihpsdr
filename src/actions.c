@@ -259,6 +259,7 @@ ACTION_TABLE ActionTable[] = {
   {XIT_ENABLE,          "XIT\nOn/Off",          "XITT",         AT_BTN},
   {XIT_MINUS,           "XIT -",                "XIT-",         AT_BTN},
   {XIT_PLUS,            "XIT +",                "XIT+",         AT_BTN},
+  {XIT_STEP,            "XIT\nStep",            "XITST",        AT_BTN},
   {ZEROBEAT,            "Zero Beat",            "ZBeat",        AT_BTN},
   {ZOOM,                "Zoom",                 "ZOOM",         AT_KNB | AT_ENC | AT_SLD},
   {ZOOM_MINUS,          "Zoom -",               "ZOOM-",        AT_BTN},
@@ -1415,7 +1416,7 @@ int process_action(gpointer data) {
   case RIT_STEP:
     if (a->mode == PRESSED) {
       int incr = 10 * vfo[active_receiver->id].rit_step;
-      if (incr > 100) { incr = 100; }
+      if (incr > 1000) { incr = 1000; }
       vfo_set_rit_step(incr);
     }
     break;
@@ -1427,7 +1428,7 @@ int process_action(gpointer data) {
     if (a->mode == RELATIVE) {
       int id = active_receiver->id;
       if ((vfo[id].rit_enabled == 0) && (vfo[vfo_get_tx_vfo()].xit_enabled == 1)) {
-        vfo_xit_incr(vfo[id].rit_step * a->val);
+        vfo_xit_incr(vfo[id].xit_step * a->val);
       } else {
         vfo_id_rit_incr(id, vfo[id].rit_step * a->val);
       }
@@ -1675,7 +1676,7 @@ int process_action(gpointer data) {
     break;
   case XIT:
     if (a->mode == RELATIVE) {
-      vfo_xit_incr(vfo[vfo_get_tx_vfo()].rit_step * a->val);
+      vfo_xit_incr(vfo[vfo_get_tx_vfo()].xit_step * a->val);
     }
     break;
   case XIT_CLEAR:
@@ -1690,7 +1691,7 @@ int process_action(gpointer data) {
     break;
   case XIT_MINUS:
     if (a->mode == PRESSED) {
-      vfo_xit_incr(-10 * vfo[vfo_get_tx_vfo()].rit_step);
+      vfo_xit_incr(-vfo[vfo_get_tx_vfo()].xit_step);
       if (repeat_timer == 0) {
         repeat_action = *a;
         repeat_timer = g_timeout_add(250, repeat_cb, NULL);
@@ -1702,7 +1703,7 @@ int process_action(gpointer data) {
     break;
   case XIT_PLUS:
     if (a->mode == PRESSED) {
-      vfo_xit_incr(10 * vfo[vfo_get_tx_vfo()].rit_step);
+      vfo_xit_incr(vfo[vfo_get_tx_vfo()].xit_step);
       if (repeat_timer == 0) {
         repeat_action = *a;
         repeat_timer = g_timeout_add(250, repeat_cb, NULL);
@@ -1710,6 +1711,13 @@ int process_action(gpointer data) {
       }
     } else if (a->mode == RELEASED) {
       repeat_timer_released = TRUE;
+    }
+    break;
+  case XIT_STEP:
+    if (a->mode == PRESSED) {
+      int incr = 10 * vfo[active_receiver->id].xit_step;
+      if (incr > 1000) { incr = 1000; }
+      vfo_set_xit_step(incr);
     }
     break;
   case ZEROBEAT:

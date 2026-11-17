@@ -100,6 +100,10 @@ struct _rxprofile {
 
 struct _txprofile {
   //
+  // VFO setting
+  //
+  int xit_step;
+  //
   // TX (EQ, CMPR, DEXP, CRC) settings
   //
   int en_eq;                        // TX equaliser on/off

@@ -120,6 +120,7 @@ void vfo_save_state(void) {
     SetPropI1("vfo.%d.deviation", i,        vfo[i].deviation);
     SetPropI1("vfo.%d.step", i,             vfo[i].step);
     SetPropI1("vfo.%d.rit_step", i,         vfo[i].rit_step);
+    SetPropI1("vfo.%d.xit_step", i,         vfo[i].xit_step);
   }
 }
 
@@ -156,6 +157,7 @@ void vfo_restore_state(void) {
     vfo[i].deviation         = 2500;
     vfo[i].step              = 100;
     vfo[i].rit_step          = 10;
+    vfo[i].xit_step          = 100;
     GetPropI1("vfo.%d.band", i,             vfo[i].band);
     GetPropI1("vfo.%d.frequency", i,        vfo[i].frequency);
     GetPropI1("vfo.%d.ctun", i,             vfo[i].ctun);
@@ -172,6 +174,7 @@ void vfo_restore_state(void) {
     GetPropI1("vfo.%d.deviation", i,        vfo[i].deviation);
     GetPropI1("vfo.%d.step", i,             vfo[i].step);
     GetPropI1("vfo.%d.rit_step", i,         vfo[i].rit_step);
+    GetPropI1("vfo.%d.xit_step", i,         vfo[i].xit_step);
     // Sanity check: if !ctun, offset must be zero
     if (!vfo[i].ctun) {
       vfo[i].offset = 0;
@@ -687,6 +690,29 @@ void vfo_id_step(int id, int st) {
     }
     g_idle_add(ext_vfo_update, NULL);
   }
+}
+
+void vfo_set_xit_step(int step) {
+  int id = active_receiver->id;
+  if (radio_is_remote) {
+    send_xit_step(cl_sock_tcp, id, step);
+    return;
+  }
+  vfo_id_set_xit_step(id, step);
+}
+
+void vfo_id_set_xit_step(int id, int step) {
+  if (radio_is_remote) {
+    send_xit_step(cl_sock_tcp, id, step);
+    return;
+  }
+  vfo[id].xit_step = step;
+  if (id == 0) {
+    int mode = vfo[id].mode;
+    RXTXprofile[mode].tx.xit_step = step;
+    profiles_copy_rxtxprofile(mode);
+  }
+  g_idle_add(ext_vfo_update, NULL);
 }
 
 void vfo_set_rit_step(int step) {

@@ -613,6 +613,7 @@ void send_vfo_data(int sock, int v) {
   vfo_data.cwAudioPeakFilter = vfo[v].cwAudioPeakFilter;
   //
   vfo_data.rit_step  = to_16(vfo[v].rit_step);
+  vfo_data.xit_step  = to_16(vfo[v].xit_step);
   vfo_data.deviation = to_16(vfo[v].deviation);
   //
   vfo_data.frequency = to_64(vfo[v].frequency);
@@ -1631,6 +1632,15 @@ void send_receivers(int s, int num_rx) {
   SYNC(header.sync);
   header.data_type = to_16(CMD_RECEIVERS);
   header.b1 = num_rx;
+  send_tcp(s, (char *)&header, sizeof(HEADER));
+}
+
+void send_xit_step(int s, int v, int step) {
+  HEADER header;
+  SYNC(header.sync);
+  header.data_type = to_16(CMD_XIT_STEP);
+  header.b1 = v;
+  header.s1 = to_16(step);
   send_tcp(s, (char *)&header, sizeof(HEADER));
 }
 

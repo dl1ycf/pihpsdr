@@ -611,7 +611,6 @@ static void new_protocol_high_priority(void) {
   long long LPFfreq;          // frequency determining the LPF filters
   long long BPFfreq;          // frequency determining the BPF filters
   long long freq;
-  int use_adc1, use_adc2;     // whether or not we are using ADC1 and ADC2
   uint32_t phase;
   unsigned char high_priority_buffer_to_radio[1444];
   if (data_socket == -1 && !have_saturn_xdma) {
@@ -853,26 +852,6 @@ static void new_protocol_high_priority(void) {
   //
   uint32_t alex0 = 0x00000000;
   uint32_t alex1 = 0x00000000;
-  //
-  // Keep track which ADCs we actually use
-  //
-  use_adc1 = use_adc2 = 0;
-  if (receiver[0]->adc == 1) {
-    use_adc2 = 1;
-  } else {
-    use_adc1 = 1;
-  }
-  if (receivers > 1) {
-    if (receiver[1]->adc == 1) {
-      use_adc2 = 1;
-    } else {
-      use_adc1 = 1;
-    }
-  }
-  if (diversity_enabled) {
-    use_adc1 = 1;
-    use_adc2 = 1;
-  }
   if (have_alex_att && filter_board == ALEX) {
     //
     // ANAN7000/8000 and SATURN do not have ALEX attenuators.
@@ -1243,17 +1222,6 @@ static void new_protocol_high_priority(void) {
   // messages without the user having a handle to suppress then.
   // Therefore we set the attenuation of "unused" ADCs to the max.
   //
-  if (use_adc1) {
-    high_priority_buffer_to_radio[1443] = adc[0].attenuation;
-  } else {
-    high_priority_buffer_to_radio[1443] = 31;
-  }
-  if (use_adc2) {
-    high_priority_buffer_to_radio[1442] = adc[1].attenuation;
-  } else {
-    high_priority_buffer_to_radio[1442] = 31;
-  }
-  //
   //  Upon transmitting with PA enabled, set the attenuators to maximum attenuation
   //  Exception: use value of transmitter->attenuation if transmitting with PURESIGNAL.
   //
@@ -1262,13 +1230,31 @@ static void new_protocol_high_priority(void) {
   //        during transmit (the code below is essentially duplicated there)
   //        BUT, there might be old firmware around that does not fully implement this.
   //
-  if (xmit && local_pa_enabled) {
-    high_priority_buffer_to_radio[1442] = 31;
-    high_priority_buffer_to_radio[1443] = 31;
+  int newatt0 = 0x1F;
+  int newatt1 = 0x1F;
+  if (diversity_enabled || receiver[0]->adc == 0) {
+    newatt0 = adc[0].attenuation & 0x1F;
   }
-  if (xmit && transmitter->puresignal) {
-    high_priority_buffer_to_radio[1443] = transmitter->attenuation;
+  if (receivers > 1 && receiver[1]->adc == 0) {
+    newatt0 = adc[0].attenuation & 0x1F;
   }
+  if (diversity_enabled || receiver[0]->adc == 1) {
+    newatt1 = adc[1].attenuation & 0x1F;
+  }
+  if (receivers > 1 && receiver[1]->adc == 1) {
+    newatt1 = adc[1].attenuation & 0x1F;
+  }
+  if (xmit) {
+    if (local_pa_enabled) {
+      newatt0 = newatt1 = 0x1F;
+    }
+    if (transmitter->puresignal) {
+      newatt0 = 0x1F;
+    }
+  }
+
+  high_priority_buffer_to_radio[1442] = newatt1;
+  high_priority_buffer_to_radio[1443] = newatt0;
   //
   // Send the HighPrio buffer to the radio
   //
