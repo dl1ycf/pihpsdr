@@ -358,6 +358,28 @@ static void rit_cb(GtkWidget *widget, gpointer data) {
   case 2:
     vfo_set_rit_step(100);
     break;
+  case 3:
+    vfo_set_rit_step(1000);
+    break;
+  }
+}
+
+static void xit_cb(GtkWidget *widget, gpointer data) { 
+  int val = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
+  switch (val) {
+  case 0:
+    vfo_set_xit_step(1);
+    break;
+  case 1:
+  default:
+    vfo_set_xit_step(10);
+    break;
+  case 2:
+    vfo_set_xit_step(100);
+    break;
+  case 3:
+    vfo_set_xit_step(1000);
+    break;
   }
 }
 
@@ -438,22 +460,19 @@ void radio_menu(GtkWidget *parent) {
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
   GtkWidget *receivers_combo = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(receivers_combo), NULL, "1");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(receivers_combo), NULL, "1 RX");
   if (radio->supported_receivers > 1) {
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(receivers_combo), NULL, "2");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(receivers_combo), NULL, "2 RX");
   }
   gtk_combo_box_set_active(GTK_COMBO_BOX(receivers_combo), receivers - 1);
   my_combo_attach(GTK_GRID(grid), receivers_combo, 1, row, 1, 1);
   g_signal_connect(receivers_combo, "changed", G_CALLBACK(receivers_cb), NULL);
   //
-  label = gtk_label_new("RIT/XIT step");
-  gtk_widget_set_name(label, "boldlabel");
-  gtk_widget_set_halign(label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), label, 2, row, 1, 1);
   GtkWidget *rit_combo = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rit_combo), NULL, "1");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rit_combo), NULL, "10");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rit_combo), NULL, "100");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rit_combo), NULL, "RIT 1 Hz");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rit_combo), NULL, "RIT 10 Hz");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rit_combo), NULL, "RIT 100 Hz");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rit_combo), NULL, "RIT 1 kHz");
   switch (vfo[active_receiver->id].rit_step) {
   default:
     // we should not arrive here, but just in case ...
@@ -469,9 +488,38 @@ void radio_menu(GtkWidget *parent) {
   case 100:
     gtk_combo_box_set_active(GTK_COMBO_BOX(rit_combo), 2);
     break;
+  case 1000:
+    gtk_combo_box_set_active(GTK_COMBO_BOX(rit_combo), 3);
+    break;
   }
-  my_combo_attach(GTK_GRID(grid), rit_combo, 3, row, 1, 1);
+  my_combo_attach(GTK_GRID(grid), rit_combo, 2, row, 1, 1);
   g_signal_connect(rit_combo, "changed", G_CALLBACK(rit_cb), NULL);
+  GtkWidget *xit_combo = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(xit_combo), NULL, "XIT 1 Hz");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(xit_combo), NULL, "XIT 10 Hz");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(xit_combo), NULL, "XIT 100 Hz");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(xit_combo), NULL, "XIT 1 kHz");
+  switch (vfo[active_receiver->id].xit_step) {
+  default:
+    // we should not arrive here, but just in case ...
+    vfo_set_xit_step(10);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(xit_combo), 1);
+    break;
+  case 1:
+    gtk_combo_box_set_active(GTK_COMBO_BOX(xit_combo), 0);
+    break;
+  case 10:
+    gtk_combo_box_set_active(GTK_COMBO_BOX(xit_combo), 1);
+    break;
+  case 100:
+    gtk_combo_box_set_active(GTK_COMBO_BOX(xit_combo), 2);
+    break;
+  case 1000:
+    gtk_combo_box_set_active(GTK_COMBO_BOX(xit_combo), 3);
+    break;
+  }
+  my_combo_attach(GTK_GRID(grid), xit_combo, 3, row, 1, 1);
+  g_signal_connect(xit_combo, "changed", G_CALLBACK(xit_cb), NULL);
   row++;
   //
   label = gtk_label_new("60m channels");

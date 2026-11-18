@@ -1,6 +1,13 @@
 LIST OF RECENT PIHPSDR CHANGES
 ==============================
 
+November 2026:
+--------------
+- Separate RIT and XIT increments (1/10/100/1k)
+- "Big Beautiful Button": a big MOX button that is a separate
+  window that can be put anywhere on the screen. Implemented
+  upon user request.
+
 October 2026:
 -------------
 - About menu lists compile-time options and audio module

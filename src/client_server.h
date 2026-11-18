@@ -131,6 +131,7 @@ enum _header_type_enum {
   CMD_VFO_SWAP,
   CMD_VOLUME,
   CMD_XIT,
+  CMD_XIT_STEP,
   CMD_XVTR,
   CMD_ZOOM,
   INFO_ADC,
@@ -153,7 +154,7 @@ enum _header_type_enum {
   CLIENT_SERVER_COMMANDS,
 };
 
-#define CLIENT_SERVER_VERSION 0x01310002 // 32-bit version number
+#define CLIENT_SERVER_VERSION 0x01310003 // 32-bit version number
 #define SPECTRUM_DATA_SIZE 4096          // Maximum width of a panadapter
 #define AUDIO_DATA_SIZE 512              // 512 (mono) samples
 
@@ -678,6 +679,7 @@ typedef struct __attribute__((__packed__)) _vfo_data {
   uint64_t step;
   //
   uint16_t rit_step;
+  uint16_t xit_step;
   uint16_t deviation;
   //
   uint8_t  vfo;
@@ -1148,6 +1150,7 @@ extern void send_vfo_stepsize(int s, int v, int stepsize);
 extern void send_vfo_swap(int sock);
 extern void send_volume(int s, int rx, double volume);
 extern void send_xit(int s, int id);
+extern void send_xit_step(int s, int v, int step);
 extern void send_xvtr_changed(int s);
 extern void send_zoom(int s, const RECEIVER *rx);
 extern void update_vfo_move(int v, long long hz, int round);

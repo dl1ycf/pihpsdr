@@ -40,7 +40,7 @@ static int myvfo;  //  VFO the menu is referring to
 static GtkWidget *dialog = NULL;
 static GtkWidget *label;
 
-static char *btn_labels[] = {"1", "2", "3",
+static char *num_labels[] = {"1", "2", "3",
                              "4", "5", "6",
                              "7", "8", "9",
                              ".", "0", "BS",
@@ -51,9 +51,9 @@ static char *btn_labels[] = {"1", "2", "3",
 //
 // The parameters for vfo_num_pad corresponding to the button labels
 //
-static int btn_actions[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, -5, 0, -6, -2, -3, -4, -1};
+static int num_actions[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, -5, 0, -6, -2, -3, -4, -1};
 
-static GtkWidget *btn[16];
+static GtkWidget *numpad[16];
 
 static void cleanup(void) {
   if (dialog != NULL) {
@@ -82,21 +82,39 @@ static gboolean vfo_num_pad_cb(GtkWidget *widget, GdkEventButton *event, gpointe
   // This one has to be ignored, as well as a three-button-press.
   //
   if (event->type == GDK_BUTTON_PRESS) {
-    char output[64];
-    vfo_num_pad(btn_actions[val], myvfo);
+    vfo_num_pad(num_actions[val], myvfo);
     if (vfo[myvfo].entered_frequency[0]) {
-      snprintf(output, sizeof(output), "<big><b>%s</b></big>", vfo[myvfo].entered_frequency);
+      gtk_label_set_text(GTK_LABEL (label), vfo[myvfo].entered_frequency);
     } else {
-      snprintf(output, sizeof(output), "<big><b>0</b></big>");
+      gtk_label_set_text(GTK_LABEL (label), "0");
     }
-    gtk_label_set_markup (GTK_LABEL (label), output);
   }
   return FALSE;
+}
+
+static void xit_cb(GtkComboBox *widget, gpointer data) {
+  switch (gtk_combo_box_get_active(widget)) {
+  case 0:
+    vfo_set_xit_step(1);
+    break;
+  case 1:
+  default:
+    vfo_set_xit_step(10);
+    break;
+  case 2:
+    vfo_set_xit_step(100);
+    break;
+  case 3:
+    vfo_set_xit_step(1000);
+    break;
+  }
+  g_idle_add(ext_vfo_update, NULL);
 }
 
 static void rit_cb(GtkComboBox *widget, gpointer data) {
   switch (gtk_combo_box_get_active(widget)) {
   case 0:
+  default:
     vfo_set_rit_step(1);
     break;
   case 1:
@@ -104,6 +122,9 @@ static void rit_cb(GtkComboBox *widget, gpointer data) {
     break;
   case 2:
     vfo_set_rit_step(100);
+    break;
+  case 3:
+    vfo_set_rit_step(1000);
     break;
   }
   g_idle_add(ext_vfo_update, NULL);
@@ -138,22 +159,31 @@ static void split_cb(GtkWidget *widget, gpointer data) {
   g_idle_add(ext_vfo_update, NULL);
 }
 
-static void set_btn_state(void) {
+static void vfosnap_cb(GtkWidget *widget, gpointer data) {
+  //
+  // In client-server, this variable is local to client and server,
+  // so takes effect immediately and need not be synchronised
+  //
+  vfo_snap = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
+}
+
+static void set_numpad_state(void) {
   int i;
   for (i = 0; i < 16; i++) {
-    gtk_widget_set_sensitive(btn[i], locked == 0);
+    gtk_widget_set_sensitive(numpad[i], locked == 0);
   }
 }
 
 static void lock_cb(GtkWidget *widget, gpointer data) {
   TOGGLE(locked);
-  set_btn_state();
+  set_numpad_state();
   g_idle_add(ext_vfo_update, NULL);
 }
 
 void vfo_menu(GtkWidget *parent, int id) {
   int i, row;
   myvfo = id; // store this for cleanup()
+  GtkWidget *btn, *lbl;
   dialog = gtk_dialog_new();
   gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
   char title[64];
@@ -170,76 +200,114 @@ void vfo_menu(GtkWidget *parent, int id) {
   gtk_grid_set_row_homogeneous(GTK_GRID(grid), TRUE);
   gtk_grid_set_column_spacing (GTK_GRID(grid), 8);
   gtk_grid_set_row_spacing (GTK_GRID(grid), 8);
-  GtkWidget *close_b = gtk_button_new_with_label("Close");
-  gtk_widget_set_name(close_b, "close_button");
-  g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
-  gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 3, 1);
-  label = gtk_label_new (NULL);
-  gtk_label_set_markup(GTK_LABEL(label), "<big><b>0</b></big>");
+  btn = gtk_button_new_with_label("Close");
+  gtk_widget_set_name(btn, "close_button");
+  g_signal_connect (btn, "button-press-event", G_CALLBACK(close_cb), NULL);
+  gtk_grid_attach(GTK_GRID(grid), btn, 0, 0, 4, 1);
+  label = gtk_label_new ("0");
+  gtk_widget_set_name(label,"big_txt");
+  //gtk_label_set_markup(GTK_LABEL(label), "<span size=\"24pt\"><b>0</b></span>");
   gtk_widget_set_size_request(label, 150, 0);
   gtk_misc_set_alignment (GTK_MISC (label), 1, .5);
-  gtk_grid_attach(GTK_GRID(grid), label, 0, 1, 3, 1);
+  gtk_grid_attach(GTK_GRID(grid), label, 0, 1, 6, 1);
   for (i = 0; i < 16; i++) {
-    btn[i] = gtk_button_new_with_label(btn_labels[i]);
-    gtk_widget_set_name(btn[i], "medium_button");
-    gtk_widget_show(btn[i]);
+    numpad[i] = gtk_button_new_with_label(num_labels[i]);
+    gtk_widget_set_name(numpad[i], "medium_button");
     if (i == 15) {
-      gtk_grid_attach(GTK_GRID(grid), btn[i], i % 3, 2 + (i / 3), 3, 1);
+      gtk_grid_attach(GTK_GRID(grid), numpad[i], 2*(i % 3), 2 + (i / 3), 6, 1);
     } else {
-      gtk_grid_attach(GTK_GRID(grid), btn[i], i % 3, 2 + (i / 3), 1, 1);
+      gtk_grid_attach(GTK_GRID(grid), numpad[i], 2*(i % 3), 2 + (i / 3), 2, 1);
     }
-    g_signal_connect(btn[i], "button-press-event", G_CALLBACK(vfo_num_pad_cb), GINT_TO_POINTER(i));
+    g_signal_connect(numpad[i], "button-press-event", G_CALLBACK(vfo_num_pad_cb), GINT_TO_POINTER(i));
   }
-  set_btn_state();
-  GtkWidget *rit_b = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rit_b), NULL, "RIT step: 1 Hz");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rit_b), NULL, "RIT step: 10 Hz");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(rit_b), NULL, "RIT step: 100 Hz");
+  set_numpad_state();
+  row = 2;
+  lbl = gtk_label_new("RIT step:");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), lbl, 6, row, 2, 1);
+  btn = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "1 Hz");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "10 Hz");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "100 Hz");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "1 kHz");
   switch (vfo[myvfo].rit_step) {
   case 1:
-    gtk_combo_box_set_active(GTK_COMBO_BOX(rit_b), 0);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 0);
     break;
   case 10:
-    gtk_combo_box_set_active(GTK_COMBO_BOX(rit_b), 1);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 1);
     break;
   case 100:
-    gtk_combo_box_set_active(GTK_COMBO_BOX(rit_b), 2);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 2);
+    break;
+  case 1000:
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 3);
     break;
   }
-  g_signal_connect(rit_b, "changed", G_CALLBACK(rit_cb), NULL);
-  my_combo_attach(GTK_GRID(grid), rit_b, 3, 2, 2, 1);
-  GtkWidget *vfo_b = gtk_combo_box_text_new();
+  g_signal_connect(btn, "changed", G_CALLBACK(rit_cb), NULL);
+  my_combo_attach(GTK_GRID(grid), btn, 8, row, 3, 1);
+  row++;
+  lbl = gtk_label_new("XIT step:");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), lbl, 6, row, 2, 1);
+  btn = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "1 Hz");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "10 Hz");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "100 Hz");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "1 kHz");
+  switch (vfo[myvfo].xit_step) {
+  case 1:
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 0);
+    break;
+  case 10:
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 1);
+    break;
+  case 100:
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 2);
+    break;
+  case 1000:
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btn), 3);
+    break;
+  }
+  g_signal_connect(btn, "changed", G_CALLBACK(xit_cb), NULL);
+  my_combo_attach(GTK_GRID(grid), btn, 8, row, 3, 1);
+  row++;
+  lbl = gtk_label_new("VFO step:");
+  gtk_widget_set_name(lbl, "boldlabel");
+  gtk_grid_attach(GTK_GRID(grid), lbl, 6, row, 2, 1);
+  btn = gtk_combo_box_text_new();
   int ind = vfo_id_get_stepindex(myvfo);
   for (i = 0; i < STEPS; i++) {
-    char text[64];
-    snprintf(text, sizeof(text), "VFO step: %s", step_labels[i]);
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(vfo_b), NULL, text);
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, step_labels[i]);
     if (i == ind) {
-      gtk_combo_box_set_active (GTK_COMBO_BOX(vfo_b), i);
+      gtk_combo_box_set_active (GTK_COMBO_BOX(btn), i);
     }
   }
-  g_signal_connect(vfo_b, "changed", G_CALLBACK(vfo_cb), NULL);
-  my_combo_attach(GTK_GRID(grid), vfo_b, 3, 3, 2, 1);
-  row = 4;
-  GtkWidget *lock_b = gtk_check_button_new_with_label("Lock VFOs");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (lock_b), locked);
-  gtk_grid_attach(GTK_GRID(grid), lock_b, 3, row, 2, 1);
-  g_signal_connect(lock_b, "toggled", G_CALLBACK(lock_cb), NULL);
+  g_signal_connect(btn, "changed", G_CALLBACK(vfo_cb), NULL);
+  my_combo_attach(GTK_GRID(grid), btn, 8, row, 3, 1);
   row++;
-  GtkWidget *duplex_b = gtk_check_button_new_with_label("Duplex");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (duplex_b), duplex);
-  gtk_grid_attach(GTK_GRID(grid), duplex_b, 3, row, 2, 1);
-  g_signal_connect(duplex_b, "toggled", G_CALLBACK(duplex_cb), NULL);
+  btn = gtk_check_button_new_with_label("Lock VFOs");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), locked);
+  gtk_grid_attach(GTK_GRID(grid), btn, 8, row, 3, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(lock_cb), NULL);
   row++;
-  GtkWidget *ctun_b = gtk_check_button_new_with_label("CTUN");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ctun_b), vfo[myvfo].ctun);
-  gtk_grid_attach(GTK_GRID(grid), ctun_b, 3, row, 2, 1);
-  g_signal_connect(ctun_b, "toggled", G_CALLBACK(ctun_cb), NULL);
+  btn = gtk_check_button_new_with_label("CTUN");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), vfo[myvfo].ctun);
+  gtk_grid_attach(GTK_GRID(grid), btn, 6, row, 2, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(ctun_cb), NULL);
+  btn = gtk_check_button_new_with_label("Duplex");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), duplex);
+  gtk_grid_attach(GTK_GRID(grid), btn, 8, row, 3, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(duplex_cb), NULL);
   row++;
-  GtkWidget *split_b = gtk_check_button_new_with_label("Split");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (split_b), split);
-  gtk_grid_attach(GTK_GRID(grid), split_b, 3, row, 2, 1);
-  g_signal_connect(split_b, "toggled", G_CALLBACK(split_cb), NULL);
+  btn = gtk_check_button_new_with_label("Split");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), split);
+  gtk_grid_attach(GTK_GRID(grid), btn, 6, row, 2, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(split_cb), NULL);
+  btn = gtk_check_button_new_with_label("VFO snap");
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), vfo_snap);
+  gtk_grid_attach(GTK_GRID(grid), btn, 8, row, 3, 1);
+  g_signal_connect(btn, "toggled", G_CALLBACK(vfosnap_cb), NULL);
   gtk_container_add(GTK_CONTAINER(content), grid);
   sub_menu = dialog;
   gtk_widget_show_all(dialog);

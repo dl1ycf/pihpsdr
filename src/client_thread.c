@@ -1368,6 +1368,7 @@ static gpointer client_tcp_thread(gpointer arg) {
       vfo[v].cwAudioPeakFilter = vfo_data.cwAudioPeakFilter;
       //
       vfo[v].rit_step  = from_16(vfo_data.rit_step);
+      vfo[v].xit_step  = from_16(vfo_data.xit_step);
       vfo[v].deviation  = from_16(vfo_data.deviation);
       //
       vfo[v].frequency = from_64(vfo_data.frequency);

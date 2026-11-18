@@ -47,8 +47,10 @@ struct _vfo {
   int rit_enabled;
   int rit_step;
   long long rit;
+
   int xit_enabled;
   long long xit;
+  int xit_step;
 
   long long lo;
   long long offset;
@@ -90,7 +92,9 @@ extern void       vfo_cwpeak_changed(int p);
 extern void       vfo_step(int steps);
 extern void       vfo_id_step(int id, int steps);
 extern void       vfo_set_rit_step(int step);
+extern void       vfo_set_xit_step(int step);
 extern void       vfo_id_set_rit_step(int id, int step);
+extern void       vfo_id_set_xit_step(int id, int step);
 extern void       vfo_id_move(int id, long long hz, int round);
 extern void       vfo_id_move_to(int id, long long hz, int round);
 extern void       vfo_update(void);

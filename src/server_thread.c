@@ -803,6 +803,7 @@ static void server_loop(void) {
     case CMD_VFO_B_TO_A:
     case CMD_VFO_SWAP:
     case CMD_XIT:
+    case CMD_XIT_STEP:
     case CMD_XVTR:
     case CMD_ZOOM: {
       HEADER *command = g_new(HEADER, 1);
@@ -1982,6 +1983,13 @@ static int server_command(gpointer data) {
     int v = header->b1;
     int step = from_16(header->s1);
     vfo_id_set_rit_step(v, step);
+    send_vfo_data(remoteclient.sock_tcp, v);
+  }
+  break;
+  case CMD_XIT_STEP: {
+    int v = header->b1;
+    int step = from_16(header->s1);
+    vfo_id_set_xit_step(v, step);
     send_vfo_data(remoteclient.sock_tcp, v);
   }
   break;
