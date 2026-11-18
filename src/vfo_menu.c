@@ -160,6 +160,10 @@ static void split_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void vfosnap_cb(GtkWidget *widget, gpointer data) {
+  //
+  // In client-server, this variable is local to client and server,
+  // so takes effect immediately and need not be synchronised
+  //
   vfo_snap = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
 }
 
