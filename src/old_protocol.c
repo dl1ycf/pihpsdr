@@ -1092,6 +1092,7 @@ static void process_control_bytes(void) {
   static unsigned int adc1_acc = 0;
   previous_ptt = hpsdr_ptt;
   hpsdr_ptt  = (control_in[0]     ) & 0x01;
+  if (hpsdr_ptt) t_print("HPSDR PTT ON\n");
   if (previous_ptt != hpsdr_ptt) {
     // TODO: what if hpsdr_ptt goes to zero while we
     //       are tuning or two-toning?
