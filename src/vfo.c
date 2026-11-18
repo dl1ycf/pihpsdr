@@ -693,7 +693,7 @@ void vfo_id_step(int id, int st) {
 }
 
 void vfo_set_xit_step(int step) {
-  int id = active_receiver->id;
+  int id = vfo_get_tx_vfo();
   if (radio_is_remote) {
     send_xit_step(cl_sock_tcp, id, step);
     return;

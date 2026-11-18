@@ -368,10 +368,10 @@ static void xit_cb(GtkWidget *widget, gpointer data) {
   int val = gtk_combo_box_get_active (GTK_COMBO_BOX(widget));
   switch (val) {
   case 0:
-  default:
     vfo_set_xit_step(1);
     break;
   case 1:
+  default:
     vfo_set_xit_step(10);
     break;
   case 2:
@@ -502,8 +502,8 @@ void radio_menu(GtkWidget *parent) {
   switch (vfo[active_receiver->id].xit_step) {
   default:
     // we should not arrive here, but just in case ...
-    vfo_set_xit_step(1);
-    gtk_combo_box_set_active(GTK_COMBO_BOX(xit_combo), 0);
+    vfo_set_xit_step(10);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(xit_combo), 1);
     break;
   case 1:
     gtk_combo_box_set_active(GTK_COMBO_BOX(xit_combo), 0);

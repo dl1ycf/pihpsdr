@@ -98,6 +98,7 @@ static void xit_cb(GtkComboBox *widget, gpointer data) {
     vfo_set_xit_step(1);
     break;
   case 1:
+  default:
     vfo_set_xit_step(10);
     break;
   case 2:
@@ -113,6 +114,7 @@ static void xit_cb(GtkComboBox *widget, gpointer data) {
 static void rit_cb(GtkComboBox *widget, gpointer data) {
   switch (gtk_combo_box_get_active(widget)) {
   case 0:
+  default:
     vfo_set_rit_step(1);
     break;
   case 1:
