@@ -116,6 +116,7 @@ typedef enum {
 #define VADDRRXTESTDDSREG        0x01008
 #define VADDRDDCRATES            0x0100C
 #define VADDRDDCINSEL            0x01010
+#define VADDRTXFBAMPLREG         0x01014  // scaling of TX DAC feedback samples
 #define VADDRKEYERCONFIGREG      0x02000
 #define VADDRSIDETONECONFIGREG   0x02004
 #define VADDRTXCONFIGREG         0x02008
@@ -401,9 +402,19 @@ void CodecInitialise(void);
 
 //
 // SetTXAmplitudeScaling (unsigned int Amplitude)
-// sets the overall TX amplitude. This is normally set to a constant determined during development.
+// sets the overall TX amplitude.
+// This is normally set to a constant determined during development.
 //
 void SetTXAmplitudeScaling (unsigned int Amplitude);
+
+//
+// SetTXFBScaling (unsigned int Amplitude)
+// sets the TX DAC feedback amplitude (used for PURESIGNAL).
+// This is normally set to a constant determined during development.
+// This is only used in FPGA V28+, but it is safe to set the register in
+// any previous version where that register is unused.
+//
+void SetTXFBScaling (unsigned int Amplitude);
 
 //
 // SetTXProtocol2 (void)
