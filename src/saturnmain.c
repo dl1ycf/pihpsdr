@@ -77,9 +77,19 @@ static bool Exiting = false;
 #define FIRMWARE_MIN_MAJOR            1          // Minimum FPGA "major" software version that this software can run
 #define FIRMWARE_MAX_MAJOR            1          // Minimum FPGA "major" software version that this software can run
 
+//
+// Constants for TX IQ scaling
+//
 #define VCONSTTXAMPLSCALEFACTOR       0x0001FFFF // 18 bit scale value - set to 1/2 of full scale
-#define VCONSTTXAMPLSCALEFACTOR_13    0x0002000  // 18 bit scale value - set to 1/32 of full scale FWV13+
-#define VCONSTTXAMPLSCALEFACTOR_PCBV3 0x0002A00  // 18 bit scale value - set to 1/32 of full scale for PCB V3
+#define VCONSTTXAMPLSCALEFACTOR_13    0x00002000 // 18 bit scale value - set to 1/32 of full scale FWV13+
+#define VCONSTTXAMPLSCALEFACTOR_PCBV3 0x00002A00 // 18 bit scale value - set to 1/32 of full scale for PCB V3
+//
+// Constants for TX DAC feedback level scaling
+// Note: 0xC30B is approximately (0x2000 / 0x2A00) * 0xFFFF
+//
+#define VCONSTPSFBSCALE_PCBV2 0xFFFF        // PCB V2: full ampl feedback to puresignal
+#define VCONSTPSFBSCALE_PCBV3 0xC30B        // PCB V3: reduced ampl feedback to puresignal to reflect higher TX level
+//
 #define VDMATRANSFERSIZE              4096
 #define VDMABUFFERSIZE                131072     // memory buffer to reserve (4x DDC FIFO so OK)
 #define VALIGNMENT                    4096       // buffer alignment
@@ -186,8 +196,10 @@ static void saturn_register_init() {
     } else {
       SetTXAmplitudeScaling(VCONSTTXAMPLSCALEFACTOR_13);            // for  firmware version 1.3 .... (old PCB)
     }
+    SetTXFBScaling(VCONSTPSFBSCALE_PCBV2);
   } else {
     SetTXAmplitudeScaling(VCONSTTXAMPLSCALEFACTOR_PCBV3);           // for new V3 boards
+    SetTXFBScaling(VCONSTPSFBSCALE_PCBV3);
   }
   SetBalancedMicInput(false);
 }
