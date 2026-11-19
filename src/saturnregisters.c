@@ -1475,6 +1475,19 @@ void SetTXAmplitudeScaling (unsigned int Amplitude) {
 }
 
 //
+// SetTXFBScaling (unsigned int Amplitude)
+// sets the TX DAC feedback amplitude used for PURESIGNAL.
+// This is normally set to a constant determined during development and
+// set once on program start.
+// Only FPGA V28+ uses this register, it is safe to write into it in any
+// version prior to that.
+//
+void SetTXFBScaling (unsigned int Amplitude)
+{
+    RegisterWrite(VADDRTXFBAMPLREG, Amplitude);                  // and write to it
+}
+
+//
 // SetTXProtocol2 (void)
 // config TX for P2. This is called ONCE at startup
 void SetTXProtocol2 () {
