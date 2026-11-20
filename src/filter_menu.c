@@ -605,7 +605,7 @@ void filter_menu(GtkWidget *parent, int id) {
     gtk_grid_attach(GTK_GRID(grid), w, 5, row, 3, 1);
     g_signal_connect(w, "value-changed", G_CALLBACK(mn_width_cb), GINT_TO_POINTER(i));
     mn_width[i] = w;
-    w = gtk_button_new_with_label("Default");
+    w = gtk_button_new_with_label("Center");
     gtk_widget_set_name(w, "small_button");
     g_signal_connect (w, "button-press-event", G_CALLBACK(mn_default_cb), GINT_TO_POINTER(i));
     gtk_grid_attach(GTK_GRID(grid), w, 8, row, 2, 1);

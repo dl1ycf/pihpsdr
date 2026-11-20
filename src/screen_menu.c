@@ -229,7 +229,7 @@ void screen_menu(GtkWidget *parent) {
   g_signal_connect(button, "value-changed", G_CALLBACK(toolbar_rows_cb), NULL);
   row++;
   col = 0;
-  button = gtk_check_button_new_with_label("BigMox Button");
+  button = gtk_check_button_new_with_label("Big Mox Button");
   gtk_widget_set_name(button, "boldlabel");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(button), open_mox_button);
   gtk_grid_attach(GTK_GRID(grid), button, col, row, 1, 1);
