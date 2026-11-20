@@ -227,7 +227,7 @@ static void tree_selection_changed_cb (GtkTreeSelection *sel, gpointer data) {
     gtk_tree_model_get(model, &iter, BSTR_COLUMN, &str_action, -1);
     if (str_event != NULL && str_channel != NULL && str_note != NULL && str_type != NULL && str_action != NULL) {
       thisEvent = String2MidiEvent(str_event);
-      thisChannel = atoi(str_channel);
+      thisChannel = atoi(str_channel) - 1;
       thisNote = atoi(str_note);
       thisVal = 0;
       thisMin = 127;
@@ -355,7 +355,7 @@ static void add_store(int key, const struct desc *cmd) {
   char str_note[64];
   char str_action[64];
   char *cp;
-  snprintf(str_channel, sizeof(str_channel), "%d", cmd->channel);
+  snprintf(str_channel, sizeof(str_channel), "%d", cmd->channel + 1);
   snprintf(str_note, sizeof(str_note), "%d", key);
   gtk_list_store_prepend(store, &iter);
   // convert line breaks to spaces for window

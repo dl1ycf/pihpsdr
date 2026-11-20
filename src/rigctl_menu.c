@@ -310,7 +310,7 @@ void rigctl_menu(GtkWidget *parent) {
       gtk_grid_attach(GTK_GRID(grid), w, 1, row, 2, 1);
       g_signal_connect(w, "changed", G_CALLBACK(serial_port_cb), GINT_TO_POINTER(i));
       if (is_ptt) {
-        serial_enable[i] = gtk_check_button_new_with_label("Enable (serial port for PTT in/out)");
+        serial_enable[i] = gtk_check_button_new_with_label("Enable serial port for PTT in/out");
         gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (serial_enable[i]), SerialPorts[i].enable);
         gtk_grid_attach(GTK_GRID(grid), serial_enable[i], 4, row, 3, 1);
         g_signal_connect(serial_enable[i], "toggled", G_CALLBACK(ptt_enable_cb), GINT_TO_POINTER(i));
