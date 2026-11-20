@@ -1092,15 +1092,14 @@ static void process_control_bytes(void) {
   static unsigned int adc1_acc = 0;
   previous_ptt = hpsdr_ptt;
   hpsdr_ptt  = (control_in[0]     ) & 0x01;
-  if (hpsdr_ptt) t_print("HPSDR PTT ON\n");
   if (previous_ptt != hpsdr_ptt) {
     // TODO: what if hpsdr_ptt goes to zero while we
     //       are tuning or two-toning?
     if (hpsdr_ptt) {
-      t_print("%s: go TX\n", __func__);
+      t_print("%s: go TX C0=0x%02x\n", __func__, control_in[0]);
       g_idle_add(ext_radio_set_mox, GINT_TO_POINTER(1));
     } else { 
-      t_print("%s: go RX\n", __func__);
+      t_print("%s: go RX C0=0x%02x\n", __func__, control_in[0]);
       g_timeout_add(ptt_delay, ext_radio_set_mox, GINT_TO_POINTER(0));
     }
   }
@@ -1281,38 +1280,38 @@ static void process_ozy_byte(int b) {
   switch (state) {
   case SYNC_0:
     if (b == SYNC) {
-      state++;
+      state = SYNC_1;
     }
     break;
   case SYNC_1:
     if (b == SYNC) {
-      state++;
+      state = SYNC_2;
     } else {
       state = SYNC_0;
     }
     break;
   case SYNC_2:
     if (b == SYNC) {
-      state++;
+      state = CONTROL_0;
     } else {
       state = SYNC_0;
     }
     break;
   case CONTROL_0:
     control_in[0] = b;
-    state++;
+    state = CONTROL_1;
     break;
   case CONTROL_1:
     control_in[1] = b;
-    state++;
+    state = CONTROL_2;
     break;
   case CONTROL_2:
     control_in[2] = b;
-    state++;
+    state = CONTROL_3;
     break;
   case CONTROL_3:
     control_in[3] = b;
-    state++;
+    state = CONTROL_4;
     break;
   case CONTROL_4:
     control_in[4] = b;
@@ -1320,28 +1319,28 @@ static void process_ozy_byte(int b) {
     nreceiver = 0;
     iq_samples = (512 - 8) / ((st_num_hpsdr_receivers * 6) + 2);
     nsamples = 0;
-    state++;
+    state = LEFT_SAMPLE_HI;
     break;
   case LEFT_SAMPLE_HI:
     left_sample = (int)((signed char)b << 16);
-    state++;
+    state = LEFT_SAMPLE_MID;
     break;
   case LEFT_SAMPLE_MID:
     left_sample |= (int)((((unsigned char)b) << 8) & 0xFF00);
-    state++;
+    state = LEFT_SAMPLE_LOW;
     break;
   case LEFT_SAMPLE_LOW:
     left_sample |= (int)((unsigned char)b & 0xFF);
     left_sample_double = (double)left_sample * 1.1920928955078125E-7;
-    state++;
+    state = RIGHT_SAMPLE_HI;
     break;
   case RIGHT_SAMPLE_HI:
     right_sample = (int)((signed char)b << 16);
-    state++;
+    state = RIGHT_SAMPLE_MID;
     break;
   case RIGHT_SAMPLE_MID:
     right_sample |= (int)((((unsigned char)b) << 8) & 0xFF00);
-    state++;
+    state = RIGHT_SAMPLE_LOW;
     break;
   case RIGHT_SAMPLE_LOW:
     right_sample |= (int)((unsigned char)b & 0xFF);
