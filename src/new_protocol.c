@@ -923,12 +923,12 @@ static void new_protocol_high_priority(void) {
   case NEW_DEVICE_SATURN:
   case NEW_DEVICE_ORION2:
     //
-    // We have band-pass RX filters for ADC0 and ADC1. So if two
+    // We have band-pass RX filters for ADC1 and ADC2. So if two
     // receivers use the same ADC, the active one determines the
     // bandpass frequency.
     //
     //
-    // ADC0 band pass
+    // ADC1 band pass
     //
     BPFfreq = 0LL;
     if (receivers > 1) {
@@ -961,7 +961,7 @@ static void new_protocol_high_priority(void) {
       alex0 |= ALEX_ANAN7000_RX_6_PRE_BPF;
     }
     //
-    // ADC1 band pass
+    // ADC2 band pass
     //
     BPFfreq = 0LL;
     if (receivers > 1) {
@@ -1005,7 +1005,7 @@ static void new_protocol_high_priority(void) {
   default:
     //
     //      Old (ANAN-100/200) high-pass filters
-    //      If both RX are active and use ADC0,
+    //      If both RX are active and use ADC1,
     //      HPF filter settings depend on MIN(rx1freq,rx2freq)
     //
     HPFfreq = 0LL;
@@ -1041,7 +1041,7 @@ static void new_protocol_high_priority(void) {
   }
   //
   //   Pre-Orion2 boards: If using Ant1/2/3, the RX signal goes through the TX low-pass
-  //                      filters. Therefore we must set these according to the ADC0
+  //                      filters. Therefore we must set these according to the ADC1
   //                      (receive) frequency while RXing, according  to the Max
   //                      of rx1freq and rx2freq. If TXing, the TX freq governs the LPF
   //                      in either case.
@@ -1216,10 +1216,11 @@ static void new_protocol_high_priority(void) {
   high_priority_buffer_to_radio[1431] = (alex1      ) & 0xFF;
   //t_print("ALEX1 bits:  %02X %02X %02X %02X\n",high_priority_buffer_to_radio[1428],high_priority_buffer_to_radio[1429],high_priority_buffer_to_radio[1430],high_priority_buffer_to_radio[1431]);
   //
-  // ADC step attenuator of ADC0 and ADC1
-  //
-  high_priority_buffer_to_radio[1443] = adc[0].attenuation;
-  high_priority_buffer_to_radio[1442] = adc[1].attenuation;
+  // ADC step attenuator of ADC1 and ADC2
+  // BM remarks that if a strong signal source is connected to an ADC
+  // that is not used by any receiver, this generates ADC overflow
+  // messages without the user having a handle to suppress then.
+  // Therefore we set the attenuation of "unused" ADCs to the max.
   //
   //  Upon transmitting with PA enabled, set the attenuators to maximum attenuation
   //  Exception: use value of transmitter->attenuation if transmitting with PURESIGNAL.
@@ -1227,15 +1228,33 @@ static void new_protocol_high_priority(void) {
   //  NOTE: this has no effect according to the latest protocol definition, where
   //        bytes 58 and 59 of the TXspecific packet determine the attenuator settings
   //        during transmit (the code below is essentially duplicated there)
-  //         BUT, there might be old firmware around that does not fully implement this.
+  //        BUT, there might be old firmware around that does not fully implement this.
   //
-  if (xmit && local_pa_enabled) {
-    high_priority_buffer_to_radio[1442] = 31;
-    high_priority_buffer_to_radio[1443] = 31;
+  int newatt0 = 0x1F;
+  int newatt1 = 0x1F;
+  if (diversity_enabled || receiver[0]->adc == 0) {
+    newatt0 = adc[0].attenuation & 0x1F;
   }
-  if (xmit && transmitter->puresignal) {
-    high_priority_buffer_to_radio[1442] = transmitter->attenuation;
+  if (receivers > 1 && receiver[1]->adc == 0) {
+    newatt0 = adc[0].attenuation & 0x1F;
   }
+  if (diversity_enabled || receiver[0]->adc == 1) {
+    newatt1 = adc[1].attenuation & 0x1F;
+  }
+  if (receivers > 1 && receiver[1]->adc == 1) {
+    newatt1 = adc[1].attenuation & 0x1F;
+  }
+  if (xmit) {
+    if (local_pa_enabled) {
+      newatt0 = newatt1 = 0x1F;
+    }
+    if (transmitter->puresignal) {
+      newatt0 = transmitter->attenuation & 0x1F;
+    }
+  }
+
+  high_priority_buffer_to_radio[1442] = newatt1;
+  high_priority_buffer_to_radio[1443] = newatt0;
   //
   // Send the HighPrio buffer to the radio
   //
