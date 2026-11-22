@@ -749,25 +749,29 @@ static void tci_send_tune_drive (CLIENT *client) {
 
 static void tci_send_rx_filter_band (CLIENT *client, int v) {
   char msg[MAXMSGSIZE];
-  int mode;
-  int filter_id;
-  FILTER *filter;
   if (v < 0 || v >= receivers || receiver[v] == NULL) { return; }
-  mode = vfo[v].mode;
-  filter_id = vfo[v].filter;
-  if (mode < 0 || mode >= MODES) { return; }
-  if (filter_id < 0 || filter_id >= FILTERS) { return; }
-  filter = &filters[mode][filter_id];
-  snprintf (msg, MAXMSGSIZE, "rx_filter_band:%d,%d,%d;", v, filter->low, filter->high);
+  //
+  // in CWU or CWL mode, the filter edges are shifted to the side tone freq and this need
+  // be corrected
+  //
+  int low = receiver[v]->filter_low;
+  int high = receiver[v]->filter_high;
+  int mode = vfo[v].mode;
+  if (mode == modeCWU) {
+    low -= cw_keyer_sidetone_frequency;
+    high -= cw_keyer_sidetone_frequency;
+  } else if (mode == modeCWL) {
+    low += cw_keyer_sidetone_frequency;
+    high += cw_keyer_sidetone_frequency;
+  }
+  snprintf (msg, MAXMSGSIZE, "rx_filter_band:%d,%d,%d;", v, low, high);
   tci_send_text (client, msg);
 }
 
-static void tci_broadcast_rx_filter_band_value (int receiver_id, int low, int high) {
-  char msg[MAXMSGSIZE];
-  snprintf (msg, MAXMSGSIZE, "rx_filter_band:%d,%d,%d;", receiver_id, low, high);
+static void tci_broadcast_rx_filter_band (int receiver_id) {
   for (int c = 0; c < TCI_MAX_CLIENTS; c++) {
     if (tciclient[c].running) {
-      tci_send_text (tciclient + c, msg);
+     tci_send_rx_filter_band (tciclient + c, receiver_id);
     }
   }
 }
@@ -933,7 +937,7 @@ static void tci_send_rx_nb_enable (CLIENT *client, int receiver_id) {
   char msg[MAXMSGSIZE];
   if (receiver_id < 0 || receiver_id >= receivers || receiver_id >= 2 || receiver[receiver_id] == NULL) { return; }
   snprintf (msg, MAXMSGSIZE, "rx_nb_enable:%d,%s;", receiver_id,
-            receiver[receiver_id]->snb ? "true" : "false");
+            receiver[receiver_id]->nb ? "true" : "false");
   tci_send_text (client, msg);
 }
 
@@ -2024,7 +2028,7 @@ static void tci_cmd_rx_filter_band (CLIENT *client, const TCI_CMD *cmd) {
     int low = tci_int (cmd->argv[1], 0);
     int high = tci_int (cmd->argv[2], 0);
     filter_edges_changed(receiver_id, low, high);
-    tci_broadcast_rx_filter_band_value (receiver_id, low, high);
+    tci_broadcast_rx_filter_band (receiver_id);
   } else {
     tci_send_rx_filter_band (client, receiver_id);
   }
