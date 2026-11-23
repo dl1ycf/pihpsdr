@@ -17,6 +17,65 @@
 *
 */
 
+/*
+ * Some general remarks to the TCI implementation:
+ * This is NOT meant to be a full-fledged TCI client, because
+ * there are two problems involved with this:
+ *
+ * - the TCI model does not exactly map onto piHPSDR, e.g. there
+ *   are no TCI commands to choose between different noise
+ *   reduction models and specify their parameters. Furthermore
+ *   the TCI model of "receivers" and "channels" does not
+ *   very well map onto piHPSDR.  piHPSDR will use VFO-A if
+ *   both receiver and channel are zeor, and VFO-B in all other
+ *   cases.
+ *
+ * - the (not overly well specified) TCI protocol requires that
+ *   state changes are reported asynchronously to all connected
+ *   clients, which means that there should e.g. be a TCI message
+ *   sent to all clients when noise reduction is switched off by
+ *   user from the Noise menu or via a MIDI command. To achieve this,
+ *   TCI must be called from very many places in the program and this
+ *   I do refuse.
+ *
+ * For some state changes, a message to all clients is required to
+ * make this TCI client work well with logbook or digimode
+ * programs and with external power amplifiers. So some states
+ * will be periodically sent to all clients, namely
+ *
+ *  - TX frequency        (if changed, every 500 msec)
+ *  - Split status        (if changed, every 500 msec)
+ *  - MOX status          (if changed, every 500 msec)
+ *  - RX sensors          (if requested by client, once per second, ignoring rxsensors_ms)
+ *  - TX sensors          (if requested by client, once per second, ignoring txsensors_ms)
+ *  - VFO A/B frequencies (if changed, every 500 msec)
+ *  - VFO A/B modes       (if changed, every 500 msec)
+ *
+ * To this end, the function tci_reporter() will be invoked every 500 ms to keep
+ * ALL clients up-to-date about these important states.
+ *
+ * In many cases, a "report to all clients" or "broadcast" is implemented here, but this
+ * then only applies to state changes induced by TCI commands. It is well possible that
+ * these broadcast functions will be removed sooner or later.
+ *
+ * Restrictions on audio streams:
+ * ------------------------------
+ *
+ * When an audio input ("microphone") stream is opened, this TCI clients sends
+ * a message that it expects the following format:
+ *  - data format float32
+ *  - sample rate 48000 kHz
+ *  - two channels (STEREO)
+ *  - 1024 samples per frame
+ *
+ * An audio output ("RX audio") stream is only opened if the following format is
+ * requested:
+ *  - data format float32
+ *  - sample rate 48000 kHz
+ *  - one (MONO) or two channels (STEREO)
+ *
+ */
+
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
 
@@ -1190,18 +1249,14 @@ static int tci_parse_mode (const char* mode_str) {
 
 static void tci_set_mode (CLIENT *client, int VfoNr, const char* mode_str) {
   if (VfoNr < 0 || VfoNr > 1) { return; }
-  t_print("%s: Vfo=%d\n", __func__, VfoNr);
   int m = tci_parse_mode (mode_str);
-  t_print("%s: Mode=%d\n", __func__, m);
   if (m < 0) {
     t_print ("TCI%d unknown mode: %s\n", client->seq, mode_str);
     tci_send_mode (client, VfoNr);
     return;
   }
   vfo_id_mode_changed (VfoNr, m);
-  t_print("%s: Mode changed\n", __func__);
   tci_broadcast_mode_value (VfoNr, m);
-  t_print("%s: broadcast done\n", __func__);
 }
 
 static void tci_cmd_rit_enable (CLIENT *client, const TCI_CMD *cmd) {
@@ -1535,7 +1590,6 @@ static void tci_cmd_tune (CLIENT *client, const TCI_CMD *cmd) {
     if (client->tx_owner) {
       int state = tci_bool (cmd->argv[1]);
       radio_set_tune(state);
-      t_print ("TCI%d TUNE request=%d\n", client->seq, state);
     } else {
       tci_send_tune (client);
       tci_send_mox (client);
@@ -2166,9 +2220,6 @@ static void tci_cmd_cw_msg(CLIENT *client, const TCI_CMD *cmd) {
       if (tci_cw_msg_call_pos > new_len) {
         tci_cw_msg_call_pos = new_len;
       }
-      t_print("TCI%d cw_msg callsign correction accepted callsign=%s pos=%d repeat=%d/%d\n", client->seq,
-              tci_cw_msg_active_callsign, tci_cw_msg_call_pos, tci_cw_msg_call_repeat_index + 1,
-              tci_cw_msg_call_repeat);
     }
     g_free(callsign_arg);
     g_free(callsign);
@@ -2206,8 +2257,6 @@ static void tci_cmd_cw_msg(CLIENT *client, const TCI_CMD *cmd) {
   } else {
     queued = tci_cw_msg_queue_next();
   }
-  t_print("TCI%d cw_msg queued=%d prefix=%s callsign=%s repeat=%d suffix=%s\n", client->seq, queued,
-          prefix_text->str, callsign, repeat, tci_cw_msg_active_suffix[0] ? tci_cw_msg_active_suffix : "_");
   g_string_free(prefix_text, TRUE);
   g_free(prefix);
   g_free(callsign_arg);
@@ -2282,7 +2331,6 @@ static void tci_cmd_cw_macros (CLIENT *client, const TCI_CMD *cmd) {
 static void tci_cmd_cw_macros_stop (CLIENT *client, const TCI_CMD *cmd) {
   rigctl_purge_cw();
   tci_cw_msg_reset_state();
-  t_print("TCI%d cw_macros_stop\n", client->seq);
 }
 
 static void tci_cmd_cw_terminal (CLIENT *client, const TCI_CMD *cmd) {
@@ -2824,7 +2872,7 @@ static int tci_lws_callback (struct lws *wsi, enum lws_callback_reasons reason,
       lws_callback_on_writable (wsi);
       tciclient[c].tci_timer = g_timeout_add (500, tci_reporter, tciclient + c);
     } else {
-      t_print ("%s: count not start client\n", __func__);
+      t_print ("%s: could not start client\n", __func__);
     }
     *slot = c;
     return 0;
@@ -2856,7 +2904,7 @@ static int tci_lws_callback (struct lws *wsi, enum lws_callback_reasons reason,
   case LWS_CALLBACK_SERVER_WRITEABLE:
   case LWS_CALLBACK_CLOSED:
     //
-    // These three cases will be handled leter on, and here we must secure
+    // These three cases will be handled later on, and here we must secure
     // That the "user" parameter (slot) is valid
     //
     if (slot == NULL) {
